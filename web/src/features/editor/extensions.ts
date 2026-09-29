@@ -2,6 +2,7 @@ import { Extension, Node, mergeAttributes, type AnyExtension, type JSONContent }
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
+import Heading, { type Level } from "@tiptap/extension-heading";
 import { Placeholder } from "@tiptap/extensions";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
@@ -232,6 +233,29 @@ export const SlashMenu = Extension.create<SlashMenuOptions>({
   },
 });
 
+// The page's title is its h1, so a document's levels are drawn one down, as
+// the read-only view draws them. data-level keeps a copy and paste inside the
+// editor at its level; a heading pasted from elsewhere keeps its own.
+const ShiftedHeading = Heading.extend({
+  parseHTML() {
+    return [
+      {
+        tag: "h2[data-level], h3[data-level], h4[data-level]",
+        priority: 60,
+        getAttrs: (el: HTMLElement) => {
+          const level = Number(el.dataset.level);
+          return (this.options.levels as number[]).includes(level) ? { level } : false;
+        },
+      },
+      ...this.options.levels.map((level: Level) => ({ tag: `h${level}`, attrs: { level } })),
+    ];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    const level = this.options.levels.includes(node.attrs.level) ? node.attrs.level : this.options.levels[0];
+    return [`h${level + 1}`, mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { "data-level": level }), 0];
+  },
+});
+
 export interface ExtensionOptions {
   placeholder?: string;
   mention?: Partial<MentionOptions>["suggestion"];
@@ -245,9 +269,10 @@ export function editorExtensions({ placeholder, mention, slash, submit }: Extens
     StarterKit.configure({
       underline: false,
       codeBlock: false,
-      heading: { levels: [...HEADING_LEVELS] },
+      heading: false,
       link: { openOnClick: false, autolink: true, isAllowedUri: (url) => safeHref(url) !== null },
     }),
+    ShiftedHeading.configure({ levels: [...HEADING_LEVELS] }),
     Placeholder.configure({ placeholder: placeholder ?? "" }),
     TaskList,
     TaskItem.configure({ nested: true, a11y: { checkboxLabel: () => t.editor.taskDone } }),
