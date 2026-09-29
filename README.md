@@ -51,6 +51,11 @@ stack's network. `make help` lists every target.
 `./run-tests.sh` uses the same compose project as `make up` in the same
 checkout and removes it, data included, when it finishes.
 
+The browser suite in `e2e/` runs against a running stack:
+`make test-e2e` runs all of it, `ONLY=drawer` the tests whose title or tag
+matches, `WORKERS=1` one at a time. `make e2e-report` serves the last run's
+report with its traces on `http://localhost:9323`.
+
 ## Deployment
 
 `deploy/charts/stator` deploys Stator to Kubernetes. A real installation
@@ -77,11 +82,6 @@ Without CNPG, set `database.host` and, for replicas of your own,
 `-f deploy/charts/stator/values-demo.yaml` brings a Postgres and a Valkey pod
 of its own. `values.yaml` documents every setting; see also
 `docs/architecture.md`.
-
-The browser suite in `e2e/` runs against a running stack:
-`make test-e2e` runs all of it, `ONLY=drawer` the tests whose title or tag
-matches, `WORKERS=1` one at a time. `make e2e-report` serves the last run's
-report with its traces on `http://localhost:9323`.
 
 ## Contributing
 
