@@ -7,7 +7,9 @@ import (
 	"net/http"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
 // APIError is the single error shape every endpoint returns, so that clients
@@ -103,6 +105,22 @@ func toAPIError(err error) *APIError {
 		return ErrUnauthorized("Your session has expired. Sign in again.")
 	case errors.Is(err, tenant.ErrNoTenant):
 		return &APIError{Status: http.StatusBadRequest, Code: "no_organization", Message: "Select an organization first."}
+	case errors.Is(err, objectstore.ErrUnavailable):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "storage_unavailable", Message: "Files cannot be stored on this server yet. Ask an administrator to set up file storage.", cause: err}
+	case errors.Is(err, theme.ErrNotAThemeFile), errors.Is(err, theme.ErrDefaultNotShared):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
+	case errors.Is(err, theme.ErrNotFound):
+		return ErrNotFound("That theme was not found. It may have been deleted or taken private.")
+	case errors.Is(err, theme.ErrAssetNotFound):
+		return ErrNotFound("That file is not in the theme.")
+	case errors.Is(err, theme.ErrNotYours):
+		return ErrForbidden(sentence(theme.ErrNotYours.Error()))
+	case errors.Is(err, theme.ErrDuplicateName), errors.Is(err, theme.ErrAssetInUse), errors.Is(err, theme.ErrTooManyAssets):
+		return ErrConflict(sentence(err.Error()))
+	case errors.Is(err, theme.ErrBadAssetType), errors.Is(err, theme.ErrUnsafeSVG):
+		return ErrBadRequest(sentence(err.Error()))
+	case errors.Is(err, theme.ErrAssetTooLarge):
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(theme.ErrAssetTooLarge.Error())}
 	default:
 		return ErrInternal(err)
 	}
