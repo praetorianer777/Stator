@@ -1,0 +1,285 @@
+# The development and test stack. Run it through make (mk/stack.mk), which
+# names the project and picks the host ports from the checkout's path so that
+# parallel worktrees never share a database or collide on a port; the defaults
+# below are what a bare `docker compose` gets.
+name: stator
+
+x-db-env: &db-env
+  POSTGRES_USER: stator
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stator}
+  POSTGRES_DB: stator
+
+# The api, worker and seed connect as stator_app, which row level security
+# constrains, and as stator_admin for what runs before a tenant is known.
+x-app-db-env: &app-db-env
+  STATOR_ENV: development
+  STATOR_DB_PRIMARY_URL: postgres://stator_app:${APP_DB_PASSWORD:-stator_app}@postgres-primary:5432/stator?sslmode=disable
+  STATOR_DB_REPLICA_URLS: postgres://stator_app:${APP_DB_PASSWORD:-stator_app}@postgres-replica:5432/stator?sslmode=disable
+  STATOR_DB_ADMIN_URL: postgres://stator_admin:${ADMIN_DB_PASSWORD:-stator_admin}@postgres-primary:5432/stator?sslmode=disable
+
+# Uploaded files go to the stack's SeaweedFS; the api makes the bucket if it is
+# missing.
+x-s3-env: &s3-env
+  STATOR_S3_ENDPOINT: seaweedfs:8333
+  STATOR_S3_BUCKET: stator-files
+  STATOR_S3_ACCESS_KEY: ${S3_ACCESS_KEY:-stator}
+  STATOR_S3_SECRET_KEY: ${S3_SECRET_KEY:-stator-dev-secret}
+
+# Every Go service runs the same image, so the binaries are compiled once; the
+# builder answers the other services' identical builds from its cache.
+x-backend: &backend
+  image: ${COMPOSE_PROJECT_NAME:-stator}-backend
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile.backend
+
+services:
+  postgres-primary:
+    image: postgres:18-alpine
+    environment:
+      <<: *db-env
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-stator_app}
+      ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD:-stator_admin}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replicator}
+      # scram-sha-256 for replication connections as well as client ones.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - hot_standby=on
+      # Surfaces the standby's replay position on the primary, which the
+      # api's replica health check reads.
+      - -c
+      - track_commit_timestamp=on
+    volumes:
+      - primary-data:/var/lib/postgresql/18/docker
+      - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      # Over TCP on purpose: the image's first-boot server listens on the
+      # socket only, so this passes once the init scripts have run.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U stator -d stator"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+      start_interval: 1s
+
+  # A genuine streaming replica rather than a second database: read routing
+  # and the replica health checks only mean something against real replication.
+  postgres-replica:
+    image: postgres:18-alpine
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    environment:
+      <<: *db-env
+      PRIMARY_HOST: postgres-primary
+      REPLICATION_USER: replicator
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replicator}
+      REPLICATION_SLOT: stator_replica_1
+    entrypoint: ["/usr/local/bin/replica-entrypoint.sh"]
+    volumes:
+      - replica-data:/var/lib/postgresql/18/docker
+      - ./postgres/replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+    ports:
+      - "127.0.0.1:${POSTGRES_REPLICA_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U stator -d stator"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+      start_interval: 1s
+
+  # Valkey, the BSD licensed fork of Redis: caches and rate limits.
+  valkey:
+    image: valkey/valkey:8-alpine
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:-stator_valkey}
+    command: ["valkey-server", "--appendonly", "yes", "--requirepass", "${VALKEY_PASSWORD:-stator_valkey}"]
+    volumes:
+      - valkey-data:/data
+    ports:
+      - "127.0.0.1:${VALKEY_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -a $$VALKEY_PASSWORD --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+      start_interval: 1s
+
+  # Catches every outbound mail; nothing ever leaves the host. The image
+  # carries its own health check.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
+
+  # S3 compatible attachment storage, so the storage code path is the same in
+  # development and production. One container is the whole of SeaweedFS here:
+  # master, volume server, filer and the S3 gateway. Given these two variables
+  # it refuses unsigned requests, so there is no credentials file to keep in
+  # step with the ones the api is handed.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.46
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-master.volumeSizeLimitMB=256"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-stator}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-stator-dev-secret}
+    volumes:
+      - seaweedfs-data:/data
+    ports:
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
+    healthcheck:
+      # The master says the cluster is up; the second call proves the S3 port
+      # is listening, where 403 to an unsigned request is the healthy answer.
+      test: ["CMD", "sh", "-c", "curl -fsS http://localhost:9333/cluster/healthz >/dev/null && curl -s -o /dev/null http://localhost:8333/"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+      start_interval: 1s
+
+  # The identity provider. The realm is imported afresh on every start, so no
+  # volume: a mounted data directory would be root owned while the image runs
+  # unprivileged. The browser reaches it on the published port, containers as
+  # keycloak:8080.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    command: ["start-dev", "--import-realm", "--http-port=8080"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_PASSWORD:-admin}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8180}:8080"
+    healthcheck:
+      # The image has no curl; bash can open a socket to the management port.
+      test:
+        - CMD-SHELL
+        - 'exec 3<>/dev/tcp/127.0.0.1/9000; printf ''GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n'' >&3; grep -q UP <&3'
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+      start_interval: 2s
+
+  # Migrations run as the database owner, which is what lets them create the
+  # runtime roles' default privileges.
+  migrate:
+    <<: *backend
+    command: ["/app/migrate", "up"]
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    environment:
+      STATOR_DB_PRIMARY_URL: postgres://stator:${POSTGRES_PASSWORD:-stator}@postgres-primary:5432/stator?sslmode=disable
+    restart: "no"
+
+  seed:
+    <<: *backend
+    command: ["/app/seed"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *app-db-env
+    restart: "no"
+
+  api:
+    <<: *backend
+    command: ["/app/api"]
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      postgres-replica:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+      # After the seed rather than beside it: a stack that answers is one a
+      # browser test can sign in to, and `up --wait` accepts a one-shot
+      # container only when something waits for it.
+      seed:
+        condition: service_completed_successfully
+    environment:
+      <<: [*app-db-env, *s3-env]
+      STATOR_HTTP_ADDR: ":8080"
+      STATOR_LOG_LEVEL: debug
+      # The session cookie is checked against the origin the browser uses,
+      # which is the web container's published port.
+      STATOR_APP_URL: http://localhost:${WEB_PORT:-8000}
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "/app/api", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+      start_interval: 1s
+
+  worker:
+    <<: *backend
+    command: ["/app/worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      <<: [*app-db-env, *s3-env]
+      STATOR_LOG_LEVEL: debug
+      STATOR_APP_URL: http://localhost:${WEB_PORT:-8000}
+    healthcheck:
+      # The worker serves nothing but its metrics, so they are its sign of life.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/metrics"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+      start_interval: 1s
+
+  web:
+    image: ${COMPOSE_PROJECT_NAME:-stator}-web
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8000}:80"
+    healthcheck:
+      # Through nginx to the api and its database: healthy means the whole
+      # chain a browser uses answers.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+      start_interval: 1s
+
+volumes:
+  primary-data:
+  replica-data:
+  valkey-data:
+  seaweedfs-data:

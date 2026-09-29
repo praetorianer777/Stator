@@ -10,12 +10,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/observability"
-)
-
-// Seeded names, fixed so a second run finds what the first made.
-const (
-	demoOrgSlug = "demo"
-	demoOrgName = "Demo"
+	"github.com/praetorianer777/stator/backend/internal/seed"
 )
 
 func main() {
@@ -40,17 +35,10 @@ func run() error {
 	}
 	defer cluster.Close()
 
-	// Making an organization precedes any tenant, which is what the admin
-	// role is for.
-	var created bool
-	_, err = cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) ON CONFLICT (slug) DO NOTHING`, demoOrgSlug, demoOrgName)
-		created = tag.RowsAffected() == 1
-		return err
-	})
+	res, err := seed.Run(ctx, cluster)
 	if err != nil {
 		return err
 	}
-	log.Info("seed done", "org", demoOrgSlug, "created", created)
+	log.Info("seed done", "org", seed.DemoOrgSlug, "created", res.OrgCreated)
 	return nil
 }

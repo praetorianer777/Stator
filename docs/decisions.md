@@ -3,6 +3,16 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: The test stack keeps the streaming replica
+
+The compose stack runs Postgres as a primary and a real streaming replica, as
+Armature's does, and the gate runs against it. Read routing, the replica
+health check and read-your-writes only mean something against real
+replication, and a replica costs the gate a base backup of an empty cluster:
+a few seconds, where Keycloak's start already takes longer. The integration
+suite now uses this stack instead of a Postgres and a SeaweedFS of its own, so
+the gate runs exactly one of each.
+
 ## 2026-09-29: Armature is reached as the viewing user
 
 Every call to Armature uses the viewer's own personal access token. A shared

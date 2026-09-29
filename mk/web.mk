@@ -41,6 +41,10 @@ web-schema: | $(NPM_CACHE) ## Regenerate web/src/api/schema.d.ts from api/openap
 check-web: | $(NPM_CACHE) ## Lint, type-check and unit-test the web client; check its API types are current
 	$(DOCKER_NODE) sh -c 'npm ci --no-audit --no-fund && npm run lint && npm run typecheck && npm test && npm run schema:check'
 
+.PHONY: test-web
+test-web: | $(NPM_CACHE) ## Run the web client's unit tests
+	$(DOCKER_NODE) sh -c '[ -d node_modules ] || npm ci --no-audit --no-fund; npm test'
+
 .PHONY: web-build
 web-build: | $(NPM_CACHE) ## Production build of the web client into web/dist
 	$(DOCKER_NODE) sh -c 'npm ci --no-audit --no-fund && npm run build'
