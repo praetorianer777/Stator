@@ -51,7 +51,7 @@ type apiServer struct {
 func newAPIServer(t *testing.T, h *harness) *apiServer {
 	t.Helper()
 	if os.Getenv("STATOR_S3_ENDPOINT") == "" {
-		t.Fatal("STATOR_S3_ENDPOINT is not set; run the suite with make test-integration, which starts the bucket")
+		t.Fatal("STATOR_S3_ENDPOINT is not set; run the suite with make test-integration against the running stack")
 	}
 	store, err := objectstore.Open(objectstore.Config{
 		Endpoint: h.cfg.S3.Endpoint, Bucket: h.cfg.S3.Bucket, AccessKey: h.cfg.S3.AccessKey,

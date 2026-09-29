@@ -9,6 +9,13 @@ UID_GID := $(shell id -u):$(shell id -g)
 
 include $(wildcard $(ROOT)/mk/*.mk)
 
+.PHONY: test
+test: test-go test-web ## Run the Go and web unit tests
+
+.PHONY: test-all
+test-all: ## The whole gate, exactly as CI and the push hook run it
+	$(ROOT)/run-tests.sh
+
 .PHONY: help
 help:
 	@grep -hE '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | sort
