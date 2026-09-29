@@ -124,6 +124,7 @@ export const en = {
     enabled: "Members sign in through this provider",
     callback: "Register this redirect address with the provider:",
     signInAt: "Members sign in at",
+    save: "Save",
     setUp: "Set up single sign-on",
     saved: "Saved.",
     notAdmin: "Only an administrator of this organization can change how its members sign in.",
