@@ -19,6 +19,9 @@ type Principal struct {
 	UserID uuid.UUID
 	// Org is the organization the caller is acting in; nil until one is chosen.
 	Org *tenant.Org
+	// SessionID names the sign-in this request rides on, and keys its
+	// read-your-writes position; empty for a caller without a session.
+	SessionID string
 }
 
 // InOrg reports whether the caller has chosen an organization to act in.

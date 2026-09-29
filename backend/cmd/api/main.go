@@ -13,8 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
@@ -32,6 +35,9 @@ const (
 	shutdownGrace     = 25 * time.Second
 	healthcheckWait   = 3 * time.Second
 )
+
+// valkeyPrefix keeps read-your-writes keys apart from anything else in Valkey.
+const valkeyPrefix = "stator:ryw:"
 
 // devOrigins are where the web client's development server runs.
 var devOrigins = []string{"http://localhost:5173", "http://127.0.0.1:5173"}
@@ -86,8 +92,15 @@ func run() error {
 		return err
 	}
 
+	fresh, closeFresh, err := freshnessTracker(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer closeFresh()
+
 	server := &httpapi.Server{
 		DB:             cluster,
+		Fresh:          fresh,
 		Log:            log,
 		Telemetry:      tel,
 		Themes:         theme.NewService(cluster, store),
@@ -161,6 +174,30 @@ func telemetryConfig(cfg config.Config, service string) observability.Config {
 		OTLPEndpoint: cfg.Telemetry.OTLPEndpoint,
 		SampleRatio:  cfg.Telemetry.SampleRatio,
 	}
+}
+
+// freshnessTracker keeps read-your-writes positions in Valkey, so they hold
+// across api processes, or in this process when no Valkey is configured.
+func freshnessTracker(ctx context.Context, cfg config.Config, log *slog.Logger) (httpapi.Freshness, func(), error) {
+	if cfg.Valkey.URL == "" {
+		if len(cfg.DB.ReplicaURLs) > 0 {
+			log.Warn("STATOR_VALKEY_URL is not set, so read-your-writes holds within this api process only")
+		}
+		return freshness.NewMemoryTracker(cfg.DB.ReadYourWritesTTL), func() {}, nil
+	}
+	opts, err := redis.ParseURL(cfg.Valkey.URL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("STATOR_VALKEY_URL is not a valid Valkey URL, such as redis://:password@valkey:6379/0: %w", err)
+	}
+	client := redis.NewClient(opts)
+	tracker := freshness.NewValkeyTracker(client, cfg.DB.ReadYourWritesTTL, valkeyPrefix)
+	pingCtx, cancel := context.WithTimeout(ctx, healthcheckWait)
+	defer cancel()
+	if err := tracker.Ping(pingCtx); err != nil {
+		_ = client.Close()
+		return nil, nil, fmt.Errorf("connect to Valkey: %w", err)
+	}
+	return tracker, func() { _ = client.Close() }, nil
 }
 
 // fileStore connects to the configured bucket, making it on a fresh stack, or
