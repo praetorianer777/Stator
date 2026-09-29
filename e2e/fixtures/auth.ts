@@ -29,6 +29,12 @@ const ORG_FIELD = "Organization";
 const SSO_START = '[data-action="sso"]';
 const PASSWORD_SUBMIT = '[data-action="password-sign-in"]';
 
+// A click that starts a navigation waits for it within the action timeout.
+// The api's sign-in hops commit several times and redeem the code with the
+// provider, which on a busy machine outlasted that; so these clicks return at
+// once, and the next step waits for the page within the navigation timeout.
+const LEAVES_THE_PAGE = { noWaitAfter: true } as const;
+
 export const AUTH_MISSING = `Sign-in is not built yet: GET ${ME_PATH} answers 404 (issue #5).`;
 
 const AUTH_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../.auth");
@@ -54,13 +60,13 @@ export function authAvailable(): Promise<boolean> {
 }
 
 /**
- * Starts SSO for an organisation from the login page, staying on it when a redirect
- * already brought the browser there, so its `next` is kept.
+ * Starts SSO from the login page, staying on it when a redirect brought the browser
+ * there so its `next` is kept; the caller waits for the page the provider leads to.
  */
 export async function startSSO(page: Page, org: string = ORG_SLUG): Promise<void> {
   if (!page.url().startsWith(`${WEB_URL}${LOGIN_PATH}`)) await page.goto(LOGIN_PATH);
   await page.getByLabel(ORG_FIELD, { exact: true }).fill(org);
-  await page.locator(SSO_START).click();
+  await page.locator(SSO_START).click(LEAVES_THE_PAGE);
 }
 
 /** Fills Keycloak's own form, then waits until the browser is back in Stator. */
@@ -68,7 +74,7 @@ export async function submitKeycloak(page: Page, username: string, password: str
   await page.waitForURL(`${KEYCLOAK_URL}/**`);
   await page.locator("#username").fill(username);
   await page.locator("#password").fill(password);
-  await page.locator("#kc-login").click();
+  await page.locator("#kc-login").click(LEAVES_THE_PAGE);
   await page.waitForURL((url) => url.origin === new URL(WEB_URL).origin && !url.pathname.startsWith("/api/"));
 }
 
