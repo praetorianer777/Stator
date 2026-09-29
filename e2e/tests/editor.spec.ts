@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/auth";
 import { expectAccessible, startInScheme } from "../fixtures/shell";
 
@@ -7,6 +7,8 @@ import { expectAccessible, startInScheme } from "../fixtures/shell";
 const EDITOR_PATH = "/dev/editor";
 const SLASH_ITEM_COUNT = 16;
 const TABLE_SIZE = 3;
+// Enough paragraphs that the stored document outgrows its box.
+const STORED_LINES = 12;
 
 const box = (page: Page) => page.locator("#dev-editor");
 const preview = (page: Page) => page.locator("[data-dev-preview]");
@@ -38,6 +40,12 @@ async function emptyEditor(page: Page) {
   expect(await box(page).locator("> *").evaluate((el) => el.tagName)).toBe("P");
 }
 
+/** Whether an option is drawn wholly inside the list that clips it. */
+async function shownWithin(list: Locator, option: Locator): Promise<boolean> {
+  const [outer, inner] = await Promise.all([list.boundingBox(), option.boundingBox()]);
+  return !!outer && !!inner && inner.y >= outer.y && inner.y + inner.height <= outer.y + outer.height;
+}
+
 async function insert(page: Page, query: string) {
   await page.keyboard.type(`/${query}`);
   await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -58,6 +66,19 @@ test.describe("the editor", { tag: "@desktop" }, () => {
     await page.keyboard.press("ArrowDown");
     await expect(options.nth(1)).toHaveAttribute("aria-selected", "true");
     await expect(options.nth(0)).toHaveAttribute("aria-selected", "false");
+    await expectAccessible(page);
+
+    // Past the top the active option wraps to the last one, which the list
+    // brings into view; the wheel still scrolls the list back.
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("ArrowUp");
+    await expect(options.last()).toHaveAttribute("aria-selected", "true");
+    await expect.poll(() => shownWithin(menu, options.last())).toBe(true);
+    await expect.poll(() => shownWithin(menu, options.first())).toBe(false);
+    await expect(box(page)).toBeFocused();
+    await menu.hover();
+    await page.mouse.wheel(0, -2000);
+    await expect.poll(() => shownWithin(menu, options.first())).toBe(true);
     await expectAccessible(page);
 
     await page.keyboard.type("quo");
@@ -227,5 +248,17 @@ test.describe("the editor", { tag: "@desktop" }, () => {
       window.location.hash = hash;
     }, new URL(link).hash);
     await expect(preview(page).locator("h2#release-plan")).toBeInViewport();
+  });
+
+  test("the stored document scrolls from the keyboard", async ({ page }) => {
+    await emptyEditor(page);
+    for (let line = 0; line < STORED_LINES; line++) await page.keyboard.type(`Line ${line}\n`);
+    const stored = page.getByRole("region", { name: "Stored document as JSON" });
+    await expect.poll(() => stored.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    await stored.focus();
+    await expect(stored).toBeFocused();
+    await page.keyboard.press("PageDown");
+    await expect.poll(() => stored.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    await expectAccessible(page);
   });
 });

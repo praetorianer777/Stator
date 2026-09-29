@@ -2,6 +2,7 @@ import { cx } from "@/components/ui";
 import { MENU_GAP_PX } from "@/config";
 import { t } from "@/i18n";
 import type { Mentionable } from "./schema";
+import { useFollowActive } from "./useFollowActive";
 
 /**
  * The people an at sign could mean, drawn under the caret. The editor keeps
@@ -22,14 +23,16 @@ export function MentionList({
   onPick: (person: Mentionable) => void;
   onHover: (i: number) => void;
 }) {
+  const follow = useFollowActive(active);
   if (items.length === 0 || !rect) return null;
   return (
     <div
+      ref={follow}
       id={id}
       role="listbox"
       aria-label={t.editor.mentions}
       data-mention-list
-      className="fixed z-40 min-w-56 rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
+      className="fixed z-40 max-h-80 min-w-56 overflow-y-hidden rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
       style={{ left: rect.left, top: rect.bottom + MENU_GAP_PX }}
     >
       {items.map((person, i) => (

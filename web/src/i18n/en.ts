@@ -480,6 +480,7 @@ export const en = {
     title: "Editor",
     preview: "Read-only view",
     json: "Stored document",
+    jsonBox: "Stored document as JSON",
   },
   api: {
     unexpected: (status: number) => `The server answered with status ${status}. Try again in a moment.`,
