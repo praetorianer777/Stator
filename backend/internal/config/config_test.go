@@ -24,7 +24,7 @@ func clean(t *testing.T) {
 		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
-		"STATOR_BOOTSTRAP_MEMBERS",
+		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
 	} {
 		t.Setenv(key, "")
 	}
@@ -316,5 +316,34 @@ func TestTheBootstrapProviderNeedsAClientAndAKeyForItsSecret(t *testing.T) {
 	c, err := Load()
 	if err != nil || c.Bootstrap.OIDCClientID != "stator" || c.Bootstrap.OIDCClientSecret != "stator-dev-secret" {
 		t.Fatalf("bootstrap provider = %+v, %v", c.Bootstrap, err)
+	}
+}
+
+func TestTheTestEndpointsNeedATokenAProviderAndNoProduction(t *testing.T) {
+	clean(t)
+	if c, err := Load(); err != nil || c.TestEndpoints.Enabled {
+		t.Fatalf("the test endpoints are on by default: %+v, %v", c.TestEndpoints, err)
+	}
+	t.Setenv("STATOR_TEST_ENDPOINTS", "1")
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "STATOR_TEST_ENDPOINTS_TOKEN") || !strings.Contains(err.Error(), "STATOR_BOOTSTRAP_OIDC_ISSUER") {
+		t.Fatalf("on without a token or a provider = %v", err)
+	}
+	t.Setenv("STATOR_TEST_ENDPOINTS_TOKEN", "short")
+	t.Setenv("STATOR_BOOTSTRAP_OIDC_ISSUER", "http://localhost:8180/realms/stator-dev")
+	t.Setenv("STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "stator")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_TEST_ENDPOINTS_TOKEN") {
+		t.Fatalf("a short token = %v", err)
+	}
+	t.Setenv("STATOR_TEST_ENDPOINTS_TOKEN", "a token long enough to use")
+	c, err := Load()
+	if err != nil || !c.TestEndpoints.Enabled || c.TestEndpoints.Token != "a token long enough to use" {
+		t.Fatalf("on with a token = %+v, %v", c.TestEndpoints, err)
+	}
+	t.Setenv("STATOR_ENV", EnvProduction)
+	t.Setenv("STATOR_SECURE_COOKIES", "true")
+	t.Setenv("STATOR_SECRET_KEY", testKey)
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_TEST_ENDPOINTS is on in production") {
+		t.Fatalf("on in production = %v", err)
 	}
 }

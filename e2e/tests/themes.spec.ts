@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
-import { authTest as test, expect } from "../fixtures/auth";
-import { chooseTheme, createTheme, deleteThemes, listThemes, themeSpec, uniqueName, updateTheme, uploadThemeAsset } from "../fixtures/seed";
+import { expect } from "../fixtures/auth";
+import { orgTest as test } from "../fixtures/org";
+import { chooseTheme, createTheme, listThemes, themeSpec, uniqueName, updateTheme, uploadThemeAsset } from "../fixtures/seed";
 
 const MINECRAFT = resolve(dirname(fileURLToPath(import.meta.url)), "../../backend/internal/theme/testdata/minecraft.armature-theme.json");
 const MINECRAFT_NAME = JSON.parse(readFileSync(MINECRAFT, "utf8")).name as string;
@@ -24,9 +25,10 @@ async function rowAction(page: Page, name: string, action: string) {
   await page.locator(`[role="menu"] [data-action="${action}"]`).click();
 }
 
-// Reads may come from a replica, and a reader sees another person's write only
-// once the replica has it, so a page reloads until what was written elsewhere
-// has reached it.
+// A person reads their own writes at once, the session pinning their reads to
+// them. Another person's write reaches a reader only once the replica has it,
+// so where one person looks at what another wrote, the page reloads until it
+// has arrived.
 const REPLICA_CATCH_UP_MS = 10_000;
 const RECHECK_MS = 1_000;
 async function afterReplication(page: Page, check: () => Promise<void>) {
@@ -44,31 +46,24 @@ async function pickScheme(page: Page, choice: "system" | "light" | "dark") {
   await expect(button).toHaveAttribute("data-theme-choice", choice);
 }
 
-// Themes are the organisation's, and a default or an in-use count is seen by
-// everyone in it, so these run one after another in one worker until the
-// suite can give each spec an organisation of its own.
+// The organisation is this file's alone, so its default and in-use counts are
+// nobody else's; tests that share a worker share it one after another, and
+// each starts with nobody's choice and no default.
 test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
-  test.describe.configure({ mode: "default" });
-
   test.afterEach(async ({ api, apiAs }) => {
-    const bob = await apiAs("bob");
-    const ours = (name: string) => name.startsWith("e2e ") || name.startsWith(MINECRAFT_NAME);
-    for (const each of [api, bob]) await chooseTheme(each, null).catch(() => {});
+    for (const each of [api, await apiAs("bob")]) await chooseTheme(each, null).catch(() => {});
     await api.PUT("/themes/default", { body: { themeId: null } });
-    await deleteThemes(api, ours);
-    await deleteThemes(bob, ours);
   });
 
   test("the chosen theme applies in the shell and survives a reload without a flash", async ({ page, api }, testInfo) => {
     const name = uniqueName(testInfo, "canvas");
     await createTheme(api, name, themeSpec({ colors: { light: { canvas: "#123456" }, dark: { canvas: "#123456" } } }));
     await page.goto(THEMES_PATH);
-    await afterReplication(page, () => expect(row(page, name)).toBeVisible({ timeout: RECHECK_MS }));
     await rowAction(page, name, "use-theme");
     await expect(page.locator("[data-themes-notice]")).toHaveText(`Now using ${name}.`);
 
     await page.goto("/");
-    await afterReplication(page, () => expect(customStyle(page)).toBeAttached({ timeout: RECHECK_MS }));
+    await expect(customStyle(page)).toBeAttached();
     expect(await rootVar(page, "--color-canvas")).toBe("#123456");
 
     // Recorded the moment the app first draws anything, before the server has answered.
@@ -93,7 +88,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     );
     await chooseTheme(api, theme.id);
     await page.goto("/");
-    await afterReplication(page, () => expect(customStyle(page)).toBeAttached({ timeout: RECHECK_MS }));
+    await expect(customStyle(page)).toBeAttached();
 
     await pickScheme(page, "light");
     expect(await rootVar(page, "--color-canvas")).toBe("#fafaf0");
@@ -111,11 +106,11 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await page.locator("[data-theme-file]").setInputFiles(MINECRAFT);
     await expect(page.locator("[data-themes-notice]")).toContainText(`Imported ${MINECRAFT_NAME}`);
     const importedName = (await page.locator("[data-themes-notice]").textContent())!.replace(/^Imported /, "").replace(/\.$/, "");
-    await afterReplication(page, () => expect(row(page, importedName)).toBeVisible({ timeout: RECHECK_MS }));
     await rowAction(page, importedName, "use-theme");
+    await expect(page.locator("[data-themes-notice]")).toHaveText(`Now using ${importedName}.`);
 
     await page.goto("/");
-    await afterReplication(page, () => expect(customStyle(page)).toBeAttached({ timeout: RECHECK_MS }));
+    await expect(customStyle(page)).toBeAttached();
     await expect(page.locator('[data-action="search"]')).toHaveCSS("border-radius", "0px");
     await page.locator('[data-action="account"]').click();
     const shadow = await page.getByRole("menu").evaluate((el) => getComputedStyle(el).boxShadow);
@@ -129,7 +124,6 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await updateTheme(api, original.id, { spec: themeSpec({ icons: { home: { assetId: asset.id } } }) });
 
     await page.goto(THEMES_PATH);
-    await afterReplication(page, () => expect(row(page, name)).toBeVisible({ timeout: RECHECK_MS }));
     const download = page.waitForEvent("download");
     await rowAction(page, name, "export-theme");
     const file = testInfo.outputPath("exported.armature-theme.json");
@@ -137,14 +131,13 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
 
     await page.locator("[data-theme-file]").setInputFiles(file);
     await expect(page.locator("[data-themes-notice]")).toHaveText(`Imported ${name} (2).`);
-    await afterReplication(page, () => expect(row(page, `${name} (2)`)).toBeVisible({ timeout: RECHECK_MS }));
+    await expect(row(page, `${name} (2)`)).toBeVisible();
 
-    const findCopy = async () => (await listThemes(api)).find((each) => each.name === `${name} (2)`);
-    await expect.poll(async () => Boolean(await findCopy()), { timeout: REPLICA_CATCH_UP_MS }).toBe(true);
-    const copy = (await findCopy())!;
-    expect(copy.assets).toHaveLength(1);
-    expect(copy.assets[0]!.id).not.toBe(asset.id);
-    expect(copy.spec.icons.home?.assetId).toBe(copy.assets[0]!.id);
+    const copy = (await listThemes(api)).find((each) => each.name === `${name} (2)`);
+    expect(copy, "the imported copy is listed").toBeDefined();
+    expect(copy!.assets).toHaveLength(1);
+    expect(copy!.assets[0]!.id).not.toBe(asset.id);
+    expect(copy!.spec.icons.home?.assetId).toBe(copy!.assets[0]!.id);
   });
 
   for (const example of ["deep-tech", "constellation"]) {
@@ -156,14 +149,13 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
       await page.locator('[data-theme-effect="constellation"]').click();
       await page.locator('[data-action="save-theme"]').click();
       await expect(page).toHaveURL(/\/settings\/themes\/[0-9a-f-]{36}$/);
-      await afterReplication(page, () => expect(page.locator('[data-action="use-theme"]')).toBeVisible({ timeout: RECHECK_MS }));
       await page.locator('[data-action="use-theme"]').click();
       await expect(page.locator("[data-theme-notice]")).toContainText("Now using");
 
       const canvas = page.locator('[data-backdrop-effect="constellation"] canvas');
       const frame = () => canvas.evaluate((el) => (el as HTMLCanvasElement).toDataURL());
       await page.goto("/");
-      await afterReplication(page, () => expect(canvas).toBeAttached({ timeout: RECHECK_MS }));
+      await expect(canvas).toBeAttached();
       const moving = await frame();
       await page.waitForTimeout(MOTION_SAMPLE_MS);
       expect(await frame()).not.toBe(moving);
@@ -181,7 +173,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     const name = uniqueName(testInfo, "preview");
     const theme = await createTheme(api, name);
     await page.goto(`${THEMES_PATH}/${theme.id}`);
-    await afterReplication(page, () => expect(page.locator('[data-action="save-theme"]')).toBeVisible({ timeout: RECHECK_MS }));
+    await expect(page.locator('[data-action="save-theme"]')).toBeVisible();
     await expect(customStyle(page)).toHaveCount(0);
 
     await page.locator('[data-token="canvas"][data-token-mode="light"]').fill("#abcdef");
@@ -192,16 +184,13 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
 
     await page.locator('[data-action="save-theme"]').click();
     await expect(page.locator("[data-theme-notice]")).toHaveText(`Saved ${name}.`);
-    await expect
-      .poll(async () => (await listThemes(api)).find((each) => each.id === theme.id)?.spec.colors.light.canvas, { timeout: REPLICA_CATCH_UP_MS })
-      .toBe("#abcdef");
+    expect((await listThemes(api)).find((each) => each.id === theme.id)?.spec.colors.light.canvas).toBe("#abcdef");
   });
 
   test("an uploaded SVG replaces a glyph, an unsafe one is refused, and a file in use stays", async ({ page, api }, testInfo) => {
     const name = uniqueName(testInfo, "icons");
     const theme = await createTheme(api, name);
     await page.goto(`${THEMES_PATH}/${theme.id}`);
-    await afterReplication(page, () => expect(page.locator('[data-action="save-theme"]')).toBeVisible({ timeout: RECHECK_MS }));
     await page.locator('[data-theme-tab="files"]').click();
     const upload = page.locator("[data-theme-file-input]");
 
@@ -211,10 +200,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
 
     await upload.setInputFiles({ name: "square.svg", mimeType: "image/svg+xml", buffer: Buffer.from(SAFE_SVG) });
     await expect(page.locator("[data-theme-notice]")).toContainText("square.svg");
-    await afterReplication(page, async () => {
-      await page.locator('[data-theme-tab="files"]').click();
-      await expect(page.locator('[data-theme-asset="square.svg"]')).toBeVisible({ timeout: RECHECK_MS });
-    });
+    await expect(page.locator('[data-theme-asset="square.svg"]')).toBeVisible();
 
     await page.locator('[data-theme-tab="icons"]').click();
     await page.getByLabel("home icon picture").selectOption({ label: "square.svg" });
@@ -229,7 +215,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await page.goto("/");
     const home = page.locator('svg[data-icon="home"]').first();
     await expect(home).toBeVisible();
-    await afterReplication(page, async () => expect(await home.evaluate((el) => getComputedStyle(el).maskImage)).toContain(`/themes/${theme.id}/assets/`));
+    await expect.poll(() => home.evaluate((el) => getComputedStyle(el).maskImage)).toContain(`/themes/${theme.id}/assets/`);
     await expect(home.locator("path").first()).toHaveCSS("display", "none");
   });
 
@@ -237,7 +223,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     const name = uniqueName(testInfo, "shared");
     await createTheme(api, name, themeSpec(), true);
     await page.goto(THEMES_PATH);
-    await afterReplication(page, () => expect(row(page, name)).toContainText("0 people", { timeout: RECHECK_MS }));
+    await expect(row(page, name)).toContainText("0 people");
 
     const bob = await pageAs("bob");
     await bob.goto(THEMES_PATH);
@@ -251,21 +237,14 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await afterReplication(page, () => expect(row(page, name)).toContainText("1 person", { timeout: RECHECK_MS }));
   });
 
-  test("the organisation default reaches a member without a choice, who can go back, and unsharing removes it", async ({
-    page,
-    api,
-    apiAs,
-    pageAs,
-  }, testInfo) => {
+  test("the organisation default reaches a member without a choice, who can go back, and unsharing removes it", async ({ page, api, pageAs }, testInfo) => {
     const name = uniqueName(testInfo, "default");
     await createTheme(api, name, themeSpec({ colors: { light: { canvas: "#0f0f0f" }, dark: { canvas: "#0f0f0f" } } }), true);
-    await chooseTheme(await apiAs("bob"), null);
 
     await page.goto(THEMES_PATH);
-    await afterReplication(page, () => expect(row(page, name)).toBeVisible({ timeout: RECHECK_MS }));
     await rowAction(page, name, "default-theme");
     await expect(page.locator("[data-themes-notice]")).toHaveText(`${name} is what everybody sees until they choose.`);
-    await afterReplication(page, () => expect(row(page, name)).toHaveAttribute("data-theme-default", "true", { timeout: RECHECK_MS }));
+    await expect(row(page, name)).toHaveAttribute("data-theme-default", "true");
 
     const bob = await pageAs("bob");
     await bob.goto(THEMES_PATH);
@@ -273,15 +252,12 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await expect(customStyle(bob)).toBeAttached();
 
     await bob.locator('[data-action="built-in-theme"]').click();
-    await afterReplication(bob, () =>
-      expect(bob.getByText(`You are using the built-in theme, over the organization's default ${name}.`)).toBeVisible({ timeout: RECHECK_MS }),
-    );
+    await expect(bob.getByText(`You are using the built-in theme, over the organization's default ${name}.`)).toBeVisible();
     await expect(customStyle(bob)).toHaveCount(0);
 
-    await afterReplication(page, () => expect(row(page, name)).toHaveAttribute("data-theme-default", "true", { timeout: RECHECK_MS }));
     await rowAction(page, name, "share-theme");
     await expect(page.locator("[data-themes-notice]")).toHaveText(`${name} is yours alone again.`);
-    await afterReplication(page, () => expect(row(page, name)).toHaveAttribute("data-theme-default", "false", { timeout: RECHECK_MS }));
+    await expect(row(page, name)).toHaveAttribute("data-theme-default", "false");
     await afterReplication(bob, () => expect(bob.getByText("You are using the built-in theme.")).toBeVisible({ timeout: RECHECK_MS }));
   });
 
@@ -291,14 +267,13 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await chooseTheme(await apiAs("bob"), theme.id);
     const bob = await pageAs("bob");
     await bob.goto("/");
-    await afterReplication(bob, () => expect(customStyle(bob)).toBeAttached({ timeout: RECHECK_MS }));
+    await expect(customStyle(bob)).toBeAttached();
 
     await page.goto(THEMES_PATH);
-    await afterReplication(page, () => expect(row(page, name)).toBeVisible({ timeout: RECHECK_MS }));
     page.once("dialog", (dialog) => dialog.accept());
     await rowAction(page, name, "delete-theme");
     await expect(page.locator("[data-themes-notice]")).toContainText(name);
-    await afterReplication(page, () => expect(row(page, name)).toHaveCount(0, { timeout: RECHECK_MS }));
+    await expect(row(page, name)).toHaveCount(0);
 
     await bob.goto(THEMES_PATH);
     await afterReplication(bob, () => expect(bob.getByText("You are using the built-in theme.")).toBeVisible({ timeout: RECHECK_MS }));

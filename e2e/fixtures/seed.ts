@@ -1,11 +1,12 @@
 import type { TestInfo } from "@playwright/test";
 import type { components } from "../../web/src/api/schema";
-import { must, type StatorApi } from "./api";
+import { createStatorApi, must, type StatorApi } from "./api";
+import { authAvailable, stateFile } from "./auth";
 
 export type Theme = components["schemas"]["Theme"];
 export type ThemeSpec = components["schemas"]["Spec"];
 
-/** A name no other test, worker or earlier run has used, so specs can share an organisation. */
+/** A name no other test, worker or earlier run has used, so tests can share an organisation. */
 export function uniqueName(testInfo: TestInfo, label: string): string {
   return `e2e ${testInfo.workerIndex}-${Date.now().toString(36)} ${label}`;
 }
@@ -40,10 +41,24 @@ export async function uploadThemeAsset(api: StatorApi, themeId: string, name: st
   return must(await api.POST("/themes/{themeID}/assets", { params: { path: { themeID: themeId } }, body })).asset;
 }
 
-/** Deletes every theme of the API's user whose name passes the test; what is not theirs is left alone. */
-export async function deleteThemes(api: StatorApi, matches: (name: string) => boolean): Promise<void> {
-  const themes = (await api.GET("/themes")).data?.themes ?? [];
-  for (const theme of themes.filter((each) => matches(each.name))) {
-    await api.DELETE("/themes/{themeID}", { params: { path: { themeID: theme.id } } });
+/**
+ * Leaves demo with no default theme and nothing chosen by alice or bob, and
+ * checks it: specs there judge the built-in look, contrast included, so a theme
+ * any run left behind must never reach them. Theme specs use their own organisation.
+ */
+export async function clearDemoThemes(): Promise<void> {
+  if (!(await authAvailable())) return;
+  const alice = await createStatorApi(stateFile("alice"));
+  const bob = await createStatorApi(stateFile("bob"));
+  try {
+    must(await alice.PUT("/themes/default", { body: { themeId: null } }));
+    for (const api of [alice, bob]) {
+      await chooseTheme(api, null);
+      const active = must(await api.GET("/themes/active"));
+      if (active.theme !== null) throw new Error(`demo still shows the theme ${active.theme.name} after clearing it.`);
+    }
+  } finally {
+    await alice.dispose();
+    await bob.dispose();
   }
 }

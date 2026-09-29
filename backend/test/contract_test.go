@@ -98,6 +98,11 @@ func (c *contract) find(method, path string) *route {
 // observe records a response and checks it against the document.
 func (c *contract) observe(t *testing.T, method, path string, status int, contentType string, body []byte) {
 	t.Helper()
+	// The test endpoints are left out of the document on purpose, so they
+	// are neither checked against it nor counted towards its coverage.
+	if strings.HasPrefix(path, httpapi.APIPrefix+"/test/") {
+		return
+	}
 	r := c.find(method, path)
 	if r == nil {
 		// A test may deliberately call something that does not exist; the

@@ -74,3 +74,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - The integration suite checks every answer against `api/openapi.json`
   and fails when an operation was never answered successfully or never
   refused.
+- Test endpoints for the browser suite, on only with `STATOR_TEST_ENDPOINTS`
+  and a `STATOR_TEST_ENDPOINTS_TOKEN`: `POST /api/v1/test/orgs` makes a
+  throwaway organization with the bootstrap members and provider, and
+  `DELETE /api/v1/test/orgs/{slug}` removes it with all its rows and files.
+  The api refuses them in production and the Helm chart never sets them.
+  The theme specs each run in an organization of their own, in parallel.
+
+### Changed
+
+- Stored files are keyed under `org/<organization id>/`, so an
+  organization's files can be listed and removed together.

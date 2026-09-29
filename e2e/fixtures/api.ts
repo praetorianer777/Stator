@@ -1,4 +1,4 @@
-import { request, type APIRequestContext } from "@playwright/test";
+import { request, type APIRequestContext, type BrowserContext } from "@playwright/test";
 import createClient, { type Client } from "openapi-fetch";
 import type { paths } from "../../web/src/api/schema";
 import { WEB_URL } from "./stack";
@@ -23,8 +23,11 @@ async function viaPlaywright(context: APIRequestContext, req: Request): Promise<
   return new Response(NO_BODY_STATUSES.has(res.status()) ? null : new Uint8Array(await res.body()), { status: res.status(), headers: res.headers() });
 }
 
+/** A signed-in browser state: a file the setup wrote, or one held in memory. */
+export type Session = string | Awaited<ReturnType<BrowserContext["storageState"]>>;
+
 /** A client for /api/v1 as whoever `storageState` signed in; dispose it when done. */
-export async function createStatorApi(storageState?: string): Promise<StatorApi> {
+export async function createStatorApi(storageState?: Session): Promise<StatorApi> {
   // The api refuses a cookie-carried write from a foreign origin, so the
   // requests say they come from the web client, as the browser's do.
   const context = await request.newContext({ baseURL: WEB_URL, storageState, extraHTTPHeaders: { Origin: WEB_URL } });

@@ -32,6 +32,11 @@ export const WEB_URL = setting("STATOR_WEB_URL");
 /** Keycloak as the browser sees it. */
 export const KEYCLOAK_URL = setting("STATOR_KEYCLOAK_URL");
 
+/** The secret the api's test endpoints ask for; read when first needed, so a stack without them still runs the rest. */
+export function testEndpointsToken(): string {
+  return setting("STATOR_TEST_ENDPOINTS_TOKEN");
+}
+
 /** The stack's database as its superuser, for arranging what no endpoint makes; read when first needed. */
 export function superuserURL(): string {
   return setting("STATOR_TEST_SUPERUSER_URL");

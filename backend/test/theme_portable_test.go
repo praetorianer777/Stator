@@ -82,7 +82,7 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 		if resp, data := owner.download(t, "/api/v1/themes/"+newID+"/assets/"+newAsset); resp.StatusCode != http.StatusOK || string(data) != string(svg) {
 			t.Fatalf("the imported file does not read back: %d", resp.StatusCode)
 		}
-		if _, err := api.store.Get(context.Background(), themeObject(newID, newAsset)); err != nil {
+		if _, err := api.store.Get(context.Background(), themeObject(home.org, newID, newAsset)); err != nil {
 			t.Fatalf("the imported file is not in the bucket: %v", err)
 		}
 	})
