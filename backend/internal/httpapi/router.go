@@ -168,8 +168,13 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/spaces/{spaceKey}", s.handleGetSpace)
 			r.Patch("/spaces/{spaceKey}", s.handleUpdateSpace)
 			r.Delete("/spaces/{spaceKey}", s.handleDeleteSpace)
+			r.Get("/spaces/{spaceKey}/pages", s.handleListPages)
+			r.Get("/spaces/{spaceKey}/outline", s.handleSpaceOutline)
+			r.Post("/pages", s.handleCreatePage)
 			r.Get("/pages/{pageID}", s.handleGetPage)
 			r.Patch("/pages/{pageID}", s.handleUpdatePage)
+			r.Post("/pages/{pageID}/move", s.handleMovePage)
+			r.Post("/pages/{pageID}/copy", s.handleCopyPage)
 		})
 	})
 

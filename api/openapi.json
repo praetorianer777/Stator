@@ -602,6 +602,55 @@
         }
       }
     },
+    "/pages": {
+      "post": {
+        "operationId": "createPage",
+        "summary": "Add a page under a parent, last unless a place is named.",
+        "tags": [
+          "pages"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageCreateInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  },
+                  "required": [
+                    "page"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}": {
       "get": {
         "operationId": "getPage",
@@ -666,6 +715,126 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PageUpdateInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  },
+                  "required": [
+                    "page"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/copy": {
+      "post": {
+        "operationId": "copyPage",
+        "summary": "Copy a page, with or without the pages below it, under a parent in its space or another.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  },
+                  "required": [
+                    "page"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/move": {
+      "post": {
+        "operationId": "movePage",
+        "summary": "Move a page under another, in its space or another, with or without its children; a move under itself is refused.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveInput"
               }
             }
           }
@@ -952,6 +1121,119 @@
                   },
                   "required": [
                     "space"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/outline": {
+      "get": {
+        "operationId": "spaceOutline",
+        "summary": "Every page of a space in reading order, with its depth, for choosing where a page goes.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OutlineEntry"
+                      }
+                    }
+                  },
+                  "required": [
+                    "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/pages": {
+      "get": {
+        "operationId": "listPages",
+        "summary": "The pages directly under a parent, by default under the space's home page, in order.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parent",
+            "in": "query",
+            "description": "The page whose children to list.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TreeNode"
+                      }
+                    }
+                  },
+                  "required": [
+                    "pages"
                   ]
                 }
               }
@@ -2210,6 +2492,33 @@
           "schemas"
         ]
       },
+      "CopyInput": {
+        "type": "object",
+        "properties": {
+          "afterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "beforeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "withChildren": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "parentId",
+          "withChildren"
+        ]
+      },
       "CreateInput": {
         "type": "object",
         "properties": {
@@ -2660,6 +2969,29 @@
           "role"
         ]
       },
+      "MoveInput": {
+        "type": "object",
+        "properties": {
+          "afterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "beforeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "withChildren": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "parentId"
+        ]
+      },
       "Operation": {
         "type": "object",
         "properties": {
@@ -2772,9 +3104,43 @@
           "owner"
         ]
       },
+      "OutlineEntry": {
+        "type": "object",
+        "properties": {
+          "depth": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "title",
+          "depth"
+        ]
+      },
       "Page": {
         "type": "object",
         "properties": {
+          "ancestors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Ref"
+            }
+          },
           "body": {
             "description": "A JSON value."
           },
@@ -2829,10 +3195,38 @@
           "body",
           "version",
           "home",
+          "ancestors",
           "createdByName",
           "createdAt",
           "updatedByName",
           "updatedAt"
+        ]
+      },
+      "PageCreateInput": {
+        "type": "object",
+        "properties": {
+          "afterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "beforeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "parentId",
+          "title"
         ]
       },
       "PageResponse": {
@@ -2995,6 +3389,26 @@
         "required": [
           "status",
           "routing"
+        ]
+      },
+      "Ref": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "home"
         ]
       },
       "ReplicaStatus": {
@@ -3451,6 +3865,31 @@
           "default",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "TreeNode": {
+        "type": "object",
+        "properties": {
+          "hasChildren": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "title",
+          "hasChildren"
         ]
       },
       "UpdateInput": {

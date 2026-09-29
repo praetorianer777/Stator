@@ -227,6 +227,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a page under a parent, last unless a place is named. */
+        post: operations["createPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}": {
         parameters: {
             query?: never;
@@ -243,6 +260,40 @@ export interface paths {
         head?: never;
         /** Save a page's title or body over the version it was made from. */
         patch: operations["updatePage"];
+        trace?: never;
+    };
+    "/pages/{pageID}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy a page, with or without the pages below it, under a parent in its space or another. */
+        post: operations["copyPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a page under another, in its space or another, with or without its children; a move under itself is refused. */
+        post: operations["movePage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/readyz": {
@@ -297,6 +348,40 @@ export interface paths {
         head?: never;
         /** Rename or describe a space. For administrators. */
         patch: operations["updateSpace"];
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/outline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every page of a space in reading order, with its depth, for choosing where a page goes. */
+        get: operations["spaceOutline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The pages directly under a parent, by default under the space's home page, in order. */
+        get: operations["listPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/themes": {
@@ -639,6 +724,16 @@ export interface components {
                 [key: string]: components["schemas"]["SecurityScheme"];
             };
         };
+        CopyInput: {
+            /** Format: uuid */
+            afterId?: string;
+            /** Format: uuid */
+            beforeId?: string;
+            /** Format: uuid */
+            parentId: string;
+            title?: string;
+            withChildren: boolean;
+        };
         CreateInput: {
             description?: string;
             key: string;
@@ -765,6 +860,15 @@ export interface components {
             /** @enum {string} */
             role: "owner" | "admin" | "member";
         };
+        MoveInput: {
+            /** Format: uuid */
+            afterId?: string;
+            /** Format: uuid */
+            beforeId?: string;
+            /** Format: uuid */
+            parentId: string;
+            withChildren?: boolean;
+        };
         Operation: {
             description?: string;
             operationId: string;
@@ -793,7 +897,16 @@ export interface components {
             scopes: "read"[];
             secret?: string;
         };
+        OutlineEntry: {
+            depth: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parentId: string | null;
+            title: string;
+        };
         Page: {
+            ancestors: components["schemas"]["Ref"][];
             /** @description A JSON value. */
             body: unknown;
             /** Format: date-time */
@@ -812,6 +925,17 @@ export interface components {
             updatedAt: string;
             updatedByName: string;
             version: number;
+        };
+        PageCreateInput: {
+            /** Format: uuid */
+            afterId?: string;
+            /** Format: uuid */
+            beforeId?: string;
+            /** @description A JSON value. */
+            body?: unknown;
+            /** Format: uuid */
+            parentId: string;
+            title: string;
         };
         PageResponse: {
             page: components["schemas"]["Page"];
@@ -856,6 +980,12 @@ export interface components {
         ReadinessResponse: {
             routing: components["schemas"]["Stats"];
             status: string;
+        };
+        Ref: {
+            home: boolean;
+            /** Format: uuid */
+            id: string;
+            title: string;
         };
         ReplicaStatus: {
             healthy: boolean;
@@ -989,6 +1119,14 @@ export interface components {
             spec: components["schemas"]["Spec"];
             /** Format: date-time */
             updatedAt: string;
+        };
+        TreeNode: {
+            hasChildren: boolean;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parentId: string;
+            title: string;
         };
         UpdateInput: {
             description?: string;
@@ -1472,6 +1610,41 @@ export interface operations {
             };
         };
     };
+    createPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageCreateInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getPage: {
         parameters: {
             query?: never;
@@ -1515,6 +1688,80 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PageUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    copyPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    movePage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveInput"];
             };
         };
         responses: {
@@ -1729,6 +1976,75 @@ export interface operations {
                 content: {
                     "application/json": {
                         space: components["schemas"]["Space"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    spaceOutline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["OutlineEntry"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPages: {
+        parameters: {
+            query?: {
+                /** @description The page whose children to list. */
+                parent?: string;
+            };
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["TreeNode"][];
                     };
                 };
             };

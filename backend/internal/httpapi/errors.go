@@ -176,6 +176,8 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
 	case errors.Is(err, page.ErrNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
+	case errors.Is(err, page.ErrCycle), errors.Is(err, page.ErrHomeFixed), errors.Is(err, page.ErrNotASibling):
+		return ErrConflict(sentence(err.Error()))
 	case errors.Is(err, page.ErrStale):
 		return ErrConflict("Somebody else saved this page after you opened it. Copy your changes, reload the page and make them again.")
 	case errors.Is(err, theme.ErrNotFound):

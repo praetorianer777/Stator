@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -119,4 +120,86 @@ func (s *Server) handleUpdatePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"page": updated})
+}
+
+func (s *Server) handleListPages(w http.ResponseWriter, r *http.Request) {
+	var parent *uuid.UUID
+	if raw := r.URL.Query().Get("parent"); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			respondError(w, r, ErrBadRequest("That is not a valid page id for parent. Check the address."))
+			return
+		}
+		parent = &id
+	}
+	pages, err := s.Pages.Children(r.Context(), actorFrom(r), spaceKey(r), parent)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"pages": pages})
+}
+
+func (s *Server) handleSpaceOutline(w http.ResponseWriter, r *http.Request) {
+	pages, err := s.Pages.Outline(r.Context(), actorFrom(r), spaceKey(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"pages": pages})
+}
+
+func (s *Server) handleCreatePage(w http.ResponseWriter, r *http.Request) {
+	var req page.CreateInput
+	if err := decodeJSONWithin(w, r, &req, pageBodyBytes); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	made, lsn, err := s.Pages.Create(r.Context(), actorFrom(r), req)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	respondJSON(w, r, http.StatusCreated, map[string]any{"page": made})
+}
+
+func (s *Server) handleMovePage(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req page.MoveInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	moved, lsn, err := s.Pages.Move(r.Context(), actorFrom(r), id, req)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"page": moved})
+}
+
+func (s *Server) handleCopyPage(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req page.CopyInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	made, lsn, err := s.Pages.Copy(r.Context(), actorFrom(r), id, req)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	respondJSON(w, r, http.StatusCreated, map[string]any{"page": made})
 }
