@@ -6,7 +6,21 @@ import { Icon } from "@/components/icons";
  * A titled fold in the sidebar. The title is the switch, so a group takes no
  * extra row; the chevron says which way it is.
  */
-export function SidebarGroup({ id, title, open, onToggle, nested = false, children }: { id: string; title: string; open: boolean; onToggle: () => void; nested?: boolean; children: ReactNode }) {
+export function SidebarGroup({
+  id,
+  title,
+  open,
+  onToggle,
+  nested = false,
+  children,
+}: {
+  id: string;
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  nested?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className={cx(nested ? "mt-1" : "mb-3")} data-sidebar-group={id} data-open={open}>
       <Button
@@ -20,11 +34,10 @@ export function SidebarGroup({ id, title, open, onToggle, nested = false, childr
       >
         <span className="min-w-0 flex-1 truncate text-left">{title}</span>
       </Button>
-      {open && (
-        <div id={`sidebar-group-${id}`} className={cx(nested && "ml-2 border-l border-border/60 pl-1")}>
-          {children}
-        </div>
-      )}
+      {/* Hidden rather than unmounted, so aria-controls always names an element that exists. */}
+      <div id={`sidebar-group-${id}`} hidden={!open} className={cx(nested && "ml-2 border-l border-border/60 pl-1")}>
+        {children}
+      </div>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Avatar, Button, Menu } from "@/components/ui";
+import { Avatar, Button, IconButton, Menu } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
+import { DRAWER_ID } from "./state";
 
 /** Ctrl or Cmd+K anywhere in the shell calls onSearch. */
 export function useSearchShortcut(onSearch: () => void) {
@@ -19,13 +20,26 @@ export function useSearchShortcut(onSearch: () => void) {
 }
 
 /**
- * Above the content: the way into search, and the person. There are no
+ * Above the content: the navigation drawer's button on a narrow screen, the
+ * way into search, and the person. There are no
  * accounts yet, so the person is a guest and the menu's entries wait for them.
  */
-export function TopBar() {
+export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; drawerOpen: boolean; onOpenDrawer: () => void }) {
   const navigate = useNavigate();
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-surface px-4" data-top-bar data-print-hide>
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2 shell:gap-3 shell:px-4" data-top-bar data-print-hide>
+      {narrow && (
+        <IconButton
+          icon={<Icon.Menu />}
+          label={t.nav.openDrawer}
+          size="md"
+          onClick={onOpenDrawer}
+          aria-haspopup="dialog"
+          aria-expanded={drawerOpen}
+          aria-controls={drawerOpen ? DRAWER_ID : undefined}
+          data-action="drawer"
+        />
+      )}
       <button
         type="button"
         onClick={() => navigate({ to: "/search" })}
@@ -34,7 +48,7 @@ export function TopBar() {
       >
         <Icon.Search className="shrink-0" />
         <span className="min-w-0 flex-1 truncate text-left">{t.search.placeholder}</span>
-        <kbd className="font-mono text-2xs">{t.search.shortcut}</kbd>
+        <kbd className="hidden font-mono text-2xs shell:inline">{t.search.shortcut}</kbd>
       </button>
       <div className="ml-auto flex items-center">
         <Menu
@@ -47,12 +61,13 @@ export function TopBar() {
               onClick={props.toggle}
               aria-haspopup={props["aria-haspopup"]}
               aria-expanded={props["aria-expanded"]}
+              aria-controls={props["aria-controls"]}
               aria-label={t.account.menu}
               className="px-1!"
               data-action="account"
             >
               <Avatar name={t.account.guest} size="sm" />
-              <span className="text-sm text-ink">{t.account.guest}</span>
+              <span className="hidden text-sm text-ink shell:inline">{t.account.guest}</span>
             </Button>
           )}
           items={[
