@@ -227,6 +227,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One page with its body, and the space it is in. */
+        get: operations["getPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Save a page's title or body over the version it was made from. */
+        patch: operations["updatePage"];
+        trace?: never;
+    };
     "/readyz": {
         parameters: {
             query?: never;
@@ -242,6 +260,43 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every space the caller may see, by name. */
+        get: operations["listSpaces"];
+        put?: never;
+        /** Make a space and its home page. For administrators. */
+        post: operations["createSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One space by its key, and what the caller may do in it. */
+        get: operations["getSpace"];
+        put?: never;
+        post?: never;
+        /** Delete a space and every page in it. For administrators. */
+        delete: operations["deleteSpace"];
+        options?: never;
+        head?: never;
+        /** Rename or describe a space. For administrators. */
+        patch: operations["updateSpace"];
         trace?: never;
     };
     "/themes": {
@@ -566,6 +621,11 @@ export interface components {
             /** @enum {string} */
             fit: "cover" | "tile";
         };
+        Can: {
+            administer: boolean;
+            delete: boolean;
+            editPages: boolean;
+        };
         ChooseThemeRequest: {
             builtIn?: boolean;
             /** Format: uuid */
@@ -578,6 +638,11 @@ export interface components {
             securitySchemes?: {
                 [key: string]: components["schemas"]["SecurityScheme"];
             };
+        };
+        CreateInput: {
+            description?: string;
+            key: string;
+            name: string;
         };
         CreateTokenRequest: {
             /** Format: date-time */
@@ -728,6 +793,36 @@ export interface components {
             scopes: "read"[];
             secret?: string;
         };
+        Page: {
+            /** @description A JSON value. */
+            body: unknown;
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string;
+            home: boolean;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parentId: string | null;
+            /** Format: uuid */
+            spaceId: string;
+            spaceKey: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            updatedByName: string;
+            version: number;
+        };
+        PageResponse: {
+            page: components["schemas"]["Page"];
+            space: components["schemas"]["Space"];
+        };
+        PageUpdateInput: {
+            /** @description A JSON value. */
+            body?: unknown;
+            title?: string;
+            version: number;
+        };
         Palette: {
             dark: {
                 [key: string]: string;
@@ -828,6 +923,20 @@ export interface components {
             radiusControl?: number;
             radiusOverlay?: number;
         };
+        Space: {
+            can: components["schemas"]["Can"];
+            /** Format: date-time */
+            createdAt: string;
+            description: string;
+            /** Format: uuid */
+            homePageId: string;
+            /** Format: uuid */
+            id: string;
+            key: string;
+            name: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         Spec: {
             backdrop?: components["schemas"]["Backdrop"];
             colors: components["schemas"]["Palette"];
@@ -880,6 +989,10 @@ export interface components {
             spec: components["schemas"]["Spec"];
             /** Format: date-time */
             updatedAt: string;
+        };
+        UpdateInput: {
+            description?: string;
+            name?: string;
         };
         User: {
             avatarUrl?: string;
@@ -1359,6 +1472,74 @@ export interface operations {
             };
         };
     };
+    getPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponse"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updatePage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     readiness: {
         parameters: {
             query?: never;
@@ -1384,6 +1565,171 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSpaces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        spaces: components["schemas"]["Space"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        space: components["schemas"]["Space"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        space: components["schemas"]["Space"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        space: components["schemas"]["Space"];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

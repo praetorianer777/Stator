@@ -14,6 +14,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
+	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
@@ -44,6 +46,8 @@ type Server struct {
 	// Telemetry counts and traces requests; nil serves without either.
 	Telemetry *observability.Telemetry
 	Themes    *theme.Service
+	Spaces    *space.Service
+	Pages     *page.Service
 	// Fresh remembers each caller's last write between requests; nil leaves
 	// reads unpinned, which is only right without replicas.
 	Fresh Freshness
@@ -156,6 +160,17 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 				r.Delete("/test/orgs/{orgSlug}", s.handleDeleteTestOrg)
 			})
 		}
+
+		r.Group(func(r chi.Router) {
+			r.Use(requireOrg)
+			r.Get("/spaces", s.handleListSpaces)
+			r.Post("/spaces", s.handleCreateSpace)
+			r.Get("/spaces/{spaceKey}", s.handleGetSpace)
+			r.Patch("/spaces/{spaceKey}", s.handleUpdateSpace)
+			r.Delete("/spaces/{spaceKey}", s.handleDeleteSpace)
+			r.Get("/pages/{pageID}", s.handleGetPage)
+			r.Patch("/pages/{pageID}", s.handleUpdatePage)
+		})
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

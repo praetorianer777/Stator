@@ -7,8 +7,12 @@ import (
 	"net/http"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
+	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -112,6 +116,18 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &invalid) {
 		return ErrValidation(map[string]string{invalid.Field: invalid.Message})
 	}
+	var spaceField *space.FieldError
+	if errors.As(err, &spaceField) {
+		return ErrValidation(map[string]string{spaceField.Field: spaceField.Message})
+	}
+	var denied *perm.DeniedError
+	if errors.As(err, &denied) {
+		return ErrForbidden(denied.Error())
+	}
+	var badDoc *document.InvalidError
+	if errors.As(err, &badDoc) {
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(badDoc.Message)}
+	}
 	switch {
 	case errors.Is(err, auth.ErrInvalidToken):
 		return ErrUnauthorized("Your session has expired. Sign in again.")
@@ -156,6 +172,12 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusServiceUnavailable, Code: "storage_unavailable", Message: "Files cannot be stored on this server yet. Ask an administrator to set up file storage.", cause: err}
 	case errors.Is(err, theme.ErrNotAThemeFile), errors.Is(err, theme.ErrDefaultNotShared):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
+	case errors.Is(err, space.ErrNotFound):
+		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
+	case errors.Is(err, page.ErrNotFound):
+		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
+	case errors.Is(err, page.ErrStale):
+		return ErrConflict("Somebody else saved this page after you opened it. Copy your changes, reload the page and make them again.")
 	case errors.Is(err, theme.ErrNotFound):
 		return ErrNotFound("That theme was not found. It may have been deleted or taken private.")
 	case errors.Is(err, theme.ErrAssetNotFound):

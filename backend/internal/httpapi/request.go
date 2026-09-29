@@ -24,7 +24,13 @@ const uploadSlack = 64 << 10
 // decodeJSON reads a JSON request body, rejecting unknown fields so that a typo
 // in a client payload is an error rather than a silent no-op.
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	return decodeJSONWithin(w, r, dst, maxBodyBytes)
+}
+
+// decodeJSONWithin is decodeJSON for a body allowed to be larger, such as a
+// page carrying a whole document.
+func decodeJSONWithin(w http.ResponseWriter, r *http.Request, dst any, limit int64) error {
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {

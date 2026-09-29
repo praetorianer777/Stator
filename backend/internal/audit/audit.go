@@ -27,6 +27,9 @@ const (
 	ActionGroupRoleRemoved  = "sso.group_role_removed"
 	ActionTokenCreated      = "token.created"
 	ActionTokenRevoked      = "token.revoked"
+	ActionSpaceCreated      = "space.created"
+	ActionSpaceUpdated      = "space.updated"
+	ActionSpaceDeleted      = "space.deleted"
 )
 
 // Entry is one act to record.
