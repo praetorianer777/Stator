@@ -23,16 +23,19 @@ func (s *Server) handleOIDCStart(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, errSignInOff)
 		return
 	}
+	// The browser arrived by navigation, so a refusal sends it back to the
+	// sign-in page with a reason it can show, like the callback does.
 	org, err := s.Accounts.OrgBySlug(r.Context(), chi.URLParam(r, "orgSlug"))
 	if err != nil {
 		// An organization that does not exist and one with no provider get the
 		// same answer, so this endpoint cannot be used to enumerate slugs.
-		respondError(w, r, oidc.ErrNotConfigured)
+		s.landAfterSignIn(w, r, "", signInFailure(oidc.ErrNotConfigured))
 		return
 	}
 	target, err := s.OIDC.Start(r.Context(), org.ID, safeRedirect(r.URL.Query().Get("next")))
 	if err != nil {
-		respondError(w, r, err)
+		loggerFrom(r.Context()).Warn("a sign-in through an identity provider could not start", "error", err, "org_id", org.ID)
+		s.landAfterSignIn(w, r, "", signInFailure(err))
 		return
 	}
 	http.Redirect(w, r, target, http.StatusFound)
@@ -85,6 +88,8 @@ func signInFailure(err error) string {
 		return "expired"
 	case errors.Is(err, oidc.ErrNotConfigured):
 		return "not_configured"
+	case errors.Is(err, oidc.ErrUnreachable):
+		return "unreachable"
 	case errors.Is(err, auth.ErrUserInactive):
 		return "inactive"
 	default:

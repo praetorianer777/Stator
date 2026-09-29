@@ -59,7 +59,7 @@ export const en = {
     submit: "Sign in with password",
     waitingTitle: "Your request is waiting",
     waitingBody:
-      "Your identity provider knows you, but nobody in this organization has let you in yet. An administrator can do that under Single sign-on; sign in again once they have.",
+      "Your identity provider knows you, but nobody in this organization has let you in yet. Your request is waiting for an administrator; sign in again once they have let you in.",
     failures: {
       expired: "That sign-in took too long or was already used. Start it again.",
       not_configured: "That organization does not sign in with SSO. Check its name, or ask one of its administrators.",
@@ -67,6 +67,7 @@ export const en = {
       unverified_email: "Your identity provider has not verified your email address. Verify it there, then sign in again.",
       inactive: "This account has been deactivated. Ask an administrator of your organization to turn it back on.",
       denied: "Your identity provider did not let you in. Try again, or ask its administrator.",
+      unreachable: "Stator could not reach your organization's identity provider. Try again in a moment, and tell an administrator if it keeps failing.",
       failed: "Signing in through your identity provider did not work. Try again, and tell an administrator if it keeps failing.",
     },
   },

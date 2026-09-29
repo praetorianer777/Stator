@@ -46,6 +46,8 @@ describe("the single sign-on settings", () => {
       enabled: true,
     });
     expect(await screen.findByText("/api/v1/auth/oidc/demo/start")).toBeInTheDocument();
+    // The saved row comes back newer, which starts the form afresh; the word stays.
+    expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
   });
 
   it("keeps a stored secret when the field is left blank", async () => {

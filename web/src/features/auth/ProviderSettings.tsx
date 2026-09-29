@@ -30,32 +30,56 @@ function draftOf(provider: Provider | null | undefined): Draft {
 /** The organization's identity provider, for its administrators. */
 export function ProviderSettings() {
   const { data, isLoading, error } = useProvider();
+  // Held here rather than in the form: a save remounts the form, and what it
+  // says about that save has to outlive the remount.
+  const save = useSaveProvider();
+  const [saved, setSaved] = useState(false);
   if (isLoading) return <Skeleton />;
   if (error) return <ErrorBanner>{error instanceof ApiError && error.status === 403 ? t.sso.notAdmin : error.message}</ErrorBanner>;
   // Keyed by the saved row, so a save that comes back starts the form afresh.
-  return <ProviderForm key={data?.provider?.updatedAt ?? "new"} provider={data?.provider ?? null} callbackUrl={data?.callbackUrl ?? ""} />;
+  return (
+    <ProviderForm
+      key={data?.provider?.updatedAt ?? "new"}
+      provider={data?.provider ?? null}
+      callbackUrl={data?.callbackUrl ?? ""}
+      save={save}
+      saved={saved}
+      onSaved={setSaved}
+    />
+  );
 }
 
 // The client secret is write-only: it never comes back, and a blank field
 // keeps the stored one, so saving the rest of the form cannot erase it.
-function ProviderForm({ provider, callbackUrl }: { provider: Provider | null; callbackUrl: string }) {
-  const save = useSaveProvider();
+function ProviderForm({
+  provider,
+  callbackUrl,
+  save,
+  saved,
+  onSaved,
+}: {
+  provider: Provider | null;
+  callbackUrl: string;
+  save: ReturnType<typeof useSaveProvider>;
+  saved: boolean;
+  onSaved: (saved: boolean) => void;
+}) {
   const { data: me } = useMe();
   const [draft, setDraft] = useState(() => draftOf(provider));
-  const [saved, setSaved] = useState(false);
   const fields = save.error instanceof ApiError ? save.error.fields : {};
   const formError = save.error && Object.keys(fields).length === 0 ? save.error.message : null;
   const slug = me?.organization?.slug ?? "";
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
-    setSaved(false);
+    onSaved(false);
   }
 
   function submit(event: FormEvent) {
     event.preventDefault();
     const { clientSecret, ...rest } = draft;
-    save.mutate(clientSecret ? { ...rest, clientSecret } : rest, { onSuccess: () => setSaved(true) });
+    onSaved(false);
+    save.mutate(clientSecret ? { ...rest, clientSecret } : rest, { onSuccess: () => onSaved(true) });
   }
 
   return (

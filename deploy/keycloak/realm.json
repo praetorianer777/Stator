@@ -57,6 +57,24 @@
       "groups": [
         "/marketing"
       ]
+    },
+    {
+      "username": "carol",
+      "email": "carol@stator.test",
+      "firstName": "Carol",
+      "lastName": "Candidate",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "carol password",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/engineering"
+      ]
     }
   ],
   "clients": [

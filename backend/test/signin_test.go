@@ -216,11 +216,12 @@ func TestSignInRefusals(t *testing.T) {
 		return resp
 	}
 
+	notConfigured := "http://" + appHost + "/login?sso=not_configured"
 	t.Run("an unknown organization and one without a provider answer alike", func(t *testing.T) {
 		bare := h.makeOrg(t, "bare")
 		for _, slug := range []string{"no-such-org", bare.Slug} {
-			if resp := start(slug); resp.StatusCode != http.StatusNotFound {
-				t.Errorf("start for %s = %s, want 404", slug, resp.Status)
+			if resp := start(slug); resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != notConfigured {
+				t.Errorf("start for %s = %s to %q, want the sign-in page saying so", slug, resp.Status, resp.Header.Get("Location"))
 			}
 		}
 	})
@@ -231,8 +232,16 @@ func TestSignInRefusals(t *testing.T) {
 		if _, _, err := a.sso.Save(tenant.WithOrg(context.Background(), org), oidc.Provider{Issuer: kc.issuer(), ClientID: statorClient, Enabled: false}); err != nil {
 			t.Fatal(err)
 		}
-		if resp := start(org.Slug); resp.StatusCode != http.StatusNotFound {
-			t.Errorf("start with the provider off = %s", resp.Status)
+		if resp := start(org.Slug); resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != notConfigured {
+			t.Errorf("start with the provider off = %s to %q", resp.Status, resp.Header.Get("Location"))
+		}
+	})
+
+	t.Run("a provider that cannot be reached is named as the reason", func(t *testing.T) {
+		org := h.makeOrg(t, "offline")
+		configureProvider(t, a, org, "http://nowhere.invalid/realms/none", false)
+		if resp := start(org.Slug); resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != "http://"+appHost+"/login?sso=unreachable" {
+			t.Errorf("start with an unreachable provider = %s to %q", resp.Status, resp.Header.Get("Location"))
 		}
 	})
 

@@ -62,7 +62,7 @@ describe("the sign-in page", () => {
     const router = await renderAt("/login?sso=not_a_member", { me: null });
     const waiting = await screen.findByRole("status");
     expect(within(waiting).getByRole("heading", { name: "Your request is waiting" })).toBeInTheDocument();
-    expect(waiting).toHaveTextContent("nobody in this organization has let you in yet");
+    expect(waiting).toHaveTextContent(/waiting for an administrator/i);
     expect(screen.queryByRole("alert")).toBeNull();
     expect(router.state.location.pathname).toBe("/login");
     expect(document.querySelector("[data-top-bar]")).toBeNull();
