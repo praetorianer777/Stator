@@ -7,6 +7,17 @@ import type { Doc } from "@/features/editor/schema";
 import { t } from "@/i18n";
 import { devEditorRoute } from "./dev-editor";
 
+// Between them these reach every colour the highlighting uses, so the
+// browser suite can judge each one's contrast on a code block.
+const highlighted: Array<[string, string]> = [
+  ["typescript", "// Greets whoever asks.\nexport function greet(name: string): string {\n  const times = 3;\n  return 'Hello, '.repeat(times) + name;\n}"],
+  ["python", "@dataclass\nclass Point:\n    x: int = 0\n    label = None"],
+  ["bash", 'echo "$HOME" | grep -c home'],
+  ["css", ".card #title {\n  color: #fff;\n  margin: 4px;\n}"],
+  ["json", '{ "name": "stator", "private": true, "port": 8080 }'],
+  ["diff", "@@ -1 +1 @@\n-old line\n+new line"],
+];
+
 const sample: Doc = {
   type: "doc",
   content: [
@@ -25,6 +36,7 @@ const sample: Doc = {
       content: [{ type: "paragraph", content: [{ type: "text", text: "Panels take their colours from the theme." }] }],
     },
     { type: "codeBlock", attrs: { language: "go" }, content: [{ type: "text", text: 'fmt.Println("hello")' }] },
+    ...highlighted.map(([language, text]) => ({ type: "codeBlock", attrs: { language }, content: [{ type: "text", text }] })),
   ],
 };
 

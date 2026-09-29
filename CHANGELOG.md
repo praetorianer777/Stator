@@ -96,6 +96,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
   focus stays in the editor, and the stored document on the development
   editor page is a named region the keyboard can reach and scroll. The
   browser suite's accessibility checks now pass with no known findings.
+- Highlighted code meets WCAG AA: every colour a code block uses reaches
+  4.5:1 or more on its background in both palettes and in the Deep-Tech and
+  Constellation themes. Of the chart, success and danger colours the
+  highlighting borrows, those that fell short are darker in the light
+  palettes, with the hue kept.
+  A unit test and a browser check in several languages hold it there.
 - Spaces: a key that is part of every address (`/s/{key}`), a name, a
   description and a home page, the root of the space's pages. A directory
   at `/spaces` lists them; administrators create, rename, describe and

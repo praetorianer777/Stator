@@ -51,6 +51,13 @@ const clayLight = declarations(css.match(/@theme \{([\s\S]*?)\n\}/)![1]!);
 const clayDarkChoice = declarations(css.match(/\n {2}:root\[data-theme="dark"\] \{([\s\S]*?)\n {2}\}/)![1]!);
 const clayDarkSystem = declarations(css.match(/@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n {4}\}/)![1]!);
 
+const CODE_BACKGROUND = css.match(/\.doc-content pre \{[^}]*background: var\(--color-([a-z0-9-]+)\)/)![1]!;
+// Read from the rules that paint highlighted code, so a token a new rule
+// hands to code is judged without anyone remembering to list it here.
+const HIGHLIGHT_TOKENS = [
+  ...new Set([...css.matchAll(/[^{}]*\.hljs-[^{}]*\{([^{}]*)\}/g)].flatMap((m) => [...m[1]!.matchAll(/\bcolor: var\(--color-([a-z0-9-]+)\)/g)].map((c) => c[1]!))),
+];
+
 interface Example {
   key: string;
   light: Palette;
@@ -140,6 +147,23 @@ describe("text contrast", () => {
       const needed = LOWER_BAR[text]?.ratio ?? AA_TEXT;
       const ratio = contrast(palette[text]!, palette[surface]!);
       expect(ratio, `${text} ${palette[text]} on ${surface} ${palette[surface]} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(needed);
+    });
+  });
+});
+
+describe("code highlighting contrast", () => {
+  it("reads the code block background and every colour the highlighting uses", () => {
+    expect(CODE_BACKGROUND).toBe("surface-sunken");
+    expect(HIGHLIGHT_TOKENS).toEqual(expect.arrayContaining(["chart-1", "chart-2", "chart-3", "chart-4", "chart-5", "chart-6", "success", "danger"]));
+    for (const { palette } of cases()) {
+      for (const token of HIGHLIGHT_TOKENS) expect(palette[token], token).toMatch(/^#[0-9a-f]{6}$/);
+    }
+  });
+
+  describe.each(cases().filter((c) => c.surfaces.includes(CODE_BACKGROUND)))("$name", ({ palette }) => {
+    it.each(HIGHLIGHT_TOKENS)(`%s on ${CODE_BACKGROUND}`, (token) => {
+      const ratio = contrast(palette[token]!, palette[CODE_BACKGROUND]!);
+      expect(ratio, `${token} ${palette[token]} on ${CODE_BACKGROUND} ${palette[CODE_BACKGROUND]} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_TEXT);
     });
   });
 });
