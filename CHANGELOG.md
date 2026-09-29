@@ -80,6 +80,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   `DELETE /api/v1/test/orgs/{slug}` removes it with all its rows and files.
   The api refuses them in production and the Helm chart never sets them.
   The theme specs each run in an organization of their own, in parallel.
+- Drafts and history in the web client. The editor saves to a private
+  draft a moment after typing stops and publishes it from a dialog with an
+  optional comment and whether to notify watchers; when somebody published
+  in between, it says so and offers to compare, keep the draft over their
+  version, or discard it. Unpublished pages and waiting drafts are marked
+  on the page and in the tree. A page's history lists every version with
+  who published it, when and why, shows any one read-only, compares two
+  versions or a version with the draft, with added text underlined and
+  removed text struck through and announced to screen readers, and
+  restores a version as a new one after asking.
 
 ### Changed
 
