@@ -1,0 +1,283 @@
+import { Extension, Node, mergeAttributes, type AnyExtension, type JSONContent } from "@tiptap/core";
+import type { EditorState, Transaction } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import StarterKit from "@tiptap/starter-kit";
+import { Placeholder } from "@tiptap/extensions";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
+import Mention, { type MentionOptions } from "@tiptap/extension-mention";
+import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
+import { Markdown } from "@tiptap/markdown";
+import { t } from "@/i18n";
+import { lowlight } from "./languages";
+import {
+  ANCHOR_PATTERN,
+  CELL_BACKGROUNDS,
+  HEADING_LEVELS,
+  PANEL_KINDS,
+  dedupe,
+  safeHref,
+  slug,
+  type CellBackground,
+  type PanelKind,
+} from "./schema";
+import type { SlashItem } from "./slashItems";
+
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    panel: {
+      setPanel: (kind: PanelKind) => ReturnType;
+      setPanelKind: (kind: PanelKind) => ReturnType;
+      unsetPanel: () => ReturnType;
+    };
+  }
+}
+
+function oneOf<T extends string>(values: readonly T[], value: string | null): T | null {
+  return value !== null && (values as readonly string[]).includes(value) ? (value as T) : null;
+}
+
+/** A highlighted box around blocks, coloured by the theme's role for its kind. */
+export const Panel = Node.create({
+  name: "panel",
+  group: "block",
+  content: "block+",
+  defining: true,
+  addAttributes() {
+    return {
+      kind: {
+        default: "info",
+        parseHTML: (el) => oneOf(PANEL_KINDS, el.getAttribute("data-panel")) ?? "info",
+        renderHTML: (attrs) => ({ "data-panel": attrs.kind, "aria-label": t.editor.panels[attrs.kind as string] }),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "div[data-panel]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["div", mergeAttributes(HTMLAttributes, { role: "note" }), 0];
+  },
+  addCommands() {
+    return {
+      setPanel:
+        (kind) =>
+        ({ commands }) =>
+          commands.wrapIn(this.name, { kind }),
+      setPanelKind:
+        (kind) =>
+        ({ commands }) =>
+          commands.updateAttributes(this.name, { kind }),
+      unsetPanel:
+        () =>
+        ({ commands }) =>
+          commands.lift(this.name),
+    };
+  },
+});
+
+const background = {
+  default: null,
+  parseHTML: (el: HTMLElement) => oneOf(CELL_BACKGROUNDS, el.getAttribute("data-background")),
+  renderHTML: (attrs: Record<string, unknown>) => (attrs.background ? { "data-background": attrs.background as CellBackground } : {}),
+};
+
+export const Cell = TableCell.extend({
+  addAttributes() {
+    return { ...this.parent?.(), background };
+  },
+});
+
+export const HeaderCell = TableHeader.extend({
+  addAttributes() {
+    return { ...this.parent?.(), background };
+  },
+});
+
+/** Whether an anchor still belongs to its heading's text: the slug itself, or the slug with a dedupe number. */
+function derivedFrom(anchor: string, base: string): boolean {
+  return anchor === base || (anchor.startsWith(`${base}-`) && /^\d+$/.test(anchor.slice(base.length + 1)));
+}
+
+/**
+ * Gives every heading an anchor made from its text. A heading keeps its
+ * anchor while its text still yields it, so adding a same-named heading
+ * elsewhere numbers the newcomer and never moves an existing link.
+ */
+export function anchorHeadings(state: EditorState): Transaction | null {
+  const headings: Array<{ pos: number; id: unknown; base: string }> = [];
+  state.doc.descendants((node, pos) => {
+    if (node.type.name === "heading") headings.push({ pos, id: node.attrs.id, base: slug(node.textContent) });
+    return !node.isTextblock;
+  });
+  const claimed = new Set<string>();
+  const kept = headings.map(({ id, base }) => {
+    if (typeof id !== "string" || !ANCHOR_PATTERN.test(id) || !derivedFrom(id, base) || claimed.has(id)) return false;
+    claimed.add(id);
+    return true;
+  });
+  let tr: Transaction | null = null;
+  headings.forEach((heading, i) => {
+    if (kept[i]) return;
+    const id = dedupe(heading.base, claimed);
+    claimed.add(id);
+    if (heading.id !== id) {
+      tr ??= state.tr;
+      tr.setNodeAttribute(heading.pos, "id", id);
+    }
+  });
+  // Anchors follow the text; undoing the text brings its anchor back with it.
+  (tr as Transaction | null)?.setMeta("addToHistory", false);
+  return tr;
+}
+
+const anchorsKey = new PluginKey("headingAnchors");
+
+export const HeadingAnchors = Extension.create({
+  name: "headingAnchors",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["heading"],
+        attributes: {
+          id: {
+            default: null,
+            parseHTML: (el) => {
+              const id = el.getAttribute("data-anchor") ?? el.getAttribute("id");
+              return id && ANCHOR_PATTERN.test(id) ? id : null;
+            },
+            // Not an id in the editor: the read-only view of the same page
+            // owns the real ones, and an id twice on a page breaks both.
+            renderHTML: (attrs) => (attrs.id ? { "data-anchor": attrs.id } : {}),
+          },
+        },
+      },
+    ];
+  },
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: anchorsKey,
+        appendTransaction: (transactions, _old, state) => (transactions.some((tr) => tr.docChanged) ? anchorHeadings(state) : null),
+      }),
+    ];
+  },
+  onCreate() {
+    const tr = anchorHeadings(this.editor.state);
+    if (tr) this.editor.view.dispatch(tr);
+  },
+});
+
+/** Drops what a pasted document could carry that a page may not: unsafe links, deep headings. */
+export function sanitizePasted(node: JSONContent): JSONContent {
+  const out: JSONContent = { ...node };
+  if (node.type === "heading") {
+    const level = Number(node.attrs?.level ?? 1);
+    out.attrs = { ...node.attrs, level: Math.min(Math.max(level, 1), Math.max(...HEADING_LEVELS)) };
+  }
+  if (node.marks) out.marks = node.marks.filter((mark) => mark.type !== "link" || safeHref(mark.attrs?.href) !== null);
+  if (node.content) out.content = node.content.map(sanitizePasted);
+  return out;
+}
+
+// Enough markdown to be worth reading as such: a heading, a list, a quote,
+// a fence, a table row, a rule, or inline emphasis, code or a link.
+const MARKDOWN_HINT = /(^|\n)\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s?|```|\|.*\||---+\s*$)|\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\)|~~[^~]+~~/;
+
+const MarkdownPaste = Extension.create({
+  name: "markdownPaste",
+  addProseMirrorPlugins() {
+    const editor = this.editor;
+    return [
+      new Plugin({
+        key: new PluginKey("markdownPaste"),
+        props: {
+          handlePaste: (view, event) => {
+            const data = event.clipboardData;
+            if (!data || data.types.includes("text/html")) return false;
+            const text = data.getData("text/plain");
+            if (!text || !MARKDOWN_HINT.test(text) || view.state.selection.$from.parent.type.spec.code) return false;
+            const parsed = editor.markdown?.parse(text) as JSONContent | undefined;
+            if (!parsed?.content?.length) return false;
+            return editor.commands.insertContent(sanitizePasted(parsed).content ?? []);
+          },
+        },
+      }),
+    ];
+  },
+});
+
+export interface SlashMenuOptions {
+  suggestion: Omit<SuggestionOptions<SlashItem, SlashItem>, "editor">;
+}
+
+export const slashMenuKey = new PluginKey("slashMenu");
+
+/** A slash at the start of a word opens the list of blocks to insert. */
+export const SlashMenu = Extension.create<SlashMenuOptions>({
+  name: "slashMenu",
+  addOptions() {
+    return {
+      suggestion: {
+        char: "/",
+        pluginKey: slashMenuKey,
+        allow: ({ state, range }) => !state.doc.resolve(range.from).parent.type.spec.code,
+        command: ({ editor, range, props }) => props.run(editor.chain().focus().deleteRange(range)),
+      },
+    };
+  },
+  addProseMirrorPlugins() {
+    return [Suggestion({ editor: this.editor, ...this.options.suggestion })];
+  },
+});
+
+export interface ExtensionOptions {
+  placeholder?: string;
+  mention?: Partial<MentionOptions>["suggestion"];
+  slash?: Partial<SlashMenuOptions["suggestion"]>;
+  submit?: () => void;
+}
+
+/** Every extension the editor runs; the read-only view draws the same nodes. */
+export function editorExtensions({ placeholder, mention, slash, submit }: ExtensionOptions = {}): AnyExtension[] {
+  return [
+    StarterKit.configure({
+      underline: false,
+      codeBlock: false,
+      heading: { levels: [...HEADING_LEVELS] },
+      link: { openOnClick: false, autolink: true, isAllowedUri: (url) => safeHref(url) !== null },
+    }),
+    Placeholder.configure({ placeholder: placeholder ?? "" }),
+    TaskList,
+    TaskItem.configure({ nested: true, a11y: { checkboxLabel: () => t.editor.taskDone } }),
+    Table.configure({ resizable: false }),
+    TableRow,
+    HeaderCell,
+    Cell,
+    CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
+    Panel,
+    HeadingAnchors,
+    Markdown,
+    MarkdownPaste,
+    Mention.configure({
+      renderText: ({ node }) => `@${String(node.attrs.label ?? "")}`,
+      HTMLAttributes: { "data-mention": "" },
+      suggestion: { char: "@", items: () => [], ...mention },
+    }),
+    SlashMenu.configure({ suggestion: slash }),
+    Extension.create({
+      name: "submitOnModEnter",
+      addKeyboardShortcuts() {
+        return {
+          "Mod-Enter": () => {
+            if (!submit) return false;
+            submit();
+            return true;
+          },
+        };
+      },
+    }),
+  ];
+}
+

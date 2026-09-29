@@ -1,0 +1,346 @@
+{
+  "nodes": {
+    "blockquote": {
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel"
+      ]
+    },
+    "bulletList": {
+      "content": [
+        "listItem"
+      ]
+    },
+    "codeBlock": {
+      "attrs": {
+        "language": {
+          "kind": "string",
+          "nullable": true,
+          "maxLength": 32,
+          "pattern": "^[a-z0-9][a-z0-9+#-]*$"
+        }
+      },
+      "content": [
+        "text"
+      ]
+    },
+    "doc": {
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel"
+      ]
+    },
+    "hardBreak": {
+      "inline": true
+    },
+    "heading": {
+      "attrs": {
+        "id": {
+          "kind": "string",
+          "nullable": true,
+          "maxLength": 80,
+          "pattern": "^[\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}]+(?:-[\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}]+)*$"
+        },
+        "level": {
+          "kind": "integer",
+          "min": 1,
+          "max": 3
+        }
+      },
+      "content": [
+        "text",
+        "hardBreak",
+        "mention"
+      ],
+      "allowsMarks": true
+    },
+    "horizontalRule": {},
+    "listItem": {
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel"
+      ]
+    },
+    "mention": {
+      "attrs": {
+        "id": {
+          "kind": "string",
+          "maxLength": 128,
+          "pattern": "^\\S+$"
+        },
+        "label": {
+          "kind": "string",
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "mentionSuggestionChar": {
+          "kind": "string",
+          "nullable": true,
+          "enum": [
+            "@"
+          ]
+        }
+      },
+      "inline": true
+    },
+    "orderedList": {
+      "attrs": {
+        "start": {
+          "kind": "integer",
+          "max": 1000000
+        },
+        "type": {
+          "kind": "string",
+          "nullable": true,
+          "enum": [
+            "1",
+            "a",
+            "A",
+            "i",
+            "I"
+          ]
+        }
+      },
+      "content": [
+        "listItem"
+      ]
+    },
+    "panel": {
+      "attrs": {
+        "kind": {
+          "kind": "string",
+          "enum": [
+            "info",
+            "note",
+            "success",
+            "warning",
+            "error"
+          ]
+        }
+      },
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel"
+      ]
+    },
+    "paragraph": {
+      "content": [
+        "text",
+        "hardBreak",
+        "mention"
+      ],
+      "allowsMarks": true
+    },
+    "table": {
+      "content": [
+        "tableRow"
+      ]
+    },
+    "tableCell": {
+      "attrs": {
+        "align": {
+          "kind": "string",
+          "nullable": true,
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "background": {
+          "kind": "string",
+          "nullable": true,
+          "enum": [
+            "neutral",
+            "accent",
+            "success",
+            "warning",
+            "danger"
+          ]
+        },
+        "colspan": {
+          "kind": "integer",
+          "min": 1,
+          "max": 100
+        },
+        "colwidth": {
+          "kind": "integers",
+          "nullable": true,
+          "max": 4000,
+          "maxLength": 100
+        },
+        "rowspan": {
+          "kind": "integer",
+          "min": 1,
+          "max": 100
+        }
+      },
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel"
+      ]
+    },
+    "tableHeader": {
+      "attrs": {
+        "align": {
+          "kind": "string",
+          "nullable": true,
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "background": {
+          "kind": "string",
+          "nullable": true,
+          "enum": [
+            "neutral",
+            "accent",
+            "success",
+            "warning",
+            "danger"
+          ]
+        },
+        "colspan": {
+          "kind": "integer",
+          "min": 1,
+          "max": 100
+        },
+        "colwidth": {
+          "kind": "integers",
+          "nullable": true,
+          "max": 4000,
+          "maxLength": 100
+        },
+        "rowspan": {
+          "kind": "integer",
+          "min": 1,
+          "max": 100
+        }
+      },
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel"
+      ]
+    },
+    "tableRow": {
+      "content": [
+        "tableCell",
+        "tableHeader"
+      ]
+    },
+    "taskItem": {
+      "attrs": {
+        "checked": {
+          "kind": "boolean"
+        }
+      },
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel"
+      ]
+    },
+    "taskList": {
+      "content": [
+        "taskItem"
+      ]
+    },
+    "text": {
+      "inline": true
+    }
+  },
+  "marks": {
+    "bold": {},
+    "code": {},
+    "italic": {},
+    "link": {
+      "attrs": {
+        "class": {
+          "kind": "null"
+        },
+        "href": {
+          "kind": "string",
+          "maxLength": 2048,
+          "url": true
+        },
+        "rel": {
+          "kind": "string",
+          "nullable": true,
+          "enum": [
+            "noopener noreferrer nofollow"
+          ]
+        },
+        "target": {
+          "kind": "string",
+          "nullable": true,
+          "enum": [
+            "_blank"
+          ]
+        },
+        "title": {
+          "kind": "string",
+          "nullable": true,
+          "maxLength": 256
+        }
+      }
+    },
+    "strike": {}
+  }
+}

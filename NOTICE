@@ -12,8 +12,12 @@ Adapted from Armature:
 - backend/internal/theme and its migrations: internal/theme, migrations
   00050_themes, 00902_org_default_theme and 00906_theme_names_per_organization
 - backend/internal/httpapi/theme_handlers.go: the theme handlers and routes
+- backend/internal/document: the document validation and plain text of
+  internal/issue/document.go
 - web/src/lib/theme-tokens.ts, theme-css.ts, constellation.ts, confetti.ts
 - web/src/features/themes: ThemeLoader, BackdropEffect, ThemeEditor
+- web/src/features/editor: Editor, Toolbar, MentionList, DocView, schema
+  and their tests, from web/src/features/editor
 - web/src/routes/themes.tsx and theme-editor.tsx
 - web/src/components/ui: controls, Field, ColorField, Card, Segmented, Tabs,
   Tag, SectionTitle, Table and Choice

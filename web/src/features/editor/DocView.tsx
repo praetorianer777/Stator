@@ -1,0 +1,230 @@
+// biome-ignore-all lint/suspicious/noArrayIndexKey: a node has no identity but its place, and a read-only view never reorders them
+import { Fragment, createElement, type ReactNode } from "react";
+import type { Element as HastElement, ElementContent, Root } from "hast";
+import { IconButton, cx } from "@/components/ui";
+import { Icon } from "@/components/icons";
+import { t } from "@/i18n";
+import { useCopyHeadingLink } from "./CopyHeadingLink";
+import { languageLabel, lowlight } from "./languages";
+import { ANCHOR_PATTERN, CELL_BACKGROUNDS, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
+
+/**
+ * A document drawn as elements, never as HTML: every node becomes the React
+ * element that means it, so nothing a person typed is ever parsed as markup
+ * and an unsafe link is shown as text.
+ */
+export function DocView({ doc, className, size = "base" }: { doc: DocNode | null | undefined; className?: string; size?: "sm" | "base" }) {
+  const { copy, status } = useCopyHeadingLink();
+  if (!doc) return null;
+  return (
+    <div className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
+      <Blocks nodes={doc.content} copy={copy} />
+      {status}
+    </div>
+  );
+}
+
+type Copy = (anchor: string) => void;
+
+function Blocks({ nodes, copy }: { nodes: DocNode[] | undefined; copy: Copy }) {
+  return (
+    <>
+      {(nodes ?? []).map((node, i) => (
+        <Block key={i} node={node} copy={copy} />
+      ))}
+    </>
+  );
+}
+
+const CELL_ALIGNS = ["left", "center", "right"] as const;
+
+function oneOf<T extends string>(values: readonly T[], value: unknown): T | undefined {
+  return typeof value === "string" && (values as readonly string[]).includes(value) ? (value as T) : undefined;
+}
+
+function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
+  switch (node.type) {
+    case "paragraph":
+      return <p>{inline(node.content)}</p>;
+    case "heading":
+      return <Heading node={node} copy={copy} />;
+    case "bulletList":
+      return <ul>{items(node.content, copy)}</ul>;
+    case "orderedList": {
+      const start = Number(node.attrs?.start ?? 1);
+      return <ol start={Number.isInteger(start) && start !== 1 ? start : undefined}>{items(node.content, copy)}</ol>;
+    }
+    case "taskList":
+      return (
+        <ul data-type="taskList">
+          {(node.content ?? []).map((item, i) => {
+            const checked = item.attrs?.checked === true;
+            return (
+              <li key={i} data-checked={checked}>
+                <input type="checkbox" checked={checked} readOnly disabled aria-label={t.editor.taskDone} />
+                <div>
+                  <Blocks nodes={item.content} copy={copy} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      );
+    case "blockquote":
+      return (
+        <blockquote>
+          <Blocks nodes={node.content} copy={copy} />
+        </blockquote>
+      );
+    case "codeBlock":
+      return <CodeBlock node={node} />;
+    case "horizontalRule":
+      return <hr />;
+    case "table":
+      return (
+        <div className="doc-table-wrap">
+          <table>
+            <tbody>
+              {(node.content ?? []).map((row, r) => (
+                <tr key={r}>
+                  {(row.content ?? []).map((cell, c) => {
+                    const Tag = cell.type === "tableHeader" ? "th" : "td";
+                    const colspan = Number(cell.attrs?.colspan ?? 1);
+                    const rowspan = Number(cell.attrs?.rowspan ?? 1);
+                    return (
+                      <Tag
+                        key={c}
+                        colSpan={colspan > 1 ? colspan : undefined}
+                        rowSpan={rowspan > 1 ? rowspan : undefined}
+                        style={{ textAlign: oneOf(CELL_ALIGNS, cell.attrs?.align) }}
+                        data-background={oneOf(CELL_BACKGROUNDS, cell.attrs?.background)}
+                      >
+                        <Blocks nodes={cell.content} copy={copy} />
+                      </Tag>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    case "panel": {
+      const kind = oneOf(PANEL_KINDS, node.attrs?.kind) ?? "info";
+      return (
+        <div role="note" data-panel={kind} aria-label={t.editor.panels[kind]}>
+          <Blocks nodes={node.content} copy={copy} />
+        </div>
+      );
+    }
+    default:
+      return <p>{textOf(node)}</p>;
+  }
+}
+
+function Heading({ node, copy }: { node: DocNode; copy: Copy }) {
+  const level = Math.min(Math.max(Number(node.attrs?.level ?? 1), 1), 3);
+  const anchor = typeof node.attrs?.id === "string" && ANCHOR_PATTERN.test(node.attrs.id) ? node.attrs.id : undefined;
+  // The page's title is its h1, so a document's levels start one down.
+  const tag = `h${level + 1}`;
+  const text = textOf(node);
+  return (
+    <div className="doc-heading group" data-heading>
+      {createElement(tag, { id: anchor, "data-level": level }, inline(node.content))}
+      {anchor && (
+        <IconButton
+          icon={<Icon.Hash />}
+          label={t.editor.copyHeadingLinkTo(text)}
+          size="xs"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+          onClick={() => copy(anchor)}
+          data-copy-heading-link={anchor}
+        />
+      )}
+    </div>
+  );
+}
+
+function CodeBlock({ node }: { node: DocNode }) {
+  const code = (node.content ?? []).map((n) => n.text ?? "").join("");
+  const language = typeof node.attrs?.language === "string" && node.attrs.language ? node.attrs.language : undefined;
+  let body: ReactNode = code;
+  if (language && lowlight.registered(language)) body = hast(lowlight.highlight(language, code));
+  return (
+    <pre data-language={language}>
+      {language && <span className="doc-code-language">{languageLabel(language)}</span>}
+      <code className={language ? `language-${language}` : undefined}>{body}</code>
+    </pre>
+  );
+}
+
+/** The highlighter's tree as spans with its classes; its text stays text. */
+function hast(node: Root | ElementContent): ReactNode {
+  if (node.type === "text") return node.value;
+  if (node.type === "element") {
+    const el = node as HastElement;
+    const className = Array.isArray(el.properties.className) ? el.properties.className.join(" ") : undefined;
+    return createElement("span", { className }, ...el.children.map((child, i) => <Fragment key={i}>{hast(child)}</Fragment>));
+  }
+  if (node.type === "root") return node.children.map((child, i) => <Fragment key={i}>{hast(child as ElementContent)}</Fragment>);
+  return null;
+}
+
+function items(nodes: DocNode[] | undefined, copy: Copy): ReactNode {
+  return (nodes ?? []).map((item, i) => (
+    <li key={i}>
+      <Blocks nodes={item.content} copy={copy} />
+    </li>
+  ));
+}
+
+function inline(nodes: DocNode[] | undefined): ReactNode {
+  return (nodes ?? []).map((node, i) => <Fragment key={i}>{inlineNode(node)}</Fragment>);
+}
+
+function inlineNode(node: DocNode): ReactNode {
+  switch (node.type) {
+    case "text":
+      return marked(node.text ?? "", node.marks);
+    case "hardBreak":
+      return <br />;
+    case "mention":
+      return marked(`@${String(node.attrs?.label ?? "")}`, node.marks, String(node.attrs?.id ?? ""));
+    default:
+      return textOf(node);
+  }
+}
+
+/** Marks nest in the order they are listed; a link that is not a web, mail or site address is plain text. */
+function marked(text: string, marks: DocNode["marks"], mention?: string): ReactNode {
+  let out: ReactNode = mention !== undefined ? <span data-mention={mention}>{text}</span> : text;
+  for (const mark of marks ?? []) {
+    switch (mark.type) {
+      case "bold":
+        out = <strong>{out}</strong>;
+        break;
+      case "italic":
+        out = <em>{out}</em>;
+        break;
+      case "code":
+        out = <code>{out}</code>;
+        break;
+      case "strike":
+        out = <s>{out}</s>;
+        break;
+      case "link": {
+        const href = safeHref(mark.attrs?.href);
+        if (href) {
+          const external = /^(https?|mailto):/i.test(href);
+          out = (
+            <a href={href} rel={external ? "noopener noreferrer nofollow" : undefined} target={external ? "_blank" : undefined}>
+              {out}
+            </a>
+          );
+        }
+        break;
+      }
+    }
+  }
+  return out;
+}
