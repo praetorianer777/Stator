@@ -94,6 +94,10 @@ process, which is only right for a single api process. `/readyz` and
   server-side against an allowlist of nodes and marks. The allowlist is one
   Go table; `make document-allowlist` writes it to
   `api/document-allowlist.json`, which a vitest test holds the editor to.
+  The editor arrives with the route that edits, through the router's
+  `lazy()`, so a reader never downloads it.
+- Addresses: a space is `/s/{spaceKey}`, a page `/s/{spaceKey}/p/{pageId}/{slug}`.
+  Only the id finds a page; the slug is for people and is put right when stale.
 
 ## Armature integration
 

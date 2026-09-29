@@ -3,6 +3,41 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: Who may do what is decided in one place until permissions arrive
+
+Space and page permissions (#19) come later. Until then every member of an
+organization reads and edits every page of every space, and only its owners
+and administrators create, rename and delete spaces. That rule lives in
+`internal/perm` and nowhere else: every service calls `perm.Check` with the
+actor, the action and the space, inside the transaction that acts, and the
+interface reads the same answers from each space's `can`. #19 replaces the
+body of `perm.Check` with lookups of its own tables, in that transaction,
+without touching a caller. The database walls tenants off from each other
+today; it does not yet know roles, so a member's raw SQL within their own
+organization is refused only once #19 adds policies for it.
+
+## 2026-09-29: A page row is the page, and versions will hang off it
+
+`page` holds what every reader and the tree need: the space, the parent, the
+rank among siblings, the current title and body, and `version`, which counts
+saves so a save made from an older copy is refused. Until drafts and
+publishing (#13) the editor saves straight over the body.
+
+Versions and drafts will be tables of their own keyed on `(org_id, page_id)`,
+referencing `page (org_id, id)`, a unique key that exists for them, with
+`ON DELETE CASCADE`. Publishing writes a `page_version` row and copies its
+title and body onto `page` in the same transaction, so `page.version` becomes
+the published version's number and nothing that reads a page joins the
+history. History (#14) reads `page_version`; restoring one publishes it
+again. A page nobody has published yet needs one column added to `page`, not
+a new shape.
+
+The home page is the root of its space's tree, and constraints keep it so:
+one page per space has no parent, a parent is always in the same space and
+organization, and a space's home is one of its own pages. A foreign key is
+checked past row level security, which is why every one of them names the
+organization too.
+
 ## 2026-09-29: Each browser spec file gets a throwaway organization
 
 Specs that change what an organization shows, such as its default theme or
