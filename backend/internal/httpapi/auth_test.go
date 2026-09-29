@@ -93,8 +93,8 @@ func TestSafeRedirectStaysInTheApp(t *testing.T) {
 
 func TestSignInFailuresAreNamedForThePage(t *testing.T) {
 	for err, want := range map[error]string{
-		oidc.ErrNotAMember: "not_a_member",
-		fmt.Errorf("%w: x", oidc.ErrUnreachable): "unreachable",
+		oidc.ErrNotAMember:                        "not_a_member",
+		fmt.Errorf("%w: x", oidc.ErrUnreachable):  "unreachable",
 		oidc.ErrNoEmail:                           "no_email",
 		oidc.ErrEmailUnverified:                   "unverified_email",
 		fmt.Errorf("x: %w", oidc.ErrUnknownLogin): "expired",
