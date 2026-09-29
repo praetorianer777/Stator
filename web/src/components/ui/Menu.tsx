@@ -13,10 +13,15 @@ export interface MenuItem {
   attrs?: Record<string, string>;
 }
 
+// Where a list is drawn: at the end of the landmark its trigger sits in, so a
+// screen reader finds it in the same region, and a modal dialog keeps it.
+const LANDMARK =
+  'main, header, nav, aside, footer, [role="banner"], [role="main"], [role="navigation"], [role="complementary"], [role="contentinfo"], [role="region"], [role="dialog"]';
+
 // A list of actions behind one button: arrows move, Home and End jump, typing
 // a letter finds, Escape returns focus to the trigger. The list is drawn at
-// the end of the document, fixed beside the trigger, so a table or a panel
-// that scrolls cannot cut it off; it opens upward when the bottom is near.
+// the end of the trigger's landmark, fixed beside the trigger, so a table or
+// a panel that scrolls cannot cut it off; it opens upward when the bottom is near.
 export function Menu({
   trigger,
   items,
@@ -31,6 +36,7 @@ export function Menu({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [host, setHost] = useState<HTMLElement | null>(null);
   const listId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -48,11 +54,21 @@ export function Menu({
 
   const place = useAnchored(open, wrapRef, listRef, { align });
 
+  function toggle() {
+    setHost(wrapRef.current?.closest<HTMLElement>(LANDMARK) ?? document.body);
+    setOpen((o) => !o);
+  }
+
+  // The list is hidden until it has been placed, and a browser will not focus
+  // a hidden element, so the first item takes focus only once it is placed.
+  const placed = open && place.visibility !== "hidden";
+  useEffect(() => {
+    if (placed && listRef.current) focusables(listRef.current)[0]?.focus();
+  }, [placed]);
+
   const wasOpen = useRef(false);
   useEffect(() => {
-    if (open) {
-      focusables(listRef.current!)[0]?.focus();
-    } else if (wasOpen.current && !leaveFocus.current) {
+    if (!open && wasOpen.current && !leaveFocus.current) {
       focusables(wrapRef.current!)[0]?.focus();
     }
     wasOpen.current = open;
@@ -66,7 +82,7 @@ export function Menu({
     const index = options.indexOf(document.activeElement as HTMLElement);
     const go = (i: number) => options[(i + options.length) % options.length]?.focus();
     switch (event.key) {
-      // The list sits at the end of the document, so a Tab out of it would
+      // The list sits at the end of its landmark, so a Tab out of it would
       // land nowhere near the trigger; it closes and focus goes home instead.
       case "Tab":
         event.preventDefault();
@@ -100,8 +116,9 @@ export function Menu({
 
   return (
     <div ref={wrapRef} className={cx("relative inline-flex", className)}>
-      {trigger({ open, toggle: () => setOpen((o) => !o), "aria-haspopup": "menu", "aria-expanded": open, "aria-controls": open ? listId : undefined })}
+      {trigger({ open, toggle, "aria-haspopup": "menu", "aria-expanded": open, "aria-controls": open ? listId : undefined })}
       {open &&
+        host &&
         createPortal(
           <div
             ref={listRef}
@@ -138,7 +155,7 @@ export function Menu({
               </button>
             ))}
           </div>,
-          document.body,
+          host,
         )}
     </div>
   );

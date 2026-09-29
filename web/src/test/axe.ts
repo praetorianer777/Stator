@@ -9,7 +9,7 @@ const shell = new DOMParser().parseFromString(readFileSync(resolve(process.cwd()
 
 /**
  * Runs axe over the whole document, overlays included, and names each violation and where it is.
- * `popupOpen` allows content outside the landmarks: a menu is drawn at the end of the document.
+ * `popupOpen` allows content outside the landmarks, for a popup a test draws without the shell around it.
  */
 export async function axeViolations({ popupOpen = false }: { popupOpen?: boolean } = {}): Promise<string[]> {
   document.documentElement.lang = shell.documentElement.lang;
