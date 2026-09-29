@@ -57,7 +57,7 @@ Handlers hand it to `noteWrite`, which records it in Valkey
 `STATOR_READ_YOUR_WRITES_TTL`. On the caller's next request the
 `readYourWrites` middleware pins the request to that position with
 `db.PinLSN`, so no replica short of it serves them. The key is the session,
-or a `stator_client` cookie until there are sessions; see
+else the personal access token, else a `stator_client` cookie; see
 `docs/decisions.md`. Without `STATOR_VALKEY_URL` the positions stay in the
 process, which is only right for a single api process. `/readyz` and
 `/metrics` count reads by where they went and why they fell back.

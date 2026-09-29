@@ -17,6 +17,8 @@ import (
 const (
 	ActionMemberAdmitted = "member.admitted"
 	ActionMemberDeclined = "member.declined"
+	ActionTokenCreated   = "token.created"
+	ActionTokenRevoked   = "token.revoked"
 )
 
 // Entry is one act to record.

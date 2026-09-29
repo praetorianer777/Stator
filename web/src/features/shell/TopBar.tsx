@@ -34,6 +34,7 @@ export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; 
   const items: MenuItem[] = [
     { label: t.account.profile, icon: <Icon.User />, onSelect: () => {}, disabled: true },
     { label: t.account.themes, icon: <Icon.Palette />, onSelect: () => navigate({ to: "/settings/themes" }), attrs: { "data-action": "themes" } },
+    { label: t.account.tokens, icon: <Icon.Key />, onSelect: () => navigate({ to: "/settings/tokens" }), attrs: { "data-action": "tokens" } },
   ];
   if (admin) {
     items.push({

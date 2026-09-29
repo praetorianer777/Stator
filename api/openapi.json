@@ -23,6 +23,9 @@
     },
     {
       "name": "themes"
+    },
+    {
+      "name": "tokens"
     }
   ],
   "paths": {
@@ -378,6 +381,83 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/tokens": {
+      "get": {
+        "operationId": "listOrgAPITokens",
+        "summary": "Every personal access token in the organization, with whose it is. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tokens": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrgAPIToken"
+                      }
+                    }
+                  },
+                  "required": [
+                    "tokens"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/tokens/{tokenID}": {
+      "delete": {
+        "operationId": "revokeOrgAPIToken",
+        "summary": "Revoke anybody's token in the organization. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "parameters": [
+          {
+            "name": "tokenID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -1129,6 +1209,130 @@
         }
       }
     },
+    "/tokens": {
+      "get": {
+        "operationId": "listAPITokens",
+        "summary": "The caller's personal access tokens in this organization, without their secrets.",
+        "tags": [
+          "tokens"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tokens": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/APIToken"
+                      }
+                    }
+                  },
+                  "required": [
+                    "tokens"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createAPIToken",
+        "summary": "Make a personal access token; the secret is in this answer and never again. Needs a session.",
+        "tags": [
+          "tokens"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "$ref": "#/components/schemas/APIToken"
+                    }
+                  },
+                  "required": [
+                    "token"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tokens/{tokenID}": {
+      "delete": {
+        "operationId": "revokeAPIToken",
+        "summary": "Revoke one of the caller's tokens; it stops working at once.",
+        "tags": [
+          "tokens"
+        ],
+        "parameters": [
+          {
+            "name": "tokenID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users/requests": {
       "get": {
         "operationId": "listJoinRequests",
@@ -1293,6 +1497,56 @@
           "message"
         ]
       },
+      "APIToken": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "read"
+              ]
+            }
+          },
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "lastUsedAt",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
       "AdmitRequest": {
         "type": "object",
         "properties": {
@@ -1401,6 +1655,30 @@
         },
         "required": [
           "schemas"
+        ]
+      },
+      "CreateTokenRequest": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "read"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name"
         ]
       },
       "CurrentOrg": {
@@ -1798,6 +2076,60 @@
           "responses"
         ]
       },
+      "OrgAPIToken": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/User"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "read"
+              ]
+            }
+          },
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "lastUsedAt",
+          "expiresAt",
+          "createdAt",
+          "owner"
+        ]
+      },
       "Palette": {
         "type": "object",
         "properties": {
@@ -2092,6 +2424,9 @@
       "SecurityScheme": {
         "type": "object",
         "properties": {
+          "bearerFormat": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
@@ -2353,7 +2688,8 @@
       "token": {
         "type": "http",
         "scheme": "bearer",
-        "description": "A personal access token."
+        "bearerFormat": "stator_pat_\u003c43 characters\u003e",
+        "description": "A personal access token, made under Tokens in the account menu; a token with the read scope is refused every write."
       }
     }
   },

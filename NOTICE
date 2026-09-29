@@ -38,3 +38,10 @@ Adapted from Armature:
   00013: internal/auth/joinrequests.go, internal/audit and migrations
   00901_sso_join_requests and the audit_log of 00001_foundation
 - web/src/features/auth: the sign-in form, ProviderSettings and JoinRequests
+- backend/internal/auth/tokens.go, token_handlers.go and migration 00040: the
+  personal access tokens of internal/auth/tokens_admin.go and service.go,
+  the api_token of 00001_foundation, and the readOnlyToken middleware
+- backend/internal/openapi/validate.go and backend/test/contract_test.go,
+  endpoints_test.go and zz_coverage_test.go: the response validation and
+  the operation coverage of Armature's integration suite
+- web/src/routes/tokens.tsx: web/src/routes/tokens.tsx

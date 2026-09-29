@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -136,10 +137,14 @@ LEFT JOIN org o ON o.id = s.current_org_id AND o.archived_at IS NULL
 LEFT JOIN org_member m ON m.org_id = o.id AND m.user_id = u.id
 WHERE s.token_hash = $1 AND s.expires_at > now()`
 
-// Authenticate resolves a session secret to its principal.
+// Authenticate resolves a session secret or a personal access token to its
+// principal.
 func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, error) {
 	if secret == "" {
 		return nil, ErrInvalidToken
+	}
+	if IsAPIToken(secret) {
+		return s.authenticateAPIToken(ctx, secret)
 	}
 	var (
 		p          Principal
@@ -196,7 +201,12 @@ func (s *Service) Logout(ctx context.Context, sessionID uuid.UUID) error {
 // Organizations lists where the caller may act: their memberships, narrowed to
 // the ones their session reaches, oldest first so the first is a stable default.
 func (s *Service) Organizations(ctx context.Context, p *Principal) ([]Membership, error) {
-	return s.memberships(ctx, p.UserID, p.SessionID)
+	all, err := s.memberships(ctx, p.UserID, p.SessionID)
+	if err != nil || p.TokenID == nil {
+		return all, err
+	}
+	// A token is bound to the organization it was made in.
+	return slices.DeleteFunc(all, func(m Membership) bool { return !p.InOrg() || m.OrgID != p.Org.ID }), nil
 }
 
 func (s *Service) memberships(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID) ([]Membership, error) {
