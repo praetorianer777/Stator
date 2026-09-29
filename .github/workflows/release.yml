@@ -1,0 +1,48 @@
+# Publishes the GitHub release for a v* tag. Every step is written to survive a
+# re-run of the same tag, because a release that fails halfway must be fixable
+# by pressing the button again rather than by deleting and re-cutting the tag.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  # For a tag whose push built nothing - GitHub skips a push whose head commit
+  # message carries a CI-skip marker - or whose run was deleted:
+  # `gh workflow run release.yml -f tag=v1.2.3`.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag to publish, for example v1.2.3
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      # release-notes-*.md is git-ignored, so the annotated tag message is what
+      # release.sh leaves for this job.
+      - name: Resolve release notes
+        run: |
+          if [[ -f "release-notes-${TAG}.md" ]]; then
+            cp "release-notes-${TAG}.md" notes.md
+          else
+            git tag -l --format='%(contents)' "$TAG" > notes.md
+          fi
+
+      - name: Publish release
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --title "$TAG" --notes-file notes.md
