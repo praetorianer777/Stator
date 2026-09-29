@@ -31,3 +31,8 @@ export const WEB_URL = setting("STATOR_WEB_URL");
 
 /** Keycloak as the browser sees it. */
 export const KEYCLOAK_URL = setting("STATOR_KEYCLOAK_URL");
+
+/** The stack's database as its superuser, for arranging what no endpoint makes; read when first needed. */
+export function superuserURL(): string {
+  return setting("STATOR_TEST_SUPERUSER_URL");
+}

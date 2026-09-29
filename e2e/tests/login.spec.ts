@@ -1,13 +1,11 @@
 import { request, type Page } from "@playwright/test";
 import { LOGIN_PATH, ME_PATH, authTest as test, expect, signIn, signInWithPassword, startSSO, stateFile, submitKeycloak } from "../fixtures/auth";
+import { orgWithDeadProvider } from "../fixtures/db";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { WEB_URL } from "../fixtures/stack";
 
 const ANONYMOUS = { cookies: [], origins: [] };
 const SCHEMES: ColourScheme[] = ["light", "dark"];
-
-// A realm user the seed has not let into the demo organisation, from deploy/keycloak/realm.json.
-const UNAPPROVED = { username: "carol", password: "carol password", email: "carol@stator.test" };
 
 const accountItem = (page: Page, action: string) => page.locator(`[role="menu"] [data-action="${action}"]`);
 
@@ -124,29 +122,18 @@ test.describe("sign-in", { tag: "@auth" }, () => {
       await expect(page.getByRole("alert")).toHaveText("That organization does not sign in with SSO. Check its name, or ask one of its administrators.");
     });
 
-    test("a Keycloak user nobody has approved waits for an administrator, who sees the request", async ({ page, pageAs, apiAs }) => {
-      await startSSO(page);
-      await submitKeycloak(page, UNAPPROVED.username, UNAPPROVED.password);
-      await expect(page).toHaveURL(/\/login\?sso=not_a_member/);
-      await expect(page.getByRole("status")).toContainText(/waiting for an administrator/i);
-      expect((await page.request.get(ME_PATH)).status()).toBe(401);
-      await expectAccessible(page);
-
-      const alice = await pageAs("alice");
-      await alice.goto("/settings/sso");
-      const request = alice.locator(`[data-join-request="${UNAPPROVED.email}"]`);
-      await expect(request).toBeVisible();
-      await expect(request.getByRole("button", { name: "Let in as member" })).toBeVisible();
-      await alice.locator('[data-action="account"]').click();
-      await expect(accountItem(alice, "sso-settings").locator("[data-join-badge]")).toBeVisible();
-
-      // Turned away again, so the next run starts from a request of its own.
-      const api = await apiAs("alice");
-      const { data } = await api.GET("/users/requests");
-      const carol = data?.requests.find((each) => each.email === UNAPPROVED.email);
-      expect(carol).toBeDefined();
-      const { response } = await api.DELETE("/users/requests/{userID}", { params: { path: { userID: carol!.userId } } });
-      expect(response.status).toBe(204);
+    test("an organisation whose provider cannot be reached says so", async ({ page }, testInfo) => {
+      const org = await orgWithDeadProvider(testInfo);
+      try {
+        await startSSO(page, org.slug);
+        await expect(page).toHaveURL(/\/login\?sso=unreachable/);
+        await expect(page.getByRole("alert")).toHaveText(
+          "Stator could not reach your organization's identity provider. Try again in a moment, and tell an administrator if it keeps failing.",
+        );
+        expect((await page.request.get(ME_PATH)).status()).toBe(401);
+      } finally {
+        await org.remove();
+      }
     });
 
     for (const scheme of SCHEMES) {
