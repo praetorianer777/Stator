@@ -193,6 +193,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/org/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every personal access token in the organization, with whose it is. For administrators. */
+        get: operations["listOrgAPITokens"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/tokens/{tokenID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke anybody's token in the organization. For administrators. */
+        delete: operations["revokeOrgAPIToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/readyz": {
         parameters: {
             query?: never;
@@ -368,6 +402,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's personal access tokens in this organization, without their secrets. */
+        get: operations["listAPITokens"];
+        put?: never;
+        /** Make a personal access token; the secret is in this answer and never again. Needs a session. */
+        post: operations["createAPIToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tokens/{tokenID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke one of the caller's tokens; it stops working at once. */
+        delete: operations["revokeAPIToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users": {
         parameters: {
             query?: never;
@@ -465,6 +534,19 @@ export interface components {
             message: string;
             requestId?: string;
         };
+        APIToken: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            name: string;
+            scopes: "read"[];
+            secret?: string;
+        };
         AdmitRequest: {
             /** @enum {string} */
             role: "owner" | "admin" | "member";
@@ -496,6 +578,12 @@ export interface components {
             securitySchemes?: {
                 [key: string]: components["schemas"]["SecurityScheme"];
             };
+        };
+        CreateTokenRequest: {
+            /** Format: date-time */
+            expiresAt?: string;
+            name: string;
+            scopes?: "read"[];
         };
         CurrentOrg: {
             /** Format: uuid */
@@ -626,6 +714,20 @@ export interface components {
             summary?: string;
             tags?: string[];
         };
+        OrgAPIToken: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            name: string;
+            owner: components["schemas"]["User"];
+            scopes: "read"[];
+            secret?: string;
+        };
         Palette: {
             dark: {
                 [key: string]: string;
@@ -706,6 +808,7 @@ export interface components {
             type?: unknown;
         };
         SecurityScheme: {
+            bearerFormat?: string;
             description?: string;
             in?: string;
             name?: string;
@@ -1184,6 +1287,66 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Document"];
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOrgAPITokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        tokens: components["schemas"]["OrgAPIToken"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revokeOrgAPIToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tokenID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -1691,6 +1854,101 @@ export interface operations {
                 content: {
                     "*/*": string;
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAPITokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        tokens: components["schemas"]["APIToken"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createAPIToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        token: components["schemas"]["APIToken"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revokeAPIToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tokenID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

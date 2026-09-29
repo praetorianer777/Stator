@@ -64,3 +64,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   owner is never moved, and every change goes to `audit_log`. The members
   list marks the roles that come from the provider, and an administrator can
   remove a member there.
+- Personal access tokens: `stator_pat_` and 32 random bytes, sent as a
+  bearer token, of which only the SHA-256 is stored. A token acts as its
+  owner in one organization, may expire, and may carry the `read` scope,
+  which refuses every write. A Tokens page, reached from the account menu,
+  makes one and shows its secret once, and lists and revokes them with
+  their last use; administrators list and revoke every token in the
+  organization over the API. Making and revoking are kept in `audit_log`.
+- The integration suite checks every answer against `api/openapi.json`
+  and fails when an operation was never answered successfully or never
+  refused.

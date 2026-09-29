@@ -25,6 +25,8 @@ const (
 	ActionMemberRoleChanged = "member.role_changed"
 	ActionGroupRoleSet      = "sso.group_role_set"
 	ActionGroupRoleRemoved  = "sso.group_role_removed"
+	ActionTokenCreated      = "token.created"
+	ActionTokenRevoked      = "token.revoked"
 )
 
 // Entry is one act to record.

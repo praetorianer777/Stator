@@ -25,6 +25,26 @@ a token says which groups somebody is in now, and group rows exist only for
 the groups an organization keeps. Until then an open session keeps the role
 it had.
 
+## 2026-09-29: A personal access token is its owner in one organization
+
+A script calls the API with a token sent as a bearer, as in Armature: the
+prefix `stator_pat_` and 32 random bytes in base64url, of which only the
+SHA-256 is stored, so a copy of the database opens nothing and a secret
+scanner recognises a leaked one. A token belongs to a person in one
+organization and reaches nothing else; leaving the organization removes it
+by a foreign key onto the membership. Its one scope, `read`, is enforced by
+middleware in front of every route, so a route added later cannot forget
+it. Only a session makes a token, so a leaked token cannot mint a longer
+lived one and outlive its own revocation. Tokens key read-your-writes as
+`t:<token>`, apart from their owner's browser, so a script's writes do not
+send the person's reads to the primary. Narrowing a token to some spaces is
+left for later (#111).
+
+The integration suite checks every answer the API gives it against
+`api/openapi.json`, and fails when an operation was never answered
+successfully or never refused, as Armature's does. The router is wrapped
+rather than the test client, so the sign-in tests' browsers are checked too.
+
 ## 2026-09-29: Reads go to CloudNativePG's -ro service
 
 On Kubernetes the chart points reads at the CNPG cluster's `-ro` service

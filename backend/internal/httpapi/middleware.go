@@ -177,6 +177,30 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 	})
 }
 
+// readOnlyToken refuses a write from a token made to read, before any handler,
+// so the promise holds for every route including ones added later.
+func readOnlyToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !safeMethod(r.Method) && PrincipalFrom(r.Context()).ReadOnly() {
+			respondError(w, r, errReadOnlyToken)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// requireSession refuses a token an act that has to be done by somebody at a
+// keyboard, such as making another token.
+func requireSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p := PrincipalFrom(r.Context()); p != nil && p.TokenID != nil {
+			respondError(w, r, errSessionOnly)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // requireAuth rejects anonymous callers.
 func requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

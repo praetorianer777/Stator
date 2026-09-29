@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/theme"
@@ -93,6 +94,17 @@ var operations = []operation{
 		request: admitRequest{}, responses: ok(env{"membership": auth.Membership{}})},
 	{method: "DELETE", path: "/users/requests/{userID}", handler: "handleDeclineJoinRequest", tag: "access", summary: "Turn a waiting person away; they may ask again. For administrators.",
 		responses: none()},
+	{method: "GET", path: "/org/tokens", handler: "handleListOrgAPITokens", tag: "access", summary: "Every personal access token in the organization, with whose it is. For administrators.",
+		responses: ok(env{"tokens": []auth.OrgAPIToken{}})},
+	{method: "DELETE", path: "/org/tokens/{tokenID}", handler: "handleRevokeOrgAPIToken", tag: "access", summary: "Revoke anybody's token in the organization. For administrators.",
+		responses: none()},
+
+	{method: "GET", path: "/tokens", handler: "handleListAPITokens", tag: "tokens", summary: "The caller's personal access tokens in this organization, without their secrets.",
+		responses: ok(env{"tokens": []auth.APIToken{}})},
+	{method: "POST", path: "/tokens", handler: "handleCreateAPIToken", tag: "tokens", summary: "Make a personal access token; the secret is in this answer and never again. Needs a session.",
+		request: createTokenRequest{}, responses: created(env{"token": auth.APIToken{}})},
+	{method: "DELETE", path: "/tokens/{tokenID}", handler: "handleRevokeAPIToken", tag: "tokens", summary: "Revoke one of the caller's tokens; it stops working at once.",
+		responses: none()},
 
 	// Themes, as Armature serves them.
 	{method: "GET", path: "/themes", handler: "handleListThemes", tag: "themes", summary: "Themes the caller may use: theirs, then the shared ones.", responses: ok(env{"themes": []theme.Theme{}})},
@@ -115,6 +127,10 @@ var operations = []operation{
 func Spec() *openapi.Document {
 	b := openapi.NewBuilder()
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
+	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
+	b.FieldOverrides["APIToken.scopes"] = scopes
+	b.FieldOverrides["OrgAPIToken.scopes"] = scopes
+	b.FieldOverrides["CreateTokenRequest.scopes"] = scopes
 	roles := make([]string, len(auth.OrgRoles))
 	for i, role := range auth.OrgRoles {
 		roles[i] = string(role)
@@ -142,8 +158,9 @@ func Spec() *openapi.Document {
 		Paths:   map[string]openapi.PathItem{},
 		Components: openapi.Components{
 			SecuritySchemes: map[string]openapi.SecurityScheme{
-				"session": {Type: "apiKey", In: "cookie", Name: "stator_session", Description: "The cookie a sign-in sets."},
-				"token":   {Type: "http", Scheme: "bearer", Description: "A personal access token."},
+				"session": {Type: "apiKey", In: "cookie", Name: config.DefaultSessionCookie, Description: "The cookie a sign-in sets."},
+				"token": {Type: "http", Scheme: "bearer", BearerFormat: auth.APITokenPrefix + "<43 characters>",
+					Description: "A personal access token, made under Tokens in the account menu; a token with the read scope is refused every write."},
 			},
 		},
 		Security: []map[string][]string{{"session": {}}, {"token": {}}},
@@ -268,6 +285,23 @@ func pathParamSchema(name string) *openapi.Schema {
 func ok(body any) map[int]any      { return map[int]any{200: body} }
 func created(body any) map[int]any { return map[int]any{201: body} }
 func none() map[int]any            { return map[int]any{204: nil} }
+
+// Route is one operation as the integration suite sees it: which request it
+// answers, and whether its answer is a file or a redirect.
+type Route struct {
+	Method, Path, ID string
+	Public, Binary   bool
+	Redirect         bool
+}
+
+// Catalog lists every operation in the table.
+func Catalog() []Route {
+	out := make([]Route, 0, len(operations))
+	for _, op := range operations {
+		out = append(out, Route{Method: op.method, Path: op.path, ID: op.operationID(), Public: op.public, Binary: op.binary, Redirect: op.redirect})
+	}
+	return out
+}
 
 // handleOpenAPI serves the document this process was built from.
 func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {

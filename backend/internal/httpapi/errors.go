@@ -94,6 +94,13 @@ func ErrInternal(cause error) *APIError {
 	}
 }
 
+var (
+	errReadOnlyToken = &APIError{Status: http.StatusForbidden, Code: "read_only_token",
+		Message: "This token can only read. Use a token without the read scope, or sign in, to make changes."}
+	errSessionOnly = &APIError{Status: http.StatusForbidden, Code: "session_only",
+		Message: "A token cannot do this. Sign in to Stator and do it there."}
+)
+
 // toAPIError maps a domain error onto the wire shape. One place for it is what
 // stops handlers leaking internals into responses by accident.
 func toAPIError(err error) *APIError {
@@ -132,6 +139,14 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That group is not mapped to a role. Reload the list; somebody may have removed it already.")
 	case errors.Is(err, auth.ErrBadJoinRole):
 		return ErrValidation(map[string]string{"role": "Let the person in as member or admin."})
+	case errors.Is(err, auth.ErrTokenName):
+		return ErrValidation(map[string]string{"name": sentence(err.Error())})
+	case errors.Is(err, auth.ErrTokenScope):
+		return ErrValidation(map[string]string{"scopes": sentence(err.Error())})
+	case errors.Is(err, auth.ErrTokenExpiry):
+		return ErrValidation(map[string]string{"expiresAt": sentence(err.Error())})
+	case errors.Is(err, auth.ErrNoSuchToken):
+		return ErrNotFound("That token was not found. It may have been revoked already; reload the list.")
 	case errors.Is(err, oidc.ErrNotConfigured):
 		return &APIError{Status: http.StatusNotFound, Code: "sso_not_configured",
 			Message: "That organization does not sign in through an identity provider. Check its name, or sign in with a password."}
