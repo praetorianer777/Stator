@@ -13,13 +13,16 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
+	"net/url"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
@@ -27,29 +30,14 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
-// tokenAuth stands in for sign-in until #5: a bearer token names a principal.
-// The map is guarded because the server reads it on its own goroutines.
-type tokenAuth struct {
-	mu     sync.Mutex
-	tokens map[string]*auth.Principal
-}
-
-func (a *tokenAuth) Authenticate(_ context.Context, credential string) (*auth.Principal, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if p, ok := a.tokens[credential]; ok {
-		return p, nil
-	}
-	return nil, auth.ErrInvalidToken
-}
-
-// apiServer is the real router over the real database and the real bucket.
+// apiServer is the real router over the real database and the real bucket,
+// signing callers in with real sessions.
 type apiServer struct {
-	srv    *httptest.Server
-	tokens *tokenAuth
-	store  objectstore.Store
-	themes *theme.Service
-	h      *harness
+	srv      *httptest.Server
+	accounts *auth.Service
+	store    objectstore.Store
+	themes   *theme.Service
+	h        *harness
 
 	mu         sync.Mutex
 	lastWriter *client
@@ -85,8 +73,9 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	if err := store.(*objectstore.S3Store).EnsureBucket(context.Background()); err != nil {
 		t.Fatalf("make the bucket: %v", err)
 	}
-	a := &apiServer{tokens: &tokenAuth{tokens: map[string]*auth.Principal{}}, store: store, themes: theme.NewService(h.cluster, store), h: h}
-	server := &httpapi.Server{DB: h.cluster, Log: discard(), Auth: a.tokens, Themes: a.themes, Fresh: h.freshness(t), CookieName: "stator_session"}
+	accounts := auth.NewService(h.cluster, cheapPasswords(), time.Hour)
+	a := &apiServer{accounts: accounts, store: store, themes: theme.NewService(h.cluster, store), h: h}
+	server := &httpapi.Server{DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes, Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie}
 	a.srv = httptest.NewServer(server.Routes(nil))
 	t.Cleanup(a.srv.Close)
 	return a
@@ -124,22 +113,32 @@ type client struct {
 	eager bool
 }
 
-func browser() *http.Client {
+func cookieJarClient() *http.Client {
 	jar, _ := cookiejar.New(nil)
 	return &http.Client{Jar: jar}
 }
 
-// as signs a person in to an organization, as #5's sessions will.
-func (a *apiServer) as(user, org uuid.UUID, slug string) *client {
-	token := uuid.NewString()
+// as opens a session for a member in their organization, the row a sign-in
+// writes, and hands its cookie to a browser of their own.
+func (a *apiServer) as(t *testing.T, user, org uuid.UUID, slug string) *client {
+	t.Helper()
+	var token string
+	_, err := a.h.cluster.WriteAdmin(context.Background(), func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		_, token, err = auth.OpenSession(ctx, tx, user, &org, auth.ProofPassword, time.Now().Add(time.Hour), "", "")
+		return err
+	})
+	if err != nil {
+		t.Fatalf("open a session: %v", err)
+	}
 	o := tenant.Org{ID: org, Slug: slug}
-	a.tokens.mu.Lock()
-	a.tokens.tokens[token] = &auth.Principal{UserID: user, Org: &o}
-	a.tokens.mu.Unlock()
-	return &client{api: a, token: token, user: user, ctx: tenant.WithOrg(context.Background(), o), http: browser()}
+	c := &client{api: a, token: token, user: user, ctx: tenant.WithOrg(context.Background(), o), http: cookieJarClient()}
+	base, _ := url.Parse(a.srv.URL)
+	c.http.Jar.SetCookies(base, []*http.Cookie{{Name: a.h.cfg.Auth.SessionCookie, Value: token, Path: "/"}})
+	return c
 }
 
-func (a *apiServer) anonymous() *client { return &client{api: a, http: browser()} }
+func (a *apiServer) anonymous() *client { return &client{api: a, http: cookieJarClient()} }
 
 type response struct {
 	Status int
@@ -155,9 +154,6 @@ func (c *client) send(t *testing.T, method, path, contentType string, body io.Re
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
-	}
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
 	c.api.handOver(t, c, req.Method)
 	resp, err := c.http.Do(req)
@@ -217,9 +213,6 @@ func (c *client) upload(t *testing.T, path, name string, data []byte) response {
 func (c *client) download(t *testing.T, path string) (*http.Response, []byte) {
 	t.Helper()
 	req, _ := http.NewRequest(http.MethodGet, c.api.srv.URL+path, nil)
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
-	}
 	c.api.handOver(t, c, req.Method)
 	resp, err := c.http.Do(req)
 	if err != nil {
