@@ -188,7 +188,15 @@ of the version `e2e/package.json` pins, on the host's network, and reaches the
 stack on its published ports: the session cookie and the sign-in redirects are
 bound to `http://localhost:$WEB_PORT`, so the browser has to see what a person
 sees. A setup project signs alice and bob in once and stores their sessions
-under `e2e/.auth/`; specs tagged `@auth` skip while the stack cannot sign
-anyone in. Chromium runs at desktop size and at 360x740.
+under `e2e/.auth/`, and leaves `demo` showing the built-in theme, as does a
+teardown project after the last spec; specs tagged `@auth` skip while the
+stack cannot sign anyone in. Chromium runs at desktop size and at 360x740.
+
+A spec that changes what an organization shows uses `orgTest` from
+`e2e/fixtures/org.ts` instead of `demo`: each spec file gets an organization
+of its own per worker, made through the api's test endpoints (on in compose
+through `STATOR_TEST_ENDPOINTS`, never in the chart), with alice and bob
+signed in to it, and removed with all its rows and files when the worker
+stops. See `docs/decisions.md`.
 
 A Helm chart follows later.
