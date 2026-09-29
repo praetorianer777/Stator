@@ -29,6 +29,8 @@ const (
 	DefaultConnMaxLifetime = time.Hour
 	DefaultHealthInterval  = 5 * time.Second
 	DefaultMaxReplicaLag   = 2 * time.Second
+	DefaultS3Bucket        = "stator-files"
+	DefaultS3Region        = "us-east-1"
 )
 
 // Config is the fully resolved configuration for every binary.
@@ -48,6 +50,7 @@ type Config struct {
 	DB        DB
 	Auth      Auth
 	Telemetry Telemetry
+	S3        S3
 }
 
 // DB describes the Postgres cluster: one writable primary and optional read
@@ -70,6 +73,18 @@ type DB struct {
 type Auth struct {
 	SessionCookie string
 	SecureCookies bool
+}
+
+// S3 is the bucket uploaded files live in: theme assets now, attachments
+// later. Any service that speaks the S3 protocol will do; a blank endpoint
+// leaves uploads off, and they are refused with the setting to fix.
+type S3 struct {
+	Endpoint  string
+	Bucket    string
+	AccessKey string
+	SecretKey string
+	Region    string
+	UseSSL    bool
 }
 
 // Telemetry is the metrics listener and the trace collector. Both are off when
@@ -122,6 +137,14 @@ func Load() (Config, error) {
 			OTLPEndpoint: l.str("STATOR_OTEL_ENDPOINT", ""),
 			SampleRatio:  l.float("STATOR_OTEL_SAMPLE_RATIO", 1),
 		},
+		S3: S3{
+			Endpoint:  l.str("STATOR_S3_ENDPOINT", ""),
+			Bucket:    l.str("STATOR_S3_BUCKET", DefaultS3Bucket),
+			AccessKey: l.str("STATOR_S3_ACCESS_KEY", ""),
+			SecretKey: l.str("STATOR_S3_SECRET_KEY", ""),
+			Region:    l.str("STATOR_S3_REGION", DefaultS3Region),
+			UseSSL:    l.boolean("STATOR_S3_USE_SSL", false),
+		},
 	}
 
 	if c.DB.PrimaryURL == "" {
@@ -148,6 +171,9 @@ func Load() (Config, error) {
 	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		l.problem("STATOR_OTEL_SAMPLE_RATIO must be between 0 and 1.")
+	}
+	if c.S3.Endpoint != "" && (c.S3.AccessKey == "" || c.S3.SecretKey == "") {
+		l.problem("STATOR_S3_ENDPOINT is set, so set STATOR_S3_ACCESS_KEY and STATOR_S3_SECRET_KEY as well.")
 	}
 	if c.DB.AdminURL == "" {
 		c.DB.AdminURL = c.DB.PrimaryURL
