@@ -1,0 +1,124 @@
+package httpapi
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/praetorianer777/stator/backend/internal/config"
+	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/observability"
+)
+
+// readinessTimeout bounds the database round trip behind /readyz, so a probe
+// gets an answer before its own deadline does.
+const readinessTimeout = 3 * time.Second
+
+// APIPrefix is where every endpoint but the probes lives.
+const APIPrefix = "/api/v1"
+
+// Database is what the handlers ask of the cluster; *db.Cluster is the real one.
+type Database interface {
+	Ping(ctx context.Context) error
+	Stats() db.Stats
+}
+
+// Server holds everything the handlers need.
+type Server struct {
+	DB   Database
+	Auth Authenticator
+	Log  *slog.Logger
+	// Telemetry counts and traces requests; nil serves without either.
+	Telemetry *observability.Telemetry
+
+	CookieName string
+	Secure     bool
+	// AppBaseURL is the web client's origin, which the same-site check trusts.
+	AppBaseURL string
+	// CheckOrigin also refuses a cookie-carried write from a foreign origin;
+	// off in development, where the dev server proxies from an origin of its own.
+	CheckOrigin bool
+	// RequestTimeout bounds each handler; zero means the configured default.
+	RequestTimeout time.Duration
+}
+
+// Routes builds the HTTP surface. The order matters: an id first so every later
+// line can quote it, recovery inside the logger so a panic still logs a line.
+func (s *Server) Routes(allowedOrigins []string) http.Handler {
+	timeout := s.RequestTimeout
+	if timeout <= 0 {
+		timeout = config.DefaultRequestTimeout
+	}
+
+	r := chi.NewRouter()
+	r.Use(requestID)
+	if s.Telemetry != nil {
+		r.Use(observe(s.Telemetry.Metrics))
+	}
+	r.Use(logging(s.Log))
+	r.Use(recovery)
+	r.Use(securityHeaders)
+	r.Use(cors(allowedOrigins))
+	r.Use(s.sameSite(allowedOrigins))
+	r.Use(middleware.Timeout(timeout))
+	r.Use(s.authenticate)
+
+	// Liveness and readiness are deliberately outside the API and authentication.
+	r.Get("/healthz", s.handleLiveness)
+	r.Get("/readyz", s.handleReadiness)
+
+	r.Route(APIPrefix, func(r chi.Router) {
+		r.Get("/openapi.json", s.handleOpenAPI)
+	})
+
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		respondError(w, r, ErrNotFound("No such endpoint. The API lives under "+APIPrefix+"."))
+	})
+	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
+		respondError(w, r, &APIError{
+			Status:  http.StatusMethodNotAllowed,
+			Code:    "method_not_allowed",
+			Message: "That method is not allowed here.",
+		})
+	})
+	return r
+}
+
+// statusResponse is what the probes answer.
+type statusResponse struct {
+	Status string `json:"status"`
+}
+
+// readinessResponse adds how reads are being routed, for an operator.
+type readinessResponse struct {
+	Status  string   `json:"status"`
+	Routing db.Stats `json:"routing"`
+}
+
+// handleLiveness touches nothing external on purpose: a database outage must
+// not get the container killed and restarted, which would only make it worse.
+func (s *Server) handleLiveness(w http.ResponseWriter, r *http.Request) {
+	respondJSON(w, r, http.StatusOK, statusResponse{Status: "ok"})
+}
+
+// handleReadiness answers whether the process can serve traffic. Nobody has
+// signed in to read it, so a failure says whether, not why.
+func (s *Server) handleReadiness(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), readinessTimeout)
+	defer cancel()
+
+	if s.DB == nil {
+		respondJSON(w, r, http.StatusServiceUnavailable, statusResponse{Status: "unavailable"})
+		return
+	}
+	if err := s.DB.Ping(ctx); err != nil {
+		loggerFrom(r.Context()).Error("not ready", "error", err)
+		respondJSON(w, r, http.StatusServiceUnavailable, statusResponse{Status: "unavailable"})
+		return
+	}
+	respondJSON(w, r, http.StatusOK, readinessResponse{Status: "ok", Routing: s.DB.Stats()})
+}
