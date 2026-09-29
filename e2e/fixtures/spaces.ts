@@ -22,3 +22,16 @@ export async function createSpace(api: StatorApi, key: string, name: string): Pr
 export async function deleteSpace(api: StatorApi, key: string): Promise<void> {
   await api.DELETE("/spaces/{spaceKey}", { params: { path: { spaceKey: key } } });
 }
+
+export type Page = components["schemas"]["Page"];
+
+/** Adds a page under a parent, last among its children. */
+export async function createPage(api: StatorApi, parentId: string, title: string): Promise<Page> {
+  return must(await api.POST("/pages", { body: { parentId, title } })).page;
+}
+
+/** The titles directly under a parent of a space, in order. */
+export async function childTitles(api: StatorApi, key: string, parentId: string): Promise<string[]> {
+  const { pages } = must(await api.GET("/spaces/{spaceKey}/pages", { params: { path: { spaceKey: key }, query: { parent: parentId } } }));
+  return pages.map((each) => each.title);
+}

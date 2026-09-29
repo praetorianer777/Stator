@@ -27,6 +27,7 @@ export function aPage(over: Partial<Page> = {}): Page {
     body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome to the handbook." }] }] },
     version: 1,
     home: true,
+    ancestors: [],
     createdByName: "Ada Lovelace",
     createdAt: "2026-09-29T08:00:00Z",
     updatedByName: "Ada Lovelace",

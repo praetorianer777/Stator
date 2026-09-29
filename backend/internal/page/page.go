@@ -33,8 +33,10 @@ type Page struct {
 	// Body is the document, ProseMirror JSON the allowlist accepts.
 	Body json.RawMessage `json:"body"`
 	// Version counts saves; a save names the one it started from.
-	Version       int       `json:"version"`
-	Home          bool      `json:"home"`
+	Version int  `json:"version"`
+	Home    bool `json:"home"`
+	// Ancestors are the pages above this one, the home page first.
+	Ancestors     []Ref     `json:"ancestors"`
 	CreatedByName string    `json:"createdByName"`
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedByName string    `json:"updatedByName"`

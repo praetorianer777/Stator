@@ -130,8 +130,14 @@ var operations = []operation{
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For administrators.", responses: none()},
 
+	{method: "GET", path: "/spaces/{spaceKey}/pages", handler: "handleListPages", tag: "pages", summary: "The pages directly under a parent, by default under the space's home page, in order.",
+		query: []param{{name: "parent", description: "The page whose children to list.", schema: &openapi.Schema{Type: "string", Format: "uuid"}}}, responses: ok(env{"pages": []page.TreeNode{}})},
+	{method: "GET", path: "/spaces/{spaceKey}/outline", handler: "handleSpaceOutline", tag: "pages", summary: "Every page of a space in reading order, with its depth, for choosing where a page goes.", responses: ok(env{"pages": []page.OutlineEntry{}})},
+	{method: "POST", path: "/pages", handler: "handleCreatePage", tag: "pages", summary: "Add a page under a parent, last unless a place is named.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
 	{method: "GET", path: "/pages/{pageID}", handler: "handleGetPage", tag: "pages", summary: "One page with its body, and the space it is in.", responses: ok(pageResponse{})},
 	{method: "PATCH", path: "/pages/{pageID}", handler: "handleUpdatePage", tag: "pages", summary: "Save a page's title or body over the version it was made from.", request: page.UpdateInput{}, responses: ok(env{"page": page.Page{}})},
+	{method: "POST", path: "/pages/{pageID}/move", handler: "handleMovePage", tag: "pages", summary: "Move a page under another, in its space or another, with or without its children; a move under itself is refused.", request: page.MoveInput{}, responses: ok(env{"page": page.Page{}})},
+	{method: "POST", path: "/pages/{pageID}/copy", handler: "handleCopyPage", tag: "pages", summary: "Copy a page, with or without the pages below it, under a parent in its space or another.", request: page.CopyInput{}, responses: created(env{"page": page.Page{}})},
 }
 
 // Spec builds the OpenAPI document from the table.

@@ -12,12 +12,9 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/rank"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
-
-// HomeRank is the rank of a space's home page, the one root of its tree,
-// which has no siblings to be ordered among.
-const HomeRank = "V"
 
 // Service keeps spaces and makes each one's home page with it.
 type Service struct {
@@ -143,7 +140,7 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		var home uuid.UUID
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO page (org_id, space_id, rank, title, created_by, updated_by)
-			VALUES (current_org_id(), $1, $2, $3, $4, $4) RETURNING id`, id, HomeRank, name, actor.UserID).Scan(&home); err != nil {
+			VALUES (current_org_id(), $1, $2, $3, $4, $4) RETURNING id`, id, rank.Initial(), name, actor.UserID).Scan(&home); err != nil {
 			return fmt.Errorf("make the home page: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `UPDATE space SET home_page_id = $2 WHERE id = $1`, id, home); err != nil {

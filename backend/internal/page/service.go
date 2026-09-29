@@ -60,6 +60,9 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	if err != nil {
 		return nil, nil, err
 	}
+	if p.Ancestors, err = ancestors(ctx, tx, id); err != nil {
+		return nil, nil, err
+	}
 	return p, sp, nil
 }
 

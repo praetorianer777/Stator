@@ -1,0 +1,74 @@
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import type { Doc } from "@/features/editor/schema";
+import { api } from "./client";
+import { pagesQueryKey, type Page } from "./pages";
+import type { components } from "./schema";
+
+type Wire = components["schemas"];
+
+/** A page as the sidebar's tree shows it, loaded a level at a time. */
+export type TreeNode = Wire["TreeNode"];
+/** A page of a whole space in reading order, with its depth. */
+export type OutlineEntry = Wire["OutlineEntry"];
+
+/** Where a page goes: under a parent, before or after one of its children, or last. */
+export interface Placement {
+  parentId: string;
+  beforeId?: string;
+  afterId?: string;
+}
+
+export const treeQueryKey = ["tree"] as const;
+
+/** The pages under a parent of a space; no parent means under its home page. */
+export function useChildren(spaceKey: string, parentId?: string) {
+  return useQuery({
+    queryKey: [...treeQueryKey, spaceKey, "children", parentId ?? "home"],
+    queryFn: async (): Promise<TreeNode[]> =>
+      (
+        await api.GET("/spaces/{spaceKey}/pages", {
+          params: { path: { spaceKey }, query: parentId ? { parent: parentId } : {} },
+        })
+      ).data!.pages,
+  });
+}
+
+export function useOutline(spaceKey: string | undefined) {
+  return useQuery({
+    queryKey: [...treeQueryKey, spaceKey, "outline"],
+    queryFn: async (): Promise<OutlineEntry[]> => (await api.GET("/spaces/{spaceKey}/outline", { params: { path: { spaceKey: spaceKey! } } })).data!.pages,
+    enabled: Boolean(spaceKey),
+  });
+}
+
+// A change anywhere in a tree can reorder any level of it and any page's
+// breadcrumbs, so everything read from trees and pages is read again.
+function refreshTrees(queryClient: QueryClient) {
+  return Promise.all([queryClient.invalidateQueries({ queryKey: treeQueryKey }), queryClient.invalidateQueries({ queryKey: pagesQueryKey })]);
+}
+
+export function useCreatePage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: Placement & { title: string; body?: Doc }): Promise<Page> => (await api.POST("/pages", { body: input })).data!.page as Page,
+    onSuccess: () => refreshTrees(queryClient),
+  });
+}
+
+export function useMovePage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...body }: Placement & { id: string; withChildren?: boolean }): Promise<Page> =>
+      (await api.POST("/pages/{pageID}/move", { params: { path: { pageID: id } }, body })).data!.page as Page,
+    onSettled: () => refreshTrees(queryClient),
+  });
+}
+
+export function useCopyPage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...body }: Placement & { id: string; withChildren: boolean; title?: string }): Promise<Page> =>
+      (await api.POST("/pages/{pageID}/copy", { params: { path: { pageID: id } }, body })).data!.page as Page,
+    onSuccess: () => refreshTrees(queryClient),
+  });
+}
