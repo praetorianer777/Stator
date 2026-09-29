@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SIDEBAR_DRAWER_BELOW_PX } from "@/config";
-import { renderAt, setViewportWidth } from "@/test/app";
+import { renderAt, setViewportWidth, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 
 // jsdom's own width, which is what every other shell test runs at.
@@ -20,6 +20,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   setViewportWidth(WIDE);
+  vi.unstubAllGlobals();
 });
 
 const drawer = () => document.querySelector<HTMLElement>('[role="dialog"][data-sidebar="drawer"]');
@@ -229,6 +230,7 @@ describe("axe", () => {
 
   it("finds nothing on the narrow shell, drawer shut or open", async () => {
     setViewportWidth(PHONE);
+    stubApi({ "GET /spaces": { status: 200, body: { spaces: [] } } });
     await renderAt("/spaces");
     await screen.findByText("No spaces yet");
     expect(await axeViolations()).toEqual([]);

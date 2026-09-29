@@ -96,3 +96,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
   focus stays in the editor, and the stored document on the development
   editor page is a named region the keyboard can reach and scroll. The
   browser suite's accessibility checks now pass with no known findings.
+- Spaces: a key that is part of every address (`/s/{key}`), a name, a
+  description and a home page, the root of the space's pages. A directory
+  at `/spaces` lists them; administrators create, rename, describe and
+  delete them, recorded in the audit log, and every member reads and edits
+  their pages. Space settings show the details and who may do what. A page
+  is read at `/s/{key}/p/{id}/{slug}` and edited in a chunk of its own, and
+  a save made from an older copy of the page is refused.

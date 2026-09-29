@@ -11,6 +11,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
+	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
@@ -121,6 +123,15 @@ var operations = []operation{
 	{method: "POST", path: "/themes/{themeID}/assets", handler: "handleUploadThemeAsset", tag: "themes", summary: "Put a picture or a font on a theme, as a multipart part named file.", multipart: true, responses: created(env{"asset": theme.Asset{}})},
 	{method: "GET", path: "/themes/{themeID}/assets/{assetID}", handler: "handleThemeAsset", tag: "themes", summary: "The bytes of a theme's file, as a download.", binary: true, responses: ok(nil)},
 	{method: "DELETE", path: "/themes/{themeID}/assets/{assetID}", handler: "handleDeleteThemeAsset", tag: "themes", summary: "Take a file off a theme it no longer uses.", responses: none()},
+
+	{method: "GET", path: "/spaces", handler: "handleListSpaces", tag: "spaces", summary: "Every space the caller may see, by name.", responses: ok(env{"spaces": []space.Space{}})},
+	{method: "POST", path: "/spaces", handler: "handleCreateSpace", tag: "spaces", summary: "Make a space and its home page. For administrators.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
+	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
+	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
+	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For administrators.", responses: none()},
+
+	{method: "GET", path: "/pages/{pageID}", handler: "handleGetPage", tag: "pages", summary: "One page with its body, and the space it is in.", responses: ok(pageResponse{})},
+	{method: "PATCH", path: "/pages/{pageID}", handler: "handleUpdatePage", tag: "pages", summary: "Save a page's title or body over the version it was made from.", request: page.UpdateInput{}, responses: ok(env{"page": page.Page{}})},
 }
 
 // Spec builds the OpenAPI document from the table.

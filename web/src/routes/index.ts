@@ -7,7 +7,10 @@ import { LOGIN_PATH } from "@/config";
 import { appRoute } from "./app";
 import { devEditorRoute } from "./dev-editor";
 import { loginRoute } from "./login";
-import { homeRoute, searchRoute, spacesRoute } from "./pages";
+import { homeRoute, searchRoute } from "./pages";
+import { pageEditRoute } from "./page-edit";
+import { pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
+import { spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
 import { ssoRoute } from "./sso";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
@@ -16,7 +19,19 @@ import { tokensRoute } from "./tokens";
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  appRoute.addChildren([homeRoute, spacesRoute, searchRoute, themesRoute, themeNewRoute, themeEditRoute, tokensRoute, ssoRoute, devEditorRoute]),
+  appRoute.addChildren([
+    homeRoute,
+    spacesRoute,
+    spaceNewRoute,
+    spaceRoute.addChildren([spaceHomeRoute, pageRoute, pageEditRoute, spaceSettingsRoute]),
+    searchRoute,
+    themesRoute,
+    themeNewRoute,
+    themeEditRoute,
+    tokensRoute,
+    ssoRoute,
+    devEditorRoute,
+  ]),
 ]);
 
 /** The application's router; tests pass a memory history to start anywhere. */

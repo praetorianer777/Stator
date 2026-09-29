@@ -135,3 +135,14 @@ export const CODE_LANGUAGES = [
   { id: "xml", label: "HTML / XML" },
   { id: "yaml", label: "YAML" },
 ] as const;
+
+/** A space key's longest form, and the longest name and description, matching the API's limits. */
+export const SPACE_KEY_MAX_LENGTH = 10;
+export const SPACE_NAME_MAX_LENGTH = 100;
+export const SPACE_DESCRIPTION_MAX_LENGTH = 1000;
+/** The longest page title, matching the API's MaxTitleLength. */
+export const PAGE_TITLE_MAX_LENGTH = 255;
+/** How far a page's title runs into its address before it is cut. */
+export const PAGE_SLUG_MAX_LENGTH = 60;
+/** The slug of a page whose title leaves nothing usable in an address. */
+export const PAGE_SLUG_FALLBACK = "page";

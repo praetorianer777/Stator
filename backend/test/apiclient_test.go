@@ -26,6 +26,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
+	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -75,7 +77,11 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	}
 	accounts := auth.NewService(h.cluster, cheapPasswords(), time.Hour)
 	a := &apiServer{accounts: accounts, store: store, themes: theme.NewService(h.cluster, store), h: h}
-	server := &httpapi.Server{DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes, Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie}
+	server := &httpapi.Server{
+		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
+		Spaces: space.NewService(h.cluster), Pages: page.NewService(h.cluster),
+		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie,
+	}
 	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))
 	t.Cleanup(a.srv.Close)
 	return a

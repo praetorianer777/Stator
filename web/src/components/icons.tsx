@@ -97,6 +97,7 @@ export const Icon = {
   Hash: makeIcon("hash", ["M6 2.5 4.5 13.5", "M11.5 2.5 10 13.5", "M3 6h10.5", "M2.5 10H13"]),
   Key: makeIcon("key", ["M5.5 12.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "m7.6 7.4 5.4-5.4", "m11 4 1.5 1.5", "m9.5 5.5 1.5 1.5"]),
   Copy: makeIcon("copy", ["M5.5 5.5h8v8h-8z", "M10.5 5.5v-3h-8v8h3"]),
+  Settings: makeIcon("settings", ["M2.5 4.5h11", "M2.5 11.5h11", "M5.5 3v3", "M10.5 10v3"]),
   Palette: makeIcon("palette", [
     "M8 2.5a5.5 5.5 0 1 0 0 11c.8 0 1.2-.6 1-1.3-.3-.9.3-1.7 1.2-1.7h1.3a2 2 0 0 0 2-2A5.5 5.5 0 0 0 8 2.5Z",
     "M5 7.5h.01",

@@ -79,6 +79,7 @@ describe("the sign-in page", () => {
     const sent = stubApi({
       "GET /auth/me": unauthorized,
       "POST /auth/login": { status: 200, body: signedIn },
+      "GET /spaces": { status: 200, body: { spaces: [] } },
     });
     const router = await renderAt("/login?next=%2Fspaces", { me: null });
     await userEvent.type(await screen.findByLabelText("Email"), "ada@stator.test");

@@ -5,6 +5,7 @@ import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
 import { APP_NAME, APP_VERSION, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { t } from "@/i18n";
+import { SpaceNav } from "@/features/spaces/SpaceNav";
 import { NavItem } from "./nav";
 import { Rail } from "./Rail";
 import { SidebarGroup } from "./SidebarGroup";
@@ -60,25 +61,28 @@ function SidebarGroups({ onNavigate }: { onNavigate?: () => void }) {
   const [groups, toggleGroup] = useSidebarGroups();
   const isOpen = (id: string, defaultOpen: boolean) => groups[id] ?? defaultOpen;
   return (
-    <SidebarGroup id="wiki" title={t.nav.groupWiki} open={isOpen("wiki", true)} onToggle={() => toggleGroup("wiki", true)}>
-      <NavItem to="/" exact icon="Home" rail={false} onNavigate={onNavigate}>
-        {t.nav.home}
-      </NavItem>
-      <NavItem to="/spaces" icon="Space" rail={false} onNavigate={onNavigate}>
-        {t.nav.spaces}
-      </NavItem>
-      <NavItem
-        to="/search"
-        icon="Search"
-        rail={false}
-        onNavigate={onNavigate}
-        // On the current item the hint takes the accent: subtle ink is too
-        // faint on the accent tint in the dark palette.
-        trailing={<kbd className="font-mono text-2xs text-ink-subtle in-data-[status=active]:text-accent">{t.search.shortcut}</kbd>}
-      >
-        {t.nav.search}
-      </NavItem>
-    </SidebarGroup>
+    <>
+      <SidebarGroup id="wiki" title={t.nav.groupWiki} open={isOpen("wiki", true)} onToggle={() => toggleGroup("wiki", true)}>
+        <NavItem to="/" exact icon="Home" rail={false} onNavigate={onNavigate}>
+          {t.nav.home}
+        </NavItem>
+        <NavItem to="/spaces" icon="Space" rail={false} onNavigate={onNavigate}>
+          {t.nav.spaces}
+        </NavItem>
+        <NavItem
+          to="/search"
+          icon="Search"
+          rail={false}
+          onNavigate={onNavigate}
+          // On the current item the hint takes the accent: subtle ink is too
+          // faint on the accent tint in the dark palette.
+          trailing={<kbd className="font-mono text-2xs text-ink-subtle in-data-[status=active]:text-accent">{t.search.shortcut}</kbd>}
+        >
+          {t.nav.search}
+        </NavItem>
+      </SidebarGroup>
+      <SpaceNav open={isOpen("space", true)} onToggle={() => toggleGroup("space", true)} onNavigate={onNavigate} />
+    </>
   );
 }
 

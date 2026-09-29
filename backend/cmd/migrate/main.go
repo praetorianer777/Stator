@@ -66,9 +66,13 @@ func run() error {
 		return err
 	}
 
+	// Each feature reserves its own range of migration numbers, so a branch
+	// can land a lower number after a higher one is already applied.
+	allowMissing := goose.WithAllowMissing()
+
 	switch command {
 	case "up":
-		if err := goose.UpContext(ctx, sqlDB, "."); err != nil {
+		if err := goose.UpContext(ctx, sqlDB, ".", allowMissing); err != nil {
 			return err
 		}
 	case "up-to":
@@ -79,7 +83,7 @@ func run() error {
 		if err != nil {
 			return fmt.Errorf("%q is not a migration version; give its number, such as 1", args[1])
 		}
-		if err := goose.UpToContext(ctx, sqlDB, ".", v); err != nil {
+		if err := goose.UpToContext(ctx, sqlDB, ".", v, allowMissing); err != nil {
 			return err
 		}
 	case "down":

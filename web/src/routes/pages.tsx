@@ -4,7 +4,7 @@ import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
 
-// Placeholders until spaces and pages exist: each says what it is for, in the
+// Placeholders until the recent pages and search exist: each says what it is for, in the
 // empty state, which is where a first-time visitor reads that.
 
 function Home() {
@@ -26,15 +26,6 @@ function Home() {
   );
 }
 
-function Spaces() {
-  return (
-    <>
-      <PageHeader title={t.spaces.title} />
-      <EmptyState icon={<Icon.Space />} title={t.spaces.emptyTitle} description={t.spaces.emptyBody} />
-    </>
-  );
-}
-
 function Search() {
   return (
     <>
@@ -45,5 +36,4 @@ function Search() {
 }
 
 export const homeRoute = createRoute({ getParentRoute: () => appRoute, path: "/", component: Home });
-export const spacesRoute = createRoute({ getParentRoute: () => appRoute, path: "/spaces", component: Spaces });
 export const searchRoute = createRoute({ getParentRoute: () => appRoute, path: "/search", component: Search });

@@ -45,3 +45,5 @@ Adapted from Armature:
   endpoints_test.go and zz_coverage_test.go: the response validation and
   the operation coverage of Armature's integration suite
 - web/src/routes/tokens.tsx: web/src/routes/tokens.tsx
+- backend/internal/space/space.go: ValidKey, NormalizeKey and SuggestKey from
+  internal/project/project.go, the shape of a project key
