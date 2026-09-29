@@ -12,10 +12,11 @@ import { RouteError, rootRoute } from "./root";
 import { ssoRoute } from "./sso";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
+import { tokensRoute } from "./tokens";
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  appRoute.addChildren([homeRoute, spacesRoute, searchRoute, themesRoute, themeNewRoute, themeEditRoute, ssoRoute, devEditorRoute]),
+  appRoute.addChildren([homeRoute, spacesRoute, searchRoute, themesRoute, themeNewRoute, themeEditRoute, tokensRoute, ssoRoute, devEditorRoute]),
 ]);
 
 /** The application's router; tests pass a memory history to start anywhere. */
