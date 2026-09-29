@@ -51,6 +51,33 @@ stack's network. `make help` lists every target.
 `./run-tests.sh` uses the same compose project as `make up` in the same
 checkout and removes it, data included, when it finishes.
 
+## Deployment
+
+`deploy/charts/stator` deploys Stator to Kubernetes. A real installation
+brings its own database, Valkey and bucket:
+
+```sh
+helm install stator deploy/charts/stator \
+  --set ingress.host=wiki.example.com \
+  --set cnpg.enabled=true \
+  --set valkey.host=valkey.example.internal
+```
+
+With `cnpg.enabled` the chart asks an installed CloudNativePG operator for a
+cluster of `cnpg.spec.instances` (three by default). Every write, migration
+and admin task goes to the cluster's `-rw` service, which follows the
+primary. Reads go to the `-ro` service, which spreads them over the replicas,
+whenever there is more than one instance; each read checks that the replica
+it reached has caught up, and otherwise goes to the primary, so a person
+always sees their own changes. Size the write and read pools with
+`database.pool.primaryMaxConns` and `database.pool.replicaMaxConns`.
+
+Without CNPG, set `database.host` and, for replicas of your own,
+`database.replicaHosts`. For a look without any of that,
+`-f deploy/charts/stator/values-demo.yaml` brings a Postgres and a Valkey pod
+of its own. `values.yaml` documents every setting; see also
+`docs/architecture.md`.
+
 ## Contributing
 
 Every change hangs off an issue and a branch named `<type>/<issue>-<slug>`,

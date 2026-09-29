@@ -14,6 +14,7 @@ func clean(t *testing.T) {
 	for _, key := range []string{
 		"STATOR_ENV", "STATOR_HTTP_ADDR", "STATOR_LOG_LEVEL", "STATOR_APP_URL", "STATOR_CORS_ORIGINS",
 		"STATOR_REQUEST_TIMEOUT", "STATOR_DB_REPLICA_URLS", "STATOR_DB_ADMIN_URL", "STATOR_DB_MAX_CONNS",
+		"STATOR_DB_PRIMARY_MAX_CONNS", "STATOR_DB_REPLICA_MAX_CONNS",
 		"STATOR_DB_MIN_CONNS", "STATOR_DB_CONN_MAX_LIFETIME", "STATOR_DB_HEALTH_INTERVAL",
 		"STATOR_DB_MAX_REPLICA_LAG", "STATOR_DB_REPLICA_LAG_SAMPLES", "STATOR_READ_YOUR_WRITES_TTL",
 		"STATOR_VALKEY_URL", "STATOR_SESSION_COOKIE",
@@ -36,7 +37,7 @@ func TestDefaults(t *testing.T) {
 	if c.Env != EnvDevelopment || c.HTTPAddr != DefaultHTTPAddr || c.RequestTimeout != DefaultRequestTimeout {
 		t.Errorf("process defaults = %+v", c)
 	}
-	if c.DB.MaxConns != DefaultMaxConns || c.DB.MinConns != DefaultMinConns || c.DB.HealthInterval != DefaultHealthInterval {
+	if c.DB.PrimaryMaxConns != DefaultMaxConns || c.DB.ReplicaMaxConns != DefaultMaxConns || c.DB.MinConns != DefaultMinConns || c.DB.HealthInterval != DefaultHealthInterval {
 		t.Errorf("pool defaults = %+v", c.DB)
 	}
 	if c.DB.AdminURL != c.DB.PrimaryURL {
@@ -113,6 +114,25 @@ func TestPoolBoundsMustAgree(t *testing.T) {
 	t.Setenv("STATOR_DB_MIN_CONNS", "5")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_DB_MIN_CONNS") {
 		t.Fatalf("a minimum above the maximum should be refused: %v", err)
+	}
+	t.Setenv("STATOR_DB_MAX_CONNS", "")
+	t.Setenv("STATOR_DB_MIN_CONNS", "")
+	t.Setenv("STATOR_DB_REPLICA_MAX_CONNS", "0")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_DB_REPLICA_MAX_CONNS must be at least 1.") {
+		t.Fatalf("an empty read pool should be refused: %v", err)
+	}
+}
+
+func TestThePoolsAreSizedApart(t *testing.T) {
+	clean(t)
+	t.Setenv("STATOR_DB_MAX_CONNS", "12")
+	t.Setenv("STATOR_DB_REPLICA_MAX_CONNS", "40")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.DB.PrimaryMaxConns != 12 || c.DB.ReplicaMaxConns != 40 {
+		t.Fatalf("pools = %d write, %d read; want 12 from STATOR_DB_MAX_CONNS and 40 of its own", c.DB.PrimaryMaxConns, c.DB.ReplicaMaxConns)
 	}
 }
 

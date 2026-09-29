@@ -1,0 +1,12 @@
+apiVersion: v2
+name: stator
+description: A team wiki and knowledge base that works hand in hand with Armature
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/praetorianer777/Stator
+sources:
+  - https://github.com/praetorianer777/Stator
+# No subcharts. Postgres and Valkey for a trial are two StatefulSets in
+# templates/, on the images the compose stack runs; a real deployment brings
+# its own database, Valkey and bucket.

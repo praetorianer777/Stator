@@ -10,6 +10,8 @@ text is available at https://www.apache.org/licenses/LICENSE-2.0.
 Adapted from Armature:
 - backend/internal/db: internal/db, the cluster, read routing and LSN pinning
 - backend/internal/freshness: internal/freshness, the read-your-writes tracker
+- deploy/charts/stator: deploy/charts/armature, its helpers, the CNPG cluster,
+  the bundled Postgres and Valkey, and the roles, secrets, migrate and seed Jobs
 - backend/internal/objectstore: the S3 client of internal/attachment
 - backend/internal/theme and its migrations: internal/theme, migrations
   00050_themes, 00902_org_default_theme and 00906_theme_names_per_organization

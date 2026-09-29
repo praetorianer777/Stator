@@ -1,0 +1,41 @@
+# Everything in one command, for a look at the product rather than a
+# deployment of it. Postgres and Valkey come up inside the release; bring a
+# bucket of your own and set s3 to turn uploads on.
+#
+#   helm install demo deploy/charts/stator -f deploy/charts/stator/values-demo.yaml
+#
+# Not for real work: one database pod, no backups, no TLS, and the seeded
+# development organization.
+
+env: development
+
+ingress:
+  enabled: true
+  host: stator.localhost
+  tls:
+    enabled: false
+
+# development is the one setting where this may be false.
+auth:
+  secureCookies: false
+
+api:
+  replicas: 1
+web:
+  replicas: 1
+
+database:
+  sslmode: disable
+  ownerRole: postgres
+
+jobs:
+  seed:
+    enabled: true
+
+# One pod and one volume each. The superuser password is the generated
+# <fullname>-db-owner Secret, which the database is told and the Jobs use.
+postgresql:
+  enabled: true
+
+valkey:
+  bundled: true

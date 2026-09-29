@@ -65,7 +65,10 @@ type DB struct {
 	// policy, for signup, login and cross-tenant jobs. Defaults to PrimaryURL.
 	AdminURL string
 
-	MaxConns        int32
+	// PrimaryMaxConns bounds the write pool, and the admin pool beside it;
+	// ReplicaMaxConns bounds each read pool.
+	PrimaryMaxConns int32
+	ReplicaMaxConns int32
 	MinConns        int32
 	ConnMaxLifetime time.Duration
 	HealthInterval  time.Duration
@@ -126,6 +129,8 @@ func (e *Error) Error() string {
 // the result. It returns every problem it finds at once rather than the first.
 func Load() (Config, error) {
 	l := &loader{}
+	// STATOR_DB_MAX_CONNS sizes both pools unless one is sized on its own.
+	maxConns := l.integer("STATOR_DB_MAX_CONNS", DefaultMaxConns)
 	c := Config{
 		Env:            l.str("STATOR_ENV", EnvDevelopment),
 		HTTPAddr:       l.str("STATOR_HTTP_ADDR", DefaultHTTPAddr),
@@ -137,7 +142,8 @@ func Load() (Config, error) {
 			PrimaryURL:      l.str("STATOR_DB_PRIMARY_URL", ""),
 			ReplicaURLs:     splitList(l.str("STATOR_DB_REPLICA_URLS", "")),
 			AdminURL:        l.str("STATOR_DB_ADMIN_URL", ""),
-			MaxConns:        int32(l.integer("STATOR_DB_MAX_CONNS", DefaultMaxConns)),
+			PrimaryMaxConns: int32(l.integer("STATOR_DB_PRIMARY_MAX_CONNS", maxConns)),
+			ReplicaMaxConns: int32(l.integer("STATOR_DB_REPLICA_MAX_CONNS", maxConns)),
 			MinConns:        int32(l.integer("STATOR_DB_MIN_CONNS", DefaultMinConns)),
 			ConnMaxLifetime: l.duration("STATOR_DB_CONN_MAX_LIFETIME", DefaultConnMaxLifetime),
 			HealthInterval:  l.duration("STATOR_DB_HEALTH_INTERVAL", DefaultHealthInterval),
@@ -176,11 +182,15 @@ func Load() (Config, error) {
 	default:
 		l.problem(fmt.Sprintf("STATOR_ENV is %q; set it to development, staging or production.", c.Env))
 	}
-	if c.DB.MaxConns < 1 {
-		l.problem("STATOR_DB_MAX_CONNS must be at least 1.")
-	}
-	if c.DB.MinConns > c.DB.MaxConns {
-		l.problem(fmt.Sprintf("STATOR_DB_MIN_CONNS (%d) exceeds STATOR_DB_MAX_CONNS (%d); lower the first or raise the second.", c.DB.MinConns, c.DB.MaxConns))
+	for _, pool := range []struct {
+		key string
+		max int32
+	}{{"STATOR_DB_PRIMARY_MAX_CONNS", c.DB.PrimaryMaxConns}, {"STATOR_DB_REPLICA_MAX_CONNS", c.DB.ReplicaMaxConns}} {
+		if pool.max < 1 {
+			l.problem(pool.key + " must be at least 1.")
+		} else if c.DB.MinConns > pool.max {
+			l.problem(fmt.Sprintf("STATOR_DB_MIN_CONNS (%d) exceeds %s (%d); lower the first or raise the second.", c.DB.MinConns, pool.key, pool.max))
+		}
 	}
 	if c.DB.ReplicaLagSamples < 1 {
 		l.problem("STATOR_DB_REPLICA_LAG_SAMPLES must be at least 1.")
