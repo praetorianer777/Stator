@@ -1,0 +1,36 @@
+import type { Page } from "@/api/pages";
+import type { Space } from "@/api/spaces";
+
+/** A space the tests share, which an administrator may do anything in. */
+export function aSpace(over: Partial<Space> = {}): Space {
+  return {
+    id: "0195f000-0000-7000-8000-00000000d0c5",
+    key: "DOCS",
+    name: "Handbook",
+    description: "How we work.",
+    homePageId: "0195f000-0000-7000-8000-000000000001",
+    createdAt: "2026-09-29T08:00:00Z",
+    updatedAt: "2026-09-29T08:00:00Z",
+    can: { editPages: true, administer: true, delete: true },
+    ...over,
+  };
+}
+
+/** A page with a line of text, by default the home page of aSpace. */
+export function aPage(over: Partial<Page> = {}): Page {
+  return {
+    id: "0195f000-0000-7000-8000-000000000001",
+    spaceId: "0195f000-0000-7000-8000-00000000d0c5",
+    spaceKey: "DOCS",
+    parentId: null,
+    title: "Handbook",
+    body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome to the handbook." }] }] },
+    version: 1,
+    home: true,
+    createdByName: "Ada Lovelace",
+    createdAt: "2026-09-29T08:00:00Z",
+    updatedByName: "Ada Lovelace",
+    updatedAt: "2026-09-29T08:00:00Z",
+    ...over,
+  };
+}

@@ -1,14 +1,16 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
-import { renderAt } from "@/test/app";
+import { renderAt, stubApi } from "@/test/app";
 import { GROUPS_KEY, SIDEBAR_KEY } from "./state";
 
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
 });
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("the shell", () => {
   it("draws the rail, the sidebar and the top bar around the page", async () => {
@@ -45,6 +47,7 @@ describe("the shell", () => {
   });
 
   it("marks where the reader is", async () => {
+    stubApi({ "GET /spaces": { status: 200, body: { spaces: [] } } });
     await renderAt("/spaces");
     expect(await screen.findByText("No spaces yet")).toBeInTheDocument();
     const sidebar = document.querySelector<HTMLElement>("[data-sidebar]")!;
