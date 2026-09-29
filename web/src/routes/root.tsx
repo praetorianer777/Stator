@@ -1,6 +1,6 @@
 import { Outlet, createRootRouteWithContext, useNavigate, type ErrorComponentProps } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
-import { Button, EmptyState } from "@/components/ui";
+import { Button, EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { AppShell } from "@/features/shell/AppShell";
 import { t } from "@/i18n";
@@ -24,9 +24,10 @@ export function NotFound() {
   const navigate = useNavigate();
   return (
     <div data-not-found>
+      <PageHeader title={t.notFound.title} />
       <EmptyState
         icon={<Icon.Warning />}
-        title={t.notFound.title}
+        title={t.notFound.emptyTitle}
         description={t.notFound.body}
         action={
           <Button variant="secondary" onClick={() => navigate({ to: "/" })} data-action="home">
@@ -43,9 +44,10 @@ export function NotFound() {
 export function RouteError({ error, reset }: ErrorComponentProps) {
   return (
     <div data-route-error>
+      <PageHeader title={t.routeError.title} />
       <EmptyState
         icon={<Icon.Warning />}
-        title={t.routeError.title}
+        title={t.routeError.emptyTitle}
         description={error instanceof Error && error.message ? error.message : t.routeError.fallback}
         action={
           <Button variant="secondary" onClick={reset}>
