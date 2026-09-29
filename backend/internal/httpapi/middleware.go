@@ -205,6 +205,18 @@ func requireOrg(next http.Handler) http.Handler {
 	})
 }
 
+// requireAdmin lets through only an owner or administrator of the organization
+// the caller is acting in.
+func requireAdmin(next http.Handler) http.Handler {
+	return requireOrg(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !PrincipalFrom(r.Context()).CanAdminister() {
+			respondError(w, r, ErrForbidden("Only an administrator of this organization can do that. Ask one of them."))
+			return
+		}
+		next.ServeHTTP(w, r)
+	}))
+}
+
 // credentialFrom prefers the Authorization header over the session cookie, so
 // API clients are never affected by cookie policy.
 func credentialFrom(r *http.Request, cookieName string) string {

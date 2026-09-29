@@ -15,12 +15,15 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
+	"github.com/praetorianer777/stator/backend/internal/oidc"
+	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/version"
 )
@@ -98,17 +101,33 @@ func run() error {
 	}
 	defer closeFresh()
 
+	var box *secret.Box
+	if cfg.SecretKey != nil {
+		if box, err = secret.New(cfg.SecretKey); err != nil {
+			return err
+		}
+	} else {
+		log.Warn("STATOR_SECRET_KEY is not set, so an identity provider's client secret cannot be stored")
+	}
+	accounts := auth.NewService(cluster, auth.DefaultPasswordParams(), cfg.Auth.SessionTTL)
+	sso := oidc.NewService(cluster, box, cfg.Auth.OIDCRedirectURL).
+		WithHTTPClient(oidc.Backchannel(cfg.Auth.OIDCBackchannel))
+
 	server := &httpapi.Server{
-		DB:             cluster,
-		Fresh:          fresh,
-		Log:            log,
-		Telemetry:      tel,
-		Themes:         theme.NewService(cluster, store),
-		CookieName:     cfg.Auth.SessionCookie,
-		Secure:         cfg.Auth.SecureCookies,
-		AppBaseURL:     cfg.AppBaseURL,
-		CheckOrigin:    cfg.IsProduction(),
-		RequestTimeout: cfg.RequestTimeout,
+		DB:              cluster,
+		Fresh:           fresh,
+		Auth:            accounts,
+		Accounts:        accounts,
+		OIDC:            sso,
+		OIDCCallbackURL: cfg.Auth.OIDCRedirectURL,
+		Log:             log,
+		Telemetry:       tel,
+		Themes:          theme.NewService(cluster, store),
+		CookieName:      cfg.Auth.SessionCookie,
+		Secure:          cfg.Auth.SecureCookies,
+		AppBaseURL:      cfg.AppBaseURL,
+		CheckOrigin:     cfg.IsProduction(),
+		RequestTimeout:  cfg.RequestTimeout,
 	}
 	origins := cfg.CORSOrigins
 	if len(origins) == 0 && !cfg.IsProduction() {

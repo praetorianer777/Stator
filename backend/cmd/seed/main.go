@@ -1,5 +1,5 @@
-// Command seed makes the development database worth opening: for now one
-// organization, created once however often it runs.
+// Command seed makes the development database worth opening: the demo
+// organization and, when configured, its first local administrator.
 package main
 
 import (
@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/observability"
@@ -40,5 +41,21 @@ func run() error {
 		return err
 	}
 	log.Info("seed done", "org", seed.DemoOrgSlug, "created", res.OrgCreated)
+
+	// Somebody has to be able to get in before any identity provider is set
+	// up, and that somebody is named by the operator rather than invented here.
+	if cfg.Bootstrap.AdminEmail == "" {
+		return nil
+	}
+	accounts := auth.NewService(cluster, auth.DefaultPasswordParams(), cfg.Auth.SessionTTL)
+	made, err := accounts.EnsureAdmin(ctx, seed.DemoOrgSlug, cfg.Bootstrap.AdminEmail, bootstrapAdminName, cfg.Bootstrap.AdminPassword)
+	if err != nil {
+		return err
+	}
+	log.Info("bootstrap administrator ready", "email", cfg.Bootstrap.AdminEmail, "org", seed.DemoOrgSlug, "created", made)
 	return nil
 }
+
+// bootstrapAdminName is what the bootstrap administrator is called until they
+// sign in through a provider, which then names them.
+const bootstrapAdminName = "Administrator"

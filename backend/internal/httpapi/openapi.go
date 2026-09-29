@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -45,6 +46,8 @@ type operation struct {
 	// public routes need no session; binary ones answer with a file.
 	public bool
 	binary bool
+	// redirect routes answer with a Location header rather than a body.
+	redirect bool
 }
 
 // operations is the table. Order is by area, then by path; paths are relative
@@ -56,6 +59,23 @@ var operations = []operation{
 		responses: map[int]any{200: readinessResponse{}, 503: statusResponse{}}},
 	{method: "GET", path: "/openapi.json", handler: "handleOpenAPI", tag: "health", summary: "This document.", public: true,
 		responses: ok(openapi.Document{})},
+
+	{method: "POST", path: "/auth/login", handler: "handleLogin", tag: "auth", summary: "Sign in a local account with email and password, and set the session cookie.", public: true,
+		request: loginRequest{}, responses: ok(meResponse{})},
+	{method: "GET", path: "/auth/oidc/{orgSlug}/start", handler: "handleOIDCStart", tag: "auth", summary: "Begin signing in through the organization's identity provider.", public: true, redirect: true,
+		query: []param{{name: "next", description: "A path of this application to land on afterwards."}}, responses: map[int]any{}},
+	{method: "GET", path: "/auth/oidc/callback", handler: "handleOIDCCallback", tag: "auth", summary: "Where the identity provider sends the browser back; sets the session cookie.", public: true, redirect: true,
+		query: []param{{name: "state"}, {name: "code"}, {name: "error"}}, responses: map[int]any{}},
+	{method: "POST", path: "/auth/logout", handler: "handleLogout", tag: "auth", summary: "End the session.", responses: none()},
+	{method: "GET", path: "/auth/me", handler: "handleMe", tag: "auth", summary: "Who is signed in, and the organizations they may act in.",
+		responses: ok(meResponse{})},
+	{method: "POST", path: "/auth/switch-org", handler: "handleSwitchOrg", tag: "auth", summary: "Move the session to another organization.",
+		request: switchOrgRequest{}, responses: ok(env{"organization": auth.CurrentOrg{}})},
+
+	{method: "GET", path: "/oidc-provider", handler: "handleGetOIDCProvider", tag: "access", summary: "The organization's identity provider, if one is configured. For administrators.",
+		responses: ok(providerView{})},
+	{method: "PUT", path: "/oidc-provider", handler: "handleSaveOIDCProvider", tag: "access", summary: "Configure the organization's identity provider. For administrators.",
+		request: saveOIDCProviderRequest{}, responses: ok(providerView{})},
 
 	// Themes, as Armature serves them.
 	{method: "GET", path: "/themes", handler: "handleListThemes", tag: "themes", summary: "Themes the caller may use: theirs, then the shared ones.", responses: ok(env{"themes": []theme.Theme{}})},
@@ -78,6 +98,11 @@ var operations = []operation{
 func Spec() *openapi.Document {
 	b := openapi.NewBuilder()
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
+	roles := make([]string, len(auth.OrgRoles))
+	for i, role := range auth.OrgRoles {
+		roles[i] = string(role)
+	}
+	b.Enums[reflect.TypeOf(auth.OrgRole(""))] = roles
 
 	doc := &openapi.Document{
 		OpenAPI: "3.1.0",
@@ -148,6 +173,9 @@ func Spec() *openapi.Document {
 				r.Content = map[string]openapi.MediaType{"application/json": {Schema: envelopeSchema(b, body)}}
 			}
 			o.Responses[strconv.Itoa(status)] = r
+		}
+		if op.redirect {
+			o.Responses["302"] = &openapi.Response{Description: "Found: the browser is sent on."}
 		}
 		o.Responses["default"] = &openapi.Response{Description: "An error, in the one shape every endpoint uses.",
 			Content: map[string]openapi.MediaType{"application/json": {Schema: errorSchema}}}

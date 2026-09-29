@@ -65,8 +65,8 @@ func (s *Server) readYourWrites(next http.Handler) http.Handler {
 // freshnessKey is the session, else the client cookie, minted for a request
 // that may write; a read with neither has no write of its own to respect.
 func (s *Server) freshnessKey(w http.ResponseWriter, r *http.Request) string {
-	if p := PrincipalFrom(r.Context()); p != nil && p.SessionID != "" {
-		return "s:" + p.SessionID
+	if p := PrincipalFrom(r.Context()); p != nil && p.SessionID != nil {
+		return "s:" + p.SessionID.String()
 	}
 	if c, err := r.Cookie(ClientCookie); err == nil && validClientID(c.Value) {
 		return "c:" + c.Value
