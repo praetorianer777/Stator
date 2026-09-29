@@ -43,6 +43,38 @@ a few seconds, where Keycloak's start already takes longer. The integration
 suite now uses this stack instead of a Postgres and a SeaweedFS of its own, so
 the gate runs exactly one of each.
 
+## 2026-09-29: An administrator lets each person in, and a session stays home
+
+Signing in through the organization's provider is not the same as being let
+in, as in Armature. Somebody the provider vouches for who is not a member gets
+no session: the sign-in is refused, their account and a request to join are
+noted, and the sign-in page tells them the request waits for an
+administrator. An administrator lets them in as a member, or turns them away,
+under Single sign-on; either answer is written to `audit_log`, which the audit
+log will read. Letting anybody with an account at the provider in would leave
+an organization with no membership at all, only a sign-in page. A development
+stack names its people ahead of time with `STATOR_BOOTSTRAP_MEMBERS`, so
+nobody has to click. For members, provider groups follow the groups claim
+exactly, so revoking a group there revokes it here on the next sign-in; which
+groups grant which role is a later decision.
+
+A person is matched by issuer and subject, which survive an email change. A
+first sign-in whose verified address already has an account, such as the
+bootstrap administrator's, is tied to it. Because any organization may point
+at a provider of its own choosing, a session opened through a provider only
+reaches the organizations that trust the same issuer, and ones the person
+owns; a password session reaches every membership. The database enforces
+this with `session_reaches` and a trigger, not only the service.
+
+## 2026-09-29: Only a bootstrap administrator has a password
+
+Sign-in is through the organization's provider. A local password, hashed with
+argon2id, exists so a fresh deployment can be entered and its provider set up;
+it comes from `STATOR_BOOTSTRAP_ADMIN_EMAIL` and `_PASSWORD`, applied by
+`cmd/seed`. Session tokens are 32 random bytes of which only the SHA-256 is
+stored, and an identity provider's client secret is sealed with
+`STATOR_SECRET_KEY`, bound to its organization.
+
 ## 2026-09-29: Armature is reached as the viewing user
 
 Every call to Armature uses the viewer's own personal access token. A shared

@@ -15,11 +15,11 @@ import { useViewer } from "@/api/viewer";
 import { Button, EmptyState, ErrorBanner, IconButton, Menu, PageHeader, Segmented, Table, Tag, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
-import { rootRoute } from "./root";
+import { appRoute } from "./app";
 
 type View = "mine" | "shared";
 
-export const themesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings/themes", component: ThemesPage });
+export const themesRoute = createRoute({ getParentRoute: () => appRoute, path: "/settings/themes", component: ThemesPage });
 
 /** Which themes a view shows. */
 export function inThemeView(theme: Theme, view: View, me: string | undefined): boolean {

@@ -29,11 +29,11 @@ func TestThemesOverTheAPI(t *testing.T) {
 
 	home := h.makeMember(t, "themes")
 	slug := h.slugOf(t, home.org)
-	owner := api.as(home.user, home.org, slug)
-	other := api.as(h.addPerson(t, home.org, "member"), home.org, slug)
-	admin := api.as(h.addPerson(t, home.org, "admin"), home.org, slug)
+	owner := api.as(t, home.user, home.org, slug)
+	other := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	admin := api.as(t, h.addPerson(t, home.org, "admin"), home.org, slug)
 	away := h.makeMember(t, "themes-away")
-	stranger := api.as(away.user, away.org, h.slugOf(t, away.org))
+	stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
 
 	spec := map[string]any{
 		"colors": map[string]any{"light": map[string]string{"accent": "#ff0066"}, "dark": map[string]string{"accent": "#00ffcc"}},
@@ -300,7 +300,7 @@ func TestThemeRowsAreWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "theme-wall-a")
 	b := h.makeMember(t, "theme-wall-b")
-	owner := api.as(a.user, a.org, h.slugOf(t, a.org))
+	owner := api.as(t, a.user, a.org, h.slugOf(t, a.org))
 
 	made := want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "Walled", "shared": true}), http.StatusCreated, "make a theme")
 	themeID := obj(t, made, "theme")["id"].(string)

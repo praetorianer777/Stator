@@ -3,16 +3,16 @@ import { useTheme } from "@/api/themes";
 import { ErrorBanner, PageHeader, type Crumb } from "@/components/ui";
 import { ThemeEditor } from "@/features/themes/ThemeEditor";
 import { t } from "@/i18n";
-import { rootRoute } from "./root";
+import { appRoute } from "./app";
 
 export const themeNewRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appRoute,
   path: "/settings/themes/new",
   component: () => <EditorPage />,
 });
 
 export const themeEditRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appRoute,
   path: "/settings/themes/$themeId",
   component: () => {
     const { themeId } = themeEditRoute.useParams();

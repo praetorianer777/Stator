@@ -9,13 +9,15 @@ export interface RouterContext {
   queryClient: QueryClient;
 }
 
+// The shell is the signed-in layout's; the sign-in page stands on its own. A
+// path that leads nowhere still gets the shell, so there is somewhere to go.
 export const rootRoute = createRootRouteWithContext<RouterContext>()({
-  component: () => (
+  component: Outlet,
+  notFoundComponent: () => (
     <AppShell>
-      <Outlet />
+      <NotFound />
     </AppShell>
   ),
-  notFoundComponent: NotFound,
 });
 
 // Drawn inside the shell, so the reader who followed a stale link still has

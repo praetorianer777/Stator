@@ -57,6 +57,24 @@
       "groups": [
         "/marketing"
       ]
+    },
+    {
+      "username": "carol",
+      "email": "carol@stator.test",
+      "firstName": "Carol",
+      "lastName": "Candidate",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "carol password",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/engineering"
+      ]
     }
   ],
   "clients": [
@@ -78,7 +96,8 @@
         "+"
       ],
       "attributes": {
-        "post.logout.redirect.uris": "+"
+        "post.logout.redirect.uris": "+",
+        "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": [
         "web-origins",

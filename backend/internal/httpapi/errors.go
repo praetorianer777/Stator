@@ -8,6 +8,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
+	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -100,9 +101,32 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &apiErr) {
 		return apiErr
 	}
+	var invalid *oidc.ValidationError
+	if errors.As(err, &invalid) {
+		return ErrValidation(map[string]string{invalid.Field: invalid.Message})
+	}
 	switch {
 	case errors.Is(err, auth.ErrInvalidToken):
 		return ErrUnauthorized("Your session has expired. Sign in again.")
+	case errors.Is(err, auth.ErrInvalidCredentials):
+		return &APIError{Status: http.StatusUnauthorized, Code: "invalid_credentials",
+			Message: "That email and password do not match an account. Check both and try again, or sign in through your organization's provider."}
+	case errors.Is(err, auth.ErrUserInactive):
+		return &APIError{Status: http.StatusForbidden, Code: "account_inactive",
+			Message: "This account has been deactivated. Ask an administrator of your organization to turn it back on."}
+	case errors.Is(err, auth.ErrNotAMember):
+		return &APIError{Status: http.StatusForbidden, Code: "not_a_member",
+			Message: "You are not a member of that organization. Check its name, or ask one of its administrators to let you in."}
+	case errors.Is(err, auth.ErrSessionStaysHome):
+		return &APIError{Status: http.StatusForbidden, Code: "session_stays_home",
+			Message: "Your sign-in does not reach that organization. Sign in there through its own sign-in page."}
+	case errors.Is(err, auth.ErrNoSuchRequest):
+		return ErrNotFound("That person is not waiting to be let in. Reload the list; somebody may have answered already.")
+	case errors.Is(err, auth.ErrBadJoinRole):
+		return ErrValidation(map[string]string{"role": "Let the person in as member or admin."})
+	case errors.Is(err, oidc.ErrNotConfigured):
+		return &APIError{Status: http.StatusNotFound, Code: "sso_not_configured",
+			Message: "That organization does not sign in through an identity provider. Check its name, or sign in with a password."}
 	case errors.Is(err, tenant.ErrNoTenant):
 		return &APIError{Status: http.StatusBadRequest, Code: "no_organization", Message: "Select an organization first."}
 	case errors.Is(err, objectstore.ErrUnavailable):

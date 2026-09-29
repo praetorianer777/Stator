@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
 )
@@ -86,11 +88,12 @@ func TestASessionWinsOverTheClientCookie(t *testing.T) {
 	s, f := freshServer(t)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/themes/active", nil)
 	req.AddCookie(&http.Cookie{Name: ClientCookie, Value: "00112233445566778899aabbccddeeff"})
-	req = req.WithContext(context.WithValue(req.Context(), ctxPrincipal, &auth.Principal{SessionID: "sess-1"}))
+	session := uuid.New()
+	req = req.WithContext(context.WithValue(req.Context(), ctxPrincipal, &auth.Principal{SessionID: &session}))
 
 	rec := httptest.NewRecorder()
 	s.readYourWrites(writing(7)).ServeHTTP(rec, req)
-	if f.lsns["s:sess-1"] != 7 || len(f.lsns) != 1 {
+	if f.lsns["s:"+session.String()] != 7 || len(f.lsns) != 1 {
 		t.Fatalf("the write should be the session's alone: %v", f.lsns)
 	}
 	if clientCookie(rec.Result()) != nil {

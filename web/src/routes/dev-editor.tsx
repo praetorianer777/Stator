@@ -5,7 +5,7 @@ import { DocView } from "@/features/editor/DocView";
 import { Editor } from "@/features/editor/Editor";
 import type { Doc } from "@/features/editor/schema";
 import { t } from "@/i18n";
-import { rootRoute } from "./root";
+import { appRoute } from "./app";
 
 const sample: Doc = {
   type: "doc",
@@ -54,4 +54,4 @@ function DevEditor() {
   );
 }
 
-export const devEditorRoute = createRoute({ getParentRoute: () => rootRoute, path: "/dev/editor", component: DevEditor });
+export const devEditorRoute = createRoute({ getParentRoute: () => appRoute, path: "/dev/editor", component: DevEditor });

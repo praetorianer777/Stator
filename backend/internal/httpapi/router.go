@@ -9,9 +9,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/observability"
+	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
@@ -32,7 +34,13 @@ type Database interface {
 type Server struct {
 	DB   Database
 	Auth Authenticator
-	Log  *slog.Logger
+	// Accounts signs people in and out; OIDC runs sign-in through a provider.
+	// Both nil answer every sign-in route that it is not set up.
+	Accounts *auth.Service
+	OIDC     *oidc.Service
+	// OIDCCallbackURL is the address to register with a provider.
+	OIDCCallbackURL string
+	Log             *slog.Logger
 	// Telemetry counts and traces requests; nil serves without either.
 	Telemetry *observability.Telemetry
 	Themes    *theme.Service
@@ -79,6 +87,26 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 
 	r.Route(APIPrefix, func(r chi.Router) {
 		r.Get("/openapi.json", s.handleOpenAPI)
+
+		r.Post("/auth/login", s.handleLogin)
+		r.Get("/auth/oidc/{orgSlug}/start", s.handleOIDCStart)
+		r.Get("/auth/oidc/callback", s.handleOIDCCallback)
+
+		r.Group(func(r chi.Router) {
+			r.Use(requireAuth)
+			r.Post("/auth/logout", s.handleLogout)
+			r.Get("/auth/me", s.handleMe)
+			r.Post("/auth/switch-org", s.handleSwitchOrg)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(requireAdmin)
+			r.Get("/oidc-provider", s.handleGetOIDCProvider)
+			r.Put("/oidc-provider", s.handleSaveOIDCProvider)
+			r.Get("/users/requests", s.handleListJoinRequests)
+			r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)
+			r.Delete("/users/requests/{userID}", s.handleDeclineJoinRequest)
+		})
 
 		// Themes are a person's in an organization; the examples are anybody's
 		// signed in. The fixed paths come first so "active" is never an id.

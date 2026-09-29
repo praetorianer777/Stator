@@ -44,6 +44,15 @@ Keycloak imports the realm `stator-dev` with the clients `stator` (secret
 |---|---|---|
 | `alice` | `alice password` | `stator-administrators`, `engineering` |
 | `bob` | `bob password` | `marketing` |
+| `carol` | `carol password` | `engineering` |
+
+The seed points the `demo` organization at this realm, so on the sign-in page
+enter `demo` and choose "Sign in with SSO". The seed lets `alice` in as an
+administrator and `bob` as a member ahead of time; anybody else the realm signs
+in, such as `carol`, waits until an administrator lets them in under Single sign-on, in the
+account menu. Their groups follow them once they are in. The seed also makes a local
+administrator of `demo` for the password form: `admin@stator.test` with
+`stator admin password`. The client `stator` requires PKCE.
 
 `make seed` runs the seed again; `make shell` opens the Go toolchain on the
 stack's network. `make help` lists every target.

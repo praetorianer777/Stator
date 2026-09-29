@@ -27,7 +27,7 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "porter")
-	owner := api.as(home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
 
 	made := want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "Traveller", "spec": map[string]any{"colors": map[string]any{"light": map[string]string{"accent": "#123456"}}, "shape": map[string]any{"radiusControl": 0}}}), http.StatusCreated, "make a theme")
 	themeID := obj(t, made, "theme")["id"].(string)
@@ -54,7 +54,7 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 
 	t.Run("another organization cannot export it", func(t *testing.T) {
 		away := h.makeMember(t, "porter-away")
-		stranger := api.as(away.user, away.org, h.slugOf(t, away.org))
+		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
 		if resp, _ := stranger.download(t, "/api/v1/themes/"+themeID+"/export"); resp.StatusCode != http.StatusNotFound {
 			t.Fatalf("a theme was exported across organizations: %d", resp.StatusCode)
 		}
@@ -115,7 +115,7 @@ func TestTheMinecraftThemeFromArmatureImports(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "minecraft")
-	owner := api.as(home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
 
 	file, err := os.ReadFile(minecraftFile)
 	if err != nil {

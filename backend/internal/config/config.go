@@ -3,7 +3,9 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -33,6 +35,12 @@ const (
 	DefaultReadYourWrites  = 30 * time.Second
 	DefaultS3Bucket        = "stator-files"
 	DefaultS3Region        = "us-east-1"
+	DefaultSessionTTL      = 720 * time.Hour
+	// OIDCCallbackPath is where an identity provider sends the browser back,
+	// under the web client's origin, which proxies the API.
+	OIDCCallbackPath = "/api/v1/auth/oidc/callback"
+	// SecretKeyBytes is the AES-256 key length STATOR_SECRET_KEY decodes to.
+	SecretKeyBytes = 32
 )
 
 // Config is the fully resolved configuration for every binary.
@@ -54,6 +62,11 @@ type Config struct {
 	Auth      Auth
 	Telemetry Telemetry
 	S3        S3
+	Bootstrap Bootstrap
+
+	// SecretKey encrypts secrets stored in the database, such as an identity
+	// provider's client secret. Nil in development when it is not set.
+	SecretKey []byte
 }
 
 // DB describes the Postgres cluster: one writable primary and optional read
@@ -87,10 +100,39 @@ type Valkey struct {
 	URL string
 }
 
-// Auth holds the session cookie's settings.
+// Auth holds the session cookie's settings and how sign-in reaches identity
+// providers.
 type Auth struct {
 	SessionCookie string
 	SecureCookies bool
+	SessionTTL    time.Duration
+	// OIDCRedirectURL is the callback address providers are told to send the
+	// browser back to.
+	OIDCRedirectURL string
+	// OIDCBackchannel maps a provider's public origin to the one this process
+	// reaches it at, for a stack where the two differ.
+	OIDCBackchannel map[string]string
+}
+
+// Bootstrap is what cmd/seed sets up in the demo organization: a first local
+// administrator, and an identity provider when it has none yet.
+type Bootstrap struct {
+	AdminEmail    string
+	AdminPassword string
+
+	OIDCIssuer       string
+	OIDCClientID     string
+	OIDCClientSecret string
+
+	// Members are let into the demo organization ahead of their first sign-in,
+	// so a development stack needs nobody to approve them.
+	Members []BootstrapMember
+}
+
+// BootstrapMember is one address and the standing it is given.
+type BootstrapMember struct {
+	Email string
+	Role  string
 }
 
 // S3 is the bucket uploaded files live in: theme assets now, attachments
@@ -158,6 +200,7 @@ func Load() (Config, error) {
 		Auth: Auth{
 			SessionCookie: l.str("STATOR_SESSION_COOKIE", DefaultSessionCookie),
 			SecureCookies: l.boolean("STATOR_SECURE_COOKIES", false),
+			SessionTTL:    l.duration("STATOR_SESSION_TTL", DefaultSessionTTL),
 		},
 		Telemetry: Telemetry{
 			MetricsAddr:  l.strOrBlank("STATOR_METRICS_ADDR", DefaultMetricsAddr),
@@ -172,7 +215,19 @@ func Load() (Config, error) {
 			Region:    l.str("STATOR_S3_REGION", DefaultS3Region),
 			UseSSL:    l.boolean("STATOR_S3_USE_SSL", false),
 		},
+		Bootstrap: Bootstrap{
+			AdminEmail: l.str("STATOR_BOOTSTRAP_ADMIN_EMAIL", ""),
+			// Not trimmed: a password is exactly what was typed.
+			AdminPassword:    os.Getenv("STATOR_BOOTSTRAP_ADMIN_PASSWORD"),
+			OIDCIssuer:       l.str("STATOR_BOOTSTRAP_OIDC_ISSUER", ""),
+			OIDCClientID:     l.str("STATOR_BOOTSTRAP_OIDC_CLIENT_ID", ""),
+			OIDCClientSecret: l.str("STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET", ""),
+			Members:          l.members("STATOR_BOOTSTRAP_MEMBERS"),
+		},
 	}
+	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
+	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
+	c.SecretKey = l.secretKey("STATOR_SECRET_KEY", c.Env)
 
 	if c.DB.PrimaryURL == "" {
 		l.problem("Set STATOR_DB_PRIMARY_URL to the connection URL of the primary database.")
@@ -205,6 +260,24 @@ func Load() (Config, error) {
 	// what production is held to; development is the one that runs locally.
 	if c.Env != EnvDevelopment && !c.Auth.SecureCookies {
 		l.problem("Set STATOR_SECURE_COOKIES to true outside development, so the session cookie never travels in clear.")
+	}
+	if c.Auth.SessionTTL <= 0 {
+		l.problem("STATOR_SESSION_TTL must be longer than zero, such as 720h.")
+	}
+	if u, err := url.Parse(c.Auth.OIDCRedirectURL); err != nil || u.Scheme == "" || u.Host == "" {
+		l.problem(fmt.Sprintf("STATOR_OIDC_REDIRECT_URL is %q; set it to an absolute URL ending in %s.", c.Auth.OIDCRedirectURL, OIDCCallbackPath))
+	}
+	if (c.Bootstrap.AdminEmail == "") != (c.Bootstrap.AdminPassword == "") {
+		l.problem("Set both STATOR_BOOTSTRAP_ADMIN_EMAIL and STATOR_BOOTSTRAP_ADMIN_PASSWORD, or neither.")
+	}
+	if (c.Bootstrap.OIDCIssuer == "") != (c.Bootstrap.OIDCClientID == "") {
+		l.problem("Set both STATOR_BOOTSTRAP_OIDC_ISSUER and STATOR_BOOTSTRAP_OIDC_CLIENT_ID, or neither.")
+	}
+	if c.Bootstrap.OIDCClientSecret != "" && c.SecretKey == nil {
+		l.problem("STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET is set but STATOR_SECRET_KEY is not; set the key so the secret can be stored sealed.")
+	}
+	if c.Bootstrap.AdminEmail != "" && !strings.Contains(c.Bootstrap.AdminEmail, "@") {
+		l.problem(fmt.Sprintf("STATOR_BOOTSTRAP_ADMIN_EMAIL is %q; set it to an email address.", c.Bootstrap.AdminEmail))
 	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		l.problem("STATOR_OTEL_SAMPLE_RATIO must be between 0 and 1.")
@@ -298,6 +371,60 @@ func (l *loader) duration(key string, def time.Duration) time.Duration {
 		return def
 	}
 	return d
+}
+
+// secretKey reads the encryption key. Development may run without one, and then
+// cannot store secrets; a deployment reached over a network must set it.
+func (l *loader) secretKey(key, env string) []byte {
+	v := l.str(key, "")
+	if v == "" {
+		if env != EnvDevelopment {
+			l.problem(fmt.Sprintf("Set %s to %d random bytes in base64, such as the output of openssl rand -base64 %d; it encrypts stored secrets.", key, SecretKeyBytes, SecretKeyBytes))
+		}
+		return nil
+	}
+	decoded, err := base64.StdEncoding.DecodeString(v)
+	if err != nil {
+		decoded, err = base64.RawURLEncoding.DecodeString(strings.TrimRight(v, "="))
+	}
+	if err != nil || len(decoded) != SecretKeyBytes {
+		l.problem(fmt.Sprintf("%s must be %d random bytes in base64, such as the output of openssl rand -base64 %d.", key, SecretKeyBytes, SecretKeyBytes))
+		return nil
+	}
+	return decoded
+}
+
+// members parses "email=role,email=role", each role owner, admin or member.
+func (l *loader) members(key string) []BootstrapMember {
+	var out []BootstrapMember
+	for _, pair := range splitList(l.str(key, "")) {
+		email, role, _ := strings.Cut(pair, "=")
+		email, role = strings.TrimSpace(email), strings.TrimSpace(role)
+		if !strings.Contains(email, "@") || (role != "owner" && role != "admin" && role != "member") {
+			l.problem(fmt.Sprintf("%s has %q; write each entry as email=role, with the role owner, admin or member.", key, pair))
+			continue
+		}
+		out = append(out, BootstrapMember{Email: email, Role: role})
+	}
+	return out
+}
+
+// rewrites parses "public=reachable,public=reachable", refusing a pair it
+// cannot read rather than quietly dropping it.
+func (l *loader) rewrites(key string) map[string]string {
+	out := map[string]string{}
+	for _, pair := range splitList(l.str(key, "")) {
+		from, to, ok := strings.Cut(pair, "=")
+		from, to = strings.TrimSuffix(strings.TrimSpace(from), "/"), strings.TrimSuffix(strings.TrimSpace(to), "/")
+		fromURL, errFrom := url.Parse(from)
+		toURL, errTo := url.Parse(to)
+		if !ok || errFrom != nil || errTo != nil || fromURL.Host == "" || toURL.Host == "" {
+			l.problem(fmt.Sprintf("%s has %q; write each entry as public-origin=reachable-origin, such as http://localhost:8180=http://keycloak:8080.", key, pair))
+			continue
+		}
+		out[from] = to
+	}
+	return out
 }
 
 // splitList parses a comma separated list, trimming blanks.

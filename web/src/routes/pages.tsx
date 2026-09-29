@@ -2,7 +2,7 @@ import { createRoute, useNavigate } from "@tanstack/react-router";
 import { Button, EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
-import { rootRoute } from "./root";
+import { appRoute } from "./app";
 
 // Placeholders until spaces and pages exist: each says what it is for, in the
 // empty state, which is where a first-time visitor reads that.
@@ -44,6 +44,6 @@ function Search() {
   );
 }
 
-export const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Home });
-export const spacesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/spaces", component: Spaces });
-export const searchRoute = createRoute({ getParentRoute: () => rootRoute, path: "/search", component: Search });
+export const homeRoute = createRoute({ getParentRoute: () => appRoute, path: "/", component: Home });
+export const spacesRoute = createRoute({ getParentRoute: () => appRoute, path: "/spaces", component: Spaces });
+export const searchRoute = createRoute({ getParentRoute: () => appRoute, path: "/search", component: Search });
