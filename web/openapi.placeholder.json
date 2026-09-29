@@ -1,0 +1,32 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Stator",
+    "version": "1",
+    "description": "Stands in for api/openapi.json until the server publishes its own document."
+  },
+  "servers": [{ "url": "/api/v1", "description": "This deployment" }],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "liveness",
+        "summary": "Whether the process is running.",
+        "tags": ["health"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "status": { "type": "string" } },
+                  "required": ["status"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
