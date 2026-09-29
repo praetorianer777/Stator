@@ -21,6 +21,8 @@ func clean(t *testing.T) {
 		"STATOR_SECURE_COOKIES", "STATOR_OTEL_ENDPOINT", "STATOR_OTEL_SAMPLE_RATIO",
 		"STATOR_S3_ENDPOINT", "STATOR_S3_BUCKET", "STATOR_S3_ACCESS_KEY", "STATOR_S3_SECRET_KEY",
 		"STATOR_S3_REGION", "STATOR_S3_USE_SSL",
+		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
+		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 	} {
 		t.Setenv(key, "")
 	}
@@ -141,6 +143,7 @@ func TestSecureCookiesOutsideDevelopment(t *testing.T) {
 		t.Run(env, func(t *testing.T) {
 			clean(t)
 			t.Setenv("STATOR_ENV", env)
+			t.Setenv("STATOR_SECRET_KEY", testKey)
 			if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_SECURE_COOKIES") {
 				t.Fatalf("insecure cookies in %s should be refused: %v", env, err)
 			}
@@ -199,5 +202,80 @@ func TestReplicaSamplesAndFreshnessMustBePositive(t *testing.T) {
 	var cfgErr *Error
 	if !errors.As(err, &cfgErr) || len(cfgErr.Problems) != 2 {
 		t.Fatalf("want both settings refused, got %v", err)
+	}
+}
+
+// testKey is 32 zero bytes, which is a well formed key and nothing more.
+const testKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+func TestSignInDefaults(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Auth.SessionTTL != DefaultSessionTTL {
+		t.Errorf("session ttl = %s", c.Auth.SessionTTL)
+	}
+	if c.Auth.OIDCRedirectURL != DefaultAppBaseURL+OIDCCallbackPath {
+		t.Errorf("the callback defaults to %q, want it under the web client", c.Auth.OIDCRedirectURL)
+	}
+	if c.SecretKey != nil || len(c.Auth.OIDCBackchannel) != 0 {
+		t.Errorf("development without a key or rewrites = %v, %v", c.SecretKey, c.Auth.OIDCBackchannel)
+	}
+}
+
+func TestTheSecretKeyIsThirtyTwoBytesAndRequiredOutsideDevelopment(t *testing.T) {
+	clean(t)
+	t.Setenv("STATOR_SECRET_KEY", testKey)
+	c, err := Load()
+	if err != nil || len(c.SecretKey) != SecretKeyBytes {
+		t.Fatalf("a good key = %d bytes, %v", len(c.SecretKey), err)
+	}
+
+	for _, bad := range []string{"short", "AAAA", "not base64 at all!"} {
+		t.Setenv("STATOR_SECRET_KEY", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_SECRET_KEY") {
+			t.Errorf("key %q should be refused: %v", bad, err)
+		}
+	}
+
+	t.Setenv("STATOR_SECRET_KEY", "")
+	t.Setenv("STATOR_ENV", EnvProduction)
+	t.Setenv("STATOR_SECURE_COOKIES", "true")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_SECRET_KEY") {
+		t.Fatalf("production without a key should be refused: %v", err)
+	}
+}
+
+func TestBackchannelRewritesAreParsed(t *testing.T) {
+	clean(t)
+	t.Setenv("STATOR_OIDC_BACKCHANNEL", "http://localhost:8180/=http://keycloak:8080, https://a.test=https://b.test/")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Auth.OIDCBackchannel["http://localhost:8180"] != "http://keycloak:8080" || c.Auth.OIDCBackchannel["https://a.test"] != "https://b.test" || len(c.Auth.OIDCBackchannel) != 2 {
+		t.Fatalf("rewrites = %v", c.Auth.OIDCBackchannel)
+	}
+	t.Setenv("STATOR_OIDC_BACKCHANNEL", "keycloak")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_OIDC_BACKCHANNEL") {
+		t.Fatalf("a malformed rewrite should be refused: %v", err)
+	}
+}
+
+func TestTheBootstrapAdminNeedsBothHalves(t *testing.T) {
+	clean(t)
+	t.Setenv("STATOR_BOOTSTRAP_ADMIN_EMAIL", "admin@example.test")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_BOOTSTRAP_ADMIN_PASSWORD") {
+		t.Fatalf("an email without a password should be refused: %v", err)
+	}
+	t.Setenv("STATOR_BOOTSTRAP_ADMIN_PASSWORD", " a password with spaces ")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Bootstrap.AdminPassword != " a password with spaces " {
+		t.Errorf("the password was altered: %q", c.Bootstrap.AdminPassword)
 	}
 }
