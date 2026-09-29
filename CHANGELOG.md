@@ -80,6 +80,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   `DELETE /api/v1/test/orgs/{slug}` removes it with all its rows and files.
   The api refuses them in production and the Helm chart never sets them.
   The theme specs each run in an organization of their own, in parallel.
+- Drafts and published versions in the API. Each person autosaves a private
+  draft of a page (`/pages/{id}/draft`) and publishes it with an optional
+  comment as the next numbered version; a draft begun before somebody
+  else's publish is refused with `publish_conflict` until it is saved again
+  over theirs. A new page stays its creator's alone until published, unless
+  it is made with `publish: true`. Every page's history lists its versions,
+  any version reads as it was, two versions or a version and the caller's
+  draft compare block by block with inserted and deleted words marked, and
+  a restore publishes an old version again as the newest. The database
+  keeps version numbers without gaps and the history append only.
 - Drafts and history in the web client. The editor saves to a private
   draft a moment after typing stops and publishes it from a dialog with an
   optional comment and whether to notify watchers; when somebody published
@@ -92,6 +102,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
   restores a version as a new one after asking.
 
 ### Changed
+
+- `PATCH /pages/{id}` publishes the title and body as the next version with
+  no comment. Existing pages become version 1 of themselves.
 
 - Stored files are keyed under `org/<organization id>/`, so an
   organization's files can be listed and removed together.

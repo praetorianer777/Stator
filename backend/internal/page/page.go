@@ -23,7 +23,28 @@ var (
 	ErrNotFound = errors.New("page not found")
 	// ErrStale refuses a save made from a copy somebody else has saved over since.
 	ErrStale = errors.New("somebody else saved this page after you opened it")
+	// ErrNoDraft refuses publishing a published page the caller has no draft of.
+	ErrNoDraft = errors.New("you have no draft of this page to publish; edit it first")
+	// ErrPublishConflict refuses a draft begun before somebody else's publish.
+	ErrPublishConflict = errors.New("somebody published this page after you began your draft")
+	// ErrDraftNotFound answers a comparison with a draft the caller does not have.
+	ErrDraftNotFound = errors.New("you have no draft of this page")
+	// ErrVersionNotFound answers a version number the page never reached.
+	ErrVersionNotFound = errors.New("that version of the page was not found")
+	// ErrRestoreStale refuses a restore made from an outdated history.
+	ErrRestoreStale = errors.New("somebody published this page after you opened its history")
+	// ErrRestoreLatest refuses restoring the version the page already is.
+	ErrRestoreLatest = errors.New("that is already the latest version of the page")
 )
+
+// FieldError is a refusal of one field of the request, which the client
+// shows next to it.
+type FieldError struct {
+	Field   string
+	Message string
+}
+
+func (e *FieldError) Error() string { return e.Message }
 
 // Page is one page with its body, as the reader and the editor see it.
 type Page struct {
