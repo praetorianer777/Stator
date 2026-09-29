@@ -43,6 +43,9 @@ render() { # description args...
     fi
     if RENDERED=$(helm template "${RELEASE}" /chart "$@" 2>&1); then
         pass "${what}: helm template"
+        # The api serves them only for the browser suite; a deployment must
+        # never switch them on, nor even hand it a token.
+        check "${what}: the test endpoints stay off" "$(grep -c 'STATOR_TEST_ENDPOINTS' <<<"${RENDERED}")" "0"
     else
         fail "${what}: helm template"
         echo "${RENDERED}" | sed 's/^/      /'

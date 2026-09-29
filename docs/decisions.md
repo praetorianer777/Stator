@@ -3,6 +3,36 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: Each browser spec file gets a throwaway organization
+
+Specs that change what an organization shows, such as its default theme or
+who uses which theme, cannot share `demo` with specs that judge the built-in
+look, and running them one after another only hides the problem. The api
+therefore has two test endpoints, `POST /api/v1/test/orgs` and
+`DELETE /api/v1/test/orgs/{slug}`, and `e2e/fixtures/org.ts` makes one
+organization per spec file and worker through them, signs alice and bob in to
+it, and deletes it when the worker stops. The new organization gets the seed's
+people and provider, from the same `STATOR_BOOTSTRAP_*` settings and the same
+code, so it signs in exactly like `demo`.
+
+The endpoints are compiled in, because the image the suite runs is the image
+that ships, but routed only when `STATOR_TEST_ENDPOINTS` is on; otherwise they
+answer 404 like any path that does not exist. Every call must carry
+`STATOR_TEST_ENDPOINTS_TOKEN` in `X-Stator-Test-Token`, so an endpoint switched
+on by accident is still closed. The api refuses to start with them on in
+production, and `tests/test-helm.sh` checks that no layout of the chart sets
+either variable. Deleting refuses any organization the endpoint did not make,
+which it marks in `org.settings`.
+
+They are left out of `api/openapi.json` rather than marked in it. The document
+is the contract clients are generated from, and the web client would
+otherwise carry types for calls it must never make; a separate table in
+`internal/httpapi` describes them, and a unit test holds the router to both
+tables and the document to the public one alone.
+
+Deleting an organization has to find its files, so every object key now starts
+with `org/<organization id>/`, and the store can list a prefix.
+
 ## 2026-09-29: Reads go to CloudNativePG's -ro service
 
 On Kubernetes the chart points reads at the CNPG cluster's `-ro` service
