@@ -1,0 +1,24 @@
+{
+  "root": false,
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 160
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "trailingCommas": "all"
+    }
+  },
+  "linter": {
+    "rules": {
+      "correctness": {
+        "noEmptyPattern": "off"
+      }
+    }
+  },
+  "files": {
+    "includes": ["**", "!node_modules", "!playwright-report", "!test-results", "!.auth"]
+  }
+}

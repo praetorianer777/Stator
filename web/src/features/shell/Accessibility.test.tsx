@@ -219,7 +219,7 @@ describe("axe", () => {
   it("finds nothing with the account menu open", async () => {
     await renderAt("/");
     await userEvent.click(screen.getByRole("button", { name: "Your account" }));
-    expect(await axeViolations({ popupOpen: true })).toEqual([]);
+    expect(await axeViolations()).toEqual([]);
   });
 
   it("finds nothing on the narrow shell, drawer shut or open", async () => {
