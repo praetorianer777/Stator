@@ -10,7 +10,14 @@ on:
     branches: [main]
   schedule:
     - cron: "17 2 * * *"
+  # A run by hand can take the gate several times in a row, so a flaky
+  # test shows up as a failure rather than hiding behind one lucky pass.
   workflow_dispatch:
+    inputs:
+      runs:
+        description: How many times in a row to run the gate (at most 5)
+        type: number
+        default: 1
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -22,14 +29,22 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: ${{ inputs.runs > 1 && 150 || 30 }}
     steps:
       # The release tests read tags, which a shallow checkout does not carry.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - run: ./run-tests.sh
+      - name: Run the gate
+        env:
+          RUNS: ${{ inputs.runs || 1 }}
+        run: |
+          for run in $(seq "$RUNS"); do
+            echo "::group::Gate run $run of $RUNS"
+            ./run-tests.sh
+            echo "::endgroup::"
+          done
 
       - name: Keep Playwright traces
         if: failure()
