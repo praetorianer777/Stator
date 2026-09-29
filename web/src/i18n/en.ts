@@ -13,6 +13,12 @@ export const en = {
     groupWiki: "Wiki",
     collapseSidebar: "Collapse the sidebar",
     expandSidebar: "Expand the sidebar",
+    drawer: "Navigation",
+    openDrawer: "Open the navigation",
+    closeDrawer: "Close the navigation",
+  },
+  shell: {
+    skipToContent: "Skip to content",
   },
   search: {
     placeholder: "Search pages and spaces",

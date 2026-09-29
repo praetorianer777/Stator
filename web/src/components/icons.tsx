@@ -65,6 +65,8 @@ export const Icon = {
   Warning: makeIcon("warning", ["M8 2.5 14 13H2z", "M8 6.5v3", "M8 11.5h.01"]),
   Collapse: makeIcon("collapse", ["M2.5 3h11v10h-11z", "M6 3v10", "m10.5 6.5-1.5 1.5 1.5 1.5"]),
   Expand: makeIcon("expand", ["M2.5 3h11v10h-11z", "M6 3v10", "m9 6.5 1.5 1.5L9 9.5"]),
+  Menu: makeIcon("menu", ["M2.5 4h11", "M2.5 8h11", "M2.5 12h11"]),
+  X: makeIcon("x", ["m4 4 8 8", "m12 4-8 8"]),
 } as const;
 
 export type IconName = keyof typeof Icon;

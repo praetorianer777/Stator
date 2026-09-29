@@ -36,6 +36,43 @@ export function useOutsidePress(open: boolean, refs: Array<RefObject<HTMLElement
   }, [open, refs, onClose]);
 }
 
+// Focus goes into the overlay when it opens and back to where it was when it
+// closes, so a keyboard user is never left on an element that has gone.
+export function useFocusReturn(open: boolean, into: RefObject<HTMLElement | null>, trap: boolean) {
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const root = into.current;
+    // The close button is first in the DOM but last in intent: focus lands on
+    // the first thing the reader came to do.
+    const candidates = root ? focusables(root) : [];
+    const first = candidates.find((el) => !el.hasAttribute("data-focus-last")) ?? candidates[0] ?? root;
+    first?.focus({ preventScroll: true });
+    function onKey(event: KeyboardEvent) {
+      if (!trap || event.key !== "Tab" || !root) return;
+      const items = focusables(root);
+      const firstItem = items[0];
+      const lastItem = items[items.length - 1];
+      if (!firstItem || !lastItem) {
+        event.preventDefault();
+        return;
+      }
+      if (event.shiftKey && document.activeElement === firstItem) {
+        event.preventDefault();
+        lastItem.focus();
+      } else if (!event.shiftKey && document.activeElement === lastItem) {
+        event.preventDefault();
+        firstItem.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previous?.focus({ preventScroll: true });
+    };
+  }, [open, into, trap]);
+}
+
 export type AnchoredSide = "top" | "bottom" | "right";
 
 /**

@@ -10,6 +10,7 @@ export function NavItem({
   icon,
   rail,
   trailing,
+  onNavigate,
   children,
 }: {
   to: string;
@@ -17,12 +18,15 @@ export function NavItem({
   icon: IconName;
   rail: boolean;
   trailing?: ReactNode;
+  /** Called when the link is followed, even to the page already open. */
+  onNavigate?: () => void;
   children: string;
 }) {
   const Glyph = Icon[icon];
   const link = (
     <Link
       to={to}
+      onClick={onNavigate}
       activeOptions={{ exact }}
       className={cx(
         "flex h-8 items-center gap-2 rounded-control text-sm text-ink-muted hover:bg-surface-raised hover:text-ink",

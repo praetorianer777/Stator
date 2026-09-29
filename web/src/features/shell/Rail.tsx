@@ -3,6 +3,7 @@ import { Icon } from "@/components/icons";
 import { SIDEBAR_RAIL_WIDTH } from "@/config";
 import { t } from "@/i18n";
 import { NavItem } from "./nav";
+import { SIDEBAR_ID } from "./state";
 import { ThemeButton } from "./ThemeButton";
 
 /**
@@ -12,16 +13,17 @@ import { ThemeButton } from "./ThemeButton";
 export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
     <aside className="flex shrink-0 flex-col items-center border-r border-border bg-surface" style={{ width: SIDEBAR_RAIL_WIDTH }} data-rail data-print-hide>
-      <header className="flex h-12 w-full items-center justify-center border-b border-border">
+      <div className="flex h-12 w-full items-center justify-center border-b border-border">
         <IconButton
           icon={open ? <Icon.Collapse /> : <Icon.Expand />}
           label={open ? t.nav.collapseSidebar : t.nav.expandSidebar}
           size="sm"
           onClick={onToggle}
           aria-expanded={open}
+          aria-controls={open ? SIDEBAR_ID : undefined}
           data-action="sidebar"
         />
-      </header>
+      </div>
       <nav aria-label={t.nav.everywhere} className="flex flex-1 flex-col items-center gap-1 py-3">
         <NavItem to="/" exact icon="Home" rail>
           {t.nav.home}
