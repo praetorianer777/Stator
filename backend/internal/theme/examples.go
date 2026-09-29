@@ -1,7 +1,8 @@
 package theme
 
 // Example is a theme anybody may start from, offered beside a blank sheet.
-// Both are Armature's, value for value.
+// Both are Armature's, value for value, except ink-subtle, raised to 4.5:1
+// on every surface as proposed in Cloudster1/Armature#17.
 type Example struct {
 	Key         string `json:"key"`
 	Name        string `json:"name"`
@@ -79,7 +80,7 @@ func constellation() Example {
   --color-border-strong: #3d5670;
   --color-ink: #e6eef8;
   --color-ink-muted: #a7b8cc;
-  --color-ink-subtle: #7b8fa6;
+  --color-ink-subtle: #8ea2b9;
   --color-ink-disabled: #52657a;
   --color-accent: #7fd4ff;
   --color-accent-hover: #a5e1ff;
@@ -120,7 +121,7 @@ func deepTech() Example {
 		"border-strong":          "#a9b8c9",
 		"ink":                    "#17222f",
 		"ink-muted":              "#4f6178",
-		"ink-subtle":             "#7b8fa6",
+		"ink-subtle":             "#52657b",
 		"ink-disabled":           "#aab8c7",
 		"primary":                "#17222f",
 		"primary-hover":          "#2a3a4e",
@@ -165,7 +166,7 @@ func deepTech() Example {
 		"border-strong":          "#3a5a82",
 		"ink":                    "#e6eef8",
 		"ink-muted":              "#a7b8cc",
-		"ink-subtle":             "#7b8fa6",
+		"ink-subtle":             "#8397ae",
 		"ink-disabled":           "#4f6178",
 		"primary":                "#5cc8ff",
 		"primary-hover":          "#7fd4ff",

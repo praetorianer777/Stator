@@ -72,7 +72,9 @@ function SidebarGroups({ onNavigate }: { onNavigate?: () => void }) {
         icon="Search"
         rail={false}
         onNavigate={onNavigate}
-        trailing={<kbd className="font-mono text-2xs text-ink-subtle">{t.search.shortcut}</kbd>}
+        // On the current item the hint takes the accent: subtle ink is too
+        // faint on the accent tint in the dark palette.
+        trailing={<kbd className="font-mono text-2xs text-ink-subtle in-data-[status=active]:text-accent">{t.search.shortcut}</kbd>}
       >
         {t.nav.search}
       </NavItem>

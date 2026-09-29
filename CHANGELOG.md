@@ -57,3 +57,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - `STATOR_SECRET_KEY` seals stored secrets with AES-256-GCM, and is required
   outside development; `STATOR_SESSION_TTL`, `STATOR_OIDC_REDIRECT_URL` and
   `STATOR_OIDC_BACKCHANNEL` tune sign-in.
+
+### Fixed
+
+- Subtle text (hints, timestamps, placeholders) meets WCAG AA: 4.5:1 or more
+  on every surface in both palettes, and in the Deep-Tech and Constellation
+  themes, with the hue kept. A unit test checks every text colour against
+  every surface.
