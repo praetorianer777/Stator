@@ -106,6 +106,10 @@ type Can struct {
 	Administer bool `json:"administer"`
 	Delete     bool `json:"delete"`
 	PurgeTrash bool `json:"purgeTrash"`
+	// AddComments and DeletePages follow the space permissions of the same
+	// names, which #19 introduces; DeletePages moves pages to the trash and back.
+	AddComments bool `json:"addComments"`
+	DeletePages bool `json:"deletePages"`
 }
 
 // On says what the actor may do in a space.

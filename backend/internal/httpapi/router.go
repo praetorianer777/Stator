@@ -180,6 +180,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/pages/{pageID}", s.handleTrashPage)
 			r.Post("/pages/{pageID}/move", s.handleMovePage)
 			r.Post("/pages/{pageID}/copy", s.handleCopyPage)
+			mountPending(r)
 		})
 	})
 
@@ -194,6 +195,22 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		})
 	})
 	return r
+}
+
+// errNotImplemented answers an operation the API describes but does not serve yet.
+var errNotImplemented = &APIError{Status: http.StatusNotImplemented, Code: "not_implemented",
+	Message: "This part of the API is not built yet. Update Stator to a release that has it, or leave it out for now."}
+
+// mountPending routes every pending operation to a 501, behind the same
+// guards as the pages, so clients can be written against it before it exists.
+func mountPending(r chi.Router) {
+	for _, op := range operations {
+		if op.pending {
+			r.Method(op.method, op.path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				respondError(w, r, errNotImplemented)
+			}))
+		}
+	}
 }
 
 // statusResponse is what the probes answer.

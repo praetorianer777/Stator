@@ -4,6 +4,41 @@
  */
 
 export interface paths {
+    "/access/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the caller may do across the organization, which decides which buttons to draw. */
+        get: operations["myAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachmentID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The bytes of a file, as a download. */
+        get: operations["downloadAttachment"];
+        put?: never;
+        post?: never;
+        /** Take a file off its page for good. */
+        delete: operations["deleteAttachment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -106,6 +141,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Groups of the organization, to pick whom to grant something. */
+        get: operations["listGroups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -193,6 +245,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/org/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Each global permission and whom it is granted to. For administrators. */
+        get: operations["listGlobalPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/permissions/{permission}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace whom a global permission is granted to. For administrators. */
+        put: operations["setGlobalPermission"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org/tokens": {
         parameters: {
             query?: never;
@@ -263,6 +349,41 @@ export interface paths {
         patch: operations["updatePage"];
         trace?: never;
     };
+    "/pages/{pageID}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The files on a page, the latest first. */
+        get: operations["listAttachments"];
+        put?: never;
+        /** Put a file on a page, as a multipart part named file; refused with too_large over the upload limit. */
+        post: operations["uploadAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What changed between two versions of a page, or between a version and the caller's draft. */
+        get: operations["compareVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/copy": {
         parameters: {
             query?: never;
@@ -275,6 +396,25 @@ export interface paths {
         /** Copy a page, with or without the pages below it, under a parent in its space or another. */
         post: operations["copyPage"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's own draft of a page, or null when they have none. */
+        get: operations["getDraft"];
+        /** Autosave the caller's draft of a page; nobody else sees it. */
+        put: operations["saveDraft"];
+        post?: never;
+        /** Throw the caller's draft away; the page stays as last published. */
+        delete: operations["discardDraft"];
         options?: never;
         head?: never;
         patch?: never;
@@ -297,6 +437,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish the caller's draft as the next version; refused with publish_conflict when somebody published since the draft began. */
+        post: operations["publishPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/restrictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who may view and edit a page beyond the space's permissions, and the restricted pages above it. */
+        get: operations["getPageRestrictions"];
+        /** Replace a page's own view and edit restrictions; the pages below it inherit them. */
+        put: operations["setPageRestrictions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page's published versions, the latest first. */
+        get: operations["listVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/versions/{versionNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One published version with its body, to read it as it was. */
+        get: operations["getVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/versions/{versionNumber}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish an older version's title and body again, as the next version. */
+        post: operations["restoreVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/visit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Note that the caller opened a page, for their recent pages. */
+        post: operations["visitPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Members of the organization, to pick whom to grant something. */
+        get: operations["listPeople"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/readyz": {
         parameters: {
             query?: never;
@@ -306,6 +566,57 @@ export interface paths {
         };
         /** Whether the process can serve traffic, and how reads are routed. */
         get: operations["readiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/recent-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The pages the caller visited last, the latest first. */
+        get: operations["recentPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pages, attachments and comments whose words match, among what the caller may see. */
+        get: operations["search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/quick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pages whose titles start with the words typed so far, for the top bar and the command palette. */
+        get: operations["quickSearch"];
         put?: never;
         post?: never;
         delete?: never;
@@ -378,6 +689,24 @@ export interface paths {
         /** The pages directly under a parent, by default under the space's home page, in order. */
         get: operations["listPages"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who may do what in a space. For the space's administrators. */
+        get: operations["listSpacePermissions"];
+        /** Replace a space's whole permission table. For the space's administrators. */
+        put: operations["setSpacePermissions"];
         post?: never;
         delete?: never;
         options?: never;
@@ -753,6 +1082,20 @@ export interface components {
             name: string;
             size: number;
         };
+        Attachment: {
+            contentType: string;
+            /** Format: date-time */
+            createdAt: string;
+            fileName: string;
+            height: number | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            pageId: string;
+            size: number;
+            uploadedByName: string;
+            width: number | null;
+        };
         Backdrop: {
             /** Format: uuid */
             assetId: string;
@@ -760,8 +1103,10 @@ export interface components {
             fit: "cover" | "tile";
         };
         Can: {
+            addComments: boolean;
             administer: boolean;
             delete: boolean;
+            deletePages: boolean;
             editPages: boolean;
             purgeTrash: boolean;
         };
@@ -769,6 +1114,19 @@ export interface components {
             builtIn?: boolean;
             /** Format: uuid */
             themeId: string | null;
+        };
+        CompareSide: {
+            authorName: string;
+            /** Format: date-time */
+            createdAt: string;
+            draft: boolean;
+            number: number;
+            title: string;
+        };
+        Comparison: {
+            blocks: components["schemas"]["DiffBlock"][];
+            from: components["schemas"]["CompareSide"];
+            to: components["schemas"]["CompareSide"];
         };
         Components: {
             schemas: {
@@ -817,6 +1175,12 @@ export interface components {
             /** Format: uuid */
             themeId: string | null;
         };
+        DiffBlock: {
+            /** @enum {string} */
+            change: "equal" | "inserted" | "deleted" | "modified";
+            /** @description A JSON value. */
+            node: unknown;
+        };
         Document: {
             components: components["schemas"]["Components"];
             info: components["schemas"]["Info"];
@@ -831,6 +1195,27 @@ export interface components {
             }[];
             servers?: components["schemas"]["Server"][];
             tags?: components["schemas"]["Tag"][];
+        };
+        Draft: {
+            baseVersion: number;
+            /** @description A JSON value. */
+            body: unknown;
+            /** Format: uuid */
+            pageId: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        DraftInput: {
+            baseVersion: number;
+            /** @description A JSON value. */
+            body: unknown;
+            title: string;
+        };
+        DraftRef: {
+            baseVersion: number;
+            /** Format: date-time */
+            updatedAt: string;
         };
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
@@ -850,6 +1235,27 @@ export interface components {
             mono?: components["schemas"]["Font"];
             sans?: components["schemas"]["Font"];
         };
+        GlobalCan: {
+            administer: boolean;
+            createSpace: boolean;
+            use: boolean;
+        };
+        GlobalGrant: {
+            fixed: boolean;
+            /** @enum {string} */
+            permission: "use" | "createSpace" | "administer";
+            subjects: components["schemas"]["Subject"][];
+        };
+        GlobalGrantInput: {
+            subjects: components["schemas"]["SubjectRef"][];
+        };
+        Group: {
+            fromProvider: boolean;
+            /** Format: uuid */
+            id: string;
+            memberCount: number;
+            name: string;
+        };
         GroupRole: {
             group: string;
             /** Format: uuid */
@@ -858,6 +1264,21 @@ export interface components {
             role: "admin" | "member";
             /** Format: date-time */
             updatedAt: string;
+        };
+        Hit: {
+            /** Format: uuid */
+            attachmentId: string | null;
+            /** Format: uuid */
+            commentId: string | null;
+            labels: string[];
+            page: components["schemas"]["PageRef"];
+            snippet: components["schemas"]["Segment"][];
+            title: components["schemas"]["Segment"][];
+            /** @enum {string} */
+            type: "page" | "attachment" | "comment";
+            /** Format: date-time */
+            updatedAt: string;
+            updatedByName: string;
         };
         Icon: {
             /** Format: uuid */
@@ -868,6 +1289,11 @@ export interface components {
             description?: string;
             title: string;
             version: string;
+        };
+        InheritedRestriction: {
+            edit: components["schemas"]["Subject"][];
+            page: components["schemas"]["Ref"];
+            view: components["schemas"]["Subject"][];
         };
         Input: {
             name?: string;
@@ -963,22 +1389,32 @@ export interface components {
             ancestors: components["schemas"]["Ref"][];
             /** @description A JSON value. */
             body: unknown;
+            can: components["schemas"]["PageCan"];
             /** Format: date-time */
             createdAt: string;
             createdByName: string;
+            draft: components["schemas"]["DraftRef"] | null;
             home: boolean;
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             parentId: string | null;
+            restricted: components["schemas"]["Restricted"];
             /** Format: uuid */
             spaceId: string;
             spaceKey: string;
             title: string;
+            unpublished: boolean;
             /** Format: date-time */
             updatedAt: string;
             updatedByName: string;
             version: number;
+        };
+        PageCan: {
+            comment: boolean;
+            delete: boolean;
+            edit: boolean;
+            restrict: boolean;
         };
         PageCreateInput: {
             /** Format: uuid */
@@ -989,6 +1425,22 @@ export interface components {
             body?: unknown;
             /** Format: uuid */
             parentId: string;
+            publish?: boolean;
+            title: string;
+        };
+        PageHit: {
+            /** Format: uuid */
+            id: string;
+            path: string[];
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+        };
+        PageRef: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            spaceName: string;
             title: string;
         };
         PageResponse: {
@@ -1016,6 +1468,12 @@ export interface components {
             required?: boolean;
             schema: components["schemas"]["Schema"] | null;
         };
+        Person: {
+            email: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         Provider: {
             clientId: string;
             createGroups: boolean;
@@ -1031,9 +1489,23 @@ export interface components {
             callbackUrl: string;
             provider: components["schemas"]["Provider"] | null;
         };
+        PublishInput: {
+            comment?: string;
+            notifyWatchers?: boolean;
+        };
         ReadinessResponse: {
             routing: components["schemas"]["Stats"];
             status: string;
+        };
+        RecentPage: {
+            /** Format: uuid */
+            id: string;
+            path: string[];
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+            /** Format: date-time */
+            visitedAt: string;
         };
         Ref: {
             home: boolean;
@@ -1058,6 +1530,23 @@ export interface components {
                 [key: string]: components["schemas"]["MediaType"];
             };
             description: string;
+        };
+        RestoreInput: {
+            baseVersion: number;
+            comment?: string;
+        };
+        Restricted: {
+            edit: boolean;
+            view: boolean;
+        };
+        Restrictions: {
+            edit: components["schemas"]["Subject"][];
+            inherited: components["schemas"]["InheritedRestriction"][];
+            view: components["schemas"]["Subject"][];
+        };
+        RestrictionsInput: {
+            edit: components["schemas"]["SubjectRef"][];
+            view: components["schemas"]["SubjectRef"][];
         };
         SaveOIDCProviderRequest: {
             clientId: string;
@@ -1094,6 +1583,10 @@ export interface components {
             scheme?: string;
             type: string;
         };
+        Segment: {
+            match: boolean;
+            text: string;
+        };
         Server: {
             description?: string;
             url: string;
@@ -1120,6 +1613,17 @@ export interface components {
             name: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        SpaceGrant: {
+            permissions: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
+            subject: components["schemas"]["Subject"];
+        };
+        SpaceGrantInput: {
+            permissions: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
+            subject: components["schemas"]["SubjectRef"];
+        };
+        SpaceGrantsInput: {
+            grants: components["schemas"]["SpaceGrantInput"][];
         };
         Spec: {
             backdrop?: components["schemas"]["Backdrop"];
@@ -1148,6 +1652,19 @@ export interface components {
         };
         StatusResponse: {
             status: string;
+        };
+        Subject: {
+            /** Format: uuid */
+            id: string | null;
+            name: string;
+            /** @enum {string} */
+            type: "user" | "group" | "everyone";
+        };
+        SubjectRef: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            type: "user" | "group" | "everyone";
         };
         SwitchOrgRequest: {
             slug: string;
@@ -1191,7 +1708,9 @@ export interface components {
             id: string;
             /** Format: uuid */
             parentId: string;
+            restricted: boolean;
             title: string;
+            unpublished: boolean;
         };
         UpdateInput: {
             description?: string;
@@ -1204,6 +1723,30 @@ export interface components {
             id: string;
             name: string;
         };
+        Version: {
+            /** Format: uuid */
+            authorId: string | null;
+            authorName: string;
+            /** @description A JSON value. */
+            body: unknown;
+            comment: string;
+            /** Format: date-time */
+            createdAt: string;
+            number: number;
+            restoredFrom: number | null;
+            title: string;
+        };
+        VersionEntry: {
+            /** Format: uuid */
+            authorId: string | null;
+            authorName: string;
+            comment: string;
+            /** Format: date-time */
+            createdAt: string;
+            number: number;
+            restoredFrom: number | null;
+            title: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -1213,6 +1756,100 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    myAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        can: components["schemas"]["GlobalCan"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    downloadAttachment: {
+        parameters: {
+            query?: {
+                /** @description 1 to show images, PDFs and text in place. */
+                inline?: string;
+            };
+            header?: never;
+            path: {
+                attachmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     login: {
         parameters: {
             query?: never;
@@ -1386,6 +2023,42 @@ export interface operations {
                 content: {
                     "application/json": {
                         organization: components["schemas"]["CurrentOrg"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listGroups: {
+        parameters: {
+            query?: {
+                /** @description Words the name, or a person's email, starts with. */
+                q?: string;
+                /** @description 1 to 50; 20 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        groups: components["schemas"]["Group"][];
                     };
                 };
             };
@@ -1615,6 +2288,74 @@ export interface operations {
             };
         };
     };
+    listGlobalPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        permissions: components["schemas"]["GlobalGrant"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setGlobalPermission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                permission: "use" | "createSpace" | "administer";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GlobalGrantInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        permission: components["schemas"]["GlobalGrant"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listOrgAPITokens: {
         parameters: {
             query?: never;
@@ -1807,6 +2548,126 @@ export interface operations {
             };
         };
     };
+    listAttachments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attachments: components["schemas"]["Attachment"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    uploadAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attachment: components["schemas"]["Attachment"];
+                    };
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    compareVersions: {
+        parameters: {
+            query?: {
+                /** @description A version number, or draft; the version before to when absent. */
+                from?: string;
+                /** @description A version number, or draft; the latest version when absent. */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        comparison: components["schemas"]["Comparison"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     copyPage: {
         parameters: {
             query?: never;
@@ -1832,6 +2693,105 @@ export interface operations {
                         page: components["schemas"]["Page"];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        draft: components["schemas"]["Draft"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    saveDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        draft: components["schemas"]["Draft"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    discardDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -1881,6 +2841,310 @@ export interface operations {
             };
         };
     };
+    publishPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                        version: components["schemas"]["VersionEntry"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getPageRestrictions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        restrictions: components["schemas"]["Restrictions"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setPageRestrictions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestrictionsInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        restrictions: components["schemas"]["Restrictions"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listVersions: {
+        parameters: {
+            query?: {
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        limit: number;
+                        offset: number;
+                        total: number;
+                        versions: components["schemas"]["VersionEntry"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                versionNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        version: components["schemas"]["Version"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    restoreVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                versionNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                        version: components["schemas"]["VersionEntry"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    visitPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPeople: {
+        parameters: {
+            query?: {
+                /** @description Words the name, or a person's email, starts with. */
+                q?: string;
+                /** @description 1 to 50; 20 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        people: components["schemas"]["Person"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     readiness: {
         parameters: {
             query?: never;
@@ -1906,6 +3170,132 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    recentPages: {
+        parameters: {
+            query?: {
+                /** @description 1 to 20; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["RecentPage"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    search: {
+        parameters: {
+            query?: {
+                /** @description Words to find: each must match, "quoted words" match as a phrase, or matches either side, -word leaves out what has it. Empty lists by the filters alone. */
+                q?: string;
+                /** @description Space keys to stay inside. */
+                space?: string[];
+                /** @description People who published a version of the page, uploaded the file or wrote the comment. */
+                author?: string[];
+                /** @description Label names; a hit carries at least one. */
+                label?: string[];
+                /** @description What to find; everything when absent. */
+                type?: ("page" | "attachment" | "comment")[];
+                /** @description Changed on or after this day. */
+                updatedAfter?: string;
+                /** @description Changed before this day. */
+                updatedBefore?: string;
+                /** @description relevance unless said, and updated when q is empty. */
+                sort?: "relevance" | "updated";
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hits: components["schemas"]["Hit"][];
+                        limit: number;
+                        offset: number;
+                        total: number;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    quickSearch: {
+        parameters: {
+            query?: {
+                /** @description The words typed so far. */
+                q?: string;
+                /** @description A space key to stay inside. */
+                space?: string;
+                /** @description 1 to 20; 8 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["PageHit"][];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -2139,6 +3529,76 @@ export interface operations {
                 content: {
                     "application/json": {
                         pages: components["schemas"]["TreeNode"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSpacePermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        grants: components["schemas"]["SpaceGrant"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setSpacePermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpaceGrantsInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        grants: components["schemas"]["SpaceGrant"][];
                     };
                 };
             };

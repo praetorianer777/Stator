@@ -42,6 +42,10 @@ type TreeNode struct {
 	ParentID    uuid.UUID `json:"parentId"`
 	Title       string    `json:"title"`
 	HasChildren bool      `json:"hasChildren"`
+	// Unpublished marks a page only its creator sees; Restricted, one whose
+	// view is narrowed here or above. The tree query does not select them yet.
+	Unpublished bool `json:"unpublished" db:"-"`
+	Restricted  bool `json:"restricted" db:"-"`
 }
 
 // OutlineEntry is one page of a whole space in reading order, for choosing
@@ -67,6 +71,9 @@ type CreateInput struct {
 	Title string `json:"title"`
 	// Body is the first document; empty starts with an empty one.
 	Body json.RawMessage `json:"body,omitempty"`
+	// Publish makes the page version 1 at once, seen by everybody who may see
+	// the space; otherwise it stays an unpublished page of its creator's.
+	Publish bool `json:"publish,omitempty"`
 }
 
 // MoveInput moves a page. Without its children they stay where the page was.
