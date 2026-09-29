@@ -141,6 +141,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/oidc-provider/group-roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which provider groups grant which role. For administrators. */
+        get: operations["listGroupRoles"];
+        put?: never;
+        /** Map a provider group to a role, or change the role it maps to; members follow at their next sign-in. For administrators. */
+        post: operations["setGroupRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oidc-provider/group-roles/{groupRoleID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unmap a provider group; the roles it granted go at each person's next sign-in. For administrators. */
+        delete: operations["removeGroupRole"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/openapi.json": {
         parameters: {
             query?: never;
@@ -333,6 +368,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's members, with their roles and whether the identity provider decides them. For administrators. */
+        get: operations["listMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/requests": {
         parameters: {
             query?: never;
@@ -379,6 +431,23 @@ export interface paths {
         /** Let a waiting person in with the standing given. For administrators. */
         post: operations["admitJoinRequest"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take somebody out of the organization. The owner stays. For administrators. */
+        delete: operations["removeMember"];
         options?: never;
         head?: never;
         patch?: never;
@@ -479,6 +548,15 @@ export interface components {
             mono?: components["schemas"]["Font"];
             sans?: components["schemas"]["Font"];
         };
+        GroupRole: {
+            group: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            role: "admin" | "member";
+            /** Format: date-time */
+            updatedAt: string;
+        };
         Icon: {
             /** Format: uuid */
             assetId?: string;
@@ -513,6 +591,18 @@ export interface components {
         };
         MediaType: {
             schema?: components["schemas"]["Schema"];
+        };
+        Member: {
+            email: string;
+            /** Format: date-time */
+            joinedAt: string;
+            name: string;
+            /** @enum {string} */
+            role: "owner" | "admin" | "member";
+            /** @enum {string} */
+            roleSource: "manual" | "oidc";
+            /** Format: uuid */
+            userId: string;
         };
         Membership: {
             /** Format: uuid */
@@ -625,6 +715,11 @@ export interface components {
         Server: {
             description?: string;
             url: string;
+        };
+        SetGroupRoleRequest: {
+            group: string;
+            /** @enum {string} */
+            role: "admin" | "member";
         };
         Shape: {
             radiusControl?: number;
@@ -965,6 +1060,101 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProviderView"];
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listGroupRoles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        groupRoles: components["schemas"]["GroupRole"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setGroupRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetGroupRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        groupRole: components["schemas"]["GroupRole"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeGroupRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                groupRoleID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -1513,6 +1703,37 @@ export interface operations {
             };
         };
     };
+    listMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        members: components["schemas"]["Member"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listJoinRequests: {
         parameters: {
             query?: never;
@@ -1598,6 +1819,35 @@ export interface operations {
                         membership: components["schemas"]["Membership"];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

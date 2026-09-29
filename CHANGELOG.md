@@ -57,3 +57,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - `STATOR_SECRET_KEY` seals stored secrets with AES-256-GCM, and is required
   outside development; `STATOR_SESSION_TTL`, `STATOR_OIDC_REDIRECT_URL` and
   `STATOR_OIDC_BACKCHANNEL` tune sign-in.
+- Roles from provider groups: administrators map groups of the identity
+  provider to member or admin under single sign-on, and each sign-in gives
+  the highest mapped role. Somebody in a mapped group joins on their first
+  sign-in without waiting, roles set by hand outside mapped groups stay, the
+  owner is never moved, and every change goes to `audit_log`. The members
+  list marks the roles that come from the provider, and an administrator can
+  remove a member there.

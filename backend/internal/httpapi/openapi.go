@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -76,6 +77,16 @@ var operations = []operation{
 		responses: ok(providerView{})},
 	{method: "PUT", path: "/oidc-provider", handler: "handleSaveOIDCProvider", tag: "access", summary: "Configure the organization's identity provider. For administrators.",
 		request: saveOIDCProviderRequest{}, responses: ok(providerView{})},
+	{method: "GET", path: "/oidc-provider/group-roles", handler: "handleListGroupRoles", tag: "access", summary: "Which provider groups grant which role. For administrators.",
+		responses: ok(env{"groupRoles": []oidc.GroupRole{}})},
+	{method: "POST", path: "/oidc-provider/group-roles", handler: "handleSetGroupRole", tag: "access", summary: "Map a provider group to a role, or change the role it maps to; members follow at their next sign-in. For administrators.",
+		request: setGroupRoleRequest{}, responses: ok(env{"groupRole": oidc.GroupRole{}})},
+	{method: "DELETE", path: "/oidc-provider/group-roles/{groupRoleID}", handler: "handleRemoveGroupRole", tag: "access", summary: "Unmap a provider group; the roles it granted go at each person's next sign-in. For administrators.",
+		responses: none()},
+	{method: "GET", path: "/users", handler: "handleListMembers", tag: "access", summary: "The organization's members, with their roles and whether the identity provider decides them. For administrators.",
+		responses: ok(env{"members": []auth.Member{}})},
+	{method: "DELETE", path: "/users/{userID}", handler: "handleRemoveMember", tag: "access", summary: "Take somebody out of the organization. The owner stays. For administrators.",
+		responses: none()},
 	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", tag: "access", summary: "Who signed in through the identity provider and is waiting to be let in. For administrators.",
 		responses: ok(env{"requests": []auth.JoinRequest{}})},
 	{method: "POST", path: "/users/requests/{userID}/admit", handler: "handleAdmitJoinRequest", tag: "access", summary: "Let a waiting person in with the standing given. For administrators.",
@@ -109,6 +120,15 @@ func Spec() *openapi.Document {
 		roles[i] = string(role)
 	}
 	b.Enums[reflect.TypeOf(auth.OrgRole(""))] = roles
+	sources := make([]string, len(auth.RoleSources))
+	for i, source := range auth.RoleSources {
+		sources[i] = string(source)
+	}
+	b.Enums[reflect.TypeOf(auth.RoleSource(""))] = sources
+	// A group grants member or admin; owner is never the provider's to give.
+	granted := &openapi.Schema{Type: "string", Enum: []string{string(auth.RoleAdmin), string(auth.RoleMember)}}
+	b.FieldOverrides["GroupRole.role"] = granted
+	b.FieldOverrides["SetGroupRoleRequest.role"] = granted
 
 	doc := &openapi.Document{
 		OpenAPI: "3.1.0",

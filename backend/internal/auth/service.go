@@ -337,7 +337,7 @@ func (s *Service) EnsureAdmin(ctx context.Context, orgSlug, email, name, passwor
 		}
 		_, err = tx.Exec(ctx, `
 			INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')
-			ON CONFLICT (org_id, user_id) DO UPDATE SET org_role = 'owner'
+			ON CONFLICT (org_id, user_id) DO UPDATE SET org_role = 'owner', role_source = 'manual'
 			WHERE org_member.org_role <> 'owner'`, orgID, userID)
 		return err
 	})
