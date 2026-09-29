@@ -25,8 +25,10 @@ const (
 	AdministerSpace Action = "space.administer"
 	// DeleteSpace removes a space with every page in it.
 	DeleteSpace Action = "space.delete"
-	// EditPages adds and changes pages.
+	// EditPages adds, changes, moves, copies and trashes pages, and restores them.
 	EditPages Action = "page.edit"
+	// PurgeTrash deletes trashed pages for good.
+	PurgeTrash Action = "trash.purge"
 )
 
 // Actor is who asks: a person and their standing in the organization the
@@ -58,6 +60,8 @@ func (e *DeniedError) Error() string {
 		return "Only an administrator of the organization can change a space's details. Ask one of them."
 	case DeleteSpace:
 		return "Only an administrator of the organization can delete a space. Ask one of them."
+	case PurgeTrash:
+		return "Only an administrator of the organization can delete pages for good. Restore the page instead, or ask one of them."
 	case EditPages:
 		return "You may read this space but not change its pages. Ask an administrator for access."
 	}
@@ -90,7 +94,7 @@ func allowed(actor Actor, action Action) bool {
 	switch action {
 	case ViewSpace, EditPages:
 		return true
-	case CreateSpace, AdministerSpace, DeleteSpace:
+	case CreateSpace, AdministerSpace, DeleteSpace, PurgeTrash:
 		return actor.Role.CanAdminister()
 	}
 	return false
@@ -101,6 +105,7 @@ type Can struct {
 	EditPages  bool `json:"editPages"`
 	Administer bool `json:"administer"`
 	Delete     bool `json:"delete"`
+	PurgeTrash bool `json:"purgeTrash"`
 }
 
 // On says what the actor may do in a space.
@@ -109,5 +114,6 @@ func On(ctx context.Context, tx db.DBTX, actor Actor, space uuid.UUID) Can {
 		EditPages:  Allowed(ctx, tx, actor, EditPages, space),
 		Administer: Allowed(ctx, tx, actor, AdministerSpace, space),
 		Delete:     Allowed(ctx, tx, actor, DeleteSpace, space),
+		PurgeTrash: Allowed(ctx, tx, actor, PurgeTrash, space),
 	}
 }

@@ -30,6 +30,8 @@ const (
 	ActionSpaceCreated      = "space.created"
 	ActionSpaceUpdated      = "space.updated"
 	ActionSpaceDeleted      = "space.deleted"
+	ActionPagePurged        = "page.purged"
+	ActionTrashEmptied      = "trash.emptied"
 )
 
 // Entry is one act to record.

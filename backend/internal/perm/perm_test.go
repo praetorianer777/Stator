@@ -34,6 +34,8 @@ func TestTheRulesUntilSpacePermissions(t *testing.T) {
 		{admin, CreateSpace, true},
 		{admin, AdministerSpace, true},
 		{admin, DeleteSpace, true},
+		{member, PurgeTrash, false},
+		{admin, PurgeTrash, true},
 		{owner, DeleteSpace, true},
 		{nobody, ViewSpace, false},
 		{nobody, EditPages, false},
@@ -56,7 +58,7 @@ func TestTheRulesUntilSpacePermissions(t *testing.T) {
 	if got := On(ctx, nil, member, space); got != (Can{EditPages: true}) {
 		t.Errorf("a member is offered %+v", got)
 	}
-	if got := On(ctx, nil, admin, space); got != (Can{EditPages: true, Administer: true, Delete: true}) {
+	if got := On(ctx, nil, admin, space); got != (Can{EditPages: true, Administer: true, Delete: true, PurgeTrash: true}) {
 		t.Errorf("an administrator is offered %+v", got)
 	}
 }
