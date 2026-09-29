@@ -21,10 +21,173 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/openapi.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** This document. */
+        get: operations["openAPI"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the process can serve traffic, and how reads are routed. */
+        get: operations["readiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        APIError: {
+            code: string;
+            fields?: {
+                [key: string]: string;
+            };
+            message: string;
+            requestId?: string;
+        };
+        Components: {
+            schemas: {
+                [key: string]: components["schemas"]["Schema"] | null;
+            };
+            securitySchemes?: {
+                [key: string]: components["schemas"]["SecurityScheme"];
+            };
+        };
+        Document: {
+            components: components["schemas"]["Components"];
+            info: components["schemas"]["Info"];
+            openapi: string;
+            paths: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["Operation"] | null;
+                };
+            };
+            security?: {
+                [key: string]: string[];
+            }[];
+            servers?: components["schemas"]["Server"][];
+            tags?: components["schemas"]["Tag"][];
+        };
+        ErrorEnvelope: {
+            error: components["schemas"]["APIError"];
+        };
+        Info: {
+            description?: string;
+            title: string;
+            version: string;
+        };
+        MediaType: {
+            schema?: components["schemas"]["Schema"];
+        };
+        Operation: {
+            description?: string;
+            operationId: string;
+            parameters?: components["schemas"]["Parameter"][];
+            requestBody?: components["schemas"]["RequestBody"];
+            responses: {
+                [key: string]: components["schemas"]["Response"] | null;
+            };
+            security?: {
+                [key: string]: string[];
+            }[];
+            summary?: string;
+            tags?: string[];
+        };
+        Parameter: {
+            description?: string;
+            in: string;
+            name: string;
+            required?: boolean;
+            schema: components["schemas"]["Schema"] | null;
+        };
+        ReadinessResponse: {
+            routing: components["schemas"]["Stats"];
+            status: string;
+        };
+        ReplicaStatus: {
+            healthy: boolean;
+            lastError?: string;
+            name: string;
+        };
+        RequestBody: {
+            content: {
+                [key: string]: components["schemas"]["MediaType"];
+            };
+            description?: string;
+            required?: boolean;
+        };
+        Response: {
+            content?: {
+                [key: string]: components["schemas"]["MediaType"];
+            };
+            description: string;
+        };
+        Schema: {
+            $defs?: {
+                [key: string]: components["schemas"]["Schema"] | null;
+            };
+            $ref?: string;
+            additionalProperties?: components["schemas"]["Schema"];
+            description?: string;
+            enum?: string[];
+            format?: string;
+            items?: components["schemas"]["Schema"];
+            oneOf?: (components["schemas"]["Schema"] | null)[];
+            properties?: {
+                [key: string]: components["schemas"]["Schema"] | null;
+            };
+            required?: string[];
+            /** @description A JSON value. */
+            type?: unknown;
+        };
+        SecurityScheme: {
+            description?: string;
+            in?: string;
+            name?: string;
+            scheme?: string;
+            type: string;
+        };
+        Server: {
+            description?: string;
+            url: string;
+        };
+        Stats: {
+            noHealthyReplicaHits: number;
+            readsToPrimary: number;
+            readsToReplica: number;
+            replicas: components["schemas"]["ReplicaStatus"][];
+            staleFallbacks: number;
+        };
+        StatusResponse: {
+            status: string;
+        };
+        Tag: {
+            description?: string;
+            name: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -48,9 +211,83 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        status: string;
-                    };
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    openAPI: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    readiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };

@@ -35,7 +35,7 @@ web-install: | $(NPM_CACHE) ## Install the web client's dependencies from the lo
 
 .PHONY: web-schema
 web-schema: | $(NPM_CACHE) ## Regenerate web/src/api/schema.d.ts from api/openapi.json
-	$(DOCKER_NODE) npm run schema
+	$(DOCKER_NODE) sh -c '[ -d node_modules ] || npm ci --no-audit --no-fund; npm run schema'
 
 .PHONY: check-web
 check-web: | $(NPM_CACHE) ## Lint, type-check and unit-test the web client; check its API types are current

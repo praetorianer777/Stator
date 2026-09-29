@@ -69,6 +69,7 @@ tidy: | $(GO_CACHE) ## Run go mod tidy
 .PHONY: openapi
 openapi: | $(GO_CACHE) ## Regenerate api/openapi.json from the route table
 	$(DOCKER_GO) go run ./cmd/openapi ../api/openapi.json
+	$(MAKE) --no-print-directory web-schema
 
 .PHONY: openapi-check
 openapi-check: | $(GO_CACHE) ## Fail when api/openapi.json differs from what the code generates
