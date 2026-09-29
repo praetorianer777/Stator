@@ -90,8 +90,9 @@ func (s *Service) ListTrash(ctx context.Context, actor perm.Actor, spaceKey stri
 			FROM page p
 			JOIN page parent ON parent.id = p.parent_id
 			LEFT JOIN app_user u ON u.id = p.trashed_by
-			WHERE p.space_id = $1 AND p.trash_id = p.id
-			ORDER BY p.trashed_at DESC, p.id`, sp.ID)
+			WHERE p.space_id = $1 AND p.trash_id = p.id AND`+visible+`
+			  AND (parent.version > 0 OR parent.created_by = $2)
+			ORDER BY p.trashed_at DESC, p.id`, sp.ID, actor.UserID)
 		if err != nil {
 			return err
 		}

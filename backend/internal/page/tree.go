@@ -43,8 +43,8 @@ type TreeNode struct {
 	Title       string    `json:"title"`
 	HasChildren bool      `json:"hasChildren"`
 	// Unpublished marks a page only its creator sees; Restricted, one whose
-	// view is narrowed here or above. The tree query does not select them yet.
-	Unpublished bool `json:"unpublished" db:"-"`
+	// view is narrowed here or above, which the tree query does not select yet.
+	Unpublished bool `json:"unpublished"`
 	Restricted  bool `json:"restricted" db:"-"`
 }
 
@@ -228,14 +228,17 @@ func (s *Service) Children(ctx context.Context, actor perm.Actor, spaceKey strin
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page p WHERE p.id = $1 AND p.space_id = $2 AND`+live+`)`, under, sp.ID).Scan(&found); err != nil {
 			return err
 		}
-		if !found {
+		if hidden, err := hiddenFrom(ctx, tx, actor, under); err != nil {
+			return err
+		} else if !found || hidden {
 			return ErrNotFound
 		}
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.parent_id, p.title,
-			       EXISTS (SELECT 1 FROM page c WHERE c.parent_id = p.id AND`+liveChild+`)
-			FROM page p WHERE p.parent_id = $1 AND`+live+`
-			ORDER BY p.rank, p.id`, under)
+			       EXISTS (SELECT 1 FROM page c WHERE c.parent_id = p.id AND`+liveChild+` AND (c.version > 0 OR c.created_by = $2)),
+			       p.version = 0
+			FROM page p WHERE p.parent_id = $1 AND`+live+` AND`+visible+`
+			ORDER BY p.rank, p.id`, under, actor.UserID)
 		if err != nil {
 			return err
 		}
@@ -268,9 +271,9 @@ func (s *Service) Outline(ctx context.Context, actor perm.Actor, spaceKey string
 				UNION ALL
 				SELECT p.id, p.parent_id, p.title, t.depth + 1, (t.path || p.rank || chr(2) || p.id::text || chr(1)) COLLATE "C"
 				FROM page p JOIN tree t ON p.parent_id = t.id
-				WHERE`+live+`
+				WHERE`+live+` AND`+visible+`
 			)
-			SELECT id, parent_id, title, depth FROM tree ORDER BY path`, sp.HomePageID)
+			SELECT id, parent_id, title, depth FROM tree ORDER BY path`, sp.HomePageID, actor.UserID)
 		if err != nil {
 			return err
 		}
@@ -309,6 +312,15 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 			VALUES (current_org_id(), $1, $2, $3, $4, COALESCE($5::jsonb, '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb), $6, $6)
 			RETURNING id`, sp.ID, in.ParentID, r, title, nullJSON(in.Body), actor.UserID).Scan(&id); err != nil {
 			return fmt.Errorf("save the page: %w", err)
+		}
+		if in.Publish {
+			made, _, err := load(ctx, tx, actor, id, true)
+			if err != nil {
+				return err
+			}
+			if _, err := publish(ctx, tx, actor, made, release{title: made.Title, body: made.Body}); err != nil {
+				return err
+			}
 		}
 		out, _, err = load(ctx, tx, actor, id, false)
 		return err
@@ -406,7 +418,8 @@ func letChildrenStay(ctx context.Context, tx db.DBTX, p *Page) error {
 }
 
 // Copy makes a new page like this one, with its title and body, under a
-// parent in this space or another, and with its children the pages below it.
+// parent in this space or another, and with its children the pages below it
+// the actor sees. Copies are published at version 1, with no history.
 func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in CopyInput) (*Page, db.LSN, error) {
 	var title *string
 	if in.Title != nil {
@@ -437,7 +450,7 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 				SELECT p.id, p.parent_id, 0 FROM page p WHERE p.id = $1
 				UNION ALL
 				SELECT p.id, p.parent_id, b.depth + 1 FROM page p JOIN below b ON p.parent_id = b.id
-				WHERE $2 AND`+live+`
+				WHERE $2 AND`+live+` AND (p.version > 0 OR p.created_by = $7)
 			), fresh AS MATERIALIZED (
 				SELECT id AS old_id, uuidv7() AS new_id, parent_id, depth FROM below
 			), made AS (
@@ -455,6 +468,27 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			id, in.WithChildren, to.ID, in.ParentID, r, title, actor.UserID).Scan(&made)
 		if err != nil {
 			return fmt.Errorf("copy the page: %w", err)
+		}
+		// A statement of its own, because the version trigger reads the page
+		// rows, which the statement that inserts them cannot see.
+		if _, err := tx.Exec(ctx, `
+			WITH RECURSIVE copied (id) AS (
+				SELECT $1::uuid
+				UNION ALL
+				SELECT p.id FROM page p JOIN copied c ON p.parent_id = c.id
+			)
+			INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
+			SELECT p.org_id, p.id, 1, p.title, p.body, $2 FROM page p JOIN copied c ON c.id = p.id`, made, actor.UserID); err != nil {
+			return fmt.Errorf("publish the copy: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `
+			WITH RECURSIVE copied (id) AS (
+				SELECT $1::uuid
+				UNION ALL
+				SELECT p.id FROM page p JOIN copied c ON p.parent_id = c.id
+			)
+			UPDATE page SET version = 1 WHERE id IN (SELECT id FROM copied)`, made); err != nil {
+			return fmt.Errorf("publish the copy: %w", err)
 		}
 		out, _, err = load(ctx, tx, actor, made, false)
 		return err
