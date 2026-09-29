@@ -257,11 +257,13 @@ export const en = {
   },
   notFound: {
     title: "Page not found",
+    emptyTitle: "Nothing lives at this address",
     body: "The page you asked for does not exist. Check the address, or go back home.",
     action: "Go home",
   },
   routeError: {
     title: "This page could not be shown",
+    emptyTitle: "Something went wrong",
     retry: "Try again",
     fallback: "Something went wrong while loading this page. Try again, and reload if it keeps happening.",
   },

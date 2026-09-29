@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import "./layout";
 
 /**
  * Node 26 ships an experimental built-in `localStorage` that is inert unless the

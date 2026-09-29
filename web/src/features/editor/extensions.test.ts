@@ -1,4 +1,3 @@
-import "@/test/layout";
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { Slice } from "@tiptap/pm/model";
