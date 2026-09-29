@@ -14,7 +14,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
-	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
@@ -50,7 +49,7 @@ type Server struct {
 	Fresh Freshness
 	// TestOrgs serves /test/orgs for the browser suite when it is set, to
 	// callers with TestToken; nil leaves those paths unrouted.
-	TestOrgs  *testorg.Service
+	TestOrgs  TestOrgs
 	TestToken string
 
 	CookieName string
@@ -84,6 +83,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 	r.Use(s.sameSite(allowedOrigins))
 	r.Use(middleware.Timeout(timeout))
 	r.Use(s.authenticate)
+	r.Use(readOnlyToken)
 	r.Use(s.readYourWrites)
 
 	// Liveness and readiness are deliberately outside the API and authentication.
@@ -108,9 +108,25 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Use(requireAdmin)
 			r.Get("/oidc-provider", s.handleGetOIDCProvider)
 			r.Put("/oidc-provider", s.handleSaveOIDCProvider)
+			r.Get("/oidc-provider/group-roles", s.handleListGroupRoles)
+			r.Post("/oidc-provider/group-roles", s.handleSetGroupRole)
+			r.Delete("/oidc-provider/group-roles/{groupRoleID}", s.handleRemoveGroupRole)
+			r.Get("/users", s.handleListMembers)
+			r.Delete("/users/{userID}", s.handleRemoveMember)
 			r.Get("/users/requests", s.handleListJoinRequests)
 			r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)
 			r.Delete("/users/requests/{userID}", s.handleDeclineJoinRequest)
+			r.Get("/org/tokens", s.handleListOrgAPITokens)
+			r.Delete("/org/tokens/{tokenID}", s.handleRevokeOrgAPIToken)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(requireOrg)
+			r.Get("/tokens", s.handleListAPITokens)
+			// Making one is for a session only, so a leaked token cannot mint a
+			// longer lived one and outlive its own revocation.
+			r.With(requireSession).Post("/tokens", s.handleCreateAPIToken)
+			r.Delete("/tokens/{tokenID}", s.handleRevokeAPIToken)
 		})
 
 		// Themes are a person's in an organization; the examples are anybody's

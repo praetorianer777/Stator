@@ -63,7 +63,7 @@ func (h *harness) startTestOrgAPI(t *testing.T, kc *keycloak, on bool) (*api, ob
 		})
 		s.TestToken = suiteTestToken
 	}
-	server.Config.Handler = s.Routes(nil)
+	server.Config.Handler = observed(t, s.Routes(nil))
 	server.Start()
 	t.Cleanup(server.Close)
 	return a, store
@@ -94,7 +94,7 @@ func testCall(t *testing.T, a *api, method, path, token, body string) (int, map[
 }
 
 // sendJSON makes a request as the browser, with its session cookie.
-func (b *browser) sendJSON(t *testing.T, method, target, contentType string, body io.Reader) (int, map[string]any) {
+func (b *browser) sendBody(t *testing.T, method, target, contentType string, body io.Reader) (int, map[string]any) {
 	t.Helper()
 	req, err := http.NewRequest(method, target, body)
 	if err != nil {
@@ -175,6 +175,11 @@ func TestThrowawayOrganizations(t *testing.T) {
 	kc.reachable(t)
 	a, store := h.startTestOrgAPI(t, kc, true)
 	ctx := context.Background()
+	for _, r := range apiContract.routes {
+		if strings.HasPrefix(r.Path, "/test/") {
+			t.Fatalf("the coverage check counts %s %s, which the document leaves out", r.Method, r.Path)
+		}
+	}
 
 	t.Run("a call without the token is refused", func(t *testing.T) {
 		for _, token := range []string{"", "not the token at all"} {
@@ -236,17 +241,17 @@ func TestThrowawayOrganizations(t *testing.T) {
 			}
 		}
 
-		status, made := alice.sendJSON(t, http.MethodPost, a.URL+httpapi.APIPrefix+"/themes", "application/json", strings.NewReader(`{"name":"Throwaway","shared":true}`))
+		status, made := alice.sendBody(t, http.MethodPost, a.URL+httpapi.APIPrefix+"/themes", "application/json", strings.NewReader(`{"name":"Throwaway","shared":true}`))
 		if status != http.StatusCreated {
 			t.Fatalf("make a theme = %d %v", status, made)
 		}
 		themeID = made["theme"].(map[string]any)["id"].(string)
 		// Bob reads what alice wrote, which only the replica catching up promises.
 		h.settle(t)
-		if status, chose := bob.sendJSON(t, http.MethodPut, a.URL+httpapi.APIPrefix+"/themes/active", "application/json", strings.NewReader(`{"themeId":"`+themeID+`"}`)); status != http.StatusOK {
+		if status, chose := bob.sendBody(t, http.MethodPut, a.URL+httpapi.APIPrefix+"/themes/active", "application/json", strings.NewReader(`{"themeId":"`+themeID+`"}`)); status != http.StatusOK {
 			t.Fatalf("bob chooses the theme = %d %v", status, chose)
 		}
-		if status, set := alice.sendJSON(t, http.MethodPut, a.URL+httpapi.APIPrefix+"/themes/default", "application/json", strings.NewReader(`{"themeId":"`+themeID+`"}`)); status != http.StatusOK {
+		if status, set := alice.sendBody(t, http.MethodPut, a.URL+httpapi.APIPrefix+"/themes/default", "application/json", strings.NewReader(`{"themeId":"`+themeID+`"}`)); status != http.StatusOK {
 			t.Fatalf("make it the default = %d %v", status, set)
 		}
 
@@ -255,7 +260,7 @@ func TestThrowawayOrganizations(t *testing.T) {
 		part, _ := mp.CreateFormFile("file", "square.svg")
 		_, _ = part.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M2 2h12v12H2z"/></svg>`))
 		_ = mp.Close()
-		status, uploaded := alice.sendJSON(t, http.MethodPost, a.URL+httpapi.APIPrefix+"/themes/"+themeID+"/assets", mp.FormDataContentType(), &form)
+		status, uploaded := alice.sendBody(t, http.MethodPost, a.URL+httpapi.APIPrefix+"/themes/"+themeID+"/assets", mp.FormDataContentType(), &form)
 		if status != http.StatusCreated {
 			t.Fatalf("upload = %d %v", status, uploaded)
 		}

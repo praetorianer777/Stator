@@ -1,9 +1,11 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/subtle"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -25,6 +27,20 @@ var testOperations = []operation{
 		request: createTestOrgRequest{}, responses: created(testorg.Org{})},
 	{method: "DELETE", path: "/test/orgs/{orgSlug}", handler: "handleDeleteTestOrg", tag: "test", summary: "Remove a throwaway organization with all of its rows and files.",
 		responses: none()},
+}
+
+// TestOrgs makes and removes throwaway organizations; *testorg.Service is the
+// real one.
+type TestOrgs interface {
+	Create(ctx context.Context, label string) (*testorg.Org, error)
+	Delete(ctx context.Context, slug string) error
+}
+
+// testPathPrefix is where every test endpoint lives.
+const testPathPrefix = APIPrefix + "/test/"
+
+func isTestPath(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, testPathPrefix)
 }
 
 type createTestOrgRequest struct {

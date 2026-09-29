@@ -1,15 +1,79 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
+	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 )
 
 const unitTestToken = "a token for the unit tests"
+
+// fakeTestOrgs answers without a database, so a test sees what reached it.
+type fakeTestOrgs struct{ created, deleted int }
+
+func (f *fakeTestOrgs) Create(_ context.Context, label string) (*testorg.Org, error) {
+	f.created++
+	return &testorg.Org{ID: uuid.New(), Slug: label + "-0123abcd"}, nil
+}
+
+func (f *fakeTestOrgs) Delete(context.Context, string) error {
+	f.deleted++
+	return nil
+}
+
+// Sessions and access tokens neither open the test endpoints nor refuse them:
+// a read-only token, a deactivated account or a session on a foreign origin
+// still comes down to the test token alone.
+func TestTestEndpointsIgnoreSessionsAndAccessTokens(t *testing.T) {
+	s := newServer(t)
+	tokenID, sessionID := uuid.New(), uuid.New()
+	s.Auth = fakeAuth{
+		"read-only": {UserID: uuid.New(), TokenID: &tokenID, Scopes: []string{auth.ScopeRead}},
+		"session":   {UserID: uuid.New(), SessionID: &sessionID, Role: auth.RoleOwner},
+	}
+	orgs := &fakeTestOrgs{}
+	s.TestOrgs = orgs
+	s.TestToken = unitTestToken
+	h := s.Routes(nil)
+
+	withCredential := func(req *http.Request, credential string) *http.Request {
+		switch credential {
+		case "session":
+			req.AddCookie(&http.Cookie{Name: s.CookieName, Value: credential})
+			req.Header.Set("Origin", "http://elsewhere.test")
+		case "":
+		default:
+			req.Header.Set("Authorization", "Bearer "+credential)
+		}
+		return req
+	}
+	for _, credential := range []string{"read-only", "blocked", "session", "no such token"} {
+		for _, req := range testRequests() {
+			resp, body := serve(t, h, withCredential(req, credential))
+			if resp.StatusCode != http.StatusUnauthorized || errorOf(t, body)["code"] != "unauthorized" {
+				t.Errorf("%s %s with %q and no test token = %d %v, want 401", req.Method, req.URL.Path, credential, resp.StatusCode, body)
+			}
+		}
+		for i, req := range testRequests() {
+			req.Header.Set(TestTokenHeader, unitTestToken)
+			req.Header.Set("Content-Type", "application/json")
+			want := []int{http.StatusCreated, http.StatusNoContent}[i]
+			if resp, body := serve(t, h, withCredential(req, credential)); resp.StatusCode != want {
+				t.Errorf("%s %s with %q and the test token = %d %v, want %d", req.Method, req.URL.Path, credential, resp.StatusCode, body, want)
+			}
+		}
+	}
+	if orgs.created != 4 || orgs.deleted != 4 {
+		t.Fatalf("reached the service %d and %d times, want 4 each", orgs.created, orgs.deleted)
+	}
+}
 
 func testRequests() []*http.Request {
 	return []*http.Request{
@@ -35,7 +99,7 @@ func TestTestEndpointsAreNotFoundWhenOff(t *testing.T) {
 
 func TestTestEndpointsRefuseAWrongOrMissingToken(t *testing.T) {
 	s := newServer(t)
-	s.TestOrgs = &testorg.Service{}
+	s.TestOrgs = &fakeTestOrgs{}
 	s.TestToken = unitTestToken
 	h := s.Routes(nil)
 	for _, token := range []string{"", "wrong", unitTestToken + "x"} {
@@ -63,7 +127,7 @@ func TestTestEndpointsRefuseAWrongOrMissingToken(t *testing.T) {
 // published document still names only the public table.
 func TestTestRoutesAreServedWhenOnAndNeverDocumented(t *testing.T) {
 	s := newServer(t)
-	s.TestOrgs = &testorg.Service{}
+	s.TestOrgs = &fakeTestOrgs{}
 	served := routedBy(t, s)
 	want := map[string]bool{}
 	for _, op := range append(append([]operation{}, operations...), testOperations...) {

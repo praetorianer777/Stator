@@ -36,3 +36,8 @@ export const KEYCLOAK_URL = setting("STATOR_KEYCLOAK_URL");
 export function testEndpointsToken(): string {
   return setting("STATOR_TEST_ENDPOINTS_TOKEN");
 }
+
+/** The stack's database as its superuser, for arranging what no endpoint makes; read when first needed. */
+export function superuserURL(): string {
+  return setting("STATOR_TEST_SUPERUSER_URL");
+}
