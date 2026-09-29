@@ -7,11 +7,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -52,6 +55,9 @@ type operation struct {
 	binary bool
 	// redirect routes answer with a Location header rather than a body.
 	redirect bool
+	// pending routes are agreed but not built yet: they answer 501, and the
+	// integration suite does not expect them covered. See docs/architecture.md.
+	pending bool
 }
 
 // operations is the table. Order is by area, then by path; paths are relative
@@ -143,6 +149,113 @@ var operations = []operation{
 	{method: "DELETE", path: "/pages/{pageID}", handler: "handleTrashPage", tag: "pages", summary: "Move a page and every page below it to its space's trash.", responses: none()},
 	{method: "POST", path: "/pages/{pageID}/move", handler: "handleMovePage", tag: "pages", summary: "Move a page under another, in its space or another, with or without its children; a move under itself is refused.", request: page.MoveInput{}, responses: ok(env{"page": page.Page{}})},
 	{method: "POST", path: "/pages/{pageID}/copy", handler: "handleCopyPage", tag: "pages", summary: "Copy a page, with or without the pages below it, under a parent in its space or another.", request: page.CopyInput{}, responses: created(env{"page": page.Page{}})},
+
+	// Drafts and publishing (#13).
+	{method: "GET", path: "/pages/{pageID}/draft", handler: "handleGetDraft", tag: "drafts", summary: "The caller's own draft of a page, or null when they have none.", pending: true,
+		responses: ok(env{"draft": (*page.Draft)(nil)})},
+	{method: "PUT", path: "/pages/{pageID}/draft", handler: "handleSaveDraft", tag: "drafts", summary: "Autosave the caller's draft of a page; nobody else sees it.", pending: true,
+		request: page.DraftInput{}, responses: ok(env{"draft": page.Draft{}})},
+	{method: "DELETE", path: "/pages/{pageID}/draft", handler: "handleDiscardDraft", tag: "drafts", summary: "Throw the caller's draft away; the page stays as last published.", pending: true,
+		responses: none()},
+	{method: "POST", path: "/pages/{pageID}/publish", handler: "handlePublishPage", tag: "drafts", summary: "Publish the caller's draft as the next version; refused with publish_conflict when somebody published since the draft began.", pending: true,
+		request: page.PublishInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
+
+	// History (#14).
+	{method: "GET", path: "/pages/{pageID}/versions", handler: "handleListVersions", tag: "history", summary: "A page's published versions, the latest first.", pending: true,
+		query: pageQuery, responses: ok(env{"versions": []page.VersionEntry{}, "total": 0, "limit": 0, "offset": 0})},
+	{method: "GET", path: "/pages/{pageID}/versions/{versionNumber}", handler: "handleGetVersion", tag: "history", summary: "One published version with its body, to read it as it was.", pending: true,
+		responses: ok(env{"version": page.Version{}})},
+	{method: "POST", path: "/pages/{pageID}/versions/{versionNumber}/restore", handler: "handleRestoreVersion", tag: "history", summary: "Publish an older version's title and body again, as the next version.", pending: true,
+		request: page.RestoreInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
+	{method: "GET", path: "/pages/{pageID}/compare", handler: "handleCompareVersions", tag: "history", summary: "What changed between two versions of a page, or between a version and the caller's draft.", pending: true,
+		query: []param{
+			{name: "from", description: "A version number, or draft; the version before to when absent."},
+			{name: "to", description: "A version number, or draft; the latest version when absent."},
+		}, responses: ok(env{"comparison": page.Comparison{}})},
+
+	// Search (#18).
+	{method: "GET", path: "/search", handler: "handleSearch", tag: "search", summary: "Pages, attachments and comments whose words match, among what the caller may see.", pending: true,
+		query: searchQuery, responses: ok(env{"hits": []search.Hit{}, "total": 0, "limit": 0, "offset": 0})},
+	{method: "GET", path: "/search/quick", handler: "handleQuickSearch", tag: "search", summary: "Pages whose titles start with the words typed so far, for the top bar and the command palette.", pending: true,
+		query: []param{
+			{name: "q", description: "The words typed so far."},
+			{name: "space", description: "A space key to stay inside."},
+			{name: "limit", schema: intParam, description: "1 to 20; 8 when absent."},
+		}, responses: ok(env{"pages": []search.PageHit{}})},
+	{method: "GET", path: "/recent-pages", handler: "handleRecentPages", tag: "search", summary: "The pages the caller visited last, the latest first.", pending: true,
+		query: []param{{name: "limit", schema: intParam, description: "1 to 20; 10 when absent."}}, responses: ok(env{"pages": []search.RecentPage{}})},
+	{method: "POST", path: "/pages/{pageID}/visit", handler: "handleVisitPage", tag: "search", summary: "Note that the caller opened a page, for their recent pages.", pending: true,
+		responses: none()},
+
+	// Permissions (#19).
+	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "permissions", summary: "What the caller may do across the organization, which decides which buttons to draw.", pending: true,
+		responses: ok(env{"can": perm.GlobalCan{}})},
+	{method: "GET", path: "/org/permissions", handler: "handleListGlobalPermissions", tag: "permissions", summary: "Each global permission and whom it is granted to. For administrators.", pending: true,
+		responses: ok(env{"permissions": []perm.GlobalGrant{}})},
+	{method: "PUT", path: "/org/permissions/{permission}", handler: "handleSetGlobalPermission", tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.", pending: true,
+		request: perm.GlobalGrantInput{}, responses: ok(env{"permission": perm.GlobalGrant{}})},
+	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.", pending: true,
+		responses: ok(env{"grants": []perm.SpaceGrant{}})},
+	{method: "PUT", path: "/spaces/{spaceKey}/permissions", handler: "handleSetSpacePermissions", tag: "permissions", summary: "Replace a space's whole permission table. For the space's administrators.", pending: true,
+		request: perm.SpaceGrantsInput{}, responses: ok(env{"grants": []perm.SpaceGrant{}})},
+	{method: "GET", path: "/pages/{pageID}/restrictions", handler: "handleGetPageRestrictions", tag: "permissions", summary: "Who may view and edit a page beyond the space's permissions, and the restricted pages above it.", pending: true,
+		responses: ok(env{"restrictions": page.Restrictions{}})},
+	{method: "PUT", path: "/pages/{pageID}/restrictions", handler: "handleSetPageRestrictions", tag: "permissions", summary: "Replace a page's own view and edit restrictions; the pages below it inherit them.", pending: true,
+		request: page.RestrictionsInput{}, responses: ok(env{"restrictions": page.Restrictions{}})},
+	{method: "GET", path: "/people", handler: "handleListPeople", tag: "permissions", summary: "Members of the organization, to pick whom to grant something.", pending: true,
+		query: pickerQuery, responses: ok(env{"people": []perm.Person{}})},
+	{method: "GET", path: "/groups", handler: "handleListGroups", tag: "permissions", summary: "Groups of the organization, to pick whom to grant something.", pending: true,
+		query: pickerQuery, responses: ok(env{"groups": []perm.Group{}})},
+
+	// Attachments (#20), as Armature serves them.
+	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tag: "attachments", summary: "The files on a page, the latest first.", pending: true,
+		responses: ok(env{"attachments": []attachment.Attachment{}})},
+	{method: "POST", path: "/pages/{pageID}/attachments", handler: "handleUploadAttachment", tag: "attachments", summary: "Put a file on a page, as a multipart part named file; refused with too_large over the upload limit.", multipart: true, pending: true,
+		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 413: errorEnvelope{}}},
+	{method: "GET", path: "/attachments/{attachmentID}", handler: "handleDownloadAttachment", tag: "attachments", summary: "The bytes of a file, as a download.", binary: true, pending: true,
+		query: []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: ok(nil)},
+	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a file off its page for good.", pending: true,
+		responses: none()},
+}
+
+var (
+	intParam  = &openapi.Schema{Type: "integer"}
+	pageQuery = []param{
+		{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
+		{name: "offset", schema: intParam},
+	}
+	pickerQuery = []param{
+		{name: "q", description: "Words the name, or a person's email, starts with."},
+		{name: "limit", schema: intParam, description: "1 to 50; 20 when absent."},
+	}
+	searchQuery = []param{
+		{name: "q", description: "Words to find: each must match, \"quoted words\" match as a phrase, or matches either side, -word leaves out what has it. Empty lists by the filters alone."},
+		{name: "space", repeated: true, description: "Space keys to stay inside."},
+		{name: "author", repeated: true, schema: &openapi.Schema{Type: "string", Format: "uuid"}, description: "People who published a version of the page, uploaded the file or wrote the comment."},
+		{name: "label", repeated: true, description: "Label names; a hit carries at least one."},
+		{name: "type", repeated: true, schema: &openapi.Schema{Type: "string", Enum: enumStrings(search.HitTypes)}, description: "What to find; everything when absent."},
+		{name: "updatedAfter", schema: &openapi.Schema{Type: "string", Format: "date"}, description: "Changed on or after this day."},
+		{name: "updatedBefore", schema: &openapi.Schema{Type: "string", Format: "date"}, description: "Changed before this day."},
+		{name: "sort", schema: &openapi.Schema{Type: "string", Enum: search.Sorts}, description: "relevance unless said, and updated when q is empty."},
+		{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
+		{name: "offset", schema: intParam},
+	}
+)
+
+// isErrorEnvelope marks a refusal a client has to tell apart, listed with its
+// status next to the successes.
+func isErrorEnvelope(body any) bool {
+	_, is := body.(errorEnvelope)
+	return is
+}
+
+// enumStrings spells a named string type's values for a schema.
+func enumStrings[T ~string](values []T) []string {
+	out := make([]string, len(values))
+	for i, v := range values {
+		out[i] = string(v)
+	}
+	return out
 }
 
 // Spec builds the OpenAPI document from the table.
@@ -153,16 +266,13 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["APIToken.scopes"] = scopes
 	b.FieldOverrides["OrgAPIToken.scopes"] = scopes
 	b.FieldOverrides["CreateTokenRequest.scopes"] = scopes
-	roles := make([]string, len(auth.OrgRoles))
-	for i, role := range auth.OrgRoles {
-		roles[i] = string(role)
-	}
-	b.Enums[reflect.TypeOf(auth.OrgRole(""))] = roles
-	sources := make([]string, len(auth.RoleSources))
-	for i, source := range auth.RoleSources {
-		sources[i] = string(source)
-	}
-	b.Enums[reflect.TypeOf(auth.RoleSource(""))] = sources
+	b.Enums[reflect.TypeOf(auth.OrgRole(""))] = enumStrings(auth.OrgRoles)
+	b.Enums[reflect.TypeOf(auth.RoleSource(""))] = enumStrings(auth.RoleSources)
+	b.Enums[reflect.TypeOf(perm.SubjectType(""))] = enumStrings(perm.SubjectTypes)
+	b.Enums[reflect.TypeOf(perm.GlobalPermission(""))] = enumStrings(perm.GlobalPermissions)
+	b.Enums[reflect.TypeOf(perm.SpacePermission(""))] = enumStrings(perm.SpacePermissions)
+	b.Enums[reflect.TypeOf(page.DiffChange(""))] = enumStrings(page.DiffChanges)
+	b.Enums[reflect.TypeOf(search.HitType(""))] = enumStrings(search.HitTypes)
 	// A group grants member or admin; owner is never the provider's to give.
 	granted := &openapi.Schema{Type: "string", Enum: []string{string(auth.RoleAdmin), string(auth.RoleMember)}}
 	b.FieldOverrides["GroupRole.role"] = granted
@@ -232,6 +342,8 @@ func Spec() *openapi.Document {
 		for status, body := range op.responses {
 			r := &openapi.Response{Description: http.StatusText(status)}
 			switch {
+			case isErrorEnvelope(body):
+				r.Content = map[string]openapi.MediaType{"application/json": {Schema: errorSchema}}
 			case op.binary && status == http.StatusOK:
 				r.Content = map[string]openapi.MediaType{"*/*": {Schema: &openapi.Schema{Type: "string", Format: "binary"}}}
 			case body != nil:
@@ -295,11 +407,16 @@ func pathParams(path string) []string {
 	return out
 }
 
-// pathParamSchema types a path parameter by its name: ids are uuids, the rest
-// strings.
+// pathParamSchema types a path parameter by its name: ids are uuids, numbers
+// integers, a permission one of their names, the rest strings.
 func pathParamSchema(name string) *openapi.Schema {
-	if strings.HasSuffix(name, "ID") {
+	switch {
+	case strings.HasSuffix(name, "ID"):
 		return &openapi.Schema{Type: "string", Format: "uuid"}
+	case strings.HasSuffix(name, "Number"):
+		return &openapi.Schema{Type: "integer"}
+	case name == "permission":
+		return &openapi.Schema{Type: "string", Enum: enumStrings(perm.GlobalPermissions)}
 	}
 	return &openapi.Schema{Type: "string"}
 }
@@ -314,13 +431,15 @@ type Route struct {
 	Method, Path, ID string
 	Public, Binary   bool
 	Redirect         bool
+	// Pending operations answer 501 until they are built.
+	Pending bool
 }
 
 // Catalog lists every operation in the table.
 func Catalog() []Route {
 	out := make([]Route, 0, len(operations))
 	for _, op := range operations {
-		out = append(out, Route{Method: op.method, Path: op.path, ID: op.operationID(), Public: op.public, Binary: op.binary, Redirect: op.redirect})
+		out = append(out, Route{Method: op.method, Path: op.path, ID: op.operationID(), Public: op.public, Binary: op.binary, Redirect: op.redirect, Pending: op.pending})
 	}
 	return out
 }

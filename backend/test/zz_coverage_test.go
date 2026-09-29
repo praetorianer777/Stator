@@ -5,6 +5,8 @@ package test
 import (
 	"strings"
 	"testing"
+
+	"github.com/praetorianer777/stator/backend/internal/httpapi"
 )
 
 // This file sorts last, so the test runs after every other one has made its
@@ -19,17 +21,29 @@ func TestEveryOperationWasExercisedBothWays(t *testing.T) {
 	// A GET with no input and no session cannot be refused; there is nothing
 	// to refuse it for.
 	unrefusable := map[string]bool{"GET /healthz": true, "GET /readyz": true, "GET /openapi.json": true}
-	kept := neverRefused[:0]
-	for _, key := range neverRefused {
-		if !unrefusable[key] {
-			kept = append(kept, key)
+	// A pending operation answers 501 until it is built, so it cannot succeed.
+	pending := map[string]bool{}
+	for _, r := range httpapi.Catalog() {
+		if r.Pending {
+			pending[r.Method+" "+r.Path] = true
 		}
 	}
-	neverRefused = kept
+	neverSucceeded = without(neverSucceeded, pending)
+	neverRefused = without(without(neverRefused, unrefusable), pending)
 	if len(neverSucceeded) > 0 {
 		t.Errorf("%d operations were never answered successfully:\n  %s", len(neverSucceeded), strings.Join(neverSucceeded, "\n  "))
 	}
 	if len(neverRefused) > 0 {
 		t.Errorf("%d operations were never refused:\n  %s", len(neverRefused), strings.Join(neverRefused, "\n  "))
 	}
+}
+
+func without(keys []string, drop map[string]bool) []string {
+	var kept []string
+	for _, key := range keys {
+		if !drop[key] {
+			kept = append(kept, key)
+		}
+	}
+	return kept
 }

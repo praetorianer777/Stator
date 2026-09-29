@@ -16,13 +16,28 @@
       "name": "access"
     },
     {
+      "name": "attachments"
+    },
+    {
       "name": "auth"
+    },
+    {
+      "name": "drafts"
     },
     {
       "name": "health"
     },
     {
+      "name": "history"
+    },
+    {
       "name": "pages"
+    },
+    {
+      "name": "permissions"
+    },
+    {
+      "name": "search"
     },
     {
       "name": "spaces"
@@ -38,6 +53,129 @@
     }
   ],
   "paths": {
+    "/access/me": {
+      "get": {
+        "operationId": "myAccess",
+        "summary": "What the caller may do across the organization, which decides which buttons to draw.",
+        "tags": [
+          "permissions"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "can": {
+                      "$ref": "#/components/schemas/GlobalCan"
+                    }
+                  },
+                  "required": [
+                    "can"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachments/{attachmentID}": {
+      "delete": {
+        "operationId": "deleteAttachment",
+        "summary": "Take a file off its page for good.",
+        "tags": [
+          "attachments"
+        ],
+        "parameters": [
+          {
+            "name": "attachmentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "downloadAttachment",
+        "summary": "The bytes of a file, as a download.",
+        "tags": [
+          "attachments"
+        ],
+        "parameters": [
+          {
+            "name": "attachmentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "inline",
+            "in": "query",
+            "description": "1 to show images, PDFs and text in place.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/login": {
       "post": {
         "operationId": "login",
@@ -254,6 +392,66 @@
                   },
                   "required": [
                     "organization"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups": {
+      "get": {
+        "operationId": "listGroups",
+        "summary": "Groups of the organization, to pick whom to grant something.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words the name, or a person's email, starts with.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groups": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Group"
+                      }
+                    }
+                  },
+                  "required": [
+                    "groups"
                   ]
                 }
               }
@@ -511,6 +709,112 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/permissions": {
+      "get": {
+        "operationId": "listGlobalPermissions",
+        "summary": "Each global permission and whom it is granted to. For administrators.",
+        "tags": [
+          "permissions"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GlobalGrant"
+                      }
+                    }
+                  },
+                  "required": [
+                    "permissions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/permissions/{permission}": {
+      "put": {
+        "operationId": "setGlobalPermission",
+        "summary": "Replace whom a global permission is granted to. For administrators.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "permission",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "use",
+                "createSpace",
+                "administer"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalGrantInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "permission": {
+                      "$ref": "#/components/schemas/GlobalGrant"
+                    }
+                  },
+                  "required": [
+                    "permission"
+                  ]
                 }
               }
             }
@@ -787,6 +1091,202 @@
         }
       }
     },
+    "/pages/{pageID}/attachments": {
+      "get": {
+        "operationId": "listAttachments",
+        "summary": "The files on a page, the latest first.",
+        "tags": [
+          "attachments"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Attachment"
+                      }
+                    }
+                  },
+                  "required": [
+                    "attachments"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "uploadAttachment",
+        "summary": "Put a file on a page, as a multipart part named file; refused with too_large over the upload limit.",
+        "tags": [
+          "attachments"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachment": {
+                      "$ref": "#/components/schemas/Attachment"
+                    }
+                  },
+                  "required": [
+                    "attachment"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/compare": {
+      "get": {
+        "operationId": "compareVersions",
+        "summary": "What changed between two versions of a page, or between a version and the caller's draft.",
+        "tags": [
+          "history"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "A version number, or draft; the version before to when absent.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "A version number, or draft; the latest version when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "comparison": {
+                      "$ref": "#/components/schemas/Comparison"
+                    }
+                  },
+                  "required": [
+                    "comparison"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/copy": {
       "post": {
         "operationId": "copyPage",
@@ -829,6 +1329,154 @@
                   },
                   "required": [
                     "page"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/draft": {
+      "delete": {
+        "operationId": "discardDraft",
+        "summary": "Throw the caller's draft away; the page stays as last published.",
+        "tags": [
+          "drafts"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getDraft",
+        "summary": "The caller's own draft of a page, or null when they have none.",
+        "tags": [
+          "drafts"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "draft": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Draft"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "draft"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveDraft",
+        "summary": "Autosave the caller's draft of a page; nobody else sees it.",
+        "tags": [
+          "drafts"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "draft": {
+                      "$ref": "#/components/schemas/Draft"
+                    }
+                  },
+                  "required": [
+                    "draft"
                   ]
                 }
               }
@@ -907,6 +1555,503 @@
         }
       }
     },
+    "/pages/{pageID}/publish": {
+      "post": {
+        "operationId": "publishPage",
+        "summary": "Publish the caller's draft as the next version; refused with publish_conflict when somebody published since the draft began.",
+        "tags": [
+          "drafts"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    },
+                    "version": {
+                      "$ref": "#/components/schemas/VersionEntry"
+                    }
+                  },
+                  "required": [
+                    "page",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/restrictions": {
+      "get": {
+        "operationId": "getPageRestrictions",
+        "summary": "Who may view and edit a page beyond the space's permissions, and the restricted pages above it.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "restrictions": {
+                      "$ref": "#/components/schemas/Restrictions"
+                    }
+                  },
+                  "required": [
+                    "restrictions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setPageRestrictions",
+        "summary": "Replace a page's own view and edit restrictions; the pages below it inherit them.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestrictionsInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "restrictions": {
+                      "$ref": "#/components/schemas/Restrictions"
+                    }
+                  },
+                  "required": [
+                    "restrictions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/versions": {
+      "get": {
+        "operationId": "listVersions",
+        "summary": "A page's published versions, the latest first.",
+        "tags": [
+          "history"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "offset": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/VersionEntry"
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "versions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/versions/{versionNumber}": {
+      "get": {
+        "operationId": "getVersion",
+        "summary": "One published version with its body, to read it as it was.",
+        "tags": [
+          "history"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "versionNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "$ref": "#/components/schemas/Version"
+                    }
+                  },
+                  "required": [
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/versions/{versionNumber}/restore": {
+      "post": {
+        "operationId": "restoreVersion",
+        "summary": "Publish an older version's title and body again, as the next version.",
+        "tags": [
+          "history"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "versionNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    },
+                    "version": {
+                      "$ref": "#/components/schemas/VersionEntry"
+                    }
+                  },
+                  "required": [
+                    "page",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/visit": {
+      "post": {
+        "operationId": "visitPage",
+        "summary": "Note that the caller opened a page, for their recent pages.",
+        "tags": [
+          "search"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/people": {
+      "get": {
+        "operationId": "listPeople",
+        "summary": "Members of the organization, to pick whom to grant something.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words the name, or a person's email, starts with.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "people": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Person"
+                      }
+                    }
+                  },
+                  "required": [
+                    "people"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/readyz": {
       "get": {
         "operationId": "readiness",
@@ -931,6 +2076,285 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recent-pages": {
+      "get": {
+        "operationId": "recentPages",
+        "summary": "The pages the caller visited last, the latest first.",
+        "tags": [
+          "search"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 20; 10 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RecentPage"
+                      }
+                    }
+                  },
+                  "required": [
+                    "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "search",
+        "summary": "Pages, attachments and comments whose words match, among what the caller may see.",
+        "tags": [
+          "search"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words to find: each must match, \"quoted words\" match as a phrase, or matches either side, -word leaves out what has it. Empty lists by the filters alone.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "space",
+            "in": "query",
+            "description": "Space keys to stay inside.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "author",
+            "in": "query",
+            "description": "People who published a version of the page, uploaded the file or wrote the comment.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "description": "Label names; a hit carries at least one.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "What to find; everything when absent.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "page",
+                  "attachment",
+                  "comment"
+                ]
+              }
+            }
+          },
+          {
+            "name": "updatedAfter",
+            "in": "query",
+            "description": "Changed on or after this day.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "updatedBefore",
+            "in": "query",
+            "description": "Changed before this day.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "relevance unless said, and updated when q is empty.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "relevance",
+                "updated"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hits": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Hit"
+                      }
+                    },
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "offset": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "hits",
+                    "limit",
+                    "offset",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search/quick": {
+      "get": {
+        "operationId": "quickSearch",
+        "summary": "Pages whose titles start with the words typed so far, for the top bar and the command palette.",
+        "tags": [
+          "search"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "The words typed so far.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key to stay inside.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 20; 8 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PageHit"
+                      }
+                    }
+                  },
+                  "required": [
+                    "pages"
+                  ]
                 }
               }
             }
@@ -1270,6 +2694,118 @@
                   },
                   "required": [
                     "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/permissions": {
+      "get": {
+        "operationId": "listSpacePermissions",
+        "summary": "Who may do what in a space. For the space's administrators.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpaceGrant"
+                      }
+                    }
+                  },
+                  "required": [
+                    "grants"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setSpacePermissions",
+        "summary": "Replace a space's whole permission table. For the space's administrators.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpaceGrantsInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpaceGrant"
+                      }
+                    }
+                  },
+                  "required": [
+                    "grants"
                   ]
                 }
               }
@@ -2629,6 +4165,58 @@
           "createdAt"
         ]
       },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "uploadedByName": {
+            "type": "string"
+          },
+          "width": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "pageId",
+          "fileName",
+          "contentType",
+          "size",
+          "width",
+          "height",
+          "uploadedByName",
+          "createdAt"
+        ]
+      },
       "Backdrop": {
         "type": "object",
         "properties": {
@@ -2652,10 +4240,16 @@
       "Can": {
         "type": "object",
         "properties": {
+          "addComments": {
+            "type": "boolean"
+          },
           "administer": {
             "type": "boolean"
           },
           "delete": {
+            "type": "boolean"
+          },
+          "deletePages": {
             "type": "boolean"
           },
           "editPages": {
@@ -2669,7 +4263,9 @@
           "editPages",
           "administer",
           "delete",
-          "purgeTrash"
+          "purgeTrash",
+          "addComments",
+          "deletePages"
         ]
       },
       "ChooseThemeRequest": {
@@ -2688,6 +4284,56 @@
         },
         "required": [
           "themeId"
+        ]
+      },
+      "CompareSide": {
+        "type": "object",
+        "properties": {
+          "authorName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "draft",
+          "title",
+          "authorName",
+          "createdAt"
+        ]
+      },
+      "Comparison": {
+        "type": "object",
+        "properties": {
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiffBlock"
+            }
+          },
+          "from": {
+            "$ref": "#/components/schemas/CompareSide"
+          },
+          "to": {
+            "$ref": "#/components/schemas/CompareSide"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "blocks"
         ]
       },
       "Components": {
@@ -2850,6 +4496,27 @@
           "themeId"
         ]
       },
+      "DiffBlock": {
+        "type": "object",
+        "properties": {
+          "change": {
+            "type": "string",
+            "enum": [
+              "equal",
+              "inserted",
+              "deleted",
+              "modified"
+            ]
+          },
+          "node": {
+            "description": "A JSON value."
+          }
+        },
+        "required": [
+          "change",
+          "node"
+        ]
+      },
       "Document": {
         "type": "object",
         "properties": {
@@ -2908,6 +4575,70 @@
           "info",
           "paths",
           "components"
+        ]
+      },
+      "Draft": {
+        "type": "object",
+        "properties": {
+          "baseVersion": {
+            "type": "integer"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "pageId",
+          "title",
+          "body",
+          "baseVersion",
+          "updatedAt"
+        ]
+      },
+      "DraftInput": {
+        "type": "object",
+        "properties": {
+          "baseVersion": {
+            "type": "integer"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "body",
+          "baseVersion"
+        ]
+      },
+      "DraftRef": {
+        "type": "object",
+        "properties": {
+          "baseVersion": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "baseVersion",
+          "updatedAt"
         ]
       },
       "ErrorEnvelope": {
@@ -2970,6 +4701,90 @@
           }
         }
       },
+      "GlobalCan": {
+        "type": "object",
+        "properties": {
+          "administer": {
+            "type": "boolean"
+          },
+          "createSpace": {
+            "type": "boolean"
+          },
+          "use": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "use",
+          "createSpace",
+          "administer"
+        ]
+      },
+      "GlobalGrant": {
+        "type": "object",
+        "properties": {
+          "fixed": {
+            "type": "boolean"
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "use",
+              "createSpace",
+              "administer"
+            ]
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          }
+        },
+        "required": [
+          "permission",
+          "subjects",
+          "fixed"
+        ]
+      },
+      "GlobalGrantInput": {
+        "type": "object",
+        "properties": {
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            }
+          }
+        },
+        "required": [
+          "subjects"
+        ]
+      },
+      "Group": {
+        "type": "object",
+        "properties": {
+          "fromProvider": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "memberCount": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "memberCount",
+          "fromProvider"
+        ]
+      },
       "GroupRole": {
         "type": "object",
         "properties": {
@@ -2997,6 +4812,72 @@
           "group",
           "role",
           "updatedAt"
+        ]
+      },
+      "Hit": {
+        "type": "object",
+        "properties": {
+          "attachmentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "commentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageRef"
+          },
+          "snippet": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            }
+          },
+          "title": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            }
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "page",
+              "attachment",
+              "comment"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedByName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "page",
+          "attachmentId",
+          "commentId",
+          "title",
+          "snippet",
+          "labels",
+          "updatedAt",
+          "updatedByName"
         ]
       },
       "Icon": {
@@ -3030,6 +4911,31 @@
         "required": [
           "title",
           "version"
+        ]
+      },
+      "InheritedRestriction": {
+        "type": "object",
+        "properties": {
+          "edit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Ref"
+          },
+          "view": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          }
+        },
+        "required": [
+          "page",
+          "view",
+          "edit"
         ]
       },
       "Input": {
@@ -3369,12 +5275,25 @@
           "body": {
             "description": "A JSON value."
           },
+          "can": {
+            "$ref": "#/components/schemas/PageCan"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
           },
           "createdByName": {
             "type": "string"
+          },
+          "draft": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DraftRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "home": {
             "type": "boolean"
@@ -3390,6 +5309,9 @@
             ],
             "format": "uuid"
           },
+          "restricted": {
+            "$ref": "#/components/schemas/Restricted"
+          },
           "spaceId": {
             "type": "string",
             "format": "uuid"
@@ -3399,6 +5321,9 @@
           },
           "title": {
             "type": "string"
+          },
+          "unpublished": {
+            "type": "boolean"
           },
           "updatedAt": {
             "type": "string",
@@ -3420,11 +5345,38 @@
           "body",
           "version",
           "home",
+          "unpublished",
+          "draft",
+          "restricted",
+          "can",
           "ancestors",
           "createdByName",
           "createdAt",
           "updatedByName",
           "updatedAt"
+        ]
+      },
+      "PageCan": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "boolean"
+          },
+          "delete": {
+            "type": "boolean"
+          },
+          "edit": {
+            "type": "boolean"
+          },
+          "restrict": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "delete",
+          "restrict",
+          "comment"
         ]
       },
       "PageCreateInput": {
@@ -3445,6 +5397,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "publish": {
+            "type": "boolean"
+          },
           "title": {
             "type": "string"
           }
@@ -3452,6 +5407,61 @@
         "required": [
           "parentId",
           "title"
+        ]
+      },
+      "PageHit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName",
+          "path"
+        ]
+      },
+      "PageRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName"
         ]
       },
       "PageResponse": {
@@ -3539,6 +5549,26 @@
           "schema"
         ]
       },
+      "Person": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email"
+        ]
+      },
       "Provider": {
         "type": "object",
         "properties": {
@@ -3601,6 +5631,17 @@
           "callbackUrl"
         ]
       },
+      "PublishInput": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string"
+          },
+          "notifyWatchers": {
+            "type": "boolean"
+          }
+        }
+      },
       "ReadinessResponse": {
         "type": "object",
         "properties": {
@@ -3614,6 +5655,42 @@
         "required": [
           "status",
           "routing"
+        ]
+      },
+      "RecentPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "visitedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName",
+          "path",
+          "visitedAt"
         ]
       },
       "Ref": {
@@ -3689,6 +5766,84 @@
         },
         "required": [
           "description"
+        ]
+      },
+      "RestoreInput": {
+        "type": "object",
+        "properties": {
+          "baseVersion": {
+            "type": "integer"
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseVersion"
+        ]
+      },
+      "Restricted": {
+        "type": "object",
+        "properties": {
+          "edit": {
+            "type": "boolean"
+          },
+          "view": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "view",
+          "edit"
+        ]
+      },
+      "Restrictions": {
+        "type": "object",
+        "properties": {
+          "edit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          },
+          "inherited": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InheritedRestriction"
+            }
+          },
+          "view": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          }
+        },
+        "required": [
+          "view",
+          "edit",
+          "inherited"
+        ]
+      },
+      "RestrictionsInput": {
+        "type": "object",
+        "properties": {
+          "edit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            }
+          },
+          "view": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            }
+          }
+        },
+        "required": [
+          "view",
+          "edit"
         ]
       },
       "SaveOIDCProviderRequest": {
@@ -3823,6 +5978,21 @@
           "type"
         ]
       },
+      "Segment": {
+        "type": "object",
+        "properties": {
+          "match": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "match"
+        ]
+      },
       "Server": {
         "type": "object",
         "properties": {
@@ -3908,6 +6078,70 @@
           "createdAt",
           "updatedAt",
           "can"
+        ]
+      },
+      "SpaceGrant": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "view",
+                "addPages",
+                "addComments",
+                "delete",
+                "administer"
+              ]
+            }
+          },
+          "subject": {
+            "$ref": "#/components/schemas/Subject"
+          }
+        },
+        "required": [
+          "subject",
+          "permissions"
+        ]
+      },
+      "SpaceGrantInput": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "view",
+                "addPages",
+                "addComments",
+                "delete",
+                "administer"
+              ]
+            }
+          },
+          "subject": {
+            "$ref": "#/components/schemas/SubjectRef"
+          }
+        },
+        "required": [
+          "subject",
+          "permissions"
+        ]
+      },
+      "SpaceGrantsInput": {
+        "type": "object",
+        "properties": {
+          "grants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceGrantInput"
+            }
+          }
+        },
+        "required": [
+          "grants"
         ]
       },
       "Spec": {
@@ -4003,6 +6237,54 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "Subject": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "user",
+              "group",
+              "everyone"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name"
+        ]
+      },
+      "SubjectRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "user",
+              "group",
+              "everyone"
+            ]
+          }
+        },
+        "required": [
+          "type"
         ]
       },
       "SwitchOrgRequest": {
@@ -4143,15 +6425,23 @@
             "type": "string",
             "format": "uuid"
           },
+          "restricted": {
+            "type": "boolean"
+          },
           "title": {
             "type": "string"
+          },
+          "unpublished": {
+            "type": "boolean"
           }
         },
         "required": [
           "id",
           "parentId",
           "title",
-          "hasChildren"
+          "hasChildren",
+          "unpublished",
+          "restricted"
         ]
       },
       "UpdateInput": {
@@ -4186,6 +6476,96 @@
           "id",
           "email",
           "name"
+        ]
+      },
+      "Version": {
+        "type": "object",
+        "properties": {
+          "authorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "comment": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "restoredFrom": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "title",
+          "comment",
+          "authorId",
+          "authorName",
+          "createdAt",
+          "restoredFrom",
+          "body"
+        ]
+      },
+      "VersionEntry": {
+        "type": "object",
+        "properties": {
+          "authorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "restoredFrom": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "title",
+          "comment",
+          "authorId",
+          "authorName",
+          "createdAt",
+          "restoredFrom"
         ]
       }
     },

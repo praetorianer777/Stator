@@ -11,6 +11,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+
+	"github.com/praetorianer777/stator/backend/internal/perm"
 )
 
 // MaxTitleLength bounds a title, matching the web client's.
@@ -32,9 +34,19 @@ type Page struct {
 	Title    string     `json:"title"`
 	// Body is the document, ProseMirror JSON the allowlist accepts.
 	Body json.RawMessage `json:"body"`
-	// Version counts saves; a save names the one it started from.
+	// Version is the number of the published version the title and body
+	// are, 0 while the page has never been published.
 	Version int  `json:"version"`
 	Home    bool `json:"home"`
+	// Unpublished pages are seen by their creator alone.
+	Unpublished bool `json:"unpublished"`
+	// Draft is the caller's own unpublished edit of the page, if any.
+	Draft *DraftRef `json:"draft"`
+	// Restricted says whether a view or edit restriction on the page or
+	// above it narrows who may do so.
+	Restricted Restricted `json:"restricted"`
+	// Can says what the caller may do to this page, restrictions included.
+	Can perm.PageCan `json:"can"`
 	// Ancestors are the pages above this one, the home page first.
 	Ancestors     []Ref     `json:"ancestors"`
 	CreatedByName string    `json:"createdByName"`
@@ -43,7 +55,8 @@ type Page struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
-// UpdateInput changes a page's title or body; nil leaves a field alone.
+// UpdateInput publishes a new title or body at once, without a draft, as
+// scripts do; nil leaves a field alone.
 type UpdateInput struct {
 	Title *string `json:"title,omitempty"`
 	// Body is the whole new document.

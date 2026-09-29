@@ -11,7 +11,7 @@ export function aSpace(over: Partial<Space> = {}): Space {
     homePageId: "0195f000-0000-7000-8000-000000000001",
     createdAt: "2026-09-29T08:00:00Z",
     updatedAt: "2026-09-29T08:00:00Z",
-    can: { editPages: true, administer: true, delete: true, purgeTrash: true },
+    can: { editPages: true, administer: true, delete: true, purgeTrash: true, addComments: true, deletePages: true },
     ...over,
   };
 }
@@ -27,6 +27,10 @@ export function aPage(over: Partial<Page> = {}): Page {
     body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome to the handbook." }] }] },
     version: 1,
     home: true,
+    unpublished: false,
+    draft: null,
+    restricted: { view: false, edit: false },
+    can: { edit: true, delete: true, restrict: true, comment: true },
     ancestors: [],
     createdByName: "Ada Lovelace",
     createdAt: "2026-09-29T08:00:00Z",
