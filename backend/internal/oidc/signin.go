@@ -24,9 +24,41 @@ type Session struct {
 	Left   []string
 }
 
-// SignIn turns a verified identity into a session in orgID, making the person
-// a member on first sign-in; see docs/decisions.md.
+// SignIn turns a verified identity into a session in orgID. Somebody who is not
+// a member is refused with ErrNotAMember, and their request to join is noted.
 func (s *Service) SignIn(ctx context.Context, orgID uuid.UUID, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
+	// Authenticating is not the same as being let in: an organization that let
+	// anybody with an account at its provider in would have no membership at
+	// all, only a sign-in page. The refusal is remembered, though, so an
+	// administrator can let them in with a click instead of an invitation.
+	session, err := s.signIn(ctx, orgID, identity, ttl, userAgent, ip)
+	if errors.Is(err, ErrNotAMember) {
+		if noted := s.noteJoinRequest(ctx, orgID, identity); noted != nil {
+			return nil, noted
+		}
+	}
+	return session, err
+}
+
+// noteJoinRequest keeps the account and the request in their own transaction,
+// because the refusal that led here rolled the sign-in's back.
+func (s *Service) noteJoinRequest(ctx context.Context, orgID uuid.UUID, identity *Identity) error {
+	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		userID, err := upsertUser(ctx, tx, identity)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)
+			ON CONFLICT DO NOTHING`, orgID, userID); err != nil {
+			return fmt.Errorf("note the request to join: %w", err)
+		}
+		return nil
+	})
+	return err
+}
+
+func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
 	out := Session{OrgID: orgID, ExpiresAt: time.Now().Add(ttl)}
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		userID, err := upsertUser(ctx, tx, identity)
@@ -44,12 +76,13 @@ func (s *Service) SignIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 		if !active {
 			return auth.ErrUserInactive
 		}
-		// The organization configured the provider, so the provider decides
-		// who gets in, and access is managed in one place, as groups are.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')
-			ON CONFLICT (org_id, user_id) DO NOTHING`, orgID, userID); err != nil {
-			return fmt.Errorf("make the person a member: %w", err)
+		var member bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM org_member WHERE org_id = $1 AND user_id = $2)`,
+			orgID, userID).Scan(&member); err != nil {
+			return err
+		}
+		if !member {
+			return ErrNotAMember
 		}
 
 		var create bool
@@ -101,12 +134,12 @@ func upsertUser(ctx context.Context, tx db.DBTX, identity *Identity) (uuid.UUID,
 	}
 
 	// A first sign-in whose verified address already has an account, such as a
-	// bootstrap administrator's, is tied to it; session_reaches still bounds
-	// where that session may go.
+	// bootstrap administrator's or one named ahead of time, is tied to it, and
+	// the provider names it from then on; session_reaches still bounds where
+	// that session may go.
 	err = tx.QueryRow(ctx, `
 		INSERT INTO app_user (email, name) VALUES ($1, $2)
-		ON CONFLICT (email) DO UPDATE SET name = CASE
-		    WHEN btrim(app_user.name) = '' THEN EXCLUDED.name ELSE app_user.name END
+		ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
 		RETURNING id`, identity.Email, identity.Name).Scan(&id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("find or create the account: %w", err)

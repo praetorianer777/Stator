@@ -3,6 +3,7 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -260,8 +261,24 @@ func (k *keycloak) token(t *testing.T) string {
 
 func (k *keycloak) call(t *testing.T, method, path string, into any) {
 	t.Helper()
-	req, _ := http.NewRequest(method, k.base+"/admin/realms/"+k.realm+path, nil)
+	k.send(t, method, path, nil, into)
+}
+
+func (k *keycloak) send(t *testing.T, method, path string, body, into any) {
+	t.Helper()
+	var payload io.Reader
+	if body != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		payload = bytes.NewReader(encoded)
+	}
+	req, _ := http.NewRequest(method, k.base+"/admin/realms/"+k.realm+path, payload)
 	req.Header.Set("Authorization", "Bearer "+k.token(t))
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	resp, err := k.client.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -300,6 +317,39 @@ func (k *keycloak) setMembership(t *testing.T, username, group string, member bo
 		method = http.MethodPut
 	}
 	k.call(t, method, "/users/"+user+"/groups/"+grp, nil)
+}
+
+// newPerson adds somebody to the realm whom Stator has never seen, removed
+// again, here and in Keycloak, when the test ends. It returns their address.
+func (k *keycloak) newPerson(t *testing.T, h *harness, username, password string) string {
+	t.Helper()
+	email := username + "@stator.test"
+	k.send(t, http.MethodPost, "/users", map[string]any{
+		"username": username, "email": email, "firstName": "New", "lastName": "Person",
+		"enabled": true, "emailVerified": true,
+		"credentials": []map[string]any{{"type": "password", "value": password, "temporary": false}},
+	}, nil)
+	h.forgetPerson(t, email)
+	t.Cleanup(func() {
+		k.call(t, http.MethodDelete, "/users/"+k.idOf(t, "/users?exact=true&username="+url.QueryEscape(username)), nil)
+	})
+	return email
+}
+
+// letIn makes the address a member of org ahead of its first sign-in, the
+// way the seed does, making the account if need be.
+func (h *harness) letIn(t *testing.T, org tenant.Org, email, role string) {
+	t.Helper()
+	ctx := context.Background()
+	var id uuid.UUID
+	if err := h.super.QueryRow(ctx, `
+		INSERT INTO app_user (email, name) VALUES ($1, $2)
+		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email RETURNING id`, email, email).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, org.ID, id, role); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // reachable reports whether the test container can open a connection to

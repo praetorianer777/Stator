@@ -34,6 +34,8 @@ func (h *harness) signInRows(t *testing.T, m member) {
 		{`INSERT INTO group_member (org_id, group_id, user_id) SELECT $1, id, $2 FROM groups WHERE org_id = $1`, []any{m.org, m.user}},
 		{`INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret) VALUES ($1, 'https://id.test', 'stator', '\x01'::bytea)`, []any{m.org}},
 		{`INSERT INTO oidc_login (state, org_id, nonce, code_verifier, expires_at) VALUES (gen_random_uuid()::text, $1, 'n', 'v', now() + interval '1 hour')`, []any{m.org}},
+		{`INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, []any{m.org, m.user}},
+		{`INSERT INTO audit_log (org_id, actor_user_id, action, target_type) VALUES ($1, $2, 'member.admitted', 'user')`, []any{m.org, m.user}},
 		{`INSERT INTO user_identity (issuer, subject, user_id) VALUES ('https://id.test', gen_random_uuid()::text, $1)`, []any{m.user}},
 		{`INSERT INTO user_session (user_id, token_hash, current_org_id, proof_org_id, proof, expires_at) VALUES ($1, $2, $3, $3, 'oidc', $4)`, []any{m.user, digest, m.org, time.Now().Add(time.Hour)}},
 	} {
@@ -66,7 +68,7 @@ func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 		}
 		return n
 	}
-	tenantTables := []string{"groups", "group_member", "oidc_provider", "oidc_login"}
+	tenantTables := []string{"groups", "group_member", "oidc_provider", "oidc_login", "org_join_request", "audit_log"}
 	globalTables := []string{"user_session", "user_identity"}
 
 	t.Run("with no tenant set nothing is visible", func(t *testing.T) {
@@ -106,6 +108,8 @@ func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 		{"starting a sign-in for another tenant", `INSERT INTO oidc_login (state, org_id, nonce, code_verifier, expires_at) VALUES ('s', $1, 'n', 'v', now())`, []any{b.org}},
 		{"joining another tenant's group", `INSERT INTO group_member (org_id, group_id, user_id) SELECT $1, id, $2 FROM groups WHERE external_ref = 'staff' LIMIT 1`, []any{b.org, a.user}},
 		{"forging a session", `INSERT INTO user_session (user_id, token_hash, proof, expires_at) VALUES ($1, decode(repeat('00', 32), 'hex'), 'password', now() + interval '1 day')`, []any{a.user}},
+		{"asking to join on another's behalf", `INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, []any{b.org, a.user}},
+		{"writing another tenant's record", `INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'member.admitted', 'user')`, []any{b.org}},
 		{"claiming an identity", `INSERT INTO user_identity (issuer, subject, user_id) VALUES ('https://evil.test', 'x', $1)`, []any{a.user}},
 	} {
 		t.Run(attempt.name+" is refused", func(t *testing.T) {

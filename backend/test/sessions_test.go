@@ -287,9 +287,29 @@ func TestSignInUpsertsBySubjectAndSyncsOnlyProviderGroups(t *testing.T) {
 	h.forgetPerson(t, renamed)
 	identity := &oidc.Identity{Issuer: "https://id.upsert.test", Subject: "carol-" + uuid.NewString(), Email: email, Name: "Carol", Groups: []string{"a", "b"}}
 
+	// Not a member yet: refused, with a request noted and nothing else given.
+	if _, err := a.sso.SignIn(ctx, org.ID, identity, time.Hour, "", ""); !errors.Is(err, oidc.ErrNotAMember) {
+		t.Fatalf("a first sign-in = %v, want oidc.ErrNotAMember", err)
+	}
+	var waiting uuid.UUID
+	if err := h.super.QueryRow(ctx, `
+		SELECT r.user_id FROM org_join_request r JOIN app_user u ON u.id = r.user_id
+		WHERE r.org_id = $1 AND u.email = $2
+		  AND NOT EXISTS (SELECT 1 FROM org_member m WHERE m.org_id = r.org_id AND m.user_id = r.user_id)
+		  AND NOT EXISTS (SELECT 1 FROM user_session s WHERE s.user_id = r.user_id)
+		  AND NOT EXISTS (SELECT 1 FROM group_member g WHERE g.user_id = r.user_id)`, org.ID, email).Scan(&waiting); err != nil {
+		t.Fatalf("no bare request for carol: %v", err)
+	}
+	if _, err := a.accounts.AdmitJoinRequest(ctx, org.ID, waiting, auth.RoleMember, uuid.Nil, ""); err != nil {
+		t.Fatal(err)
+	}
+
 	first, err := a.sso.SignIn(ctx, org.ID, identity, time.Hour, "", "")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if first.UserID != waiting {
+		t.Fatal("the admitted person signed in as somebody else")
 	}
 	var local uuid.UUID
 	if err := h.super.QueryRow(ctx, `INSERT INTO groups (org_id, name) VALUES ($1, $2) RETURNING id`, org.ID, "hand-made-"+uuid.NewString()[:8]).Scan(&local); err != nil {
@@ -321,7 +341,7 @@ func TestSignInUpsertsBySubjectAndSyncsOnlyProviderGroups(t *testing.T) {
 		t.Errorf("account = %s %q in %d groups, want the new address and name in b, c and the local group", gotEmail, gotName, memberships)
 	}
 
-	t.Run("a first sign-in finds the account using the address", func(t *testing.T) {
+	t.Run("a first sign-in finds the member account using the address", func(t *testing.T) {
 		admin := bootstrapAdmin(t, h, a, org)
 		var adminID uuid.UUID
 		_ = h.super.QueryRow(ctx, `SELECT id FROM app_user WHERE email = $1`, admin).Scan(&adminID)

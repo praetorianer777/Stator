@@ -24,6 +24,7 @@ func clean(t *testing.T) {
 		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
+		"STATOR_BOOTSTRAP_MEMBERS",
 	} {
 		t.Setenv(key, "")
 	}
@@ -278,6 +279,25 @@ func TestTheBootstrapAdminNeedsBothHalves(t *testing.T) {
 	}
 	if c.Bootstrap.AdminPassword != " a password with spaces " {
 		t.Errorf("the password was altered: %q", c.Bootstrap.AdminPassword)
+	}
+}
+
+func TestBootstrapMembersAreParsed(t *testing.T) {
+	clean(t)
+	t.Setenv("STATOR_BOOTSTRAP_MEMBERS", "alice@stator.test=admin, bob@stator.test = member")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []BootstrapMember{{"alice@stator.test", "admin"}, {"bob@stator.test", "member"}}
+	if len(c.Bootstrap.Members) != 2 || c.Bootstrap.Members[0] != want[0] || c.Bootstrap.Members[1] != want[1] {
+		t.Fatalf("members = %+v", c.Bootstrap.Members)
+	}
+	for _, bad := range []string{"alice@stator.test", "alice=admin", "alice@stator.test=king"} {
+		t.Setenv("STATOR_BOOTSTRAP_MEMBERS", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_BOOTSTRAP_MEMBERS") {
+			t.Errorf("%q should be refused: %v", bad, err)
+		}
 	}
 }
 

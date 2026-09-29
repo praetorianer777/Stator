@@ -103,6 +103,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Use(requireAdmin)
 			r.Get("/oidc-provider", s.handleGetOIDCProvider)
 			r.Put("/oidc-provider", s.handleSaveOIDCProvider)
+			r.Get("/users/requests", s.handleListJoinRequests)
+			r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)
+			r.Delete("/users/requests/{userID}", s.handleDeclineJoinRequest)
 		})
 
 		// Themes are a person's in an organization; the examples are anybody's

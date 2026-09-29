@@ -74,6 +74,8 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 // handing back anything about the tenant that was asked for.
 func signInFailure(err error) string {
 	switch {
+	case errors.Is(err, oidc.ErrNotAMember):
+		return "not_a_member"
 	case errors.Is(err, oidc.ErrNoEmail):
 		return "no_email"
 	case errors.Is(err, oidc.ErrEmailUnverified):

@@ -216,6 +216,9 @@ services:
       STATOR_BOOTSTRAP_OIDC_ISSUER: http://localhost:${KEYCLOAK_PORT:-8180}/realms/stator-dev
       STATOR_BOOTSTRAP_OIDC_CLIENT_ID: stator
       STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET: stator-dev-secret
+      # The realm's people, let in ahead of time; anybody else the realm signs
+      # in waits for an administrator.
+      STATOR_BOOTSTRAP_MEMBERS: alice@stator.test=admin,bob@stator.test=member
     restart: "no"
 
   api:

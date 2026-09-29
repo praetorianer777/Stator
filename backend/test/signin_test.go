@@ -67,6 +67,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 	a := h.startAPI(t, testSessionTTL)
 	org := h.makeOrg(t, "wonderland")
 	configureProvider(t, a, org, kc.issuer(), true)
+	h.letIn(t, org, "alice@stator.test", "member")
 	ctx := context.Background()
 
 	t.Run("the client secret is sealed at rest", func(t *testing.T) {
@@ -186,6 +187,7 @@ func TestOnlyExistingGroupsAreJoinedWhenCreationIsOff(t *testing.T) {
 	a := h.startAPI(t, testSessionTTL)
 	org := h.makeOrg(t, "builders")
 	configureProvider(t, a, org, kc.issuer(), false)
+	h.letIn(t, org, "bob@stator.test", "member")
 
 	newBrowser(t).signIn(t, a, org.Slug, "bob", bobPassword, "")
 	if got := h.providerGroups(t, org, "bob@stator.test"); len(got) != 0 {

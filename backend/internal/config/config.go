@@ -123,6 +123,16 @@ type Bootstrap struct {
 	OIDCIssuer       string
 	OIDCClientID     string
 	OIDCClientSecret string
+
+	// Members are let into the demo organization ahead of their first sign-in,
+	// so a development stack needs nobody to approve them.
+	Members []BootstrapMember
+}
+
+// BootstrapMember is one address and the standing it is given.
+type BootstrapMember struct {
+	Email string
+	Role  string
 }
 
 // S3 is the bucket uploaded files live in: theme assets now, attachments
@@ -212,6 +222,7 @@ func Load() (Config, error) {
 			OIDCIssuer:       l.str("STATOR_BOOTSTRAP_OIDC_ISSUER", ""),
 			OIDCClientID:     l.str("STATOR_BOOTSTRAP_OIDC_CLIENT_ID", ""),
 			OIDCClientSecret: l.str("STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET", ""),
+			Members:          l.members("STATOR_BOOTSTRAP_MEMBERS"),
 		},
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
@@ -381,6 +392,21 @@ func (l *loader) secretKey(key, env string) []byte {
 		return nil
 	}
 	return decoded
+}
+
+// members parses "email=role,email=role", each role owner, admin or member.
+func (l *loader) members(key string) []BootstrapMember {
+	var out []BootstrapMember
+	for _, pair := range splitList(l.str(key, "")) {
+		email, role, _ := strings.Cut(pair, "=")
+		email, role = strings.TrimSpace(email), strings.TrimSpace(role)
+		if !strings.Contains(email, "@") || (role != "owner" && role != "admin" && role != "member") {
+			l.problem(fmt.Sprintf("%s has %q; write each entry as email=role, with the role owner, admin or member.", key, pair))
+			continue
+		}
+		out = append(out, BootstrapMember{Email: email, Role: role})
+	}
+	return out
 }
 
 // rewrites parses "public=reachable,public=reachable", refusing a pair it

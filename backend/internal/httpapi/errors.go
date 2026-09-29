@@ -120,6 +120,10 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, auth.ErrSessionStaysHome):
 		return &APIError{Status: http.StatusForbidden, Code: "session_stays_home",
 			Message: "Your sign-in does not reach that organization. Sign in there through its own sign-in page."}
+	case errors.Is(err, auth.ErrNoSuchRequest):
+		return ErrNotFound("That person is not waiting to be let in. Reload the list; somebody may have answered already.")
+	case errors.Is(err, auth.ErrBadJoinRole):
+		return ErrValidation(map[string]string{"role": "Let the person in as member or admin."})
 	case errors.Is(err, oidc.ErrNotConfigured):
 		return &APIError{Status: http.StatusNotFound, Code: "sso_not_configured",
 			Message: "That organization does not sign in through an identity provider. Check its name, or sign in with a password."}

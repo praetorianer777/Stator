@@ -76,6 +76,12 @@ var operations = []operation{
 		responses: ok(providerView{})},
 	{method: "PUT", path: "/oidc-provider", handler: "handleSaveOIDCProvider", tag: "access", summary: "Configure the organization's identity provider. For administrators.",
 		request: saveOIDCProviderRequest{}, responses: ok(providerView{})},
+	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", tag: "access", summary: "Who signed in through the identity provider and is waiting to be let in. For administrators.",
+		responses: ok(env{"requests": []auth.JoinRequest{}})},
+	{method: "POST", path: "/users/requests/{userID}/admit", handler: "handleAdmitJoinRequest", tag: "access", summary: "Let a waiting person in with the standing given. For administrators.",
+		request: admitRequest{}, responses: ok(env{"membership": auth.Membership{}})},
+	{method: "DELETE", path: "/users/requests/{userID}", handler: "handleDeclineJoinRequest", tag: "access", summary: "Turn a waiting person away; they may ask again. For administrators.",
+		responses: none()},
 
 	// Themes, as Armature serves them.
 	{method: "GET", path: "/themes", handler: "handleListThemes", tag: "themes", summary: "Themes the caller may use: theirs, then the shared ones.", responses: ok(env{"themes": []theme.Theme{}})},

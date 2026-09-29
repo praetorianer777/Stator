@@ -84,6 +84,9 @@ var (
 	// ErrEmailUnverified is returned when the provider says it has not checked
 	// the address it sent.
 	ErrEmailUnverified = errors.New("the identity provider has not verified that email address")
+	// ErrNotAMember is returned when somebody authenticates correctly but has
+	// not been let in. Signing in is not the same as being let in.
+	ErrNotAMember = errors.New("you are not a member of that organization")
 )
 
 // howLongALoginMayTake is long enough to type a password and answer a second

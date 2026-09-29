@@ -56,6 +56,15 @@ func run() error {
 		}
 		log.Info("bootstrap administrator ready", "email", cfg.Bootstrap.AdminEmail, "org", seed.DemoOrgSlug, "created", made)
 	}
+	// Named ahead of time, so they sign in through the provider without
+	// waiting for anybody to let them in.
+	for _, m := range cfg.Bootstrap.Members {
+		added, err := accounts.EnsureMember(ctx, seed.DemoOrgSlug, m.Email, auth.OrgRole(m.Role))
+		if err != nil {
+			return err
+		}
+		log.Info("member let in ahead of sign-in", "email", m.Email, "role", m.Role, "org", seed.DemoOrgSlug, "added", added)
+	}
 	if cfg.Bootstrap.OIDCIssuer != "" {
 		return seedProvider(ctx, cfg, cluster, accounts, log)
 	}

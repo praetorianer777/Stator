@@ -93,6 +93,7 @@ func TestSafeRedirectStaysInTheApp(t *testing.T) {
 
 func TestSignInFailuresAreNamedForThePage(t *testing.T) {
 	for err, want := range map[error]string{
+		oidc.ErrNotAMember:                        "not_a_member",
 		oidc.ErrNoEmail:                           "no_email",
 		oidc.ErrEmailUnverified:                   "unverified_email",
 		fmt.Errorf("x: %w", oidc.ErrUnknownLogin): "expired",
@@ -137,6 +138,19 @@ func TestTheProviderSettingsAreForAdministratorsOnly(t *testing.T) {
 			t.Errorf("%q = %d %v, want %d %s", credential, resp.StatusCode, body, want.status, want.code)
 		}
 	}
+
+	// Letting people in is administration too.
+	for _, req := range []*http.Request{
+		httptest.NewRequest(http.MethodGet, APIPrefix+"/users/requests", nil),
+		httptest.NewRequest(http.MethodPost, APIPrefix+"/users/requests/"+uuid.NewString()+"/admit", strings.NewReader(`{"role":"member"}`)),
+		httptest.NewRequest(http.MethodDelete, APIPrefix+"/users/requests/"+uuid.NewString(), nil),
+	} {
+		req.Header.Set("Authorization", "Bearer member")
+		resp, body := serve(t, s.Routes(nil), req)
+		if resp.StatusCode != http.StatusForbidden || errorOf(t, body)["code"] != "forbidden" {
+			t.Errorf("a member at %s %s = %d %v", req.Method, req.URL.Path, resp.StatusCode, body)
+		}
+	}
 }
 
 func TestLoginAsksForBothFields(t *testing.T) {
@@ -162,6 +176,7 @@ func TestDomainErrorsAreSentences(t *testing.T) {
 	for _, err := range []error{
 		auth.ErrInvalidCredentials, auth.ErrUserInactive, auth.ErrNotAMember, auth.ErrSessionStaysHome,
 		oidc.ErrNotConfigured, &oidc.ValidationError{Field: "issuer", Message: "Enter it."},
+		auth.ErrNoSuchRequest, auth.ErrBadJoinRole,
 	} {
 		apiErr := toAPIError(err)
 		if apiErr.Status >= 500 {
