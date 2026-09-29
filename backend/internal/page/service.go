@@ -43,9 +43,9 @@ func scan(row pgx.Row) (*Page, error) {
 }
 
 // load reads a page and its space, refusing with ErrNotFound what the actor
-// may not see; lock takes the page for writing.
+// may not see and what is in the trash; lock takes the page for writing.
 func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock bool) (*Page, *space.Space, error) {
-	sql := selectPages + ` WHERE p.id = $1`
+	sql := selectPages + ` WHERE p.id = $1 AND` + live
 	if lock {
 		sql += ` FOR UPDATE OF p`
 	}

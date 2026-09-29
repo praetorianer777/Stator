@@ -203,3 +203,67 @@ func (s *Server) handleCopyPage(w http.ResponseWriter, r *http.Request) {
 	}
 	respondJSON(w, r, http.StatusCreated, map[string]any{"page": made})
 }
+
+func (s *Server) handleTrashPage(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	lsn, err := s.Pages.Trash(r.Context(), actorFrom(r), id)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondNoContent(w)
+}
+
+func (s *Server) handleListTrash(w http.ResponseWriter, r *http.Request) {
+	items, err := s.Pages.ListTrash(r.Context(), actorFrom(r), spaceKey(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"items": items})
+}
+
+func (s *Server) handleRestorePage(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	restored, lsn, err := s.Pages.Restore(r.Context(), actorFrom(r), spaceKey(r), id)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"page": restored})
+}
+
+func (s *Server) handlePurgePage(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	lsn, err := s.Pages.Purge(r.Context(), actorFrom(r), spaceKey(r), id)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondNoContent(w)
+}
+
+func (s *Server) handleEmptyTrash(w http.ResponseWriter, r *http.Request) {
+	lsn, err := s.Pages.EmptyTrash(r.Context(), actorFrom(r), spaceKey(r))
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondNoContent(w)
+}

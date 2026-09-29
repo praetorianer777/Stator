@@ -186,7 +186,7 @@ describe("space settings", () => {
   });
 
   it("show a member the details without letting them change them", async () => {
-    stubApi({ "GET /spaces/DOCS": { status: 200, body: { space: aSpace({ can: { editPages: true, administer: false, delete: false } }) } } });
+    stubApi({ "GET /spaces/DOCS": { status: 200, body: { space: aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false } }) } } });
     await renderAt("/s/DOCS/settings", { me: member });
     expect(await screen.findByText("Only an administrator of your organization can change this space's details.")).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveAttribute("readonly");

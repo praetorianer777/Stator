@@ -32,6 +32,9 @@
     },
     {
       "name": "tokens"
+    },
+    {
+      "name": "trash"
     }
   ],
   "paths": {
@@ -652,6 +655,39 @@
       }
     },
     "/pages/{pageID}": {
+      "delete": {
+        "operationId": "trashPage",
+        "summary": "Move a page and every page below it to its space's trash.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "operationId": "getPage",
         "summary": "One page with its body, and the space it is in.",
@@ -1234,6 +1270,191 @@
                   },
                   "required": [
                     "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/trash": {
+      "delete": {
+        "operationId": "emptyTrash",
+        "summary": "Delete everything in the space's trash for good. For administrators.",
+        "tags": [
+          "trash"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listTrash",
+        "summary": "The space's trash, the latest first.",
+        "tags": [
+          "trash"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TrashItem"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/trash/{pageID}": {
+      "delete": {
+        "operationId": "purgePage",
+        "summary": "Delete a trashed page and what went with it for good. For administrators.",
+        "tags": [
+          "trash"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/trash/{pageID}/restore": {
+      "post": {
+        "operationId": "restorePage",
+        "summary": "Put a trashed page back where it was, or under the home page when that is gone.",
+        "tags": [
+          "trash"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  },
+                  "required": [
+                    "page"
                   ]
                 }
               }
@@ -2439,12 +2660,16 @@
           },
           "editPages": {
             "type": "boolean"
+          },
+          "purgeTrash": {
+            "type": "boolean"
           }
         },
         "required": [
           "editPages",
           "administer",
-          "delete"
+          "delete",
+          "purgeTrash"
         ]
       },
       "ChooseThemeRequest": {
@@ -3865,6 +4090,43 @@
           "default",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "TrashItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pages": {
+            "type": "integer"
+          },
+          "parentInTree": {
+            "type": "boolean"
+          },
+          "parentTitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "trashedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "trashedByName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "trashedAt",
+          "trashedByName",
+          "pages",
+          "parentTitle",
+          "parentInTree"
         ]
       },
       "TreeNode": {

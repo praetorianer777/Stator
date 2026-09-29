@@ -11,7 +11,7 @@ export function aSpace(over: Partial<Space> = {}): Space {
     homePageId: "0195f000-0000-7000-8000-000000000001",
     createdAt: "2026-09-29T08:00:00Z",
     updatedAt: "2026-09-29T08:00:00Z",
-    can: { editPages: true, administer: true, delete: true },
+    can: { editPages: true, administer: true, delete: true, purgeTrash: true },
     ...over,
   };
 }

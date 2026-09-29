@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
+import { useTrashPage } from "@/api/trash";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { DocView } from "@/features/editor/DocView";
@@ -36,6 +37,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
   const { data, isLoading, error, refetch } = usePage(pageId);
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
+  const trash = useTrashPage(data?.space.key ?? "");
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (isLoading || !data) return <Skeleton />;
   const { page, space } = data;
@@ -49,6 +51,24 @@ export function PageScreen({ pageId }: { pageId: string }) {
   const actions: MenuItem[] = [];
   if (!page.home) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
   actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
+  if (!page.home) {
+    actions.push({
+      label: t.page.moveToTrash,
+      danger: true,
+      onSelect: () => {
+        if (!window.confirm(t.page.confirmTrash(page.title))) return;
+        // The reader lands on the page it was under, which is where it would come back.
+        const above = page.ancestors[page.ancestors.length - 1];
+        trash.mutate(page.id, {
+          onSuccess: () =>
+            void (above && !above.home
+              ? navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: above.id, slug: pageSlug(above.title) } })
+              : navigate({ to: "/s/$spaceKey", params: { spaceKey: space.key } })),
+        });
+      },
+      attrs: { "data-action": "trash-page" },
+    });
+  }
 
   return (
     <article className="mx-auto max-w-3xl" data-page={page.id} data-page-home={page.home || undefined}>
@@ -86,6 +106,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
           )
         }
       />
+      {trash.error && <ErrorBanner>{trash.error.message}</ErrorBanner>}
       <DocView doc={page.body} />
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
       {(dialog === "move" || dialog === "copy") && (

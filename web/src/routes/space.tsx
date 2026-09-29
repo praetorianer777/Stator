@@ -53,7 +53,7 @@ export const pageRoute = createRoute({
   },
 });
 
-const SETTINGS_TABS: SettingsTab[] = ["details", "permissions"];
+const SETTINGS_TABS: SettingsTab[] = ["details", "permissions", "trash"];
 
 export const spaceSettingsRoute = createRoute({
   getParentRoute: () => spaceRoute,

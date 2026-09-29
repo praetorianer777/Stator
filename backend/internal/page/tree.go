@@ -82,8 +82,8 @@ type CopyInput struct {
 	Title        *string `json:"title,omitempty"`
 }
 
-// live narrows a query on page p to what the tree shows.
-const live = ` TRUE`
+// live narrows a query on page p to what the tree shows: nothing in the trash.
+const live = ` p.trashed_at IS NULL`
 
 // childrenOf lists a parent's children in order, leaving one out.
 func childrenOf(ctx context.Context, tx db.DBTX, parent, except uuid.UUID) ([]sibling, error) {
@@ -241,7 +241,7 @@ func (s *Service) Children(ctx context.Context, actor perm.Actor, spaceKey strin
 }
 
 // liveChild is live for the alias c.
-const liveChild = ` TRUE`
+const liveChild = ` c.trashed_at IS NULL`
 
 // Outline is every page of a space in reading order, with its depth.
 func (s *Service) Outline(ctx context.Context, actor perm.Actor, spaceKey string) ([]OutlineEntry, error) {

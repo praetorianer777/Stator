@@ -255,7 +255,8 @@ export interface paths {
         get: operations["getPage"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Move a page and every page below it to its space's trash. */
+        delete: operations["trashPage"];
         options?: never;
         head?: never;
         /** Save a page's title or body over the version it was made from. */
@@ -378,6 +379,58 @@ export interface paths {
         get: operations["listPages"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The space's trash, the latest first. */
+        get: operations["listTrash"];
+        put?: never;
+        post?: never;
+        /** Delete everything in the space's trash for good. For administrators. */
+        delete: operations["emptyTrash"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/trash/{pageID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a trashed page and what went with it for good. For administrators. */
+        delete: operations["purgePage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/trash/{pageID}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a trashed page back where it was, or under the home page when that is gone. */
+        post: operations["restorePage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -710,6 +763,7 @@ export interface components {
             administer: boolean;
             delete: boolean;
             editPages: boolean;
+            purgeTrash: boolean;
         };
         ChooseThemeRequest: {
             builtIn?: boolean;
@@ -1119,6 +1173,17 @@ export interface components {
             spec: components["schemas"]["Spec"];
             /** Format: date-time */
             updatedAt: string;
+        };
+        TrashItem: {
+            /** Format: uuid */
+            id: string;
+            pages: number;
+            parentInTree: boolean;
+            parentTitle: string;
+            title: string;
+            /** Format: date-time */
+            trashedAt: string;
+            trashedByName: string;
         };
         TreeNode: {
             hasChildren: boolean;
@@ -1676,6 +1741,35 @@ export interface operations {
             };
         };
     };
+    trashPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     updatePage: {
         parameters: {
             query?: never;
@@ -2045,6 +2139,132 @@ export interface operations {
                 content: {
                     "application/json": {
                         pages: components["schemas"]["TreeNode"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listTrash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["TrashItem"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    emptyTrash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    purgePage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    restorePage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
                     };
                 };
             };

@@ -6,6 +6,7 @@ import { Icon, type IconName } from "@/components/icons";
 /** A destination in the rail or the sidebar: an icon with its word, or the icon alone with the word in a tooltip. */
 export function NavItem({
   to,
+  search,
   exact = false,
   icon,
   rail,
@@ -14,6 +15,8 @@ export function NavItem({
   children,
 }: {
   to: string;
+  /** The query the link carries, such as a tab to open. */
+  search?: Record<string, string>;
   exact?: boolean;
   icon: IconName;
   rail: boolean;
@@ -26,6 +29,7 @@ export function NavItem({
   const link = (
     <Link
       to={to}
+      search={search}
       onClick={onNavigate}
       activeOptions={{ exact }}
       className={cx(

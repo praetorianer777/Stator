@@ -5,8 +5,9 @@ import { useDeleteSpace, useSpace, useUpdateSpace, type Space } from "@/api/spac
 import { Button, Card, ErrorBanner, Field, PageHeader, SectionTitle, Skeleton, TabPanel, Tabs } from "@/components/ui";
 import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
+import { TrashPanel } from "./TrashPanel";
 
-export type SettingsTab = "details" | "permissions";
+export type SettingsTab = "details" | "permissions" | "trash";
 
 const SETTINGS_PANEL_ID = "space-settings-panel";
 
@@ -39,13 +40,15 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
             tabs={[
               { value: "details", label: t.spaceSettings.details, attrs: { "data-settings-tab": "details" } },
               { value: "permissions", label: t.spaceSettings.permissions, attrs: { "data-settings-tab": "permissions" } },
+              { value: "trash", label: t.spaceSettings.trash, attrs: { "data-settings-tab": "trash" } },
             ]}
           />
         }
       />
-      <TabPanel id={SETTINGS_PANEL_ID} label={tab === "details" ? t.spaceSettings.details : t.spaceSettings.permissions} className="space-y-6">
+      <TabPanel id={SETTINGS_PANEL_ID} label={t.spaceSettings[tab]} className="space-y-6">
         {tab === "details" && <Details key={space.id} space={space} />}
         {tab === "permissions" && <Permissions />}
+        {tab === "trash" && <TrashPanel space={space} />}
       </TabPanel>
     </div>
   );
