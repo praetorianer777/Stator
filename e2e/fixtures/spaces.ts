@@ -38,7 +38,7 @@ export async function publishFromEditor(page: PwPage, comment = ""): Promise<voi
   const dialog = page.locator("[data-publish-dialog]");
   if (comment) await dialog.getByLabel("What changed", { exact: true }).fill(comment);
   await dialog.locator('[data-action="confirm-publish"]').click();
-  await page.locator("[data-page]").waitFor();
+  await page.waitForURL((url) => !url.pathname.endsWith("/edit"));
 }
 
 /** The titles directly under a parent of a space, in order. */
