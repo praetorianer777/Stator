@@ -1,0 +1,41 @@
+export type Theme = "light" | "dark" | "system";
+
+export const THEME_STORAGE_KEY = "stator.theme";
+
+/** The order the theme button steps through. */
+export const THEME_CYCLE: readonly Theme[] = ["system", "light", "dark"];
+
+/** Reads the stored preference, tolerating browsers that block site storage. */
+export function readTheme(): Theme {
+  try {
+    const value = localStorage.getItem(THEME_STORAGE_KEY);
+    if (value === "light" || value === "dark" || value === "system") return value;
+  } catch {
+    // Private windows and locked-down browsers throw on access; the system
+    // default is a perfectly good answer.
+  }
+  return "system";
+}
+
+/**
+ * Applies a theme by stamping the root element. "system" removes the attribute
+ * entirely so the stylesheet's prefers-color-scheme rules take over.
+ */
+export function applyTheme(theme: Theme): void {
+  const root = document.documentElement;
+  if (theme === "system") {
+    root.removeAttribute("data-theme");
+  } else {
+    root.setAttribute("data-theme", theme);
+  }
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // A theme that does not persist is still a theme.
+  }
+}
+
+/** The theme after this one in the button's cycle. */
+export function nextTheme(theme: Theme): Theme {
+  return THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length]!;
+}
