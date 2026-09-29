@@ -1,25 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
-import { buildRouter } from "@/routes";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
+import { renderAt } from "@/test/app";
 import { GROUPS_KEY, SIDEBAR_KEY } from "./state";
-
-// The real router and the real shell, started at a path; nothing below the
-// shell is stood in for.
-async function renderAt(path: string) {
-  const queryClient = new QueryClient();
-  const router = buildRouter(queryClient, createMemoryHistory({ initialEntries: [path] }));
-  render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
-  await waitFor(() => expect(document.querySelector("[data-rail]")).not.toBeNull());
-  return router;
-}
 
 beforeEach(() => {
   localStorage.clear();
