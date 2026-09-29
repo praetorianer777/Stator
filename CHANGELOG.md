@@ -20,3 +20,7 @@ and the versioning [Semantic Versioning](https://semver.org/).
   may name a shared theme as its default. Deep-Tech and Constellation ship
   as examples, and a theme editor previews a draft live on the page.
 - File storage in any S3 compatible bucket, configured with `STATOR_S3_*`.
+- Compose stack for development and tests: Postgres 18 with a streaming
+  replica, Valkey, SeaweedFS, Mailpit, Keycloak with the `stator-dev` realm,
+  and the api, worker and web images. `make up` starts it on ports derived
+  from the checkout's path; the integration suite runs against it.

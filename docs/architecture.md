@@ -98,5 +98,25 @@ ports, so parallel worktrees do not collide.
 
 ## Deployment
 
-`deploy/docker-compose.yml` for development and tests, container images per
-binary, and a Helm chart, following Armature's `deploy/` layout.
+`deploy/` follows Armature's layout. `docker-compose.yml` is the development
+and test stack: Postgres 18 as a primary and a streaming replica, Valkey,
+SeaweedFS (S3), Mailpit, Keycloak with the `stator-dev` realm
+(`deploy/keycloak/realm.json`), the one-shot `migrate` and `seed`, `api`,
+`worker`, and `web`. Every service has a health check and the dependencies
+wait on them, so `docker compose up --wait` returns once the stack answers.
+
+Two images are built. `Dockerfile.backend` holds every Go binary, stamped with
+`VERSION`, and each service picks one by its command. `Dockerfile.web` builds
+the SPA with Node and serves it from nginx (`deploy/nginx.conf`), which proxies
+`/api/`, `/healthz` and `/readyz` to the api so the browser sees one origin.
+
+`mk/stack.mk` drives the stack. The compose project is `stator-<cksum of the
+checkout path>`, and the published ports are a block of twenty from 20000 up,
+chosen by the same hash, so worktrees never collide. `make up` and
+`make stack-up` write the project name and ports to `.cache/stack.env` for
+anything outside the network, such as the browser suite. The integration suite
+runs in the Go toolchain container on the stack's network and reaches every
+service by name; it writes files to a bucket of its own, `stator-test`, beside
+the app's `stator-files`.
+
+A Helm chart follows later.
