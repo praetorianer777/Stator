@@ -43,7 +43,8 @@ func (s *Server) handleAdmitJoinRequest(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	membership, err := s.Accounts.AdmitJoinRequest(r.Context(), p.Org.ID, userID, req.Role, p.UserID, clientIP(r))
+	membership, lsn, err := s.Accounts.AdmitJoinRequest(r.Context(), p.Org.ID, userID, req.Role, p.UserID, clientIP(r))
+	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -62,7 +63,9 @@ func (s *Server) handleDeclineJoinRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	if err := s.Accounts.DeclineJoinRequest(r.Context(), p.Org.ID, userID, p.UserID, clientIP(r)); err != nil {
+	lsn, err := s.Accounts.DeclineJoinRequest(r.Context(), p.Org.ID, userID, p.UserID, clientIP(r))
+	noteWrite(r.Context(), lsn)
+	if err != nil {
 		respondError(w, r, err)
 		return
 	}

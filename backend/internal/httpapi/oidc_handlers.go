@@ -66,6 +66,7 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	loggerFrom(r.Context()).Info("signed in through an identity provider", "user_id", session.UserID, "org_id", orgID,
 		"groups_joined", session.Joined, "groups_left", session.Left)
+	s.noteSession(r.Context(), session.SessionID, session.LSN)
 	s.setSessionCookie(w, session.Secret, session.ExpiresAt)
 	s.landAfterSignIn(w, r, redirect, "")
 }
@@ -156,7 +157,7 @@ func (s *Server) handleSaveOIDCProvider(w http.ResponseWriter, r *http.Request) 
 		respondError(w, r, err)
 		return
 	}
-	saved, _, err := s.OIDC.Save(r.Context(), oidc.Provider{
+	saved, lsn, err := s.OIDC.Save(r.Context(), oidc.Provider{
 		Issuer:       req.Issuer,
 		ClientID:     req.ClientID,
 		ClientSecret: req.ClientSecret,
@@ -165,6 +166,7 @@ func (s *Server) handleSaveOIDCProvider(w http.ResponseWriter, r *http.Request) 
 		CreateGroups: req.CreateGroups,
 		Enabled:      req.Enabled,
 	})
+	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return

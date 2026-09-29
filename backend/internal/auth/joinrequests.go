@@ -56,12 +56,12 @@ func (s *Service) JoinRequests(ctx context.Context, orgID uuid.UUID) ([]JoinRequ
 
 // AdmitJoinRequest lets a waiting person in with the standing given. Their
 // next sign-in through the provider then succeeds.
-func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID, role OrgRole, actor uuid.UUID, ip string) (*Membership, error) {
+func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID, role OrgRole, actor uuid.UUID, ip string) (*Membership, db.LSN, error) {
 	if role != RoleAdmin && role != RoleMember {
-		return nil, ErrBadJoinRole
+		return nil, 0, ErrBadJoinRole
 	}
 	var made Membership
-	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		tag, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE org_id = $1 AND user_id = $2`, orgID, userID)
 		if err != nil {
 			return err
@@ -83,15 +83,15 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID,
 			Data: map[string]any{"role": role}})
 	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return &made, nil
+	return &made, lsn, nil
 }
 
 // DeclineJoinRequest forgets the request. The person may sign in again and
 // ask once more; nothing about the request is kept but the record of the refusal.
-func (s *Service) DeclineJoinRequest(ctx context.Context, orgID, userID, actor uuid.UUID, ip string) error {
-	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+func (s *Service) DeclineJoinRequest(ctx context.Context, orgID, userID, actor uuid.UUID, ip string) (db.LSN, error) {
+	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		tag, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE org_id = $1 AND user_id = $2`, orgID, userID)
 		if err != nil {
 			return err
@@ -101,7 +101,6 @@ func (s *Service) DeclineJoinRequest(ctx context.Context, orgID, userID, actor u
 		}
 		return audit.Write(ctx, tx, orgID, audit.Entry{Action: audit.ActionMemberDeclined, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip})
 	})
-	return err
 }
 
 // EnsureMember lets an address in ahead of its first sign-in, making the account

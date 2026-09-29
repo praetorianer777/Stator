@@ -22,6 +22,9 @@ type Session struct {
 	// Joined and Left are the provider groups the sign-in changed.
 	Joined []string
 	Left   []string
+	// SessionID and LSN let the caller's first reads see the sign-in's writes.
+	SessionID uuid.UUID
+	LSN       db.LSN
 }
 
 // SignIn turns a verified identity into a session in orgID. Somebody who is not
@@ -60,7 +63,7 @@ func (s *Service) noteJoinRequest(ctx context.Context, orgID uuid.UUID, identity
 
 func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
 	out := Session{OrgID: orgID, ExpiresAt: time.Now().Add(ttl)}
-	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		userID, err := upsertUser(ctx, tx, identity)
 		if err != nil {
 			return err
@@ -98,13 +101,14 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 			return err
 		}
 
-		_, secret, err := auth.OpenSession(ctx, tx, userID, &orgID, auth.ProofOIDC, out.ExpiresAt, userAgent, ip)
-		out.Secret = secret
+		id, secret, err := auth.OpenSession(ctx, tx, userID, &orgID, auth.ProofOIDC, out.ExpiresAt, userAgent, ip)
+		out.SessionID, out.Secret = id, secret
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
+	out.LSN = lsn
 	return &out, nil
 }
 

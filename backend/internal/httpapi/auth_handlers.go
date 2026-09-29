@@ -1,12 +1,16 @@
 package httpapi
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/db"
 )
 
 // setSessionCookie writes the cookie out of scripts' reach, Lax so the
@@ -34,6 +38,14 @@ func (s *Server) clearSessionCookie(w http.ResponseWriter) {
 		Secure:   s.Secure,
 		SameSite: http.SameSiteLaxMode,
 	})
+}
+
+// noteSession remembers a write made before its session existed under that
+// session's key, as Armature does, so the first reads on the new cookie see it.
+func (s *Server) noteSession(ctx context.Context, sessionID uuid.UUID, lsn db.LSN) {
+	if s.Fresh != nil && lsn != 0 {
+		s.Fresh.Note(ctx, "s:"+sessionID.String(), lsn)
+	}
 }
 
 // clientIP is the peer's address, recorded on a session for its owner to read.
@@ -108,6 +120,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
+	s.noteSession(r.Context(), *creds.Principal.SessionID, creds.LSN)
 	s.setSessionCookie(w, creds.SessionSecret, creds.ExpiresAt)
 	me, err := s.me(r, creds.Principal)
 	if err != nil {
@@ -156,7 +169,8 @@ func (s *Server) handleSwitchOrg(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrValidation(map[string]string{"slug": "Name the organization to switch to."}))
 		return
 	}
-	org, _, err := s.Accounts.SwitchOrg(r.Context(), *p.SessionID, p.UserID, req.Slug)
+	org, lsn, err := s.Accounts.SwitchOrg(r.Context(), *p.SessionID, p.UserID, req.Slug)
+	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return

@@ -83,6 +83,7 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 	}
 	server.Config.Handler = (&httpapi.Server{
 		DB:              h.cluster,
+		Fresh:           h.freshness(t),
 		Auth:            a.accounts,
 		Accounts:        a.accounts,
 		OIDC:            a.sso,

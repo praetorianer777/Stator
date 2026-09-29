@@ -300,7 +300,7 @@ func TestSignInUpsertsBySubjectAndSyncsOnlyProviderGroups(t *testing.T) {
 		  AND NOT EXISTS (SELECT 1 FROM group_member g WHERE g.user_id = r.user_id)`, org.ID, email).Scan(&waiting); err != nil {
 		t.Fatalf("no bare request for carol: %v", err)
 	}
-	if _, err := a.accounts.AdmitJoinRequest(ctx, org.ID, waiting, auth.RoleMember, uuid.Nil, ""); err != nil {
+	if _, _, err := a.accounts.AdmitJoinRequest(ctx, org.ID, waiting, auth.RoleMember, uuid.Nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
