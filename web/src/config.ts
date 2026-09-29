@@ -146,3 +146,8 @@ export const PAGE_TITLE_MAX_LENGTH = 255;
 export const PAGE_SLUG_MAX_LENGTH = 60;
 /** The slug of a page whose title leaves nothing usable in an address. */
 export const PAGE_SLUG_FALLBACK = "page";
+
+/** How far each level of the page tree is indented. */
+export const TREE_INDENT_PX = 12;
+/** The share of a tree row at its top and bottom where a dropped page goes beside it rather than under it. */
+export const TREE_DROP_EDGE = 0.25;
