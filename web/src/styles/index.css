@@ -297,6 +297,246 @@
   background: radial-gradient(120% 80% at 20% 0%, var(--color-backdrop-from), var(--color-backdrop-to));
 }
 
+/* A page's document, in the editor and read-only alike. Every colour is a
+ * theme role, so panels, cell backgrounds and highlighted code follow a
+ * custom theme without knowing it exists. */
+@layer components {
+  .doc-content {
+    line-height: var(--text-base--line-height);
+    overflow-wrap: anywhere;
+  }
+  .doc-content > * + *,
+  .doc-content :is(li, blockquote, td, th, [data-panel]) > * + * {
+    margin-top: 0.5rem;
+  }
+  .doc-content :is(h1, h2, h3, h4) {
+    font-weight: 600;
+    scroll-margin-top: 4rem;
+  }
+  .doc-content :is(h1, [data-level="1"]) {
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    margin-top: 1.25rem;
+  }
+  .doc-content :is(h2, [data-level="2"]) {
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    margin-top: 1rem;
+  }
+  .doc-content :is(h3, [data-level="3"]) {
+    font-size: var(--text-base);
+    margin-top: 0.75rem;
+  }
+  .doc-content .doc-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .doc-content .doc-heading > :first-child {
+    margin-top: 0;
+  }
+  .doc-content .doc-heading:not(:first-child) {
+    margin-top: 1rem;
+  }
+  .doc-content ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+  }
+  .doc-content ol {
+    list-style: decimal;
+    padding-left: 1.5rem;
+  }
+  .doc-content ul[data-type="taskList"] {
+    list-style: none;
+    padding-left: 0.25rem;
+  }
+  .doc-content ul[data-type="taskList"] > li {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  .doc-content ul[data-type="taskList"] > li > label,
+  .doc-content ul[data-type="taskList"] > li > input {
+    margin-top: 0.3rem;
+    flex: none;
+  }
+  .doc-content ul[data-type="taskList"] > li > div {
+    flex: 1;
+    margin-top: 0;
+  }
+  .doc-content ul[data-type="taskList"] > li[data-checked="true"] > div {
+    color: var(--color-ink-muted);
+    text-decoration: line-through;
+  }
+  .doc-content blockquote {
+    border-left: 2px solid var(--color-border-strong);
+    padding-left: 0.75rem;
+    color: var(--color-ink-muted);
+  }
+  .doc-content a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .doc-content hr {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    margin: 1rem 0;
+  }
+  .doc-content hr.ProseMirror-selectednode {
+    border-top-color: var(--color-focus);
+  }
+  .doc-content :not(pre) > code {
+    border-radius: var(--radius-control);
+    background: var(--color-surface-sunken);
+    padding: 0 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+  .doc-content pre {
+    position: relative;
+    overflow-x: auto;
+    border-radius: var(--radius-control);
+    background: var(--color-surface-sunken);
+    padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+  }
+  .doc-content .doc-code-language {
+    float: right;
+    margin-left: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: var(--text-2xs);
+    color: var(--color-ink-muted);
+  }
+  .doc-content [data-mention] {
+    border-radius: var(--radius-control);
+    background: var(--color-accent-subtle);
+    padding: 0 0.25rem;
+    font-weight: 500;
+    color: var(--color-accent);
+  }
+  .doc-content .doc-table-wrap,
+  .doc-content .tableWrapper {
+    overflow-x: auto;
+  }
+  .doc-content table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    min-width: 100%;
+  }
+  .doc-content :is(td, th) {
+    position: relative;
+    min-width: 6rem;
+    border: 1px solid var(--color-border-strong);
+    padding: 0.375rem 0.5rem;
+    vertical-align: top;
+    text-align: left;
+  }
+  .doc-content th {
+    background: var(--color-surface-raised);
+    font-weight: 600;
+  }
+  .doc-content [data-background="neutral"] {
+    background: var(--color-surface-sunken);
+  }
+  .doc-content [data-background="accent"] {
+    background: var(--color-accent-subtle);
+  }
+  .doc-content [data-background="success"] {
+    background: var(--color-success-subtle);
+  }
+  .doc-content [data-background="warning"] {
+    background: var(--color-warning-subtle);
+  }
+  .doc-content [data-background="danger"] {
+    background: var(--color-danger-subtle);
+  }
+  .doc-content .selectedCell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: var(--color-selection);
+    opacity: 0.6;
+  }
+  .doc-content [data-panel] {
+    border-left: 3px solid var(--panel-edge);
+    border-radius: var(--radius-control);
+    background: var(--panel-fill);
+    padding: 0.5rem 0.75rem;
+  }
+  .doc-content [data-panel="info"] {
+    --panel-edge: var(--color-accent);
+    --panel-fill: var(--color-accent-subtle);
+  }
+  .doc-content [data-panel="note"] {
+    --panel-edge: var(--color-epic);
+    --panel-fill: color-mix(in srgb, var(--color-epic) 12%, var(--color-surface));
+  }
+  .doc-content [data-panel="success"] {
+    --panel-edge: var(--color-success);
+    --panel-fill: var(--color-success-subtle);
+  }
+  .doc-content [data-panel="warning"] {
+    --panel-edge: var(--color-warning);
+    --panel-fill: var(--color-warning-subtle);
+  }
+  .doc-content [data-panel="error"] {
+    --panel-edge: var(--color-danger);
+    --panel-fill: var(--color-danger-subtle);
+  }
+  .doc-content .suggestion {
+    border-radius: var(--radius-control);
+    background: var(--color-accent-subtle);
+  }
+  .doc-content p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: var(--color-ink-subtle);
+  }
+  .doc-content :is(.hljs-comment, .hljs-quote) {
+    color: var(--color-ink-subtle);
+    font-style: italic;
+  }
+  .doc-content :is(.hljs-keyword, .hljs-selector-tag, .hljs-doctag, .hljs-section) {
+    color: var(--color-chart-3);
+  }
+  .doc-content :is(.hljs-string, .hljs-regexp, .hljs-symbol, .hljs-template-tag) {
+    color: var(--color-chart-2);
+  }
+  .doc-content :is(.hljs-number, .hljs-literal, .hljs-attr, .hljs-attribute, .hljs-selector-attr) {
+    color: var(--color-chart-4);
+  }
+  .doc-content :is(.hljs-title, .hljs-function, .hljs-name) {
+    color: var(--color-chart-1);
+  }
+  .doc-content :is(.hljs-built_in, .hljs-type, .hljs-class, .hljs-selector-class) {
+    color: var(--color-chart-5);
+  }
+  .doc-content :is(.hljs-variable, .hljs-template-variable, .hljs-params, .hljs-selector-id) {
+    color: var(--color-chart-6);
+  }
+  .doc-content :is(.hljs-meta, .hljs-punctuation) {
+    color: var(--color-ink-muted);
+  }
+  .doc-content .hljs-addition {
+    color: var(--color-success);
+  }
+  .doc-content .hljs-deletion {
+    color: var(--color-danger);
+  }
+  .doc-content .hljs-emphasis {
+    font-style: italic;
+  }
+  .doc-content .hljs-strong {
+    font-weight: 600;
+  }
+}
+
 /* Print, which is also how a PDF is made: the chrome goes and colours are
    kept, so a printed page looks like the one on screen. */
 @media print {

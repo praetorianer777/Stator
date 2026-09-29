@@ -66,3 +66,49 @@ export const CONSTELLATION_POINTS_PER_MEGAPIXEL = 70;
 export const CONSTELLATION_LINK_PX = 150;
 /** How fast a point wanders, in pixels per second, before its own variation. */
 export const CONSTELLATION_SPEED_PX_PER_S = 14;
+
+/** The heading levels the editor offers; a page's title sits above level 1. */
+export const EDITOR_HEADING_LEVELS = [1, 2, 3] as const;
+/** How far a heading's slug runs before it is cut, matching the API's MaxSlugLength. */
+export const HEADING_SLUG_MAX_LENGTH = 64;
+/** The shortest editing area, in lines, and the height of one. */
+export const EDITOR_MIN_ROWS = 12;
+export const EDITOR_LINE_HEIGHT_PX = 22;
+/** The rows and columns a new table starts with, header row included. */
+export const TABLE_DEFAULT_ROWS = 3;
+export const TABLE_DEFAULT_COLS = 3;
+/** How many people an at sign offers at once. */
+export const MENTION_MAX_SUGGESTIONS = 8;
+/** How long "Link copied" stays after copying a heading's link. */
+export const COPY_FEEDBACK_MS = 2000;
+
+/** The languages a code block offers, by highlighting grammar, and the name the picker shows. */
+export const CODE_LANGUAGES = [
+  { id: "bash", label: "Bash" },
+  { id: "c", label: "C" },
+  { id: "cpp", label: "C++" },
+  { id: "csharp", label: "C#" },
+  { id: "css", label: "CSS" },
+  { id: "diff", label: "Diff" },
+  { id: "go", label: "Go" },
+  { id: "graphql", label: "GraphQL" },
+  { id: "ini", label: "INI / TOML" },
+  { id: "java", label: "Java" },
+  { id: "javascript", label: "JavaScript" },
+  { id: "json", label: "JSON" },
+  { id: "kotlin", label: "Kotlin" },
+  { id: "lua", label: "Lua" },
+  { id: "makefile", label: "Makefile" },
+  { id: "markdown", label: "Markdown" },
+  { id: "php", label: "PHP" },
+  { id: "python", label: "Python" },
+  { id: "ruby", label: "Ruby" },
+  { id: "rust", label: "Rust" },
+  { id: "scss", label: "SCSS" },
+  { id: "shell", label: "Shell session" },
+  { id: "sql", label: "SQL" },
+  { id: "swift", label: "Swift" },
+  { id: "typescript", label: "TypeScript" },
+  { id: "xml", label: "HTML / XML" },
+  { id: "yaml", label: "YAML" },
+] as const;
