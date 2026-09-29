@@ -39,3 +39,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   `STATOR_DB_REPLICA_MAX_CONNS`; `STATOR_DB_MAX_CONNS` still sizes both), and
   per pool metrics: connections taken, time spent waiting, and fallbacks to
   the primary by reason.
+- Single sign-on through each organization's OIDC provider, with state,
+  nonce and PKCE; people are kept by issuer and subject, become members on
+  first sign-in, and their groups follow the provider's groups claim.
+  Sessions live in an HttpOnly cookie, only the SHA-256 of the token is
+  stored, and they expire and end on sign-out. A sign-in page, an account
+  menu with sign-out, and single sign-on settings for administrators.
+- A local administrator for a fresh deployment from
+  `STATOR_BOOTSTRAP_ADMIN_EMAIL` and `STATOR_BOOTSTRAP_ADMIN_PASSWORD`,
+  signing in with an argon2id password.
+- `STATOR_SECRET_KEY` seals stored secrets with AES-256-GCM, and is required
+  outside development; `STATOR_SESSION_TTL`, `STATOR_OIDC_REDIRECT_URL` and
+  `STATOR_OIDC_BACKCHANNEL` tune sign-in.

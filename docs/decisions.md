@@ -43,6 +43,32 @@ a few seconds, where Keycloak's start already takes longer. The integration
 suite now uses this stack instead of a Postgres and a SeaweedFS of its own, so
 the gate runs exactly one of each.
 
+## 2026-09-29: The provider decides who gets in, and a session stays with it
+
+An organization that configures an identity provider trusts it: somebody it
+signs in becomes a member on first sign-in, and their provider groups follow
+the groups claim exactly, so revoking access at the provider revokes it here
+on the next sign-in. Armature instead asks an administrator to let each new
+person in; a wiki is meant to be open to the whole team, and access is then
+managed in one place.
+
+A person is matched by issuer and subject, which survive an email change. A
+first sign-in whose verified address already has an account, such as the
+bootstrap administrator's, is tied to it. Because any organization may point
+at a provider of its own choosing, a session opened through a provider only
+reaches the organizations that trust the same issuer, and ones the person
+owns; a password session reaches every membership. The database enforces
+this with `session_reaches` and a trigger, not only the service.
+
+## 2026-09-29: Only a bootstrap administrator has a password
+
+Sign-in is through the organization's provider. A local password, hashed with
+argon2id, exists so a fresh deployment can be entered and its provider set up;
+it comes from `STATOR_BOOTSTRAP_ADMIN_EMAIL` and `_PASSWORD`, applied by
+`cmd/seed`. Session tokens are 32 random bytes of which only the SHA-256 is
+stored, and an identity provider's client secret is sealed with
+`STATOR_SECRET_KEY`, bound to its organization.
+
 ## 2026-09-29: Armature is reached as the viewing user
 
 Every call to Armature uses the viewer's own personal access token. A shared

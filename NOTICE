@@ -25,3 +25,13 @@ Adapted from Armature:
 - web/src/routes/themes.tsx and theme-editor.tsx
 - web/src/components/ui: controls, Field, ColorField, Card, Segmented, Tabs,
   Tag, SectionTitle, Table and Choice
+- backend/internal/auth: password.go, token.go, model.go and service.go from
+  internal/auth (argon2id passwords, sessions, switching organizations)
+- backend/internal/oidc: internal/oidc (provider, sign-in flow, group sync,
+  the backchannel issuer rewrite), with PKCE and matching by subject added
+- migrations 00010 to 00012: user_group, group_member, oidc_provider,
+  oidc_login and user_session from 00001_foundation, 00010_rbac,
+  00044_session_proof and 00905_sso_reaches_its_provider
+- backend/internal/httpapi/auth_handlers.go and oidc_handlers.go: the sign-in,
+  session and provider handlers and routes
+- web/src/features/auth: the sign-in form and ProviderSettings
