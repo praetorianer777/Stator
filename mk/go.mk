@@ -56,12 +56,21 @@ openapi-check: | $(GO_CACHE) ## Fail when api/openapi.json differs from what the
 	@$(DOCKER_GO) sh -c 'go run ./cmd/openapi /tmp/openapi.json && diff -u ../api/openapi.json /tmp/openapi.json' \
 		|| { echo "api/openapi.json is out of date. Run make openapi and commit the result."; exit 1; }
 
+.PHONY: document-allowlist
+document-allowlist: | $(GO_CACHE) ## Regenerate api/document-allowlist.json from the Go allowlist
+	$(DOCKER_GO) go run ./cmd/docallowlist ../api/document-allowlist.json
+
+.PHONY: document-allowlist-check
+document-allowlist-check: | $(GO_CACHE) ## Fail when api/document-allowlist.json differs from what the code generates
+	@$(DOCKER_GO) sh -c 'go run ./cmd/docallowlist /tmp/document-allowlist.json && diff -u ../api/document-allowlist.json /tmp/document-allowlist.json' \
+		|| { echo "api/document-allowlist.json is out of date. Run make document-allowlist and commit the result."; exit 1; }
+
 .PHONY: fmt-check
 fmt-check: | $(GO_CACHE) ## Fail when a Go file is not gofmt-clean
 	@$(DOCKER_GO) sh -c 'out=$$(gofmt -l .); [ -z "$$out" ] || { echo "These files need formatting; run make fmt:"; echo "$$out"; exit 1; }'
 
 .PHONY: check-go
-check-go: fmt-check vet test-go openapi-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI drift
+check-go: fmt-check vet test-go openapi-check document-allowlist-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI and allowlist drift
 
 # The suite runs against the compose stack (mk/stack.mk) rather than a database
 # of its own, so the gate never starts a second Postgres.

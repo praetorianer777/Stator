@@ -1,0 +1,228 @@
+package document
+
+import (
+	"encoding/json"
+	"errors"
+	"os"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+const richDoc = `{"type":"doc","content":[
+ {"type":"heading","attrs":{"level":1,"id":"plan"},"content":[{"type":"text","text":"Plan"}]},
+ {"type":"paragraph","content":[
+  {"type":"text","text":"Ask ","marks":[{"type":"bold"},{"type":"italic"}]},
+  {"type":"mention","attrs":{"id":"u1","label":"Ada Lovelace","mentionSuggestionChar":"@"}},
+  {"type":"text","text":" first","marks":[{"type":"strike"}]},
+  {"type":"hardBreak"},
+  {"type":"text","text":"x := 1","marks":[{"type":"code"}]},
+  {"type":"text","text":"site","marks":[{"type":"link","attrs":{"href":"https://example.test","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"title":null}}]}]},
+ {"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"one"}]}]}]},
+ {"type":"orderedList","attrs":{"start":3,"type":null},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"three"}]}]}]},
+ {"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"done"}]}]}]},
+ {"type":"blockquote","content":[{"type":"paragraph","content":[{"type":"text","text":"quoted"}]}]},
+ {"type":"codeBlock","attrs":{"language":"go"},"content":[{"type":"text","text":"x := 1\ny := 2"}]},
+ {"type":"horizontalRule"},
+ {"type":"table","content":[
+  {"type":"tableRow","content":[
+   {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Name"}]}]},
+   {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":[120],"background":"accent"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Role"}]}]}]},
+  {"type":"tableRow","content":[
+   {"type":"tableCell","attrs":{"colspan":2,"rowspan":1,"colwidth":null,"background":"success"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Ada"}]}]}]}]},
+ {"type":"panel","attrs":{"kind":"warning"},"content":[
+  {"type":"heading","attrs":{"level":2,"id":"careful"},"content":[{"type":"text","text":"Careful"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"Hot"}]}]},
+ {"type":"heading","attrs":{"level":3,"id":null},"content":[{"type":"text","text":"Plan"}]}
+]}`
+
+func TestValidateAcceptsEveryAllowedConstruct(t *testing.T) {
+	if err := Validate(json.RawMessage(richDoc)); err != nil {
+		t.Fatalf("a document of every allowed node was refused: %v", err)
+	}
+	if err := Validate(json.RawMessage(`{"type":"doc","content":[{"type":"paragraph"}]}`)); err != nil {
+		t.Fatalf("an empty page was refused: %v", err)
+	}
+}
+
+func TestValidateRefusesInASentence(t *testing.T) {
+	para := func(inner string) string {
+		return `{"type":"doc","content":[{"type":"paragraph","content":[` + inner + `]}]}`
+	}
+	link := func(href string) string {
+		b, _ := json.Marshal(href)
+		return para(`{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":` + string(b) + `}}]}`)
+	}
+	cases := []struct{ name, body, want string }{
+		{"unknown node", `{"type":"doc","content":[{"type":"iframe"}]}`, `holds a "iframe" block`},
+		{"unknown mark", para(`{"type":"text","text":"x","marks":[{"type":"underline"}]}`), `uses a "underline" style`},
+		{"unknown attribute", `{"type":"doc","content":[{"type":"paragraph","attrs":{"style":"color:red"}}]}`, `attribute "style"`},
+		{"unknown field", `{"type":"doc","html":"<script>","content":[]}`, `not a document`},
+		{"heading too deep", `{"type":"doc","content":[{"type":"heading","attrs":{"level":5}}]}`, `level=5`},
+		{"fractional level", `{"type":"doc","content":[{"type":"heading","attrs":{"level":1.5}}]}`, `level=1.5`},
+		{"level as string", `{"type":"doc","content":[{"type":"heading","attrs":{"level":"1"}}]}`, `level="1"`},
+		{"anchor with markup", `{"type":"doc","content":[{"type":"heading","attrs":{"level":1,"id":"a\"><img"}}]}`, `id=`},
+		{"anchor uppercase", `{"type":"doc","content":[{"type":"heading","attrs":{"level":1,"id":"Plan"}}]}`, `id="Plan"`},
+		{"duplicate anchors", `{"type":"doc","content":[{"type":"heading","attrs":{"level":1,"id":"a"}},{"type":"heading","attrs":{"level":2,"id":"a"}}]}`, `share the anchor "a"`},
+		{"javascript link", link("javascript:alert(1)"), `href=`},
+		{"mixed case scheme", link("JaVaScRiPt:alert(1)"), `href=`},
+		{"tab in scheme", link("java\tscript:alert(1)"), `href=`},
+		{"newline in scheme", link("java\nscript:alert(1)"), `href=`},
+		{"leading space", link(" javascript:alert(1)"), `href=`},
+		{"data url", link("data:text/html,<script>alert(1)</script>"), `href=`},
+		{"vbscript", link("vbscript:msgbox"), `href=`},
+		{"protocol relative", link("//evil.test/x"), `href=`},
+		{"backslash host", link("/\\evil.test"), `href=`},
+		{"http without host", link("http:evil"), `href=`},
+		{"empty href", link(""), `href=`},
+		{"overlong href", link("https://example.test/" + strings.Repeat("a", MaxHrefLength)), `href=`},
+		{"link class", para(`{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"/a","class":"evil"}}]}`), `class=`},
+		{"link target", para(`{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"/a","target":"_top"}}]}`), `target=`},
+		{"panel kind", `{"type":"doc","content":[{"type":"panel","attrs":{"kind":"danger"},"content":[{"type":"paragraph"}]}]}`, `kind="danger"`},
+		{"cell background colour", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"background":"#ff0000"},"content":[{"type":"paragraph"}]}]}]}]}`, `background=`},
+		{"cell align", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"align":"justify;color:red"},"content":[{"type":"paragraph"}]}]}]}]}`, `align=`},
+		{"huge colspan", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":100000},"content":[{"type":"paragraph"}]}]}]}]}`, `colspan=`},
+		{"colwidth not numbers", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":["1"]},"content":[{"type":"paragraph"}]}]}]}]}`, `colwidth=`},
+		{"code language injection", `{"type":"doc","content":[{"type":"codeBlock","attrs":{"language":"go\" onload=\"x"}}]}`, `language=`},
+		{"marks inside code", `{"type":"doc","content":[{"type":"codeBlock","content":[{"type":"text","text":"x","marks":[{"type":"bold"}]}]}]}`, `styles a "text"`},
+		{"marks on a block", `{"type":"doc","content":[{"type":"paragraph","marks":[{"type":"bold"}]}]}`, `styles a "paragraph"`},
+		{"repeated mark", para(`{"type":"text","text":"x","marks":[{"type":"bold"},{"type":"bold"}]}`), `twice`},
+		{"text at the top", `{"type":"doc","content":[{"type":"text","text":"x"}]}`, `puts a "text" where it cannot go`},
+		{"cell outside a table", `{"type":"doc","content":[{"type":"tableCell","content":[{"type":"paragraph"}]}]}`, `puts a "tableCell"`},
+		{"nested doc", `{"type":"doc","content":[{"type":"doc"}]}`, `puts a "doc"`},
+		{"content in a leaf", `{"type":"doc","content":[{"type":"horizontalRule","content":[{"type":"paragraph"}]}]}`, `holds none`},
+		{"text on a block", `{"type":"doc","content":[{"type":"paragraph","text":"x"}]}`, `text of its own`},
+		{"empty text", para(`{"type":"text","text":""}`), `empty piece of text`},
+		{"mention without id", para(`{"type":"mention","attrs":{"id":"","label":"x"}}`), `id=""`},
+		{"mention without label", para(`{"type":"mention","attrs":{"id":"u1","label":"   "}}`), `label=`},
+		{"attrs not an object", `{"type":"doc","content":[{"type":"paragraph","attrs":[1]}]}`, `not a document`},
+		{"not a doc", `{"type":"paragraph"}`, `must be a document`},
+		{"not json", `not json`, `not a document`},
+		{"trailing data", `{"type":"doc"}{"type":"doc"}`, `not a document`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := Validate(json.RawMessage(c.body))
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("got %v, want %q", err, c.want)
+			}
+			if !errors.Is(err, ErrInvalid) {
+				t.Fatalf("%v does not wrap ErrInvalid", err)
+			}
+		})
+	}
+}
+
+func TestValidateBoundsDepthAndSize(t *testing.T) {
+	nest := func(levels int) string {
+		return `{"type":"doc","content":[` + strings.Repeat(`{"type":"blockquote","content":[`, levels) + `{"type":"paragraph"}` + strings.Repeat(`]}`, levels) + `]}`
+	}
+	if err := Validate(json.RawMessage(nest(MaxDepth - 2))); err != nil {
+		t.Fatalf("a nest within the limit was refused: %v", err)
+	}
+	if err := Validate(json.RawMessage(nest(MaxDepth + 1))); err == nil || !strings.Contains(err.Error(), "nested too deeply") {
+		t.Fatalf("a deep nest was accepted: %v", err)
+	}
+	// Deeper than the JSON decoder itself will go: refused, never a crash.
+	if err := Validate(json.RawMessage(nest(20000))); err == nil {
+		t.Fatal("a pathological nest was accepted")
+	}
+	big := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"` + strings.Repeat("a", MaxBytes) + `"}]}]}`
+	if err := Validate(json.RawMessage(big)); err == nil || !strings.Contains(err.Error(), "too long") {
+		t.Fatalf("an oversized page was accepted: %v", err)
+	}
+}
+
+func TestSafeHref(t *testing.T) {
+	for _, ok := range []string{"https://example.test/a?b=c#d", "http://example.test", "HTTPS://EXAMPLE.TEST", "mailto:ada@example.test", "/spaces/eng/pages/1", "#plan", "?q=1", "relative/page", "./here:colon", "../up"} {
+		if !SafeHref(ok) {
+			t.Errorf("%q was refused", ok)
+		}
+	}
+	for _, bad := range []string{"javascript:alert(1)", "file:///etc/passwd", "ftp://example.test", "mailto:", "https://", "//evil.test", "https://ex ample.test", "a\x00b", "foo:bar"} {
+		if SafeHref(bad) {
+			t.Errorf("%q was admitted", bad)
+		}
+	}
+}
+
+func TestPlainTextReadsEveryBlock(t *testing.T) {
+	root, err := Parse(json.RawMessage(richDoc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Join([]string{
+		"Plan",
+		"Ask @Ada Lovelace first",
+		"x := 1site",
+		"one",
+		"three",
+		"done",
+		"quoted",
+		"x := 1",
+		"y := 2",
+		"Name\tRole",
+		"Ada",
+		"Careful",
+		"Hot",
+		"Plan",
+	}, "\n")
+	if got := PlainText(root); got != want {
+		t.Errorf("PlainText =\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestHeadingsKeepSavedAnchorsAndFillMissingOnes(t *testing.T) {
+	root, err := Parse(json.RawMessage(richDoc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Heading{
+		{Level: 1, Anchor: "plan", Text: "Plan"},
+		{Level: 2, Anchor: "careful", Text: "Careful"},
+		{Level: 3, Anchor: "plan-2", Text: "Plan"},
+	}
+	if got := Headings(root); !reflect.DeepEqual(got, want) {
+		t.Errorf("Headings = %+v, want %+v", got, want)
+	}
+}
+
+func TestSlug(t *testing.T) {
+	cases := map[string]string{
+		"Getting Started":          "getting-started",
+		"  What's new in 2.0?  ":   "what-s-new-in-2-0",
+		"Übersicht & Ziele":        "übersicht-ziele",
+		"!!!":                      FallbackSlug,
+		"":                         FallbackSlug,
+		"日本語の見出し":                  "日本語の見出し",
+		strings.Repeat("ab ", 100): strings.Repeat("ab-", 21) + "a",
+	}
+	for in, want := range cases {
+		got := Slug(in)
+		if got != want {
+			t.Errorf("Slug(%q) = %q, want %q", in, got, want)
+		}
+		if !patterns[AnchorPattern].MatchString(got) {
+			t.Errorf("Slug(%q) = %q does not match the anchor pattern", in, got)
+		}
+	}
+	taken := map[string]bool{"a": true, "a-2": true}
+	if got := Dedupe("a", taken); got != "a-3" {
+		t.Errorf("Dedupe = %q", got)
+	}
+}
+
+// The web editor's test reads the committed copy; it has to be this table.
+func TestAllowlistFileIsCurrent(t *testing.T) {
+	committed, err := os.ReadFile("../../../api/document-allowlist.json")
+	if err != nil {
+		t.Fatalf("api/document-allowlist.json is missing; run make document-allowlist: %v", err)
+	}
+	fresh, err := Allowed.JSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(committed) != string(fresh) {
+		t.Fatal("api/document-allowlist.json is out of date; run make document-allowlist and commit it.")
+	}
+}
