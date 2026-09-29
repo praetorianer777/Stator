@@ -1,5 +1,5 @@
 // Package openapi builds an OpenAPI 3.1 document from the server's own Go
-// types, so the schemas cannot drift from what the server actually sends.
+// types, so the schemas cannot drift from what it sends, and checks values against it.
 package openapi
 
 import (

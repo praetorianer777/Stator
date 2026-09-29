@@ -26,7 +26,7 @@ func TestProbesAndMetricsAgainstTheDatabase(t *testing.T) {
 	if err := tel.Register(observability.NewClusterCollector(h.cluster)); err != nil {
 		t.Fatal(err)
 	}
-	api := httptest.NewServer((&httpapi.Server{DB: h.cluster, Log: discard(), Telemetry: tel}).Routes(nil))
+	api := httptest.NewServer(observed(t, (&httpapi.Server{DB: h.cluster, Log: discard(), Telemetry: tel}).Routes(nil)))
 	defer api.Close()
 	metrics := httptest.NewServer(tel.Mux())
 	defer metrics.Close()
@@ -34,6 +34,7 @@ func TestProbesAndMetricsAgainstTheDatabase(t *testing.T) {
 	for _, probe := range []struct{ url, want string }{
 		{api.URL + "/healthz", `"status":"ok"`},
 		{api.URL + "/readyz", `"routing"`},
+		{api.URL + httpapi.APIPrefix + "/openapi.json", `"bearerFormat":"stator_pat_`},
 		{metrics.URL + "/metrics", `stator_db_pool_connections{pool="primary"`},
 	} {
 		resp, err := http.Get(probe.url)

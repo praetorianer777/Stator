@@ -76,7 +76,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	accounts := auth.NewService(h.cluster, cheapPasswords(), time.Hour)
 	a := &apiServer{accounts: accounts, store: store, themes: theme.NewService(h.cluster, store), h: h}
 	server := &httpapi.Server{DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes, Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie}
-	a.srv = httptest.NewServer(server.Routes(nil))
+	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))
 	t.Cleanup(a.srv.Close)
 	return a
 }
