@@ -34,6 +34,9 @@ export function SpaceNav({ open, onToggle, onNavigate }: { open: boolean; onTogg
         <div className="my-1">
           <PageTree space={space} currentId={pageId} openPath={openPath} onMove={setMoving} />
         </div>
+        <NavItem to={`/s/${space.key}/settings`} search={{ tab: "trash" }} icon="Trash" rail={false} onNavigate={onNavigate}>
+          {t.space.trash}
+        </NavItem>
         <NavItem to={`/s/${space.key}/settings`} icon="Settings" rail={false} onNavigate={onNavigate}>
           {t.space.settings}
         </NavItem>
