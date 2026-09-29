@@ -9,6 +9,20 @@ const SLASH_ITEM_COUNT = 16;
 const TABLE_SIZE = 3;
 // Enough paragraphs that the stored document outgrows its box.
 const STORED_LINES = 12;
+// One class for each colour the stylesheet gives highlighted code, all of
+// which the development page's sample reaches.
+const HIGHLIGHT_CLASSES = [
+  "hljs-comment",
+  "hljs-keyword",
+  "hljs-string",
+  "hljs-number",
+  "hljs-title",
+  "hljs-built_in",
+  "hljs-variable",
+  "hljs-meta",
+  "hljs-addition",
+  "hljs-deletion",
+];
 
 const box = (page: Page) => page.locator("#dev-editor");
 const preview = (page: Page) => page.locator("[data-dev-preview]");
@@ -37,7 +51,11 @@ async function emptyEditor(page: Page) {
   await page.keyboard.press("Enter");
   await expect(box(page)).toHaveText("");
   await expect(box(page).locator("> *")).toHaveCount(1);
-  expect(await box(page).locator("> *").evaluate((el) => el.tagName)).toBe("P");
+  expect(
+    await box(page)
+      .locator("> *")
+      .evaluate((el) => el.tagName),
+  ).toBe("P");
 }
 
 /** Whether an option is drawn wholly inside the list that clips it. */
@@ -167,6 +185,18 @@ test.describe("the editor", { tag: "@desktop" }, () => {
     await expect(preview(page).locator("pre .doc-code-language")).toHaveText("Python");
     await expectAccessible(page);
   });
+
+  for (const scheme of ["light", "dark"] as const) {
+    test(`highlighted code in several languages passes axe contrast in ${scheme}`, async ({ page }) => {
+      await startInScheme(page, scheme);
+      await page.goto(EDITOR_PATH);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
+      for (const where of [box(page), preview(page)]) {
+        for (const token of HIGHLIGHT_CLASSES) await expect(where.locator(`pre .${token}`).first(), token).toBeVisible();
+      }
+      await expectAccessible(page);
+    });
+  }
 
   test("a panel changes kind, follows the theme's colours and can be removed", async ({ page }) => {
     await emptyEditor(page);
