@@ -58,7 +58,8 @@ func (s *Server) handleCreateTheme(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	made, _, err := s.Themes.Create(r.Context(), userFrom(r), req)
+	made, lsn, err := s.Themes.Create(r.Context(), userFrom(r), req)
+	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -85,7 +86,8 @@ func (s *Server) handleSetDefaultTheme(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrForbidden("Only an owner or an administrator of the organization can name its default theme."))
 		return
 	}
-	chosen, _, err := s.Themes.SetDefault(r.Context(), userFrom(r), req.ThemeID)
+	chosen, lsn, err := s.Themes.SetDefault(r.Context(), userFrom(r), req.ThemeID)
+	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -99,7 +101,8 @@ func (s *Server) handleChooseTheme(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	chosen, _, err := s.Themes.Choose(r.Context(), userFrom(r), req.ThemeID, req.BuiltIn)
+	chosen, lsn, err := s.Themes.Choose(r.Context(), userFrom(r), req.ThemeID, req.BuiltIn)
+	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -132,7 +135,8 @@ func (s *Server) handleUpdateTheme(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	updated, _, err := s.Themes.Update(r.Context(), id, userFrom(r), s.administers(r), req)
+	updated, lsn, err := s.Themes.Update(r.Context(), id, userFrom(r), s.administers(r), req)
+	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, asValidationError(err))
 		return
@@ -146,7 +150,8 @@ func (s *Server) handleDeleteTheme(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, apiErr)
 		return
 	}
-	_, err := s.Themes.Delete(r.Context(), id, userFrom(r), s.administers(r))
+	lsn, err := s.Themes.Delete(r.Context(), id, userFrom(r), s.administers(r))
+	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -184,7 +189,8 @@ func (s *Server) handleUploadThemeAsset(w http.ResponseWriter, r *http.Request) 
 		if part.FormName() != "file" {
 			continue
 		}
-		asset, _, err := s.Themes.UploadAsset(r.Context(), id, userFrom(r), s.administers(r), part.FileName(), part)
+		asset, lsn, err := s.Themes.UploadAsset(r.Context(), id, userFrom(r), s.administers(r), part.FileName(), part)
+		noteWrite(r.Context(), lsn)
 		if err != nil {
 			var tooBig *http.MaxBytesError
 			if errors.As(err, &tooBig) {
@@ -258,7 +264,8 @@ func (s *Server) handleImportTheme(w http.ResponseWriter, r *http.Request) {
 			respondError(w, r, asValidationError(theme.ErrNotAThemeFile))
 			return
 		}
-		made, _, err := s.Themes.Import(r.Context(), userFrom(r), &pkg)
+		made, lsn, err := s.Themes.Import(r.Context(), userFrom(r), &pkg)
+		noteWrite(r.Context(), lsn)
 		if err != nil {
 			respondError(w, r, asValidationError(err))
 			return
@@ -308,7 +315,8 @@ func (s *Server) handleDeleteThemeAsset(w http.ResponseWriter, r *http.Request) 
 		respondError(w, r, apiErr)
 		return
 	}
-	_, err := s.Themes.DeleteAsset(r.Context(), id, assetID, userFrom(r), s.administers(r))
+	lsn, err := s.Themes.DeleteAsset(r.Context(), id, assetID, userFrom(r), s.administers(r))
+	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return

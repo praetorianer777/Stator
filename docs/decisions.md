@@ -3,6 +3,26 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: Read-your-writes is keyed by session, else by a client cookie
+
+A write's position is kept in Valkey for `STATOR_READ_YOUR_WRITES_TTL` under a
+key naming who wrote, and that key's reads stay off any replica that has not
+replayed it. The natural key is the session, as in Armature, but sign-in
+(#5) has not landed and there are no sessions yet. Until then, and for any
+request without a session later, the key is a `stator_client` cookie: a
+random id the API hands to a request that may write and has none. It is
+http-only, carries no rights, and only ever sends its holder's own reads to
+the primary, so forging one gains nothing. Keying by user instead would pin
+every device of a person to one another's writes and could not tell two
+anonymous callers apart; keying by IP address would pin whole offices to
+one person's writes. Once sessions exist, `auth.Principal.SessionID` wins
+over the cookie with no other change.
+
+The position is recorded when the handler notes it, before the response is
+written, and even for a refused request, because the caller's next request
+can arrive before the handler returns and a refused import has already
+written and undone a theme.
+
 ## 2026-09-29: The test stack keeps the streaming replica
 
 The compose stack runs Postgres as a primary and a real streaming replica, as

@@ -16,6 +16,8 @@ x-app-db-env: &app-db-env
   STATOR_DB_PRIMARY_URL: postgres://stator_app:${APP_DB_PASSWORD:-stator_app}@postgres-primary:5432/stator?sslmode=disable
   STATOR_DB_REPLICA_URLS: postgres://stator_app:${APP_DB_PASSWORD:-stator_app}@postgres-replica:5432/stator?sslmode=disable
   STATOR_DB_ADMIN_URL: postgres://stator_admin:${ADMIN_DB_PASSWORD:-stator_admin}@postgres-primary:5432/stator?sslmode=disable
+  # Read-your-writes positions, shared by every api process.
+  STATOR_VALKEY_URL: redis://:${VALKEY_PASSWORD:-stator_valkey}@valkey:6379/0
 
 # Uploaded files go to the stack's SeaweedFS; the api makes the bucket if it is
 # missing.
@@ -99,7 +101,8 @@ services:
       start_period: 30s
       start_interval: 1s
 
-  # Valkey, the BSD licensed fork of Redis: caches and rate limits.
+  # Valkey, the BSD licensed fork of Redis: read-your-writes positions now,
+  # caches and rate limits later.
   valkey:
     image: valkey/valkey:8-alpine
     environment:

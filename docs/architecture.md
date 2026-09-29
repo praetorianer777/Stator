@@ -33,8 +33,34 @@ Keycloak / any OIDC provider <── login ──┘
 Every table carries an organisation and a row-level security policy keyed on
 `current_org_id()`, which each transaction sets. The application connects as
 `stator_app`, which cannot bypass RLS; migrations run as `stator_admin`.
-Writes return the LSN so reads can go to the replica without losing
-read-your-writes.
+
+### Reads, writes and replicas
+
+`internal/db` sends every write to the primary and every read to a replica
+when one is fit to serve it, otherwise to the primary. Fitness is judged on
+the connection the read actually gets, with one query
+(`pg_is_in_recovery()`, `pg_last_wal_replay_lsn()`, the replay lag and the
+WAL receiver's state), because behind a load balanced read service two
+connections of one pool can reach two replicas at different positions. A
+connection that lags more than `STATOR_DB_MAX_REPLICA_LAG` or has not
+replayed the caller's last write is handed back and the read goes to the
+primary; falling back is always correct, only dearer.
+
+A health loop samples `STATOR_DB_REPLICA_LAG_SAMPLES` connections of each
+replica pool every `STATOR_DB_HEALTH_INTERVAL` and takes the pool out of the
+rotation when none of them is fit, so a broken replica stops costing each
+read a round trip.
+
+Read-your-writes: `Cluster.Write` returns the WAL position past its commit.
+Handlers hand it to `noteWrite`, which records it in Valkey
+(`internal/freshness`, `STATOR_VALKEY_URL`) under the caller's key for
+`STATOR_READ_YOUR_WRITES_TTL`. On the caller's next request the
+`readYourWrites` middleware pins the request to that position with
+`db.PinLSN`, so no replica short of it serves them. The key is the session,
+or a `stator_client` cookie until there are sessions; see
+`docs/decisions.md`. Without `STATOR_VALKEY_URL` the positions stay in the
+process, which is only right for a single api process. `/readyz` and
+`/metrics` count reads by where they went and why they fell back.
 
 ### Domains
 

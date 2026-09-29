@@ -101,9 +101,13 @@ func (s *Service) Import(ctx context.Context, owner uuid.UUID, pkg *Package) (*T
 	if err != nil {
 		return nil, 0, err
 	}
+	// A refused import has still written, twice, so it hands back where the
+	// undo landed: the caller's next read must not find the theme it removed.
 	undo := func(cause error) (*Theme, db.LSN, error) {
-		_, _ = s.Delete(ctx, made.ID, owner, false)
-		return nil, 0, cause
+		if gone, err := s.Delete(ctx, made.ID, owner, false); err == nil {
+			lsn = gone
+		}
+		return nil, lsn, cause
 	}
 
 	renamed := map[uuid.UUID]uuid.UUID{}
@@ -165,9 +169,9 @@ func (s *Service) Import(ctx context.Context, owner uuid.UUID, pkg *Package) (*T
 		return "/api/v1/themes/" + made.ID.String() + "/assets/" + next.String()
 	})
 
-	saved, lsn, err := s.Update(ctx, made.ID, owner, false, Input{Spec: &spec})
+	saved, updated, err := s.Update(ctx, made.ID, owner, false, Input{Spec: &spec})
 	if err != nil {
 		return undo(err)
 	}
-	return saved, lsn, nil
+	return saved, updated, nil
 }

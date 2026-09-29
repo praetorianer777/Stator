@@ -29,6 +29,8 @@ const (
 	DefaultConnMaxLifetime = time.Hour
 	DefaultHealthInterval  = 5 * time.Second
 	DefaultMaxReplicaLag   = 2 * time.Second
+	DefaultLagSamples      = 3
+	DefaultReadYourWrites  = 30 * time.Second
 	DefaultS3Bucket        = "stator-files"
 	DefaultS3Region        = "us-east-1"
 )
@@ -48,6 +50,7 @@ type Config struct {
 	RequestTimeout time.Duration
 
 	DB        DB
+	Valkey    Valkey
 	Auth      Auth
 	Telemetry Telemetry
 	S3        S3
@@ -67,6 +70,18 @@ type DB struct {
 	ConnMaxLifetime time.Duration
 	HealthInterval  time.Duration
 	MaxReplicaLag   time.Duration
+	// ReplicaLagSamples is how many connections of a replica's pool each
+	// health pass asks, so behind a load balanced service it sees several.
+	ReplicaLagSamples int
+	// ReadYourWritesTTL is how long a reader's last write position keeps
+	// their reads off any replica that has not replayed it.
+	ReadYourWritesTTL time.Duration
+}
+
+// Valkey is the shared store behind read-your-writes. A blank URL keeps the
+// positions in the process, which is only right for a single api process.
+type Valkey struct {
+	URL string
 }
 
 // Auth holds the session cookie's settings.
@@ -127,6 +142,12 @@ func Load() (Config, error) {
 			ConnMaxLifetime: l.duration("STATOR_DB_CONN_MAX_LIFETIME", DefaultConnMaxLifetime),
 			HealthInterval:  l.duration("STATOR_DB_HEALTH_INTERVAL", DefaultHealthInterval),
 			MaxReplicaLag:   l.duration("STATOR_DB_MAX_REPLICA_LAG", DefaultMaxReplicaLag),
+
+			ReplicaLagSamples: l.integer("STATOR_DB_REPLICA_LAG_SAMPLES", DefaultLagSamples),
+			ReadYourWritesTTL: l.duration("STATOR_READ_YOUR_WRITES_TTL", DefaultReadYourWrites),
+		},
+		Valkey: Valkey{
+			URL: l.str("STATOR_VALKEY_URL", ""),
 		},
 		Auth: Auth{
 			SessionCookie: l.str("STATOR_SESSION_COOKIE", DefaultSessionCookie),
@@ -160,6 +181,12 @@ func Load() (Config, error) {
 	}
 	if c.DB.MinConns > c.DB.MaxConns {
 		l.problem(fmt.Sprintf("STATOR_DB_MIN_CONNS (%d) exceeds STATOR_DB_MAX_CONNS (%d); lower the first or raise the second.", c.DB.MinConns, c.DB.MaxConns))
+	}
+	if c.DB.ReplicaLagSamples < 1 {
+		l.problem("STATOR_DB_REPLICA_LAG_SAMPLES must be at least 1.")
+	}
+	if c.DB.ReadYourWritesTTL <= 0 {
+		l.problem("STATOR_READ_YOUR_WRITES_TTL must be longer than zero, such as 30s.")
 	}
 	if c.RequestTimeout <= 0 {
 		l.problem("STATOR_REQUEST_TIMEOUT must be longer than zero, such as 30s.")

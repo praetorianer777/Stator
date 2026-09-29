@@ -10,14 +10,17 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -46,6 +49,25 @@ type apiServer struct {
 	tokens *tokenAuth
 	store  objectstore.Store
 	themes *theme.Service
+	h      *harness
+
+	mu         sync.Mutex
+	lastWriter *client
+}
+
+// handOver waits for the replica when somebody reads after another person
+// wrote: only the writer's own reads are promised the write at once.
+func (a *apiServer) handOver(t *testing.T, c *client, method string) {
+	t.Helper()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.lastWriter != nil && a.lastWriter != c && !c.eager {
+		a.h.settle(t)
+		a.lastWriter = nil
+	}
+	if method != http.MethodGet && method != http.MethodHead {
+		a.lastWriter = c
+	}
 }
 
 func newAPIServer(t *testing.T, h *harness) *apiServer {
@@ -63,19 +85,48 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	if err := store.(*objectstore.S3Store).EnsureBucket(context.Background()); err != nil {
 		t.Fatalf("make the bucket: %v", err)
 	}
-	a := &apiServer{tokens: &tokenAuth{tokens: map[string]*auth.Principal{}}, store: store, themes: theme.NewService(h.cluster, store)}
-	server := &httpapi.Server{DB: h.cluster, Log: discard(), Auth: a.tokens, Themes: a.themes, CookieName: "stator_session"}
+	a := &apiServer{tokens: &tokenAuth{tokens: map[string]*auth.Principal{}}, store: store, themes: theme.NewService(h.cluster, store), h: h}
+	server := &httpapi.Server{DB: h.cluster, Log: discard(), Auth: a.tokens, Themes: a.themes, Fresh: h.freshness(t), CookieName: "stator_session"}
 	a.srv = httptest.NewServer(server.Routes(nil))
 	t.Cleanup(a.srv.Close)
 	return a
 }
 
-// client is somebody calling the API; an empty token is nobody at all.
+// freshness is the read-your-writes store the running api uses, under a
+// prefix of the suite's own.
+func (h *harness) freshness(t *testing.T) *freshness.ValkeyTracker {
+	t.Helper()
+	if h.cfg.Valkey.URL == "" {
+		t.Fatal("STATOR_VALKEY_URL is not set; run the suite with make test-integration against the running stack")
+	}
+	opts, err := redis.ParseURL(h.cfg.Valkey.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := redis.NewClient(opts)
+	t.Cleanup(func() { _ = client.Close() })
+	tracker := freshness.NewValkeyTracker(client, h.cfg.DB.ReadYourWritesTTL, "stator-test:ryw:")
+	if err := tracker.Ping(t.Context()); err != nil {
+		t.Fatalf("reach Valkey: %v", err)
+	}
+	return tracker
+}
+
+// client is somebody calling the API from a browser of their own, whose
+// cookies it keeps; an empty token is nobody at all.
 type client struct {
 	api   *apiServer
 	token string
 	user  uuid.UUID
 	ctx   context.Context
+	http  *http.Client
+	// eager reads without waiting for anybody else's write to replicate.
+	eager bool
+}
+
+func browser() *http.Client {
+	jar, _ := cookiejar.New(nil)
+	return &http.Client{Jar: jar}
 }
 
 // as signs a person in to an organization, as #5's sessions will.
@@ -85,10 +136,10 @@ func (a *apiServer) as(user, org uuid.UUID, slug string) *client {
 	a.tokens.mu.Lock()
 	a.tokens.tokens[token] = &auth.Principal{UserID: user, Org: &o}
 	a.tokens.mu.Unlock()
-	return &client{api: a, token: token, user: user, ctx: tenant.WithOrg(context.Background(), o)}
+	return &client{api: a, token: token, user: user, ctx: tenant.WithOrg(context.Background(), o), http: browser()}
 }
 
-func (a *apiServer) anonymous() *client { return &client{api: a} }
+func (a *apiServer) anonymous() *client { return &client{api: a, http: browser()} }
 
 type response struct {
 	Status int
@@ -108,7 +159,8 @@ func (c *client) send(t *testing.T, method, path, contentType string, body io.Re
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	c.api.handOver(t, c, req.Method)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +220,8 @@ func (c *client) download(t *testing.T, path string) (*http.Response, []byte) {
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	c.api.handOver(t, c, req.Method)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,6 +294,7 @@ func (h *harness) addPerson(t *testing.T, org uuid.UUID, role string) uuid.UUID 
 		t.Fatalf("make the %s a member: %v", role, err)
 	}
 	t.Cleanup(func() { _, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE id = $1`, id) })
+	h.settle(t)
 	return id
 }
 

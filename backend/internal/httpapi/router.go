@@ -36,6 +36,9 @@ type Server struct {
 	// Telemetry counts and traces requests; nil serves without either.
 	Telemetry *observability.Telemetry
 	Themes    *theme.Service
+	// Fresh remembers each caller's last write between requests; nil leaves
+	// reads unpinned, which is only right without replicas.
+	Fresh Freshness
 
 	CookieName string
 	Secure     bool
@@ -68,6 +71,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 	r.Use(s.sameSite(allowedOrigins))
 	r.Use(middleware.Timeout(timeout))
 	r.Use(s.authenticate)
+	r.Use(s.readYourWrites)
 
 	// Liveness and readiness are deliberately outside the API and authentication.
 	r.Get("/healthz", s.handleLiveness)

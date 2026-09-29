@@ -24,3 +24,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
   replica, Valkey, SeaweedFS, Mailpit, Keycloak with the `stator-dev` realm,
   and the api, worker and web images. `make up` starts it on ports derived
   from the checkout's path; the integration suite runs against it.
+- Read-your-writes with a replica serving reads: a write's position is kept
+  in Valkey (`STATOR_VALKEY_URL`) for `STATOR_READ_YOUR_WRITES_TTL`, and the
+  writer's reads stay on the primary until the replica they would get has
+  replayed it. Replica lag is checked on each read's own connection and
+  sampled across `STATOR_DB_REPLICA_LAG_SAMPLES` connections by the health
+  loop, so reads stay correct behind a load balanced read service.
