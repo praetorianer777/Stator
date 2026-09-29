@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { administers, useLogout, useMe } from "@/api/auth";
+import { administers, useJoinRequests, useLogout, useMe } from "@/api/auth";
 import { Avatar, Button, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
@@ -29,12 +29,29 @@ export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; 
   const { data: me } = useMe();
   const logout = useLogout();
   const name = me?.user.name ?? t.account.guest;
+  const admin = administers(me?.organization?.role);
+  const waiting = useJoinRequests(admin).data?.length ?? 0;
   const items: MenuItem[] = [
     { label: t.account.profile, icon: <Icon.User />, onSelect: () => {}, disabled: true },
     { label: t.account.themes, icon: <Icon.Palette />, onSelect: () => navigate({ to: "/settings/themes" }), attrs: { "data-action": "themes" } },
   ];
-  if (administers(me?.organization?.role)) {
-    items.push({ label: t.account.sso, icon: <Icon.Users />, onSelect: () => navigate({ to: "/settings/sso" }), attrs: { "data-action": "sso-settings" } });
+  if (admin) {
+    items.push({
+      label: (
+        <>
+          <span className="flex-1">{t.account.sso}</span>
+          {waiting > 0 && (
+            <span className="rounded-full bg-accent px-1.5 text-2xs font-medium text-on-primary" data-join-badge>
+              <span aria-hidden="true">{waiting}</span>
+              <span className="sr-only">{t.sso.waitingCount(waiting)}</span>
+            </span>
+          )}
+        </>
+      ),
+      icon: <Icon.Users />,
+      onSelect: () => navigate({ to: "/settings/sso" }),
+      attrs: { "data-action": "sso-settings" },
+    });
   }
   items.push({
     label: t.account.signOut,

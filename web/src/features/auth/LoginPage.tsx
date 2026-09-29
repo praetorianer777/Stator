@@ -23,6 +23,9 @@ function rememberOrg(slug: string) {
   }
 }
 
+/** The reason the API gives when the provider knew the person but nobody here has let them in. */
+export const SSO_WAITING = "not_a_member";
+
 /** The reason the API put on the address after a failed sign-in, as a sentence. */
 export function ssoFailure(reason: string | undefined): string | null {
   if (!reason) return null;
@@ -40,7 +43,10 @@ export function LoginPage({ next, sso }: { next?: string; sso?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const target = safeNext(next);
-  const failure = ssoFailure(sso);
+  // Not a failure: the provider let them through, and an administrator has
+  // yet to let them in. It is told as news, not as an error.
+  const waiting = sso === SSO_WAITING;
+  const failure = waiting ? null : ssoFailure(sso);
   const fields = login.error instanceof ApiError ? login.error.fields : {};
   const formError = login.error && Object.keys(fields).length === 0 ? login.error.message : null;
 
@@ -69,6 +75,12 @@ export function LoginPage({ next, sso }: { next?: string; sso?: string }) {
         </div>
 
         <Card className="space-y-4 p-5">
+          {waiting && (
+            <div role="status" className="rounded-control border border-border bg-surface-raised px-3 py-2" data-sso-waiting>
+              <h2 className="text-sm font-semibold text-ink">{t.login.waitingTitle}</h2>
+              <p className="mt-1 text-sm text-ink-muted">{t.login.waitingBody}</p>
+            </div>
+          )}
           {failure && <ErrorBanner>{failure}</ErrorBanner>}
           <Field
             label={t.login.organization}

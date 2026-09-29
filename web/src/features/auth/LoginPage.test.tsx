@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LAST_ORG_KEY } from "@/config";
 import { safeNext } from "@/lib/session";
@@ -55,6 +55,18 @@ describe("the sign-in page", () => {
     stubApi({ "GET /auth/me": unauthorized });
     await renderAt("/login?sso=expired", { me: null });
     expect(await screen.findByRole("alert")).toHaveTextContent("That sign-in took too long or was already used. Start it again.");
+  });
+
+  it("tells somebody not yet let in that their request waits for an administrator", async () => {
+    stubApi({ "GET /auth/me": unauthorized });
+    const router = await renderAt("/login?sso=not_a_member", { me: null });
+    const waiting = await screen.findByRole("status");
+    expect(within(waiting).getByRole("heading", { name: "Your request is waiting" })).toBeInTheDocument();
+    expect(waiting).toHaveTextContent("nobody in this organization has let you in yet");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(router.state.location.pathname).toBe("/login");
+    expect(document.querySelector("[data-top-bar]")).toBeNull();
+    expect(await axeViolations()).toEqual([]);
   });
 
   it("says something useful for a reason it does not know", async () => {

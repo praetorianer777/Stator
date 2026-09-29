@@ -57,6 +57,9 @@ export const en = {
     email: "Email",
     password: "Password",
     submit: "Sign in with password",
+    waitingTitle: "Your request is waiting",
+    waitingBody:
+      "Your identity provider knows you, but nobody in this organization has let you in yet. An administrator can do that under Single sign-on; sign in again once they have.",
     failures: {
       expired: "That sign-in took too long or was already used. Start it again.",
       not_configured: "That organization does not sign in with SSO. Check its name, or ask one of its administrators.",
@@ -86,6 +89,14 @@ export const en = {
     setUp: "Set up single sign-on",
     saved: "Saved.",
     notAdmin: "Only an administrator of this organization can change how its members sign in.",
+    waitingTitle: "Waiting to be let in",
+    waitingIntro: "These people signed in through the identity provider but are not members yet.",
+    asked: (email: string, when: string) => `${email}, asked ${when}`,
+    admit: "Let in as member",
+    decline: "Turn away",
+    admitted: (name: string) => `${name} may sign in now.`,
+    declined: (name: string) => `${name} was turned away.`,
+    waitingCount: (count: number) => `${count} waiting`,
   },
   themes: {
     title: "Themes",

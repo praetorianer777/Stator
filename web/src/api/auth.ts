@@ -13,8 +13,11 @@ export type Provider = Wire["Provider"];
 export type ProviderView = Wire["ProviderView"];
 export type SaveProviderInput = Wire["SaveOIDCProviderRequest"];
 
+export type JoinRequest = Wire["JoinRequest"];
+
 export const meQueryKey = ["auth", "me"] as const;
 export const providerQueryKey = ["oidc-provider"] as const;
+export const joinRequestsQueryKey = ["users", "requests"] as const;
 
 /** The session query, never retried: a 401 is a definite answer, which the route guards act on themselves. */
 export const meQuery = {
@@ -65,6 +68,34 @@ export function useProvider() {
   return useQuery({
     queryKey: providerQueryKey,
     queryFn: async (): Promise<ProviderView> => (await api.GET("/oidc-provider")).data!,
+  });
+}
+
+/** Who signed in through the provider and waits to be let in; asked only of administrators. */
+export function useJoinRequests(enabled = true) {
+  return useQuery({
+    queryKey: joinRequestsQueryKey,
+    queryFn: async (): Promise<JoinRequest[]> => (await api.GET("/users/requests")).data!.requests,
+    enabled,
+  });
+}
+
+export function useAdmitJoinRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: "member" | "admin" }) =>
+      (await api.POST("/users/requests/{userID}/admit", { params: { path: { userID: userId } }, body: { role } })).data!,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: joinRequestsQueryKey }),
+  });
+}
+
+export function useDeclineJoinRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId }: { userId: string }) => {
+      await api.DELETE("/users/requests/{userID}", { params: { path: { userID: userId } } });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: joinRequestsQueryKey }),
   });
 }
 
