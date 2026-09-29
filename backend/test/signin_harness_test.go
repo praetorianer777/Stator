@@ -29,19 +29,17 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
-// Environment the sign-in tests need, set by make test-integration from idp-up.
+// envKeycloakAdminPassword overrides the stack's Keycloak administrator
+// password, which the compose file defaults to defaultKeycloakAdminPassword.
 const (
-	envIdP              = "STATOR_TEST_IDP_URL"
-	envIdPRealm         = "STATOR_TEST_IDP_REALM"
-	envIdPAdminPassword = "STATOR_TEST_IDP_ADMIN_PASSWORD"
+	envKeycloakAdminPassword     = "STATOR_TEST_KEYCLOAK_ADMIN_PASSWORD"
+	defaultKeycloakAdminPassword = "admin"
 )
 
-// The test realm's client and people, as backend/test/testdata/keycloak-realm.json has them.
+// The development realm's people, as deploy/keycloak/realm.json has them.
 const (
-	realmClientID     = "stator"
-	realmClientSecret = "stator-test-secret"
-	alicePassword     = "alice test password"
-	bobPassword       = "bob test password"
+	alicePassword = "alice password"
+	bobPassword   = "bob password"
 	// appHost is where the API sends the browser after a sign-in; the
 	// browser stops there, since no web client is running in the suite.
 	appHost = "app.test"
@@ -109,8 +107,8 @@ func (h *harness) makeOrg(t *testing.T, slug string) tenant.Org {
 	return org
 }
 
-// forgetPerson removes an account made during a test, by address, so the
-// next run signs the same Keycloak user in as somebody new again.
+// forgetPerson removes an account a test makes, by address, before and after,
+// so a run against a kept stack starts from nothing.
 func (h *harness) forgetPerson(t *testing.T, email string) {
 	t.Helper()
 	clean := func() { _, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE email = $1`, email) }
@@ -233,11 +231,11 @@ type keycloak struct {
 
 func newKeycloak(t *testing.T) *keycloak {
 	t.Helper()
-	base := os.Getenv(envIdP)
-	if base == "" {
-		t.Skipf("%s is not set; run the suite with make test-integration, which starts Keycloak", envIdP)
+	password := os.Getenv(envKeycloakAdminPassword)
+	if password == "" {
+		password = defaultKeycloakAdminPassword
 	}
-	return &keycloak{base: base, realm: os.Getenv(envIdPRealm), password: os.Getenv(envIdPAdminPassword), client: &http.Client{Timeout: browserTimeout}}
+	return &keycloak{base: stackURL(t, envKeycloakURL), realm: realm, password: password, client: &http.Client{Timeout: browserTimeout}}
 }
 
 func (k *keycloak) issuer() string { return k.base + "/realms/" + k.realm }

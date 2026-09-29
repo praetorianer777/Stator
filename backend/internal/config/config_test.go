@@ -23,6 +23,7 @@ func clean(t *testing.T) {
 		"STATOR_S3_REGION", "STATOR_S3_USE_SSL",
 		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
+		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
 	} {
 		t.Setenv(key, "")
 	}
@@ -277,5 +278,23 @@ func TestTheBootstrapAdminNeedsBothHalves(t *testing.T) {
 	}
 	if c.Bootstrap.AdminPassword != " a password with spaces " {
 		t.Errorf("the password was altered: %q", c.Bootstrap.AdminPassword)
+	}
+}
+
+func TestTheBootstrapProviderNeedsAClientAndAKeyForItsSecret(t *testing.T) {
+	clean(t)
+	t.Setenv("STATOR_BOOTSTRAP_OIDC_ISSUER", "http://localhost:8180/realms/stator-dev")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_BOOTSTRAP_OIDC_CLIENT_ID") {
+		t.Fatalf("an issuer without a client = %v", err)
+	}
+	t.Setenv("STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "stator")
+	t.Setenv("STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET", "stator-dev-secret")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_SECRET_KEY") {
+		t.Fatalf("a secret with no key to seal it = %v", err)
+	}
+	t.Setenv("STATOR_SECRET_KEY", testKey)
+	c, err := Load()
+	if err != nil || c.Bootstrap.OIDCClientID != "stator" || c.Bootstrap.OIDCClientSecret != "stator-dev-secret" {
+		t.Fatalf("bootstrap provider = %+v, %v", c.Bootstrap, err)
 	}
 }

@@ -47,7 +47,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
   menu with sign-out, and single sign-on settings for administrators.
 - A local administrator for a fresh deployment from
   `STATOR_BOOTSTRAP_ADMIN_EMAIL` and `STATOR_BOOTSTRAP_ADMIN_PASSWORD`,
-  signing in with an argon2id password.
+  signing in with an argon2id password. `STATOR_BOOTSTRAP_OIDC_*` points
+  the demo organization at a provider; the compose stack's seed uses both,
+  so `make up` signs in through its Keycloak.
 - `STATOR_SECRET_KEY` seals stored secrets with AES-256-GCM, and is required
   outside development; `STATOR_SESSION_TTL`, `STATOR_OIDC_REDIRECT_URL` and
   `STATOR_OIDC_BACKCHANNEL` tune sign-in.

@@ -114,11 +114,15 @@ type Auth struct {
 	OIDCBackchannel map[string]string
 }
 
-// Bootstrap names a first local administrator, so a fresh deployment can be
-// entered before any identity provider is configured.
+// Bootstrap is what cmd/seed sets up in the demo organization: a first local
+// administrator, and an identity provider when it has none yet.
 type Bootstrap struct {
 	AdminEmail    string
 	AdminPassword string
+
+	OIDCIssuer       string
+	OIDCClientID     string
+	OIDCClientSecret string
 }
 
 // S3 is the bucket uploaded files live in: theme assets now, attachments
@@ -204,7 +208,10 @@ func Load() (Config, error) {
 		Bootstrap: Bootstrap{
 			AdminEmail: l.str("STATOR_BOOTSTRAP_ADMIN_EMAIL", ""),
 			// Not trimmed: a password is exactly what was typed.
-			AdminPassword: os.Getenv("STATOR_BOOTSTRAP_ADMIN_PASSWORD"),
+			AdminPassword:    os.Getenv("STATOR_BOOTSTRAP_ADMIN_PASSWORD"),
+			OIDCIssuer:       l.str("STATOR_BOOTSTRAP_OIDC_ISSUER", ""),
+			OIDCClientID:     l.str("STATOR_BOOTSTRAP_OIDC_CLIENT_ID", ""),
+			OIDCClientSecret: l.str("STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET", ""),
 		},
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
@@ -251,6 +258,12 @@ func Load() (Config, error) {
 	}
 	if (c.Bootstrap.AdminEmail == "") != (c.Bootstrap.AdminPassword == "") {
 		l.problem("Set both STATOR_BOOTSTRAP_ADMIN_EMAIL and STATOR_BOOTSTRAP_ADMIN_PASSWORD, or neither.")
+	}
+	if (c.Bootstrap.OIDCIssuer == "") != (c.Bootstrap.OIDCClientID == "") {
+		l.problem("Set both STATOR_BOOTSTRAP_OIDC_ISSUER and STATOR_BOOTSTRAP_OIDC_CLIENT_ID, or neither.")
+	}
+	if c.Bootstrap.OIDCClientSecret != "" && c.SecretKey == nil {
+		l.problem("STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET is set but STATOR_SECRET_KEY is not; set the key so the secret can be stored sealed.")
 	}
 	if c.Bootstrap.AdminEmail != "" && !strings.Contains(c.Bootstrap.AdminEmail, "@") {
 		l.problem(fmt.Sprintf("STATOR_BOOTSTRAP_ADMIN_EMAIL is %q; set it to an email address.", c.Bootstrap.AdminEmail))

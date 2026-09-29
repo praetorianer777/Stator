@@ -26,7 +26,7 @@ const testSessionTTL = time.Hour
 func configureProvider(t *testing.T, a *api, org tenant.Org, issuer string, createGroups bool) {
 	t.Helper()
 	_, _, err := a.sso.Save(tenant.WithOrg(context.Background(), org), oidc.Provider{
-		Issuer: issuer, ClientID: realmClientID, ClientSecret: realmClientSecret,
+		Issuer: issuer, ClientID: statorClient, ClientSecret: statorSecret,
 		CreateGroups: createGroups, Enabled: true,
 	})
 	if err != nil {
@@ -66,7 +66,6 @@ func TestSignInThroughKeycloak(t *testing.T) {
 	kc.reachable(t)
 	a := h.startAPI(t, testSessionTTL)
 	org := h.makeOrg(t, "wonderland")
-	h.forgetPerson(t, "alice@stator.test")
 	configureProvider(t, a, org, kc.issuer(), true)
 	ctx := context.Background()
 
@@ -75,7 +74,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 		if err := h.super.QueryRow(ctx, `SELECT client_secret FROM oidc_provider WHERE org_id = $1`, org.ID).Scan(&stored); err != nil {
 			t.Fatal(err)
 		}
-		if len(stored) == 0 || bytes.Contains(stored, []byte(realmClientSecret)) {
+		if len(stored) == 0 || bytes.Contains(stored, []byte(statorSecret)) {
 			t.Fatalf("the stored secret is %q", stored)
 		}
 	})
@@ -94,7 +93,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 		}
 		user, _ := me["user"].(map[string]any)
 		current, _ := me["organization"].(map[string]any)
-		if user["email"] != "alice@stator.test" || user["name"] != "Alice Liddell" {
+		if user["email"] != "alice@stator.test" || user["name"] != "Alice Admin" {
 			t.Errorf("user = %v", user)
 		}
 		if current["slug"] != org.Slug || current["role"] != string(auth.RoleMember) {
@@ -107,7 +106,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 	})
 
 	t.Run("her groups are created and joined", func(t *testing.T) {
-		if got := h.providerGroups(t, org, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-admins"}) {
+		if got := h.providerGroups(t, org, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-administrators"}) {
 			t.Fatalf("groups = %q", got)
 		}
 	})
@@ -146,7 +145,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 
 		again := newBrowser(t)
 		again.signIn(t, a, org.Slug, "alice", alicePassword, "")
-		if got := h.providerGroups(t, org, "alice@stator.test"); !slices.Equal(got, []string{"stator-admins"}) {
+		if got := h.providerGroups(t, org, "alice@stator.test"); !slices.Equal(got, []string{"stator-administrators"}) {
 			t.Fatalf("groups after leaving engineering = %q", got)
 		}
 		var accounts int
@@ -157,7 +156,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 		kc.setMembership(t, "alice", "engineering", true)
 		again = newBrowser(t)
 		again.signIn(t, a, org.Slug, "alice", alicePassword, "")
-		if got := h.providerGroups(t, org, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-admins"}) {
+		if got := h.providerGroups(t, org, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-administrators"}) {
 			t.Fatalf("groups after rejoining engineering = %q", got)
 		}
 	})
@@ -186,7 +185,6 @@ func TestOnlyExistingGroupsAreJoinedWhenCreationIsOff(t *testing.T) {
 	kc.reachable(t)
 	a := h.startAPI(t, testSessionTTL)
 	org := h.makeOrg(t, "builders")
-	h.forgetPerson(t, "bob@stator.test")
 	configureProvider(t, a, org, kc.issuer(), false)
 
 	newBrowser(t).signIn(t, a, org.Slug, "bob", bobPassword, "")
@@ -228,7 +226,7 @@ func TestSignInRefusals(t *testing.T) {
 	t.Run("a provider that is turned off is not used", func(t *testing.T) {
 		org := h.makeOrg(t, "off")
 		configureProvider(t, a, org, kc.issuer(), false)
-		if _, _, err := a.sso.Save(tenant.WithOrg(context.Background(), org), oidc.Provider{Issuer: kc.issuer(), ClientID: realmClientID, Enabled: false}); err != nil {
+		if _, _, err := a.sso.Save(tenant.WithOrg(context.Background(), org), oidc.Provider{Issuer: kc.issuer(), ClientID: statorClient, Enabled: false}); err != nil {
 			t.Fatal(err)
 		}
 		if resp := start(org.Slug); resp.StatusCode != http.StatusNotFound {
