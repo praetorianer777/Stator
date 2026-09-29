@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -150,20 +151,24 @@ func TestTheMinecraftThemeFromArmatureImports(t *testing.T) {
 	}
 
 	t.Run("the service imports it too, a second time under a numbered name", func(t *testing.T) {
-		again, _, err := api.themes.Import(owner.ctx, home.user, &original)
+		// The service hands back where each write landed; reading with it
+		// pinned is what keeps the replica from answering with the past.
+		again, lsn, err := api.themes.Import(owner.ctx, home.user, &original)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if again.Name != "Minecraft (2)" || !reflect.DeepEqual(again.Spec, normalised(t, original.Spec)) {
 			t.Fatalf("the service's import = %q %+v", again.Name, again.Spec)
 		}
-		if _, err := api.themes.Export(owner.ctx, again.ID, home.user); err != nil {
+		ctx := db.PinLSN(owner.ctx, lsn)
+		if _, err := api.themes.Export(ctx, again.ID, home.user); err != nil {
 			t.Fatalf("export through the service: %v", err)
 		}
-		if _, err := api.themes.Delete(owner.ctx, again.ID, home.user, false); err != nil {
+		gone, err := api.themes.Delete(ctx, again.ID, home.user, false)
+		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := api.themes.Get(owner.ctx, again.ID, home.user); !errors.Is(err, theme.ErrNotFound) {
+		if _, err := api.themes.Get(db.PinLSN(ctx, gone), again.ID, home.user); !errors.Is(err, theme.ErrNotFound) {
 			t.Fatalf("a deleted theme is still found: %v", err)
 		}
 	})
@@ -187,7 +192,7 @@ func TestUploadsWithoutABucketAreRefusedPlainly(t *testing.T) {
 	h := newHarness(t)
 	home := h.makeMember(t, "no-bucket")
 	svc := theme.NewService(h.cluster, objectstore.Unavailable{})
-	made, _, err := svc.Create(home.ctx, home.user, theme.Input{Name: ptr("Bucketless")})
+	made, lsn, err := svc.Create(home.ctx, home.user, theme.Input{Name: ptr("Bucketless")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +202,7 @@ func TestUploadsWithoutABucketAreRefusedPlainly(t *testing.T) {
 	if !strings.Contains(objectstore.ErrUnavailable.Error(), "STATOR_S3_ENDPOINT") {
 		t.Error("the refusal does not name the setting to fix")
 	}
-	got, err := svc.Get(home.ctx, made.ID, home.user)
+	got, err := svc.Get(db.PinLSN(home.ctx, lsn), made.ID, home.user)
 	if err != nil || len(got.Assets) != 0 {
 		t.Fatalf("a refused upload left a file behind: %+v %v", got, err)
 	}

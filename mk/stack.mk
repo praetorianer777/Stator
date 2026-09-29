@@ -30,6 +30,7 @@ APP_DB_PASSWORD    ?= stator_app
 ADMIN_DB_PASSWORD  ?= stator_admin
 S3_ACCESS_KEY      ?= stator
 S3_SECRET_KEY      ?= stator-dev-secret
+VALKEY_PASSWORD    ?= stator_valkey
 
 # The suite writes to a bucket of its own, so what it leaves behind never shows
 # up among the files of the running app.
@@ -38,7 +39,7 @@ STACK_TEST_BUCKET := stator-test
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
 export WEB_PORT API_PORT KEYCLOAK_PORT MAILPIT_PORT POSTGRES_PORT POSTGRES_REPLICA_PORT VALKEY_PORT S3_PORT
-export POSTGRES_PASSWORD APP_DB_PASSWORD ADMIN_DB_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY
+export POSTGRES_PASSWORD APP_DB_PASSWORD ADMIN_DB_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY VALKEY_PASSWORD
 
 # What the stack publishes, for the browser suite and for people: a shell can
 # source it, and so can a Playwright config.
@@ -47,14 +48,15 @@ STACK_ENV_FILE := $(ROOT)/.cache/stack.env
 STACK_PG_URL = postgres://$(1):$(2)@$(3):5432/stator?sslmode=disable
 
 # The Go toolchain container on the stack's network, with everything the
-# integration suite reads. The suite reads from the primary only: its requests
-# do not yet carry the write position from one to the next, so a replica would
-# answer them with what was there before. The replica is proven through the
-# running api's readiness instead.
+# integration suite reads. Reads go to the replica as they do in the running
+# api, so the suite proves read-your-writes rather than stepping around it.
 DOCKER_GO_STACK = $(call go_run,--network $(STACK_NET) \
 	-e STATOR_DB_PRIMARY_URL='$(call STACK_PG_URL,stator_app,$(APP_DB_PASSWORD),postgres-primary)' \
+	-e STATOR_DB_REPLICA_URLS='$(call STACK_PG_URL,stator_app,$(APP_DB_PASSWORD),postgres-replica)' \
 	-e STATOR_DB_ADMIN_URL='$(call STACK_PG_URL,stator_admin,$(ADMIN_DB_PASSWORD),postgres-primary)' \
+	-e STATOR_VALKEY_URL='redis://:$(VALKEY_PASSWORD)@valkey:6379/0' \
 	-e STATOR_TEST_SUPERUSER_URL='$(call STACK_PG_URL,stator,$(POSTGRES_PASSWORD),postgres-primary)' \
+	-e STATOR_TEST_REPLICA_SUPERUSER_URL='$(call STACK_PG_URL,stator,$(POSTGRES_PASSWORD),postgres-replica)' \
 	-e STATOR_S3_ENDPOINT=seaweedfs:8333 \
 	-e STATOR_S3_BUCKET=$(STACK_TEST_BUCKET) \
 	-e STATOR_S3_ACCESS_KEY='$(S3_ACCESS_KEY)' \
