@@ -52,9 +52,17 @@ const raiseOnError: Middleware = {
   },
 };
 
-export function createApi(baseUrl: string = API_BASE) {
+// Absolute, because a Request made outside a browser has no page to resolve a
+// bare path against.
+function defaultBase(): string {
+  return typeof window === "undefined" ? API_BASE : new URL(API_BASE, window.location.origin).toString();
+}
+
+export function createApi(baseUrl: string = defaultBase()) {
   // The session lives in an HttpOnly cookie, so it has to be sent explicitly.
-  const client = createClient<paths>({ baseUrl, credentials: "same-origin" });
+  // fetch is looked up per request rather than once, so the shared client uses
+  // whatever the page has at the time, a test's stand-in included.
+  const client = createClient<paths>({ baseUrl, credentials: "same-origin", fetch: (request) => globalThis.fetch(request) });
   client.use(raiseOnError);
   return client;
 }

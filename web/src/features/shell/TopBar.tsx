@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Avatar, Button, IconButton, Menu } from "@/components/ui";
+import { administers, useLogout, useMe } from "@/api/auth";
+import { Avatar, Button, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { DRAWER_ID } from "./state";
@@ -21,11 +22,28 @@ export function useSearchShortcut(onSearch: () => void) {
 
 /**
  * Above the content: the navigation drawer's button on a narrow screen, the
- * way into search, and the person. There are no
- * accounts yet, so the person is a guest and the menu's entries wait for them.
+ * way into search, and the person signed in, with what they may do from there.
  */
 export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; drawerOpen: boolean; onOpenDrawer: () => void }) {
   const navigate = useNavigate();
+  const { data: me } = useMe();
+  const logout = useLogout();
+  const name = me?.user.name ?? t.account.guest;
+  const items: MenuItem[] = [
+    { label: t.account.profile, icon: <Icon.User />, onSelect: () => {}, disabled: true },
+    { label: t.account.themes, icon: <Icon.Palette />, onSelect: () => navigate({ to: "/settings/themes" }), attrs: { "data-action": "themes" } },
+  ];
+  if (administers(me?.organization?.role)) {
+    items.push({ label: t.account.sso, icon: <Icon.Users />, onSelect: () => navigate({ to: "/settings/sso" }), attrs: { "data-action": "sso-settings" } });
+  }
+  items.push({
+    label: t.account.signOut,
+    icon: <Icon.External />,
+    // Wherever the request ends, the session is no longer this browser's to use.
+    onSelect: () => logout.mutate(undefined, { onSettled: () => navigate({ to: "/login" }) }),
+    disabled: !me,
+    attrs: { "data-action": "sign-out" },
+  });
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2 shell:gap-3 shell:px-4" data-top-bar data-print-hide>
       {narrow && (
@@ -66,15 +84,13 @@ export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; 
               className="px-1!"
               data-action="account"
             >
-              <Avatar name={t.account.guest} size="sm" />
-              <span className="hidden text-sm text-ink shell:inline">{t.account.guest}</span>
+              <Avatar name={name} src={me?.user.avatarUrl} size="sm" />
+              <span className="hidden text-sm text-ink shell:inline" data-account-name>
+                {name}
+              </span>
             </Button>
           )}
-          items={[
-            { label: t.account.profile, icon: <Icon.User />, onSelect: () => {}, disabled: true },
-            { label: t.account.themes, icon: <Icon.Palette />, onSelect: () => navigate({ to: "/settings/themes" }), attrs: { "data-action": "themes" } },
-            { label: t.account.signOut, icon: <Icon.External />, onSelect: () => {}, disabled: true },
-          ]}
+          items={items}
         />
       </div>
     </header>

@@ -1,11 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 
-import { QUERY_STALE_MS } from "./config";
+import { createQueryClient } from "./lib/session";
 import { applyCustomTheme, applyTheme, readCachedTheme, readTheme } from "./lib/theme";
-import { buildRouter } from "./routes";
+import { buildRouter, sendToLogin } from "./routes";
 import "./styles/index.css";
 
 // Apply the stored theme before the first paint so there is no flash of the
@@ -15,18 +15,9 @@ applyTheme(readTheme());
 const cached = readCachedTheme();
 if (cached) applyCustomTheme(cached.css);
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // A failed request is usually a real answer (401, 404, validation), not
-      // a blip worth retrying three times while the user waits.
-      retry: false,
-      refetchOnWindowFocus: false,
-      staleTime: QUERY_STALE_MS,
-    },
-  },
-});
-
+// The client and the router need each other: a 401 anywhere navigates, which
+// only ever happens once both exist.
+const queryClient = createQueryClient((client) => sendToLogin(router, client));
 const router = buildRouter(queryClient);
 
 const container = document.getElementById("root");

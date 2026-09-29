@@ -92,13 +92,16 @@ describe("the account menu", () => {
     const menu = screen.getByRole("menu", { name: "Your account" });
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveAttribute("aria-controls", menu.id);
-    const [profile, themes, signOut] = within(menu).getAllByRole("menuitem");
-    // The entries wait for accounts, yet stay reachable so the reader can find them.
+    const [profile, themes, sso, signOut] = within(menu).getAllByRole("menuitem");
+    // The profile waits for its page, yet stays reachable so the reader can find it.
     expect(profile).toHaveAttribute("aria-disabled", "true");
     expect(themes).not.toHaveAttribute("aria-disabled", "true");
+    expect(signOut).not.toHaveAttribute("aria-disabled", "true");
     expect(profile).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
     expect(themes).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(sso).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
     expect(signOut).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");

@@ -36,6 +36,19 @@ export const MENU_GAP_PX = 4;
 /** How long a query's answer stays fresh before a refetch. */
 export const QUERY_STALE_MS = 10_000;
 
+/** Where a visitor without a session is sent, with where they were headed in `next`. */
+export const LOGIN_PATH = "/login";
+
+/** Who is signed in changes only by signing in or out, so the answer is kept a minute. */
+export const ME_STALE_MS = 60_000;
+
+/** Where the organization last typed on the sign-in page is kept, so it is there next time. */
+export const LAST_ORG_KEY = "stator.last-org";
+
+/** The groups claim and scopes an identity provider starts with, matching the API's defaults. */
+export const SSO_DEFAULT_GROUPS_CLAIM = "groups";
+export const SSO_DEFAULT_SCOPES = "openid profile email";
+
 /** The largest file a theme takes, matching the API's limit. */
 export const THEME_ASSET_MAX_BYTES = 12 * 1024 * 1024;
 /** The most extra CSS a theme carries, matching the API's limit. */
