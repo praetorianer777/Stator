@@ -24,6 +24,10 @@ Keycloak / any OIDC provider <── login ──┘
   and plain SQL. No ORM, no query generator: pgx v5 and hand-written SQL.
 - Router: chi v5. A single route table drives the router, the OpenAPI document
   (`api/openapi.json`), and the consistency tests between them.
+- An operation agreed before it is built carries `pending: true` in the table:
+  the router answers it 501 `not_implemented` and the integration suite does
+  not expect it covered. Whoever builds it removes the mark and routes its
+  handler; `docs/api-contract-m1.md` is the agreement behind the current ones.
 - Migrations: goose, embedded in the binary, applied by `cmd/migrate`.
 - Configuration: environment variables only, prefix `STATOR_`.
 - Observability: `log/slog`, Prometheus metrics, OpenTelemetry traces.
@@ -71,8 +75,8 @@ process, which is only right for a single api process. `/readyz` and
 | `perm` | global, space and page permissions |
 | `space` | spaces, space settings |
 | `document` | page document allowlist and validation, plain text for search, headings for the table of contents |
-| `page` | page tree (parent plus rank), move, copy, trash |
-| `version` | drafts, published versions, diff, restore |
+| `page` | page tree (parent plus rank), move, copy, trash, drafts, published versions, diff, restore, restrictions |
+| `version` | which build is running |
 | `comment` | page comments, inline comments anchored by mark id |
 | `label`, `watch`, `notify` | labels, watchers, in-app and email notifications |
 | `template` | page templates |
