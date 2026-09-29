@@ -85,3 +85,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 - Stored files are keyed under `org/<organization id>/`, so an
   organization's files can be listed and removed together.
+
+### Fixed
+
+- Subtle text (hints, timestamps, placeholders) meets WCAG AA: 4.5:1 or more
+  on every surface in both palettes, and in the Deep-Tech and Constellation
+  themes, with the hue kept. A unit test checks every text colour against
+  every surface.

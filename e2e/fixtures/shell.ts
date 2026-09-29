@@ -31,22 +31,8 @@ export async function openShell(page: Page, path: string): Promise<void> {
 const RULES_ON = { "color-contrast": { enabled: true }, region: { enabled: true } };
 
 // Findings against the app that this suite surfaced and that wait on a fix of
-// their own: --color-ink-subtle, taken value for value from Armature, stays
-// under 4.5:1 on every surface in both palettes, and the not-found page has no
-// level-one heading. Exactly these pass; delete an entry once it is fixed.
+// their own. Exactly these pass; delete an entry once it is fixed.
 const KNOWN_FINDINGS: Array<{ rule: string; matches: (page: Page, node: AxeNode) => Promise<boolean> }> = [
-  {
-    rule: "color-contrast",
-    matches: async (page, node) => {
-      const inkSubtle = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--color-ink-subtle").trim().toLowerCase());
-      const foreground = (node.any[0]?.data as { fgColor?: string } | undefined)?.fgColor?.toLowerCase();
-      return foreground === inkSubtle;
-    },
-  },
-  {
-    rule: "page-has-heading-one",
-    matches: async (page) => (await page.locator("[data-not-found]").count()) > 0,
-  },
   // The slash menu scrolls while focus stays in the editor, which names the
   // option through aria-activedescendant; the stored-document box belongs to
   // the development page alone.
