@@ -16,7 +16,9 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
+	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/version"
 )
 
@@ -79,10 +81,16 @@ func run() error {
 		return err
 	}
 
+	store, err := fileStore(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+
 	server := &httpapi.Server{
 		DB:             cluster,
 		Log:            log,
 		Telemetry:      tel,
+		Themes:         theme.NewService(cluster, store),
 		CookieName:     cfg.Auth.SessionCookie,
 		Secure:         cfg.Auth.SecureCookies,
 		AppBaseURL:     cfg.AppBaseURL,
@@ -153,6 +161,27 @@ func telemetryConfig(cfg config.Config, service string) observability.Config {
 		OTLPEndpoint: cfg.Telemetry.OTLPEndpoint,
 		SampleRatio:  cfg.Telemetry.SampleRatio,
 	}
+}
+
+// fileStore connects to the configured bucket, making it on a fresh stack, or
+// returns the store that refuses uploads with the setting to fix.
+func fileStore(ctx context.Context, cfg config.Config, log *slog.Logger) (objectstore.Store, error) {
+	store, err := objectstore.Open(objectstore.Config{
+		Endpoint: cfg.S3.Endpoint, Bucket: cfg.S3.Bucket, AccessKey: cfg.S3.AccessKey,
+		SecretKey: cfg.S3.SecretKey, Region: cfg.S3.Region, UseSSL: cfg.S3.UseSSL,
+	})
+	if err != nil {
+		return nil, err
+	}
+	switch s := store.(type) {
+	case objectstore.Unavailable:
+		log.Warn("uploads are off: STATOR_S3_ENDPOINT is not set")
+	case *objectstore.S3Store:
+		if err := s.EnsureBucket(ctx); err != nil {
+			return nil, fmt.Errorf("file bucket: %w", err)
+		}
+	}
+	return store, nil
 }
 
 // healthcheck probes the local readiness endpoint and fails unless it is ready,

@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyTheme, nextTheme, readTheme, THEME_STORAGE_KEY } from "./theme";
+import {
+  applyCustomTheme,
+  applyTheme,
+  cacheCustomTheme,
+  CUSTOM_THEME_CACHE_KEY,
+  CUSTOM_THEME_STYLE_ID,
+  nextTheme,
+  readCachedTheme,
+  readTheme,
+  THEME_STORAGE_KEY,
+} from "./theme";
 
 beforeEach(() => {
   localStorage.clear();
@@ -59,5 +69,44 @@ describe("theme", () => {
     expect(nextTheme("system")).toBe("light");
     expect(nextTheme("light")).toBe("dark");
     expect(nextTheme("dark")).toBe("system");
+  });
+});
+
+describe("a custom theme", () => {
+  it("is one style element, replaced in place and removed with null", () => {
+    applyCustomTheme(":root { --color-accent: #f06; }");
+    expect(document.getElementById(CUSTOM_THEME_STYLE_ID)?.textContent).toBe(":root { --color-accent: #f06; }");
+    applyCustomTheme(":root { --color-accent: #0cf; }");
+    expect(document.querySelectorAll(`#${CUSTOM_THEME_STYLE_ID}`)).toHaveLength(1);
+    expect(document.getElementById(CUSTOM_THEME_STYLE_ID)?.textContent).toBe(":root { --color-accent: #0cf; }");
+    applyCustomTheme(null);
+    expect(document.getElementById(CUSTOM_THEME_STYLE_ID)).toBeNull();
+  });
+
+  it("is remembered for the next load under the stator key, and forgotten with null", () => {
+    cacheCustomTheme({ key: "t1:2026", css: ".x {}" });
+    expect(CUSTOM_THEME_CACHE_KEY.startsWith("stator.")).toBe(true);
+    expect(JSON.parse(localStorage.getItem(CUSTOM_THEME_CACHE_KEY)!)).toEqual({ key: "t1:2026", css: ".x {}" });
+    expect(readCachedTheme()).toEqual({ key: "t1:2026", css: ".x {}" });
+    cacheCustomTheme(null);
+    expect(readCachedTheme()).toBeNull();
+  });
+
+  it("ignores a cache it cannot read", () => {
+    localStorage.setItem(CUSTOM_THEME_CACHE_KEY, "not json");
+    expect(readCachedTheme()).toBeNull();
+    localStorage.setItem(CUSTOM_THEME_CACHE_KEY, JSON.stringify({ key: 1 }));
+    expect(readCachedTheme()).toBeNull();
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("access denied");
+    });
+    expect(readCachedTheme()).toBeNull();
+  });
+
+  it("still applies when storage cannot be written", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("access denied");
+    });
+    expect(() => cacheCustomTheme({ key: "k", css: "" })).not.toThrow();
   });
 });

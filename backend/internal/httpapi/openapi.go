@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/praetorianer777/stator/backend/internal/openapi"
+	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
 // The API described in terms of the code that serves it. Every route in Routes
@@ -35,12 +36,15 @@ type operation struct {
 	summary string
 	tag     string
 	query   []param
-	// request is the JSON body type the handler decodes.
-	request any
+	// request is the JSON body type the handler decodes; multipart says the
+	// body is a file upload in a part named file instead.
+	request   any
+	multipart bool
 	// responses maps a status to its envelope or bare type; nil is no body.
 	responses map[int]any
-	// public routes need no session.
+	// public routes need no session; binary ones answer with a file.
 	public bool
+	binary bool
 }
 
 // operations is the table. Order is by area, then by path; paths are relative
@@ -52,11 +56,28 @@ var operations = []operation{
 		responses: map[int]any{200: readinessResponse{}, 503: statusResponse{}}},
 	{method: "GET", path: "/openapi.json", handler: "handleOpenAPI", tag: "health", summary: "This document.", public: true,
 		responses: ok(openapi.Document{})},
+
+	// Themes, as Armature serves them.
+	{method: "GET", path: "/themes", handler: "handleListThemes", tag: "themes", summary: "Themes the caller may use: theirs, then the shared ones.", responses: ok(env{"themes": []theme.Theme{}})},
+	{method: "POST", path: "/themes", handler: "handleCreateTheme", tag: "themes", summary: "Make a theme.", request: theme.Input{}, responses: created(env{"theme": theme.Theme{}})},
+	{method: "GET", path: "/themes/examples", handler: "handleThemeExamples", tag: "themes", summary: "The themes shipped with the product, to start a theme from.", responses: ok(env{"examples": []theme.Example{}})},
+	{method: "GET", path: "/themes/active", handler: "handleActiveTheme", tag: "themes", summary: "The theme the caller sees: chosen, the organization's default, or null for the built-in one.", responses: ok(env{"theme": (*theme.Theme)(nil), "source": ""})},
+	{method: "PUT", path: "/themes/active", handler: "handleChooseTheme", tag: "themes", summary: "Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one.", request: chooseThemeRequest{}, responses: ok(env{"theme": (*theme.Theme)(nil)})},
+	{method: "PUT", path: "/themes/default", handler: "handleSetDefaultTheme", tag: "themes", summary: "Name the shared theme everybody sees until they choose, or null for the built-in one.", request: defaultThemeRequest{}, responses: ok(env{"theme": (*theme.Theme)(nil)})},
+	{method: "POST", path: "/themes/import", handler: "handleImportTheme", tag: "themes", summary: "Make a theme of the caller's own from an exported theme file, sent as a multipart part named file.", multipart: true, responses: created(env{"theme": theme.Theme{}})},
+	{method: "GET", path: "/themes/{themeID}/export", handler: "handleExportTheme", tag: "themes", summary: "The theme as one file, its pictures and fonts inside, as a download.", binary: true, responses: ok(nil)},
+	{method: "GET", path: "/themes/{themeID}", handler: "handleGetTheme", tag: "themes", summary: "One theme.", responses: ok(env{"theme": theme.Theme{}})},
+	{method: "PATCH", path: "/themes/{themeID}", handler: "handleUpdateTheme", tag: "themes", summary: "Change a theme; the owner's to do, or an administrator's once shared.", request: theme.Input{}, responses: ok(env{"theme": theme.Theme{}})},
+	{method: "DELETE", path: "/themes/{themeID}", handler: "handleDeleteTheme", tag: "themes", summary: "Delete a theme; everybody using it returns to the built-in one.", responses: none()},
+	{method: "POST", path: "/themes/{themeID}/assets", handler: "handleUploadThemeAsset", tag: "themes", summary: "Put a picture or a font on a theme, as a multipart part named file.", multipart: true, responses: created(env{"asset": theme.Asset{}})},
+	{method: "GET", path: "/themes/{themeID}/assets/{assetID}", handler: "handleThemeAsset", tag: "themes", summary: "The bytes of a theme's file, as a download.", binary: true, responses: ok(nil)},
+	{method: "DELETE", path: "/themes/{themeID}/assets/{assetID}", handler: "handleDeleteThemeAsset", tag: "themes", summary: "Take a file off a theme it no longer uses.", responses: none()},
 }
 
 // Spec builds the OpenAPI document from the table.
 func Spec() *openapi.Document {
 	b := openapi.NewBuilder()
+	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 
 	doc := &openapi.Document{
 		OpenAPI: "3.1.0",
@@ -107,14 +128,23 @@ func Spec() *openapi.Document {
 			}
 			o.Parameters = append(o.Parameters, openapi.Parameter{Name: q.name, In: "query", Description: q.description, Schema: schema})
 		}
-		if op.request != nil {
+		switch {
+		case op.multipart:
+			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
+				"multipart/form-data": {Schema: &openapi.Schema{Type: "object", Required: []string{"file"},
+					Properties: map[string]*openapi.Schema{"file": {Type: "string", Format: "binary"}}}},
+			}}
+		case op.request != nil:
 			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
 				"application/json": {Schema: b.SchemaOf(op.request)},
 			}}
 		}
 		for status, body := range op.responses {
 			r := &openapi.Response{Description: http.StatusText(status)}
-			if body != nil {
+			switch {
+			case op.binary && status == http.StatusOK:
+				r.Content = map[string]openapi.MediaType{"*/*": {Schema: &openapi.Schema{Type: "string", Format: "binary"}}}
+			case body != nil:
 				r.Content = map[string]openapi.MediaType{"application/json": {Schema: envelopeSchema(b, body)}}
 			}
 			o.Responses[strconv.Itoa(status)] = r
@@ -181,7 +211,9 @@ func pathParamSchema(name string) *openapi.Schema {
 	return &openapi.Schema{Type: "string"}
 }
 
-func ok(body any) map[int]any { return map[int]any{200: body} }
+func ok(body any) map[int]any      { return map[int]any{200: body} }
+func created(body any) map[int]any { return map[int]any{201: body} }
+func none() map[int]any            { return map[int]any{204: nil} }
 
 // handleOpenAPI serves the document this process was built from.
 func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {

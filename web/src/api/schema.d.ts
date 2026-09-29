@@ -55,6 +55,164 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/themes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Themes the caller may use: theirs, then the shared ones. */
+        get: operations["listThemes"];
+        put?: never;
+        /** Make a theme. */
+        post: operations["createTheme"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The theme the caller sees: chosen, the organization's default, or null for the built-in one. */
+        get: operations["activeTheme"];
+        /** Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one. */
+        put: operations["chooseTheme"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Name the shared theme everybody sees until they choose, or null for the built-in one. */
+        put: operations["setDefaultTheme"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The themes shipped with the product, to start a theme from. */
+        get: operations["themeExamples"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make a theme of the caller's own from an exported theme file, sent as a multipart part named file. */
+        post: operations["importTheme"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/{themeID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One theme. */
+        get: operations["getTheme"];
+        put?: never;
+        post?: never;
+        /** Delete a theme; everybody using it returns to the built-in one. */
+        delete: operations["deleteTheme"];
+        options?: never;
+        head?: never;
+        /** Change a theme; the owner's to do, or an administrator's once shared. */
+        patch: operations["updateTheme"];
+        trace?: never;
+    };
+    "/themes/{themeID}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a picture or a font on a theme, as a multipart part named file. */
+        post: operations["uploadThemeAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/{themeID}/assets/{assetID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The bytes of a theme's file, as a download. */
+        get: operations["themeAsset"];
+        put?: never;
+        post?: never;
+        /** Take a file off a theme it no longer uses. */
+        delete: operations["deleteThemeAsset"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/themes/{themeID}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The theme as one file, its pictures and fonts inside, as a download. */
+        get: operations["exportTheme"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -67,6 +225,26 @@ export interface components {
             message: string;
             requestId?: string;
         };
+        Asset: {
+            contentType: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            size: number;
+        };
+        Backdrop: {
+            /** Format: uuid */
+            assetId: string;
+            /** @enum {string} */
+            fit: "cover" | "tile";
+        };
+        ChooseThemeRequest: {
+            builtIn?: boolean;
+            /** Format: uuid */
+            themeId: string | null;
+        };
         Components: {
             schemas: {
                 [key: string]: components["schemas"]["Schema"] | null;
@@ -74,6 +252,16 @@ export interface components {
             securitySchemes?: {
                 [key: string]: components["schemas"]["SecurityScheme"];
             };
+        };
+        Cursor: {
+            /** Format: uuid */
+            assetId: string;
+            hotspotX: number;
+            hotspotY: number;
+        };
+        DefaultThemeRequest: {
+            /** Format: uuid */
+            themeId: string | null;
         };
         Document: {
             components: components["schemas"]["Components"];
@@ -93,10 +281,35 @@ export interface components {
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
         };
+        Example: {
+            description: string;
+            key: string;
+            name: string;
+            spec: components["schemas"]["Spec"];
+        };
+        Font: {
+            /** Format: uuid */
+            assetId?: string;
+            family: string;
+        };
+        Fonts: {
+            mono?: components["schemas"]["Font"];
+            sans?: components["schemas"]["Font"];
+        };
+        Icon: {
+            /** Format: uuid */
+            assetId?: string;
+            paths?: string[];
+        };
         Info: {
             description?: string;
             title: string;
             version: string;
+        };
+        Input: {
+            name?: string;
+            shared?: boolean;
+            spec?: components["schemas"]["Spec"];
         };
         MediaType: {
             schema?: components["schemas"]["Schema"];
@@ -114,6 +327,14 @@ export interface components {
             }[];
             summary?: string;
             tags?: string[];
+        };
+        Palette: {
+            dark: {
+                [key: string]: string;
+            };
+            light: {
+                [key: string]: string;
+            };
         };
         Parameter: {
             description?: string;
@@ -173,6 +394,27 @@ export interface components {
             description?: string;
             url: string;
         };
+        Shape: {
+            radiusControl?: number;
+            radiusOverlay?: number;
+        };
+        Spec: {
+            backdrop?: components["schemas"]["Backdrop"];
+            colors: components["schemas"]["Palette"];
+            css: string;
+            cursors: {
+                [key: string]: components["schemas"]["Cursor"];
+            };
+            effect?: string;
+            fonts: components["schemas"]["Fonts"];
+            icons: {
+                [key: string]: components["schemas"]["Icon"];
+            };
+            shadows: {
+                [key: string]: string;
+            };
+            shape: components["schemas"]["Shape"];
+        };
         Stats: {
             noHealthyReplicaHits: number;
             readsToPrimary: number;
@@ -186,6 +428,24 @@ export interface components {
         Tag: {
             description?: string;
             name: string;
+        };
+        Theme: {
+            active: boolean;
+            assets: components["schemas"]["Asset"][];
+            /** Format: date-time */
+            createdAt: string;
+            default: boolean;
+            /** Format: uuid */
+            id: string;
+            inUse: number;
+            name: string;
+            /** Format: uuid */
+            ownerId: string;
+            ownerName: string;
+            shared: boolean;
+            spec: components["schemas"]["Spec"];
+            /** Format: date-time */
+            updatedAt: string;
         };
     };
     responses: never;
@@ -279,6 +539,475 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listThemes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        themes: components["schemas"]["Theme"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Input"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        theme: components["schemas"]["Theme"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    activeTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        source: string;
+                        theme: components["schemas"]["Theme"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chooseTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChooseThemeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        theme: components["schemas"]["Theme"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setDefaultTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefaultThemeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        theme: components["schemas"]["Theme"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    themeExamples: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        examples: components["schemas"]["Example"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        theme: components["schemas"]["Theme"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        theme: components["schemas"]["Theme"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Input"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        theme: components["schemas"]["Theme"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    uploadThemeAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        asset: components["schemas"]["Asset"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    themeAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeID: string;
+                assetID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteThemeAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeID: string;
+                assetID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

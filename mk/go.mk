@@ -41,7 +41,8 @@ DB_URL = postgres://$(1):$(2)@$(DB_NAME):5432/stator?sslmode=disable
 DOCKER_GO_DB = $(call go_run,--network $(DB_NET) \
 	-e STATOR_DB_PRIMARY_URL='$(call DB_URL,stator_app,$(DB_APP_PASSWORD))' \
 	-e STATOR_DB_ADMIN_URL='$(call DB_URL,stator_admin,$(DB_ADMIN_PASSWORD))' \
-	-e STATOR_TEST_SUPERUSER_URL='$(call DB_URL,stator,$(DB_SUPER_PASSWORD))')
+	-e STATOR_TEST_SUPERUSER_URL='$(call DB_URL,stator,$(DB_SUPER_PASSWORD))' \
+	$(INTEGRATION_ENV))
 
 $(GO_CACHE):
 	@mkdir -p $@
@@ -85,7 +86,9 @@ check-go: fmt-check vet test-go openapi-check ## The backend gate: formatting, v
 
 .PHONY: db-up
 db-up: | $(GO_CACHE) ## Start this checkout's throwaway Postgres 18 and migrate it
-	@docker network inspect $(DB_NET) >/dev/null 2>&1 || docker network create $(DB_NET) >/dev/null
+	@# The bucket and the database may start in parallel; either makes the network.
+	@docker network inspect $(DB_NET) >/dev/null 2>&1 || docker network create $(DB_NET) >/dev/null 2>&1 \
+		|| docker network inspect $(DB_NET) >/dev/null
 	@docker inspect $(DB_NAME) >/dev/null 2>&1 || docker run -d --name $(DB_NAME) --network $(DB_NET) \
 		-p 127.0.0.1:$(DB_PORT):5432 \
 		--tmpfs /var/lib/postgresql \
@@ -107,8 +110,9 @@ db-down: ## Remove this checkout's throwaway Postgres
 	@docker network rm $(DB_NET) >/dev/null 2>&1 || true
 
 # The database is removed afterwards unless KEEP_DB=1, so a run leaves nothing
-# behind; keeping it saves the start-up while iterating.
+# behind; keeping it saves the start-up while iterating. Other areas add the
+# services the suite needs through INTEGRATION_ENV and INTEGRATION_DOWN.
 .PHONY: test-integration
 test-integration: db-up ## Run the integration suite against this checkout's Postgres
 	@status=0; $(DOCKER_GO_DB) go test -race -tags integration -count=1 $(TESTFLAGS) ./test/... || status=$$?; \
-	[ "$(KEEP_DB)" = 1 ] || $(MAKE) --no-print-directory db-down; exit $$status
+	[ "$(KEEP_DB)" = 1 ] || $(MAKE) --no-print-directory $(INTEGRATION_DOWN) db-down; exit $$status

@@ -4,8 +4,10 @@ import type { QueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui";
 import { homeRoute, searchRoute, spacesRoute } from "./pages";
 import { RouteError, rootRoute } from "./root";
+import { themeEditRoute, themeNewRoute } from "./theme-editor";
+import { themesRoute } from "./themes";
 
-const routeTree = rootRoute.addChildren([homeRoute, spacesRoute, searchRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, spacesRoute, searchRoute, themesRoute, themeNewRoute, themeEditRoute]);
 
 /** The application's router; tests pass a memory history to start anywhere. */
 export function buildRouter(queryClient: QueryClient, history?: RouterHistory) {

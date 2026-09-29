@@ -17,6 +17,8 @@ func clean(t *testing.T) {
 		"STATOR_DB_MIN_CONNS", "STATOR_DB_CONN_MAX_LIFETIME", "STATOR_DB_HEALTH_INTERVAL",
 		"STATOR_DB_MAX_REPLICA_LAG", "STATOR_SESSION_COOKIE",
 		"STATOR_SECURE_COOKIES", "STATOR_OTEL_ENDPOINT", "STATOR_OTEL_SAMPLE_RATIO",
+		"STATOR_S3_ENDPOINT", "STATOR_S3_BUCKET", "STATOR_S3_ACCESS_KEY", "STATOR_S3_SECRET_KEY",
+		"STATOR_S3_REGION", "STATOR_S3_USE_SSL",
 	} {
 		t.Setenv(key, "")
 	}
@@ -140,5 +142,27 @@ func TestDurationsAreParsed(t *testing.T) {
 	}
 	if c.RequestTimeout != 45*time.Second || c.DB.MaxReplicaLag != 250*time.Millisecond {
 		t.Fatalf("durations = %s, %s", c.RequestTimeout, c.DB.MaxReplicaLag)
+	}
+}
+
+// A bucket with no credentials would be refused on the first upload, long
+// after the operator has stopped watching the start-up.
+func TestAnEndpointWithoutCredentialsIsRefused(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.S3.Endpoint != "" || c.S3.Bucket != DefaultS3Bucket || c.S3.Region != DefaultS3Region {
+		t.Errorf("storage defaults = %+v", c.S3)
+	}
+	t.Setenv("STATOR_S3_ENDPOINT", "seaweedfs:8333")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_S3_ACCESS_KEY") {
+		t.Fatalf("an endpoint without keys = %v, want the keys asked for", err)
+	}
+	t.Setenv("STATOR_S3_ACCESS_KEY", "stator")
+	t.Setenv("STATOR_S3_SECRET_KEY", "secret")
+	if _, err := Load(); err != nil {
+		t.Fatalf("a complete bucket was refused: %v", err)
 	}
 }

@@ -72,6 +72,7 @@ export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; 
           )}
           items={[
             { label: t.account.profile, icon: <Icon.User />, onSelect: () => {}, disabled: true },
+            { label: t.account.themes, icon: <Icon.Palette />, onSelect: () => navigate({ to: "/settings/themes" }), attrs: { "data-action": "themes" } },
             { label: t.account.signOut, icon: <Icon.External />, onSelect: () => {}, disabled: true },
           ]}
         />

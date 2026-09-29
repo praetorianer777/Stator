@@ -55,3 +55,9 @@ if (!globalThis.localStorage) {
 if (typeof window !== "undefined") {
   window.scrollTo = () => {};
 }
+
+// jsdom has no canvas and logs an error for every context asked of it; the
+// theme effects draw nothing without one, which is what a test wants anyway.
+if (typeof HTMLCanvasElement !== "undefined") {
+  HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
+}

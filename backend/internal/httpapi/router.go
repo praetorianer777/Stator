@@ -12,6 +12,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/observability"
+	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
 // readinessTimeout bounds the database round trip behind /readyz, so a probe
@@ -34,6 +35,7 @@ type Server struct {
 	Log  *slog.Logger
 	// Telemetry counts and traces requests; nil serves without either.
 	Telemetry *observability.Telemetry
+	Themes    *theme.Service
 
 	CookieName string
 	Secure     bool
@@ -73,6 +75,26 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 
 	r.Route(APIPrefix, func(r chi.Router) {
 		r.Get("/openapi.json", s.handleOpenAPI)
+
+		// Themes are a person's in an organization; the examples are anybody's
+		// signed in. The fixed paths come first so "active" is never an id.
+		r.With(requireAuth).Get("/themes/examples", s.handleThemeExamples)
+		r.Group(func(r chi.Router) {
+			r.Use(requireOrg)
+			r.Get("/themes", s.handleListThemes)
+			r.Post("/themes", s.handleCreateTheme)
+			r.Get("/themes/active", s.handleActiveTheme)
+			r.Put("/themes/active", s.handleChooseTheme)
+			r.Put("/themes/default", s.handleSetDefaultTheme)
+			r.Post("/themes/import", s.handleImportTheme)
+			r.Get("/themes/{themeID}/export", s.handleExportTheme)
+			r.Get("/themes/{themeID}", s.handleGetTheme)
+			r.Patch("/themes/{themeID}", s.handleUpdateTheme)
+			r.Delete("/themes/{themeID}", s.handleDeleteTheme)
+			r.Post("/themes/{themeID}/assets", s.handleUploadThemeAsset)
+			r.Get("/themes/{themeID}/assets/{assetID}", s.handleThemeAsset)
+			r.Delete("/themes/{themeID}/assets/{assetID}", s.handleDeleteThemeAsset)
+		})
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
