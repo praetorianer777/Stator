@@ -89,6 +89,9 @@ check "the pools are sized apart" \
     "$(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set database.pool.primaryMaxConns=15 --set database.pool.replicaMaxConns=45 2>&1 | grep -E 'STATOR_DB_(PRIMARY|REPLICA)_MAX_CONNS' | tr -d ' ' | paste -sd ' ')" \
     'STATOR_DB_PRIMARY_MAX_CONNS:"15" STATOR_DB_REPLICA_MAX_CONNS:"45"'
 check "the Valkey URL reaches every workload" "$(env_value "${RENDERED}" STATOR_VALKEY_URL)" "redis://valkey.example:6379/0"
+check "the upload limit is set, and can be changed" \
+    "$(grep -c 'STATOR_UPLOAD_LIMIT: "50MB"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set attachments.uploadLimit=2GB 2>&1 | grep -c 'STATOR_UPLOAD_LIMIT: "2GB"')" \
+    "1 1"
 
 echo "⎈ CloudNativePG with one instance"
 render "cnpg, 1 instance" --set cnpg.enabled=true --set cnpg.spec.instances=1

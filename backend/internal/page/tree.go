@@ -431,8 +431,7 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 		}
 		// The subtree is read from the statement's own snapshot, so a copy
 		// placed under the original copies the original once.
-		var made uuid.UUID
-		err = tx.QueryRow(ctx, `
+		rows, err := tx.Query(ctx, `
 			WITH RECURSIVE below (id, parent_id, depth) AS (
 				SELECT p.id, p.parent_id, 0 FROM page p WHERE p.id = $1
 				UNION ALL
@@ -451,11 +450,25 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 				ORDER BY f.depth
 				RETURNING id
 			)
-			SELECT new_id FROM fresh WHERE depth = 0`,
-			id, in.WithChildren, to.ID, in.ParentID, r, title, actor.UserID).Scan(&made)
+			SELECT old_id, new_id FROM fresh ORDER BY depth`,
+			id, in.WithChildren, to.ID, in.ParentID, r, title, actor.UserID)
 		if err != nil {
 			return fmt.Errorf("copy the page: %w", err)
 		}
+		pairs, err := pgx.CollectRows(rows, pgx.RowToStructByPos[copied])
+		if err != nil {
+			return fmt.Errorf("copy the page: %w", err)
+		}
+		copies := make(map[uuid.UUID]uuid.UUID, len(pairs))
+		for _, p := range pairs {
+			copies[p.From] = p.To
+		}
+		for _, o := range s.copyObservers {
+			if err := o.PagesCopied(ctx, tx, copies); err != nil {
+				return err
+			}
+		}
+		made := copies[id]
 		out, _, err = load(ctx, tx, actor, made, false)
 		return err
 	})

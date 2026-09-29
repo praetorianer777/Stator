@@ -3,6 +3,29 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: A deleted file leaves a tombstone, written by the database
+
+Attachments work as in Armature. The bytes go to the bucket inside the
+transaction that writes the row, so a refused upload leaves no row. A
+deleted row leaves a tombstone, and the bytes are removed after the commit,
+by the request that deleted it or by the worker's reaper. Armature writes
+tombstones in the service. Here a trigger on `attachment` writes them, so
+every path that removes a row leaves one: a delete, a purged page, emptied
+trash, a deleted space or organization, and raw SQL. Purges and space
+deletes then sweep the organization's tombstones before answering. The
+tombstone table has no foreign key to `org`, so an organization's
+tombstones outlive it until the reaper has emptied its prefix, which is
+what Armature arrived at with its migration 00900.
+
+The object key is a generated column, `org/<org>/page/<page>/<id>`, and a
+tombstone must name a key under its own organization's prefix. The app role
+has no UPDATE on either table. Without these, a tenant could point a row or
+a tombstone at another tenant's object, and the reaper, which works across
+tenants, would delete it. Files are copied with their page by reading and
+writing each object inside the copy's transaction, as an upload does. A
+copy that fails after writing some objects leaves them unreachable in the
+bucket, which costs space but breaks nothing.
+
 ## 2026-09-29: A deleted page stays in place, marked, until it is purged
 
 Deleting a page marks it and every page below it still in the tree with

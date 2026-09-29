@@ -212,6 +212,7 @@ STATOR_DB_HEALTH_INTERVAL: {{ .Values.database.pool.healthInterval | quote }}
 STATOR_DB_MAX_REPLICA_LAG: {{ .Values.database.pool.maxReplicaLag | quote }}
 STATOR_DB_REPLICA_LAG_SAMPLES: {{ .Values.database.pool.replicaLagSamples | quote }}
 STATOR_READ_YOUR_WRITES_TTL: {{ .Values.database.readYourWritesTTL | quote }}
+STATOR_UPLOAD_LIMIT: {{ .Values.attachments.uploadLimit | quote }}
 
 {{- if .Values.s3.enabled }}
 STATOR_S3_ENDPOINT: {{ required "Set s3.endpoint, the host and port of the bucket's S3 API, or turn s3.enabled off." .Values.s3.endpoint | quote }}

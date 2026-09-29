@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
@@ -182,6 +183,14 @@ func toAPIError(err error) *APIError {
 		return ErrConflict(sentence(err.Error()))
 	case errors.Is(err, page.ErrStale):
 		return ErrConflict("Somebody else saved this page after you opened it. Copy your changes, reload the page and make them again.")
+	case errors.Is(err, attachment.ErrNotFound):
+		return ErrNotFound("That file was not found. It may have been deleted, or its page moved to the trash.")
+	case errors.Is(err, attachment.ErrTooLarge):
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(err.Error())}
+	case errors.Is(err, attachment.ErrEmpty):
+		return ErrValidation(map[string]string{"file": sentence(attachment.ErrEmpty.Error())})
+	case errors.Is(err, objectstore.ErrNoObject):
+		return &APIError{Status: http.StatusNotFound, Code: "file_missing", Message: "The file's contents are missing from storage. Upload it again, or ask an administrator to check the file storage.", cause: err}
 	case errors.Is(err, theme.ErrNotFound):
 		return ErrNotFound("That theme was not found. It may have been deleted or taken private.")
 	case errors.Is(err, theme.ErrAssetNotFound):

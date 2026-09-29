@@ -121,3 +121,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
   was, or under the home page when the page it was under is gone.
   Administrators delete an item for good or empty the trash, which the
   audit log records.
+- Files on pages, in the API: upload as a multipart part named `file`, list
+  a page's files, download, and delete for good. Uploads are refused over
+  `STATOR_UPLOAD_LIMIT` (50 MB unless set, as `attachments.uploadLimit` in
+  the chart) with a message naming the limit. Images report their width and
+  height. A download is an attachment with `nosniff`; with `inline=1`,
+  pictures, PDFs and plain text show in place, and SVG and HTML never do.
+  Files stay with a trashed page, come along when it is copied, and leave
+  the bucket when it is purged, its space is deleted or its file is
+  deleted; the worker removes what is left behind.
