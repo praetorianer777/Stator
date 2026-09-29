@@ -204,13 +204,13 @@ test.describe("the editor", { tag: "@desktop" }, () => {
   test("headings get anchors, a twin gets its own, and a copied link leads back", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await emptyEditor(page);
-    await insert(page, "h2");
+    await insert(page, "h1");
     await page.keyboard.type("Release plan");
     await expect.poll(async () => nodes(await storedDoc(page), "heading").map((h) => h.attrs?.id)).toEqual(["release-plan"]);
-    await expect(preview(page).locator("h3#release-plan")).toHaveText("Release plan");
+    await expect(preview(page).locator("h2#release-plan")).toHaveText("Release plan");
 
     await page.keyboard.press("Enter");
-    await insert(page, "h2");
+    await insert(page, "h1");
     await page.keyboard.type("Release plan");
     await expect.poll(async () => nodes(await storedDoc(page), "heading").map((h) => h.attrs?.id)).toEqual(["release-plan", "release-plan-2"]);
     await expectAccessible(page);
@@ -226,6 +226,6 @@ test.describe("the editor", { tag: "@desktop" }, () => {
     await page.evaluate((hash) => {
       window.location.hash = hash;
     }, new URL(link).hash);
-    await expect(preview(page).locator("h3#release-plan")).toBeInViewport();
+    await expect(preview(page).locator("h2#release-plan")).toBeInViewport();
   });
 });

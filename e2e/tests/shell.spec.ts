@@ -31,7 +31,8 @@ test("the search box and Ctrl K both lead to search", async ({ page }) => {
 test("an unknown path shows the not-found page inside the shell, with a way home", async ({ page }) => {
   await openShell(page, "/no-such-page");
   const notFound = page.locator("[data-not-found]");
-  await expect(notFound.getByText("Page not found")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
+  await expect(notFound).toBeVisible();
   await expect(page.locator("[data-top-bar]")).toBeVisible();
 
   await notFound.locator('[data-action="home"]').click();
