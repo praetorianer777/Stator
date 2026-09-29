@@ -1,6 +1,8 @@
 import { createRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/ui";
+import { GroupRoles } from "@/features/auth/GroupRoles";
 import { JoinRequests } from "@/features/auth/JoinRequests";
+import { Members } from "@/features/auth/Members";
 import { ProviderSettings } from "@/features/auth/ProviderSettings";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
@@ -14,6 +16,8 @@ export const ssoRoute = createRoute({
         <PageHeader crumb={t.settings.title} title={t.sso.title} />
         <JoinRequests />
         <ProviderSettings />
+        <GroupRoles />
+        <Members />
       </div>
     );
   },
