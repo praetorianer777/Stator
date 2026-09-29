@@ -42,10 +42,19 @@ func (c *Cluster) committedLSN(ctx context.Context, pool *pgxpool.Pool) (LSN, er
 // Read runs fn in a read-only transaction on a healthy, caught-up replica when
 // there is one, otherwise on the primary.
 func (c *Cluster) Read(ctx context.Context, fn func(context.Context, DBTX) error) error {
-	pool := c.reader(ctx)
-	return c.inTx(ctx, pool, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+	var on beginner = c.primary
+	if conn := c.readConn(ctx); conn != nil {
+		defer conn.Release()
+		on = conn
+	}
+	return c.inTx(ctx, on, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
 		return fn(ctx, tx)
 	})
+}
+
+// beginner is a pool or one connection taken from it.
+type beginner interface {
+	BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error)
 }
 
 // ReadPrimary is Read pinned to the primary.
@@ -56,7 +65,7 @@ func (c *Cluster) ReadPrimary(ctx context.Context, fn func(context.Context, DBTX
 // inTx opens a transaction, applies the tenant scope, runs fn and commits.
 func (c *Cluster) inTx(
 	ctx context.Context,
-	pool *pgxpool.Pool,
+	on beginner,
 	opts pgx.TxOptions,
 	fn func(context.Context, pgx.Tx) error,
 ) error {
@@ -68,7 +77,7 @@ func (c *Cluster) inTx(
 		return tenant.ErrNoTenant
 	}
 
-	tx, err := pool.BeginTx(ctx, opts)
+	tx, err := on.BeginTx(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
 	}

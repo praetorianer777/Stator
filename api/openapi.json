@@ -1506,6 +1506,9 @@
       "Stats": {
         "type": "object",
         "properties": {
+          "lagFallbacks": {
+            "type": "integer"
+          },
           "noHealthyReplicaHits": {
             "type": "integer"
           },
@@ -1530,6 +1533,7 @@
           "readsToPrimary",
           "readsToReplica",
           "staleFallbacks",
+          "lagFallbacks",
           "noHealthyReplicaHits"
         ]
       },

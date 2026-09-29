@@ -416,6 +416,7 @@ export interface components {
             shape: components["schemas"]["Shape"];
         };
         Stats: {
+            lagFallbacks: number;
             noHealthyReplicaHits: number;
             readsToPrimary: number;
             readsToReplica: number;

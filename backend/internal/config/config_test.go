@@ -15,7 +15,8 @@ func clean(t *testing.T) {
 		"STATOR_ENV", "STATOR_HTTP_ADDR", "STATOR_LOG_LEVEL", "STATOR_APP_URL", "STATOR_CORS_ORIGINS",
 		"STATOR_REQUEST_TIMEOUT", "STATOR_DB_REPLICA_URLS", "STATOR_DB_ADMIN_URL", "STATOR_DB_MAX_CONNS",
 		"STATOR_DB_MIN_CONNS", "STATOR_DB_CONN_MAX_LIFETIME", "STATOR_DB_HEALTH_INTERVAL",
-		"STATOR_DB_MAX_REPLICA_LAG", "STATOR_SESSION_COOKIE",
+		"STATOR_DB_MAX_REPLICA_LAG", "STATOR_DB_REPLICA_LAG_SAMPLES", "STATOR_READ_YOUR_WRITES_TTL",
+		"STATOR_VALKEY_URL", "STATOR_SESSION_COOKIE",
 		"STATOR_SECURE_COOKIES", "STATOR_OTEL_ENDPOINT", "STATOR_OTEL_SAMPLE_RATIO",
 		"STATOR_S3_ENDPOINT", "STATOR_S3_BUCKET", "STATOR_S3_ACCESS_KEY", "STATOR_S3_SECRET_KEY",
 		"STATOR_S3_REGION", "STATOR_S3_USE_SSL",
@@ -40,6 +41,9 @@ func TestDefaults(t *testing.T) {
 	}
 	if c.DB.AdminURL != c.DB.PrimaryURL {
 		t.Errorf("the admin URL should fall back to the primary, got %q", c.DB.AdminURL)
+	}
+	if c.DB.ReplicaLagSamples != DefaultLagSamples || c.DB.ReadYourWritesTTL != DefaultReadYourWrites || c.Valkey.URL != "" {
+		t.Errorf("replica and freshness defaults = %+v, %+v", c.DB, c.Valkey)
 	}
 	if c.Auth.SessionCookie != DefaultSessionCookie || c.Auth.SecureCookies {
 		t.Errorf("auth defaults = %+v", c.Auth)
@@ -164,5 +168,16 @@ func TestAnEndpointWithoutCredentialsIsRefused(t *testing.T) {
 	t.Setenv("STATOR_S3_SECRET_KEY", "secret")
 	if _, err := Load(); err != nil {
 		t.Fatalf("a complete bucket was refused: %v", err)
+	}
+}
+
+func TestReplicaSamplesAndFreshnessMustBePositive(t *testing.T) {
+	clean(t)
+	t.Setenv("STATOR_DB_REPLICA_LAG_SAMPLES", "0")
+	t.Setenv("STATOR_READ_YOUR_WRITES_TTL", "0s")
+	_, err := Load()
+	var cfgErr *Error
+	if !errors.As(err, &cfgErr) || len(cfgErr.Problems) != 2 {
+		t.Fatalf("want both settings refused, got %v", err)
 	}
 }
