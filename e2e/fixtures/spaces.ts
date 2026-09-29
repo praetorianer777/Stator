@@ -1,4 +1,4 @@
-import type { TestInfo } from "@playwright/test";
+import type { Page as PwPage, TestInfo } from "@playwright/test";
 import type { components } from "../../web/src/api/schema";
 import { must, type StatorApi } from "./api";
 
@@ -25,9 +25,20 @@ export async function deleteSpace(api: StatorApi, key: string): Promise<void> {
 
 export type Page = components["schemas"]["Page"];
 
-/** Adds a page under a parent, last among its children. */
-export async function createPage(api: StatorApi, parentId: string, title: string): Promise<Page> {
-  return must(await api.POST("/pages", { body: { parentId, title } })).page;
+type Body = components["schemas"]["PageCreateInput"]["body"];
+
+/** Adds a page under a parent, last among its children, published as version 1 so everybody sees it. */
+export async function createPage(api: StatorApi, parentId: string, title: string, body?: Body): Promise<Page> {
+  return must(await api.POST("/pages", { body: { parentId, title, body, publish: true } })).page;
+}
+
+/** Publishes what the open editor holds, with a comment when one is given, and waits to be back on the page. */
+export async function publishFromEditor(page: PwPage, comment = ""): Promise<void> {
+  await page.locator('[data-action="publish"]').click();
+  const dialog = page.locator("[data-publish-dialog]");
+  if (comment) await dialog.getByLabel("What changed", { exact: true }).fill(comment);
+  await dialog.locator('[data-action="confirm-publish"]').click();
+  await page.locator("[data-page]").waitFor();
 }
 
 /** The titles directly under a parent of a space, in order. */
