@@ -111,6 +111,8 @@ type client struct {
 	http  *http.Client
 	// eager reads without waiting for anybody else's write to replicate.
 	eager bool
+	// bearer is a personal access token sent in place of any cookie.
+	bearer string
 }
 
 func cookieJarClient() *http.Client {
@@ -140,6 +142,12 @@ func (a *apiServer) as(t *testing.T, user, org uuid.UUID, slug string) *client {
 
 func (a *apiServer) anonymous() *client { return &client{api: a, http: cookieJarClient()} }
 
+// withToken is a script calling the API with a personal access token and no
+// cookies at all.
+func (a *apiServer) withToken(secret string) *client {
+	return &client{api: a, bearer: secret, http: &http.Client{}}
+}
+
 type response struct {
 	Status int
 	Body   map[string]any
@@ -154,6 +162,9 @@ func (c *client) send(t *testing.T, method, path, contentType string, body io.Re
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
+	}
+	if c.bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+c.bearer)
 	}
 	c.api.handOver(t, c, req.Method)
 	resp, err := c.http.Do(req)

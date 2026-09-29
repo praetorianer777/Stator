@@ -1,9 +1,10 @@
-// Package auth handles identity: argon2 passwords for bootstrap administrators,
-// opaque session tokens, and the organization a request is acting within.
+// Package auth handles identity: argon2 passwords, opaque session tokens,
+// personal access tokens, and the organization a request is acting within.
 package auth
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/google/uuid"
 
@@ -32,7 +33,25 @@ type Principal struct {
 	SessionID *uuid.UUID
 	// Proof is how that session was opened.
 	Proof Proof
+	// TokenID names the personal access token this request rides on, and
+	// keys its read-your-writes position; nil for a session.
+	TokenID *uuid.UUID
+	// Scopes are the token's, empty for a session and for a token that may
+	// do whatever its owner may.
+	Scopes []string
 }
+
+// ScopeRead marks a token that may read everything its owner can and change
+// nothing, so a script can be handed a key that cannot act.
+const ScopeRead = "read"
+
+// HasScope reports whether the caller's token carries a scope.
+func (p *Principal) HasScope(scope string) bool {
+	return p != nil && p.TokenID != nil && slices.Contains(p.Scopes, scope)
+}
+
+// ReadOnly reports whether the caller came with a token made only to read.
+func (p *Principal) ReadOnly() bool { return p.HasScope(ScopeRead) }
 
 // InOrg reports whether the caller has chosen an organization to act in.
 func (p *Principal) InOrg() bool { return p != nil && p.Org != nil && p.Org.ID != uuid.Nil }
