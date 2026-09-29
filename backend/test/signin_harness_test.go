@@ -81,7 +81,7 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 		sso:      oidc.NewService(h.cluster, box, base+httpapi.APIPrefix+"/auth/oidc/callback"),
 		box:      box,
 	}
-	server.Config.Handler = (&httpapi.Server{
+	server.Config.Handler = observed(t, (&httpapi.Server{
 		DB:              h.cluster,
 		Fresh:           h.freshness(t),
 		Auth:            a.accounts,
@@ -91,7 +91,7 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 		Log:             discard(),
 		CookieName:      h.cfg.Auth.SessionCookie,
 		AppBaseURL:      "http://" + appHost,
-	}).Routes(nil)
+	}).Routes(nil))
 	server.Start()
 	t.Cleanup(server.Close)
 	return a

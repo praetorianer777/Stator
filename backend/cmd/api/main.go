@@ -24,6 +24,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/secret"
+	"github.com/praetorianer777/stator/backend/internal/seed"
+	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/version"
 )
@@ -128,6 +130,11 @@ func run() error {
 		AppBaseURL:      cfg.AppBaseURL,
 		CheckOrigin:     cfg.IsProduction(),
 		RequestTimeout:  cfg.RequestTimeout,
+	}
+	if cfg.TestEndpoints.Enabled {
+		log.Warn("STATOR_TEST_ENDPOINTS is on: " + httpapi.APIPrefix + "/test makes and deletes organizations for anybody with its token")
+		server.TestOrgs = testorg.NewService(cluster, accounts, sso, store, seed.Bootstrapped(cfg.Bootstrap))
+		server.TestToken = cfg.TestEndpoints.Token
 	}
 	origins := cfg.CORSOrigins
 	if len(origins) == 0 && !cfg.IsProduction() {

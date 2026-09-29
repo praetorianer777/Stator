@@ -1,5 +1,5 @@
 // Package openapi builds an OpenAPI 3.1 document from the server's own Go
-// types, so the schemas cannot drift from what the server actually sends.
+// types, so the schemas cannot drift from what it sends, and checks values against it.
 package openapi
 
 import (
@@ -78,11 +78,13 @@ type Components struct {
 }
 
 type SecurityScheme struct {
-	Type        string `json:"type"`
-	Scheme      string `json:"scheme,omitempty"`
-	In          string `json:"in,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
+	Type   string `json:"type"`
+	Scheme string `json:"scheme,omitempty"`
+	// BearerFormat hints at what a bearer token looks like.
+	BearerFormat string `json:"bearerFormat,omitempty"`
+	In           string `json:"in,omitempty"`
+	Name         string `json:"name,omitempty"`
+	Description  string `json:"description,omitempty"`
 }
 
 // Schema is the subset of JSON Schema the builder produces. Type is a string

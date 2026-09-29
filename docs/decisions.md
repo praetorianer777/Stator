@@ -3,6 +3,77 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: Each browser spec file gets a throwaway organization
+
+Specs that change what an organization shows, such as its default theme or
+who uses which theme, cannot share `demo` with specs that judge the built-in
+look, and running them one after another only hides the problem. The api
+therefore has two test endpoints, `POST /api/v1/test/orgs` and
+`DELETE /api/v1/test/orgs/{slug}`, and `e2e/fixtures/org.ts` makes one
+organization per spec file and worker through them, signs alice and bob in to
+it, and deletes it when the worker stops. The new organization gets the seed's
+people and provider, from the same `STATOR_BOOTSTRAP_*` settings and the same
+code, so it signs in exactly like `demo`.
+
+The endpoints are compiled in, because the image the suite runs is the image
+that ships, but routed only when `STATOR_TEST_ENDPOINTS` is on; otherwise they
+answer 404 like any path that does not exist. Every call must carry
+`STATOR_TEST_ENDPOINTS_TOKEN` in `X-Stator-Test-Token`, so an endpoint switched
+on by accident is still closed. The api refuses to start with them on in
+production, and `tests/test-helm.sh` checks that no layout of the chart sets
+either variable. Deleting refuses any organization the endpoint did not make,
+which it marks in `org.settings`.
+
+They are left out of `api/openapi.json` rather than marked in it. The document
+is the contract clients are generated from, and the web client would
+otherwise carry types for calls it must never make; a separate table in
+`internal/httpapi` describes them, and a unit test holds the router to both
+tables and the document to the public one alone.
+
+Deleting an organization has to find its files, so every object key now starts
+with `org/<organization id>/`, and the store can list a prefix.
+## 2026-09-29: Provider groups decide roles at each sign-in
+
+An administrator maps groups of the identity provider, by the value of the
+groups claim, to member or admin, per provider. Each sign-in through the
+provider settles the person's role from the groups the token names: the
+highest mapped role wins, and a membership records whether its role came from
+the provider or from somebody here. A role the provider gave falls back to
+member when its group goes, never further, since taking somebody out is an
+administrator's act. A role somebody here chose is left alone while none of
+the person's groups is mapped, so a mapping can be introduced group by group
+without undoing what administrators already decided. The owner is never moved,
+and the database refuses to let the provider manage an owner's role.
+
+A mapped group is the administrators' approval given in advance, so somebody
+in one joins on their first sign-in, with no request to answer. Every role the
+mapping changes, and every change to the mapping, goes to `audit_log`.
+
+Changes apply at the next sign-in rather than when the mapping is saved: only
+a token says which groups somebody is in now, and group rows exist only for
+the groups an organization keeps. Until then an open session keeps the role
+it had.
+
+## 2026-09-29: A personal access token is its owner in one organization
+
+A script calls the API with a token sent as a bearer, as in Armature: the
+prefix `stator_pat_` and 32 random bytes in base64url, of which only the
+SHA-256 is stored, so a copy of the database opens nothing and a secret
+scanner recognises a leaked one. A token belongs to a person in one
+organization and reaches nothing else; leaving the organization removes it
+by a foreign key onto the membership. Its one scope, `read`, is enforced by
+middleware in front of every route, so a route added later cannot forget
+it. Only a session makes a token, so a leaked token cannot mint a longer
+lived one and outlive its own revocation. Tokens key read-your-writes as
+`t:<token>`, apart from their owner's browser, so a script's writes do not
+send the person's reads to the primary. Narrowing a token to some spaces is
+left for later (#111).
+
+The integration suite checks every answer the API gives it against
+`api/openapi.json`, and fails when an operation was never answered
+successfully or never refused, as Armature's does. The router is wrapped
+rather than the test client, so the sign-in tests' browsers are checked too.
+
 ## 2026-09-29: Reads go to CloudNativePG's -ro service
 
 On Kubernetes the chart points reads at the CNPG cluster's `-ro` service

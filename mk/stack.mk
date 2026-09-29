@@ -31,6 +31,9 @@ ADMIN_DB_PASSWORD  ?= stator_admin
 S3_ACCESS_KEY      ?= stator
 S3_SECRET_KEY      ?= stator-dev-secret
 VALKEY_PASSWORD    ?= stator_valkey
+# Opens the api's test endpoints, which make and remove the browser suite's
+# organizations; the suite reads it from the stack's env file.
+STATOR_TEST_ENDPOINTS_TOKEN ?= stator-dev-test-endpoints-token
 
 # The suite writes to a bucket of its own, so what it leaves behind never shows
 # up among the files of the running app.
@@ -39,7 +42,7 @@ STACK_TEST_BUCKET := stator-test
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
 export WEB_PORT API_PORT KEYCLOAK_PORT MAILPIT_PORT POSTGRES_PORT POSTGRES_REPLICA_PORT VALKEY_PORT S3_PORT
-export POSTGRES_PASSWORD APP_DB_PASSWORD ADMIN_DB_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY VALKEY_PASSWORD
+export POSTGRES_PASSWORD APP_DB_PASSWORD ADMIN_DB_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY VALKEY_PASSWORD STATOR_TEST_ENDPOINTS_TOKEN
 
 # What the stack publishes, for the browser suite and for people: a shell can
 # source it, and so can a Playwright config.
@@ -81,6 +84,8 @@ stack-env:
 		'S3_PORT=$(S3_PORT)' \
 		'STATOR_WEB_URL=http://localhost:$(WEB_PORT)' \
 		'STATOR_KEYCLOAK_URL=http://localhost:$(KEYCLOAK_PORT)' \
+		'STATOR_TEST_ENDPOINTS_TOKEN=$(STATOR_TEST_ENDPOINTS_TOKEN)' \
+		'STATOR_TEST_SUPERUSER_URL=postgres://stator:$(POSTGRES_PASSWORD)@127.0.0.1:$(POSTGRES_PORT)/stator?sslmode=disable' \
 		> $(STACK_ENV_FILE)
 
 .PHONY: up

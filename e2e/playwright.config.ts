@@ -23,7 +23,8 @@ export default defineConfig({
     navigationTimeout: 10_000,
   },
   projects: [
-    { name: "setup", testMatch: /.*\.setup\.ts/ },
+    { name: "setup", testMatch: /.*\.setup\.ts/, teardown: "teardown" },
+    { name: "teardown", testMatch: /.*\.teardown\.ts/ },
     {
       name: "chromium",
       dependencies: ["setup"],

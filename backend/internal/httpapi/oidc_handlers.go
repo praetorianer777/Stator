@@ -67,7 +67,7 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		s.landAfterSignIn(w, r, "", signInFailure(err))
 		return
 	}
-	loggerFrom(r.Context()).Info("signed in through an identity provider", "user_id", session.UserID, "org_id", orgID,
+	loggerFrom(r.Context()).Info("signed in through an identity provider", "user_id", session.UserID, "org_id", orgID, "role", session.Role,
 		"groups_joined", session.Joined, "groups_left", session.Left)
 	s.noteSession(r.Context(), session.SessionID, session.LSN)
 	s.setSessionCookie(w, session.Secret, session.ExpiresAt)

@@ -49,6 +49,16 @@ export const LAST_ORG_KEY = "stator.last-org";
 export const SSO_DEFAULT_GROUPS_CLAIM = "groups";
 export const SSO_DEFAULT_SCOPES = "openid profile email";
 
+/** The scope that lets a personal access token read and change nothing, as the API names it. */
+export const TOKEN_READ_SCOPE = "read";
+/** The lifetimes a new token is offered, in days; a token may also last until it is revoked. */
+export const TOKEN_EXPIRY_DAYS = [7, 30, 90, 365] as const;
+export const TOKEN_DEFAULT_EXPIRY_DAYS = 30;
+/** The longest token name, matching the API's limit. */
+export const TOKEN_NAME_MAX_LENGTH = 100;
+/** Milliseconds in a day, for a token's expiry. */
+export const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** The largest file a theme takes, matching the API's limit. */
 export const THEME_ASSET_MAX_BYTES = 12 * 1024 * 1024;
 /** The most extra CSS a theme carries, matching the API's limit. */

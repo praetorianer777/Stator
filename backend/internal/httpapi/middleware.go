@@ -149,7 +149,9 @@ type Authenticator interface {
 func (s *Server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		secret := credentialFrom(r, s.CookieName)
-		if secret == "" || s.Auth == nil {
+		// The test endpoints answer to their own token alone, so a session or
+		// an access token riding along can neither open nor refuse them.
+		if secret == "" || s.Auth == nil || isTestPath(r) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -171,6 +173,30 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			// Any other refusal, such as a deactivated account, is a decision
 			// about this caller; degrading it to anonymous would invite retries.
 			respondError(w, r, err)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// readOnlyToken refuses a write from a token made to read, before any handler,
+// so the promise holds for every route including ones added later.
+func readOnlyToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !safeMethod(r.Method) && PrincipalFrom(r.Context()).ReadOnly() {
+			respondError(w, r, errReadOnlyToken)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// requireSession refuses a token an act that has to be done by somebody at a
+// keyboard, such as making another token.
+func requireSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p := PrincipalFrom(r.Context()); p != nil && p.TokenID != nil {
+			respondError(w, r, errSessionOnly)
 			return
 		}
 		next.ServeHTTP(w, r)

@@ -57,7 +57,7 @@ Handlers hand it to `noteWrite`, which records it in Valkey
 `STATOR_READ_YOUR_WRITES_TTL`. On the caller's next request the
 `readYourWrites` middleware pins the request to that position with
 `db.PinLSN`, so no replica short of it serves them. The key is the session,
-or a `stator_client` cookie until there are sessions; see
+else the personal access token, else a `stator_client` cookie; see
 `docs/decisions.md`. Without `STATOR_VALKEY_URL` the positions stay in the
 process, which is only right for a single api process. `/readyz` and
 `/metrics` count reads by where they went and why they fell back.
@@ -188,7 +188,18 @@ of the version `e2e/package.json` pins, on the host's network, and reaches the
 stack on its published ports: the session cookie and the sign-in redirects are
 bound to `http://localhost:$WEB_PORT`, so the browser has to see what a person
 sees. A setup project signs alice and bob in once and stores their sessions
-under `e2e/.auth/`; specs tagged `@auth` skip while the stack cannot sign
-anyone in. Chromium runs at desktop size and at 360x740.
+under `e2e/.auth/`, and leaves `demo` showing the built-in theme, as does a
+teardown project after the last spec; specs tagged `@auth` skip while the
+stack cannot sign anyone in. Chromium runs at desktop size and at 360x740.
+What no endpoint makes yet, such as an organization whose provider is down,
+a spec arranges straight in the database through `e2e/fixtures/db.ts`, with
+the superuser URL `.cache/stack.env` names, and removes again.
+
+A spec that changes what an organization shows uses `orgTest` from
+`e2e/fixtures/org.ts` instead of `demo`: each spec file gets an organization
+of its own per worker, made through the api's test endpoints (on in compose
+through `STATOR_TEST_ENDPOINTS`, never in the chart), with alice and bob
+signed in to it, and removed with all its rows and files when the worker
+stops. See `docs/decisions.md`.
 
 A Helm chart follows later.
