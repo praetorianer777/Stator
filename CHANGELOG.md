@@ -103,3 +103,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
   their pages. Space settings show the details and who may do what. A page
   is read at `/s/{key}/p/{id}/{slug}` and edited in a chunk of its own, and
   a save made from an older copy of the page is refused.
+- A tree of pages in each space, shown in the sidebar a level at a time.
+  It is walked with the arrow keys, pages are dragged beside or under one
+  another, and M opens a dialog that moves a page from the keyboard. Pages
+  move or copy with or without their children, into their own space or
+  another; a move under itself is refused, by the database too. Every page
+  shows where it sits in breadcrumbs, and new pages are added under any
+  page.

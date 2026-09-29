@@ -3,6 +3,23 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: Siblings are ordered by lexicographic ranks, loops refused by the database
+
+A page's place among its siblings is a rank from `internal/rank`, ported
+from Armature, whose byte order is its position: dropping a page between two
+others writes that page alone. The column is `COLLATE "C"` so Postgres sorts
+it as the generator compares. Ties, which only a lost race can leave, are
+ordered by id and renumbered when a page is dropped into one.
+
+Subtrees are read with recursive queries rather than a stored path, so a
+move writes one row, and a move into another space rewrites the page's space
+and parent in one statement that the foreign keys cascade down the subtree.
+A trigger refuses any parent that is the page or below it, so a loop cannot
+be written by any path, raw SQL included. Two moves that are fine alone can
+close a loop together, so each change of a parent first takes an advisory
+lock per space, and the service takes the same locks before any row, which
+makes two crossing moves queue instead of deadlocking.
+
 ## 2026-09-29: Who may do what is decided in one place until permissions arrive
 
 Space and page permissions (#19) come later. Until then every member of an
