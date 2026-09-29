@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -20,6 +21,32 @@ var OrgRoles = []OrgRole{RoleOwner, RoleAdmin, RoleMember}
 
 // CanAdminister reports whether the role may change organization settings.
 func (r OrgRole) CanAdminister() bool { return r == RoleOwner || r == RoleAdmin }
+
+// RoleSource says who decided a member's role.
+type RoleSource string
+
+const (
+	// RoleSourceManual is a role somebody here chose, which the identity
+	// provider leaves alone while none of the person's groups is mapped.
+	RoleSourceManual RoleSource = "manual"
+	// RoleSourceProvider is a role the provider's groups gave, which a later
+	// sign-in takes back when the group goes.
+	RoleSourceProvider RoleSource = "oidc"
+)
+
+// RoleSources lists every source, in the order the API documents them.
+var RoleSources = []RoleSource{RoleSourceManual, RoleSourceProvider}
+
+// Member is somebody in the organization, as its administrators see them.
+type Member struct {
+	UserID uuid.UUID `json:"userId"`
+	Email  string    `json:"email"`
+	Name   string    `json:"name"`
+	Role   OrgRole   `json:"role"`
+	// RoleSource says whether the role follows the identity provider's groups.
+	RoleSource RoleSource `json:"roleSource"`
+	JoinedAt   time.Time  `json:"joinedAt"`
+}
 
 // User is a person, global across organizations.
 type User struct {
@@ -67,4 +94,11 @@ var (
 	// ErrSessionStaysHome is returned when a session proven for one
 	// organization tries to act where that proof does not vouch for it.
 	ErrSessionStaysHome = errors.New("this sign-in does not reach that organization")
+	// ErrNoSuchMember is returned when the person named is not a member here.
+	ErrNoSuchMember = errors.New("that person is not a member of this organization")
+	// ErrOwnerStays is returned when somebody tries to remove the owner, who
+	// is how the organization is always entered again.
+	ErrOwnerStays = errors.New("the owner of an organization cannot be removed")
+	// ErrRemoveSelf is returned when an administrator tries to remove themselves.
+	ErrRemoveSelf = errors.New("you cannot remove yourself from the organization")
 )

@@ -57,6 +57,34 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - `STATOR_SECRET_KEY` seals stored secrets with AES-256-GCM, and is required
   outside development; `STATOR_SESSION_TTL`, `STATOR_OIDC_REDIRECT_URL` and
   `STATOR_OIDC_BACKCHANNEL` tune sign-in.
+- Roles from provider groups: administrators map groups of the identity
+  provider to member or admin under single sign-on, and each sign-in gives
+  the highest mapped role. Somebody in a mapped group joins on their first
+  sign-in without waiting, roles set by hand outside mapped groups stay, the
+  owner is never moved, and every change goes to `audit_log`. The members
+  list marks the roles that come from the provider, and an administrator can
+  remove a member there.
+- Personal access tokens: `stator_pat_` and 32 random bytes, sent as a
+  bearer token, of which only the SHA-256 is stored. A token acts as its
+  owner in one organization, may expire, and may carry the `read` scope,
+  which refuses every write. A Tokens page, reached from the account menu,
+  makes one and shows its secret once, and lists and revokes them with
+  their last use; administrators list and revoke every token in the
+  organization over the API. Making and revoking are kept in `audit_log`.
+- The integration suite checks every answer against `api/openapi.json`
+  and fails when an operation was never answered successfully or never
+  refused.
+- Test endpoints for the browser suite, on only with `STATOR_TEST_ENDPOINTS`
+  and a `STATOR_TEST_ENDPOINTS_TOKEN`: `POST /api/v1/test/orgs` makes a
+  throwaway organization with the bootstrap members and provider, and
+  `DELETE /api/v1/test/orgs/{slug}` removes it with all its rows and files.
+  The api refuses them in production and the Helm chart never sets them.
+  The theme specs each run in an organization of their own, in parallel.
+
+### Changed
+
+- Stored files are keyed under `org/<organization id>/`, so an
+  organization's files can be listed and removed together.
 
 ### Fixed
 

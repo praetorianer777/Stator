@@ -62,11 +62,18 @@ func (s *Server) readYourWrites(next http.Handler) http.Handler {
 	})
 }
 
-// freshnessKey is the session, else the client cookie, minted for a request
-// that may write; a read with neither has no write of its own to respect.
+// freshnessKey is the session, else the token, else the client cookie, minted
+// for a request that may write; a read with none has no write to respect. A
+// token keys apart from its owner's browser, as in Armature, so a script's
+// writes do not send the person's reads to the primary.
 func (s *Server) freshnessKey(w http.ResponseWriter, r *http.Request) string {
-	if p := PrincipalFrom(r.Context()); p != nil && p.SessionID != nil {
-		return "s:" + p.SessionID.String()
+	if p := PrincipalFrom(r.Context()); p != nil {
+		switch {
+		case p.SessionID != nil:
+			return "s:" + p.SessionID.String()
+		case p.TokenID != nil:
+			return "t:" + p.TokenID.String()
+		}
 	}
 	if c, err := r.Cookie(ClientCookie); err == nil && validClientID(c.Value) {
 		return "c:" + c.Value

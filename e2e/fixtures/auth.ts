@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test as base, expect, request, type Browser, type Page } from "@playwright/test";
-import { createStatorApi, type StatorApi } from "./api";
+import { createStatorApi, type Session, type StatorApi } from "./api";
 import { KEYCLOAK_URL, WEB_URL } from "./stack";
 
 // Everything about signing in lives in this file, so when the login page
@@ -107,7 +107,32 @@ export async function saveSession(browser: Browser, user: User): Promise<void> {
   }
 }
 
+/**
+ * Signs the user in to another organization through its provider and returns the
+ * session, in memory. Keycloak still knows them from the setup's sign-in, so it
+ * usually sends the browser straight back; its form is filled when it asks.
+ */
+export async function signInToOrg(browser: Browser, user: User, org: string): Promise<Exclude<Session, string>> {
+  const context = await browser.newContext({ baseURL: WEB_URL, storageState: stateFile(user) });
+  try {
+    const page = await context.newPage();
+    await page.goto(`/api/v1/auth/oidc/${encodeURIComponent(org)}/start`);
+    if (page.url().startsWith(KEYCLOAK_URL)) await submitKeycloak(page, USERS[user].username, USERS[user].password);
+    await expect
+      .poll(async () => {
+        const me = await page.request.get(ME_PATH);
+        return me.ok() ? ((await me.json()) as { organization?: { slug?: string } }).organization?.slug : me.status();
+      })
+      .toBe(org);
+    return await context.storageState();
+  } finally {
+    await context.close();
+  }
+}
+
 interface SessionFixtures {
+  /** Where each user's session comes from: the setup's, or a fresh organization's. */
+  sessionOf: (user: User) => Session;
   /** A page of its own, signed in as the user, beside the default page as alice. */
   pageAs: (user: User) => Promise<Page>;
   /** The API as alice. */
@@ -121,27 +146,30 @@ interface SessionFixtures {
  * one before, so the same specs hold on both sides of the login wall.
  */
 export const test = base.extend<SessionFixtures>({
-  storageState: async ({}, use) => {
-    await use(stateFile("alice"));
+  sessionOf: async ({}, use) => {
+    await use(stateFile);
   },
-  pageAs: async ({ browser, viewport, hasTouch, isMobile }, use) => {
+  storageState: async ({ sessionOf }, use) => {
+    await use(sessionOf("alice"));
+  },
+  pageAs: async ({ browser, viewport, hasTouch, isMobile, sessionOf }, use) => {
     const opened: Array<{ close: () => Promise<void> }> = [];
     await use(async (user) => {
-      const context = await browser.newContext({ baseURL: WEB_URL, storageState: stateFile(user), viewport, hasTouch, isMobile });
+      const context = await browser.newContext({ baseURL: WEB_URL, storageState: sessionOf(user), viewport, hasTouch, isMobile });
       opened.push(context);
       return context.newPage();
     });
     for (const context of opened) await context.close();
   },
-  api: async ({}, use) => {
-    const api = await createStatorApi(stateFile("alice"));
+  api: async ({ sessionOf }, use) => {
+    const api = await createStatorApi(sessionOf("alice"));
     await use(api);
     await api.dispose();
   },
-  apiAs: async ({}, use) => {
+  apiAs: async ({ sessionOf }, use) => {
     const opened: StatorApi[] = [];
     await use(async (user) => {
-      const api = await createStatorApi(stateFile(user));
+      const api = await createStatorApi(sessionOf(user));
       opened.push(api);
       return api;
     });

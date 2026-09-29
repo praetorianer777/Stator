@@ -16,6 +16,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
+	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 var (
@@ -424,7 +425,7 @@ func (s *Service) Delete(ctx context.Context, id, actor uuid.UUID, administers b
 			return err
 		}
 		for _, a := range current.Assets {
-			keys = append(keys, objectKey(id, a.ID))
+			keys = append(keys, objectKey(ctx, id, a.ID))
 		}
 		_, err = tx.Exec(ctx, `DELETE FROM theme WHERE id = $1`, id)
 		return err
@@ -447,8 +448,16 @@ func (s *Service) dropObjects(ctx context.Context, keys []string) {
 	}
 }
 
-func objectKey(themeID, assetID uuid.UUID) string {
-	return "theme/" + themeID.String() + "/" + assetID.String()
+// objectKey is where a file's bytes live, under its organization's prefix so
+// removing an organization finds every file it has.
+func objectKey(ctx context.Context, themeID, assetID uuid.UUID) string {
+	org, _ := tenant.FromContext(ctx)
+	return ObjectKey(org.ID, themeID, assetID)
+}
+
+// ObjectKey is the key of one theme file in the object store.
+func ObjectKey(orgID, themeID, assetID uuid.UUID) string {
+	return objectstore.OrgPrefix(orgID) + "theme/" + themeID.String() + "/" + assetID.String()
 }
 
 // UploadAsset puts a file on a theme. The type is what the bytes say.
@@ -485,7 +494,7 @@ func (s *Service) UploadAsset(ctx context.Context, id, actor uuid.UUID, administ
 			assetID, id, name, contentType, len(data)).Scan(&out.CreatedAt); err != nil {
 			return fmt.Errorf("record the file: %w", err)
 		}
-		return s.store.Put(ctx, objectKey(id, assetID), bytes.NewReader(data), int64(len(data)), contentType)
+		return s.store.Put(ctx, objectKey(ctx, id, assetID), bytes.NewReader(data), int64(len(data)), contentType)
 	})
 	if err != nil {
 		return nil, 0, err
@@ -515,7 +524,7 @@ func (s *Service) OpenAsset(ctx context.Context, id, assetID, reader uuid.UUID) 
 	if err != nil {
 		return nil, nil, err
 	}
-	body, err := s.store.Get(ctx, objectKey(id, assetID))
+	body, err := s.store.Get(ctx, objectKey(ctx, id, assetID))
 	if err != nil {
 		return nil, nil, ErrAssetNotFound
 	}
@@ -543,7 +552,7 @@ func (s *Service) DeleteAsset(ctx context.Context, id, assetID, actor uuid.UUID,
 	if err != nil {
 		return 0, err
 	}
-	s.dropObjects(ctx, []string{objectKey(id, assetID)})
+	s.dropObjects(ctx, []string{objectKey(ctx, id, assetID)})
 	return lsn, nil
 }
 

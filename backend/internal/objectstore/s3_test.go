@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -75,6 +76,8 @@ func (f *fakeS3) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case key == "" && r.Method == http.MethodPut:
 		f.objects = map[string][]byte{}
 		w.WriteHeader(http.StatusOK)
+	case key == "" && r.Method == http.MethodGet:
+		f.list(w, r)
 	case r.Method == http.MethodPut:
 		data, _ := io.ReadAll(r.Body)
 		f.objects[key] = data
@@ -91,6 +94,70 @@ func (f *fakeS3) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// fakeListPage is how many keys the fake lists at once, small so a test
+// walks more than one page.
+const fakeListPage = 2
+
+// list answers ListObjectsV2, a page at a time, the continuation token being
+// the last key of the page before.
+func (f *fakeS3) list(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if q.Get("list-type") != "2" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	var keys []string
+	for key := range f.objects {
+		if strings.HasPrefix(key, q.Get("prefix")) && key > q.Get("continuation-token") {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	truncated := len(keys) > fakeListPage
+	if truncated {
+		keys = keys[:fakeListPage]
+	}
+	var b strings.Builder
+	b.WriteString("<ListBucketResult>")
+	for _, key := range keys {
+		b.WriteString("<Contents><Key>" + key + "</Key></Contents>")
+	}
+	if truncated {
+		b.WriteString("<IsTruncated>true</IsTruncated><NextContinuationToken>" + keys[len(keys)-1] + "</NextContinuationToken>")
+	}
+	b.WriteString("</ListBucketResult>")
+	_, _ = w.Write([]byte(b.String()))
+}
+
+func TestDeletePrefixTakesEveryPageAndNothingElse(t *testing.T) {
+	fake := &fakeS3{bucket: "att"}
+	server := httptest.NewServer(fake)
+	defer server.Close()
+	store, err := NewS3(Config{Endpoint: server.URL, Bucket: "att", AccessKey: "k", SecretKey: "s"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := store.EnsureBucket(ctx); err != nil {
+		t.Fatal(err)
+	}
+	gone, kept := "org/a/", "org/ab/"
+	for _, key := range []string{gone + "1", gone + "2", gone + "theme/x/3", gone + "theme/y/4", gone + "5", kept + "1"} {
+		if err := store.Put(ctx, key, strings.NewReader("x"), 1, "text/plain"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := DeletePrefix(ctx, store, gone); err != nil {
+		t.Fatalf("delete the prefix: %v", err)
+	}
+	if left, _ := store.List(ctx, "org/"); strings.Join(left, ",") != kept+"1" {
+		t.Fatalf("left behind %v, want only %s1", left, kept)
+	}
+	if err := DeletePrefix(ctx, store, ""); err == nil {
+		t.Fatal("an empty prefix emptied the bucket")
 	}
 }
 

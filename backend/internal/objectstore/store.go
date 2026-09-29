@@ -8,9 +8,12 @@ import (
 	"errors"
 	"io"
 	"path"
+	"sort"
 	"strings"
 	"sync"
 	"unicode"
+
+	"github.com/google/uuid"
 )
 
 // Store is where the bytes go. A domain knows nothing about S3 beyond this, so
@@ -19,6 +22,32 @@ type Store interface {
 	Put(ctx context.Context, key string, body io.Reader, size int64, contentType string) error
 	Get(ctx context.Context, key string) (io.ReadCloser, error)
 	Delete(ctx context.Context, key string) error
+	// List names every object whose key starts with prefix.
+	List(ctx context.Context, prefix string) ([]string, error)
+}
+
+// OrgPrefix is where every object of one organization lives, so all of an
+// organization's files are found, and removed, by one listing.
+func OrgPrefix(org uuid.UUID) string {
+	return "org/" + org.String() + "/"
+}
+
+// DeletePrefix removes every object under prefix. An empty prefix is refused:
+// it names the whole bucket.
+func DeletePrefix(ctx context.Context, s Store, prefix string) error {
+	if prefix == "" {
+		return errors.New("refusing to delete every object in the bucket")
+	}
+	keys, err := s.List(ctx, prefix)
+	if err != nil {
+		return err
+	}
+	for _, key := range keys {
+		if err := s.Delete(ctx, key); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ErrUnavailable is returned when no object store is configured. It is a
@@ -95,6 +124,19 @@ func (m *Memory) Delete(_ context.Context, key string) error {
 	return nil
 }
 
+func (m *Memory) List(_ context.Context, prefix string) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var keys []string
+	for key := range m.objects {
+		if strings.HasPrefix(key, prefix) {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	return keys, nil
+}
+
 // Len is how many objects are held, for a test to count.
 func (m *Memory) Len() int {
 	m.mu.Lock()
@@ -111,6 +153,7 @@ func (Unavailable) Put(context.Context, string, io.Reader, int64, string) error 
 }
 func (Unavailable) Get(context.Context, string) (io.ReadCloser, error) { return nil, ErrUnavailable }
 func (Unavailable) Delete(context.Context, string) error               { return ErrUnavailable }
+func (Unavailable) List(context.Context, string) ([]string, error)     { return nil, ErrUnavailable }
 
 // MaxNameLength keeps a file name short enough for a header and a listing.
 const MaxNameLength = 200

@@ -63,6 +63,8 @@ type Config struct {
 	Telemetry Telemetry
 	S3        S3
 	Bootstrap Bootstrap
+	// TestEndpoints serves the throwaway organizations of the browser suite.
+	TestEndpoints TestEndpoints
 
 	// SecretKey encrypts secrets stored in the database, such as an identity
 	// provider's client secret. Nil in development when it is not set.
@@ -134,6 +136,18 @@ type BootstrapMember struct {
 	Email string
 	Role  string
 }
+
+// TestEndpoints make and remove throwaway organizations under /api/v1/test.
+// Off, they answer 404 like any path that does not exist.
+type TestEndpoints struct {
+	Enabled bool
+	// Token is the shared secret every call carries, so an endpoint switched
+	// on by accident is still closed.
+	Token string
+}
+
+// MinTestTokenLength keeps the test endpoints' token from being guessable.
+const MinTestTokenLength = 16
 
 // S3 is the bucket uploaded files live in: theme assets now, attachments
 // later. Any service that speaks the S3 protocol will do; a blank endpoint
@@ -224,6 +238,10 @@ func Load() (Config, error) {
 			OIDCClientSecret: l.str("STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET", ""),
 			Members:          l.members("STATOR_BOOTSTRAP_MEMBERS"),
 		},
+		TestEndpoints: TestEndpoints{
+			Enabled: l.boolean("STATOR_TEST_ENDPOINTS", false),
+			Token:   l.str("STATOR_TEST_ENDPOINTS_TOKEN", ""),
+		},
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
 	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
@@ -278,6 +296,17 @@ func Load() (Config, error) {
 	}
 	if c.Bootstrap.AdminEmail != "" && !strings.Contains(c.Bootstrap.AdminEmail, "@") {
 		l.problem(fmt.Sprintf("STATOR_BOOTSTRAP_ADMIN_EMAIL is %q; set it to an email address.", c.Bootstrap.AdminEmail))
+	}
+	if c.TestEndpoints.Enabled {
+		if c.Env == EnvProduction {
+			l.problem("STATOR_TEST_ENDPOINTS is on in production, where it would let anybody with its token make and delete organizations. Turn it off.")
+		}
+		if len(c.TestEndpoints.Token) < MinTestTokenLength {
+			l.problem(fmt.Sprintf("STATOR_TEST_ENDPOINTS is on, so set STATOR_TEST_ENDPOINTS_TOKEN to a secret of at least %d characters.", MinTestTokenLength))
+		}
+		if c.Bootstrap.OIDCIssuer == "" {
+			l.problem("STATOR_TEST_ENDPOINTS is on, so set STATOR_BOOTSTRAP_OIDC_ISSUER and its client: every throwaway organization signs in through that provider.")
+		}
 	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		l.problem("STATOR_OTEL_SAMPLE_RATIO must be between 0 and 1.")
