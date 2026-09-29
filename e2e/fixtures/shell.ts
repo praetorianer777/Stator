@@ -30,20 +30,10 @@ export async function openShell(page: Page, path: string): Promise<void> {
 // defaults cannot quietly drop them.
 const RULES_ON = { "color-contrast": { enabled: true }, region: { enabled: true } };
 
-// Findings against the app that this suite surfaced and that wait on a fix of
-// their own. Exactly these pass; delete an entry once it is fixed.
-const KNOWN_FINDINGS: Array<{ rule: string; matches: (page: Page, node: AxeNode) => Promise<boolean> }> = [
-  // The slash menu scrolls while focus stays in the editor, which names the
-  // option through aria-activedescendant; the stored-document box belongs to
-  // the development page alone.
-  {
-    rule: "scrollable-region-focusable",
-    matches: async (page, node) => {
-      const target = node.target[0];
-      return typeof target === "string" && (await page.locator(target).evaluate((el) => el.matches("[data-slash-menu], [data-dev-json]")));
-    },
-  },
-];
+// Findings this suite surfaced that wait on a fix of their own, each matched
+// as narrowly as it can be so nothing else slips through. Empty is the goal;
+// add an entry only with its issue, and delete it once that is fixed.
+const KNOWN_FINDINGS: Array<{ rule: string; matches: (page: Page, node: AxeNode) => Promise<boolean> }> = [];
 
 type AxeNode = Awaited<ReturnType<AxeBuilder["analyze"]>>["violations"][number]["nodes"][number];
 

@@ -45,7 +45,14 @@ function DevEditor() {
         </section>
         <section aria-labelledby="dev-editor-json" className="space-y-2">
           <SectionTitle id="dev-editor-json">{t.devEditor.json}</SectionTitle>
-          <pre className="max-h-96 overflow-auto rounded-control bg-surface-sunken p-3 font-mono text-xs" data-dev-json>
+          {/* The box scrolls on its own, so it is a tab stop the arrow keys can scroll. */}
+          <pre
+            tabIndex={0}
+            role="region"
+            aria-label={t.devEditor.jsonBox}
+            className="max-h-96 overflow-auto rounded-control bg-surface-sunken p-3 font-mono text-xs"
+            data-dev-json
+          >
             {JSON.stringify(doc, null, 2)}
           </pre>
         </section>

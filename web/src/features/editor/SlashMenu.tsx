@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { cx } from "@/components/ui";
 import { MENU_GAP_PX } from "@/config";
 import { t } from "@/i18n";
 import type { SlashItem } from "./slashItems";
+import { useFollowActive } from "./useFollowActive";
 
 /**
  * The blocks a slash can insert, drawn under the caret. Focus stays in the
@@ -23,11 +23,9 @@ export function SlashMenu({
   onPick: (item: SlashItem) => void;
   onHover: (i: number) => void;
 }) {
-  useEffect(() => {
-    document.getElementById(`${id}-${active}`)?.scrollIntoView?.({ block: "nearest" });
-  }, [id, active]);
+  const follow = useFollowActive(active);
   if (!rect) return null;
-  const frame = "fixed z-40 max-h-80 w-72 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2";
+  const frame = "fixed z-40 max-h-80 w-72 overflow-y-hidden rounded-overlay border border-border bg-surface-overlay p-1 shadow-2";
   const place = { left: rect.left, top: rect.bottom + MENU_GAP_PX };
   // An empty listbox is no list at all to a screen reader, so the empty
   // state is a status message in its place.
@@ -41,7 +39,7 @@ export function SlashMenu({
     );
   }
   return (
-    <div id={id} role="listbox" aria-label={t.editor.slashMenu} data-slash-menu className={frame} style={place}>
+    <div ref={follow} id={id} role="listbox" aria-label={t.editor.slashMenu} data-slash-menu className={frame} style={place}>
       {items.map((item, i) => (
         <div
           key={item.key}

@@ -64,3 +64,7 @@ and the versioning [Semantic Versioning](https://semver.org/).
   on every surface in both palettes, and in the Deep-Tech and Constellation
   themes, with the hue kept. A unit test checks every text colour against
   every surface.
+- The slash menu and the mention list keep the active option in view while
+  focus stays in the editor, and the stored document on the development
+  editor page is a named region the keyboard can reach and scroll. The
+  browser suite's accessibility checks now pass with no known findings.

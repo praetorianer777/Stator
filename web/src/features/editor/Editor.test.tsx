@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Editor, type EditorHandle } from "./Editor";
@@ -238,5 +238,51 @@ describe("the toolbar", () => {
     await user.type(address, "/spaces/eng{Enter}");
     const link = find(last(), "text")[0]?.marks?.find((m) => m.type === "link");
     expect(link?.attrs?.href).toBe("/spaces/eng");
+  });
+});
+
+// jsdom draws nothing, so what is checked is which option is asked into view.
+describe("the lists under the caret", () => {
+  const scrolled = vi.fn();
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled(this);
+    };
+  });
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+    scrolled.mockReset();
+  });
+
+  it("keep the slash menu's active option in view while focus stays in the editor", async () => {
+    const { user, box } = setup();
+    const list = await slash(user, box, "");
+    const options = within(list).getAllByRole("option");
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(scrolled).toHaveBeenLastCalledWith(options.at(-1)));
+    expect(box).toHaveAttribute("aria-activedescendant", options.at(-1)!.id);
+    expect(document.activeElement).toBe(box);
+    expect(list).not.toHaveAttribute("tabindex");
+    expect(list.className).toContain("overflow-y-hidden");
+  });
+
+  it("keep the mention list's active option in view while focus stays in the editor", async () => {
+    const user = userEvent.setup();
+    const people = [
+      { id: "u1", name: "Ada Lovelace" },
+      { id: "u2", name: "Alan Turing" },
+    ];
+    render(<Editor id="page-body" value={null} onChange={vi.fn()} people={people} />);
+    const box = document.getElementById("page-body")!;
+    await user.click(box);
+    await user.keyboard("@a");
+    const list = await screen.findByRole("listbox", { name: "People to mention" });
+    const options = within(list).getAllByRole("option");
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(scrolled).toHaveBeenLastCalledWith(options[1]));
+    expect(box).toHaveAttribute("aria-activedescendant", options[1]!.id);
+    expect(document.activeElement).toBe(box);
+    expect(list).not.toHaveAttribute("tabindex");
+    expect(list.className).toContain("overflow-y-hidden");
   });
 });
