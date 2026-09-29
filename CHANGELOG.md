@@ -110,3 +110,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
   another; a move under itself is refused, by the database too. Every page
   shows where it sits in breadcrumbs, and new pages are added under any
   page.
+- A trash in each space. Deleting a page takes it and every page below it
+  out of the tree; the trash, under space settings, restores it where it
+  was, or under the home page when the page it was under is gone.
+  Administrators delete an item for good or empty the trash, which the
+  audit log records.

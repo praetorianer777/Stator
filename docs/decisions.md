@@ -3,6 +3,21 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: A deleted page stays in place, marked, until it is purged
+
+Deleting a page marks it and every page below it still in the tree with
+`trashed_at` and `trash_id`, the page deleted, which makes them one item of
+the space's trash. Nothing moves: parent and rank stay, so a restore clears
+the marks and the item is back where it was. If the page it was under went
+to the trash itself, or was purged, the restore hangs it last under the home
+page instead. Purging an item first moves items deleted earlier from below
+it under the home page, so they stay restorable, then deletes the item's
+rows. The alternative, a trash table the pages move into, would copy every
+column a page gains, drafts and versions (#13, #14) included, and lose the
+place a restore needs. Everything that reads the tree, and search and macros
+when they come, leaves out `trashed_at IS NOT NULL`; `page.load` already
+answers a trashed page as not found.
+
 ## 2026-09-29: Siblings are ordered by lexicographic ranks, loops refused by the database
 
 A page's place among its siblings is a rank from `internal/rank`, ported
