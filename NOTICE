@@ -6,3 +6,14 @@ This product contains code adapted from Armature
 (https://github.com/Cloudster1/Armature), licensed under the Apache License,
 Version 2.0. Files derived from Armature keep that notice; the Apache License
 text is available at https://www.apache.org/licenses/LICENSE-2.0.
+
+Adapted from Armature:
+- backend/internal/objectstore: the S3 client of internal/attachment
+- backend/internal/theme and its migrations: internal/theme, migrations
+  00050_themes, 00902_org_default_theme and 00906_theme_names_per_organization
+- backend/internal/httpapi/theme_handlers.go: the theme handlers and routes
+- web/src/lib/theme-tokens.ts, theme-css.ts, constellation.ts, confetti.ts
+- web/src/features/themes: ThemeLoader, BackdropEffect, ThemeEditor
+- web/src/routes/themes.tsx and theme-editor.tsx
+- web/src/components/ui: controls, Field, ColorField, Card, Segmented, Tabs,
+  Tag, SectionTitle, Table and Choice
