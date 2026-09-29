@@ -43,6 +43,11 @@ type replicaState struct {
 	replayLSN atomic.Uint64
 	lagMillis atomic.Int64
 	lastErr   atomic.Pointer[string]
+
+	// Reads this replica was chosen for and handed to the primary, by why.
+	staleFallbacks       atomic.Uint64
+	lagFallbacks         atomic.Uint64
+	unavailableFallbacks atomic.Uint64
 }
 
 func (r *replicaState) snapshot() ReplicaStatus {
@@ -56,6 +61,11 @@ func (r *replicaState) snapshot() ReplicaStatus {
 		ReplayLSN: LSN(r.replayLSN.Load()),
 		Lag:       time.Duration(r.lagMillis.Load()) * time.Millisecond,
 		LastError: errStr,
+		Fallbacks: map[string]uint64{
+			FallbackStale:       r.staleFallbacks.Load(),
+			FallbackLagging:     r.lagFallbacks.Load(),
+			FallbackUnavailable: r.unavailableFallbacks.Load(),
+		},
 	}
 }
 
@@ -66,7 +76,17 @@ type ReplicaStatus struct {
 	ReplayLSN LSN           `json:"-"`
 	Lag       time.Duration `json:"-"`
 	LastError string        `json:"lastError,omitempty"`
+	// Fallbacks counts the reads this replica was picked for and handed to
+	// the primary, by reason.
+	Fallbacks map[string]uint64 `json:"-"`
 }
+
+// Why a read a replica was picked for went to the primary instead.
+const (
+	FallbackStale       = "stale"
+	FallbackLagging     = "lagging"
+	FallbackUnavailable = "unavailable"
+)
 
 // Cluster is the primary plus its replica rotation.
 type Cluster struct {
@@ -115,14 +135,14 @@ func Open(ctx context.Context, cfg config.DB, log *slog.Logger, opts ...Option) 
 		return o.tracer(pool)
 	}
 
-	primary, err := openPool(ctx, cfg, cfg.PrimaryURL, tracerFor("primary"))
+	primary, err := openPool(ctx, cfg, cfg.PrimaryURL, cfg.PrimaryMaxConns, tracerFor("primary"))
 	if err != nil {
 		return nil, fmt.Errorf("connect to the primary database: %w", err)
 	}
 
 	admin := primary
 	if cfg.AdminURL != "" && cfg.AdminURL != cfg.PrimaryURL {
-		admin, err = openPool(ctx, cfg, cfg.AdminURL, tracerFor("admin"))
+		admin, err = openPool(ctx, cfg, cfg.AdminURL, cfg.PrimaryMaxConns, tracerFor("admin"))
 		if err != nil {
 			primary.Close()
 			return nil, fmt.Errorf("connect to the database as the admin role: %w", err)
@@ -143,7 +163,7 @@ func Open(ctx context.Context, cfg config.DB, log *slog.Logger, opts ...Option) 
 
 	for i, url := range cfg.ReplicaURLs {
 		name := fmt.Sprintf("replica-%d", i)
-		pool, err := openPool(ctx, cfg, url, tracerFor(name))
+		pool, err := openPool(ctx, cfg, url, cfg.ReplicaMaxConns, tracerFor(name))
 		if err != nil {
 			// A replica that is down at boot must not stop the process: the
 			// health loop will pick it up when it returns.
@@ -162,13 +182,13 @@ func Open(ctx context.Context, cfg config.DB, log *slog.Logger, opts ...Option) 
 	return c, nil
 }
 
-func openPool(ctx context.Context, cfg config.DB, url string, tracer pgx.QueryTracer) (*pgxpool.Pool, error) {
+func openPool(ctx context.Context, cfg config.DB, url string, maxConns int32, tracer pgx.QueryTracer) (*pgxpool.Pool, error) {
 	pcfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, err
 	}
-	pcfg.MaxConns = cfg.MaxConns
-	pcfg.MinConns = cfg.MinConns
+	pcfg.MaxConns = maxConns
+	pcfg.MinConns = min(cfg.MinConns, maxConns)
 	pcfg.MaxConnLifetime = cfg.ConnMaxLifetime
 	if tracer != nil {
 		pcfg.ConnConfig.Tracer = tracer
@@ -219,17 +239,24 @@ func (c *Cluster) readConn(ctx context.Context) *pgxpool.Conn {
 	}
 	conn, err := r.pool.Acquire(ctx)
 	if err != nil {
+		r.unavailableFallbacks.Add(1)
 		c.countFallback(routeNoHealthy)
 		return nil
 	}
 	s, err := sampleConn(ctx, conn)
 	if err != nil {
 		conn.Release()
+		r.unavailableFallbacks.Add(1)
 		c.countFallback(routeNoHealthy)
 		return nil
 	}
 	if outcome := admit(s, p, c.maxLag); outcome != routeReplica {
 		conn.Release()
+		if outcome == routeStale {
+			r.staleFallbacks.Add(1)
+		} else {
+			r.lagFallbacks.Add(1)
+		}
 		c.countFallback(outcome)
 		return nil
 	}
@@ -464,13 +491,20 @@ type Stats struct {
 	Pools []PoolStats `json:"-"`
 }
 
-// PoolStats is a point in time count of one pool's connections.
+// PoolStats is a point in time view of one pool: its connections, and how
+// often and how long callers waited for one.
 type PoolStats struct {
 	Name         string
 	Idle         int32
 	Acquired     int32
 	Constructing int32
 	Max          int32
+
+	Acquires      int64
+	EmptyAcquires int64
+	// Wait is the time spent waiting because no connection was idle, which
+	// is what a pool sized too small costs.
+	Wait time.Duration
 }
 
 // Stats is a snapshot of the routing counters, replica health and pool sizes.
@@ -496,7 +530,10 @@ func (c *Cluster) Stats() Stats {
 	}
 	for _, p := range pools {
 		stat := p.pool.Stat()
-		s.Pools = append(s.Pools, PoolStats{Name: p.name, Idle: stat.IdleConns(), Acquired: stat.AcquiredConns(), Constructing: stat.ConstructingConns(), Max: stat.MaxConns()})
+		s.Pools = append(s.Pools, PoolStats{
+			Name: p.name, Idle: stat.IdleConns(), Acquired: stat.AcquiredConns(), Constructing: stat.ConstructingConns(), Max: stat.MaxConns(),
+			Acquires: stat.AcquireCount(), EmptyAcquires: stat.EmptyAcquireCount(), Wait: stat.EmptyAcquireWaitTime(),
+		})
 	}
 	return s
 }
