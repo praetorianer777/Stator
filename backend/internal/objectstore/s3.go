@@ -18,7 +18,7 @@ import (
 )
 
 // S3Store keeps objects in one bucket of any S3 compatible service, with the
-// standard library alone: five signed calls, rather than a dozen modules.
+// standard library alone: six signed calls, rather than a dozen modules.
 type S3Store struct {
 	endpoint  *url.URL
 	bucket    string
@@ -167,6 +167,60 @@ func (s *S3Store) Delete(ctx context.Context, key string) error {
 	return fmt.Errorf("remove object: %s %s", code, message)
 }
 
+// List names every object whose key starts with prefix, following the
+// listing page by page.
+func (s *S3Store) List(ctx context.Context, prefix string) ([]string, error) {
+	var keys []string
+	token := ""
+	for {
+		params := map[string]string{"list-type": "2", "prefix": prefix}
+		if token != "" {
+			params["continuation-token"] = token
+		}
+		resp, err := s.doQuery(ctx, http.MethodGet, "", canonicalQuery(params), nil, 0, emptyPayloadHash, "")
+		if err != nil {
+			return nil, fmt.Errorf("list objects: %w", err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			code, message := s3Error(resp)
+			resp.Body.Close()
+			return nil, fmt.Errorf("list objects: %s %s", code, message)
+		}
+		var page struct {
+			Contents []struct {
+				Key string `xml:"Key"`
+			} `xml:"Contents"`
+			IsTruncated           bool   `xml:"IsTruncated"`
+			NextContinuationToken string `xml:"NextContinuationToken"`
+		}
+		err = xml.NewDecoder(resp.Body).Decode(&page)
+		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("list objects: %w", err)
+		}
+		for _, c := range page.Contents {
+			keys = append(keys, c.Key)
+		}
+		if !page.IsTruncated || page.NextContinuationToken == "" {
+			return keys, nil
+		}
+		token = page.NextContinuationToken
+	}
+}
+
+func canonicalQuery(params map[string]string) string {
+	names := make([]string, 0, len(params))
+	for name := range params {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	parts := make([]string, len(names))
+	for i, name := range names {
+		parts[i] = encodeSegment(name) + "=" + encodeSegment(params[name])
+	}
+	return strings.Join(parts, "&")
+}
+
 // hashOf is the payload hash of a small body held in memory.
 func hashOf(body []byte) string {
 	if len(body) == 0 {
@@ -179,6 +233,12 @@ func hashOf(body []byte) string {
 // do sends one signed, path style request (host/bucket/key), which every S3
 // compatible service accepts; the caller, who has seen the body, hashes it.
 func (s *S3Store) do(ctx context.Context, method, key string, body io.Reader, size int64, payloadHash, contentType string) (*http.Response, error) {
+	return s.doQuery(ctx, method, key, "", body, size, payloadHash, contentType)
+}
+
+// doQuery is do with a query string already in canonical form: names sorted,
+// each name and value encoded as encodeSegment does.
+func (s *S3Store) doQuery(ctx context.Context, method, key, query string, body io.Reader, size int64, payloadHash, contentType string) (*http.Response, error) {
 	path := "/" + encodeSegment(s.bucket)
 	if key != "" {
 		path += "/" + encodePath(key)
@@ -189,6 +249,7 @@ func (s *S3Store) do(ctx context.Context, method, key string, body io.Reader, si
 	if key != "" {
 		target.Path += "/" + key
 	}
+	target.RawQuery = query
 
 	if body == nil {
 		body = http.NoBody
@@ -212,7 +273,7 @@ func (s *S3Store) do(ctx context.Context, method, key string, body io.Reader, si
 			req.Header.Set(name, value)
 		}
 	}
-	req.Header.Set("Authorization", authorization(s.accessKey, s.secretKey, s.region, method, path, "", headers, payloadHash))
+	req.Header.Set("Authorization", authorization(s.accessKey, s.secretKey, s.region, method, path, query, headers, payloadHash))
 	return s.client.Do(req)
 }
 

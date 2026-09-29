@@ -17,9 +17,12 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
-func themeObject(themeID, assetID string) string { return "theme/" + themeID + "/" + assetID }
+func themeObject(org uuid.UUID, themeID, assetID string) string {
+	return theme.ObjectKey(org, uuid.MustParse(themeID), uuid.MustParse(assetID))
+}
 
 // A theme is its maker's, shared when they say so, chosen per person, and
 // walled by the tenant like everything else.
@@ -156,7 +159,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		}
 		assetID = asset["id"].(string)
 
-		stored, err := api.store.Get(context.Background(), themeObject(themeID, assetID))
+		stored, err := api.store.Get(context.Background(), themeObject(home.org, themeID, assetID))
 		if err != nil {
 			t.Fatalf("the bytes are not in the bucket: %v", err)
 		}
@@ -202,7 +205,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if got, _ := owner.download(t, "/api/v1/themes/"+themeID+"/assets/"+assetID); got.StatusCode != http.StatusNotFound {
 			t.Errorf("a removed file still serves: %d", got.StatusCode)
 		}
-		if _, err := api.store.Get(context.Background(), themeObject(themeID, assetID)); !errors.Is(err, objectstore.ErrNoObject) {
+		if _, err := api.store.Get(context.Background(), themeObject(home.org, themeID, assetID)); !errors.Is(err, objectstore.ErrNoObject) {
 			t.Errorf("a removed file is still in the bucket: %v", err)
 		}
 		// One more, left on the theme, so deleting the theme has something to take.
@@ -287,7 +290,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if got := owner.get(t, "/api/v1/themes/"+themeID); got.Status != http.StatusNotFound {
 			t.Errorf("a deleted theme is still found: %d", got.Status)
 		}
-		if _, err := api.store.Get(context.Background(), themeObject(themeID, assetID)); !errors.Is(err, objectstore.ErrNoObject) {
+		if _, err := api.store.Get(context.Background(), themeObject(home.org, themeID, assetID)); !errors.Is(err, objectstore.ErrNoObject) {
 			t.Errorf("a deleted theme's file is still in the bucket: %v", err)
 		}
 	})
