@@ -40,8 +40,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
   per pool metrics: connections taken, time spent waiting, and fallbacks to
   the primary by reason.
 - Single sign-on through each organization's OIDC provider, with state,
-  nonce and PKCE; people are kept by issuer and subject, become members on
-  first sign-in, and their groups follow the provider's groups claim.
+  nonce and PKCE; people are kept by issuer and subject, and members' groups
+  follow the provider's groups claim. Somebody the provider knows who is not
+  a member gets no session: their request waits until an administrator lets
+  them in or turns them away, with a count in the account menu, and both
+  answers are kept in a new `audit_log`. `STATOR_BOOTSTRAP_MEMBERS` lets
+  people in ahead of their first sign-in.
   Sessions live in an HttpOnly cookie, only the SHA-256 of the token is
   stored, and they expire and end on sign-out. A sign-in page, an account
   menu with sign-out, and single sign-on settings for administrators.

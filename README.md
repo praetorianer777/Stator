@@ -46,8 +46,10 @@ Keycloak imports the realm `stator-dev` with the clients `stator` (secret
 | `bob` | `bob password` | `marketing` |
 
 The seed points the `demo` organization at this realm, so on the sign-in page
-enter `demo` and choose "Sign in with SSO"; anybody the realm signs in becomes
-a member, and their groups follow them. The seed also makes a local
+enter `demo` and choose "Sign in with SSO". The seed lets `alice` in as an
+administrator and `bob` as a member ahead of time; anybody else the realm signs
+in waits until an administrator lets them in under Single sign-on, in the
+account menu. Their groups follow them once they are in. The seed also makes a local
 administrator of `demo` for the password form: `admin@stator.test` with
 `stator admin password`. The client `stator` requires PKCE.
 

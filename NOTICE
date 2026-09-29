@@ -34,4 +34,7 @@ Adapted from Armature:
   00044_session_proof and 00905_sso_reaches_its_provider
 - backend/internal/httpapi/auth_handlers.go and oidc_handlers.go: the sign-in,
   session and provider handlers and routes
-- web/src/features/auth: the sign-in form and ProviderSettings
+- backend/internal/auth/joinrequests.go, backend/internal/audit and migration
+  00013: internal/auth/joinrequests.go, internal/audit and migrations
+  00901_sso_join_requests and the audit_log of 00001_foundation
+- web/src/features/auth: the sign-in form, ProviderSettings and JoinRequests
