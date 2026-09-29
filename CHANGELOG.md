@@ -121,3 +121,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
   was, or under the home page when the page it was under is gone.
   Administrators delete an item for good or empty the trash, which the
   audit log records.
+- Files on pages. Each page lists its attachments under the document,
+  attached with the picker or by dropping them on the list, with the
+  progress of each upload; they download from the list, and deleting one
+  asks first. A file over the upload limit is refused with a sentence that
+  names the limit and says what to do. In the editor a pasted, dropped or
+  picked picture goes up first and then shows as an image with alternative
+  text and a width to choose, and any other file as a chip that downloads
+  it. A file deleted from the page shows as missing where the page used it.
