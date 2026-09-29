@@ -44,6 +44,7 @@ read-your-writes.
 | `oidc` | OIDC relying party per organisation, group sync |
 | `perm` | global, space and page permissions |
 | `space` | spaces, space settings |
+| `document` | page document allowlist and validation, plain text for search, headings for the table of contents |
 | `page` | page tree (parent plus rank), move, copy, trash |
 | `version` | drafts, published versions, diff, restore |
 | `comment` | page comments, inline comments anchored by mark id |
@@ -64,7 +65,9 @@ read-your-writes.
 - Tailwind v4, CSS-first. The `@theme` tokens are Armature's, value for value,
   so both products look alike; custom themes compile to CSS variables on top.
 - Editor: TipTap 3. Documents are stored as ProseMirror JSON and validated
-  server-side against an allowlist of nodes and marks.
+  server-side against an allowlist of nodes and marks. The allowlist is one
+  Go table; `make document-allowlist` writes it to
+  `api/document-allowlist.json`, which a vitest test holds the editor to.
 
 ## Armature integration
 
