@@ -129,6 +129,14 @@ func toAPIError(err error) *APIError {
 			Message: "Your sign-in does not reach that organization. Sign in there through its own sign-in page."}
 	case errors.Is(err, auth.ErrNoSuchRequest):
 		return ErrNotFound("That person is not waiting to be let in. Reload the list; somebody may have answered already.")
+	case errors.Is(err, auth.ErrNoSuchMember):
+		return ErrNotFound("That person is not a member here. Reload the list; somebody may have removed them already.")
+	case errors.Is(err, auth.ErrOwnerStays):
+		return ErrConflict("The owner of an organization cannot be removed. Remove somebody else, or ask the owner.")
+	case errors.Is(err, auth.ErrRemoveSelf):
+		return ErrConflict("You cannot remove yourself. Ask another administrator to do it.")
+	case errors.Is(err, oidc.ErrNoSuchGroupRole):
+		return ErrNotFound("That group is not mapped to a role. Reload the list; somebody may have removed it already.")
 	case errors.Is(err, auth.ErrBadJoinRole):
 		return ErrValidation(map[string]string{"role": "Let the person in as member or admin."})
 	case errors.Is(err, auth.ErrTokenName):

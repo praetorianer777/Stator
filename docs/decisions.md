@@ -3,6 +3,28 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: Provider groups decide roles at each sign-in
+
+An administrator maps groups of the identity provider, by the value of the
+groups claim, to member or admin, per provider. Each sign-in through the
+provider settles the person's role from the groups the token names: the
+highest mapped role wins, and a membership records whether its role came from
+the provider or from somebody here. A role the provider gave falls back to
+member when its group goes, never further, since taking somebody out is an
+administrator's act. A role somebody here chose is left alone while none of
+the person's groups is mapped, so a mapping can be introduced group by group
+without undoing what administrators already decided. The owner is never moved,
+and the database refuses to let the provider manage an owner's role.
+
+A mapped group is the administrators' approval given in advance, so somebody
+in one joins on their first sign-in, with no request to answer. Every role the
+mapping changes, and every change to the mapping, goes to `audit_log`.
+
+Changes apply at the next sign-in rather than when the mapping is saved: only
+a token says which groups somebody is in now, and group rows exist only for
+the groups an organization keeps. Until then an open session keeps the role
+it had.
+
 ## 2026-09-29: A personal access token is its owner in one organization
 
 A script calls the API with a token sent as a bearer, as in Armature: the

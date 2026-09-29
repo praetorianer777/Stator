@@ -364,6 +364,130 @@
         }
       }
     },
+    "/oidc-provider/group-roles": {
+      "get": {
+        "operationId": "listGroupRoles",
+        "summary": "Which provider groups grant which role. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groupRoles": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GroupRole"
+                      }
+                    }
+                  },
+                  "required": [
+                    "groupRoles"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "setGroupRole",
+        "summary": "Map a provider group to a role, or change the role it maps to; members follow at their next sign-in. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetGroupRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groupRole": {
+                      "$ref": "#/components/schemas/GroupRole"
+                    }
+                  },
+                  "required": [
+                    "groupRole"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oidc-provider/group-roles/{groupRoleID}": {
+      "delete": {
+        "operationId": "removeGroupRole",
+        "summary": "Unmap a provider group; the roles it granted go at each person's next sign-in. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "parameters": [
+          {
+            "name": "groupRoleID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/openapi.json": {
       "get": {
         "operationId": "openAPI",
@@ -1333,6 +1457,48 @@
         }
       }
     },
+    "/users": {
+      "get": {
+        "operationId": "listMembers",
+        "summary": "The organization's members, with their roles and whether the identity provider decides them. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "members": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Member"
+                      }
+                    }
+                  },
+                  "required": [
+                    "members"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users/requests": {
       "get": {
         "operationId": "listJoinRequests",
@@ -1456,6 +1622,41 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userID}": {
+      "delete": {
+        "operationId": "removeMember",
+        "summary": "Take somebody out of the organization. The owner stays. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "parameters": [
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -1865,6 +2066,35 @@
           }
         }
       },
+      "GroupRole": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "member"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "group",
+          "role",
+          "updatedAt"
+        ]
+      },
       "Icon": {
         "type": "object",
         "properties": {
@@ -1988,6 +2218,48 @@
             "$ref": "#/components/schemas/Schema"
           }
         }
+      },
+      "Member": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member"
+            ]
+          },
+          "roleSource": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "oidc"
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "name",
+          "role",
+          "roleSource",
+          "joinedAt"
+        ]
       },
       "Membership": {
         "type": "object",
@@ -2459,6 +2731,25 @@
         },
         "required": [
           "url"
+        ]
+      },
+      "SetGroupRoleRequest": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "member"
+            ]
+          }
+        },
+        "required": [
+          "group",
+          "role"
         ]
       },
       "Shape": {

@@ -81,6 +81,7 @@ stack-env:
 		'S3_PORT=$(S3_PORT)' \
 		'STATOR_WEB_URL=http://localhost:$(WEB_PORT)' \
 		'STATOR_KEYCLOAK_URL=http://localhost:$(KEYCLOAK_PORT)' \
+		'STATOR_TEST_SUPERUSER_URL=postgres://stator:$(POSTGRES_PASSWORD)@127.0.0.1:$(POSTGRES_PORT)/stator?sslmode=disable' \
 		> $(STACK_ENV_FILE)
 
 .PHONY: up

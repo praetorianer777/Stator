@@ -22,6 +22,8 @@ type Session struct {
 	// Joined and Left are the provider groups the sign-in changed.
 	Joined []string
 	Left   []string
+	// Role is the standing the sign-in left the person with.
+	Role auth.OrgRole
 	// SessionID and LSN let the caller's first reads see the sign-in's writes.
 	SessionID uuid.UUID
 	LSN       db.LSN
@@ -79,14 +81,6 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 		if !active {
 			return auth.ErrUserInactive
 		}
-		var member bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM org_member WHERE org_id = $1 AND user_id = $2)`,
-			orgID, userID).Scan(&member); err != nil {
-			return err
-		}
-		if !member {
-			return ErrNotAMember
-		}
 
 		var create bool
 		err = tx.QueryRow(ctx, `SELECT create_groups FROM oidc_provider WHERE org_id = $1 AND enabled`, orgID).Scan(&create)
@@ -94,6 +88,11 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 			return ErrNotConfigured
 		}
 		if err != nil {
+			return err
+		}
+		// Before the groups, whose rows need a membership to hang off: a mapped
+		// group is an administrator's yes given in advance.
+		if out.Role, err = followMapping(ctx, tx, orgID, userID, identity.Groups); err != nil {
 			return err
 		}
 		out.Joined, out.Left, err = syncGroups(ctx, tx, orgID, userID, identity.Groups, create)

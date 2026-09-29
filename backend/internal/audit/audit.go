@@ -17,8 +17,16 @@ import (
 const (
 	ActionMemberAdmitted = "member.admitted"
 	ActionMemberDeclined = "member.declined"
-	ActionTokenCreated   = "token.created"
-	ActionTokenRevoked   = "token.revoked"
+	ActionMemberRemoved  = "member.removed"
+	// ActionMemberJoined is somebody let in by a mapped group on their first
+	// sign-in, with nobody here clicking.
+	ActionMemberJoined = "member.joined"
+	// ActionMemberRoleChanged is a role the identity provider's groups changed.
+	ActionMemberRoleChanged = "member.role_changed"
+	ActionGroupRoleSet      = "sso.group_role_set"
+	ActionGroupRoleRemoved  = "sso.group_role_removed"
+	ActionTokenCreated      = "token.created"
+	ActionTokenRevoked      = "token.revoked"
 )
 
 // Entry is one act to record.

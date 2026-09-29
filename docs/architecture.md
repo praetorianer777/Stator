@@ -189,6 +189,9 @@ stack on its published ports: the session cookie and the sign-in redirects are
 bound to `http://localhost:$WEB_PORT`, so the browser has to see what a person
 sees. A setup project signs alice and bob in once and stores their sessions
 under `e2e/.auth/`; specs tagged `@auth` skip while the stack cannot sign
-anyone in. Chromium runs at desktop size and at 360x740.
+anyone in. Chromium runs at desktop size and at 360x740. What no endpoint
+makes yet, such as an organization whose provider is down, a spec arranges
+straight in the database through `e2e/fixtures/db.ts`, with the superuser URL
+`.cache/stack.env` names, and removes again.
 
 A Helm chart follows later.
