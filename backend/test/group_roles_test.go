@@ -137,6 +137,26 @@ func TestAMappedGroupGrantsItsRoleAndTakesItBack(t *testing.T) {
 		}
 	})
 
+	t.Run("the administrator sees both mappings", func(t *testing.T) {
+		resp, body := admin.get(t, a.URL+httpapi.APIPrefix+"/oidc-provider/group-roles")
+		var out struct {
+			GroupRoles []struct {
+				Group string `json:"group"`
+				Role  string `json:"role"`
+			} `json:"groupRoles"`
+		}
+		if err := json.Unmarshal([]byte(body), &out); err != nil || resp.StatusCode != http.StatusOK {
+			t.Fatalf("GET /oidc-provider/group-roles = %s %s", resp.Status, body)
+		}
+		got := map[string]string{}
+		for _, m := range out.GroupRoles {
+			got[m.Group] = m.Role
+		}
+		if len(got) != 2 || got["stator-administrators"] != "admin" || got["engineering"] != "member" {
+			t.Fatalf("group roles = %v", got)
+		}
+	})
+
 	t.Run("the list of members says the role comes from the provider", func(t *testing.T) {
 		resp, body := admin.get(t, a.URL+httpapi.APIPrefix+"/users")
 		var out struct {
