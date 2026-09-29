@@ -123,7 +123,7 @@ The basic-auth Secrets holding one password each. CNPG reads them in exactly
 this shape, and the bundled database and the Jobs read the same ones.
 */}}
 {{- define "stator.credentialSecret" -}}
-{{- $suffix := dict "dbOwner" "db-owner" "dbApp" "db-app" "dbAdmin" "db-admin" "valkey" "valkey" -}}
+{{- $suffix := dict "dbOwner" "db-owner" "dbApp" "db-app" "dbAdmin" "db-admin" "valkey" "valkey" "secretKey" "secret-key" -}}
 {{- default (printf "%s-%s" (include "stator.fullname" .root) (get $suffix .name)) (get .root.Values.secrets.names .name) -}}
 {{- end -}}
 
@@ -228,6 +228,7 @@ STATOR_S3_USE_SSL: {{ .Values.s3.useSSL | quote }}
 {{- $host := include "stator.dbHost" . -}}
 {{ include "stator.passwordEnv" (dict "root" . "name" "dbApp" "var" "DB_APP_PASSWORD") }}
 {{ include "stator.passwordEnv" (dict "root" . "name" "dbAdmin" "var" "DB_ADMIN_PASSWORD") }}
+{{ include "stator.passwordEnv" (dict "root" . "name" "secretKey" "var" "STATOR_SECRET_KEY") }}
 - name: STATOR_DB_PRIMARY_URL
   value: {{ include "stator.dbURL" (dict "root" . "role" $v.appRole "var" "DB_APP_PASSWORD" "host" $host) | quote }}
 - name: STATOR_DB_ADMIN_URL

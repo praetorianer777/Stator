@@ -177,13 +177,16 @@ secrets:
   # passwords, so those Secrets must exist.
   generate: true
   passwordLength: 32
-  # Blank means <fullname>-db-owner, -db-app, -db-admin and -valkey. A
+  # Blank means <fullname>-db-owner, -db-app, -db-admin, -valkey and -secret-key. A
   # password you supply ends up inside a URL, so keep it to letters and digits.
   names:
     dbOwner: ""
     dbApp: ""
     dbAdmin: ""
     valkey: ""
+    # STATOR_SECRET_KEY, which seals stored secrets such as an identity
+    # provider's client secret: 32 random bytes in base64, in the key password.
+    secretKey: ""
   # The S3 keys only you can supply. create: the chart renders them into a
   # Secret. existingSecret: you made one with the keys s3-access-key and
   # s3-secret-key, and the chart only names it.
