@@ -6,6 +6,7 @@ cd "$(dirname "$0")"
 
 echo "🐚 Shell tests"
 ./tests/test-release.sh
+./tests/test-helm.sh
 ./.claude/hooks/tests/branch-guard-test.sh
 
 # Each layer joins the gate in the change that introduces it, through a

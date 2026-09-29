@@ -1,0 +1,46 @@
+{{- if .Values.jobs.migrate.enabled }}
+{{/*
+One pod and no retries, so two migration runs never overlap. It connects as the
+owner, on the -rw service with cnpg: it writes DDL, and the api and worker
+would refuse to start as this role.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "stator.fullname" . }}-migrate
+  labels:
+    {{- include "stator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    {{- include "stator.hookAnnotations" (dict "helm" "post-install,pre-upgrade" "argo" "Sync" "weight" "-4") | nindent 4 }}
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        {{- include "stator.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "stator.serviceAccountName" . }}
+      {{- with .Values.images.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "stator.image" (dict "root" $ "name" "backend") }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          command: ["/app/migrate", "up"]
+          env:
+            {{- include "stator.passwordEnv" (dict "root" . "name" "dbOwner" "var" "DB_OWNER_PASSWORD") | nindent 12 }}
+            - name: STATOR_DB_PRIMARY_URL
+              value: {{ include "stator.dbURL" (dict "root" . "role" (include "stator.ownerRole" .) "var" "DB_OWNER_PASSWORD" "host" (include "stator.dbHost" .)) | quote }}
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+{{- end }}

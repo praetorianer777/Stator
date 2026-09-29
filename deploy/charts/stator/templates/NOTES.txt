@@ -1,0 +1,24 @@
+Stator {{ .Chart.AppVersion }} is installed as {{ .Release.Name }}.
+
+  {{ include "stator.appURL" . }}
+
+Writes go to {{ include "stator.dbHost" . }}.
+{{- with include "stator.replicaHosts" . }}
+Reads go to {{ . }} when the replica a read reaches has caught up, otherwise to the primary.
+{{- else }}
+Reads go there too: no read replica is configured.
+{{- end }}
+{{ if .Values.secrets.generate }}
+Database and Valkey passwords are in Secrets generated once and kept when the
+release is removed:
+
+  kubectl get secret -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/part-of=stator
+{{ end }}
+{{- if not .Values.ingress.enabled }}
+There is no Ingress. To look at it:
+
+  kubectl port-forward svc/{{ include "stator.fullname" . }}-web 8080:80
+{{ end }}
+{{- if not .Values.s3.enabled }}
+Uploads are off: no bucket is configured, and an upload is refused saying so.
+{{ end }}
