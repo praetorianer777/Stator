@@ -465,6 +465,51 @@
     background: var(--color-selection);
     opacity: 0.6;
   }
+  .doc-content figure[data-image] img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-control);
+  }
+  .doc-content figure[data-image].ProseMirror-selectednode img,
+  .doc-content figure[data-image].ProseMirror-selectednode [data-image-missing] {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  .doc-content [data-image-missing],
+  .doc-content .doc-missing-file,
+  .doc-content [data-attachment-chip][data-missing] {
+    color: var(--color-ink-muted);
+  }
+  .doc-content [data-image-missing] {
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-control);
+    padding: 0.75rem;
+    font-size: var(--text-sm);
+  }
+  .doc-content [data-attachment-chip] {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: var(--radius-control);
+    background: var(--color-surface-sunken);
+    padding: 0 0.375rem;
+    font-weight: 500;
+  }
+  .doc-content [data-attachment-chip][data-missing] {
+    text-decoration: line-through;
+  }
+  .doc-content [data-attachment-chip].ProseMirror-selectednode {
+    outline: 2px solid var(--color-focus);
+  }
+  .doc-content [data-upload-placeholder] {
+    display: inline-block;
+    border-radius: var(--radius-control);
+    background: var(--color-accent-subtle);
+    padding: 0 0.375rem;
+    font-size: var(--text-sm);
+    color: var(--color-ink);
+  }
   .doc-content [data-panel] {
     border-left: 3px solid var(--panel-edge);
     border-radius: var(--radius-control);

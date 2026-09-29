@@ -12,6 +12,8 @@ import { SlashMenu } from "./SlashMenu";
 import { filterSlashItems, type SlashItem } from "./slashItems";
 import { EditorToolbar } from "./Toolbar";
 import { useSuggestion } from "./useSuggestion";
+import type { AttachmentIndex } from "./attachmentIndex";
+import type { UploadFile } from "./attachments";
 
 /** What a form may do to the editor from outside: put words in, or empty it. */
 export interface EditorHandle {
@@ -34,6 +36,10 @@ export interface EditorProps {
   onSubmit?: () => void;
   "aria-label"?: string;
   handle?: (handle: EditorHandle) => void;
+  /** Takes dropped, pasted and picked files to the page; without it the editor takes none. */
+  upload?: UploadFile;
+  /** Which files the page still has, so a deleted one is drawn as missing. */
+  attachments?: AttachmentIndex;
 }
 
 /**
@@ -51,6 +57,8 @@ export function Editor({
   onSubmit,
   "aria-label": ariaLabel = t.editor.label,
   handle,
+  upload,
+  attachments,
 }: EditorProps) {
   const slashId = useId();
   const mentionId = useId();
@@ -69,6 +77,8 @@ export function Editor({
     extensions: editorExtensions({
       placeholder,
       submit: () => submitRef.current?.(),
+      upload,
+      attachments,
       slash: { items: ({ query }) => filterSlashItems(query), render: slash.renderer },
       mention: {
         items: ({ query }) => mentionMatches(peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),

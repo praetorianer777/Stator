@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { usePage, useUpdatePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { Button, ErrorBanner, Field, PageHeader, Skeleton } from "@/components/ui";
+import { useEditorAttachments } from "@/features/attachments/hooks";
 import { Editor } from "@/features/editor/Editor";
 import { emptyDoc, type Doc } from "@/features/editor/schema";
 import { PAGE_TITLE_MAX_LENGTH } from "@/config";
@@ -33,6 +34,7 @@ function PageForm({ page, space }: { page: Page; space: Space }) {
   const [title, setTitle] = useState(page.title);
   const [body, setBody] = useState<Doc | null>(page.body);
   const [titleError, setTitleError] = useState("");
+  const files = useEditorAttachments(page.id);
 
   const view = (saved: Page) =>
     saved.home
@@ -74,7 +76,10 @@ function PageForm({ page, space }: { page: Page; space: Space }) {
         error={titleError}
         controlSize="lg"
       />
-      <Editor id="page-body" value={page.body} onChange={setBody} onSubmit={() => save()} />
+      {files.errors.map((message) => (
+        <ErrorBanner key={message}>{message}</ErrorBanner>
+      ))}
+      <Editor id="page-body" value={page.body} onChange={setBody} onSubmit={() => save()} upload={files.upload} attachments={files.index} />
     </form>
   );
 }

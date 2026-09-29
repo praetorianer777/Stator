@@ -6,6 +6,7 @@ import { CODE_LANGUAGES, TABLE_DEFAULT_COLS, TABLE_DEFAULT_ROWS } from "@/config
 import { t } from "@/i18n";
 import { languageLabel } from "./languages";
 import { RovingToolbar } from "./RovingToolbar";
+import { AttachButton, ImageTools } from "./AttachmentTools";
 import { CELL_BACKGROUNDS, HEADING_LEVELS, PANEL_KINDS, safeHref, type PanelKind } from "./schema";
 
 // A press on a toolbar control must not take the selection out of the editor.
@@ -136,6 +137,7 @@ export function EditorToolbar({ editor, onCopyHeadingLink }: { editor: Editor; o
             onClick={b.run}
           />
         ))}
+        <AttachButton editor={editor} />
       </RovingToolbar>
       {linking && (
         <LinkForm
@@ -246,6 +248,7 @@ export function EditorToolbar({ editor, onCopyHeadingLink }: { editor: Editor; o
           <ToolButton label={t.editor.removePanel} action="remove-panel" run={() => chain().unsetPanel().run()} />
         </RovingToolbar>
       )}
+      <ImageTools editor={editor} />
       {state.level > 0 && state.anchor && (
         <RovingToolbar label={t.editor.headingTools} data-editor-tools="heading">
           <Button
