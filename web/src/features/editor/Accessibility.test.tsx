@@ -50,7 +50,9 @@ describe("the editor's development page", () => {
     expect(await axeViolations({ popupOpen: true })).toEqual([]);
   });
 
-  it("passes axe with the table, code and panel tools out", async () => {
+  // Two tests rather than one: four axe passes in a single test outlasted its
+  // time on a busy machine.
+  it("passes axe with the table tools and their menu out", async () => {
     const { user, box } = await openEditor();
     await user.click(box);
     await user.keyboard("/table{Enter}");
@@ -62,7 +64,10 @@ describe("the editor's development page", () => {
     await screen.findByRole("menu", { name: "Cell background" });
     expect(await axeViolations({ popupOpen: true })).toEqual([]);
     await user.keyboard("{Escape}");
+  });
 
+  it("passes axe with the code and panel tools out", async () => {
+    const { box } = await openEditor();
     placeCaretIn(box.querySelector("pre code")!);
     await screen.findByRole("toolbar", { name: "Code block" });
     expect(await axeViolations()).toEqual([]);
