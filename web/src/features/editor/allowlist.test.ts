@@ -1,4 +1,3 @@
-import "@/test/layout";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";

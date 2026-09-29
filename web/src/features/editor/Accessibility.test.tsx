@@ -1,4 +1,3 @@
-import "@/test/layout";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
