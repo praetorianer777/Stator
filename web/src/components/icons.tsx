@@ -67,6 +67,21 @@ export const Icon = {
   Expand: makeIcon("expand", ["M2.5 3h11v10h-11z", "M6 3v10", "m9 6.5 1.5 1.5L9 9.5"]),
   Menu: makeIcon("menu", ["M2.5 4h11", "M2.5 8h11", "M2.5 12h11"]),
   X: makeIcon("x", ["m4 4 8 8", "m12 4-8 8"]),
+  Plus: makeIcon("plus", ["M8 3v10", "M3 8h10"]),
+  Users: makeIcon("users", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),
+  Check: makeIcon("check", ["m3 8.5 3 3 7-7"]),
+  More: makeIcon("more", ["M3.5 8h.01", "M8 8h.01", "M12.5 8h.01"]),
+  Edit: makeIcon("edit", ["m10.5 2.5 3 3-8 8h-3v-3z", "m9 4 3 3"]),
+  Trash: makeIcon("trash", ["M2.5 4.5h11", "M5.5 4.5V3h5v1.5", "M4 4.5 4.7 13h6.6l.7-8.5", "M7 7.5v3.5", "M9 7.5v3.5"]),
+  Upload: makeIcon("upload", ["M8 10.5V3", "m4.5 6.5 3.5-3.5 3.5 3.5", "M2.5 13.5h11"]),
+  Download: makeIcon("download", ["M8 3v7.5", "m4.5 7 3.5 3.5L11.5 7", "M2.5 13.5h11"]),
+  Share: makeIcon("share", ["M8 9.5V2.5", "m5 5.5 3-3 3 3", "M3.5 8v5h9V8"]),
+  Palette: makeIcon("palette", [
+    "M8 2.5a5.5 5.5 0 1 0 0 11c.8 0 1.2-.6 1-1.3-.3-.9.3-1.7 1.2-1.7h1.3a2 2 0 0 0 2-2A5.5 5.5 0 0 0 8 2.5Z",
+    "M5 7.5h.01",
+    "M7 5h.01",
+    "M10 5.5h.01",
+  ]),
 } as const;
 
 export type IconName = keyof typeof Icon;

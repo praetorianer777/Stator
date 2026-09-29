@@ -39,3 +39,46 @@ export function applyTheme(theme: Theme): void {
 export function nextTheme(theme: Theme): Theme {
   return THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length]!;
 }
+
+// A custom theme is one stylesheet in the head, written by the loader once
+// the server has answered and, before that, from what this browser saw last.
+export const CUSTOM_THEME_STYLE_ID = "stator-theme";
+export const CUSTOM_THEME_CACHE_KEY = "stator.theme-css";
+
+/** Puts a compiled theme on the page, or takes it off with null. */
+export function applyCustomTheme(css: string | null): void {
+  let style = document.getElementById(CUSTOM_THEME_STYLE_ID);
+  if (css === null) {
+    style?.remove();
+    return;
+  }
+  if (!style) {
+    style = document.createElement("style");
+    style.id = CUSTOM_THEME_STYLE_ID;
+    document.head.appendChild(style);
+  }
+  if (style.textContent !== css) style.textContent = css;
+}
+
+/** Remembers a compiled theme so the next load paints it before the server answers. */
+export function cacheCustomTheme(entry: { key: string; css: string } | null): void {
+  try {
+    if (entry === null) localStorage.removeItem(CUSTOM_THEME_CACHE_KEY);
+    else localStorage.setItem(CUSTOM_THEME_CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    // A theme that is not remembered is still applied.
+  }
+}
+
+/** What the last load left behind, if anything. */
+export function readCachedTheme(): { key: string; css: string } | null {
+  try {
+    const raw = localStorage.getItem(CUSTOM_THEME_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { key?: unknown; css?: unknown };
+    if (typeof parsed.key === "string" && typeof parsed.css === "string") return { key: parsed.key, css: parsed.css };
+  } catch {
+    // Unreadable storage, or a cache written by an older version.
+  }
+  return null;
+}
