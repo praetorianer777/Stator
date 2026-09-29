@@ -30,3 +30,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
   replayed it. Replica lag is checked on each read's own connection and
   sampled across `STATOR_DB_REPLICA_LAG_SAMPLES` connections by the health
   loop, so reads stay correct behind a load balanced read service.
+- Helm chart `deploy/charts/stator`: the api, worker and web, the roles,
+  migrate, seed and password Jobs, an Ingress and a ServiceMonitor. With
+  `cnpg.enabled` it renders a CloudNativePG cluster whose `-rw` service takes
+  the writes and whose `-ro` service takes the reads once there is more than
+  one instance. `tests/test-helm.sh` lints and renders it in the gate.
+- Separate pool sizes for writes and reads (`STATOR_DB_PRIMARY_MAX_CONNS`,
+  `STATOR_DB_REPLICA_MAX_CONNS`; `STATOR_DB_MAX_CONNS` still sizes both), and
+  per pool metrics: connections taken, time spent waiting, and fallbacks to
+  the primary by reason.

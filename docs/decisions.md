@@ -3,6 +3,16 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: Reads go to CloudNativePG's -ro service
+
+On Kubernetes the chart points reads at the CNPG cluster's `-ro` service
+instead of at each replica by name. The service follows the operator through
+failovers and scaling, which a list of pod names would not; the price is that
+one pool's connections reach different replicas. The api therefore checks
+replay position and lag on the connection each read gets, and the health loop
+samples several connections per pool, so the service is judged by more than
+the one replica a single connection happens to reach.
+
 ## 2026-09-29: Read-your-writes is keyed by session, else by a client cookie
 
 A write's position is kept in Valkey for `STATOR_READ_YOUR_WRITES_TTL` under a

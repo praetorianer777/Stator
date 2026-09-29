@@ -148,4 +148,37 @@ runs in the Go toolchain container on the stack's network and reaches every
 service by name; it writes files to a bucket of its own, `stator-test`, beside
 the app's `stator-files`.
 
-A Helm chart follows later.
+### Kubernetes
+
+`deploy/charts/stator` is the Helm chart, modelled on Armature's. It runs the
+api, the worker and the web behind one Ingress host, with a ConfigMap of the
+settings every workload shares and the credentials by reference from Secrets.
+A hook Job generates the database and Valkey passwords once, as basic-auth
+Secrets; the roles Job makes `stator_app` and `stator_admin`; the migrate Job
+applies the migrations as the schema's owner; the seed Job is for
+development only. A ServiceMonitor scrapes the api's metrics port.
+
+With `cnpg.enabled` the chart renders a CloudNativePG `Cluster` from
+`cnpg.spec` (instances, storage, resources, backup and anything else the
+operator takes), and the operator creates the two runtime roles. CNPG gives
+the cluster two services:
+
+- `<cluster>-rw` always points at the primary. `STATOR_DB_PRIMARY_URL` and
+  `STATOR_DB_ADMIN_URL` name it, and so does the migrate Job.
+- `<cluster>-ro` balances connections across the replicas.
+  `STATOR_DB_REPLICA_URLS` names it when `cnpg.readReplicas` is on and there
+  is more than one instance; otherwise it is empty and reads go to `-rw`.
+
+Behind `-ro` one pool's connections land on different replicas, which is why
+the api judges replay position and lag on each read's own connection rather
+than per pool (see "Reads, writes and replicas" above). The write pool and
+each read pool are sized apart (`STATOR_DB_PRIMARY_MAX_CONNS`,
+`STATOR_DB_REPLICA_MAX_CONNS`), and `/metrics` reports each pool's
+connections taken, the time spent waiting for one, and each read pool's
+fallbacks to the primary by reason.
+
+For a trial, `values-demo.yaml` brings one Postgres pod and one Valkey pod of
+the chart's own. The chart refuses to render with both `cnpg.enabled` and
+`postgresql.enabled`, and refuses replicas behind more than one api pod
+without a Valkey they share. `tests/test-helm.sh` runs `helm lint` and
+`helm template` in a container for each layout and checks the rendered URLs.
