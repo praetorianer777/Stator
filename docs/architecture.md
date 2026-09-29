@@ -182,3 +182,13 @@ the chart's own. The chart refuses to render with both `cnpg.enabled` and
 `postgresql.enabled`, and refuses replicas behind more than one api pod
 without a Valkey they share. `tests/test-helm.sh` runs `helm lint` and
 `helm template` in a container for each layout and checks the rendered URLs.
+
+The browser suite (`e2e/`, `mk/e2e.mk`) runs in Microsoft's Playwright image
+of the version `e2e/package.json` pins, on the host's network, and reaches the
+stack on its published ports: the session cookie and the sign-in redirects are
+bound to `http://localhost:$WEB_PORT`, so the browser has to see what a person
+sees. A setup project signs alice and bob in once and stores their sessions
+under `e2e/.auth/`; specs tagged `@auth` skip while the stack cannot sign
+anyone in. Chromium runs at desktop size and at 360x740.
+
+A Helm chart follows later.

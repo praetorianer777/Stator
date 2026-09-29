@@ -78,6 +78,11 @@ Without CNPG, set `database.host` and, for replicas of your own,
 of its own. `values.yaml` documents every setting; see also
 `docs/architecture.md`.
 
+The browser suite in `e2e/` runs against a running stack:
+`make test-e2e` runs all of it, `ONLY=drawer` the tests whose title or tag
+matches, `WORKERS=1` one at a time. `make e2e-report` serves the last run's
+report with its traces on `http://localhost:9323`.
+
 ## Contributing
 
 Every change hangs off an issue and a branch named `<type>/<issue>-<slug>`,
