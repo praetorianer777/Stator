@@ -1,6 +1,7 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
+import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -108,8 +109,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(first).toContainText("First thought.");
     await first.locator('[data-action="edit-comment"]').click();
     const editor = page.locator(`#edit-${started.id}`);
-    await editor.click();
-    await page.keyboard.press("ControlOrMeta+End");
+    await caretTo(editor, "end");
     await page.keyboard.type(" Revised.");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(first).toContainText("First thought. Revised.");

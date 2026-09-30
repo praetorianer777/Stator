@@ -1,6 +1,7 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
+import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -28,8 +29,7 @@ async function openPage(page: Page, spaceKey: string, target: WikiPage) {
 /** Opens the page's editor with the caret at the end of its words. */
 async function editPage(page: Page) {
   await page.locator('[data-action="edit-page"]').click();
-  await page.locator("#page-body").click();
-  await page.keyboard.press("ControlOrMeta+End");
+  await caretTo(page.locator("#page-body"), "end");
 }
 
 /** Types an at sign and a name, and waits for the person to be offered. */
