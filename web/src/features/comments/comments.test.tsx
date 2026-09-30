@@ -232,6 +232,46 @@ describe("the comments below a page", () => {
     expect(sent.some((each) => each.path.endsWith("/comments"))).toBe(false);
   });
 
+  it("focuses the new thread once it is listed after posting it", async () => {
+    // A frame that runs before React commits is what lost focus before.
+    vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+      run(0);
+      return 0;
+    });
+    const listed: Thread[] = [];
+    stubPage({
+      threads: [],
+      count: 0,
+      more: {
+        [`GET /pages/${pageId}/comments`]: () => ({ status: 200, body: { threads: listed } }),
+        [`POST /pages/${pageId}/comments`]: () => {
+          listed.push(aThread({ id: otherThreadId, comments: [aComment({ id: otherThreadId, threadId: otherThreadId })] }));
+          return { status: 201, body: { thread: listed[0] } };
+        },
+      },
+    });
+    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await userEvent.click(await screen.findByRole("button", { name: "Add a comment" }));
+    await write("new-comment", "Looks good");
+    await userEvent.click(screen.getByRole("button", { name: "Comment" }));
+    await waitFor(() => expect(document.querySelector(`[data-thread="${otherThreadId}"]`)).toHaveFocus());
+  });
+
+  it("puts focus back on Reply once a reply is posted", async () => {
+    vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+      run(0);
+      return 0;
+    });
+    stubPage({ more: { [`POST /comments/${threadId}/replies`]: { status: 201, body: { comment: aComment(), thread: aThread() } } } });
+    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    const first = (await within(await screen.findByRole("region", { name: /Comments/ })).findAllByRole("article"))[0]!;
+    await userEvent.click(within(first).getByRole("button", { name: "Reply" }));
+    await write(`reply-${threadId}`, "Agreed");
+    await userEvent.click(within(first).getByRole("button", { name: "Post reply" }));
+    await waitFor(() => expect(document.getElementById(`reply-${threadId}`)).toBeNull());
+    await waitFor(() => expect(within(first).getByRole("button", { name: "Reply" })).toHaveFocus());
+  });
+
   it("brings the thread a link names into view and focuses it", async () => {
     const scrolled = vi.fn();
     Element.prototype.scrollIntoView = scrolled;

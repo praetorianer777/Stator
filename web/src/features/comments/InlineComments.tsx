@@ -6,6 +6,7 @@ import { Icon } from "@/components/icons";
 import { INLINE_COMMENT_BUTTON_GAP_PX, INLINE_COMMENT_KEY_CODE, INLINE_COMMENT_SHORTCUT, INLINE_QUOTE_SHOWN_LENGTH } from "@/config";
 import { PassagesContext, type Passages } from "@/features/editor/passages";
 import { t } from "@/i18n";
+import { useFocusWhenRendered } from "@/lib/focus";
 import { Composer, ThreadView } from "./CommentsSection";
 import { markPassage, relocate, selectedPassage, type Selected } from "./passages";
 
@@ -30,10 +31,6 @@ function Quote({ thread }: { thread: Thread }) {
   );
 }
 
-function focusSoon(selector: string) {
-  requestAnimationFrame(() => document.querySelector<HTMLElement>(selector)?.focus());
-}
-
 /**
  * A page's text with its passages: highlights, commenting on a selection, the open thread in a panel,
  * and, after `below`, every passage's thread listed for the keyboard, detached and resolved ones included.
@@ -48,6 +45,8 @@ export function InlineComments({ page, thread, children, below }: { page: Page; 
   const [selected, setSelected] = useState<{ passage: Selected; top: number; left: number } | null>(null);
   const [composing, setComposing] = useState<{ passage: Selected; threadId: string } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const focusWhenRendered = useFocusWhenRendered();
+  const focusWhenShown = useCallback((selector: string) => focusWhenRendered(() => document.querySelector<HTMLElement>(selector)), [focusWhenRendered]);
   const body = page.body;
   const start = useStartInlineThread(page.id, () => body);
   const resolve = useResolveThread(page.id);
@@ -65,13 +64,13 @@ export function InlineComments({ page, thread, children, below }: { page: Page; 
       if (found.anchor?.state === "anchored" && !found.resolved) {
         setComposing(null);
         setActive(id);
-        focusSoon(`#${PANEL_ID}`);
+        focusWhenShown(`#${PANEL_ID}`);
         return;
       }
       if (found.resolved) setShowResolved(true);
-      focusSoon(`#${SECTION_ID} [data-thread="${CSS.escape(id)}"]`);
+      focusWhenShown(`#${SECTION_ID} [data-thread="${CSS.escape(id)}"]`);
     },
-    [threads],
+    [threads, focusWhenShown],
   );
 
   const shownIds = useMemo(
@@ -155,7 +154,7 @@ export function InlineComments({ page, thread, children, below }: { page: Page; 
               onSuccess: () => {
                 if (each.id === active) {
                   setActive(undefined);
-                  focusSoon(`#${SECTION_ID}`);
+                  focusWhenShown(`#${SECTION_ID}`);
                 }
               },
             },
@@ -216,7 +215,7 @@ export function InlineComments({ page, thread, children, below }: { page: Page; 
                       setComposing(null);
                       setActive(made.id);
                       window.getSelection()?.removeAllRanges();
-                      focusSoon(`#${PANEL_ID}`);
+                      focusWhenShown(`#${PANEL_ID}`);
                     },
                   },
                 );

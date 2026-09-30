@@ -7,6 +7,7 @@ import { Icon } from "@/components/icons";
 import { COMMENT_HIGHLIGHT_MS } from "@/config";
 import { DocView } from "@/features/editor/DocView";
 import { t } from "@/i18n";
+import { useFocusWhenRendered } from "@/lib/focus";
 
 const CommentEditor = lazy(() => import("./CommentEditor"));
 
@@ -43,6 +44,7 @@ export function CommentsSection({ page, thread }: { page: Page; thread?: string 
   const start = useStartThread(page.id);
   const [composing, setComposing] = useState(false);
   const addRef = useRef<HTMLButtonElement>(null);
+  const focusWhenRendered = useFocusWhenRendered();
   const [highlight, setHighlight] = useState<string>();
   const threads = data ?? [];
   const canComment = page.can.comment && !page.unpublished;
@@ -112,14 +114,14 @@ export function CommentsSection({ page, thread }: { page: Page; thread?: string 
                   start.mutate(body, {
                     onSuccess: (made) => {
                       setComposing(false);
-                      requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-thread="${CSS.escape(made.id)}"]`)?.focus());
+                      focusWhenRendered(() => document.querySelector<HTMLElement>(`[data-thread="${CSS.escape(made.id)}"]`));
                     },
                   })
                 }
                 onCancel={() => {
                   start.reset();
                   setComposing(false);
-                  requestAnimationFrame(() => addRef.current?.focus());
+                  focusWhenRendered(() => addRef.current);
                 }}
               />
             ) : (
@@ -151,6 +153,7 @@ export function ThreadView({
   const reply = useReply(pageId);
   const [replying, setReplying] = useState(false);
   const replyRef = useRef<HTMLButtonElement>(null);
+  const focusWhenRendered = useFocusWhenRendered();
   const [first, ...replies] = thread.comments;
   if (!first) return null;
   return (
@@ -192,7 +195,7 @@ export function ThreadView({
                   {
                     onSuccess: () => {
                       setReplying(false);
-                      requestAnimationFrame(() => replyRef.current?.focus());
+                      focusWhenRendered(() => replyRef.current);
                     },
                   },
                 )
@@ -200,7 +203,7 @@ export function ThreadView({
               onCancel={() => {
                 reply.reset();
                 setReplying(false);
-                requestAnimationFrame(() => replyRef.current?.focus());
+                focusWhenRendered(() => replyRef.current);
               }}
             />
           ) : (
