@@ -22,6 +22,9 @@
       "name": "auth"
     },
     {
+      "name": "comments"
+    },
+    {
       "name": "drafts"
     },
     {
@@ -32,6 +35,12 @@
     },
     {
       "name": "labels"
+    },
+    {
+      "name": "mentions"
+    },
+    {
+      "name": "notifications"
     },
     {
       "name": "pages"
@@ -56,6 +65,9 @@
     },
     {
       "name": "trash"
+    },
+    {
+      "name": "watching"
     }
   ],
   "paths": {
@@ -416,6 +428,331 @@
         }
       }
     },
+    "/comments/{commentID}": {
+      "delete": {
+        "operationId": "deleteComment",
+        "summary": "Delete one's own comment, or anybody's with the space's delete permission; its words go, its replies stay.",
+        "tags": [
+          "comments"
+        ],
+        "parameters": [
+          {
+            "name": "commentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getThread",
+        "summary": "The whole thread a comment belongs to, where a notification leads.",
+        "tags": [
+          "comments"
+        ],
+        "parameters": [
+          {
+            "name": "commentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "thread": {
+                      "$ref": "#/components/schemas/Thread"
+                    }
+                  },
+                  "required": [
+                    "thread"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "editComment",
+        "summary": "Rewrite one's own comment; nobody else may.",
+        "tags": [
+          "comments"
+        ],
+        "parameters": [
+          {
+            "name": "commentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BodyInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "comment": {
+                      "$ref": "#/components/schemas/Comment"
+                    }
+                  },
+                  "required": [
+                    "comment"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comments/{commentID}/reopen": {
+      "post": {
+        "operationId": "reopenThread",
+        "summary": "Open a resolved inline thread again; refused with not_inline below the page.",
+        "tags": [
+          "comments"
+        ],
+        "parameters": [
+          {
+            "name": "commentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "thread": {
+                      "$ref": "#/components/schemas/Thread"
+                    }
+                  },
+                  "required": [
+                    "thread"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comments/{commentID}/replies": {
+      "post": {
+        "operationId": "reply",
+        "summary": "Reply at the end of the thread a comment belongs to; a resolved thread opens again.",
+        "tags": [
+          "comments"
+        ],
+        "parameters": [
+          {
+            "name": "commentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BodyInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "comment": {
+                      "$ref": "#/components/schemas/Comment"
+                    },
+                    "thread": {
+                      "$ref": "#/components/schemas/Thread"
+                    }
+                  },
+                  "required": [
+                    "comment",
+                    "thread"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comments/{commentID}/resolve": {
+      "post": {
+        "operationId": "resolveThread",
+        "summary": "Mark the inline thread a comment belongs to resolved; refused with not_inline below the page.",
+        "tags": [
+          "comments"
+        ],
+        "parameters": [
+          {
+            "name": "commentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "thread": {
+                      "$ref": "#/components/schemas/Thread"
+                    }
+                  },
+                  "required": [
+                    "thread"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/groups": {
       "get": {
         "operationId": "listGroups",
@@ -644,6 +981,244 @@
                     "offset",
                     "pages",
                     "total"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notification-preferences": {
+      "get": {
+        "operationId": "notificationPreferences",
+        "summary": "How the caller wants to be told: which kinds in the app and by mail, the digest, and watching their own pages.",
+        "tags": [
+          "notifications"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preferences": {
+                      "$ref": "#/components/schemas/Preferences"
+                    }
+                  },
+                  "required": [
+                    "preferences"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveNotificationPreferences",
+        "summary": "Replace how the caller wants to be told.",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preferences": {
+                      "$ref": "#/components/schemas/Preferences"
+                    }
+                  },
+                  "required": [
+                    "preferences"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "listNotifications",
+        "summary": "What the caller was told about pages they may still view, the latest first.",
+        "tags": [
+          "notifications"
+        ],
+        "parameters": [
+          {
+            "name": "unread",
+            "in": "query",
+            "description": "true lists only what is not read yet.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "notifications": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Notification"
+                      }
+                    },
+                    "offset": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "notifications",
+                    "offset",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read": {
+      "post": {
+        "operationId": "markRead",
+        "summary": "Mark the named notifications read, or all of them.",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "operationId": "unreadCount",
+        "summary": "How many notifications are unread, for the badge; the client polls it.",
+        "tags": [
+          "notifications"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "unread": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "unread"
                   ]
                 }
               }
@@ -1472,6 +2047,139 @@
         }
       }
     },
+    "/pages/{pageID}/comments": {
+      "get": {
+        "operationId": "listComments",
+        "summary": "A page's threads with their comments, oldest first: below the page, inline, or both; resolved ones included.",
+        "tags": [
+          "comments"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "page or inline; both when absent.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "page",
+                "inline"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "threads": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Thread"
+                      }
+                    }
+                  },
+                  "required": [
+                    "threads"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "startThread",
+        "summary": "Start a thread below a published page; refused with unpublished before its first publish.",
+        "tags": [
+          "comments"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "thread": {
+                      "$ref": "#/components/schemas/Thread"
+                    }
+                  },
+                  "required": [
+                    "thread"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/compare": {
       "get": {
         "operationId": "compareVersions",
@@ -1746,6 +2454,80 @@
         }
       }
     },
+    "/pages/{pageID}/inline-comments": {
+      "post": {
+        "operationId": "startInlineThread",
+        "summary": "Start a thread on a passage, sending the published body with the passage marked; refused with anchor_conflict when the body changed meanwhile.",
+        "tags": [
+          "comments"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InlineThreadInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    },
+                    "thread": {
+                      "$ref": "#/components/schemas/Thread"
+                    }
+                  },
+                  "required": [
+                    "page",
+                    "thread"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/labels": {
       "get": {
         "operationId": "listPageLabels",
@@ -1889,6 +2671,75 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/mentionable": {
+      "get": {
+        "operationId": "listMentionable",
+        "summary": "Members to mention on a page, each saying whether they may view it once published; only those are told.",
+        "tags": [
+          "mentions"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words the name, or a person's email, starts with.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "people": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Mentionable"
+                      }
+                    }
+                  },
+                  "required": [
+                    "people"
+                  ]
+                }
+              }
+            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -2386,6 +3237,179 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/watch": {
+      "delete": {
+        "operationId": "unwatchPage",
+        "summary": "Stop watching a page; a watch above it still covers it, and the caller's edits no longer watch it again.",
+        "tags": [
+          "watching"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "watchPage",
+        "summary": "Watch a page alone, or with every page below it; replaces the caller's own watch on it.",
+        "tags": [
+          "watching"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "watching": {
+                      "$ref": "#/components/schemas/Watching"
+                    }
+                  },
+                  "required": [
+                    "watching"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/watchers": {
+      "get": {
+        "operationId": "listWatchers",
+        "summary": "Who hears about a page, by name, and through which watch; only people who may view it.",
+        "tags": [
+          "watching"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "offset": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "watchers": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Watcher"
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "watchers"
+                  ]
+                }
+              }
+            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -3403,6 +4427,72 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/watch": {
+      "delete": {
+        "operationId": "unwatchSpace",
+        "summary": "Stop watching a space; watches on its pages stay.",
+        "tags": [
+          "watching"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "watchSpace",
+        "summary": "Watch every page of a space, now and later.",
+        "tags": [
+          "watching"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -4541,6 +5631,77 @@
           }
         }
       }
+    },
+    "/watches": {
+      "get": {
+        "operationId": "listWatches",
+        "summary": "The caller's own watches on what they may still view, the latest first.",
+        "tags": [
+          "watching"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "offset": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "watches": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Watch"
+                      }
+                    }
+                  },
+                  "required": [
+                    "limit",
+                    "offset",
+                    "total",
+                    "watches"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4633,6 +5794,25 @@
         },
         "required": [
           "role"
+        ]
+      },
+      "Anchor": {
+        "type": "object",
+        "properties": {
+          "quote": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "anchored",
+              "detached"
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "quote"
         ]
       },
       "Asset": {
@@ -4770,6 +5950,17 @@
           "updatedAt"
         ]
       },
+      "BodyInput": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "A JSON value."
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
       "Can": {
         "type": "object",
         "properties": {
@@ -4817,6 +6008,75 @@
         },
         "required": [
           "themeId"
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "authorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "can": {
+            "$ref": "#/components/schemas/CommentCan"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "editedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "threadId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "threadId",
+          "authorId",
+          "authorName",
+          "body",
+          "deleted",
+          "createdAt",
+          "editedAt",
+          "can"
+        ]
+      },
+      "CommentCan": {
+        "type": "object",
+        "properties": {
+          "delete": {
+            "type": "boolean"
+          },
+          "edit": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "delete"
         ]
       },
       "CompareSide": {
@@ -4921,6 +6181,25 @@
         "required": [
           "parentId",
           "withChildren"
+        ]
+      },
+      "Counts": {
+        "type": "object",
+        "properties": {
+          "detached": {
+            "type": "integer"
+          },
+          "inline": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "inline",
+          "detached"
         ]
       },
       "CreateInput": {
@@ -5446,6 +6725,33 @@
           "version"
         ]
       },
+      "Inherited": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "subtree",
+              "space"
+            ]
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PageTitle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "page"
+        ]
+      },
       "InheritedRestriction": {
         "type": "object",
         "properties": {
@@ -5469,6 +6775,26 @@
           "page",
           "view",
           "edit"
+        ]
+      },
+      "InlineThreadInput": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "A JSON value."
+          },
+          "pageBody": {
+            "description": "A JSON value."
+          },
+          "threadId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "threadId",
+          "body",
+          "pageBody"
         ]
       },
       "Input": {
@@ -5602,6 +6928,21 @@
           "password"
         ]
       },
+      "MarkReadInput": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "boolean"
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
       "MeResponse": {
         "type": "object",
         "properties": {
@@ -5710,6 +7051,30 @@
           "role"
         ]
       },
+      "Mentionable": {
+        "type": "object",
+        "properties": {
+          "canView": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "canView"
+        ]
+      },
       "MoveInput": {
         "type": "object",
         "properties": {
@@ -5731,6 +7096,86 @@
         },
         "required": [
           "parentId"
+        ]
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "actorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "commentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "mentioned",
+              "replied",
+              "commented",
+              "resolved",
+              "published",
+              "created"
+            ]
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageLink"
+          },
+          "readAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "actorId",
+          "actorName",
+          "page",
+          "threadId",
+          "commentId",
+          "version",
+          "excerpt",
+          "createdAt",
+          "readAt"
         ]
       },
       "Operation": {
@@ -5888,6 +7333,9 @@
           "can": {
             "$ref": "#/components/schemas/PageCan"
           },
+          "comments": {
+            "$ref": "#/components/schemas/Counts"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -5950,6 +7398,9 @@
           },
           "version": {
             "type": "integer"
+          },
+          "watching": {
+            "$ref": "#/components/schemas/Watching"
           }
         },
         "required": [
@@ -5967,6 +7418,8 @@
           "can",
           "ancestors",
           "labels",
+          "comments",
+          "watching",
           "createdByName",
           "createdAt",
           "updatedByName",
@@ -6057,6 +7510,26 @@
           "path"
         ]
       },
+      "PageLink": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey"
+        ]
+      },
       "PageRef": {
         "type": "object",
         "properties": {
@@ -6094,6 +7567,22 @@
         "required": [
           "page",
           "space"
+        ]
+      },
+      "PageTitle": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
         ]
       },
       "PageUpdateInput": {
@@ -6184,6 +7673,34 @@
           "id",
           "name",
           "email"
+        ]
+      },
+      "Preferences": {
+        "type": "object",
+        "properties": {
+          "autoWatch": {
+            "type": "boolean"
+          },
+          "digest": {
+            "type": "string",
+            "enum": [
+              "off",
+              "hourly",
+              "daily"
+            ]
+          },
+          "email": {
+            "$ref": "#/components/schemas/Switches"
+          },
+          "inApp": {
+            "$ref": "#/components/schemas/Switches"
+          }
+        },
+        "required": [
+          "inApp",
+          "email",
+          "digest",
+          "autoWatch"
         ]
       },
       "Provider": {
@@ -6393,6 +7910,9 @@
           },
           "comment": {
             "type": "string"
+          },
+          "notifyWatchers": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -6684,6 +8204,9 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "watching": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -6694,7 +8217,8 @@
           "homePageId",
           "createdAt",
           "updatedAt",
-          "can"
+          "can",
+          "watching"
         ]
       },
       "SpaceGrant": {
@@ -6915,6 +8439,37 @@
           "slug"
         ]
       },
+      "Switches": {
+        "type": "object",
+        "properties": {
+          "commented": {
+            "type": "boolean"
+          },
+          "created": {
+            "type": "boolean"
+          },
+          "mentioned": {
+            "type": "boolean"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "replied": {
+            "type": "boolean"
+          },
+          "resolved": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mentioned",
+          "replied",
+          "commented",
+          "resolved",
+          "published",
+          "created"
+        ]
+      },
       "Tag": {
         "type": "object",
         "properties": {
@@ -7020,6 +8575,95 @@
           "default",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "Thread": {
+        "type": "object",
+        "properties": {
+          "anchor": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Anchor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can": {
+            "$ref": "#/components/schemas/ThreadCan"
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "inline"
+            ]
+          },
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resolved": {
+            "type": "boolean"
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "resolvedByName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pageId",
+          "kind",
+          "anchor",
+          "resolved",
+          "resolvedByName",
+          "resolvedAt",
+          "comments",
+          "can"
+        ]
+      },
+      "ThreadCan": {
+        "type": "object",
+        "properties": {
+          "reply": {
+            "type": "boolean"
+          },
+          "resolve": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reply",
+          "resolve"
+        ]
+      },
+      "ThreadInput": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "A JSON value."
+          }
+        },
+        "required": [
+          "body"
         ]
       },
       "TrashItem": {
@@ -7214,6 +8858,120 @@
           "authorName",
           "createdAt",
           "restoredFrom"
+        ]
+      },
+      "Watch": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "subtree",
+              "space"
+            ]
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PageTitle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "spaceKey",
+          "spaceName",
+          "page",
+          "createdAt"
+        ]
+      },
+      "WatchInput": {
+        "type": "object",
+        "properties": {
+          "subtree": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Watcher": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "via": {
+            "type": "string",
+            "enum": [
+              "page",
+              "subtree",
+              "space"
+            ]
+          },
+          "viaPage": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PageTitle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "via",
+          "viaPage"
+        ]
+      },
+      "Watching": {
+        "type": "object",
+        "properties": {
+          "inherited": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Inherited"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "page": {
+            "type": "boolean"
+          },
+          "subtree": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "page",
+          "subtree",
+          "inherited"
         ]
       }
     },

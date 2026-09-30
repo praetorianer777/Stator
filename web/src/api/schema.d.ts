@@ -141,6 +141,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comments/{commentID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The whole thread a comment belongs to, where a notification leads. */
+        get: operations["getThread"];
+        put?: never;
+        post?: never;
+        /** Delete one's own comment, or anybody's with the space's delete permission; its words go, its replies stay. */
+        delete: operations["deleteComment"];
+        options?: never;
+        head?: never;
+        /** Rewrite one's own comment; nobody else may. */
+        patch: operations["editComment"];
+        trace?: never;
+    };
+    "/comments/{commentID}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open a resolved inline thread again; refused with not_inline below the page. */
+        post: operations["reopenThread"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comments/{commentID}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reply at the end of the thread a comment belongs to; a resolved thread opens again. */
+        post: operations["reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comments/{commentID}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark the inline thread a comment belongs to resolved; refused with not_inline below the page. */
+        post: operations["resolveThread"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/groups": {
         parameters: {
             query?: never;
@@ -201,6 +271,75 @@ export interface paths {
         };
         /** The pages out of the trash that carry a label and that the caller may view, by title. */
         get: operations["listLabelPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How the caller wants to be told: which kinds in the app and by mail, the digest, and watching their own pages. */
+        get: operations["notificationPreferences"];
+        /** Replace how the caller wants to be told. */
+        put: operations["saveNotificationPreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the caller was told about pages they may still view, the latest first. */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark the named notifications read, or all of them. */
+        post: operations["markRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many notifications are unread, for the badge; the client polls it. */
+        get: operations["unreadCount"];
         put?: never;
         post?: never;
         delete?: never;
@@ -418,6 +557,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page's threads with their comments, oldest first: below the page, inline, or both; resolved ones included. */
+        get: operations["listComments"];
+        put?: never;
+        /** Start a thread below a published page; refused with unpublished before its first publish. */
+        post: operations["startThread"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/compare": {
         parameters: {
             query?: never;
@@ -471,6 +628,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/inline-comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a thread on a passage, sending the published body with the passage marked; refused with anchor_conflict when the body changed meanwhile. */
+        post: operations["startInlineThread"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/labels": {
         parameters: {
             query?: never;
@@ -501,6 +675,23 @@ export interface paths {
         post?: never;
         /** Take a label off a page; one it does not carry is no change. */
         delete: operations["removePageLabel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/mentionable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Members to mention on a page, each saying whether they may view it once published; only those are told. */
+        get: operations["listMentionable"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -620,6 +811,41 @@ export interface paths {
         put?: never;
         /** Note that the caller opened a page, for their recent pages. */
         post: operations["visitPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Watch a page alone, or with every page below it; replaces the caller's own watch on it. */
+        put: operations["watchPage"];
+        post?: never;
+        /** Stop watching a page; a watch above it still covers it, and the caller's edits no longer watch it again. */
+        delete: operations["unwatchPage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/watchers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who hears about a page, by name, and through which watch; only people who may view it. */
+        get: operations["listWatchers"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -847,6 +1073,24 @@ export interface paths {
         /** Put a trashed page back where it was, or under the home page when that is gone. */
         post: operations["restorePage"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Watch every page of a space, now and later. */
+        put: operations["watchSpace"];
+        post?: never;
+        /** Stop watching a space; watches on its pages stay. */
+        delete: operations["unwatchSpace"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1164,6 +1408,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/watches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's own watches on what they may still view, the latest first. */
+        get: operations["listWatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1192,6 +1453,11 @@ export interface components {
         AdmitRequest: {
             /** @enum {string} */
             role: "owner" | "admin" | "member";
+        };
+        Anchor: {
+            quote: string;
+            /** @enum {string} */
+            state: "anchored" | "detached";
         };
         Asset: {
             contentType: string;
@@ -1233,6 +1499,10 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        BodyInput: {
+            /** @description A JSON value. */
+            body: unknown;
+        };
         Can: {
             addComments: boolean;
             administer: boolean;
@@ -1245,6 +1515,27 @@ export interface components {
             builtIn?: boolean;
             /** Format: uuid */
             themeId: string | null;
+        };
+        Comment: {
+            /** Format: uuid */
+            authorId: string | null;
+            authorName: string;
+            /** @description A JSON value. */
+            body: unknown;
+            can: components["schemas"]["CommentCan"];
+            /** Format: date-time */
+            createdAt: string;
+            deleted: boolean;
+            /** Format: date-time */
+            editedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            threadId: string;
+        };
+        CommentCan: {
+            delete: boolean;
+            edit: boolean;
         };
         CompareSide: {
             authorName: string;
@@ -1276,6 +1567,11 @@ export interface components {
             parentId: string;
             title?: string;
             withChildren: boolean;
+        };
+        Counts: {
+            detached: number;
+            inline: number;
+            page: number;
         };
         CreateInput: {
             description?: string;
@@ -1421,10 +1717,23 @@ export interface components {
             title: string;
             version: string;
         };
+        Inherited: {
+            /** @enum {string} */
+            kind: "page" | "subtree" | "space";
+            page: components["schemas"]["PageTitle"] | null;
+        };
         InheritedRestriction: {
             edit: components["schemas"]["Subject"][];
             page: components["schemas"]["Ref"];
             view: components["schemas"]["Subject"][];
+        };
+        InlineThreadInput: {
+            /** @description A JSON value. */
+            body: unknown;
+            /** @description A JSON value. */
+            pageBody: unknown;
+            /** Format: uuid */
+            threadId: string;
         };
         Input: {
             name?: string;
@@ -1463,6 +1772,10 @@ export interface components {
             email: string;
             password: string;
         };
+        MarkReadInput: {
+            all?: boolean;
+            ids?: string[];
+        };
         MeResponse: {
             organization: components["schemas"]["CurrentOrg"] | null;
             organizations: components["schemas"]["Membership"][];
@@ -1491,6 +1804,13 @@ export interface components {
             /** @enum {string} */
             role: "owner" | "admin" | "member";
         };
+        Mentionable: {
+            canView: boolean;
+            email: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         MoveInput: {
             /** Format: uuid */
             afterId?: string;
@@ -1499,6 +1819,26 @@ export interface components {
             /** Format: uuid */
             parentId: string;
             withChildren?: boolean;
+        };
+        Notification: {
+            /** Format: uuid */
+            actorId: string | null;
+            actorName: string;
+            /** Format: uuid */
+            commentId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            excerpt: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "mentioned" | "replied" | "commented" | "resolved" | "published" | "created";
+            page: components["schemas"]["PageLink"];
+            /** Format: date-time */
+            readAt: string | null;
+            /** Format: uuid */
+            threadId: string | null;
+            version: number | null;
         };
         Operation: {
             description?: string;
@@ -1541,6 +1881,7 @@ export interface components {
             /** @description A JSON value. */
             body: unknown;
             can: components["schemas"]["PageCan"];
+            comments: components["schemas"]["Counts"];
             /** Format: date-time */
             createdAt: string;
             createdByName: string;
@@ -1561,6 +1902,7 @@ export interface components {
             updatedAt: string;
             updatedByName: string;
             version: number;
+            watching: components["schemas"]["Watching"];
         };
         PageCan: {
             comment: boolean;
@@ -1588,6 +1930,12 @@ export interface components {
             spaceName: string;
             title: string;
         };
+        PageLink: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            title: string;
+        };
         PageRef: {
             /** Format: uuid */
             id: string;
@@ -1598,6 +1946,11 @@ export interface components {
         PageResponse: {
             page: components["schemas"]["Page"];
             space: components["schemas"]["Space"];
+        };
+        PageTitle: {
+            /** Format: uuid */
+            id: string;
+            title: string;
         };
         PageUpdateInput: {
             /** @description A JSON value. */
@@ -1625,6 +1978,13 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+        };
+        Preferences: {
+            autoWatch: boolean;
+            /** @enum {string} */
+            digest: "off" | "hourly" | "daily";
+            email: components["schemas"]["Switches"];
+            inApp: components["schemas"]["Switches"];
         };
         Provider: {
             clientId: string;
@@ -1686,6 +2046,7 @@ export interface components {
         RestoreInput: {
             baseVersion: number;
             comment?: string;
+            notifyWatchers?: boolean;
         };
         Restricted: {
             edit: boolean;
@@ -1765,6 +2126,7 @@ export interface components {
             name: string;
             /** Format: date-time */
             updatedAt: string;
+            watching: boolean;
         };
         SpaceGrant: {
             permissions: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
@@ -1821,6 +2183,14 @@ export interface components {
         SwitchOrgRequest: {
             slug: string;
         };
+        Switches: {
+            commented: boolean;
+            created: boolean;
+            mentioned: boolean;
+            published: boolean;
+            replied: boolean;
+            resolved: boolean;
+        };
         Tag: {
             description?: string;
             name: string;
@@ -1851,6 +2221,29 @@ export interface components {
             spec: components["schemas"]["Spec"];
             /** Format: date-time */
             updatedAt: string;
+        };
+        Thread: {
+            anchor: components["schemas"]["Anchor"] | null;
+            can: components["schemas"]["ThreadCan"];
+            comments: components["schemas"]["Comment"][];
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "page" | "inline";
+            /** Format: uuid */
+            pageId: string;
+            resolved: boolean;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            resolvedByName: string;
+        };
+        ThreadCan: {
+            reply: boolean;
+            resolve: boolean;
+        };
+        ThreadInput: {
+            /** @description A JSON value. */
+            body: unknown;
         };
         TrashItem: {
             /** Format: uuid */
@@ -1907,6 +2300,32 @@ export interface components {
             number: number;
             restoredFrom: number | null;
             title: string;
+        };
+        Watch: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            kind: "page" | "subtree" | "space";
+            page: components["schemas"]["PageTitle"] | null;
+            spaceKey: string;
+            spaceName: string;
+        };
+        WatchInput: {
+            subtree?: boolean;
+        };
+        Watcher: {
+            email: string;
+            name: string;
+            /** Format: uuid */
+            userId: string;
+            /** @enum {string} */
+            via: "page" | "subtree" | "space";
+            viaPage: components["schemas"]["PageTitle"] | null;
+        };
+        Watching: {
+            inherited: components["schemas"]["Inherited"] | null;
+            page: boolean;
+            subtree: boolean;
         };
     };
     responses: never;
@@ -2198,6 +2617,227 @@ export interface operations {
             };
         };
     };
+    getThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        thread: components["schemas"]["Thread"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    editComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BodyInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        comment: components["schemas"]["Comment"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reopenThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        thread: components["schemas"]["Thread"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BodyInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        comment: components["schemas"]["Comment"];
+                        thread: components["schemas"]["Thread"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    resolveThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        thread: components["schemas"]["Thread"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listGroups: {
         parameters: {
             query?: {
@@ -2329,6 +2969,174 @@ export interface operations {
                         offset: number;
                         pages: components["schemas"]["LabeledPage"][];
                         total: number;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    notificationPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        preferences: components["schemas"]["Preferences"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    saveNotificationPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Preferences"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        preferences: components["schemas"]["Preferences"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                /** @description true lists only what is not read yet. */
+                unread?: boolean;
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        limit: number;
+                        notifications: components["schemas"]["Notification"][];
+                        offset: number;
+                        total: number;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    markRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkReadInput"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unreadCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        unread: number;
                     };
                 };
             };
@@ -2912,6 +3720,88 @@ export interface operations {
             };
         };
     };
+    listComments: {
+        parameters: {
+            query?: {
+                /** @description page or inline; both when absent. */
+                kind?: "page" | "inline";
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        threads: components["schemas"]["Thread"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThreadInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        thread: components["schemas"]["Thread"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     compareVersions: {
         parameters: {
             query?: {
@@ -3086,6 +3976,53 @@ export interface operations {
             };
         };
     };
+    startInlineThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InlineThreadInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                        thread: components["schemas"]["Thread"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listPageLabels: {
         parameters: {
             query?: never;
@@ -3174,6 +4111,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listMentionable: {
+        parameters: {
+            query?: {
+                /** @description Words the name, or a person's email, starts with. */
+                q?: string;
+                /** @description 1 to 50; 20 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        people: components["schemas"]["Mentionable"][];
+                    };
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -3479,6 +4454,112 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    watchPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        watching: components["schemas"]["Watching"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unwatchPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWatchers: {
+        parameters: {
+            query?: {
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        limit: number;
+                        offset: number;
+                        total: number;
+                        watchers: components["schemas"]["Watcher"][];
+                    };
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -4109,6 +5190,64 @@ export interface operations {
                         page: components["schemas"]["Page"];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    watchSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unwatchSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -4894,6 +6033,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWatches: {
+        parameters: {
+            query?: {
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        limit: number;
+                        offset: number;
+                        total: number;
+                        watches: components["schemas"]["Watch"][];
+                    };
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

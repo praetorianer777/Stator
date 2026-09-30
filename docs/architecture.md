@@ -27,7 +27,8 @@ Keycloak / any OIDC provider <── login ──┘
 - An operation agreed before it is built carries `pending: true` in the table:
   the router answers it 501 `not_implemented` and the integration suite does
   not expect it covered. Whoever builds it removes the mark and routes its
-  handler; `docs/api-contract-m1.md` is the agreement behind the current ones.
+  handler; `docs/api-contract-m1.md` and `docs/api-contract-m2.md` are the
+  agreements behind them.
 - Migrations: goose, embedded in the binary, applied by `cmd/migrate`.
 - Configuration: environment variables only, prefix `STATOR_`.
 - Observability: `log/slog`, Prometheus metrics, OpenTelemetry traces.

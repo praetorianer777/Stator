@@ -12,7 +12,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
 // MaxTitleLength bounds a title, matching the web client's.
@@ -71,11 +73,15 @@ type Page struct {
 	// Ancestors are the pages above this one, the home page first.
 	Ancestors []Ref `json:"ancestors"`
 	// Labels are the words on the page, by name.
-	Labels        []string  `json:"labels"`
-	CreatedByName string    `json:"createdByName"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedByName string    `json:"updatedByName"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	Labels []string `json:"labels"`
+	// Comments counts the discussion for the page's header.
+	Comments comment.Counts `json:"comments"`
+	// Watching is how the caller follows the page.
+	Watching      watch.Watching `json:"watching"`
+	CreatedByName string         `json:"createdByName"`
+	CreatedAt     time.Time      `json:"createdAt"`
+	UpdatedByName string         `json:"updatedByName"`
+	UpdatedAt     time.Time      `json:"updatedAt"`
 
 	access perm.PageAccess
 }

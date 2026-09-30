@@ -9,9 +9,11 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -20,6 +22,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
 // The API described in terms of the code that serves it. Every route in Routes
@@ -248,6 +251,79 @@ var operations = []operation{
 		query: []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: ok(nil)},
 	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a file off its page for good.",
 		responses: none()},
+
+	// Comments (#22) and inline comments (#23); see docs/api-contract-m2.md.
+	{method: "GET", path: "/pages/{pageID}/comments", handler: "handleListComments", tag: "comments", pending: true,
+		summary:   "A page's threads with their comments, oldest first: below the page, inline, or both; resolved ones included.",
+		query:     []param{{name: "kind", schema: &openapi.Schema{Type: "string", Enum: enumStrings(comment.Kinds)}, description: "page or inline; both when absent."}},
+		responses: ok(env{"threads": []comment.Thread{}})},
+	{method: "POST", path: "/pages/{pageID}/comments", handler: "handleStartThread", tag: "comments", pending: true,
+		summary: "Start a thread below a published page; refused with unpublished before its first publish.",
+		request: comment.ThreadInput{}, responses: map[int]any{201: env{"thread": comment.Thread{}}, 409: errorEnvelope{}}},
+	{method: "POST", path: "/pages/{pageID}/inline-comments", handler: "handleStartInlineThread", tag: "comments", pending: true,
+		summary: "Start a thread on a passage, sending the published body with the passage marked; refused with anchor_conflict when the body changed meanwhile.",
+		request: comment.InlineThreadInput{}, responses: map[int]any{201: env{"thread": comment.Thread{}, "page": page.Page{}}, 409: errorEnvelope{}}},
+	{method: "GET", path: "/comments/{commentID}", handler: "handleGetThread", tag: "comments", pending: true,
+		summary:   "The whole thread a comment belongs to, where a notification leads.",
+		responses: ok(env{"thread": comment.Thread{}})},
+	{method: "PATCH", path: "/comments/{commentID}", handler: "handleEditComment", tag: "comments", pending: true,
+		summary: "Rewrite one's own comment; nobody else may.",
+		request: comment.BodyInput{}, responses: ok(env{"comment": comment.Comment{}})},
+	{method: "DELETE", path: "/comments/{commentID}", handler: "handleDeleteComment", tag: "comments", pending: true,
+		summary:   "Delete one's own comment, or anybody's with the space's delete permission; its words go, its replies stay.",
+		responses: none()},
+	{method: "POST", path: "/comments/{commentID}/replies", handler: "handleReply", tag: "comments", pending: true,
+		summary: "Reply at the end of the thread a comment belongs to; a resolved thread opens again.",
+		request: comment.BodyInput{}, responses: created(env{"comment": comment.Comment{}, "thread": comment.Thread{}})},
+	{method: "POST", path: "/comments/{commentID}/resolve", handler: "handleResolveThread", tag: "comments", pending: true,
+		summary:   "Mark the inline thread a comment belongs to resolved; refused with not_inline below the page.",
+		responses: map[int]any{200: env{"thread": comment.Thread{}}, 409: errorEnvelope{}}},
+	{method: "POST", path: "/comments/{commentID}/reopen", handler: "handleReopenThread", tag: "comments", pending: true,
+		summary:   "Open a resolved inline thread again; refused with not_inline below the page.",
+		responses: map[int]any{200: env{"thread": comment.Thread{}}, 409: errorEnvelope{}}},
+
+	// Mentions (#24).
+	{method: "GET", path: "/pages/{pageID}/mentionable", handler: "handleListMentionable", tag: "mentions", pending: true,
+		summary: "Members to mention on a page, each saying whether they may view it once published; only those are told.",
+		query:   pickerQuery, responses: ok(env{"people": []perm.Mentionable{}})},
+
+	// Watching (#25).
+	{method: "PUT", path: "/pages/{pageID}/watch", handler: "handleWatchPage", tag: "watching", pending: true,
+		summary: "Watch a page alone, or with every page below it; replaces the caller's own watch on it.",
+		request: watch.Input{}, responses: ok(env{"watching": watch.Watching{}})},
+	{method: "DELETE", path: "/pages/{pageID}/watch", handler: "handleUnwatchPage", tag: "watching", pending: true,
+		summary:   "Stop watching a page; a watch above it still covers it, and the caller's edits no longer watch it again.",
+		responses: none()},
+	{method: "GET", path: "/pages/{pageID}/watchers", handler: "handleListWatchers", tag: "watching", pending: true,
+		summary: "Who hears about a page, by name, and through which watch; only people who may view it.",
+		query:   pageQuery, responses: ok(env{"watchers": []watch.Watcher{}, "total": 0, "limit": 0, "offset": 0})},
+	{method: "PUT", path: "/spaces/{spaceKey}/watch", handler: "handleWatchSpace", tag: "watching", pending: true,
+		summary:   "Watch every page of a space, now and later.",
+		responses: none()},
+	{method: "DELETE", path: "/spaces/{spaceKey}/watch", handler: "handleUnwatchSpace", tag: "watching", pending: true,
+		summary:   "Stop watching a space; watches on its pages stay.",
+		responses: none()},
+	{method: "GET", path: "/watches", handler: "handleListWatches", tag: "watching", pending: true,
+		summary: "The caller's own watches on what they may still view, the latest first.",
+		query:   pageQuery, responses: ok(env{"watches": []watch.Watch{}, "total": 0, "limit": 0, "offset": 0})},
+
+	// Notifications (#26), as Armature serves them.
+	{method: "GET", path: "/notifications", handler: "handleListNotifications", tag: "notifications", pending: true,
+		summary:   "What the caller was told about pages they may still view, the latest first.",
+		query:     append([]param{{name: "unread", schema: &openapi.Schema{Type: "boolean"}, description: "true lists only what is not read yet."}}, pageQuery...),
+		responses: ok(env{"notifications": []notify.Notification{}, "total": 0, "limit": 0, "offset": 0})},
+	{method: "GET", path: "/notifications/unread-count", handler: "handleUnreadCount", tag: "notifications", pending: true,
+		summary:   "How many notifications are unread, for the badge; the client polls it.",
+		responses: ok(env{"unread": 0})},
+	{method: "POST", path: "/notifications/read", handler: "handleMarkRead", tag: "notifications", pending: true,
+		summary: "Mark the named notifications read, or all of them.",
+		request: notify.MarkReadInput{}, responses: none()},
+	{method: "GET", path: "/notification-preferences", handler: "handleNotificationPreferences", tag: "notifications", pending: true,
+		summary:   "How the caller wants to be told: which kinds in the app and by mail, the digest, and watching their own pages.",
+		responses: ok(env{"preferences": notify.Preferences{}})},
+	{method: "PUT", path: "/notification-preferences", handler: "handleSaveNotificationPreferences", tag: "notifications", pending: true,
+		summary: "Replace how the caller wants to be told.",
+		request: notify.Preferences{}, responses: ok(env{"preferences": notify.Preferences{}})},
 }
 
 var (
@@ -305,6 +381,11 @@ func Spec() *openapi.Document {
 	b.Enums[reflect.TypeOf(perm.SpacePermission(""))] = enumStrings(perm.SpacePermissions)
 	b.Enums[reflect.TypeOf(page.DiffChange(""))] = enumStrings(page.DiffChanges)
 	b.Enums[reflect.TypeOf(search.HitType(""))] = enumStrings(search.HitTypes)
+	b.Enums[reflect.TypeOf(comment.Kind(""))] = enumStrings(comment.Kinds)
+	b.Enums[reflect.TypeOf(comment.AnchorState(""))] = enumStrings(comment.AnchorStates)
+	b.Enums[reflect.TypeOf(watch.Kind(""))] = enumStrings(watch.Kinds)
+	b.Enums[reflect.TypeOf(notify.Kind(""))] = enumStrings(notify.Kinds)
+	b.Enums[reflect.TypeOf(notify.Digest(""))] = enumStrings(notify.Digests)
 	// A group grants member or admin; owner is never the provider's to give.
 	granted := &openapi.Schema{Type: "string", Enum: []string{string(auth.RoleAdmin), string(auth.RoleMember)}}
 	b.FieldOverrides["GroupRole.role"] = granted

@@ -12,6 +12,7 @@ export function aSpace(over: Partial<Space> = {}): Space {
     createdAt: "2026-09-29T08:00:00Z",
     updatedAt: "2026-09-29T08:00:00Z",
     can: { editPages: true, administer: true, delete: true, purgeTrash: true, addComments: true, deletePages: true },
+    watching: false,
     ...over,
   };
 }
@@ -33,6 +34,8 @@ export function aPage(over: Partial<Page> = {}): Page {
     can: { edit: true, delete: true, restrict: true, comment: true },
     ancestors: [],
     labels: [],
+    comments: { page: 0, inline: 0, detached: 0 },
+    watching: { page: false, subtree: false, inherited: null },
     createdByName: "Ada Lovelace",
     createdAt: "2026-09-29T08:00:00Z",
     updatedByName: "Ada Lovelace",

@@ -74,6 +74,8 @@ type RestoreInput struct {
 	BaseVersion int `json:"baseVersion"`
 	// Comment replaces the default, which names the version restored.
 	Comment string `json:"comment,omitempty"`
+	// NotifyWatchers tells the page's watchers about the new version.
+	NotifyWatchers bool `json:"notifyWatchers,omitempty"`
 }
 
 // DiffChange says what happened to one top-level block between two sides.
