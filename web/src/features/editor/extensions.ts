@@ -1,4 +1,5 @@
 import { Extension, Node, mergeAttributes, type AnyExtension, type JSONContent } from "@tiptap/core";
+import type { Schema } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
@@ -176,6 +177,28 @@ export function sanitizePasted(node: JSONContent): JSONContent {
   return out;
 }
 
+/**
+ * Drops the nodes and marks a schema lacks, keeping a dropped block's text as
+ * a paragraph, so markdown pasted into a comment cannot bring in a table.
+ */
+export function fitSchema(node: JSONContent, schema: Schema): JSONContent {
+  const out: JSONContent = { ...node };
+  if (node.marks) out.marks = node.marks.filter((mark) => Boolean(schema.marks[mark.type]));
+  if (node.content) {
+    out.content = node.content.flatMap((child): JSONContent[] => {
+      if (!child.type || schema.nodes[child.type]) return [fitSchema(child, schema)];
+      const text = textOfJSON(child).trim();
+      return text ? [{ type: "paragraph", content: [{ type: "text", text }] }] : [];
+    });
+  }
+  return out;
+}
+
+function textOfJSON(node: JSONContent): string {
+  if (node.type === "text") return node.text ?? "";
+  return (node.content ?? []).map(textOfJSON).join(" ");
+}
+
 // Enough markdown to be worth reading as such: a heading, a list, a quote,
 // a fence, a table row, a rule, or inline emphasis, code or a link.
 const MARKDOWN_HINT = /(^|\n)\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s?|```|\|.*\||---+\s*$)|\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\)|~~[^~]+~~/;
@@ -195,7 +218,7 @@ const MarkdownPaste = Extension.create({
             if (!text || !MARKDOWN_HINT.test(text) || view.state.selection.$from.parent.type.spec.code) return false;
             const parsed = editor.markdown?.parse(text) as JSONContent | undefined;
             if (!parsed?.content?.length) return false;
-            return editor.commands.insertContent(sanitizePasted(parsed).content ?? []);
+            return editor.commands.insertContent(fitSchema(sanitizePasted(parsed), editor.schema).content ?? []);
           },
         },
       }),
@@ -250,7 +273,12 @@ const ShiftedHeading = Heading.extend({
   },
 });
 
+/** A page holds every block the allowlist names; a comment holds text and its structure only. */
+export type EditorVariant = "page" | "comment";
+
 export interface ExtensionOptions {
+  /** Which allowlist the editor's schema follows; a page's by default. */
+  variant?: EditorVariant;
   placeholder?: string;
   mention?: Partial<MentionOptions>["suggestion"];
   slash?: Partial<SlashMenuOptions["suggestion"]>;
@@ -262,25 +290,18 @@ export interface ExtensionOptions {
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
-export function editorExtensions({ placeholder, mention, slash, submit, upload, attachments }: ExtensionOptions = {}): AnyExtension[] {
-  return [
+export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments }: ExtensionOptions = {}): AnyExtension[] {
+  const shared: AnyExtension[] = [
     StarterKit.configure({
       underline: false,
       codeBlock: false,
       heading: false,
+      horizontalRule: variant === "page" ? {} : false,
       link: { openOnClick: false, autolink: true, isAllowedUri: (url) => safeHref(url) !== null },
     }),
     ShiftedHeading.configure({ levels: [...HEADING_LEVELS] }),
     Placeholder.configure({ placeholder: placeholder ?? "" }),
-    TaskList,
-    TaskItem.configure({ nested: true, a11y: { checkboxLabel: () => t.editor.taskDone } }),
-    Table.configure({ resizable: false }),
-    TableRow,
-    HeaderCell,
-    Cell,
     CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
-    Panel,
-    HeadingAnchors,
     Markdown,
     MarkdownPaste,
     Mention.configure({
@@ -288,13 +309,6 @@ export function editorExtensions({ placeholder, mention, slash, submit, upload, 
       HTMLAttributes: { "data-mention": "" },
       suggestion: { char: "@", items: () => [], ...mention },
     }),
-    SlashMenu.configure({ suggestion: slash }),
-    TableOfContents,
-    ChildPages,
-    Image.configure({ index: attachments }),
-    AttachmentChip.configure({ index: attachments }),
-    FileUpload.configure({ upload }),
-    Hint,
     Extension.create({
       name: "submitOnModEnter",
       addKeyboardShortcuts() {
@@ -307,5 +321,24 @@ export function editorExtensions({ placeholder, mention, slash, submit, upload, 
         };
       },
     }),
+  ];
+  if (variant === "comment") return shared;
+  return [
+    ...shared,
+    TaskList,
+    TaskItem.configure({ nested: true, a11y: { checkboxLabel: () => t.editor.taskDone } }),
+    Table.configure({ resizable: false }),
+    TableRow,
+    HeaderCell,
+    Cell,
+    Panel,
+    HeadingAnchors,
+    SlashMenu.configure({ suggestion: slash }),
+    TableOfContents,
+    ChildPages,
+    Image.configure({ index: attachments }),
+    AttachmentChip.configure({ index: attachments }),
+    FileUpload.configure({ upload }),
+    Hint,
   ];
 }

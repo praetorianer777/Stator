@@ -44,8 +44,12 @@ export function stubApi(answers: Record<string, Answer | ((request: Request) => 
     const path = url.pathname.replace(/^\/api\/v1/, "");
     const text = await input.clone().text();
     sent.push({ method: input.method, path, body: text ? JSON.parse(text) : undefined });
-    const found = answers[`${input.method} ${path}`];
-    const answer = typeof found === "function" ? await found(input) : (found ?? { status: 404, body: { error: { code: "not_found", message: "Not stubbed." } } });
+    // Every page shows its comments; a test that does not speak of them means none.
+    const found =
+      answers[`${input.method} ${path}`] ??
+      (input.method === "GET" && /^\/pages\/[^/]+\/comments$/.test(path) ? { status: 200, body: { threads: [] } } : undefined);
+    const answer =
+      typeof found === "function" ? await found(input) : (found ?? { status: 404, body: { error: { code: "not_found", message: "Not stubbed." } } });
     return new Response(answer.body === undefined ? null : JSON.stringify(answer.body), {
       status: answer.status,
       headers: { "Content-Type": "application/json" },

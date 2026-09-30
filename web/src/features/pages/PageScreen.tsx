@@ -7,6 +7,7 @@ import { useTrashPage } from "@/api/trash";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
+import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSection";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocPageContext } from "@/features/editor/BlockViews";
@@ -59,8 +60,27 @@ function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
   );
 }
 
+/** How many comments are below the page, as a way down to them. */
+function CommentCount({ count }: { count: number }) {
+  return (
+    <a
+      href={`#${COMMENTS_ID}`}
+      onClick={(event) => {
+        event.preventDefault();
+        document.getElementById(COMMENTS_ID)?.scrollIntoView({ block: "start" });
+      }}
+      aria-label={t.comments.countLink(count)}
+      className="inline-flex h-6 items-center gap-1 rounded-control px-1 text-ink-muted hover:text-ink hover:underline"
+      data-comment-count={count}
+    >
+      <Icon.Comment />
+      {t.comments.count(count)}
+    </a>
+  );
+}
+
 /** A page as a reader sees it: its place, its title, who last changed it, and its document. */
-export function PageScreen({ pageId }: { pageId: string }) {
+export function PageScreen({ pageId, thread }: { pageId: string; thread?: string }) {
   const { data, isLoading, error, refetch } = usePage(pageId);
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
@@ -125,6 +145,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
           <span className="flex flex-wrap items-center gap-2">
             {t.page.updated(page.updatedByName, updatedAt.format(new Date(page.updatedAt)))}
             {(page.restricted.view || page.restricted.edit) && <RestrictedBadge page={page} onOpen={() => setDialog("restrictions")} />}
+            {page.comments.page > 0 && <CommentCount count={page.comments.page} />}
           </span>
         }
         actions={
@@ -190,6 +211,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
       </KnownAttachmentsContext>
       <PageLabels page={page} />
       <AttachmentPanel pageId={page.id} editable={page.can.edit} />
+      <CommentsSection page={page} thread={thread} />
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
       {(dialog === "move" || dialog === "copy") && (

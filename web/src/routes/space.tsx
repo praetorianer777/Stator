@@ -20,10 +20,20 @@ export const spaceRoute = createRoute({
   component: Outlet,
 });
 
+/** A thread to bring into view below the page, as a notification links to it. */
+interface PageAddress {
+  thread?: string;
+}
+
+function pageAddress(search: Record<string, unknown>): PageAddress {
+  return typeof search.thread === "string" && search.thread !== "" ? { thread: search.thread } : {};
+}
+
 /** The space's own address shows its home page. */
 export const spaceHomeRoute = createRoute({
   getParentRoute: () => spaceRoute,
   path: "/",
+  validateSearch: pageAddress,
   loader: async ({ context, params }) => {
     const space = await context.queryClient.ensureQueryData(spaceQuery(params.spaceKey));
     await context.queryClient.ensureQueryData(pageQuery(space.homePageId));
@@ -31,7 +41,8 @@ export const spaceHomeRoute = createRoute({
   },
   component: function SpaceHome() {
     const space = spaceHomeRoute.useLoaderData();
-    return <PageScreen pageId={space.homePageId} />;
+    const { thread } = spaceHomeRoute.useSearch();
+    return <PageScreen pageId={space.homePageId} thread={thread} />;
   },
 });
 
@@ -39,17 +50,38 @@ export const spaceHomeRoute = createRoute({
 export const pageRoute = createRoute({
   getParentRoute: () => spaceRoute,
   path: "/p/$pageId/$slug",
-  loader: async ({ context, params }) => {
+  validateSearch: pageAddress,
+  loaderDeps: ({ search }) => search,
+  loader: async ({ context, params, deps }) => {
     const { page, space } = await context.queryClient.ensureQueryData(pageQuery(params.pageId));
-    if (page.home) throw redirect({ to: "/s/$spaceKey", params: { spaceKey: space.key }, replace: true });
+    if (page.home) throw redirect({ to: "/s/$spaceKey", params: { spaceKey: space.key }, search: deps, replace: true });
     const slug = pageSlug(page.title);
     if (params.slug !== slug || params.spaceKey !== space.key) {
-      throw redirect({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: page.id, slug }, replace: true });
+      throw redirect({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: page.id, slug }, search: deps, replace: true });
     }
   },
   component: function PageRoute() {
     const { pageId } = pageRoute.useParams();
-    return <PageScreen pageId={pageId} />;
+    const { thread } = pageRoute.useSearch();
+    return <PageScreen pageId={pageId} thread={thread} />;
+  },
+});
+
+/** A page by its id alone, as a mail links to it; the slug is put in. */
+export const pageBareRoute = createRoute({
+  getParentRoute: () => spaceRoute,
+  path: "/p/$pageId",
+  validateSearch: pageAddress,
+  loaderDeps: ({ search }) => search,
+  loader: async ({ context, params, deps }) => {
+    const { page, space } = await context.queryClient.ensureQueryData(pageQuery(params.pageId));
+    if (page.home) throw redirect({ to: "/s/$spaceKey", params: { spaceKey: space.key }, search: deps, replace: true });
+    throw redirect({
+      to: "/s/$spaceKey/p/$pageId/$slug",
+      params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) },
+      search: deps,
+      replace: true,
+    });
   },
 });
 
