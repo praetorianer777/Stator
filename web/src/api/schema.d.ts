@@ -21,6 +21,199 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the caller connected their Armature token, and whom it acts as. */
+        get: operations["getArmatureAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/account/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask Armature now whether the caller's stored token still works. */
+        post: operations["checkArmatureAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/account/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Store the caller's Armature personal access token, once Armature accepts it; it is never answered again. */
+        put: operations["connectArmatureAccount"];
+        post?: never;
+        /** Forget the caller's Armature token. */
+        delete: operations["disconnectArmatureAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's Armature instance and what to enter in Armature's webhook settings, or null. For administrators. */
+        get: operations["getArmatureConnection"];
+        /** Connect an Armature instance; a new address or organization forgets every stored token. For administrators. */
+        put: operations["saveArmatureConnection"];
+        post?: never;
+        /** Disconnect Armature, forgetting every stored token and the webhook secret. For administrators. */
+        delete: operations["removeArmatureConnection"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/issue-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The issue types a new issue may take, subtasks left out. */
+        get: operations["listArmatureIssueTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Issues by key for smart links, as the caller may see them in Armature; status says why there are none. */
+        get: operations["lookupArmatureIssues"];
+        put?: never;
+        /** File one Armature issue per item of a selection, in order, stopping at the first Armature refuses. */
+        post: operations["createArmatureIssues"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/issues/{issueKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One issue for an issue block or a hover card; null when the caller may not see it. */
+        get: operations["getArmatureIssue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The Armature projects the caller may see, and whether they may file issues in each. */
+        get: operations["listArmatureProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Issues an NQL query matches, for an issue list block; refused with bad_query and its position. */
+        get: operations["searchArmatureIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/theme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the caller follows their active Armature theme, and whether Armature answered. */
+        get: operations["armatureThemeFollow"];
+        /** Follow the caller's active Armature theme instead of a Stator one; GET /themes/active then answers it. */
+        put: operations["followArmatureTheme"];
+        post?: never;
+        /** Stop following the Armature theme and return to the organization's default. */
+        delete: operations["unfollowArmatureTheme"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/webhook/{orgSlug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Where Armature posts issue events, signed with the organization's webhook secret; clears the cached issues they name. */
+        post: operations["armatureWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/attachments/{attachmentID}": {
         parameters: {
             query?: never;
@@ -520,6 +713,23 @@ export interface paths {
         head?: never;
         /** Publish a new title or body as the next version, with no comment, over the version it was made from; drafts are left alone. */
         patch: operations["updatePage"];
+        trace?: never;
+    };
+    "/pages/{pageID}/armature-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The issues a page's published version names, and whether each carries its remote link in Armature yet. */
+        get: operations["listArmatureLinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/pages/{pageID}/attachments": {
@@ -1435,6 +1645,7 @@ export interface components {
                 [key: string]: string;
             };
             message: string;
+            position?: number;
             requestId?: string;
         };
         APIToken: {
@@ -1449,6 +1660,22 @@ export interface components {
             name: string;
             scopes: "read"[];
             secret?: string;
+        };
+        Account: {
+            baseUrl: string | null;
+            /** Format: date-time */
+            checkedAt: string | null;
+            configured: boolean;
+            connected: boolean;
+            /** @enum {string} */
+            status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+            user: components["schemas"]["AccountUser"] | null;
+        };
+        AccountUser: {
+            email: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         AdmitRequest: {
             /** @enum {string} */
@@ -1558,6 +1785,23 @@ export interface components {
                 [key: string]: components["schemas"]["SecurityScheme"];
             };
         };
+        Connection: {
+            /** Format: uuid */
+            armatureOrgId: string | null;
+            baseUrl: string;
+            connected: number;
+            orgSlug: string;
+            /** Format: date-time */
+            updatedAt: string;
+            webhookSecretSet: boolean;
+            webhookTopics: string[];
+            webhookUrl: string;
+        };
+        ConnectionInput: {
+            baseUrl: string;
+            orgSlug: string;
+            webhookSecret?: string;
+        };
         CopyInput: {
             /** Format: uuid */
             afterId?: string;
@@ -1573,10 +1817,26 @@ export interface components {
             inline: number;
             page: number;
         };
+        CreateFailure: {
+            code: string;
+            index: number;
+            message: string;
+        };
         CreateInput: {
             description?: string;
             key: string;
             name: string;
+        };
+        CreateIssuesInput: {
+            items: components["schemas"]["CreateItem"][];
+            /** Format: uuid */
+            pageId: string;
+            projectKey: string;
+            /** Format: uuid */
+            typeId?: string;
+        };
+        CreateItem: {
+            summary: string;
         };
         CreateTokenRequest: {
             /** Format: date-time */
@@ -1740,6 +2000,45 @@ export interface components {
             shared?: boolean;
             spec?: components["schemas"]["Spec"];
         };
+        Issue: {
+            assignee: components["schemas"]["IssuePerson"] | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            dueDate: string | null;
+            key: string;
+            /** @enum {string} */
+            priority: "lowest" | "low" | "medium" | "high" | "highest";
+            projectKey: string;
+            reporter: components["schemas"]["IssuePerson"] | null;
+            status: components["schemas"]["IssueStatus"];
+            summary: string;
+            type: components["schemas"]["IssueType"];
+            /** Format: date-time */
+            updatedAt: string;
+            url: string;
+        };
+        IssuePerson: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        IssueResult: {
+            issue: components["schemas"]["Issue"] | null;
+            key: string;
+        };
+        IssueStatus: {
+            /** @enum {string} */
+            category: "todo" | "in_progress" | "done";
+            name: string;
+        };
+        IssueType: {
+            icon: string;
+            /** Format: uuid */
+            id: string;
+            level: number;
+            name: string;
+        };
         JoinRequest: {
             email: string;
             name: string;
@@ -1767,6 +2066,14 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             updatedByName: string;
+        };
+        Link: {
+            error: string | null;
+            key: string;
+            /** @enum {string} */
+            state: "synced" | "pending" | "failed";
+            /** Format: date-time */
+            syncedAt: string | null;
         };
         LoginRequest: {
             email: string;
@@ -1985,6 +2292,11 @@ export interface components {
             digest: "off" | "hourly" | "daily";
             email: components["schemas"]["Switches"];
             inApp: components["schemas"]["Switches"];
+        };
+        Project: {
+            canCreate: boolean;
+            key: string;
+            name: string;
         };
         Provider: {
             clientId: string;
@@ -2222,6 +2534,11 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        ThemeFollow: {
+            following: boolean;
+            /** @enum {string} */
+            status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+        };
         Thread: {
             anchor: components["schemas"]["Anchor"] | null;
             can: components["schemas"]["ThreadCan"];
@@ -2244,6 +2561,9 @@ export interface components {
         ThreadInput: {
             /** @description A JSON value. */
             body: unknown;
+        };
+        TokenInput: {
+            token: string;
         };
         TrashItem: {
             /** Format: uuid */
@@ -2327,6 +2647,17 @@ export interface components {
             page: boolean;
             subtree: boolean;
         };
+        WebhookEnvelope: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: uuid */
+            orgId: string;
+            /** @description A JSON value. */
+            payload: unknown;
+            topic: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -2354,6 +2685,597 @@ export interface operations {
                     "application/json": {
                         can: components["schemas"]["GlobalCan"];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getArmatureAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        account: components["schemas"]["Account"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    checkArmatureAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        account: components["schemas"]["Account"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    connectArmatureAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        account: components["schemas"]["Account"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    disconnectArmatureAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getArmatureConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connection: components["schemas"]["Connection"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    saveArmatureConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connection: components["schemas"]["Connection"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeArmatureConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listArmatureIssueTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issueTypes: components["schemas"]["IssueType"][];
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    lookupArmatureIssues: {
+        parameters: {
+            query?: {
+                /** @description Issue keys, 1 to 50. */
+                key?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issues: components["schemas"]["IssueResult"][];
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createArmatureIssues: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIssuesInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        failed: components["schemas"]["CreateFailure"] | null;
+                        issues: components["schemas"]["Issue"][];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getArmatureIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issueKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issue: components["schemas"]["Issue"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listArmatureProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        projects: components["schemas"]["Project"][];
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchArmatureIssues: {
+        parameters: {
+            query?: {
+                /** @description An NQL query, at most 2000 characters. */
+                q?: string;
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issues: components["schemas"]["Issue"][];
+                        limit: number;
+                        offset: number;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                        total: number;
+                        url: string;
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    armatureThemeFollow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        follow: components["schemas"]["ThemeFollow"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    followArmatureTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        follow: components["schemas"]["ThemeFollow"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unfollowArmatureTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    armatureWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookEnvelope"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -3583,6 +4505,39 @@ export interface operations {
                 content: {
                     "application/json": {
                         page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listArmatureLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        links: components["schemas"]["Link"][];
                     };
                 };
             };

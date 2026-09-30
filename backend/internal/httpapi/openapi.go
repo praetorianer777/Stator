@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
@@ -324,6 +325,75 @@ var operations = []operation{
 	{method: "PUT", path: "/notification-preferences", handler: "handleSaveNotificationPreferences", tag: "notifications",
 		summary: "Replace how the caller wants to be told.",
 		request: notify.Preferences{}, responses: ok(env{"preferences": notify.Preferences{}})},
+
+	// Connecting Armature (#27); see docs/api-contract-m3.md.
+	{method: "GET", path: "/armature/connection", handler: "handleGetArmatureConnection", tag: "armature", pending: true,
+		summary:   "The organization's Armature instance and what to enter in Armature's webhook settings, or null. For administrators.",
+		responses: ok(env{"connection": (*armature.Connection)(nil)})},
+	{method: "PUT", path: "/armature/connection", handler: "handleSaveArmatureConnection", tag: "armature", pending: true,
+		summary: "Connect an Armature instance; a new address or organization forgets every stored token. For administrators.",
+		request: armature.ConnectionInput{}, responses: ok(env{"connection": armature.Connection{}})},
+	{method: "DELETE", path: "/armature/connection", handler: "handleRemoveArmatureConnection", tag: "armature", pending: true,
+		summary:   "Disconnect Armature, forgetting every stored token and the webhook secret. For administrators.",
+		responses: none()},
+	{method: "GET", path: "/armature/account", handler: "handleGetArmatureAccount", tag: "armature", pending: true,
+		summary:   "Whether the caller connected their Armature token, and whom it acts as.",
+		responses: ok(env{"account": armature.Account{}})},
+	{method: "PUT", path: "/armature/account/token", handler: "handleConnectArmatureAccount", tag: "armature", pending: true,
+		summary: "Store the caller's Armature personal access token, once Armature accepts it; it is never answered again.",
+		request: armature.TokenInput{}, responses: ok(env{"account": armature.Account{}})},
+	{method: "POST", path: "/armature/account/check", handler: "handleCheckArmatureAccount", tag: "armature", pending: true,
+		summary:   "Ask Armature now whether the caller's stored token still works.",
+		responses: ok(env{"account": armature.Account{}})},
+	{method: "DELETE", path: "/armature/account/token", handler: "handleDisconnectArmatureAccount", tag: "armature", pending: true,
+		summary:   "Forget the caller's Armature token.",
+		responses: none()},
+
+	// Issues in pages (#28, #29, #30, #31), each call made as the caller.
+	{method: "GET", path: "/armature/issues", handler: "handleLookupArmatureIssues", tag: "armature", pending: true,
+		summary:   "Issues by key for smart links, as the caller may see them in Armature; status says why there are none.",
+		query:     []param{{name: "key", repeated: true, schema: &openapi.Schema{Type: "string"}, description: "Issue keys, 1 to 50."}},
+		responses: ok(env{"status": armature.Status(""), "issues": []armature.IssueResult{}})},
+	{method: "GET", path: "/armature/issues/{issueKey}", handler: "handleGetArmatureIssue", tag: "armature", pending: true,
+		summary:   "One issue for an issue block or a hover card; null when the caller may not see it.",
+		responses: ok(env{"status": armature.Status(""), "issue": (*armature.Issue)(nil)})},
+	{method: "GET", path: "/armature/search", handler: "handleSearchArmatureIssues", tag: "armature", pending: true,
+		summary: "Issues an NQL query matches, for an issue list block; refused with bad_query and its position.",
+		query: []param{
+			{name: "q", description: "An NQL query, at most 2000 characters."},
+			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
+			{name: "offset", schema: intParam},
+		}, responses: map[int]any{200: env{"status": armature.Status(""), "issues": []armature.Issue{}, "total": 0, "limit": 0, "offset": 0, "url": ""}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/armature/projects", handler: "handleListArmatureProjects", tag: "armature", pending: true,
+		summary:   "The Armature projects the caller may see, and whether they may file issues in each.",
+		responses: ok(env{"status": armature.Status(""), "projects": []armature.Project{}})},
+	{method: "GET", path: "/armature/issue-types", handler: "handleListArmatureIssueTypes", tag: "armature", pending: true,
+		summary:   "The issue types a new issue may take, subtasks left out.",
+		responses: ok(env{"status": armature.Status(""), "issueTypes": []armature.IssueType{}})},
+	{method: "POST", path: "/armature/issues", handler: "handleCreateArmatureIssues", tag: "armature", pending: true,
+		summary: "File one Armature issue per item of a selection, in order, stopping at the first Armature refuses.",
+		request: armature.CreateIssuesInput{}, responses: map[int]any{201: env{"issues": []armature.Issue{}, "failed": (*armature.CreateFailure)(nil)}, 409: errorEnvelope{}, 502: errorEnvelope{}}},
+
+	// Pages in Armature (#32).
+	{method: "GET", path: "/pages/{pageID}/armature-links", handler: "handleListArmatureLinks", tag: "armature", pending: true,
+		summary:   "The issues a page's published version names, and whether each carries its remote link in Armature yet.",
+		responses: ok(env{"links": []armature.Link{}})},
+
+	// Webhooks (#33): Armature signs, so nobody signs in.
+	{method: "POST", path: "/armature/webhook/{orgSlug}", handler: "handleArmatureWebhook", tag: "armature", pending: true, public: true,
+		summary: "Where Armature posts issue events, signed with the organization's webhook secret; clears the cached issues they name.",
+		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}}},
+
+	// Following the Armature theme (#34).
+	{method: "GET", path: "/armature/theme", handler: "handleArmatureThemeFollow", tag: "armature", pending: true,
+		summary:   "Whether the caller follows their active Armature theme, and whether Armature answered.",
+		responses: ok(env{"follow": armature.ThemeFollow{}})},
+	{method: "PUT", path: "/armature/theme", handler: "handleFollowArmatureTheme", tag: "armature", pending: true,
+		summary:   "Follow the caller's active Armature theme instead of a Stator one; GET /themes/active then answers it.",
+		responses: ok(env{"follow": armature.ThemeFollow{}})},
+	{method: "DELETE", path: "/armature/theme", handler: "handleUnfollowArmatureTheme", tag: "armature", pending: true,
+		summary:   "Stop following the Armature theme and return to the organization's default.",
+		responses: none()},
 }
 
 var (
@@ -386,6 +456,10 @@ func Spec() *openapi.Document {
 	b.Enums[reflect.TypeOf(watch.Kind(""))] = enumStrings(watch.Kinds)
 	b.Enums[reflect.TypeOf(notify.Kind(""))] = enumStrings(notify.Kinds)
 	b.Enums[reflect.TypeOf(notify.Digest(""))] = enumStrings(notify.Digests)
+	b.Enums[reflect.TypeOf(armature.Status(""))] = enumStrings(armature.Statuses)
+	b.Enums[reflect.TypeOf(armature.LinkState(""))] = enumStrings(armature.LinkStates)
+	b.FieldOverrides["Issue.priority"] = &openapi.Schema{Type: "string", Enum: armature.Priorities}
+	b.FieldOverrides["IssueStatus.category"] = &openapi.Schema{Type: "string", Enum: armature.StatusCategories}
 	// A group grants member or admin; owner is never the provider's to give.
 	granted := &openapi.Schema{Type: "string", Enum: []string{string(auth.RoleAdmin), string(auth.RoleMember)}}
 	b.FieldOverrides["GroupRole.role"] = granted
