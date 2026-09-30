@@ -3,6 +3,46 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: Search reads a page's words in the database, and trims in its SQL
+
+A page's title, weighted A, and the plain text of its body, weighted B, are a
+stored generated `tsvector` column on `page` with a GIN index. The plain text
+comes from `page_plain_text`, a SQL function that reads the document as
+`document.PlainText` does, rather than from the service: a generated column
+cannot call Go, and a text column the service kept would be stale after any
+writer that forgot it, raw SQL and the migration's own backfill included.
+The integration suite holds the two readings to the same answer. The body's
+text is cut at 200000 characters, since a `tsvector` holds at most 1 MB of
+lexemes and a page may be 2 MB.
+
+The configuration `stator_search` is `simple` with `unaccent`: case and
+accents are ignored, words are not stemmed, as in Armature, because one
+organization writes in more than one language. Queries go through
+`websearch_to_tsquery`. A hit whose title matches every word comes before one
+that matches only in the body, then `ts_rank`, then the latest change, which
+is the latest published version, so moving a page to another place in the
+tree does not count as changing it. Quick search asks for each typed word as
+the prefix of a title lexeme (`'word':*A`), built from letters and digits
+only, so nothing typed reaches the tsquery syntax.
+
+Titles and snippets are `ts_headline` output with two private use
+characters as delimiters, stripped from the text first, then split into
+`{text, match}` runs; no markup ever leaves the server. Visibility is a
+condition inside the query that finds the hits, so `total` never counts a page
+the caller may not read. It is `perm.ViewablePage`, the rule every list of
+pages uses, and the restrictive policies of #19 hold raw SQL to the same. A
+person's visits are their own: `page_visit_viewer` lets the app role read
+and write only the actor's visits, and only of pages they may still view.
+
+Files are found by name only. Their bytes are in the bucket, and reading the
+text of plain text files would mean fetching every upload into the database
+and holding a second copy there; a name is what people search a file by. The
+name is indexed as written and with each run of punctuation as a space, since
+the parser would read `plan_v2.pdf` as one path. A file follows its page: on a
+page the caller may not view, an unpublished page or one in the trash, it is
+not found. Pages and files are ranked together, a file counting as a title
+match.
+
 ## 2026-09-30: Permissions are rows, rules are SQL functions, and the database knows who asks
 
 Grants are rows, as in Armature: `global_grant` for `use` and

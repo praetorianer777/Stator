@@ -13,6 +13,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
@@ -128,6 +129,10 @@ func toAPIError(err error) *APIError {
 	var permField *perm.FieldError
 	if errors.As(err, &permField) {
 		return ErrValidation(map[string]string{permField.Field: permField.Message})
+	}
+	var searchField *search.FieldError
+	if errors.As(err, &searchField) {
+		return ErrValidation(map[string]string{searchField.Field: searchField.Message})
 	}
 	var denied *perm.DeniedError
 	if errors.As(err, &denied) {
