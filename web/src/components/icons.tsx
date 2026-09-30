@@ -103,6 +103,7 @@ export const Icon = {
   Key: makeIcon("key", ["M5.5 12.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "m7.6 7.4 5.4-5.4", "m11 4 1.5 1.5", "m9.5 5.5 1.5 1.5"]),
   Copy: makeIcon("copy", ["M5.5 5.5h8v8h-8z", "M10.5 5.5v-3h-8v8h3"]),
   Bell: makeIcon("bell", ["M4 11V7a4 4 0 0 1 8 0v4l1 1.5H3z", "M6.5 13.5a1.5 1.5 0 0 0 3 0"]),
+  Comment: makeIcon("comment", ["M2.5 3.5h11v7.5h-6.5L4 13.5V11H2.5z"]),
   Eye: makeIcon("eye", ["M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z", "M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"]),
   Settings: makeIcon("settings", ["M2.5 4.5h11", "M2.5 11.5h11", "M5.5 3v3", "M10.5 10v3"]),
   Palette: makeIcon("palette", [

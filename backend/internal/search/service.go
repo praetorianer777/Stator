@@ -56,12 +56,12 @@ const pathOf = `ARRAY(
 	)
 	SELECT title FROM up ORDER BY depth DESC)`
 
-// pageHits and attachmentHits are the two kinds of hit a search reads, each a
-// row of the same shape, among published pages out of the trash that the actor,
-// parameter $1, may view. An attachment carries the version its page is at.
+// pageHits, attachmentHits and commentHits are the kinds of hit a search
+// reads, each a row of the same shape, among published pages out of the trash
+// that the actor, parameter $1, may view. A comment is titled by its page.
 const (
 	pageHits = `
-SELECT 'page' AS kind, NULL::uuid AS attachment_id, p.id AS page_id, p.title AS page_title,
+SELECT 'page' AS kind, NULL::uuid AS attachment_id, NULL::uuid AS comment_id, p.id AS page_id, p.title AS page_title,
        p.title AS title, p.body, s.key, s.name, v.created_at AS changed_at, COALESCE(vu.name, '') AS by_name, %s
 FROM page p
 JOIN space s ON s.id = p.space_id
@@ -69,12 +69,19 @@ JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = p
 LEFT JOIN app_user vu ON vu.id = v.created_by
 WHERE p.trashed_at IS NULL AND p.version > 0`
 	attachmentHits = `
-SELECT 'attachment', a.id, p.id, p.title, a.file_name, NULL::jsonb, s.key, s.name, a.created_at, COALESCE(au.name, ''), %s
+SELECT 'attachment', a.id, NULL::uuid, p.id, p.title, a.file_name, NULL::jsonb, s.key, s.name, a.created_at, COALESCE(au.name, ''), %s
 FROM attachment a
 JOIN page p ON p.org_id = a.org_id AND p.id = a.page_id
 JOIN space s ON s.id = p.space_id
 LEFT JOIN app_user au ON au.id = a.uploaded_by
 WHERE p.trashed_at IS NULL AND p.version > 0`
+	commentHits = `
+SELECT 'comment', NULL::uuid, c.id, p.id, p.title, p.title, c.body, s.key, s.name, COALESCE(c.edited_at, c.created_at), COALESCE(cu.name, ''), %s
+FROM comment c
+JOIN page p ON p.org_id = c.org_id AND p.id = c.page_id
+JOIN space s ON s.id = p.space_id
+LEFT JOIN app_user cu ON cu.id = c.author_id
+WHERE p.trashed_at IS NULL AND p.version > 0 AND c.deleted_at IS NULL`
 )
 
 // Search answers a full search with one page of hits and how many there are.
@@ -86,14 +93,17 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 	}
 	pages := []string{perm.ViewablePage("p", 1)}
 	files := []string{perm.ViewablePage("p", 1)}
+	comments := []string{perm.ViewablePage("p", 1)}
 	var tsq string
-	pageScore, fileScore := `FALSE, 0::real`, `FALSE, 0::real`
+	pageScore, fileScore, commentScore := `FALSE, 0::real`, `FALSE, 0::real`, `FALSE, 0::real`
 	if q.Text != "" {
 		tsq = `websearch_to_tsquery(` + config + `, ` + bind(q.Text) + `)`
 		pages = append(pages, `p.search_vector @@ `+tsq)
 		files = append(files, `a.search_vector @@ `+tsq)
+		comments = append(comments, `c.search_vector @@ `+tsq)
 		pageScore = `to_tsvector(` + config + `, p.title) @@ ` + tsq + `, ts_rank(p.search_vector, ` + tsq + `)`
 		fileScore = `TRUE, ts_rank(a.search_vector, ` + tsq + `)`
+		commentScore = `FALSE, ts_rank(c.search_vector, ` + tsq + `)`
 	}
 	if !q.wants(HitPage) {
 		pages = append(pages, `FALSE`)
@@ -102,6 +112,9 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 	if !q.wants(HitAttachment) || len(q.Labels) > 0 {
 		files = append(files, `FALSE`)
 	}
+	if !q.wants(HitComment) || len(q.Labels) > 0 {
+		comments = append(comments, `FALSE`)
+	}
 	if len(q.Labels) > 0 {
 		pages = append(pages, `EXISTS (SELECT 1 FROM page_label pl WHERE pl.org_id = p.org_id AND pl.page_id = p.id AND pl.name = ANY(`+bind(q.Labels)+`))`)
 	}
@@ -109,40 +122,46 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 		keys := bind(q.Spaces)
 		pages = append(pages, `s.key = ANY(`+keys+`)`)
 		files = append(files, `s.key = ANY(`+keys+`)`)
+		comments = append(comments, `s.key = ANY(`+keys+`)`)
 	}
 	if len(q.Authors) > 0 {
 		authors := bind(q.Authors)
 		pages = append(pages, `EXISTS (SELECT 1 FROM page_version pa WHERE pa.org_id = p.org_id AND pa.page_id = p.id AND pa.created_by = ANY(`+authors+`))`)
 		files = append(files, `a.uploaded_by = ANY(`+authors+`)`)
+		comments = append(comments, `c.author_id = ANY(`+authors+`)`)
 	}
 	if q.After != nil {
 		after := bind(*q.After)
 		pages = append(pages, `v.created_at >= `+after)
 		files = append(files, `a.created_at >= `+after)
+		comments = append(comments, `COALESCE(c.edited_at, c.created_at) >= `+after)
 	}
 	if q.Before != nil {
 		before := bind(*q.Before)
 		pages = append(pages, `v.created_at < `+before)
 		files = append(files, `a.created_at < `+before)
+		comments = append(comments, `COALESCE(c.edited_at, c.created_at) < `+before)
 	}
-	hits := `WITH hit (kind, attachment_id, page_id, page_title, title, body, key, name, changed_at, by_name, title_match, rank) AS (` +
+	hits := `WITH hit (kind, attachment_id, comment_id, page_id, page_title, title, body, key, name, changed_at, by_name, title_match, rank) AS (` +
 		fmt.Sprintf(pageHits, pageScore) + ` AND ` + strings.Join(pages, ` AND `) + `
 		UNION ALL` +
 		fmt.Sprintf(attachmentHits, fileScore) + ` AND ` + strings.Join(files, ` AND `) + `
+		UNION ALL` +
+		fmt.Sprintf(commentHits, commentScore) + ` AND ` + strings.Join(comments, ` AND `) + `
 	)`
 
-	order := `h.changed_at DESC, h.kind DESC, COALESCE(h.attachment_id, h.page_id)`
+	order := `h.changed_at DESC, h.kind DESC, COALESCE(h.attachment_id, h.comment_id, h.page_id)`
 	if !q.ByUpdate && tsq != "" {
 		order = `h.title_match DESC, h.rank DESC, ` + order
 	}
 	countArgs := len(args)
 	title := `h.title`
-	snippet := `CASE WHEN h.kind = 'page' THEN left(page_plain_text(h.body), ` + strconv.Itoa(snippetScanChars) + `) ELSE '' END`
+	snippet := `CASE WHEN h.kind IN ('page', 'comment') THEN left(page_plain_text(h.body), ` + strconv.Itoa(snippetScanChars) + `) ELSE '' END`
 	if tsq != "" {
 		titleOpts, snippetOpts := bind(titleOptions), bind(headlineOptions)
-		title = `CASE WHEN h.kind = 'page' THEN ts_headline(` + config + `, ` + unmarked(`h.title`) + `, ` + tsq + `, ` + titleOpts + `)
+		title = `CASE WHEN h.kind IN ('page', 'comment') THEN ts_headline(` + config + `, ` + unmarked(`h.title`) + `, ` + tsq + `, ` + titleOpts + `)
 			ELSE ts_headline(` + config + `, ` + spacedName(`h.title`) + `, ` + tsq + `, ` + titleOpts + `) END`
-		snippet = `CASE WHEN h.kind = 'page' THEN ts_headline(` + config + `, ` + unmarked(`left(page_plain_text(h.body), `+strconv.Itoa(headlineChars)+`)`) + `, ` + tsq + `, ` + snippetOpts + `) ELSE '' END`
+		snippet = `CASE WHEN h.kind IN ('page', 'comment') THEN ts_headline(` + config + `, ` + unmarked(`left(page_plain_text(h.body), `+strconv.Itoa(headlineChars)+`)`) + `, ` + tsq + `, ` + snippetOpts + `) ELSE '' END`
 	}
 	limit, offset := bind(q.Limit), bind(q.Offset)
 	sql := hits + `, chosen AS (
@@ -150,7 +169,7 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 			ORDER BY ` + order + `
 			LIMIT ` + limit + ` OFFSET ` + offset + `
 		)
-		SELECT h.kind, h.attachment_id, h.page_id, h.page_title, h.key, h.name, ` + title + `, ` + snippet + `, h.changed_at, h.by_name,
+		SELECT h.kind, h.attachment_id, h.comment_id, h.page_id, h.page_title, h.key, h.name, ` + title + `, ` + snippet + `, h.changed_at, h.by_name,
 		       CASE WHEN h.kind = 'page' THEN ARRAY(SELECT pl.name FROM page_label pl WHERE pl.page_id = h.page_id ORDER BY pl.name) ELSE '{}' END
 		FROM chosen h ORDER BY h.ord`
 
@@ -170,7 +189,7 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 				h            Hit
 				marked, body string
 			)
-			if err := rows.Scan(&h.Type, &h.AttachmentID, &h.Page.ID, &h.Page.Title, &h.Page.SpaceKey, &h.Page.SpaceName,
+			if err := rows.Scan(&h.Type, &h.AttachmentID, &h.CommentID, &h.Page.ID, &h.Page.Title, &h.Page.SpaceKey, &h.Page.SpaceName,
 				&marked, &body, &h.UpdatedAt, &h.UpdatedByName, &h.Labels); err != nil {
 				return err
 			}

@@ -213,3 +213,8 @@ export const WATCHERS_LIMIT = 100;
 export const WATCHES_PAGE_SIZE = 20;
 /** The hour, in UTC, a daily digest goes out, matching the API's notify.DailyDigestHour. */
 export const DAILY_DIGEST_HOUR_UTC = 8;
+
+/** The lines a comment's editor starts with. */
+export const COMMENT_EDITOR_ROWS = 4;
+/** How long a thread a notification led to stays marked, so the eye finds it after the scroll. */
+export const COMMENT_HIGHLIGHT_MS = 2500;

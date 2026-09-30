@@ -8,6 +8,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -145,6 +146,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &notifyField) {
 		return ErrValidation(map[string]string{notifyField.Field: notifyField.Message})
 	}
+	var commentField *comment.FieldError
+	if errors.As(err, &commentField) {
+		return ErrValidation(map[string]string{commentField.Field: sentence(commentField.Message)})
+	}
 	var denied *perm.DeniedError
 	if errors.As(err, &denied) {
 		return ErrForbidden(denied.Error())
@@ -199,8 +204,15 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
 	case errors.Is(err, space.ErrNotFound):
 		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
-	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound):
+	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
+	case errors.Is(err, comment.ErrNotFound):
+		return ErrNotFound("That comment was not found. It may have been deleted, or its page moved; reload the page.")
+	case errors.Is(err, comment.ErrUnpublished):
+		return &APIError{Status: http.StatusConflict, Code: "unpublished",
+			Message: "This page has not been published yet, so nobody else can read a comment on it. Publish the page first, then comment."}
+	case errors.Is(err, comment.ErrNotYours):
+		return ErrForbidden("You can only change or delete your own comments. Ask an administrator of the space to delete somebody else's.")
 	case errors.Is(err, perm.ErrFixed):
 		return ErrConflict("Administering the organization follows the owner and admin roles. Change somebody's role under Users instead.")
 	case errors.Is(err, perm.ErrUnknownPermission):

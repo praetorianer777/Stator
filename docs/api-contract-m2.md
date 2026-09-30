@@ -21,12 +21,14 @@ a sentence.
 
 | Range | Owner | Holds |
 |---|---|---|
-| 00140 to 00149 | comments (#22, #23) | `comment`, its policies, comment search rows, the anchor trigger on `page_version` |
+| 00140 to 00149 | comments (#22, #23) | `comment_thread`, `comment`, their policies, comment search rows, the anchor trigger on `page_version` |
 | 00150 to 00159 | watching and notifications (#25, #26), mentions (#24) | `watch`, `watch_optout`, `outbox_event`, `notification`, `notification_preference`, `notification_digest` |
+| 00153 | comments (#22) | the ties from `notification` to comments, which must follow 00152 |
 
 Mentions need no table: the ids are read from the document on each publish
 and comment and travel in the outbox event. If #24 needs a migration after
-all, it takes the next free number in 00150 to 00159, after #25 and #26.
+all, it takes the next free number in 00150 to 00159, after #25, #26 and
+#22's 00153.
 
 Types live in `internal/comment`, `internal/watch` and `internal/notify`.
 The outbox is `internal/events`, as in Armature.

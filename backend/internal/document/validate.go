@@ -47,16 +47,20 @@ func Parse(body json.RawMessage) (Node, error) {
 	if len(body) > MaxBytes {
 		return Node{}, invalid("This page is too long; keep it under %d MB, or split it into several pages.", MaxBytes>>20)
 	}
+	return decode(body, "page")
+}
+
+func decode(body json.RawMessage, noun string) (Node, error) {
 	var root Node
 	dec := json.NewDecoder(bytes.NewReader(body))
 	// A field the schema does not name would be stored and served back
 	// unread, so it is refused rather than carried along.
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&root); err != nil {
-		return Node{}, invalid("This page is not a document the editor can read; reload the editor and save again.")
+		return Node{}, invalid("This %s is not a document the editor can read; reload the editor and save again.", noun)
 	}
 	if dec.More() {
-		return Node{}, invalid("This page is not a document the editor can read; reload the editor and save again.")
+		return Node{}, invalid("This %s is not a document the editor can read; reload the editor and save again.", noun)
 	}
 	return root, nil
 }
@@ -73,39 +77,63 @@ func Validate(body json.RawMessage) error {
 
 // ValidateNode checks an already decoded document against the allowlist.
 func ValidateNode(root Node) error {
-	if root.Type != "doc" {
-		return invalid(`This page must be a document with "type":"doc".`)
+	return validator{list: &Allowed, noun: "page", anchors: map[string]bool{}}.check(root)
+}
+
+// ParseComment decodes a comment's document and holds it to CommentAllowed,
+// answering the decoded node so the caller can read its words.
+func ParseComment(body json.RawMessage) (Node, error) {
+	if len(body) > MaxCommentBytes {
+		return Node{}, invalid("This comment is too long; keep it under %d KB, or put the text on a page.", MaxCommentBytes>>10)
 	}
-	v := validator{anchors: map[string]bool{}}
-	return v.node(root, NodeSpec{Content: []string{"doc"}}, 0)
+	root, err := decode(body, "comment")
+	if err != nil {
+		return Node{}, err
+	}
+	return root, validator{list: &CommentAllowed, noun: "comment", anchors: map[string]bool{}}.check(root)
 }
 
 type validator struct {
+	list    *Allowlist
+	noun    string
 	anchors map[string]bool
 }
 
-func (v *validator) node(n Node, parent NodeSpec, depth int) error {
-	if depth > MaxDepth {
-		return invalid("This page is nested too deeply; flatten its lists, quotes and panels.")
+func (v validator) check(root Node) error {
+	if root.Type != "doc" {
+		return v.invalid(`This %s must be a document with "type":"doc".`)
 	}
-	spec, ok := Allowed.Nodes[n.Type]
+	return v.node(root, NodeSpec{Content: []string{"doc"}}, 0)
+}
+
+// invalid words a refusal about this kind of document; the format's first
+// verb is the noun.
+func (v validator) invalid(format string, args ...any) error {
+	return invalid(format, append([]any{v.noun}, args...)...)
+}
+
+func (v validator) node(n Node, parent NodeSpec, depth int) error {
+	if depth > MaxDepth {
+		return v.invalid("This %s is nested too deeply; flatten its lists, quotes and panels.")
+	}
+	spec, ok := v.list.Nodes[n.Type]
 	if !ok {
-		return invalid("This page holds a %q block, which the editor cannot show; take it out.", n.Type)
+		return v.invalid("This %s holds a %q block, which the editor cannot show; take it out.", n.Type)
 	}
 	if !slices.Contains(parent.Content, n.Type) {
-		return invalid("This page puts a %q where it cannot go; move it out.", n.Type)
+		return v.invalid("This %s puts a %q where it cannot go; move it out.", n.Type)
 	}
 	if n.Type == "text" {
 		if n.Text == "" {
-			return invalid("This page holds an empty piece of text; save it again from the editor.")
+			return v.invalid("This %s holds an empty piece of text; save it again from the editor.")
 		}
 	} else if n.Text != "" {
-		return invalid("This page gives a %q text of its own, which only text may have.", n.Type)
+		return v.invalid("This %s gives a %q text of its own, which only text may have.", n.Type)
 	}
 	if len(spec.Content) == 0 && len(n.Content) > 0 {
-		return invalid("This page puts content inside a %q, which holds none.", n.Type)
+		return v.invalid("This %s puts content inside a %q, which holds none.", n.Type)
 	}
-	if err := checkAttrs(n.Attrs, spec.Attrs, fmt.Sprintf("a %q", n.Type)); err != nil {
+	if err := v.checkAttrs(n.Attrs, spec.Attrs, fmt.Sprintf("a %q", n.Type)); err != nil {
 		return err
 	}
 	if n.Type == "heading" {
@@ -117,19 +145,19 @@ func (v *validator) node(n Node, parent NodeSpec, depth int) error {
 		}
 	}
 	if len(n.Marks) > 0 && !(spec.Inline && parent.AllowsMarks) {
-		return invalid("This page styles a %q where styles cannot go; remove the formatting.", n.Type)
+		return v.invalid("This %s styles a %q where styles cannot go; remove the formatting.", n.Type)
 	}
 	seen := map[string]bool{}
 	for _, m := range n.Marks {
-		ms, ok := Allowed.Marks[m.Type]
+		ms, ok := v.list.Marks[m.Type]
 		if !ok {
-			return invalid("This page uses a %q style, which the editor cannot show; take it out.", m.Type)
+			return v.invalid("This %s uses a %q style, which the editor cannot show; take it out.", m.Type)
 		}
 		if seen[m.Type] {
-			return invalid("This page applies the %q style twice to the same text.", m.Type)
+			return v.invalid("This %s applies the %q style twice to the same text.", m.Type)
 		}
 		seen[m.Type] = true
-		if err := checkAttrs(m.Attrs, ms.Attrs, fmt.Sprintf("the %q style", m.Type)); err != nil {
+		if err := v.checkAttrs(m.Attrs, ms.Attrs, fmt.Sprintf("the %q style", m.Type)); err != nil {
 			return err
 		}
 	}
@@ -159,14 +187,14 @@ func init() {
 	}
 }
 
-func checkAttrs(attrs map[string]any, allowed map[string]Attr, owner string) error {
+func (v validator) checkAttrs(attrs map[string]any, allowed map[string]Attr, owner string) error {
 	for name, value := range attrs {
 		rule, ok := allowed[name]
 		if !ok {
-			return invalid("This page gives %s an attribute %q, which the editor does not know; take it out.", owner, name)
+			return v.invalid("This %s gives %s an attribute %q, which the editor does not know; take it out.", owner, name)
 		}
 		if !attrValid(rule, value) {
-			return invalid("This page gives %s the attribute %s=%s, which is not allowed; pick it again in the editor.", owner, name, shortJSON(value))
+			return v.invalid("This %s gives %s the attribute %s=%s, which is not allowed; pick it again in the editor.", owner, name, shortJSON(value))
 		}
 	}
 	return nil

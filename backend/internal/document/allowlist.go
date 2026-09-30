@@ -5,6 +5,7 @@ package document
 import (
 	"bytes"
 	"encoding/json"
+	"slices"
 )
 
 // AttrKind is the JSON type an attribute's value has.
@@ -211,6 +212,48 @@ var Allowed = Allowlist{
 			"title":  {Kind: KindString, Nullable: true, MaxLength: maxLabelLength},
 		}},
 	},
+}
+
+// MaxCommentBytes caps a comment's document; anything longer is a page.
+const MaxCommentBytes = 64 << 10
+
+// CommentNodes and CommentMarks are what a comment may hold, by name: text
+// and its structure, never files, tables, panels, generated blocks or hints.
+var (
+	CommentNodes = []string{"doc", "paragraph", "heading", "bulletList", "orderedList", "listItem", "blockquote", "codeBlock", "hardBreak", "text", "mention"}
+	CommentMarks = []string{"bold", "italic", "strike", "code", "link"}
+)
+
+// CommentAllowed is the part of Allowed a comment may hold, written to
+// api/comment-allowlist.json for the web client's comment editor.
+var CommentAllowed = Allowed.Subset(CommentNodes, CommentMarks)
+
+// Subset keeps the named nodes and marks, each as a allows it, and drops
+// every other type from what the kept nodes may contain.
+func (a Allowlist) Subset(nodes, marks []string) Allowlist {
+	out := Allowlist{Nodes: map[string]NodeSpec{}, Marks: map[string]MarkSpec{}}
+	for _, name := range nodes {
+		spec, ok := a.Nodes[name]
+		if !ok {
+			panic("document: no node " + name + " to keep")
+		}
+		var content []string
+		for _, child := range spec.Content {
+			if slices.Contains(nodes, child) {
+				content = append(content, child)
+			}
+		}
+		spec.Content = content
+		out.Nodes[name] = spec
+	}
+	for _, name := range marks {
+		spec, ok := a.Marks[name]
+		if !ok {
+			panic("document: no mark " + name + " to keep")
+		}
+		out.Marks[name] = spec
+	}
+	return out
 }
 
 // JSON is the allowlist as api/document-allowlist.json holds it: indented,

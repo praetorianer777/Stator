@@ -5,7 +5,7 @@ import type { MentionNodeAttrs } from "@tiptap/extension-mention";
 import { EDITOR_LINE_HEIGHT_PX, EDITOR_MIN_ROWS, MENTION_MAX_SUGGESTIONS } from "@/config";
 import { t } from "@/i18n";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
-import { editorExtensions, sanitizePasted } from "./extensions";
+import { editorExtensions, fitSchema, sanitizePasted, type EditorVariant } from "./extensions";
 import { MentionList, mentionMatches } from "./MentionList";
 import { emptyDoc, isEmptyDoc, type Doc, type Mentionable } from "./schema";
 import { SlashMenu } from "./SlashMenu";
@@ -40,6 +40,8 @@ export interface EditorProps {
   upload?: UploadFile;
   /** Which files the page still has, so a deleted one is drawn as missing. */
   attachments?: AttachmentIndex;
+  /** A comment's editor offers text and its structure, and no slash menu. */
+  variant?: EditorVariant;
 }
 
 /**
@@ -59,6 +61,7 @@ export function Editor({
   handle,
   upload,
   attachments,
+  variant = "page",
 }: EditorProps) {
   const slashId = useId();
   const mentionId = useId();
@@ -75,6 +78,7 @@ export function Editor({
 
   const editor = useEditor({
     extensions: editorExtensions({
+      variant,
       placeholder,
       submit: () => submitRef.current?.(),
       upload,
@@ -107,9 +111,17 @@ export function Editor({
   // The list under the caret belongs to the editable element, which keeps
   // focus; these attributes tell a screen reader which option is current.
   const controls = slash.open ? slashId : mention.open && mention.open.items.length > 0 ? mentionId : null;
-  const activeOption = !controls ? null : controls === slashId ? (slash.open?.items.length ? `${slashId}-${slash.active}` : null) : `${mentionId}-${mention.active}`;
+  const activeOption = !controls
+    ? null
+    : controls === slashId
+      ? slash.open?.items.length
+        ? `${slashId}-${slash.active}`
+        : null
+      : `${mentionId}-${mention.active}`;
   useEffect(() => {
-    const dom = editor?.view.dom;
+    // Between an unmount and the next mount, as when a Suspense boundary hides
+    // and shows the editor again, TipTap throws on any access to the view.
+    const dom = editor?.isInitialized ? editor.view.dom : null;
     if (!dom) return;
     const set = (name: string, value: string | null) => (value === null ? dom.removeAttribute(name) : dom.setAttribute(name, value));
     set("aria-controls", controls);
@@ -126,7 +138,7 @@ export function Editor({
           editor
             .chain()
             .focus("end")
-            .insertContent(sanitizePasted(parsed).content ?? [])
+            .insertContent(fitSchema(sanitizePasted(parsed), editor.schema).content ?? [])
             .run();
       },
       clear: () => {
@@ -137,7 +149,7 @@ export function Editor({
 
   return (
     <div className="rounded-control border border-border bg-surface" data-editor-frame>
-      {editor && <EditorToolbar editor={editor} onCopyHeadingLink={copy} />}
+      {editor && <EditorToolbar editor={editor} onCopyHeadingLink={copy} variant={variant} />}
       <EditorContent editor={editor} />
       {slash.open && (
         <SlashMenu id={slashId} items={slash.open.items} active={slash.active} rect={slash.open.rect} onHover={slash.setActive} onPick={slash.open.pick} />

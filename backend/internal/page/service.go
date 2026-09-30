@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/perm"
@@ -84,6 +85,9 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	}
 	if p.Labels == nil {
 		p.Labels = []string{}
+	}
+	if p.Comments, err = comment.CountsOf(ctx, tx, id); err != nil {
+		return nil, nil, err
 	}
 	if p.Watching, err = watch.PageWatching(ctx, tx, actor.UserID, id); err != nil {
 		return nil, nil, err

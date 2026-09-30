@@ -87,7 +87,11 @@ function NotificationPanel({ titleId, onClose }: { titleId: string; onClose: () 
   function follow(n: Notification) {
     if (n.readAt === null) markRead.mutate({ ids: [n.id] });
     onClose();
-    void navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: n.page.spaceKey, pageId: n.page.id, slug: pageSlug(n.page.title) } });
+    void navigate({
+      to: "/s/$spaceKey/p/$pageId/$slug",
+      params: { spaceKey: n.page.spaceKey, pageId: n.page.id, slug: pageSlug(n.page.title) },
+      search: n.threadId ? { thread: n.threadId } : {},
+    });
   }
 
   return (

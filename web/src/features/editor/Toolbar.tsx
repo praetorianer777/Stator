@@ -5,9 +5,13 @@ import { Icon } from "@/components/icons";
 import { CODE_LANGUAGES, TABLE_DEFAULT_COLS, TABLE_DEFAULT_ROWS } from "@/config";
 import { t } from "@/i18n";
 import { languageLabel } from "./languages";
+import type { EditorVariant } from "./extensions";
 import { RovingToolbar } from "./RovingToolbar";
 import { AttachButton, ImageTools } from "./AttachmentTools";
 import { CELL_BACKGROUNDS, HEADING_LEVELS, PANEL_KINDS, safeHref, type PanelKind } from "./schema";
+
+/** The block controls a comment's toolbar keeps: those of the comment allowlist. */
+const COMMENT_BLOCKS = ["bullet-list", "ordered-list", "quote", "code-block"];
 
 // A press on a toolbar control must not take the selection out of the editor.
 const keepSelection = (e: { preventDefault: () => void }) => e.preventDefault();
@@ -17,7 +21,15 @@ const keepSelection = (e: { preventDefault: () => void }) => e.preventDefault();
  * allowlist names. Markdown shortcuts and the slash menu do the same from
  * the keyboard; the bar is for people who do not know them.
  */
-export function EditorToolbar({ editor, onCopyHeadingLink }: { editor: Editor; onCopyHeadingLink: (anchor: string) => void }) {
+export function EditorToolbar({
+  editor,
+  onCopyHeadingLink,
+  variant = "page",
+}: {
+  editor: Editor;
+  onCopyHeadingLink: (anchor: string) => void;
+  variant?: EditorVariant;
+}) {
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) => ({
@@ -38,8 +50,9 @@ export function EditorToolbar({ editor, onCopyHeadingLink }: { editor: Editor; o
       table: e.isActive("table"),
       panel: e.isActive("panel"),
       panelKind: (e.getAttributes("panel").kind as PanelKind | undefined) ?? "info",
-      canMerge: e.can().mergeCells(),
-      canSplit: e.can().splitCell(),
+      // A comment's editor has no tables, and so neither command.
+      canMerge: variant === "page" && e.can().mergeCells(),
+      canSplit: variant === "page" && e.can().splitCell(),
     }),
   });
   const [linking, setLinking] = useState(false);
@@ -51,7 +64,7 @@ export function EditorToolbar({ editor, onCopyHeadingLink }: { editor: Editor; o
     { action: "strike", label: t.editor.strike, icon: <Icon.Strike />, on: state.strike, run: () => chain().toggleStrike().run() },
     { action: "code", label: t.editor.code, icon: <Icon.Code />, on: state.code, run: () => chain().toggleCode().run() },
   ];
-  const blocks: Array<{ action: string; label: string; icon: ReactNode; on?: boolean; run: () => void }> = [
+  const allBlocks: Array<{ action: string; label: string; icon: ReactNode; on?: boolean; run: () => void }> = [
     { action: "bullet-list", label: t.editor.bulletList, icon: <Icon.Lines />, on: state.bullet, run: () => chain().toggleBulletList().run() },
     { action: "ordered-list", label: t.editor.orderedList, icon: <Icon.OrderedList />, on: state.ordered, run: () => chain().toggleOrderedList().run() },
     { action: "task-list", label: t.editor.taskList, icon: <Icon.Checklist />, on: state.task, run: () => chain().toggleTaskList().run() },
@@ -68,6 +81,7 @@ export function EditorToolbar({ editor, onCopyHeadingLink }: { editor: Editor; o
     { action: "panel", label: t.editor.panel, icon: <Icon.Panel />, on: state.panel, run: () => chain().setPanel("info").run() },
   ];
 
+  const blocks = variant === "comment" ? allBlocks.filter((b) => COMMENT_BLOCKS.includes(b.action)) : allBlocks;
   const styleLabel = state.level ? t.editor.heading(state.level) : t.editor.paragraph;
 
   return (
@@ -137,7 +151,7 @@ export function EditorToolbar({ editor, onCopyHeadingLink }: { editor: Editor; o
             onClick={b.run}
           />
         ))}
-        <AttachButton editor={editor} />
+        {variant === "page" && <AttachButton editor={editor} />}
       </RovingToolbar>
       {linking && (
         <LinkForm

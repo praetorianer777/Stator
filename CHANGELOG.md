@@ -189,6 +189,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - Mail settings `STATOR_SMTP_ADDR` and `STATOR_MAIL_FROM`, and `mail.smtpAddr`
   and `mail.from` in the chart. Compose sends every mail to Mailpit. Without
   a relay only the rows in the app are written.
+- Page comments. Threads below a page, one level deep, in rich text held to a
+  subset of the page allowlist (text, headings, lists, quotes, code, links
+  and mentions, at most 64 KB), written in an editor of their own that
+  arrives with the first comment somebody writes. Only the author edits a
+  comment; the author, or anybody with the space's delete, deletes it, which
+  leaves a placeholder while the thread has replies, is recorded in the audit
+  log when it is somebody else's, and takes back the notifications about it.
+  The page's header counts its comments. A new thread tells the page's
+  watchers, a reply everybody who wrote in the thread, and a notification
+  leads to its thread with `?thread=`. Comments are search hits of type
+  `comment`. The database holds raw SQL to the same rules: comments are read
+  with their page and written only in one's own name, where one may comment.
 
 ### Changed
 

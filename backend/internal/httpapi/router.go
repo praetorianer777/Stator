@@ -11,6 +11,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/label"
@@ -56,6 +57,7 @@ type Server struct {
 	Pages     *page.Service
 	Search    *search.Service
 	Labels    *label.Service
+	Comments  *comment.Service
 	// Watches keeps who follows which pages and spaces; Notifications what
 	// they were told and how they want to hear.
 	Watches       *watch.Service
@@ -230,6 +232,12 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/restrictions", s.handleGetPageRestrictions)
 			r.Put("/pages/{pageID}/restrictions", s.handleSetPageRestrictions)
 			r.Post("/pages/{pageID}/visit", s.handleVisitPage)
+			r.Get("/pages/{pageID}/comments", s.handleListComments)
+			r.Post("/pages/{pageID}/comments", s.handleStartThread)
+			r.Get("/comments/{commentID}", s.handleGetThread)
+			r.Patch("/comments/{commentID}", s.handleEditComment)
+			r.Delete("/comments/{commentID}", s.handleDeleteComment)
+			r.Post("/comments/{commentID}/replies", s.handleReply)
 			r.Get("/search", s.handleSearch)
 			r.Get("/search/quick", s.handleQuickSearch)
 			r.Get("/recent-pages", s.handleRecentPages)

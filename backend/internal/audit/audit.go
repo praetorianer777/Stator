@@ -37,6 +37,9 @@ const (
 	ActionOrgPermissionSet    = "org.permission_set"
 	ActionSpacePermissionsSet = "space.permissions_set"
 	ActionPageRestrictionsSet = "page.restrictions_set"
+	// ActionCommentDeleted is somebody else's comment deleted with the
+	// space's delete permission; one's own is not recorded.
+	ActionCommentDeleted = "comment.deleted"
 )
 
 // Entry is one act to record.

@@ -131,6 +131,62 @@ describe("the notification bell", () => {
     await screen.findByRole("button", { name: "Notifications" });
   });
 
+  it("leads a reply to its thread, which the page brings into view", async () => {
+    const threadId = "0195f000-0000-7000-8000-00000000c0a1";
+    stubShell({
+      "GET /notifications/unread-count": { status: 200, body: { unread: 1 } },
+      "GET /notifications": {
+        status: 200,
+        body: {
+          notifications: [aNotification({ kind: "replied", threadId, commentId: threadId, version: null, excerpt: "Monday." })],
+          total: 1,
+          limit: 20,
+          offset: 0,
+        },
+      },
+      "POST /notifications/read": { status: 204 },
+      [`GET /pages/${runbookId}/comments`]: {
+        status: 200,
+        body: {
+          threads: [
+            {
+              id: threadId,
+              pageId: runbookId,
+              kind: "page",
+              anchor: null,
+              resolved: false,
+              resolvedByName: "",
+              resolvedAt: null,
+              can: { reply: true, resolve: false },
+              comments: [
+                {
+                  id: threadId,
+                  threadId,
+                  authorId: "u-ada",
+                  authorName: "Ada Lovelace",
+                  body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Friday?" }] }] },
+                  deleted: false,
+                  createdAt: "2026-09-30T08:00:00Z",
+                  editedAt: null,
+                  can: { edit: true, delete: true },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    Element.prototype.scrollIntoView = vi.fn();
+    const router = await renderAt("/spaces");
+    await userEvent.click(await screen.findByRole("button", { name: "Notifications, 1 unread" }));
+    const panel = await screen.findByRole("dialog", { name: "Notifications" });
+    const item = within(panel).getByRole("button", { name: /Runbook/ });
+    expect(item).toHaveTextContent("Bob Builder replied in a thread on Runbook");
+    await userEvent.click(item);
+    await waitFor(() => expect(router.state.location.search).toEqual({ thread: threadId }));
+    await waitFor(() => expect(document.querySelector(`[data-thread="${threadId}"]`)).toHaveFocus());
+  });
+
   it("marks everything read at once, and closes on Escape with focus back on the bell", async () => {
     const sent = stubShell({
       "GET /notifications/unread-count": { status: 200, body: { unread: 1 } },

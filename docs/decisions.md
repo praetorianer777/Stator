@@ -49,6 +49,49 @@ publish dialog offers it ticked, and its question says the watchers are
 told. The preferences show the email switch off and unavailable while the
 kind is off in the app, which is what the server does with it.
 
+## 2026-09-30: A comment's words go with its delete, its place stays
+
+A thread is a row of its own, `comment_thread`, whose id is its first
+comment's, and each comment names its thread and its page, which the
+foreign key holds to the thread's page. The thread row is where #23 keeps
+what belongs to a thread rather than a comment: its anchor and whether it is
+resolved. Deleting a comment is an update that sets `body` to null with
+`deleted_at` and `deleted_by` in the same statement, and a check keeps the
+two together, so a deleted comment's words cannot linger in a column the
+service forgot. The row stays, so a thread keeps its shape around a
+placeholder; a thread whose every comment is deleted is left out of lists
+and counts. Nothing but purging the page removes rows.
+
+Who may do what is the contract's: comment needs view and the space's
+`addComments` on a published page out of the trash, and never the page's
+edit list, since a comment does not change the page. Editing is the
+author's alone while they may comment. Deleting is the author's while they
+may view the page, or anybody's who holds the space's `delete`, which a new
+space grants everyone, as it grants deleting pages. An organization that
+wants only some people to remove others' comments takes `delete` from
+everyone; the audit log records every such deletion either way. A policy
+cannot tell an edit from a delete, so `comment_write_guard` does, as
+`page_write_guard` does for pages, and the app role may update only `body`,
+`edited_at`, `deleted_at` and `deleted_by`.
+
+Deleting a comment takes back the notifications about it in the database:
+an `AFTER UPDATE` trigger, `SECURITY DEFINER` because the app role may not
+delete notifications and the rows are other people's. The worker may be
+delivering a notification about the comment at that moment, so a
+`BEFORE INSERT` trigger on `notification` takes a share lock on the comment
+and drops the row when it is deleted; whichever commits second sees the
+other. Both live in migration 00153, not in 00140 to 00149 with the
+comments: the notification table they tie to is made by 00152, and a fresh
+database applies migrations in order.
+
+The comment editor is the page editor with a `comment` variant: the same
+extensions minus the blocks the comment allowlist leaves out, so the schema
+itself refuses a table, and markdown pasted into it is fitted to the schema,
+keeping the words of what it cannot hold. It is loaded with the first
+comment somebody starts to write, so reading a page still downloads no
+editor. `api/comment-allowlist.json` is generated beside the page allowlist
+and holds the editor to it in a unit test, as for pages.
+
 ## 2026-09-30: Generated blocks store their settings, never their output
 
 A table of contents stores only the deepest heading level it lists, and a

@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/praetorianer777/stator/backend/internal/document"
 )
 
 const (
 	// MaxBodyBytes caps a comment's document; anything longer is a page.
-	MaxBodyBytes = 64 << 10
+	MaxBodyBytes = document.MaxCommentBytes
 	// AnchorMark is the mark an inline thread's passage carries in the page
 	// body; its threadId attribute names the thread.
 	AnchorMark = "inlineComment"

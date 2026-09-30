@@ -86,6 +86,7 @@ type FanOut struct {
 func NewFanOut(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog.Logger) *FanOut {
 	f := &FanOut{db: cluster, mailer: mailer, appURL: strings.TrimRight(appURL, "/"), log: log, planners: map[string]Planner{}}
 	f.planners[events.TopicPagePublished] = planPublished
+	f.planners[events.TopicCommentCreated] = planCommentCreated
 	return f
 }
 
