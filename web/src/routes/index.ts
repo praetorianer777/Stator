@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui";
 import { LOGIN_PATH } from "@/config";
 import { appRoute } from "./app";
 import { devEditorRoute } from "./dev-editor";
+import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
 import { homeRoute } from "./pages";
 import { pageEditRoute } from "./page-edit";
@@ -26,8 +27,9 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     spacesRoute,
     spaceNewRoute,
-    spaceRoute.addChildren([spaceHomeRoute, pageRoute, pageEditRoute, pageHistoryRoute, spaceSettingsRoute]),
+    spaceRoute.addChildren([spaceHomeRoute, pageRoute, pageEditRoute, pageHistoryRoute, spaceSettingsRoute, spaceLabelRoute]),
     searchRoute,
+    labelRoute,
     themesRoute,
     themeNewRoute,
     themeEditRoute,

@@ -10,6 +10,7 @@ import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocView } from "@/features/editor/DocView";
+import { PageLabels } from "@/features/labels/PageLabels";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
@@ -179,6 +180,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
       <KnownAttachmentsContext value={attachmentIds}>
         <DocView doc={page.body} />
       </KnownAttachmentsContext>
+      <PageLabels page={page} />
       <AttachmentPanel pageId={page.id} editable={page.can.edit} />
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}

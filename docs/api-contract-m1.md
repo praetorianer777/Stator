@@ -1,7 +1,7 @@
 # API contract for M1: drafts, history, search, permissions, attachments
 
 The agreement between whoever builds the backend and whoever builds the web
-client of #13, #14, #18, #19 and #20. The route table in
+client of #13, #14, #17, #18, #19 and #20. The route table in
 `backend/internal/httpapi/openapi.go` is the source of truth for paths, fields
 and types; this file says what they mean. Every operation below is in the
 table with `pending: true` and answers 501 `not_implemented` until it is built.
@@ -100,6 +100,41 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
   draft is touched: a draft based on an older version now conflicts on publish.
 - Versions of a trashed page are 404 like the page; a purge deletes them.
 
+## #17 Labels
+
+| Operation | Needs | Answers |
+|---|---|---|
+| `GET /pages/{pageID}/labels` | view | `{labels}`, names in order |
+| `POST /pages/{pageID}/labels` | edit | `{labels}`, the page's labels after the add |
+| `DELETE /pages/{pageID}/labels/{labelName}` | edit | 204, also when the page did not carry it |
+| `GET /labels?q&space&limit` | view, per page | `{labels}`: `{name, pages}`, the most used first |
+| `GET /labels/{labelName}/pages?space&limit&offset` | view, per page | `{pages, total, limit, offset}`, by title |
+
+- **Names.** A label is one word: trimmed, lower case, each run of spaces a
+  hyphen, then only letters, digits, `-`, `_` and `.`, starting with a letter
+  or a digit, at most `label.MaxNameLength`, 40, characters. Anything else is
+  422 on `name` (or `labelName`) with a sentence. As in Armature, a word
+  nobody uses yet is simply added; unlike Armature a label has no colour and
+  no case of its own, since its name is its address.
+- **A page** carries at most `label.MaxPerPage`, 50; one more is 422. Adding
+  a label it carries is no change. `Page` gains `labels`, so the reader needs
+  no second request. A trashed page's labels stay with it and come back with
+  it, and are 404 while it is in the trash; a copy takes its original's
+  labels.
+- **No label rows.** A label exists while some page carries it; there is no
+  list of the organization's labels to rename or delete. So nobody learns a
+  word from a page they may not view: autocomplete counts and offers only
+  labels on pages the caller may view, out of the trash.
+- **Autocomplete** matches the start of the name, what was typed read as a
+  name is (`release n` is `release-n`), `_` and `%` literally. `limit` 1 to
+  50, 10 by default; `space` stays in one space.
+- **A label's pages** are the pages out of the trash that carry it and that
+  the caller may view (`perm.ViewablePage`), their own unpublished pages
+  included, each with its `path`, all its `labels` and its last change;
+  `space` narrows to one space, 404 when the caller may not view it.
+- **Audit.** Labels are page content, and page edits are not in the audit
+  log, so neither are label changes.
+
 ## #18 Search
 
 | Operation | Needs | Answers |
@@ -124,11 +159,15 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
   orders by the latest change instead.
 - **Filters,** all optional, each repeatable one matching any of its values:
   `space` (keys), `author` (user ids: who published a version, uploaded the
-  file or wrote the comment), `label` (names; matches nothing until #17),
+  file or wrote the comment), `label` (names, normalized as #17 does, so
+  `Release Notes` finds `release-notes`; pages only, since a file carries no
+  labels, and a name that cannot be a label matches nothing),
   `type` (`page`, `attachment`, `comment`; `comment` matches nothing until
   comments), `updatedAfter` (on or after the day) and `updatedBefore` (before
   the day), days as `YYYY-MM-DD` in UTC. A malformed date is 422; an unknown
   space key simply matches nothing.
+- **Labels.** A page hit's `labels` are its page's, by name; a file's are
+  empty.
 - **Highlighting.** `title` and `snippet` are arrays of `{text, match}`:
   plain text runs, the matched ones marked. The client joins them and wraps
   `match: true` runs in `<mark>`; the server never sends markup. The snippet is

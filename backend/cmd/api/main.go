@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
@@ -136,6 +137,7 @@ func run() error {
 		Attachments:     attachment.NewService(cluster, store, pages).WithMaxSize(cfg.UploadLimit).WithLogger(log),
 		Perms:           perm.NewService(cluster),
 		Search:          search.NewService(cluster),
+		Labels:          label.NewService(cluster, pages),
 		CookieName:      cfg.Auth.SessionCookie,
 		Secure:          cfg.Auth.SecureCookies,
 		AppBaseURL:      cfg.AppBaseURL,

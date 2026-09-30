@@ -9,6 +9,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -129,6 +130,10 @@ func toAPIError(err error) *APIError {
 	var permField *perm.FieldError
 	if errors.As(err, &permField) {
 		return ErrValidation(map[string]string{permField.Field: permField.Message})
+	}
+	var labelField *label.FieldError
+	if errors.As(err, &labelField) {
+		return ErrValidation(map[string]string{labelField.Field: sentence(labelField.Message)})
 	}
 	var searchField *search.FieldError
 	if errors.As(err, &searchField) {

@@ -32,6 +32,7 @@ export function aPage(over: Partial<Page> = {}): Page {
     restricted: { view: false, edit: false },
     can: { edit: true, delete: true, restrict: true, comment: true },
     ancestors: [],
+    labels: [],
     createdByName: "Ada Lovelace",
     createdAt: "2026-09-29T08:00:00Z",
     updatedByName: "Ada Lovelace",

@@ -6,6 +6,8 @@ import { useSpaces } from "@/api/spaces";
 import { Button, Checkbox, EmptyState, ErrorBanner, Field, Input, PageHeader, SectionTitle, Select, Skeleton, Tag } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { SEARCH_PAGE_SIZE, SEARCH_QUERY_MAX_LENGTH } from "@/config";
+import { LabelCombobox } from "@/features/labels/LabelCombobox";
+import { LabelLink } from "@/features/labels/PageLabels";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 import { Highlight } from "./Highlight";
@@ -165,7 +167,7 @@ function HitRow({ hit }: { hit: Hit }) {
         </PageLink>
         {hit.type !== "page" && <Tag>{t.search.typeTag[hit.type]}</Tag>}
         {hit.labels.map((label) => (
-          <Tag key={label}>{label}</Tag>
+          <LabelLink key={label} name={label} />
         ))}
       </div>
       <p className="mt-0.5 text-xs text-ink-subtle">
@@ -189,16 +191,7 @@ function Filters({ address, onFilter, filtered }: { address: SearchAddress; onFi
   const { data: me } = useMe();
   const { data: people } = usePeople();
   const types = list(address.type);
-  const [labels, setLabels] = useState(address.label ?? "");
-  const [seenLabels, setSeenLabels] = useState(address.label);
-  if (seenLabels !== address.label) {
-    setSeenLabels(address.label);
-    setLabels(address.label ?? "");
-  }
-  const commitLabels = () => {
-    const next = joined(list(labels));
-    if (next !== address.label) onFilter({ label: next });
-  };
+  const labels = list(address.label);
   const space = list(address.space)[0] ?? "";
   const author = list(address.author)[0] ?? "";
   const others = (people ?? []).filter((person) => person.id !== me?.user.id);
@@ -239,21 +232,25 @@ function Filters({ address, onFilter, filtered }: { address: SearchAddress; onFi
           />
         ))}
       </fieldset>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          commitLabels();
-        }}
-      >
-        <Field
+      <div data-filter="label">
+        <LabelCombobox
           label={t.search.labels}
+          exclude={labels}
+          newOption={t.search.labelFilter}
+          onPick={(name) => onFilter({ label: joined([...labels, name]) })}
+          onRemoveLast={() => onFilter({ label: joined(labels.slice(0, -1)) })}
           hint={t.search.labelsHint}
-          value={labels}
-          onChange={(e) => setLabels(e.target.value)}
-          onBlur={commitLabels}
-          data-filter="label"
         />
-      </form>
+        {labels.length > 0 && (
+          <ul className="mt-2 flex flex-wrap gap-1.5" aria-label={t.search.labels} data-label-filters>
+            {labels.map((name) => (
+              <li key={name}>
+                <LabelLink name={name} onRemove={() => onFilter({ label: joined(labels.filter((each) => each !== name)) })} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <Select label={t.search.author} value={author} onChange={(e) => onFilter({ author: e.target.value || undefined })} data-filter="author">
         <option value="">{t.search.anyone}</option>
         {me && <option value={me.user.id}>{t.search.you(me.user.name)}</option>}
