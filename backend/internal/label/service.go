@@ -143,14 +143,14 @@ func typedPrefix(typed string) string {
 
 // Suggest offers the labels on pages the actor may view that start with what
 // was typed, the most used first; spaceKey, when set, stays inside one space.
-func (s *Service) Suggest(ctx context.Context, actor perm.Actor, typed, spaceKey string, limit int) ([]Suggestion, error) {
+func (s *Service) Suggest(ctx context.Context, actor perm.Actor, typed, spaceKey string, limit int) ([]LabelSuggestion, error) {
 	args := []any{actor.UserID, likePrefix(typedPrefix(typed)), limit}
 	within := ``
 	if spaceKey = strings.TrimSpace(spaceKey); spaceKey != "" {
 		args = append(args, spaceKey)
 		within = ` AND s.key = upper($4)`
 	}
-	out := []Suggestion{}
+	out := []LabelSuggestion{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT l.name, count(*)::int
@@ -164,7 +164,7 @@ func (s *Service) Suggest(ctx context.Context, actor perm.Actor, typed, spaceKey
 		if err != nil {
 			return fmt.Errorf("suggest labels: %w", err)
 		}
-		out, err = pgx.CollectRows(rows, pgx.RowToStructByPos[Suggestion])
+		out, err = pgx.CollectRows(rows, pgx.RowToStructByPos[LabelSuggestion])
 		return err
 	})
 	return out, err

@@ -181,3 +181,12 @@ export const SEARCH_PAGE_SIZE = 20;
 export const SEARCH_QUERY_MAX_LENGTH = 200;
 /** How many people the author filter offers, the most the API gives at once. */
 export const SEARCH_PEOPLE_LIMIT = 50;
+
+/** The longest label, matching the API's label.MaxNameLength. */
+export const LABEL_NAME_MAX_LENGTH = 40;
+/** How many labels the label box offers at once, within the API's limit of 50. */
+export const LABEL_SUGGESTION_LIMIT = 8;
+/** How long the label box waits after the last key before it asks the server. */
+export const LABEL_SUGGEST_DEBOUNCE_MS = 150;
+/** How many pages one page of a label's list shows, within the API's limit of 100. */
+export const LABEL_PAGE_SIZE = 20;

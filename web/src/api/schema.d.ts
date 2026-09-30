@@ -1138,9 +1138,6 @@ export interface components {
             scopes: "read"[];
             secret?: string;
         };
-        AddInput: {
-            name: string;
-        };
         AdmitRequest: {
             /** @enum {string} */
             role: "owner" | "admin" | "member";
@@ -1380,6 +1377,13 @@ export interface components {
             /** Format: uuid */
             userId: string;
         };
+        LabelInput: {
+            name: string;
+        };
+        LabelSuggestion: {
+            name: string;
+            pages: number;
+        };
         LabeledPage: {
             /** Format: uuid */
             id: string;
@@ -1482,6 +1486,7 @@ export interface components {
             home: boolean;
             /** Format: uuid */
             id: string;
+            labels: string[];
             /** Format: uuid */
             parentId: string | null;
             restricted: components["schemas"]["Restricted"];
@@ -1750,10 +1755,6 @@ export interface components {
             id?: string;
             /** @enum {string} */
             type: "user" | "group" | "everyone";
-        };
-        Suggestion: {
-            name: string;
-            pages: number;
         };
         SwitchOrgRequest: {
             slug: string;
@@ -2214,7 +2215,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        labels: components["schemas"]["Suggestion"][];
+                        labels: components["schemas"]["LabelSuggestion"][];
                     };
                 };
             };
@@ -3017,7 +3018,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AddInput"];
+                "application/json": components["schemas"]["LabelInput"];
             };
         };
         responses: {

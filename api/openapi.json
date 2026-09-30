@@ -548,7 +548,7 @@
                     "labels": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Suggestion"
+                        "$ref": "#/components/schemas/LabelSuggestion"
                       }
                     }
                   },
@@ -1727,7 +1727,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AddInput"
+                "$ref": "#/components/schemas/LabelInput"
               }
             }
           }
@@ -4435,17 +4435,6 @@
           "createdAt"
         ]
       },
-      "AddInput": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ]
-      },
       "AdmitRequest": {
         "type": "object",
         "properties": {
@@ -5303,6 +5292,32 @@
           "requestedAt"
         ]
       },
+      "LabelInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "LabelSuggestion": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "pages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "pages"
+        ]
+      },
       "LabeledPage": {
         "type": "object",
         "properties": {
@@ -5679,6 +5694,12 @@
             "type": "string",
             "format": "uuid"
           },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "parentId": {
             "type": [
               "string",
@@ -5727,6 +5748,7 @@
           "restricted",
           "can",
           "ancestors",
+          "labels",
           "createdByName",
           "createdAt",
           "updatedByName",
@@ -6662,21 +6684,6 @@
         },
         "required": [
           "type"
-        ]
-      },
-      "Suggestion": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "pages": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "name",
-          "pages"
         ]
       },
       "SwitchOrgRequest": {

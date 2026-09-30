@@ -69,7 +69,9 @@ type Page struct {
 	// Can says what the caller may do to this page, restrictions included.
 	Can perm.PageCan `json:"can"`
 	// Ancestors are the pages above this one, the home page first.
-	Ancestors     []Ref     `json:"ancestors"`
+	Ancestors []Ref `json:"ancestors"`
+	// Labels are the words on the page, by name.
+	Labels        []string  `json:"labels"`
 	CreatedByName string    `json:"createdByName"`
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedByName string    `json:"updatedByName"`

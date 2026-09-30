@@ -165,6 +165,7 @@ describe("the full search", () => {
       },
       "GET /spaces": { status: 200, body: { spaces: [space, aSpace({ id: "s2", key: "ENG", name: "Engineering" })] } },
       "GET /people": { status: 200, body: { people: [{ id: "0195f000-0000-7000-8000-0000000000c1", name: "Grace Hopper", email: "grace@stator.test" }] } },
+      "GET /labels": { status: 200, body: { labels: [] } },
     });
     const router = await renderAt("/search?q=onboarding");
     await screen.findByText("1 result");
@@ -172,7 +173,7 @@ describe("the full search", () => {
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Space" }), "ENG");
     await userEvent.click(screen.getByRole("checkbox", { name: "Pages" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Comments" }));
-    await userEvent.type(screen.getByRole("textbox", { name: "Labels" }), "howto, team{Enter}");
+    await userEvent.type(screen.getByRole("combobox", { name: "Labels" }), "howto, Team{Enter}");
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Changed by" }), `You (${signedIn.user.name})`);
     await userEvent.type(screen.getByLabelText("Changed on or after"), "2026-09-01");
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Order" }), "updated");

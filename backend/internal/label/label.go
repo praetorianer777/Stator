@@ -69,9 +69,9 @@ func Normalize(raw string) (string, error) {
 	return name, nil
 }
 
-// Suggestion is a label the caller can see, with how many of the pages they
+// LabelSuggestion is a label the caller can see, with how many of the pages they
 // may view carry it.
-type Suggestion struct {
+type LabelSuggestion struct {
 	Name  string `json:"name"`
 	Pages int    `json:"pages"`
 }
@@ -91,8 +91,8 @@ type LabeledPage struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
-// AddInput puts one label on a page.
-type AddInput struct {
+// LabelInput puts one label on a page.
+type LabelInput struct {
 	// Name is normalized first, so "Release Notes" is release-notes.
 	Name string `json:"name"`
 }

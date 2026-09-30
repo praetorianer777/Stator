@@ -74,6 +74,16 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	if p.Ancestors, err = ancestors(ctx, tx, id); err != nil {
 		return nil, nil, err
 	}
+	rows, err := tx.Query(ctx, `SELECT name FROM page_label WHERE page_id = $1 ORDER BY name`, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	if p.Labels, err = pgx.CollectRows(rows, pgx.RowTo[string]); err != nil {
+		return nil, nil, err
+	}
+	if p.Labels == nil {
+		p.Labels = []string{}
+	}
 	var draft DraftRef
 	err = tx.QueryRow(ctx, `SELECT base_version, updated_at FROM page_draft WHERE page_id = $1 AND user_id = $2`,
 		id, actor.UserID).Scan(&draft.BaseVersion, &draft.UpdatedAt)

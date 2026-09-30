@@ -3,6 +3,28 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: A label is a word on a page, not a row of its own
+
+Armature keeps labels in a table of the organization's words, each with a
+colour, and links issues to them. Stator keeps only `page_label`, a page and
+a name. A label exists while a page carries it. With a table of words,
+autocomplete and a label's page would tell anybody the words used on pages
+they may not view, since a word is often the most telling thing about a
+page; derived from `page_label` under the page's policies, a label is seen
+only with a page the reader may view, and the database holds raw SQL to the
+same. What this gives up is renaming a label everywhere at once and giving
+it a colour, which nobody has asked for yet.
+
+Names are lower case, one word, spaces turned to hyphens, and letters,
+digits, `-`, `_` and `.` only, where Armature keeps the case typed and takes
+any character but a space. A label's name is its address, `/labels/{name}`,
+so `Release` and `release` must be one label and no name may need escaping
+or read as a path. The database checks what it can without depending on its
+locale: lower case, no leading punctuation, and none of the characters that
+break an address; the service checks the rest.
+
+Label changes are not audited, because the other page edits are not.
+
 ## 2026-09-30: The compose stack's commits do not wait for the disk
 
 The primary in `deploy/docker-compose.yml` runs with `synchronous_commit=off`.

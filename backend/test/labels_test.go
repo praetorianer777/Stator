@@ -57,6 +57,9 @@ func TestLabelsOverTheAPI(t *testing.T) {
 		if len(got) != 2 || got[0] != "ops" || got[1] != "release-process" {
 			t.Fatalf("the runbook carries %v, want ops and release-process in order", got)
 		}
+		if got := obj(t, want(t, ben.get(t, pagePath(runbook)), http.StatusOK, "the page"), "page")["labels"].([]any); len(got) != 2 || got[0] != "ops" {
+			t.Fatalf("the page answers labels %v", got)
+		}
 		want(t, ann.delete(t, pagePath(runbook, "/labels/ops")), http.StatusNoContent, "ann takes ops off")
 		want(t, ann.delete(t, pagePath(runbook, "/labels/ops")), http.StatusNoContent, "taking it off again")
 		if got := labelsOf(t, want(t, ann.get(t, pagePath(runbook, "/labels")), http.StatusOK, "labels")); !sameSet(got, []string{"release-process"}) {

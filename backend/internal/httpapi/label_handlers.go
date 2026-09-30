@@ -41,7 +41,7 @@ func (s *Server) handleAddPageLabel(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, apiErr)
 		return
 	}
-	var req label.AddInput
+	var req label.LabelInput
 	if err := decodeJSON(w, r, &req); err != nil {
 		respondError(w, r, err)
 		return

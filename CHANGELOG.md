@@ -142,6 +142,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   best match or latest change, and pages through the results; the query and
   every filter are in the address. Opening a page notes the visit for the
   reader's recent pages.
+- Labels. A page carries labels, one lower case word each, put on and taken
+  off by whoever may edit it; `Release Notes` becomes `release-notes`. The
+  page shows them as links, and for an editor a combobox that offers the
+  labels in use as they are typed. `/labels/{name}` lists the pages with a
+  label across the organization, `/s/{key}/labels/{name}` in one space, a
+  page of the list at a time. Search filters by label, and each hit shows its
+  page's labels. A copy takes its original's labels. A label is seen only
+  with its page: autocomplete, lists and search leave out the labels of
+  pages the reader may not view, and the database refuses them to raw SQL.
 
 ### Changed
 
