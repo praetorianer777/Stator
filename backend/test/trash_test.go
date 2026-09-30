@@ -177,12 +177,12 @@ func TestTheTrashIsWalledByTheDatabase(t *testing.T) {
 	theirs := docsB.add(docsB.homeID, "Theirs")
 
 	conn := appConn(t)
-	actAs(t, conn, b.org)
+	actAs(t, conn, b.org, b.user)
 	untouched(t, conn, "restoring A's page from B", `UPDATE page SET trashed_at = NULL, trash_id = NULL WHERE id = $1`, gone)
 	untouched(t, conn, "purging A's page from B", `DELETE FROM page WHERE id = $1`, gone)
 	refused(t, conn, "an item named after A's page", `UPDATE page SET trashed_at = now(), trash_id = $2 WHERE id = $1`, theirs, gone)
 
-	actAs(t, conn, a.org)
+	actAs(t, conn, a.org, a.user)
 	refused(t, conn, "trashing the home page", `UPDATE page SET trashed_at = now(), trash_id = id WHERE id = $1`, docsA.homeID)
 	refused(t, conn, "half a trash mark", `UPDATE page SET trashed_at = now() WHERE id = $1`, docsA.add(docsA.homeID, "Half"))
 

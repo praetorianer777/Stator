@@ -2415,7 +2415,7 @@
       },
       "post": {
         "operationId": "createSpace",
-        "summary": "Make a space and its home page. For administrators.",
+        "summary": "Make a space and its home page. For whoever may create spaces.",
         "tags": [
           "spaces"
         ],
@@ -2464,7 +2464,7 @@
     "/spaces/{spaceKey}": {
       "delete": {
         "operationId": "deleteSpace",
-        "summary": "Delete a space and every page in it. For administrators.",
+        "summary": "Delete a space and every page in it. For the space's administrators.",
         "tags": [
           "spaces"
         ],
@@ -2543,7 +2543,7 @@
       },
       "patch": {
         "operationId": "updateSpace",
-        "summary": "Rename or describe a space. For administrators.",
+        "summary": "Rename or describe a space. For the space's administrators.",
         "tags": [
           "spaces"
         ],

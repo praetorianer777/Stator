@@ -1,11 +1,32 @@
 package db
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type (
 	pinKey    struct{}
 	systemKey struct{}
+	userKey   struct{}
 )
+
+// UserVar is the setting the permission policies read through
+// current_actor_id(): whom the transaction acts for, within its organization.
+const UserVar = "app.user_id"
+
+// WithUser names the person the transactions made with ctx act for, so row
+// level security holds them to that person's permissions.
+func WithUser(ctx context.Context, id uuid.UUID) context.Context {
+	return context.WithValue(ctx, userKey{}, id)
+}
+
+// UserFrom is the person WithUser named, if any.
+func UserFrom(ctx context.Context) (uuid.UUID, bool) {
+	id, ok := ctx.Value(userKey{}).(uuid.UUID)
+	return id, ok && id != uuid.Nil
+}
 
 // pin describes a freshness requirement placed on reads made with a context.
 type pin struct {

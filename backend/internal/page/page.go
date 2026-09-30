@@ -74,6 +74,8 @@ type Page struct {
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedByName string    `json:"updatedByName"`
 	UpdatedAt     time.Time `json:"updatedAt"`
+
+	access perm.PageAccess
 }
 
 // UpdateInput publishes a new title or body at once, without a draft, as

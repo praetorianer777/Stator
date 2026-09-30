@@ -32,6 +32,11 @@ const (
 	ActionSpaceDeleted      = "space.deleted"
 	ActionPagePurged        = "page.purged"
 	ActionTrashEmptied      = "trash.emptied"
+	// Permissions: whom a global permission is granted to, a space's table,
+	// and a page's own restrictions.
+	ActionOrgPermissionSet    = "org.permission_set"
+	ActionSpacePermissionsSet = "space.permissions_set"
+	ActionPageRestrictionsSet = "page.restrictions_set"
 )
 
 // Entry is one act to record.
