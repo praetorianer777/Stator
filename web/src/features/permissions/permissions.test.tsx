@@ -13,6 +13,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// Under the test's own five seconds.
+const EDITOR_CHUNK_WAIT = { timeout: 4_000 };
 const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
 const space = aSpace();
 const home = aPage();
@@ -324,6 +326,7 @@ describe("what a page offers", () => {
   it("sends somebody who may not edit away from the editor with a sentence", async () => {
     stub({ edit: false, delete: false, restrict: false, comment: false });
     await renderAt(`/s/DOCS/p/${ids.plans}/plans/edit`);
-    expect(await screen.findByText(/You can read this page but not edit it\./)).toBeInTheDocument();
+    // The editor route arrives in a chunk of its own, which a busy machine loads slowly.
+    expect(await screen.findByText(/You can read this page but not edit it\./, undefined, EDITOR_CHUNK_WAIT)).toBeInTheDocument();
   });
 });

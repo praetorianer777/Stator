@@ -57,6 +57,7 @@ export function SubjectPicker({
 
   function pick(option: Option) {
     onPick(option.subject);
+    setOpen(false);
     setText("");
     setActive(0);
   }
@@ -87,6 +88,8 @@ export function SubjectPicker({
       <label htmlFor={id} className="block text-sm font-medium text-ink-muted">
         {label}
       </label>
+      {/* The list floats over what follows, so opening and closing it never moves a button under the pointer. */}
+      <div className="relative">
       <Input
         id={id}
         role="combobox"
@@ -112,7 +115,7 @@ export function SubjectPicker({
         role="listbox"
         aria-label={t.permissions.pickerOptions}
         hidden={!expanded || shown.length === 0}
-        className="max-h-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-1"
+        className="absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
         data-subject-options
       >
         {shown.map((option, i) => (
@@ -140,9 +143,10 @@ export function SubjectPicker({
           </div>
         ))}
       </div>
-      <p role="status" className="text-sm text-ink-subtle empty:hidden">
+      <p role="status" className="absolute inset-x-0 top-full z-30 mt-1 rounded-overlay border border-border bg-surface-overlay px-2 py-1.5 text-sm text-ink-subtle shadow-2 empty:hidden">
         {expanded && shown.length === 0 ? (found.isFetching ? t.permissions.pickerLoading : t.permissions.pickerEmpty) : ""}
       </p>
+      </div>
       {found.error && <ErrorBanner>{found.error.message}</ErrorBanner>}
     </div>
   );
