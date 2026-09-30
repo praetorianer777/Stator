@@ -227,13 +227,12 @@ function Filters({ address, onFilter, filtered }: { address: SearchAddress; onFi
           </option>
         ))}
       </Select>
-      <fieldset className="space-y-1.5" data-filter="type">
+      <fieldset className="flex flex-col items-start gap-1.5" data-filter="type">
         <legend className="mb-1 text-sm font-medium text-ink-muted">{t.search.type}</legend>
         {HIT_TYPES.map((type) => (
           <Checkbox
             key={type}
             label={t.search.types[type]}
-            className="flex"
             checked={types.includes(type)}
             onChange={(e) => onFilter({ type: joined(e.target.checked ? [...types, type] : types.filter((each) => each !== type)) })}
             data-filter-type={type}
