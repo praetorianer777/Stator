@@ -158,6 +158,33 @@ describe("the editor", () => {
   );
 
   it(
+    "saves what is still waiting when the editor closes, and lands it after the editor is gone",
+    async () => {
+      const saves = heldAnswers();
+      const sent = stubPage({ [`PUT /pages/${PAGE_ID}/draft`]: saves.answer });
+      const errors = vi.spyOn(console, "error");
+      const router = await renderAt(EDIT_PATH);
+      const { queryClient } = router.options.context;
+      const title = await screen.findByLabelText("Title");
+      await userEvent.clear(title);
+      await userEvent.type(title, "Plans later");
+      expect(puts(sent)).toHaveLength(0);
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+      await waitFor(() => expect(saves.waiting).toHaveLength(1));
+      expect(puts(sent)[0]!.body).toMatchObject({ title: "Plans later", baseVersion: 3 });
+      await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/plans`));
+      expect(document.querySelector("[data-page-editor]")).toBeNull();
+      await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+
+      saves.waiting[0]!({ status: 200, body: { draft: aDraft({ title: "Plans later" }) } });
+      expect(await screen.findByText("You have a draft of this page that nobody else sees yet.")).toBeInTheDocument();
+      await waitFor(() => expect(queryClient.isMutating()).toBe(0));
+      expect(errors).not.toHaveBeenCalled();
+    },
+    EDITOR_TEST_MS,
+  );
+
+  it(
     "refuses an empty title before asking the API",
     async () => {
       const sent = stubPage();
