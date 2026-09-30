@@ -26,6 +26,15 @@ async function statusOf(api: StatorApi, id: string): Promise<number> {
   return (await api.GET("/pages/{pageID}", { params: { path: { pageID: id } } })).response.status;
 }
 
+/** Checks the tree marks a page restricted; on a narrow screen the tree is in the drawer, which is opened and closed again. */
+async function expectTreeLock(page: Page, id: string): Promise<void> {
+  const drawer = page.locator('[data-action="drawer"]');
+  const narrow = await drawer.isVisible();
+  if (narrow) await drawer.click();
+  await expect(page.locator(`[data-tree-item="${id}"] [data-tree-restricted]`)).toBeVisible();
+  if (narrow) await page.locator('[data-action="close-drawer"]').click();
+}
+
 async function openRestrictions(page: Page): Promise<Locator> {
   await page.locator('[data-action="page-menu"]').click();
   await page.locator('[role="menu"] [data-action="page-restrictions"]').click();
@@ -90,7 +99,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     await dialog.locator('[data-action="save-restrictions"]').click();
     await expect(dialog).toHaveCount(0);
     await expect(page.locator('[data-page-restricted="view"]')).toBeVisible();
-    await expect(page.locator(`[data-tree-item="${secret.id}"] [data-tree-restricted]`)).toBeVisible();
+    await expectTreeLock(page, secret.id);
     await expect.poll(() => statusOf(bobApi, secret.id)).toBe(404);
 
     const bob = await pageAs("bob");
@@ -209,7 +218,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
 
       await page.goto(`/s/${key}/p/${page2.id}/locked`);
       await expect(page.locator('[data-page-restricted="view"]')).toBeVisible();
-      await expect(page.locator(`[data-tree-item="${page2.id}"] [data-tree-restricted]`)).toBeVisible();
+      await expectTreeLock(page, page2.id);
       await expectAccessible(page);
       await openRestrictions(page);
       await expectAccessible(page);
