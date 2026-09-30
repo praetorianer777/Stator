@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/mail"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -32,6 +33,9 @@ type Subject struct {
 type Tell struct {
 	UserID uuid.UUID
 	Kind   Kind
+	// Excerpt, when set, is shown to this person instead of the subject's,
+	// as the block that mentions them in a page.
+	Excerpt string
 }
 
 // Plan is who hears about one event.
@@ -48,7 +52,7 @@ type Planner func(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error
 // Pick keeps one kind per person, the first of Kinds that applies, and
 // leaves out the actor, who is never told about their own act.
 func Pick(actor uuid.UUID, candidates []Tell) []Tell {
-	best := map[uuid.UUID]int{}
+	best := map[uuid.UUID]Tell{}
 	var order []uuid.UUID
 	for _, c := range candidates {
 		if c.UserID == actor || c.UserID == uuid.Nil {
@@ -59,15 +63,15 @@ func Pick(actor uuid.UUID, candidates []Tell) []Tell {
 			continue
 		}
 		if prev, seen := best[c.UserID]; !seen {
-			best[c.UserID] = rank
+			best[c.UserID] = c
 			order = append(order, c.UserID)
-		} else if rank < prev {
-			best[c.UserID] = rank
+		} else if rank < slices.Index(Kinds, prev.Kind) {
+			best[c.UserID] = c
 		}
 	}
 	out := make([]Tell, len(order))
 	for i, id := range order {
-		out[i] = Tell{UserID: id, Kind: Kinds[best[id]]}
+		out[i] = best[id]
 	}
 	return out
 }
@@ -87,6 +91,7 @@ func NewFanOut(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog
 	f := &FanOut{db: cluster, mailer: mailer, appURL: strings.TrimRight(appURL, "/"), log: log, planners: map[string]Planner{}}
 	f.planners[events.TopicPagePublished] = planPublished
 	f.planners[events.TopicCommentCreated] = planCommentCreated
+	f.planners[events.TopicCommentEdited] = planCommentEdited
 	f.planners[events.TopicThreadResolved] = planThreadResolved
 	f.planners[events.TopicThreadReopened] = planThreadResolved
 	return f
@@ -130,9 +135,12 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 	if err := json.Unmarshal(e.Payload, &in); err != nil {
 		return nil, nil
 	}
-	var comment string
-	err := tx.QueryRow(ctx, `SELECT comment FROM page_version WHERE page_id = $1 AND number = $2 AND org_id = current_org_id()`,
-		in.PageID, in.Version).Scan(&comment)
+	var (
+		comment string
+		body    []byte
+	)
+	err := tx.QueryRow(ctx, `SELECT comment, body FROM page_version WHERE page_id = $1 AND number = $2 AND org_id = current_org_id()`,
+		in.PageID, in.Version).Scan(&comment, &body)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -141,8 +149,12 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 	}
 	version := in.Version
 	plan := &Plan{Actor: in.ActorID, Subject: Subject{PageID: in.PageID, Version: &version, Excerpt: Excerpt(comment)}}
+	blocks := map[uuid.UUID]string{}
+	for _, m := range document.MentionsIn(body) {
+		blocks[m.ID] = m.Block
+	}
 	for _, id := range in.Mentioned {
-		plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: KindMentioned})
+		plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: KindMentioned, Excerpt: Excerpt(blocks[id])})
 	}
 	if !in.NotifyWatchers {
 		return plan, nil
@@ -168,13 +180,17 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 // deliver writes one row acting for its recipient, so the database refuses
 // a row about a page they may not view, and mails or queues it as they prefer.
 func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, plan *Plan, t Tell) error {
+	subject := plan.Subject
+	if t.Excerpt != "" {
+		subject.Excerpt = t.Excerpt
+	}
 	var out *mail.Mail
 	_, err := f.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var about mailed
 		err := tx.QueryRow(ctx, `
 			SELECT p.title, s.key FROM page p JOIN space s ON s.id = p.space_id
 			WHERE p.id = $1 AND p.trashed_at IS NULL AND perm_page_viewable(p.id, $2::uuid)`,
-			plan.Subject.PageID, t.UserID).Scan(&about.title, &about.spaceKey)
+			subject.PageID, t.UserID).Scan(&about.title, &about.spaceKey)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -194,8 +210,8 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, plan *Plan, t T
 			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
 			ON CONFLICT (event_id, user_id) DO NOTHING
 			RETURNING id`,
-			t.UserID, eventID, t.Kind, nullable(plan.Actor), plan.Subject.PageID, plan.Subject.ThreadID,
-			plan.Subject.CommentID, plan.Subject.Version, plan.Subject.Excerpt).Scan(&id)
+			t.UserID, eventID, t.Kind, nullable(plan.Actor), subject.PageID, subject.ThreadID,
+			subject.CommentID, subject.Version, subject.Excerpt).Scan(&id)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -215,7 +231,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, plan *Plan, t T
 			FROM app_user u WHERE u.id = $1`, t.UserID, plan.Actor).Scan(&to, &about.actor); err != nil {
 			return err
 		}
-		about.kind, about.subject = t.Kind, plan.Subject
+		about.kind, about.subject = t.Kind, subject
 		m := about.single(to, f.appURL)
 		out = &m
 		return nil

@@ -61,9 +61,15 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 	if err := watch.Auto(ctx, tx, actor.UserID, p.ID); err != nil {
 		return nil, fmt.Errorf("watch the page: %w", err)
 	}
+	// Read after the page is published, so a first version's mentions reach
+	// the people who may view it now.
+	mentioned, err := newlyMentioned(ctx, tx, p.ID, p.Version, r.body)
+	if err != nil {
+		return nil, err
+	}
 	if err := events.Emit(ctx, tx, events.TopicPagePublished, events.PagePublished{
 		PageID: p.ID, Version: number, ActorID: actor.UserID, NotifyWatchers: r.notify,
-		First: number == 1, Mentioned: []uuid.UUID{},
+		First: number == 1, Mentioned: mentioned,
 	}); err != nil {
 		return nil, err
 	}

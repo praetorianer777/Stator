@@ -47,7 +47,7 @@ function marksIn(node: DocNode, out: Record<string, string> = {}): Record<string
 
 describe("a passage in a page's body", () => {
   const body = doc(
-    para(text("We ship "), text("on Friday", { type: "bold" }), text(" with "), { type: "mention", attrs: { id: "u1", label: "Ada" } }, text(" after review.")),
+    para(text("We ship "), text("on Friday", { type: "bold" }), text(" with "), { type: "mention", attrs: { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01", label: "Ada" } }, text(" after review.")),
     { type: "bulletList", content: [{ type: "listItem", content: [para(text("Friday again, twice Friday."))] }] },
   );
 

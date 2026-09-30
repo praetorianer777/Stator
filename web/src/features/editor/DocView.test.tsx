@@ -13,7 +13,7 @@ const doc: Doc = {
       content: [
         { type: "text", text: "bold", marks: [{ type: "bold" }] },
         { type: "text", text: " and " },
-        { type: "mention", attrs: { id: "u1", label: "Ada" } },
+        { type: "mention", attrs: { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01", label: "Ada" } },
         { type: "hardBreak" },
         { type: "text", text: "next line" },
       ],
@@ -63,7 +63,7 @@ describe("DocView", () => {
     const { container } = render(<DocView doc={doc} />);
     expect(container.querySelector("h2#plan")?.textContent).toBe("Plan");
     expect(container.querySelector("strong")?.textContent).toBe("bold");
-    expect(container.querySelector('[data-mention="u1"]')?.textContent).toBe("@Ada");
+    expect(container.querySelector('[data-mention="0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01"]')?.textContent).toBe("@Ada");
     expect(container.querySelector("br")).not.toBeNull();
     expect(container.querySelector("ul li")?.textContent).toBe("item");
     expect(container.querySelector("ol")?.getAttribute("start")).toBe("3");

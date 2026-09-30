@@ -77,8 +77,6 @@ const (
 	MaxListStart = 1_000_000
 	// maxLabelLength bounds a mention's shown name and a link's title.
 	maxLabelLength = 256
-	// maxIDLength bounds a mentioned person's id.
-	maxIDLength = 128
 	// maxLanguageLength bounds a code block's language name.
 	maxLanguageLength = 32
 	// MaxAltLength bounds an image's description.
@@ -171,7 +169,9 @@ var Allowed = Allowlist{
 		"mention": {
 			Inline: true,
 			Attrs: map[string]Attr{
-				"id":                    {Kind: KindString, MaxLength: maxIDLength, Pattern: `^\S+$`},
+				// id is a member's id; a mention of somebody who left stays in
+				// the text and tells nobody.
+				"id":                    {Kind: KindString, Pattern: UUIDPattern},
 				"label":                 {Kind: KindString, MaxLength: maxLabelLength, Pattern: `\S`},
 				"mentionSuggestionChar": {Kind: KindString, Nullable: true, Enum: []string{"@"}},
 			},

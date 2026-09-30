@@ -742,6 +742,7 @@ export const en = {
     linkCopied: "Link copied",
     copyFailed: "The link could not be copied. Copy it from the address bar after clicking the heading instead.",
     mentions: "People to mention",
+    mentionCannotView: "cannot see this page",
     slashMenu: "Insert a block",
     slashEmpty: "No block matches. Keep typing, or press Escape.",
     taskDone: "Done",
@@ -935,11 +936,11 @@ export const en = {
     unread: "Unread",
     failed: "Your notifications could not be loaded. Try again in a moment.",
     settings: "Notification settings",
-    sentence: (kind: string, actor: string, title: string, version: number | null) => {
+    sentence: (kind: string, actor: string, title: string, version: number | null, inComment = false) => {
       const who = actor || "Somebody";
       switch (kind) {
         case "mentioned":
-          return `${who} mentioned you on ${title}`;
+          return inComment ? `${who} mentioned you in a comment on ${title}` : `${who} mentioned you on ${title}`;
         case "replied":
           return `${who} replied in a thread on ${title}`;
         case "commented":

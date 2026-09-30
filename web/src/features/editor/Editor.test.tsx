@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Editor, type EditorHandle } from "./Editor";
-import type { Doc, DocNode } from "./schema";
+import type { Doc, DocNode, Mentionable, MentionSource } from "./schema";
 import { SLASH_ITEMS } from "./slashItems";
 
 const written: Doc = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "hello" }] }] };
@@ -65,7 +65,7 @@ describe("mentions", () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const people = [
-      { id: "u1", name: "Ada Lovelace", email: "ada@example.test" },
+      { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01", name: "Ada Lovelace", email: "ada@example.test" },
       { id: "u2", name: "Grace Hopper" },
     ];
     render(<Editor id="page-body" value={null} onChange={onChange} people={people} />);
@@ -76,6 +76,54 @@ describe("mentions", () => {
     await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(1));
     await user.keyboard("{Enter}");
     expect(find(onChange.mock.calls.at(-1)?.[0], "mention")[0]?.attrs).toMatchObject({ id: "u2", label: "Grace Hopper" });
+  });
+
+  it("look people up once the typing settles, and mark who cannot see the page", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const everybody: Mentionable[] = [
+      { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01", name: "Grace Hopper", email: "grace@example.test", canView: true },
+      { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a02", name: "Greta Garbo", email: "greta@example.test", canView: false },
+    ];
+    const source = vi.fn<MentionSource>(async (query) => everybody.filter((p) => p.name.toLowerCase().startsWith(query)));
+    render(<Editor id="page-body" value={null} onChange={onChange} mentionSource={source} />);
+    const box = document.getElementById("page-body")!;
+    await user.click(box);
+    await user.keyboard("@gr");
+    const list = await screen.findByRole("listbox", { name: "People to mention" });
+    await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(2));
+    expect(source).toHaveBeenCalledTimes(1);
+    expect(source.mock.calls[0]![0]).toBe("gr");
+    const greta = within(list).getByRole("option", { name: /Greta Garbo/ });
+    expect(greta).toHaveTextContent("cannot see this page");
+    expect(greta).toHaveAttribute("data-cannot-view");
+    expect(within(list).getByRole("option", { name: /Grace Hopper/ })).not.toHaveTextContent("cannot see this page");
+
+    await user.keyboard("e");
+    await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(1));
+    await waitFor(() => expect(source).toHaveBeenCalledTimes(2));
+    await user.keyboard("{Enter}");
+    expect(find(onChange.mock.calls.at(-1)?.[0], "mention")[0]?.attrs).toMatchObject({ id: everybody[1]!.id, label: "Greta Garbo" });
+  });
+
+  it("drop a lookup whose answer comes after the list closed", async () => {
+    const user = userEvent.setup();
+    let signal: AbortSignal | undefined;
+    const source = vi.fn<MentionSource>(
+      (_query, s) =>
+        new Promise((resolve) => {
+          signal = s;
+          s.addEventListener("abort", () => resolve([]));
+        }),
+    );
+    render(<Editor id="page-body" value={null} onChange={vi.fn()} mentionSource={source} />);
+    const box = document.getElementById("page-body")!;
+    await user.click(box);
+    await user.keyboard("@g");
+    await waitFor(() => expect(source).toHaveBeenCalled());
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(signal?.aborted).toBe(true));
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 
   it("offer nobody until a source of people is wired in", async () => {
@@ -269,7 +317,7 @@ describe("the lists under the caret", () => {
   it("keep the mention list's active option in view while focus stays in the editor", async () => {
     const user = userEvent.setup();
     const people = [
-      { id: "u1", name: "Ada Lovelace" },
+      { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01", name: "Ada Lovelace" },
       { id: "u2", name: "Alan Turing" },
     ];
     render(<Editor id="page-body" value={null} onChange={vi.fn()} people={people} />);

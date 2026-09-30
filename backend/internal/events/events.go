@@ -66,6 +66,16 @@ type CommentCreated struct {
 	Mentioned []uuid.UUID `json:"mentioned"`
 }
 
+// CommentEdited is a comment its author rewrote.
+type CommentEdited struct {
+	CommentID uuid.UUID `json:"commentId"`
+	ThreadID  uuid.UUID `json:"threadId"`
+	PageID    uuid.UUID `json:"pageId"`
+	ActorID   uuid.UUID `json:"actorId"`
+	// Mentioned are the people the edit named and the comment before it did not.
+	Mentioned []uuid.UUID `json:"mentioned"`
+}
+
 // ThreadResolved is an inline thread resolved, or reopened, by its topic.
 type ThreadResolved struct {
 	ThreadID uuid.UUID `json:"threadId"`

@@ -25,11 +25,11 @@ a sentence.
 | 00150 to 00159 | watching and notifications (#25, #26), mentions (#24) | `watch`, `watch_optout`, `outbox_event`, `notification`, `notification_preference`, `notification_digest` |
 | 00153 | comments (#22) | the ties from `notification` to comments, which must follow 00152 |
 | 00141 | inline comments (#23) | a thread's quote, detachment and resolution, the mark stripped from versions, the anchor check in `page_write_guard` |
+| 00154 | mentions (#24) | `perm_page_viewable_published` for the picker, and the policy that an outbox event mentions only members |
 
 Mentions need no table: the ids are read from the document on each publish
-and comment and travel in the outbox event. If #24 needs a migration after
-all, it takes the next free number in 00150 to 00159, after #25, #26 and
-#22's 00153, that is 00154.
+and comment and travel in the outbox event. The next free number in 00150
+to 00159 is 00155.
 
 Types live in `internal/comment`, `internal/watch` and `internal/notify`.
 The outbox is `internal/events`, as in Armature.
@@ -187,7 +187,18 @@ Changed: `Page` gains `comments: {page, inline, detached}`.
   mention is addressed to one person, not to the watchers. A draft tells
   nobody. A copy mentions nobody anew.
 - **In a comment** the people mentioned are told when it is posted; on an
-  edit, only people the edit added. Nobody is told twice about one comment.
+  edit, only people the edit added. Nobody is told twice about one comment:
+  an edit leaves out whoever already has a notification about it, of any
+  kind. Every edit emits `comment.edited`, with an empty list when it adds
+  nobody.
+- **Who is told** is decided twice: the service keeps only members who may
+  view the page as the change commits, and the worker writes each row acting
+  for its recipient, so a change of access in between still tells nobody who
+  may not view the page. The database refuses an outbox event whose
+  `mentioned` names anybody who is not a member of the organization.
+- **Wording.** A mention in a page reads "mentioned you on", one in a comment
+  "mentioned you in a comment on"; the excerpt is the block, or the comment,
+  that names the person.
 - **The actor** is never told about their own mention, and a mention does
   not make anybody watch the page.
 - The extraction of mention ids from a document is a function of

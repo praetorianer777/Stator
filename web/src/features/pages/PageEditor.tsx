@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
+import { useMentionSource } from "@/api/mentions";
 import { pageQuery, usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useDiscardDraft, useDraft, usePublish, useSaveDraft, type Draft, type PublishOptions } from "@/api/versions";
@@ -63,6 +64,7 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
   const [saveError, setSaveError] = useState("");
   const [titleError, setTitleError] = useState("");
   const files = useEditorAttachments(page.id);
+  const mentionSource = useMentionSource(page.id);
   const [dialog, setDialog] = useState(false);
   const [conflict, setConflict] = useState<{ latest: number; options: PublishOptions } | null>(null);
 
@@ -302,6 +304,7 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
           onSubmit={() => openPublish()}
           upload={files.upload}
           attachments={files.index}
+          mentionSource={mentionSource}
         />
       </DocPageContext>
       {dialog && <PublishDialog title={title} busy={publish.isPending} onClose={() => setDialog(false)} onPublish={(options) => void onPublish(options)} />}

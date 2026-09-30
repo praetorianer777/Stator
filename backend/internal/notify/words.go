@@ -23,14 +23,18 @@ type mailed struct {
 	subject  Subject
 }
 
-// Sentence says what happened, in English.
-func Sentence(kind Kind, actor, title string) string {
+// Sentence says what happened, in English; inComment is a mention made in
+// a comment rather than in the page.
+func Sentence(kind Kind, actor, title string, inComment bool) string {
 	if actor == "" {
 		actor = someone
 	}
 	quoted := `"` + title + `"`
 	switch kind {
 	case KindMentioned:
+		if inComment {
+			return fmt.Sprintf("%s mentioned you in a comment on %s", actor, quoted)
+		}
 		return fmt.Sprintf("%s mentioned you on %s", actor, quoted)
 	case KindReplied:
 		return fmt.Sprintf("%s replied in a thread on %s", actor, quoted)
@@ -56,7 +60,9 @@ func PageURL(appURL, spaceKey string, s Subject) string {
 	return link
 }
 
-func (m mailed) sentence() string { return Sentence(m.kind, m.actor, m.title) }
+func (m mailed) sentence() string {
+	return Sentence(m.kind, m.actor, m.title, m.subject.CommentID != nil)
+}
 
 // single is the mail for one notification sent at once.
 func (m mailed) single(to, appURL string) mail.Mail {

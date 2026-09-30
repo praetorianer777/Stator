@@ -13,7 +13,7 @@ const commentDoc = `{"type":"doc","content":[
  {"type":"heading","attrs":{"level":2,"id":null},"content":[{"type":"text","text":"Thoughts"}]},
  {"type":"paragraph","content":[
   {"type":"text","text":"Ask ","marks":[{"type":"bold"},{"type":"italic"}]},
-  {"type":"mention","attrs":{"id":"u1","label":"Ada Lovelace","mentionSuggestionChar":"@"}},
+  {"type":"mention","attrs":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01","label":"Ada Lovelace","mentionSuggestionChar":"@"}},
   {"type":"hardBreak"},
   {"type":"text","text":"old","marks":[{"type":"strike"},{"type":"code"}]},
   {"type":"text","text":"site","marks":[{"type":"link","attrs":{"href":"https://example.test","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"title":null}}]}]},

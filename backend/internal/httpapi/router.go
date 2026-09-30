@@ -247,6 +247,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/pages/{pageID}/watch", s.handleWatchPage)
 			r.Delete("/pages/{pageID}/watch", s.handleUnwatchPage)
 			r.Get("/pages/{pageID}/watchers", s.handleListWatchers)
+			r.Get("/pages/{pageID}/mentionable", s.handleListMentionable)
 			r.Put("/spaces/{spaceKey}/watch", s.handleWatchSpace)
 			r.Delete("/spaces/{spaceKey}/watch", s.handleUnwatchSpace)
 			r.Get("/watches", s.handleListWatches)

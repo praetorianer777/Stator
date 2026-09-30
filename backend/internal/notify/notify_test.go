@@ -132,8 +132,11 @@ func TestAMailSaysWhatHappenedAndWhere(t *testing.T) {
 	if got := PageURL("https://wiki.example", "OPS", Subject{PageID: page, ThreadID: &thread}); !strings.HasSuffix(got, "?thread="+thread.String()) {
 		t.Errorf("a thread's link is %s", got)
 	}
-	if got := Sentence(KindCreated, "", "Plans"); got != `Somebody created "Plans"` {
+	if got := Sentence(KindCreated, "", "Plans", false); got != `Somebody created "Plans"` {
 		t.Errorf("a gone actor reads %q", got)
+	}
+	if got := Sentence(KindMentioned, "Carl", "Plans", true); got != `Carl mentioned you in a comment on "Plans"` {
+		t.Errorf("a mention in a comment reads %q", got)
 	}
 	b := bundle("bob@example.test", "https://wiki.example", []mailed{
 		{kind: KindCreated, actor: "Alice", title: "Plans", spaceKey: "OPS", subject: Subject{PageID: page}},
