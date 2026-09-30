@@ -119,6 +119,13 @@ type Person struct {
 	Email string    `json:"email"`
 }
 
+// Mentionable is a person the mention picker offers, and whether they may
+// view the page once it is published; only those who may are told.
+type Mentionable struct {
+	Person
+	CanView bool `json:"canView"`
+}
+
 // Group is a group of the organization, as a picker offers it.
 type Group struct {
 	ID          uuid.UUID `json:"id"`
