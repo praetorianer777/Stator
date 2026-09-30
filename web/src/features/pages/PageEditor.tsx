@@ -79,6 +79,12 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
   // Only the last save queued speaks for the draft: an older one that ends
   // while a newer one waits must neither call it saved nor mark it unsaved.
   const queued = useRef(0);
+  // The save flushed as the editor goes still lands in the cache, but what it
+  // says about itself has no form left to show it in.
+  const mounted = useRef(false);
+  const report = (update: () => void) => {
+    if (mounted.current) update();
+  };
 
   function flush(): Promise<boolean> {
     clearTimeout(timer.current);
@@ -86,24 +92,28 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
     if (!dirty.current) return chain.current;
     const input = latest.current;
     if (!input.title.trim()) {
-      setState("untitled");
+      report(() => setState("untitled"));
       return Promise.resolve(false);
     }
     dirty.current = false;
-    setState("saving");
+    report(() => setState("saving"));
     const turn = ++queued.current;
     const run = chain.current.then(() =>
       saveRef.current({ title: input.title, body: input.body ?? emptyDoc, baseVersion: input.base }).then(
         () => {
-          setHasDraft(true);
-          if (turn === queued.current && !dirty.current) setState("saved");
+          report(() => {
+            setHasDraft(true);
+            if (turn === queued.current && !dirty.current) setState("saved");
+          });
           return true;
         },
         (error: Error) => {
           if (turn !== queued.current) return false;
           dirty.current = true;
-          setSaveError(error.message);
-          setState("error");
+          report(() => {
+            setSaveError(error.message);
+            setState("error");
+          });
           return false;
         },
       ),
@@ -121,7 +131,13 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
-  useEffect(() => () => void flushRef.current(), []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      void flushRef.current();
+    };
+  }, []);
 
   const unsaved = state === "pending" || state === "saving" || state === "error" || state === "untitled";
   useEffect(() => {
