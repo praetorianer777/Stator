@@ -3,6 +3,43 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: The database forgets Armature tokens when the address moves, and each member reaches only their own
+
+An administrator who could point the connection at a host of their choosing
+while the members' tokens stayed would collect those tokens on the next page
+view. So a new base URL or Armature organization deletes every stored token
+in the same statement: `armature_connection_moved`, a trigger, does it, so
+raw SQL as `stator_app` cannot move the address and keep them, and removing
+the connection takes them by a foreign key. The same trigger forgets the
+Armature organization id learned from the first token, which only the
+service writes, as the admin role: a member could otherwise pin it with raw
+SQL and have every genuine webhook refused.
+
+`stator_app` reads and writes only the actor's own `armature_token` row, and
+only administrators the connection. What a member needs of the connection,
+its address and slug, and what an administrator needs of the tokens, how
+many there are, come from two SECURITY DEFINER functions, so neither reads
+the other's rows. A token is never rewritten in place and a row id is never
+chosen: storing a token makes a new row with a fresh id, and the cache keys
+every answer by that id (#28 onwards), so a new token, or a new Armature
+identity behind it, never reads what was cached for the old one.
+
+Saving the connection asks Armature for its OpenAPI document only when the
+address changes. Rotating the webhook secret or naming another organization
+then works while Armature is down, and the tokens are still forgotten by the
+database either way. A check that finds Armature unreachable records it and
+keeps the token, since an outage says nothing about the token; only a 401
+marks it rejected.
+
+## 2026-10-01: The armature-stub runs the image the api builds
+
+The stub is a Go binary in the backend image like every other service. The
+classic builder tags that one image from each service's build at once, and
+with a fifth service building it the tagging raced often enough to fail
+`make stack-up` with "already exists". The stub names the image with
+`pull_policy: never` instead of building it, and compose builds before it
+creates containers, so the image is there when the stub starts.
+
 ## 2026-09-30: Deleting somebody else's comment is moderation, and takes space administer
 
 Since #176, a space's `delete` let its holder delete anybody's comment, and

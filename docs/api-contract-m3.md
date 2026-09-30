@@ -56,8 +56,8 @@ New settings, in compose and the chart:
   token), `rejected` (Armature answered 401 to the stored token; it is not used
   again until its owner stores a new one or checks it), `unreachable` (no
   answer within `armature.CallTimeout`, 5 seconds, an address the guard
-  refused, or a 5xx). A page with twenty chips then draws twenty keys, not
-  twenty errors.
+  refused, a 5xx or a 429). A page with twenty chips then draws twenty keys,
+  not twenty errors. `armature.StatusOf` names the status of a call's error.
 - **What a viewer without a token sees.** Chips show the key alone, linked to
   the issue in Armature when the base URL is known; the hover card and the
   blocks say "Connect your Armature account to see this issue" with a button to
@@ -171,7 +171,33 @@ it, never reads an answer given to the old one.
   check, whom the token acts as in Armature (`user`) and `checkedAt`. Only the
   person's own row is ever read; the database lets `stator_app` read and write
   only the actor's own token row, and only administrators the connection.
-- **Check** asks `GET /auth/me` now. `ok` clears a `rejected` mark.
+- **Check** asks `GET /auth/me` now and stores what it found as `status`:
+  `ok`, `rejected`, or `unreachable`, which keeps the token for the next
+  check. `ok` clears a `rejected` mark. Without a connection or a token it
+  changes nothing and answers the account as it is.
+- **Asking Armature on save** happens when the address is new or changed:
+  changing the organization or the secret alone sends nothing, so an
+  Armature that is down does not keep an administrator from rotating the
+  secret. A new organization still forgets the tokens.
+- Storing a token while the organization has no connection is 409
+  `armature_not_configured`.
+
+### What later issues build on
+
+- `armature.Service.Viewer(ctx)` is the person ctx acts for (the request's,
+  or the one the worker names with `db.WithUser`): their `TokenID`, which
+  keys their cache entries, and a `Caller` that makes every call with their
+  own token, or the status saying why there is none (`not_configured`,
+  `not_connected`, `rejected`). A 401 from any call goes to
+  `Service.NoteRejected`, so the token is not sent again.
+- `Caller.Get` and `Caller.Send` take a path under `/api/v1`, answer
+  `ErrRejected` for a 401, `ErrUnreachable` for no answer, a guard refusal, a
+  5xx, a 429 or an unreadable answer, and `*RefusedError` with Armature's
+  code, sentence, fields and position for any other refusal; the httpapi
+  error mapping turns these into the statuses above. Calls are bounded by
+  `CallTimeout`; a shorter context, such as `ThemeTimeout`, wins.
+- `Service.Cache()` is nil without Valkey, and every method of a nil
+  `*armature.Cache` is a miss or does nothing, so callers need no check.
 - A Stator token of the `read` scope may call every GET here and so read
   Armature as its owner; the writes are refused to it like every other write.
 
@@ -478,7 +504,22 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   theme, read the remote links it holds, and send a signed webhook for a
   change to a given address and secret, exactly as Armature's `webhook.Sign`
   and headers do, so the Playwright spec for #33 goes through the real
-  receiver.
+  receiver. As built in #27: `PATCH /_stub/{tenant}/issues/{key}`
+  (`summary`, `statusCategory`, `priority`, `assignee` by name),
+  `POST /_stub/{tenant}/issues/{key}/move` (`projectKey`),
+  `PUT /_stub/{tenant}/people/{person}/theme` (`theme`, an example theme's
+  key or empty), `GET /_stub/{tenant}/remote-links`,
+  `POST /_stub/{tenant}/webhooks` (`url`, `secret`, `topic`, `payload`, and
+  `id` to repeat an event), and `DELETE /_stub/{tenant}` to start a tenant
+  afresh.
+- **The fixed world.** Every tenant has the projects `CP` and `SEC`, the
+  types Task, Bug, Story and Sub-task, and the issues `CP-1` to `CP-5` and
+  `SEC-1`; `CP-5` was `SEC-2` before it moved, and answers to that key too.
+  A person is named `{person}` capitalised, with the email
+  `{person}@{tenant}.armature.test`, and alice is assigned `CP-1` and `CP-4`.
+  The browser opens the stub at `STATOR_ARMATURE_URL` from
+  `.cache/stack.env`; the integration suite names it
+  `STATOR_TEST_ARMATURE_URL` and reaches it at `STATOR_TEST_ARMATURE_STUB_URL`.
 - **The contract test**, a Go unit test beside the stub and so in
   `make check-go`, loads Armature's `api/openapi.json` vendored at
   `api/armature/openapi.json` (with `api/armature/SOURCE` naming the Armature

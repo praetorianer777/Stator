@@ -148,7 +148,8 @@ ports, so parallel worktrees do not collide.
 and test stack: Postgres 18 as a primary and a streaming replica, Valkey,
 SeaweedFS (S3), Mailpit, Keycloak with the `stator-dev` realm
 (`deploy/keycloak/realm.json`), the one-shot `migrate` and `seed`, `api`,
-`worker`, and `web`. Every service has a health check and the dependencies
+`worker`, `web`, and `armature-stub` in Armature's place, which only the
+stack lets the SSRF guard through to. Every service has a health check and the dependencies
 wait on them, so `docker compose up --wait` returns once the stack answers.
 The primary runs with `synchronous_commit=off`: a commit that waited for the
 host's disk could take seconds on a busy machine. Only this stack does so; see
