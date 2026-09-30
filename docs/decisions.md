@@ -3,6 +3,24 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: The compose stack's commits do not wait for the disk
+
+The primary in `deploy/docker-compose.yml` runs with `synchronous_commit=off`.
+On a host running several gates, a single fsync of the WAL took up to about
+9 s, and every commit waited for it: removing a member once took 8.7 s, longer
+than any timeout the browser suite allows. With the setting off, a commit
+returns once its WAL is written, and the WAL writer flushes it shortly after.
+A crash of the machine can lose less than a second of writes, but never
+consistency: what survives is a prefix of what was committed. The replica
+does not take the setting, since nothing commits there. It still replays
+only what the primary has flushed, and read-your-writes already sends a read
+to the primary while the replica lags.
+
+This is for the development and test stack alone. Production, and every
+layout of the Helm chart, keep the default, and `tests/test-helm.sh` fails if
+a rendered chart names `synchronous_commit`. Nothing else about durability
+changes.
+
 ## 2026-09-30: Search reads a page's words in the database, and trims in its SQL
 
 A page's title, weighted A, and the plain text of its body, weighted B, are a

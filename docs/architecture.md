@@ -144,6 +144,9 @@ SeaweedFS (S3), Mailpit, Keycloak with the `stator-dev` realm
 (`deploy/keycloak/realm.json`), the one-shot `migrate` and `seed`, `api`,
 `worker`, and `web`. Every service has a health check and the dependencies
 wait on them, so `docker compose up --wait` returns once the stack answers.
+The primary runs with `synchronous_commit=off`: a commit that waited for the
+host's disk could take seconds on a busy machine. Only this stack does so; see
+`docs/decisions.md`.
 
 Two images are built. `Dockerfile.backend` holds every Go binary, stamped with
 `VERSION`, and each service picks one by its command. `Dockerfile.web` builds
