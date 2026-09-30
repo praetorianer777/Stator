@@ -119,6 +119,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Post("/auth/login", s.handleLogin)
 		r.Get("/auth/oidc/{orgSlug}/start", s.handleOIDCStart)
 		r.Get("/auth/oidc/callback", s.handleOIDCCallback)
+		mountPending(r, true)
 
 		r.Group(func(r chi.Router) {
 			r.Use(requireAuth)
@@ -256,7 +257,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/notifications/read", s.handleMarkRead)
 			r.Get("/notification-preferences", s.handleNotificationPreferences)
 			r.Put("/notification-preferences", s.handleSaveNotificationPreferences)
-			mountPending(r)
+			mountPending(r, false)
 		})
 	})
 
@@ -277,11 +278,11 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 var errNotImplemented = &APIError{Status: http.StatusNotImplemented, Code: "not_implemented",
 	Message: "This part of the API is not built yet. Update Stator to a release that has it, or leave it out for now."}
 
-// mountPending routes every pending operation to a 501, behind the same
-// guards as the pages, so clients can be written against it before it exists.
-func mountPending(r chi.Router) {
+// mountPending routes each pending operation to a 501 so clients can be written
+// against it: public ones open, the rest behind the same guards as the pages.
+func mountPending(r chi.Router, public bool) {
 	for _, op := range operations {
-		if op.pending {
+		if op.pending && op.public == public {
 			r.Method(op.method, op.path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				respondError(w, r, errNotImplemented)
 			}))
