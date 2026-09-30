@@ -199,8 +199,9 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     test.skip(restricted.response.status === 501, `Page restrictions (#19) are not built yet, so every member of ${freshOrg.slug} edits every page.`);
     expect(restricted.response.status).toBe(200);
 
+    // Bob's reads may be served by a replica, which sees alice's upload a moment later.
+    await expect.poll(async () => (await attachmentsOf(bobApi, wiki.id)).map((a) => a.fileName)).toEqual(["handover.txt"]);
     const [file] = await attachmentsOf(bobApi, wiki.id);
-    expect(file?.fileName).toBe("handover.txt");
     const refused = await bobApi.DELETE("/attachments/{attachmentID}", { params: { path: { attachmentID: String(file?.id) } } });
     expect(refused.response.status).toBe(403);
 
