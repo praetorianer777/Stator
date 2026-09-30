@@ -198,8 +198,10 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     });
     expect(restricted.response.status).toBe(200);
 
-    // Bob's reads may be served by a replica, which sees alice's upload a moment later.
+    // Bob's reads may be served by a replica, which sees alice's upload and her
+    // restriction a moment later; the upload landing does not mean the restriction has.
     await expect.poll(async () => (await attachmentsOf(bobApi, wiki.id)).map((a) => a.fileName)).toEqual(["handover.txt"]);
+    await expect.poll(async () => (await bobApi.GET("/pages/{pageID}", { params: { path: { pageID: wiki.id } } })).data?.page.can.edit).toBe(false);
     const [file] = await attachmentsOf(bobApi, wiki.id);
     const refused = await bobApi.DELETE("/attachments/{attachmentID}", { params: { path: { attachmentID: String(file?.id) } } });
     expect(refused.response.status).toBe(403);
