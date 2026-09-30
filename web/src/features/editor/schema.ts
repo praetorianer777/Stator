@@ -7,9 +7,13 @@ import { EDITOR_HEADING_LEVELS, HEADING_SLUG_MAX_LENGTH } from "@/config";
 export const PANEL_KINDS = ["info", "note", "success", "warning", "error"] as const;
 export const CELL_BACKGROUNDS = ["neutral", "accent", "success", "warning", "danger"] as const;
 export const HEADING_LEVELS = EDITOR_HEADING_LEVELS;
+export const CHILD_PAGES_SCOPES = ["children", "subtree"] as const;
+export const CHILD_PAGES_SORTS = ["tree", "title", "updated"] as const;
 
 export type PanelKind = (typeof PANEL_KINDS)[number];
 export type CellBackground = (typeof CELL_BACKGROUNDS)[number];
+export type ChildPagesScope = (typeof CHILD_PAGES_SCOPES)[number];
+export type ChildPagesSort = (typeof CHILD_PAGES_SORTS)[number];
 
 export interface DocMark {
   type: string;

@@ -536,6 +536,44 @@
     --panel-edge: var(--color-danger);
     --panel-fill: var(--color-danger-subtle);
   }
+  /* A table of contents and a list of child pages: generated lists in a
+   * quiet frame, so they read as the page's furniture rather than its text. */
+  .doc-content .doc-block {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    padding: 0.5rem 0.75rem;
+  }
+  .doc-content .doc-block.ProseMirror-selectednode {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  .doc-content .doc-block ul {
+    list-style: none;
+    margin: 0;
+    padding-left: 0;
+  }
+  .doc-content .doc-block ul ul {
+    padding-left: 1rem;
+  }
+  .doc-content .doc-block li {
+    margin-top: 0.125rem;
+  }
+  .doc-content .doc-block-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+  .doc-content .doc-block-empty,
+  .doc-content .doc-block-meta,
+  .doc-content .doc-block-summary {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
   .doc-content .suggestion {
     border-radius: var(--radius-control);
     background: var(--color-accent-subtle);

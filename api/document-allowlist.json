@@ -26,13 +26,40 @@
         "horizontalRule",
         "table",
         "panel",
-        "image"
+        "image",
+        "tableOfContents",
+        "childPages"
       ]
     },
     "bulletList": {
       "content": [
         "listItem"
       ]
+    },
+    "childPages": {
+      "attrs": {
+        "depth": {
+          "kind": "integer",
+          "nullable": true,
+          "min": 1,
+          "max": 10
+        },
+        "scope": {
+          "kind": "string",
+          "enum": [
+            "children",
+            "subtree"
+          ]
+        },
+        "sort": {
+          "kind": "string",
+          "enum": [
+            "tree",
+            "title",
+            "updated"
+          ]
+        }
+      }
     },
     "codeBlock": {
       "attrs": {
@@ -59,7 +86,9 @@
         "horizontalRule",
         "table",
         "panel",
-        "image"
+        "image",
+        "tableOfContents",
+        "childPages"
       ]
     },
     "hardBreak": {
@@ -119,7 +148,9 @@
         "horizontalRule",
         "table",
         "panel",
-        "image"
+        "image",
+        "tableOfContents",
+        "childPages"
       ]
     },
     "mention": {
@@ -190,7 +221,9 @@
         "horizontalRule",
         "table",
         "panel",
-        "image"
+        "image",
+        "tableOfContents",
+        "childPages"
       ]
     },
     "paragraph": {
@@ -257,7 +290,9 @@
         "horizontalRule",
         "table",
         "panel",
-        "image"
+        "image",
+        "tableOfContents",
+        "childPages"
       ]
     },
     "tableHeader": {
@@ -310,8 +345,19 @@
         "horizontalRule",
         "table",
         "panel",
-        "image"
+        "image",
+        "tableOfContents",
+        "childPages"
       ]
+    },
+    "tableOfContents": {
+      "attrs": {
+        "maxLevel": {
+          "kind": "integer",
+          "min": 1,
+          "max": 3
+        }
+      }
     },
     "tableRow": {
       "content": [
@@ -336,7 +382,9 @@
         "horizontalRule",
         "table",
         "panel",
-        "image"
+        "image",
+        "tableOfContents",
+        "childPages"
       ]
     },
     "taskList": {

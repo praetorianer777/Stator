@@ -9,6 +9,7 @@ import { Icon } from "@/components/icons";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
+import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocView } from "@/features/editor/DocView";
 import { PageLabels } from "@/features/labels/PageLabels";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
@@ -139,23 +140,23 @@ export function PageScreen({ pageId }: { pageId: string }) {
               </>
             )}
             {actions.length > 0 && (
-                <Menu
-                  label={t.page.actions}
-                  align="end"
-                  items={actions}
-                  trigger={(props) => (
-                    <IconButton
-                      icon={<Icon.More />}
-                      label={t.page.actions}
-                      variant="secondary"
-                      onClick={props.toggle}
-                      aria-haspopup={props["aria-haspopup"]}
-                      aria-expanded={props["aria-expanded"]}
-                      aria-controls={props["aria-controls"]}
-                      data-action="page-menu"
-                    />
-                  )}
-                />
+              <Menu
+                label={t.page.actions}
+                align="end"
+                items={actions}
+                trigger={(props) => (
+                  <IconButton
+                    icon={<Icon.More />}
+                    label={t.page.actions}
+                    variant="secondary"
+                    onClick={props.toggle}
+                    aria-haspopup={props["aria-haspopup"]}
+                    aria-expanded={props["aria-expanded"]}
+                    aria-controls={props["aria-controls"]}
+                    data-action="page-menu"
+                  />
+                )}
+              />
             )}
           </>
         }
@@ -178,7 +179,9 @@ export function PageScreen({ pageId }: { pageId: string }) {
         </div>
       )}
       <KnownAttachmentsContext value={attachmentIds}>
-        <DocView doc={page.body} />
+        <DocPageContext value={{ id: page.id, spaceKey: space.key }}>
+          <DocView doc={page.body} />
+        </DocPageContext>
       </KnownAttachmentsContext>
       <PageLabels page={page} />
       <AttachmentPanel pageId={page.id} editable={page.can.edit} />

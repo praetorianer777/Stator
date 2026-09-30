@@ -39,6 +39,8 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("panelSuccess", Icon.Panel, ["panel", "success", "tip"], (c) => c.setPanel("success")),
   item("panelWarning", Icon.Panel, ["panel", "warning", "caution"], (c) => c.setPanel("warning")),
   item("panelError", Icon.Panel, ["panel", "error", "danger"], (c) => c.setPanel("error")),
+  item("tableOfContents", Icon.Hash, ["toc", "contents", "headings", "outline"], (c) => c.insertTableOfContents()),
+  item("childPages", Icon.Page, ["children", "pages", "subpages", "tree"], (c) => c.insertChildPages()),
 ];
 
 /** The blocks whose name or keywords contain what was typed after the slash. */
