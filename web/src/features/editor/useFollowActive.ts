@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 /**
- * Keeps the active option of a list under the caret in view. Pass the result
- * as the list's ref; give the list overflow-y-hidden so it clips, not scrolls.
+ * Keeps the active option of a clipped (overflow-y-hidden) list in view and
+ * lets the wheel and a swipe scroll it. Pass the result as the list's ref.
  */
 export function useFollowActive(active: number): (list: HTMLElement | null) => void {
   const [list, setList] = useState<HTMLElement | null>(null);
@@ -24,6 +24,29 @@ export function useFollowActive(active: number): (list: HTMLElement | null) => v
     };
     list.addEventListener("wheel", wheel, { passive: false });
     return () => list.removeEventListener("wheel", wheel);
+  }, [list]);
+
+  // A clipped list ignores a swipe too, so the finger drags it by hand. Only
+  // the move is cancelled: a tap still ends in the mousedown that picks.
+  useEffect(() => {
+    if (!list) return;
+    let lastY: number | undefined;
+    const start = (e: TouchEvent) => {
+      lastY = e.touches.length === 1 ? e.touches[0]?.clientY : undefined;
+    };
+    const move = (e: TouchEvent) => {
+      const y = e.touches.length === 1 ? e.touches[0]?.clientY : undefined;
+      if (lastY === undefined || y === undefined) return;
+      e.preventDefault();
+      list.scrollTop += lastY - y;
+      lastY = y;
+    };
+    list.addEventListener("touchstart", start, { passive: true });
+    list.addEventListener("touchmove", move, { passive: false });
+    return () => {
+      list.removeEventListener("touchstart", start);
+      list.removeEventListener("touchmove", move);
+    };
   }, [list]);
 
   return setList;
