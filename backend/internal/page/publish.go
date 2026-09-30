@@ -14,7 +14,9 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
 const (
@@ -35,8 +37,8 @@ type release struct {
 	restoredFrom *int
 }
 
-// publish writes the page's next version and copies it onto the page. The
-// caller has loaded the page locked and checked the actor may edit it.
+// publish writes the page's next version, copies it onto the page, makes the
+// actor watch it and tells the outbox. The caller has checked the actor may edit it.
 func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r release) (*VersionEntry, error) {
 	number := p.Version + 1
 	if _, err := tx.Exec(ctx, `
@@ -49,6 +51,15 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 		UPDATE page SET title = $2, body = $3, version = $4, updated_by = $5 WHERE id = $1`,
 		p.ID, r.title, r.body, number, actor.UserID); err != nil {
 		return nil, fmt.Errorf("publish the page: %w", err)
+	}
+	if err := watch.Auto(ctx, tx, actor.UserID, p.ID); err != nil {
+		return nil, fmt.Errorf("watch the page: %w", err)
+	}
+	if err := events.Emit(ctx, tx, events.TopicPagePublished, events.PagePublished{
+		PageID: p.ID, Version: number, ActorID: actor.UserID, NotifyWatchers: r.notify,
+		First: number == 1, Mentioned: []uuid.UUID{},
+	}); err != nil {
+		return nil, err
 	}
 	return versionEntry(ctx, tx, p.ID, number)
 }
@@ -282,7 +293,7 @@ func (s *Service) RestoreVersion(ctx context.Context, actor perm.Actor, id uuid.
 		if number == p.Version {
 			return ErrRestoreLatest
 		}
-		if entry, err = publish(ctx, tx, actor, p, release{title: old.Title, body: old.Body, comment: comment, restoredFrom: &number}); err != nil {
+		if entry, err = publish(ctx, tx, actor, p, release{title: old.Title, body: old.Body, comment: comment, notify: in.NotifyWatchers, restoredFrom: &number}); err != nil {
 			return err
 		}
 		out, _, err = load(ctx, tx, actor, id, false)

@@ -150,6 +150,12 @@ attachments:
   # must allow at least this much; an nginx Ingress reads proxy-body-size.
   uploadLimit: 50MB
 
+mail:
+  # The SMTP relay the worker sends notifications through, as host:port.
+  # Blank turns mail off: notifications are then shown in the app only.
+  smtpAddr: ""
+  from: Stator <no-reply@stator.example.com>
+
 auth:
   sessionCookie: stator_session
   # Must be true unless env is development, on the worker too: it shares the

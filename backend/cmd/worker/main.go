@@ -1,5 +1,5 @@
-// Command worker runs everything that happens outside a request: for now the
-// reaper that removes the bytes of deleted files.
+// Command worker runs everything that happens outside a request: the outbox
+// with the notifications it fans out, their digests, and the file reaper.
 package main
 
 import (
@@ -13,6 +13,9 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/events"
+	"github.com/praetorianer777/stator/backend/internal/mail"
+	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/version"
@@ -82,6 +85,18 @@ func run() error {
 	} else {
 		reaper := attachment.NewReaper(attachment.NewService(cluster, store, nil).WithLogger(log), log, attachment.DefaultReapInterval)
 		go reaper.Run(ctx)
+	}
+
+	var mailer mail.Mailer
+	if cfg.Mail.SMTPAddr == "" {
+		log.Warn("mail is off: STATOR_SMTP_ADDR is not set, so notifications are written in the app only")
+	} else {
+		mailer = mail.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From}
+	}
+	fanOut := notify.NewFanOut(cluster, mailer, cfg.AppBaseURL, log)
+	go events.NewWorker(cluster, fanOut, log).Run(ctx)
+	if mailer != nil {
+		go notify.NewDigester(cluster, mailer, cfg.AppBaseURL, log).Run(ctx)
 	}
 
 	build := version.Current()

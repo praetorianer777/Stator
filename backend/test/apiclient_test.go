@@ -27,6 +27,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
@@ -34,6 +35,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
 // apiServer is the real router over the real database and the real bucket,
@@ -88,8 +90,8 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	server := &httpapi.Server{
 		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
-		Labels: label.NewService(h.cluster, pages),
-		Fresh:  h.freshness(t), CookieName: h.cfg.Auth.SessionCookie,
+		Labels: label.NewService(h.cluster, pages), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster),
+		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie,
 	}
 	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))
 	t.Cleanup(a.srv.Close)

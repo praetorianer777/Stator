@@ -25,6 +25,7 @@ func clean(t *testing.T) {
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
 		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
+		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM",
 	} {
 		t.Setenv(key, "")
 	}
@@ -369,5 +370,30 @@ func TestTheTestEndpointsNeedATokenAProviderAndNoProduction(t *testing.T) {
 	t.Setenv("STATOR_SECRET_KEY", testKey)
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_TEST_ENDPOINTS is on in production") {
 		t.Fatalf("on in production = %v", err)
+	}
+}
+
+// Mail is off until a relay is named, and a sender that is no address is
+// refused by name only once mail would go out.
+func TestMailNeedsARelayAndASender(t *testing.T) {
+	clean(t)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Mail.SMTPAddr != "" || cfg.Mail.From != DefaultMailFrom {
+		t.Errorf("mail defaults to %+v", cfg.Mail)
+	}
+	t.Setenv("STATOR_MAIL_FROM", "nobody")
+	if _, err := Load(); err != nil {
+		t.Errorf("a sender is judged while mail is off: %v", err)
+	}
+	t.Setenv("STATOR_SMTP_ADDR", "mailpit:1025")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_MAIL_FROM") {
+		t.Errorf("a sender that is no address is let through: %v", err)
+	}
+	t.Setenv("STATOR_MAIL_FROM", "Stator <wiki@example.com>")
+	if cfg, err = Load(); err != nil || cfg.Mail.SMTPAddr != "mailpit:1025" {
+		t.Errorf("mail through mailpit is %+v, %v", cfg.Mail, err)
 	}
 }

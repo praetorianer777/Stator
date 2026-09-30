@@ -10,6 +10,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -18,6 +19,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
 // APIError is the single error shape every endpoint returns, so that clients
@@ -139,6 +141,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &searchField) {
 		return ErrValidation(map[string]string{searchField.Field: searchField.Message})
 	}
+	var notifyField *notify.FieldError
+	if errors.As(err, &notifyField) {
+		return ErrValidation(map[string]string{notifyField.Field: notifyField.Message})
+	}
 	var denied *perm.DeniedError
 	if errors.As(err, &denied) {
 		return ErrForbidden(denied.Error())
@@ -193,7 +199,7 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
 	case errors.Is(err, space.ErrNotFound):
 		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
-	case errors.Is(err, page.ErrNotFound):
+	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
 	case errors.Is(err, perm.ErrFixed):
 		return ErrConflict("Administering the organization follows the owner and admin roles. Change somebody's role under Users instead.")

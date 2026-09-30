@@ -286,6 +286,9 @@ services:
       <<: [*app-db-env, *s3-env]
       STATOR_LOG_LEVEL: debug
       STATOR_APP_URL: http://localhost:${WEB_PORT:-8000}
+      # Every notification mail lands in Mailpit, as in Armature.
+      STATOR_SMTP_ADDR: mailpit:1025
+      STATOR_MAIL_FROM: Stator <no-reply@stator.test>
     healthcheck:
       # The worker serves nothing but its metrics, so they are its sign of life.
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/metrics"]

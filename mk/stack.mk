@@ -66,6 +66,8 @@ DOCKER_GO_STACK = $(call go_run,--network $(STACK_NET) \
 	-e STATOR_S3_SECRET_KEY='$(S3_SECRET_KEY)' \
 	-e STATOR_TEST_WEB_URL=http://web \
 	-e STATOR_TEST_KEYCLOAK_URL=http://keycloak:8080 \
+	-e STATOR_SMTP_ADDR=mailpit:1025 \
+	-e STATOR_TEST_MAILPIT_URL=http://mailpit:8025 \
 	$(1))
 
 .PHONY: stack-env

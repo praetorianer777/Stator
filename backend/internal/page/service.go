@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
 // Service keeps pages. Every method reads the page's space first, which is
@@ -83,6 +84,9 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	}
 	if p.Labels == nil {
 		p.Labels = []string{}
+	}
+	if p.Watching, err = watch.PageWatching(ctx, tx, actor.UserID, id); err != nil {
+		return nil, nil, err
 	}
 	var draft DraftRef
 	err = tx.QueryRow(ctx, `SELECT base_version, updated_at FROM page_draft WHERE page_id = $1 AND user_id = $2`,
