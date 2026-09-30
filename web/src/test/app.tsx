@@ -37,7 +37,7 @@ export type Answer = { status: number; body?: unknown };
  * Stands in for the API by "METHOD /path", anything else a 404 in its envelope,
  * and returns the requests made so a test can say what was sent.
  */
-export function stubApi(answers: Record<string, Answer | ((request: Request) => Answer)>) {
+export function stubApi(answers: Record<string, Answer | ((request: Request) => Answer | Promise<Answer>)>) {
   const sent: { method: string; path: string; body: unknown }[] = [];
   vi.stubGlobal("fetch", async (input: Request) => {
     const url = new URL(input.url, "http://app.test");
@@ -45,7 +45,7 @@ export function stubApi(answers: Record<string, Answer | ((request: Request) => 
     const text = await input.clone().text();
     sent.push({ method: input.method, path, body: text ? JSON.parse(text) : undefined });
     const found = answers[`${input.method} ${path}`];
-    const answer = typeof found === "function" ? found(input) : (found ?? { status: 404, body: { error: { code: "not_found", message: "Not stubbed." } } });
+    const answer = typeof found === "function" ? await found(input) : (found ?? { status: 404, body: { error: { code: "not_found", message: "Not stubbed." } } });
     return new Response(answer.body === undefined ? null : JSON.stringify(answer.body), {
       status: answer.status,
       headers: { "Content-Type": "application/json" },
