@@ -466,9 +466,9 @@ describe("a page's history", () => {
     expect(sent.some(isChange)).toBe(false);
     await userEvent.click(restore);
     expect(await screen.findByText("Restored version 2 as version 4.")).toBeInTheDocument();
-    expect(sent.find(isChange)?.body).toEqual({ baseVersion: 3 });
+    expect(sent.find(isChange)?.body).toEqual({ baseVersion: 3, notifyWatchers: true });
     expect(confirm).toHaveBeenLastCalledWith(
-      "Restore version 2? It is published again as a new version on top of the history, and nothing in the history is lost.",
+      "Restore version 2? It is published again as a new version on top of the history, nothing in the history is lost, and the people watching the page are told.",
     );
   });
 

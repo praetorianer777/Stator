@@ -13,6 +13,7 @@ import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocView } from "@/features/editor/DocView";
 import { PageLabels } from "@/features/labels/PageLabels";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
+import { WatchMenu } from "@/features/watching/WatchMenu";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { NewPageDialog } from "./NewPageDialog";
@@ -63,11 +64,13 @@ export function PageScreen({ pageId }: { pageId: string }) {
   const { data, isLoading, error, refetch } = usePage(pageId);
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
+  const [watchFailed, setWatchFailed] = useState(false);
   // A dialog is about the page it was opened on, so going to another page closes it.
   const [dialogPage, setDialogPage] = useState(pageId);
   if (dialogPage !== pageId) {
     setDialogPage(pageId);
     setDialog(undefined);
+    setWatchFailed(false);
   }
   useVisit(data?.page.id);
   const trash = useTrashPage(data?.space.key ?? "");
@@ -126,6 +129,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
         }
         actions={
           <>
+            {!page.unpublished && <WatchMenu page={page} space={space} onFailure={setWatchFailed} />}
             <Button variant="secondary" onClick={history} data-action="page-history">
               {t.page.history}
             </Button>
@@ -162,6 +166,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
         }
       />
       {trash.error && <ErrorBanner>{trash.error.message}</ErrorBanner>}
+      {watchFailed && <ErrorBanner>{t.watch.failed}</ErrorBanner>}
       {page.unpublished && (
         <p className="mb-4 text-sm text-ink-muted" data-unpublished-note="">
           {t.page.unpublishedNote}

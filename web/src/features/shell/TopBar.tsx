@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { administers, useJoinRequests, useLogout, useMe } from "@/api/auth";
 import { Avatar, Button, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { useCanAdministerOrg } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { DRAWER_ID } from "./state";
@@ -47,6 +48,13 @@ export function TopBar({
     { label: t.account.profile, icon: <Icon.User />, onSelect: () => {}, disabled: true },
     { label: t.account.themes, icon: <Icon.Palette />, onSelect: () => navigate({ to: "/settings/themes" }), attrs: { "data-action": "themes" } },
     { label: t.account.tokens, icon: <Icon.Key />, onSelect: () => navigate({ to: "/settings/tokens" }), attrs: { "data-action": "tokens" } },
+    {
+      label: t.account.notifications,
+      icon: <Icon.Bell />,
+      onSelect: () => navigate({ to: "/settings/notifications" }),
+      attrs: { "data-action": "notification-settings" },
+    },
+    { label: t.account.watching, icon: <Icon.Eye />, onSelect: () => navigate({ to: "/settings/watching" }), attrs: { "data-action": "watching" } },
   ];
   if (admin) {
     items.push({
@@ -108,7 +116,8 @@ export function TopBar({
         <span className="min-w-0 flex-1 truncate text-left">{t.search.placeholder}</span>
         <kbd className="hidden font-mono text-2xs shell:inline">{t.search.shortcut}</kbd>
       </button>
-      <div className="ml-auto flex items-center">
+      <div className="ml-auto flex items-center gap-1">
+        {me?.organization && <NotificationBell />}
         <Menu
           label={t.account.menu}
           align="end"

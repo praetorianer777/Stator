@@ -82,6 +82,8 @@ export const en = {
     profile: "Your profile",
     themes: "Themes",
     tokens: "Access tokens",
+    notifications: "Notifications",
+    watching: "Watching",
     sso: "Single sign-on",
     permissions: "Permissions",
     signOut: "Sign out",
@@ -555,7 +557,8 @@ export const en = {
     compareWithPreviousOf: (n: number) => `Compare with previous, for version ${n}`,
     restore: "Restore",
     restoreVersion: (n: number) => `Restore version ${n}`,
-    confirmRestore: (n: number) => `Restore version ${n}? It is published again as a new version on top of the history, and nothing in the history is lost.`,
+    confirmRestore: (n: number) =>
+      `Restore version ${n}? It is published again as a new version on top of the history, nothing in the history is lost, and the people watching the page are told.`,
     restoreConflict:
       "Somebody published this page while you were looking, so the history has changed. Look at the latest version, then restore again if you still want to.",
     restored: (n: number, latest: number) => `Restored version ${n} as version ${latest}.`,
@@ -882,6 +885,102 @@ export const en = {
     lockedOut:
       "Saving this would shut you out of the page. Add yourself, or a group you are in, to both lists, or ask an administrator of the space to make the change.",
     saved: "Restrictions saved.",
+  },
+  watch: {
+    button: "Watch",
+    watching: "Watching",
+    menu: (title: string) => `Watching ${title}`,
+    page: "Watch this page",
+    subtree: "Watch this page and every page below it",
+    space: "Watch the whole space",
+    stopPage: "Stop watching this page",
+    stopSpace: "Stop watching the space",
+    watchers: "Who is watching",
+    coveredBySubtree: (title: string) => `Covered by your watch on ${title} and the pages below it`,
+    coveredBySpace: "Covered by your watch on the whole space",
+    selected: "(on)",
+    watchersTitle: (title: string) => `Who is watching ${title}`,
+    watchersIntro: "These people hear about each new version of this page that is published with a notice.",
+    watchersNone: "Nobody watches this page yet.",
+    watchersMore: (shown: number, total: number) => `Showing ${shown} of ${total}.`,
+    via: {
+      page: "Watches this page",
+      subtree: (title: string) => `Watches ${title} and the pages below it`,
+      space: "Watches the whole space",
+    },
+    failed: "Watching could not be changed. Try again in a moment.",
+    listTitle: "Watching",
+    listIntro: "The pages and spaces you watch. You hear about new versions published with a notice, and about pages first published below them.",
+    listEmpty: "You watch nothing yet",
+    listEmptyBody: "Open a page or a space and choose Watch in its header. Pages you create and publish are watched for you unless you turn that off.",
+    columnWhat: "Page or space",
+    columnKind: "Covers",
+    columnSince: "Since",
+    columnActions: "Actions",
+    kind: { page: "This page", subtree: "This page and the pages below", space: "The whole space" } as Record<"page" | "subtree" | "space", string>,
+    stop: "Stop watching",
+    stopNamed: (what: string) => `Stop watching ${what}`,
+    stopped: (what: string) => `You no longer watch ${what}.`,
+    spaceNamed: (name: string) => `Space ${name}`,
+    previous: "Previous",
+    next: "Next",
+    range: (from: number, to: number, total: number) => `${from} to ${to} of ${total}`,
+  },
+  notifications: {
+    bell: "Notifications",
+    bellUnread: (n: number) => (n === 1 ? "Notifications, 1 unread" : `Notifications, ${n} unread`),
+    title: "Notifications",
+    markAllRead: "Mark all as read",
+    empty: "Nothing new. You hear here about pages you watch.",
+    unread: "Unread",
+    failed: "Your notifications could not be loaded. Try again in a moment.",
+    settings: "Notification settings",
+    sentence: (kind: string, actor: string, title: string, version: number | null) => {
+      const who = actor || "Somebody";
+      switch (kind) {
+        case "mentioned":
+          return `${who} mentioned you on ${title}`;
+        case "replied":
+          return `${who} replied in a thread on ${title}`;
+        case "commented":
+          return `${who} commented on ${title}`;
+        case "resolved":
+          return `${who} resolved or reopened a thread on ${title}`;
+        case "published":
+          return version ? `${who} published version ${version} of ${title}` : `${who} published ${title}`;
+        case "created":
+          return `${who} created ${title}`;
+        default:
+          return `${who} changed ${title}`;
+      }
+    },
+    preferencesTitle: "Notifications",
+    preferencesIntro:
+      "Choose what you hear about, in the app and by email. An email is a copy of what the app shows, so a kind switched off in the app sends no email either.",
+    kindColumn: "When",
+    inApp: "In the app",
+    email: "By email",
+    kinds: {
+      mentioned: "Somebody mentions you",
+      replied: "Somebody replies in a thread you wrote in",
+      commented: "Somebody comments on a page you watch",
+      resolved: "A thread you wrote in is resolved or reopened",
+      published: "A page you watch is published with a notice",
+      created: "A page is first published below a page or space you watch",
+    } as Record<"mentioned" | "replied" | "commented" | "resolved" | "published" | "created", string>,
+    inAppFor: (kind: string) => `In the app: ${kind}`,
+    emailFor: (kind: string) => `By email: ${kind}`,
+    digest: "When emails go out",
+    digests: {
+      off: "One email for each notification, at once",
+      hourly: "One email an hour with everything new",
+      daily: (hour: number) => `One email a day at ${String(hour).padStart(2, "0")}:00 UTC with everything new`,
+    },
+    digestHint: "A bundle leaves out what you have already read in the app.",
+    autoWatch: "Watch the pages I create and publish",
+    autoWatchHint: "Stopping watching a page keeps you from watching it again through your own edits.",
+    save: "Save",
+    saved: "Your notification settings are saved.",
   },
   api: {
     unexpected: (status: number) => `The server answered with status ${status}. Try again in a moment.`,
