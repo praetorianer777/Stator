@@ -92,7 +92,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
 		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster),
-		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie,
+		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),
 	}
 	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))
 	t.Cleanup(a.srv.Close)

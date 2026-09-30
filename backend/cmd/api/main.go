@@ -15,6 +15,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
@@ -23,6 +24,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
@@ -106,11 +108,14 @@ func run() error {
 		return err
 	}
 
-	fresh, closeFresh, err := freshnessTracker(ctx, cfg, log)
+	valkey, err := openValkey(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer closeFresh()
+	if valkey != nil {
+		defer func() { _ = valkey.Close() }()
+	}
+	fresh := freshnessTracker(cfg, valkey, log)
 
 	var box *secret.Box
 	if cfg.SecretKey != nil {
@@ -125,6 +130,15 @@ func run() error {
 		WithHTTPClient(oidc.Backchannel(cfg.Auth.OIDCBackchannel))
 
 	pages := page.NewService(cluster)
+	var cache *armature.Cache
+	if valkey != nil {
+		cache = armature.NewCache(valkey, log)
+	} else {
+		log.Warn("STATOR_VALKEY_URL is not set, so every view asks Armature afresh")
+	}
+	armatures := armature.NewService(cluster, box,
+		armature.NewClient(netguard.ParseAllow(cfg.Armature.OutboundAllow), cfg.Armature.Backchannel), cache,
+		armature.Options{AppURL: cfg.AppBaseURL, Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Development: cfg.Env == config.EnvDevelopment, Log: log})
 	server := &httpapi.Server{
 		DB:              cluster,
 		Fresh:           fresh,
@@ -144,6 +158,7 @@ func run() error {
 		Comments:        comment.NewService(cluster),
 		Watches:         watch.NewService(cluster),
 		Notifications:   notify.NewService(cluster),
+		Armature:        armatures,
 		CookieName:      cfg.Auth.SessionCookie,
 		Secure:          cfg.Auth.SecureCookies,
 		AppBaseURL:      cfg.AppBaseURL,
@@ -221,28 +236,35 @@ func telemetryConfig(cfg config.Config, service string) observability.Config {
 	}
 }
 
-// freshnessTracker keeps read-your-writes positions in Valkey, so they hold
-// across api processes, or in this process when no Valkey is configured.
-func freshnessTracker(ctx context.Context, cfg config.Config, log *slog.Logger) (httpapi.Freshness, func(), error) {
+// openValkey connects to STATOR_VALKEY_URL, or returns nil when it is blank.
+func openValkey(ctx context.Context, cfg config.Config) (*redis.Client, error) {
 	if cfg.Valkey.URL == "" {
-		if len(cfg.DB.ReplicaURLs) > 0 {
-			log.Warn("STATOR_VALKEY_URL is not set, so read-your-writes holds within this api process only")
-		}
-		return freshness.NewMemoryTracker(cfg.DB.ReadYourWritesTTL), func() {}, nil
+		return nil, nil
 	}
 	opts, err := redis.ParseURL(cfg.Valkey.URL)
 	if err != nil {
-		return nil, nil, fmt.Errorf("STATOR_VALKEY_URL is not a valid Valkey URL, such as redis://:password@valkey:6379/0: %w", err)
+		return nil, fmt.Errorf("STATOR_VALKEY_URL is not a valid Valkey URL, such as redis://:password@valkey:6379/0: %w", err)
 	}
 	client := redis.NewClient(opts)
-	tracker := freshness.NewValkeyTracker(client, cfg.DB.ReadYourWritesTTL, valkeyPrefix)
 	pingCtx, cancel := context.WithTimeout(ctx, healthcheckWait)
 	defer cancel()
-	if err := tracker.Ping(pingCtx); err != nil {
+	if err := client.Ping(pingCtx).Err(); err != nil {
 		_ = client.Close()
-		return nil, nil, fmt.Errorf("connect to Valkey: %w", err)
+		return nil, fmt.Errorf("connect to Valkey: %w", err)
 	}
-	return tracker, func() { _ = client.Close() }, nil
+	return client, nil
+}
+
+// freshnessTracker keeps read-your-writes positions in Valkey, so they hold
+// across api processes, or in this process when no Valkey is configured.
+func freshnessTracker(cfg config.Config, valkey *redis.Client, log *slog.Logger) httpapi.Freshness {
+	if valkey == nil {
+		if len(cfg.DB.ReplicaURLs) > 0 {
+			log.Warn("STATOR_VALKEY_URL is not set, so read-your-writes holds within this api process only")
+		}
+		return freshness.NewMemoryTracker(cfg.DB.ReadYourWritesTTL)
+	}
+	return freshness.NewValkeyTracker(valkey, cfg.DB.ReadYourWritesTTL, valkeyPrefix)
 }
 
 // fileStore connects to the configured bucket, making it on a fresh stack, or

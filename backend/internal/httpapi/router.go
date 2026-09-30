@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
@@ -67,6 +68,9 @@ type Server struct {
 	Perms *perm.Service
 	// Attachments keeps the files on pages; nil answers that storage is off.
 	Attachments *attachment.Service
+	// Armature keeps the organization's connection and the members' tokens;
+	// nil answers that Armature is out of reach.
+	Armature *armature.Service
 	// Fresh remembers each caller's last write between requests; nil leaves
 	// reads unpinned, which is only right without replicas.
 	Fresh Freshness
@@ -177,6 +181,20 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/themes/{themeID}/assets", s.handleUploadThemeAsset)
 			r.Get("/themes/{themeID}/assets/{assetID}", s.handleThemeAsset)
 			r.Delete("/themes/{themeID}/assets/{assetID}", s.handleDeleteThemeAsset)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(requireOrg, s.requireUse, requireAdmin)
+			r.Get("/armature/connection", s.handleGetArmatureConnection)
+			r.Put("/armature/connection", s.handleSaveArmatureConnection)
+			r.Delete("/armature/connection", s.handleRemoveArmatureConnection)
+		})
+		r.Group(func(r chi.Router) {
+			r.Use(requireOrg, s.requireUse)
+			r.Get("/armature/account", s.handleGetArmatureAccount)
+			r.Put("/armature/account/token", s.handleConnectArmatureAccount)
+			r.Post("/armature/account/check", s.handleCheckArmatureAccount)
+			r.Delete("/armature/account/token", s.handleDisconnectArmatureAccount)
 		})
 
 		if s.TestOrgs != nil {
