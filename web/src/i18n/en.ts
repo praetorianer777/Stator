@@ -545,6 +545,7 @@ export const en = {
     deleted: (who: string, when: string) => (who ? `${when} by ${who}` : when),
     backUnder: (title: string) => `Under ${title}`,
     underHome: "Under the home page, where it was is gone",
+    notTrasher: "Only people who may delete pages in this space can see its trash. Ask an administrator of the space if you need a page back.",
     notPurger: "Only an administrator of this space can delete pages for good.",
   },
   notFound: {
