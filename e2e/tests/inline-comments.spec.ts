@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
+import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -117,8 +118,7 @@ test.describe("comments on passages", { tag: ["@auth"] }, () => {
     // A draft carries the mark the editor loaded; a comparison does not show it.
     await page.goto(`/s/${space.key}/p/${plan.id}/plan/edit`);
     await expect(page.locator("#page-body")).toContainText("Ship on Friday.");
-    await page.locator("#page-body").click();
-    await page.keyboard.press("ControlOrMeta+End");
+    await caretTo(page.locator("#page-body"), "end");
     await page.keyboard.type(" Soon.");
     await expect(draftStatus(page)).toHaveAttribute("data-draft-status", /^(saving|saved)$/);
     await expect(draftStatus(page)).toHaveAttribute("data-draft-status", "saved");
@@ -130,8 +130,7 @@ test.describe("comments on passages", { tag: ["@auth"] }, () => {
 
     // Rewriting the passage leaves its thread nothing to point at.
     await page.goto(`/s/${space.key}/p/${plan.id}/plan/edit`);
-    await page.locator("#page-body").click();
-    await page.keyboard.press("ControlOrMeta+Home");
+    await caretTo(page.locator("#page-body"), "start");
     await page.keyboard.press("Shift+End");
     await page.keyboard.type("Ship on Monday.");
     await publishFromEditor(page, "Monday it is.");
