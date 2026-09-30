@@ -40,7 +40,12 @@ export interface Mentionable {
   id: string;
   name: string;
   email?: string;
+  /** False for somebody who may not view the page: they can be named, and are not told. */
+  canView?: boolean;
 }
+
+/** Finds the people an at sign may name, for what was typed after it. */
+export type MentionSource = (query: string, signal: AbortSignal) => Promise<Mentionable[]>;
 
 export const emptyDoc: Doc = { type: "doc", content: [{ type: "paragraph" }] };
 

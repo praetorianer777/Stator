@@ -40,17 +40,17 @@ const sample: Doc = {
   ],
 };
 
-// No source of people is wired into the editor yet, so the browser suite
-// reaches the mention list through these.
+// A page's editor looks its people up; this page has none, so the browser
+// suite reaches a mention list of fixed length through these.
 const people: Mentionable[] = [
-  { id: "dev-ada", name: "Ada Lovelace", email: "ada@example.test" },
-  { id: "dev-alan", name: "Alan Turing", email: "alan@example.test" },
-  { id: "dev-alonzo", name: "Alonzo Church", email: "alonzo@example.test" },
-  { id: "dev-anita", name: "Anita Borg", email: "anita@example.test" },
-  { id: "dev-annie", name: "Annie Easley", email: "annie@example.test" },
-  { id: "dev-adele", name: "Adele Goldberg", email: "adele@example.test" },
-  { id: "dev-andrew", name: "Andrew Tanenbaum", email: "andrew@example.test" },
-  { id: "dev-alfred", name: "Alfred Aho", email: "alfred@example.test" },
+  { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b01", name: "Ada Lovelace", email: "ada@example.test" },
+  { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b02", name: "Alan Turing", email: "alan@example.test" },
+  { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b03", name: "Alonzo Church", email: "alonzo@example.test" },
+  { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b04", name: "Anita Borg", email: "anita@example.test" },
+  { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b05", name: "Annie Easley", email: "annie@example.test" },
+  { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b06", name: "Adele Goldberg", email: "adele@example.test" },
+  { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b07", name: "Andrew Tanenbaum", email: "andrew@example.test" },
+  { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b08", name: "Alfred Aho", email: "alfred@example.test" },
 ];
 
 // Pages do not exist yet, so the editor is reachable here for the browser

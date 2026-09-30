@@ -102,6 +102,7 @@ export function CommentsSection({ page, thread }: { page: Page; thread?: string 
             ) : composing ? (
               <Composer
                 id="new-comment"
+                pageId={page.id}
                 label={t.comments.addLabel}
                 placeholder={t.comments.addPlaceholder}
                 submitLabel={t.comments.post}
@@ -179,6 +180,7 @@ export function ThreadView({
           {replying ? (
             <Composer
               id={`reply-${thread.id}`}
+              pageId={pageId}
               label={t.comments.replyLabel(authorOf(first))}
               placeholder={t.comments.replyPlaceholder}
               submitLabel={t.comments.postReply}
@@ -243,6 +245,7 @@ function CommentView({ pageId, comment }: { pageId: string; comment: Comment }) 
           <div className="mt-1">
             <Composer
               id={`edit-${comment.id}`}
+              pageId={pageId}
               label={t.comments.editLabel}
               placeholder={t.comments.addPlaceholder}
               submitLabel={t.comments.save}

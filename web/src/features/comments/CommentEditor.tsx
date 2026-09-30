@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMentionSource } from "@/api/mentions";
 import { Button, ErrorBanner } from "@/components/ui";
 import { COMMENT_EDITOR_ROWS } from "@/config";
 import { Editor } from "@/features/editor/Editor";
@@ -15,13 +16,16 @@ export interface CommentEditorProps {
   error?: string;
   onSubmit: (body: Doc) => void;
   onCancel?: () => void;
+  /** The page the comment is on, whose people an at sign offers. */
+  pageId: string;
 }
 
 /**
  * The page's editor held to what a comment may hold, with its buttons. It
  * arrives with the first comment somebody writes, so a reader never loads it.
  */
-export default function CommentEditor({ id, label, placeholder, submitLabel, initial = null, busy, error, onSubmit, onCancel }: CommentEditorProps) {
+export default function CommentEditor({ id, label, placeholder, submitLabel, initial = null, busy, error, onSubmit, onCancel, pageId }: CommentEditorProps) {
+  const mentionSource = useMentionSource(pageId);
   const [body, setBody] = useState<Doc | null>(initial);
   const submit = () => {
     if (body && !busy) onSubmit(body);
@@ -53,6 +57,7 @@ export default function CommentEditor({ id, label, placeholder, submitLabel, ini
         aria-label={label}
         autoFocus
         onSubmit={submit}
+        mentionSource={mentionSource}
       />
       {error && <ErrorBanner>{error}</ErrorBanner>}
       <div className="flex items-center gap-2">

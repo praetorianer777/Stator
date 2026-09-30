@@ -43,6 +43,7 @@ export function MentionList({
           aria-selected={i === active}
           tabIndex={-1}
           data-mention-option={person.name}
+          data-cannot-view={person.canView === false ? "" : undefined}
           onMouseDown={(e) => {
             e.preventDefault();
             onPick(person);
@@ -55,6 +56,7 @@ export function MentionList({
         >
           <span className="font-medium text-ink">{person.name}</span>
           {person.email && <span className="truncate text-xs text-ink-subtle">{person.email}</span>}
+          {person.canView === false && <span className="ml-auto shrink-0 text-xs text-ink-muted">{t.editor.mentionCannotView}</span>}
         </div>
       ))}
     </div>

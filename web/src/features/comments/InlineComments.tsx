@@ -194,6 +194,7 @@ export function InlineComments({ page, thread, children, below }: { page: Page; 
             </figure>
             <Composer
               id="new-passage-comment"
+              pageId={page.id}
               label={t.comments.inline.newLabel}
               placeholder={t.comments.inline.newPlaceholder}
               submitLabel={t.comments.post}

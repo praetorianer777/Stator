@@ -102,6 +102,8 @@ export const TABLE_DEFAULT_ROWS = 3;
 export const TABLE_DEFAULT_COLS = 3;
 /** How many people an at sign offers at once. */
 export const MENTION_MAX_SUGGESTIONS = 8;
+/** How long typing after an at sign settles before the people are looked up. */
+export const MENTION_SEARCH_DEBOUNCE_MS = 150;
 /** How long "Link copied" stays after copying a heading's link. */
 export const COPY_FEEDBACK_MS = 2000;
 /** The deepest heading a new table of contents lists: all of them. */

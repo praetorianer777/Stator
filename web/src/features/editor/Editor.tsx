@@ -2,12 +2,12 @@ import { useEffect, useId, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import type { MentionNodeAttrs } from "@tiptap/extension-mention";
-import { EDITOR_LINE_HEIGHT_PX, EDITOR_MIN_ROWS, MENTION_MAX_SUGGESTIONS } from "@/config";
+import { EDITOR_LINE_HEIGHT_PX, EDITOR_MIN_ROWS, MENTION_MAX_SUGGESTIONS, MENTION_SEARCH_DEBOUNCE_MS } from "@/config";
 import { t } from "@/i18n";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
 import { editorExtensions, fitSchema, sanitizePasted, type EditorVariant } from "./extensions";
 import { MentionList, mentionMatches } from "./MentionList";
-import { emptyDoc, isEmptyDoc, type Doc, type Mentionable } from "./schema";
+import { emptyDoc, isEmptyDoc, type Doc, type Mentionable, type MentionSource } from "./schema";
 import { SlashMenu } from "./SlashMenu";
 import { filterSlashItems, type SlashItem } from "./slashItems";
 import { EditorToolbar } from "./Toolbar";
@@ -27,8 +27,10 @@ export interface EditorProps {
   value: Doc | null;
   /** Null when the document says nothing, so a blank page stores nothing. */
   onChange: (doc: Doc | null) => void;
-  /** Who an at sign can name; without it the at sign offers nobody. */
+  /** Who an at sign can name, when they are known up front. */
   people?: Mentionable[];
+  /** Looks up who an at sign can name as the person types; it takes the place of people. */
+  mentionSource?: MentionSource;
   placeholder?: string;
   autoFocus?: boolean;
   rows?: number;
@@ -53,6 +55,7 @@ export function Editor({
   value,
   onChange,
   people,
+  mentionSource,
   placeholder = t.editor.placeholder,
   autoFocus = false,
   rows = EDITOR_MIN_ROWS,
@@ -69,6 +72,11 @@ export function Editor({
   submitRef.current = onSubmit;
   const peopleRef = useRef(people ?? []);
   peopleRef.current = people ?? [];
+  // The last people a lookup found, so each keystroke narrows them at once
+  // while the next lookup is on its way.
+  const foundRef = useRef<Mentionable[]>([]);
+  const searchesRef = useRef(false);
+  searchesRef.current = mentionSource !== undefined;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
@@ -85,7 +93,7 @@ export function Editor({
       attachments,
       slash: { items: ({ query }) => filterSlashItems(query), render: slash.renderer },
       mention: {
-        items: ({ query }) => mentionMatches(peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
+        items: ({ query }) => mentionMatches(searchesRef.current ? foundRef.current : peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
         render: mention.renderer,
       },
     }),
@@ -107,6 +115,27 @@ export function Editor({
       onChangeRef.current(isEmptyDoc(json) ? null : json);
     },
   });
+
+  const mentionQuery = mention.open ? mention.open.query : null;
+  const replaceMentions = mention.replace;
+  useEffect(() => {
+    if (!mentionSource || mentionQuery === null) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      mentionSource(mentionQuery, controller.signal).then(
+        (found) => {
+          if (controller.signal.aborted) return;
+          foundRef.current = found;
+          replaceMentions(found.slice(0, MENTION_MAX_SUGGESTIONS));
+        },
+        () => {},
+      );
+    }, MENTION_SEARCH_DEBOUNCE_MS);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [mentionSource, mentionQuery, replaceMentions]);
 
   // The list under the caret belongs to the editable element, which keeps
   // focus; these attributes tell a screen reader which option is current.

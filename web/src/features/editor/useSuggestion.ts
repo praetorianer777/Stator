@@ -3,6 +3,8 @@ import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion
 
 export interface Suggesting<T> {
   items: T[];
+  /** What was typed after the trigger character. */
+  query: string;
   rect: DOMRect | null;
   pick: (item: T) => void;
 }
@@ -27,7 +29,12 @@ export function useSuggestion<T, P = T>(toCommand: (item: T) => P) {
 
   const renderer = useMemo(() => {
     const show = (props: SuggestionProps<T, P>) => {
-      const next: Suggesting<T> = { items: props.items, rect: props.clientRect?.() ?? null, pick: (item) => props.command(convert.current(item)) };
+      const next: Suggesting<T> = {
+        items: props.items,
+        query: props.query,
+        rect: props.clientRect?.() ?? null,
+        pick: (item) => props.command(convert.current(item)),
+      };
       current.current = next;
       activeRef.current = 0;
       setActiveState(0);
@@ -63,5 +70,18 @@ export function useSuggestion<T, P = T>(toCommand: (item: T) => P) {
     });
   }, [setActive]);
 
-  return { open, active, setActive, renderer };
+  /** Puts items that arrived later, such as a search's answer, in the open list. */
+  const replace = useCallback(
+    (items: T[]) => {
+      const list = current.current;
+      if (!list) return;
+      const next = { ...list, items };
+      current.current = next;
+      setOpen(next);
+      if (activeRef.current >= items.length) setActive(0);
+    },
+    [setActive],
+  );
+
+  return { open, active, setActive, renderer, replace };
 }

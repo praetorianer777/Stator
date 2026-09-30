@@ -12,7 +12,7 @@ const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle
 
 /** A notification in the reader's words; the server sends only what happened. */
 export function sentence(n: Notification): string {
-  return t.notifications.sentence(n.kind, n.actorName, n.page.title, n.version);
+  return t.notifications.sentence(n.kind, n.actorName, n.page.title, n.version, n.commentId != null);
 }
 
 /** The top bar's bell: the unread count as a badge, and the latest notifications in a panel. */
