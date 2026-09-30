@@ -185,7 +185,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     expect(await attachmentsOf(api, wiki.id)).toEqual([]);
   });
 
-  test("a member who may not edit the page sees its files but cannot change them", async ({ page, api, pageAs, apiAs, freshOrg }, testInfo) => {
+  test("a member who may not edit the page sees its files but cannot change them", async ({ page, api, pageAs, apiAs }, testInfo) => {
     const { key, page: wiki } = await aPage(api, testInfo);
     await page.goto(`/s/${key}/p/${wiki.id}/runbook`);
     await panel(page).locator("[data-attachment-input]").setInputFiles(textFile("handover.txt", "Keys are in the drawer."));
@@ -196,7 +196,6 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
       params: { path: { pageID: wiki.id } },
       body: { view: [], edit: [{ type: "user", id: String((await api.GET("/auth/me")).data?.user.id) }] },
     });
-    test.skip(restricted.response.status === 501, `Page restrictions (#19) are not built yet, so every member of ${freshOrg.slug} edits every page.`);
     expect(restricted.response.status).toBe(200);
 
     // Bob's reads may be served by a replica, which sees alice's upload a moment later.
@@ -208,7 +207,6 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     const bob = await pageAs("bob");
     await bob.goto(`/s/${key}/p/${wiki.id}/runbook`);
     await expect(row(bob, "handover.txt")).toBeVisible();
-    test.fixme(true, "The panel offers attaching by space.can.editPages until the permissions web client switches it to page.can.edit.");
     await expect(panel(bob).locator('[data-action="attach-files"]')).toHaveCount(0);
     await expect(panel(bob).locator('[data-action="delete-attachment"]')).toHaveCount(0);
   });

@@ -404,7 +404,7 @@ describe("a page's history", () => {
     const reader = aSpace({ can: { ...space.can, editPages: false } });
     stubHistory({
       "GET /spaces/DOCS": { status: 200, body: { space: reader } },
-      [`GET /pages/${PAGE_ID}`]: { status: 200, body: { page: plans, space: reader } },
+      [`GET /pages/${PAGE_ID}`]: { status: 200, body: { page: { ...plans, can: { ...plans.can, edit: false } }, space: reader } },
     });
     const router = await renderAt(`/s/DOCS/p/${PAGE_ID}/plans`);
     await userEvent.click(await screen.findByRole("button", { name: "History" }));

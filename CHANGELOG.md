@@ -90,6 +90,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
   draft compare block by block with inserted and deleted words marked, and
   a restore publishes an old version again as the newest. The database
   keeps version numbers without gaps and the history append only.
+- Permissions in the web client. Administrators set who may use Stator,
+  create spaces and administer the organization under Permissions in the
+  account menu; a space's settings hold a grid of people and groups against
+  view, add pages, add comments, delete and administer; and a page's
+  Restrictions dialog narrows who may view and edit it, showing what it
+  inherits from the pages above and from where. Changes wait for Save, and
+  people and groups are picked by the start of a name or an email. A
+  restricted page is marked on the page and in the tree, every action
+  follows what the reader may do there, a save that would shut the saver
+  out says what to do instead, and a member the organization does not let
+  in gets a page saying so.
 - Permissions in the API. Global: `use`, granted to everyone by default,
   without which a member is answered 403 `no_access`; `createSpace`; and
   `administer`, which follows the owner and admin roles. Per space, for

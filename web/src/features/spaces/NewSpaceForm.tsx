@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { suggestKey, useCreateSpace } from "@/api/spaces";
-import { useViewer } from "@/api/viewer";
+import { useCanCreateSpace } from "@/features/permissions/access";
 import { Button, ErrorBanner, Field, PageHeader } from "@/components/ui";
 import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_KEY_MAX_LENGTH, SPACE_NAME_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
@@ -10,7 +10,7 @@ import { t } from "@/i18n";
 /** Makes a space; the key follows the name until somebody types one of their own. */
 export function NewSpaceForm() {
   const navigate = useNavigate();
-  const { administers } = useViewer();
+  const mayCreate = useCanCreateSpace();
   const create = useCreateSpace();
   const [name, setName] = useState("");
   const [key, setKey] = useState("");
@@ -27,7 +27,7 @@ export function NewSpaceForm() {
   return (
     <div className="mx-auto max-w-2xl" data-new-space>
       <PageHeader crumbs={[{ label: t.spaces.title, render: (label) => <Link to="/spaces">{label}</Link> }]} title={t.spaces.createTitle} />
-      {!administers ? (
+      {!mayCreate ? (
         <p className="text-sm text-ink-muted">{t.spaces.notAdmin}</p>
       ) : (
         <form onSubmit={submit} className="space-y-4" noValidate>

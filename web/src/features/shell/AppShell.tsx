@@ -1,6 +1,8 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useAccess } from "@/api/permissions";
 import { ShellHeaderContext } from "@/components/ui";
+import { NoAccess } from "@/features/permissions/NoAccess";
 import { BackdropEffect } from "@/features/themes/BackdropEffect";
 import { ThemeLoader } from "@/features/themes/ThemeLoader";
 import { t } from "@/i18n";
@@ -33,6 +35,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     setDrawer(false);
   }
   const drawerOpen = narrow && drawer;
+  const { data: access } = useAccess();
+  if (access && !access.use) return <NoAccess />;
 
   return (
     <div className="flex h-full">

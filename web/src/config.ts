@@ -159,6 +159,10 @@ export const TREE_INDENT_PX = 12;
 /** The share of a tree row at its top and bottom where a dropped page goes beside it rather than under it. */
 export const TREE_DROP_EDGE = 0.25;
 
+/** How long the people and groups picker waits after a keystroke before it asks. */
+export const PICKER_DEBOUNCE_MS = 200;
+/** How many people and how many groups the picker offers at once; the API allows 50. */
+export const PICKER_LIMIT = 8;
 /** How long the editor waits after the last keystroke before it saves the draft. */
 export const DRAFT_AUTOSAVE_MS = 1000;
 /** The longest version comment, matching the API's page.MaxCommentLength. */

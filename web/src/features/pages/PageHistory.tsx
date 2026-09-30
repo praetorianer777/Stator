@@ -112,7 +112,7 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
   const restore = useRestore(page);
   const navigate = useNavigate();
   const [selected, setSelected] = useState<CompareRef[]>([]);
-  const canEdit = space.can.editPages;
+  const canEdit = page.can.edit;
 
   const toggle = (ref: CompareRef, on: boolean) =>
     // A third pick lets go of the oldest pick, so two stay selected.
@@ -278,7 +278,7 @@ function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number
             <Button variant="secondary" onClick={() => onSearch({ from: number - 1, to: number })} data-action="compare-previous">
               {t.history.compareWithPrevious}
             </Button>
-            {space.can.editPages && !latest && (
+            {page.can.edit && !latest && (
               <Button variant="secondary" loading={restore.pending} onClick={() => restore.run(number)} data-action="restore-version">
                 {t.history.restoreVersion(number)}
               </Button>
@@ -317,7 +317,7 @@ function CompareScreen({ page, space, from, to }: ScreenProps & { from?: Compare
         title={t.history.compareTitle}
         actions={
           to === "draft" &&
-          space.can.editPages && (
+          page.can.edit && (
             <Button
               variant="secondary"
               onClick={() =>
