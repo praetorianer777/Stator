@@ -113,6 +113,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   versions or a version with the draft, with added text underlined and
   removed text struck through and announced to screen readers, and
   restores a version as a new one after asking.
+- Search in the API. `GET /search` finds the published titles and bodies of
+  pages and the names of their files, with quoted phrases, `or` and
+  `-word`, ignoring case and accents, ranks title matches above body
+  matches, and filters by space, author, label, type and a range of days.
+  Titles and snippets come as plain text runs with the matches flagged,
+  never markup. `GET /search/quick` matches the start of title words for the
+  top bar and the command palette, and `GET /recent-pages` lists the pages a
+  person opened last, as noted by `POST /pages/{id}/visit`. Drafts,
+  unpublished pages and the trash are never found, and totals count only
+  what the caller may read.
 
 ### Changed
 

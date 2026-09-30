@@ -29,6 +29,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
@@ -85,7 +86,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	a.attachments = attachment.NewService(h.cluster, store, pages).WithMaxSize(testUploadLimit).WithLogger(discard())
 	server := &httpapi.Server{
 		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
-		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster),
+		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie,
 	}
 	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))

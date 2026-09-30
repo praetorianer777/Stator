@@ -174,17 +174,17 @@ var operations = []operation{
 		}, responses: ok(env{"comparison": page.Comparison{}})},
 
 	// Search (#18).
-	{method: "GET", path: "/search", handler: "handleSearch", tag: "search", summary: "Pages, attachments and comments whose words match, among what the caller may see.", pending: true,
+	{method: "GET", path: "/search", handler: "handleSearch", tag: "search", summary: "Pages, attachments and comments whose words match, among what the caller may see.",
 		query: searchQuery, responses: ok(env{"hits": []search.Hit{}, "total": 0, "limit": 0, "offset": 0})},
-	{method: "GET", path: "/search/quick", handler: "handleQuickSearch", tag: "search", summary: "Pages whose titles start with the words typed so far, for the top bar and the command palette.", pending: true,
+	{method: "GET", path: "/search/quick", handler: "handleQuickSearch", tag: "search", summary: "Pages whose titles start with the words typed so far, for the top bar and the command palette.",
 		query: []param{
 			{name: "q", description: "The words typed so far."},
 			{name: "space", description: "A space key to stay inside."},
 			{name: "limit", schema: intParam, description: "1 to 20; 8 when absent."},
 		}, responses: ok(env{"pages": []search.PageHit{}})},
-	{method: "GET", path: "/recent-pages", handler: "handleRecentPages", tag: "search", summary: "The pages the caller visited last, the latest first.", pending: true,
+	{method: "GET", path: "/recent-pages", handler: "handleRecentPages", tag: "search", summary: "The pages the caller visited last, the latest first.",
 		query: []param{{name: "limit", schema: intParam, description: "1 to 20; 10 when absent."}}, responses: ok(env{"pages": []search.RecentPage{}})},
-	{method: "POST", path: "/pages/{pageID}/visit", handler: "handleVisitPage", tag: "search", summary: "Note that the caller opened a page, for their recent pages.", pending: true,
+	{method: "POST", path: "/pages/{pageID}/visit", handler: "handleVisitPage", tag: "search", summary: "Note that the caller opened a page, for their recent pages.",
 		responses: none()},
 
 	// Permissions (#19).

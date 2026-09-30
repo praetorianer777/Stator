@@ -74,6 +74,9 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Saves run one after another, so an older one can never land last.
   const chain = useRef<Promise<boolean>>(Promise.resolve(true));
+  // Only the last save queued speaks for the draft: an older one that ends
+  // while a newer one waits must neither call it saved nor mark it unsaved.
+  const queued = useRef(0);
 
   function flush(): Promise<boolean> {
     clearTimeout(timer.current);
@@ -86,14 +89,16 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
     }
     dirty.current = false;
     setState("saving");
+    const turn = ++queued.current;
     const run = chain.current.then(() =>
       saveRef.current({ title: input.title, body: input.body ?? emptyDoc, baseVersion: input.base }).then(
         () => {
           setHasDraft(true);
-          if (!dirty.current) setState("saved");
+          if (turn === queued.current && !dirty.current) setState("saved");
           return true;
         },
         (error: Error) => {
+          if (turn !== queued.current) return false;
           dirty.current = true;
           setSaveError(error.message);
           setState("error");

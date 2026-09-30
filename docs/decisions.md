@@ -3,6 +3,89 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: The compose stack's commits do not wait for the disk
+
+The primary in `deploy/docker-compose.yml` runs with `synchronous_commit=off`.
+On a host running several gates, a single fsync of the WAL took up to about
+9 s, and every commit waited for it: removing a member once took 8.7 s, longer
+than any timeout the browser suite allows. With the setting off, a commit
+returns once its WAL is written, and the WAL writer flushes it shortly after.
+A crash of the machine can lose less than a second of writes, but never
+consistency: what survives is a prefix of what was committed. The replica
+does not take the setting, since nothing commits there. It still replays
+only what the primary has flushed, and read-your-writes already sends a read
+to the primary while the replica lags. The integration suite's `settle`
+flushes the WAL before it waits, since the write position it used to wait for
+can stop short of a commit that is still in the buffers.
+
+This is for the development and test stack alone. Production, and every
+layout of the Helm chart, keep the default, and `tests/test-helm.sh` fails if
+a rendered chart names `synchronous_commit`. Nothing else about durability
+changes.
+
+## 2026-09-30: A refused write shows its caller what refused it
+
+A publish conflict tells its caller that somebody else published since their
+draft began. The editor then reads the page to learn that version's number,
+and offers to compare it with the draft. The refusal was decided on the
+primary, but the reads after it were held only to the caller's own last write,
+which came before the other publish, so a replica that had not replayed that
+publish could answer them: the editor offered "Compare your draft with version
+1" while version 2 had refused it, and the comparison could miss version 2.
+
+`Cluster.Write` therefore returns, with a refused write, the primary's
+position at the refusal, and the handler notes it under the caller's key as it
+notes any write. What the caller reads next is then at least as new as what
+refused them. This keeps read-your-writes keyed by session: nobody's reads wait
+for another person's write, unless the API has just told them of it.
+
+The other way was to put the current version in the 409's body. It was not
+taken because the error envelope is one shape for every refusal, and a number
+in it would serve the dialog but not the comparison the dialog leads to, which
+reads that version next. Every refusal that speaks of newer state, a stale
+`PATCH` or restore among them, is covered the same way without a field of its
+own. The price is one more query on the primary for each refused write.
+
+## 2026-09-30: Search reads a page's words in the database, and trims in its SQL
+
+A page's title, weighted A, and the plain text of its body, weighted B, are a
+stored generated `tsvector` column on `page` with a GIN index. The plain text
+comes from `page_plain_text`, a SQL function that reads the document as
+`document.PlainText` does, rather than from the service: a generated column
+cannot call Go, and a text column the service kept would be stale after any
+writer that forgot it, raw SQL and the migration's own backfill included.
+The integration suite holds the two readings to the same answer. The body's
+text is cut at 200000 characters, since a `tsvector` holds at most 1 MB of
+lexemes and a page may be 2 MB.
+
+The configuration `stator_search` is `simple` with `unaccent`: case and
+accents are ignored, words are not stemmed, as in Armature, because one
+organization writes in more than one language. Queries go through
+`websearch_to_tsquery`. A hit whose title matches every word comes before one
+that matches only in the body, then `ts_rank`, then the latest change, which
+is the latest published version, so moving a page to another place in the
+tree does not count as changing it. Quick search asks for each typed word as
+the prefix of a title lexeme (`'word':*A`), built from letters and digits
+only, so nothing typed reaches the tsquery syntax.
+
+Titles and snippets are `ts_headline` output with two private use
+characters as delimiters, stripped from the text first, then split into
+`{text, match}` runs; no markup ever leaves the server. Visibility is a
+condition inside the query that finds the hits, so `total` never counts a page
+the caller may not read. It is `perm.ViewablePage`, the rule every list of
+pages uses, and the restrictive policies of #19 hold raw SQL to the same. A
+person's visits are their own: `page_visit_viewer` lets the app role read
+and write only the actor's visits, and only of pages they may still view.
+
+Files are found by name only. Their bytes are in the bucket, and reading the
+text of plain text files would mean fetching every upload into the database
+and holding a second copy there; a name is what people search a file by. The
+name is indexed as written and with each run of punctuation as a space, since
+the parser would read `plan_v2.pdf` as one path. A file follows its page: on a
+page the caller may not view, an unpublished page or one in the trash, it is
+not found. Pages and files are ranked together, a file counting as a title
+match.
+
 ## 2026-09-30: Permissions are rows, rules are SQL functions, and the database knows who asks
 
 Grants are rows, as in Armature: `global_grant` for `use` and
