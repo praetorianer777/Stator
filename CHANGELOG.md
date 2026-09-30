@@ -140,6 +140,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
   the chart) with a message naming the limit. Images report their width and
   height. A download is an attachment with `nosniff`; with `inline=1`,
   pictures, PDFs and plain text show in place, and SVG and HTML never do.
-  Files stay with a trashed page, come along when it is copied, and leave
+  Files stay with a trashed page, come along when it is copied (the copy's
+  version 1 names the copy's own files, so purging the original leaves its
+  history whole), and leave
   the bucket when it is purged, its space is deleted or its file is
   deleted; the worker removes what is left behind.
