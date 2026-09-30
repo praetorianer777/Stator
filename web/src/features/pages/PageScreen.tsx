@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useTrashPage } from "@/api/trash";
-import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
+import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { DocView } from "@/features/editor/DocView";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
@@ -68,6 +68,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
   if (isLoading || !data) return <Skeleton />;
   const { page, space } = data;
   const edit = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
+  const history = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/history", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
   const open = (placed: Page, editing = false) => {
     setDialog(undefined);
     const params = { spaceKey: placed.spaceKey, pageId: placed.id, slug: pageSlug(placed.title) };
@@ -103,7 +104,12 @@ export function PageScreen({ pageId }: { pageId: string }) {
     <article className="mx-auto max-w-3xl" data-page={page.id} data-page-home={page.home || undefined}>
       <PageHeader
         crumbs={pageCrumbs(space, page)}
-        title={<span data-page-title>{page.title}</span>}
+        title={
+          <>
+            <span data-page-title>{page.title}</span>
+            {page.unpublished && <Tag data-unpublished="">{t.page.unpublished}</Tag>}
+          </>
+        }
         meta={
           <span className="flex flex-wrap items-center gap-2">
             {t.page.updated(page.updatedByName, updatedAt.format(new Date(page.updatedAt)))}
@@ -111,19 +117,21 @@ export function PageScreen({ pageId }: { pageId: string }) {
           </span>
         }
         actions={
-          (page.can.edit || actions.length > 0) && (
-            <>
-              {page.can.edit && (
-                <>
-                  <Button variant="secondary" icon={<Icon.Plus />} onClick={() => setDialog("new")} data-action="new-page">
-                    {t.page.newPage}
-                  </Button>
-                  <Button variant="secondary" icon={<Icon.Edit />} onClick={edit} data-action="edit-page">
-                    {t.page.edit}
-                  </Button>
-                </>
-              )}
-              {actions.length > 0 && (
+          <>
+            <Button variant="secondary" onClick={history} data-action="page-history">
+              {t.page.history}
+            </Button>
+            {page.can.edit && (
+              <>
+                <Button variant="secondary" icon={<Icon.Plus />} onClick={() => setDialog("new")} data-action="new-page">
+                  {t.page.newPage}
+                </Button>
+                <Button variant="secondary" icon={<Icon.Edit />} onClick={edit} data-action="edit-page">
+                  {t.page.edit}
+                </Button>
+              </>
+            )}
+            {actions.length > 0 && (
                 <Menu
                   label={t.page.actions}
                   align="end"
@@ -141,12 +149,27 @@ export function PageScreen({ pageId }: { pageId: string }) {
                     />
                   )}
                 />
-              )}
-            </>
-          )
+            )}
+          </>
         }
       />
       {trash.error && <ErrorBanner>{trash.error.message}</ErrorBanner>}
+      {page.unpublished && (
+        <p className="mb-4 text-sm text-ink-muted" data-unpublished-note="">
+          {t.page.unpublishedNote}
+        </p>
+      )}
+      {page.draft && page.can.edit && (
+        <div
+          className="mb-4 flex flex-wrap items-center gap-3 rounded-control border border-border bg-surface-raised px-3 py-2 text-sm text-ink"
+          data-draft-note=""
+        >
+          <span className="min-w-0 flex-1">{t.page.draftNote}</span>
+          <Button size="sm" variant="secondary" onClick={edit} data-action="continue-draft">
+            {t.page.continueDraft}
+          </Button>
+        </div>
+      )}
       <DocView doc={page.body} />
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}

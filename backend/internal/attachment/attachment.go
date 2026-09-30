@@ -3,6 +3,8 @@
 package attachment
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,4 +27,35 @@ type Attachment struct {
 	Height         *int      `json:"height"`
 	UploadedByName string    `json:"uploadedByName"`
 	CreatedAt      time.Time `json:"createdAt"`
+}
+
+var (
+	// ErrNotFound is also the answer for a file on a page the caller may not see.
+	ErrNotFound = errors.New("attachment not found")
+	// ErrTooLarge is what every TooLargeError is.
+	ErrTooLarge = errors.New("that file is too large")
+	// ErrEmpty is returned for an upload with no bytes in it.
+	ErrEmpty = errors.New("that file is empty; choose a file with something in it")
+)
+
+// TooLargeError refuses a file over the limit, naming the limit.
+type TooLargeError struct{ Limit int64 }
+
+func (e *TooLargeError) Error() string {
+	return fmt.Sprintf("that file is too large: files on a page are up to %s; make it smaller or split it", Size(e.Limit))
+}
+
+func (e *TooLargeError) Is(target error) bool { return target == ErrTooLarge }
+
+// Size writes a byte count the way a person reads a limit: 50 MB, 512 KB.
+func Size(n int64) string {
+	switch {
+	case n >= 1<<20 && n%(1<<20) == 0:
+		return fmt.Sprintf("%d MB", n>>20)
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%d KB", n>>10)
+	}
+	return fmt.Sprintf("%d bytes", n)
 }

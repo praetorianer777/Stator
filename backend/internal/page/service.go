@@ -16,7 +16,8 @@ import (
 // Service keeps pages. Every method reads the page's space first, which is
 // where whether the actor may see or change it is decided.
 type Service struct {
-	db *db.Cluster
+	db            *db.Cluster
+	copyObservers []CopyObserver
 }
 
 func NewService(cluster *db.Cluster) *Service {
