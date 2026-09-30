@@ -1379,6 +1379,96 @@
         }
       }
     },
+    "/pages/{pageID}/below": {
+      "get": {
+        "operationId": "listPagesBelow",
+        "summary": "The pages under a page that the caller may view, out of the trash, each after its parent, for a child pages block; truncated says the list stopped at its limit.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "children, the default, or subtree.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "children",
+                "subtree"
+              ]
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "description": "For subtree, how many levels down, 1 to 10; every level when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "How siblings are ordered: tree, the default, title, or updated, the latest change first.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tree",
+                "title",
+                "updated"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BelowPage"
+                      }
+                    },
+                    "truncated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "pages",
+                    "truncated"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/compare": {
       "get": {
         "operationId": "compareVersions",
@@ -4550,6 +4640,40 @@
         "required": [
           "assetId",
           "fit"
+        ]
+      },
+      "BelowPage": {
+        "type": "object",
+        "properties": {
+          "depth": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "unpublished": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "title",
+          "depth",
+          "unpublished",
+          "updatedAt"
         ]
       },
       "Can": {

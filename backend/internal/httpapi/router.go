@@ -201,6 +201,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/pages/{pageID}", s.handleTrashPage)
 			r.Post("/pages/{pageID}/move", s.handleMovePage)
 			r.Post("/pages/{pageID}/copy", s.handleCopyPage)
+			r.Get("/pages/{pageID}/below", s.handleListPagesBelow)
 			r.Get("/pages/{pageID}/labels", s.handleListPageLabels)
 			r.Post("/pages/{pageID}/labels", s.handleAddPageLabel)
 			r.Delete("/pages/{pageID}/labels/{labelName}", s.handleRemovePageLabel)

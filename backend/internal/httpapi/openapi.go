@@ -10,6 +10,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
+	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
@@ -150,6 +151,12 @@ var operations = []operation{
 	{method: "DELETE", path: "/pages/{pageID}", handler: "handleTrashPage", tag: "pages", summary: "Move a page and every page below it to its space's trash.", responses: none()},
 	{method: "POST", path: "/pages/{pageID}/move", handler: "handleMovePage", tag: "pages", summary: "Move a page under another, in its space or another, with or without its children; a move under itself is refused.", request: page.MoveInput{}, responses: ok(env{"page": page.Page{}})},
 	{method: "POST", path: "/pages/{pageID}/copy", handler: "handleCopyPage", tag: "pages", summary: "Copy a page, with or without the pages below it, under a parent in its space or another.", request: page.CopyInput{}, responses: created(env{"page": page.Page{}})},
+	{method: "GET", path: "/pages/{pageID}/below", handler: "handleListPagesBelow", tag: "pages", summary: "The pages under a page that the caller may view, out of the trash, each after its parent, for a child pages block; truncated says the list stopped at its limit.",
+		query: []param{
+			{name: "scope", schema: &openapi.Schema{Type: "string", Enum: document.ChildPagesScopes}, description: "children, the default, or subtree."},
+			{name: "depth", schema: intParam, description: "For subtree, how many levels down, 1 to 10; every level when absent."},
+			{name: "sort", schema: &openapi.Schema{Type: "string", Enum: document.ChildPagesSorts}, description: "How siblings are ordered: tree, the default, title, or updated, the latest change first."},
+		}, responses: ok(env{"pages": []page.BelowPage{}, "truncated": false})},
 
 	// Drafts and publishing (#13).
 	{method: "GET", path: "/pages/{pageID}/draft", handler: "handleGetDraft", tag: "drafts", summary: "The caller's own draft of a page, or null when they have none.",

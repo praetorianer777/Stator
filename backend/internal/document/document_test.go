@@ -36,7 +36,10 @@ const richDoc = `{"type":"doc","content":[
  {"type":"panel","attrs":{"kind":"warning"},"content":[
   {"type":"heading","attrs":{"level":2,"id":"careful"},"content":[{"type":"text","text":"Careful"}]},
   {"type":"paragraph","content":[{"type":"text","text":"Hot"}]}]},
- {"type":"heading","attrs":{"level":3,"id":null},"content":[{"type":"text","text":"Plan"}]}
+ {"type":"heading","attrs":{"level":3,"id":null},"content":[{"type":"text","text":"Plan"}]},
+ {"type":"tableOfContents","attrs":{"maxLevel":2}},
+ {"type":"childPages","attrs":{"scope":"subtree","depth":3,"sort":"updated"}},
+ {"type":"panel","attrs":{"kind":"info"},"content":[{"type":"childPages","attrs":{"scope":"children","depth":null,"sort":"title"}},{"type":"tableOfContents"}]}
 ]}`
 
 func TestValidateAcceptsEveryAllowedConstruct(t *testing.T) {
@@ -106,6 +109,21 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"image inline", para(`{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}`), `puts a "image"`},
 		{"attachment at the top", `{"type":"doc","content":[{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":"a"}}]}`, `puts a "attachment"`},
 		{"attachment without name", para(`{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":" "}}`), `fileName=`},
+		{"contents level zero", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":0}}]}`, `maxLevel=0`},
+		{"contents level too deep", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":4}}]}`, `maxLevel=4`},
+		{"contents level as string", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":"2"}}]}`, `maxLevel="2"`},
+		{"contents level missing a value", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":null}}]}`, `maxLevel=null`},
+		{"contents with text", `{"type":"doc","content":[{"type":"tableOfContents","content":[{"type":"paragraph"}]}]}`, `holds none`},
+		{"contents inline", para(`{"type":"tableOfContents","attrs":{"maxLevel":2}}`), `puts a "tableOfContents"`},
+		{"contents unknown attribute", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"headings":["a"]}}]}`, `attribute "headings"`},
+		{"child pages scope", `{"type":"doc","content":[{"type":"childPages","attrs":{"scope":"space"}}]}`, `scope="space"`},
+		{"child pages sort", `{"type":"doc","content":[{"type":"childPages","attrs":{"sort":"created"}}]}`, `sort="created"`},
+		{"child pages sort null", `{"type":"doc","content":[{"type":"childPages","attrs":{"sort":null}}]}`, `sort=null`},
+		{"child pages depth zero", `{"type":"doc","content":[{"type":"childPages","attrs":{"depth":0}}]}`, `depth=0`},
+		{"child pages depth too deep", `{"type":"doc","content":[{"type":"childPages","attrs":{"depth":11}}]}`, `depth=11`},
+		{"child pages fractional depth", `{"type":"doc","content":[{"type":"childPages","attrs":{"depth":1.5}}]}`, `depth=1.5`},
+		{"child pages of another page", `{"type":"doc","content":[{"type":"childPages","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}]}`, `attribute "pageId"`},
+		{"child pages inline", para(`{"type":"childPages","attrs":{"scope":"children"}}`), `puts a "childPages"`},
 		{"attrs not an object", `{"type":"doc","content":[{"type":"paragraph","attrs":[1]}]}`, `not a document`},
 		{"not a doc", `{"type":"paragraph"}`, `must be a document`},
 		{"not json", `not json`, `not a document`},

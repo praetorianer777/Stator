@@ -1,7 +1,10 @@
 package httpapi
 
 import (
+	"cmp"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -148,6 +151,38 @@ func (s *Server) handleSpaceOutline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"pages": pages})
+}
+
+func (s *Server) handleListPagesBelow(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	query := r.URL.Query()
+	q := page.BelowQuery{Scope: cmp.Or(query.Get("scope"), document.ChildPagesScopes[0]), Sort: cmp.Or(query.Get("sort"), document.ChildPagesSorts[0])}
+	if raw := query.Get("depth"); raw != "" {
+		// Anything but a number is as out of range as a number outside it.
+		n, _ := strconv.Atoi(raw)
+		q.Depth = &n
+	}
+	switch err := q.Check(); {
+	case errors.Is(err, page.ErrBadScope):
+		respondError(w, r, ErrValidation(map[string]string{"scope": "Choose children or subtree."}))
+		return
+	case errors.Is(err, page.ErrBadSort):
+		respondError(w, r, ErrValidation(map[string]string{"sort": "Choose tree, title or updated."}))
+		return
+	case errors.Is(err, page.ErrBadDepth):
+		respondError(w, r, ErrValidation(map[string]string{"depth": "Choose a depth of 1 to " + strconv.Itoa(document.MaxChildPagesDepth) + ", or leave it out for every level."}))
+		return
+	}
+	pages, cut, err := s.Pages.Below(r.Context(), actorFrom(r), id, q)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"pages": pages, "truncated": cut})
 }
 
 func (s *Server) handleCreatePage(w http.ResponseWriter, r *http.Request) {
