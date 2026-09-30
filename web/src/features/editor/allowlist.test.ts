@@ -53,7 +53,7 @@ describe("the web editor against the server's allowlist", () => {
     e.chain()
       .focus("end")
       .setHardBreak()
-      .insertContent({ type: "mention", attrs: { id: "u1", label: "Ada" } })
+      .insertContent({ type: "mention", attrs: { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01", label: "Ada" } })
       .insertContent(" ")
       .toggleCode()
       .insertContent("x")

@@ -432,7 +432,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	t.Run("the database reads a document as document.PlainText does", func(t *testing.T) {
 		raw := `{"type":"doc","content":[
 			{"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Title "},{"type":"text","text":"bold","marks":[{"type":"bold"}]}]},
-			{"type":"paragraph","content":[{"type":"text","text":"Hi "},{"type":"mention","attrs":{"id":"u1","label":"Ann"}},{"type":"hardBreak"},{"type":"text","text":"next"}]},
+			{"type":"paragraph","content":[{"type":"text","text":"Hi "},{"type":"mention","attrs":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01","label":"Ann"}},{"type":"hardBreak"},{"type":"text","text":"next"}]},
 			{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"item"}]}]}]},
 			{"type":"table","content":[{"type":"tableRow","content":[
 				{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"a"}]},{"type":"paragraph","content":[{"type":"text","text":"b"}]}]},

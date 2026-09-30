@@ -24,7 +24,7 @@ func TestABodyMustSaySomething(t *testing.T) {
 	}
 	for name, body := range map[string]string{
 		"words":     `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Looks good"}]}]}`,
-		"a mention": `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"id":"u1","label":"Ada"}}]}]}`,
+		"a mention": `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01","label":"Ada"}}]}]}`,
 	} {
 		if _, err := cleanBody(json.RawMessage(body)); err != nil {
 			t.Errorf("%s was refused: %v", name, err)
