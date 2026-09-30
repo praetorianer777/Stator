@@ -62,9 +62,8 @@ func quoteOf(text string) string {
 	return string(runes[:MaxQuoteLength])
 }
 
-// NewAnchor judges the page body a client sends to start an inline thread:
-// the thread's mark must cover some text inside one text block, and taking
-// it out must leave the stored body. It answers the passage's quote.
+// NewAnchor answers the quote of a new thread's passage, when taking its mark
+// out of the body sent leaves the stored body.
 func NewAnchor(stored, sent json.RawMessage, id uuid.UUID) (string, error) {
 	quote, root, err := passage(sent, id)
 	if err != nil {
@@ -149,11 +148,8 @@ type Settlement struct {
 	Detached []uuid.UUID
 }
 
-// Settle anchors a page's live inline threads in a body about to be
-// published. live maps each anchored thread that is not wholly deleted to its
-// quote. A thread keeps its marks; a thread without one is marked where its
-// quote occurs exactly once, within one text block, and detached otherwise;
-// a mark naming no live thread is dropped.
+// Settle anchors the live threads, each by its quote, in a body about to be
+// published; docs/api-contract-m2.md gives the rules.
 func Settle(body json.RawMessage, live map[uuid.UUID]string) (Settlement, error) {
 	out := Settlement{Body: body}
 	if len(live) == 0 && !bytes.Contains(body, []byte(`"`+AnchorMark+`"`)) {

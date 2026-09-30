@@ -61,9 +61,8 @@ func planCommentCreated(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	return plan, nil
 }
 
-// planThreadResolved tells everybody who wrote in an inline thread that it
-// was resolved or reopened, quoting its passage. A thread wholly deleted
-// before the worker came to it tells nobody.
+// planThreadResolved tells everybody who wrote in a thread, unless it was
+// wholly deleted meanwhile, that it was resolved or reopened.
 func planThreadResolved(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) {
 	var in events.ThreadResolved
 	if err := json.Unmarshal(e.Payload, &in); err != nil {

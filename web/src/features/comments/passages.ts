@@ -1,9 +1,6 @@
 import { INLINE_COMMENT_MARK, type Doc, type DocNode } from "@/features/editor/schema";
 
-/**
- * A run of text in one block of a page: the block's place in the document,
- * and offsets into the text of its text nodes, which is all a passage covers.
- */
+/** A run of text in one block: the block's place in the document, and offsets into its text nodes' text. */
 export interface PassageRange {
   path: number[];
   start: number;
@@ -30,9 +27,8 @@ export function quoteOf(doc: DocNode, range: PassageRange): string {
 }
 
 /**
- * The page's body with a passage marked for a new thread, as the server
- * takes it: the same document, the passage's text split out and carrying the
- * mark, and any mention or file inside it marked too, so it has no gaps.
+ * The body with a passage's text split out and marked for a new thread, a mention or file inside it
+ * too, so the passage has no gaps; nothing else changes, as the server requires.
  */
 export function markPassage(doc: Doc, range: PassageRange, threadId: string): Doc {
   const copy = structuredClone(doc);
@@ -119,10 +115,8 @@ function blockOf(node: Node, root: Element): HTMLElement | null {
 }
 
 /**
- * The passage a selection in the reader covers, trimmed of the spaces at
- * its ends, or null when it is empty or leaves its block. A selection that
- * ends at the very start of the next block, as a triple click makes, ends
- * with its own.
+ * The passage a selection in the reader covers, trimmed, or null when it is empty or leaves its block;
+ * ending at the very start of the next block, as a triple click does, is ending with its own.
  */
 export function selectedPassage(root: Element, doc: DocNode, selection: Selection | null): Selected | null {
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;

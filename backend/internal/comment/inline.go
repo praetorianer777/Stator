@@ -20,10 +20,8 @@ func isUnique(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
-// StartInline begins a thread on a passage of a published page. The body
-// the client sends is the page's with the passage marked; marking it is not
-// editing the page, so anybody who may comment may, and nothing else in the
-// body may differ. No version is made and the page's updatedAt stays.
+// StartInline begins a thread on a passage, marked in the page's body by
+// anybody who may comment; nothing else in the body may change.
 func (s *Service) StartInline(ctx context.Context, actor perm.Actor, pageID uuid.UUID, in InlineThreadInput) (*Thread, db.LSN, error) {
 	body, err := cleanBody(in.Body)
 	if err != nil {
@@ -119,9 +117,8 @@ func (s *Service) SetResolved(ctx context.Context, actor perm.Actor, commentID u
 	return out, lsn, err
 }
 
-// SettleAnchors settles a page's inline threads against the body about to be
-// published, in the publishing transaction, and answers the body to publish.
-// Threads whose passage is gone are detached for good.
+// SettleAnchors answers the body to publish with its threads settled, and
+// detaches for good those whose passage is gone.
 func SettleAnchors(ctx context.Context, tx db.DBTX, pageID uuid.UUID, body json.RawMessage) (json.RawMessage, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT t.id, t.quote FROM comment_thread t

@@ -24,11 +24,12 @@ a sentence.
 | 00140 to 00149 | comments (#22, #23) | `comment_thread`, `comment`, their policies, comment search rows, the anchor trigger on `page_version` |
 | 00150 to 00159 | watching and notifications (#25, #26), mentions (#24) | `watch`, `watch_optout`, `outbox_event`, `notification`, `notification_preference`, `notification_digest` |
 | 00153 | comments (#22) | the ties from `notification` to comments, which must follow 00152 |
+| 00141 | inline comments (#23) | a thread's quote, detachment and resolution, the mark stripped from versions, the anchor check in `page_write_guard` |
 
 Mentions need no table: the ids are read from the document on each publish
 and comment and travel in the outbox event. If #24 needs a migration after
 all, it takes the next free number in 00150 to 00159, after #25, #26 and
-#22's 00153.
+#22's 00153, that is 00154.
 
 Types live in `internal/comment`, `internal/watch` and `internal/notify`.
 The outbox is `internal/events`, as in Armature.
@@ -108,16 +109,18 @@ Changed: `Page` gains `comments: {page, inline, detached}`.
   the selection in the mark with a `threadId` it generates, and sends that as
   `pageBody` with the comment's `body`. In one transaction, on the locked
   page, the server takes that one mark out of `pageBody` and requires the
-  rest to equal `page.body` exactly. If it does not, somebody published or
+  rest to equal `page.body` exactly, once neighbouring text that only the
+  mark set apart is joined again. If it does not, somebody published or
   anchored meanwhile: 409 `anchor_conflict`, and the client reads the page
   again and retries with the same selection if its text is still there. The
-  mark must cover some text inside one text block (a paragraph, a heading, a
-  code block, or one of those in a list item, a quote, a panel or a cell),
-  else 422 on `pageBody`. The server then stores `pageBody` as the page body
-  and keeps the marked text as the thread's `anchor.quote`, cut at
-  `comment.MaxQuoteLength`, 500 characters. The answer carries the page, so
-  the reader draws the highlight at once. A `threadId` already in use is 409
-  `conflict`.
+  mark must cover one run of text, without gaps, inside one text block (a
+  paragraph or a heading, or one of those in a list item, a quote, a panel
+  or a cell), else 422 on `pageBody`. Code blocks take no marks at all, so
+  their text takes no inline comments. The server then stores `pageBody` as
+  the page body and keeps the marked text as the thread's `anchor.quote`, cut
+  at `comment.MaxQuoteLength`, 500 characters. The answer carries the page,
+  so the reader draws the highlight at once. A `threadId` already in use is
+  409 `conflict`, judged before the bodies are compared.
 - **Commenters need no edit right.** Marking the body this way is not
   editing it; the server checks the only change is the mark.
 - **On every publish** (publish, restore, `PATCH`, and the first publish of
@@ -136,14 +139,17 @@ Changed: `Page` gains `comments: {page, inline, detached}`.
   4. A mark naming no thread of this page, or a wholly deleted one, is
      dropped. A client cannot invent anchors through a draft.
   Resolved threads take part like open ones, so reopening finds the passage.
+  A copy of a page takes none of its marks and none of its threads.
 - **Drafts** are not settled while they are drafts: the draft keeps whatever
   marks the editor saved, and the settlement happens when it is published.
   Comparisons ignore the mark on both sides.
 - **Resolving** marks the thread resolved with who and when, and reopening
   clears it; both are for anybody who may comment, and doing either twice is
   no change. Only inline threads resolve: a thread below the page is 409
-  `not_inline`. A reply to a resolved thread reopens it. `commentID` may be
-  any comment of the thread.
+  `not_inline`. A reply to a resolved thread reopens it, and tells people as
+  a reply only, with no `thread.reopened`. `commentID` may be any comment of
+  the thread. `thread.resolved` and `thread.reopened` are notifications of
+  kind `resolved` to everybody who wrote in the thread, quoting its passage.
 - **The reader** highlights the passages of open anchored threads, lists
   resolved threads only when asked (hidden by default), and shows detached
   threads apart, under the page's comments, open ones first. It draws no

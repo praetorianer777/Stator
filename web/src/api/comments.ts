@@ -65,11 +65,7 @@ export interface InlineStart {
   pageBody: (current: Doc) => Doc | null;
 }
 
-/**
- * Starts a thread on a passage. When somebody published or marked the page
- * meanwhile, the page is read again and the passage marked afresh, as long
- * as its words can still be found.
- */
+/** Starts a thread on a passage; after an anchor_conflict the page is read again and the passage marked afresh. */
 export function useStartInlineThread(pageId: string, current: () => Doc | null) {
   const queryClient = useQueryClient();
   const refresh = useRefresh(pageId);

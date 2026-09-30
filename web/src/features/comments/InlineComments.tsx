@@ -35,11 +35,8 @@ function focusSoon(selector: string) {
 }
 
 /**
- * A page's document with its threads on passages: the passages highlighted,
- * a button and a shortcut to comment on selected text, the open thread in a
- * panel beside the page (below the text on narrow screens), and, after
- * `below`, the passages' threads listed for the keyboard, detached and
- * resolved ones included.
+ * A page's text with its passages: highlights, commenting on a selection, the open thread in a panel,
+ * and, after `below`, every passage's thread listed for the keyboard, detached and resolved ones included.
  */
 export function InlineComments({ page, thread, children, below }: { page: Page; thread?: string; children: ReactNode; below: ReactNode }) {
   const enabled = !page.unpublished;

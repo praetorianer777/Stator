@@ -5,9 +5,8 @@ import (
 	"reflect"
 )
 
-// Normalize joins neighbouring text that carries the same marks and drops
-// empty lists and attributes, so two documents that read alike compare
-// equal. The database's document_without_anchors does the same.
+// Normalize joins neighbouring text with the same marks and drops empty
+// lists, as the database's document_without_anchors does.
 func Normalize(n Node) Node {
 	return DropMarks(n, func(Mark) bool { return false })
 }
