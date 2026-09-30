@@ -6,11 +6,12 @@ import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { DRAWER_ID } from "./state";
 
-/** Ctrl or Cmd+K anywhere in the shell calls onSearch. */
+// Ctrl or Cmd+K anywhere in the shell, fields included, as in Armature: it is
+// the product's one shortcut and a field has no other use for the key.
 export function useSearchShortcut(onSearch: () => void) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      if ((event.ctrlKey || event.metaKey) && !event.repeat && event.key.toLowerCase() === "k") {
         event.preventDefault();
         onSearch();
       }
@@ -20,11 +21,20 @@ export function useSearchShortcut(onSearch: () => void) {
   }, [onSearch]);
 }
 
-/**
- * Above the content: the navigation drawer's button on a narrow screen, the
- * way into search, and the person signed in, with what they may do from there.
- */
-export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; drawerOpen: boolean; onOpenDrawer: () => void }) {
+/** Above the content: the drawer's button on a narrow screen, quick search, and the person signed in with what they may do. */
+export function TopBar({
+  narrow,
+  drawerOpen,
+  onOpenDrawer,
+  searching,
+  onSearch,
+}: {
+  narrow: boolean;
+  drawerOpen: boolean;
+  onOpenDrawer: () => void;
+  searching: boolean;
+  onSearch: () => void;
+}) {
   const navigate = useNavigate();
   const { data: me } = useMe();
   const logout = useLogout();
@@ -78,7 +88,9 @@ export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; 
       )}
       <button
         type="button"
-        onClick={() => navigate({ to: "/search" })}
+        onClick={onSearch}
+        aria-haspopup="dialog"
+        aria-expanded={searching}
         className="flex h-8 w-full max-w-md items-center gap-2 rounded-control border border-border-strong/70 bg-canvas px-2.5 text-sm text-ink-subtle hover:border-border-strong"
         data-action="search"
       >

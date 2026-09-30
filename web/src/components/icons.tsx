@@ -44,6 +44,7 @@ function makeIcon(name: string, paths: string[]) {
 
 export const Icon = {
   Home: makeIcon("home", ["M2.5 7.5 8 3l5.5 4.5", "M4 6.5V13h8V6.5", "M6.5 13V9.5h3V13"]),
+  Page: makeIcon("page", ["M4 2.5h5l3 3v8H4z", "M9 2.5v3h3"]),
   Search: makeIcon("search", ["M7 12A5 5 0 1 0 7 2a5 5 0 0 0 0 10Z", "m10.5 10.5 3 3"]),
   Space: makeIcon("space", ["M2.5 3.5h4A1.5 1.5 0 0 1 8 5v8a1.5 1.5 0 0 0-1.5-1.5h-4z", "M13.5 3.5h-4A1.5 1.5 0 0 0 8 5v8a1.5 1.5 0 0 1 1.5-1.5h4z"]),
   User: makeIcon("user", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),

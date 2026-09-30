@@ -151,3 +151,15 @@ export const PAGE_SLUG_FALLBACK = "page";
 export const TREE_INDENT_PX = 12;
 /** The share of a tree row at its top and bottom where a dropped page goes beside it rather than under it. */
 export const TREE_DROP_EDGE = 0.25;
+
+/** How long quick search waits after the last key before it asks the server. */
+export const QUICK_SEARCH_DEBOUNCE_MS = 150;
+/** How many pages quick search and the recent pages list offer at once, within the API's limit of 20. */
+export const QUICK_SEARCH_LIMIT = 8;
+export const RECENT_PAGES_LIMIT = 8;
+/** How many hits one page of search results shows, within the API's limit of 100. */
+export const SEARCH_PAGE_SIZE = 20;
+/** The longest query, matching the API's limit. */
+export const SEARCH_QUERY_MAX_LENGTH = 200;
+/** How many people the author filter offers, the most the API gives at once. */
+export const SEARCH_PEOPLE_LIMIT = 50;

@@ -1,6 +1,7 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from "react";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useRouterState } from "@tanstack/react-router";
 import { ShellHeaderContext } from "@/components/ui";
+import { QuickSearch } from "@/features/search/QuickSearch";
 import { BackdropEffect } from "@/features/themes/BackdropEffect";
 import { ThemeLoader } from "@/features/themes/ThemeLoader";
 import { t } from "@/i18n";
@@ -12,8 +13,9 @@ const MAIN_ID = "main";
 
 /** The chrome every page sits in: rail, sidebar, top bar, and the content with its floating head. */
 export function AppShell({ children }: { children: ReactNode }) {
-  const navigate = useNavigate();
-  const openSearch = useCallback(() => navigate({ to: "/search" }), [navigate]);
+  const [searching, setSearching] = useState(false);
+  const openSearch = useCallback(() => setSearching(true), []);
+  const closeSearch = useCallback(() => setSearching(false), []);
   useSearchShortcut(openSearch);
   // The page's head is drawn into the strip over the content, which floats
   // as the content scrolls under it; the ref lands before first paint.
@@ -46,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
       <Sidebar narrow={narrow} drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar narrow={narrow} drawerOpen={drawerOpen} onOpenDrawer={() => setDrawer(true)} />
+        <TopBar narrow={narrow} drawerOpen={drawerOpen} onOpenDrawer={() => setDrawer(true)} searching={searching} onSearch={openSearch} />
         {/* Focusable only from the skip link, and not ringed then: it is where reading starts, not a control. */}
         <ThemeLoader />
         <main id={MAIN_ID} tabIndex={-1} className="relative isolate min-h-0 flex-1 overflow-auto bg-backdrop focus:outline-none" data-backdrop-host>
@@ -61,6 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </ShellHeaderContext.Provider>
         </main>
       </div>
+      {searching && <QuickSearch onClose={closeSearch} />}
     </div>
   );
 }

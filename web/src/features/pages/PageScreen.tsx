@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
+import { useVisit } from "@/api/search";
 import { useTrashPage } from "@/api/trash";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -37,6 +38,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
   const { data, isLoading, error, refetch } = usePage(pageId);
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
+  useVisit(data?.page.id);
   const trash = useTrashPage(data?.space.key ?? "");
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (isLoading || !data) return <Skeleton />;

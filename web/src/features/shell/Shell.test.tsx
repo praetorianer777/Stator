@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { renderAt, stubApi } from "@/test/app";
@@ -86,16 +86,19 @@ describe("the theme switch", () => {
 });
 
 describe("search", () => {
-  it("opens from the top bar and from Ctrl K", async () => {
-    const router = await renderAt("/");
-    await userEvent.click(document.querySelector<HTMLButtonElement>('[data-action="search"]')!);
-    await waitFor(() => expect(router.state.location.pathname).toBe("/search"));
+  it("opens quick search from the top bar and from Ctrl K", async () => {
+    stubApi({ "GET /recent-pages": { status: 200, body: { pages: [] } } });
+    await renderAt("/");
+    const box = document.querySelector<HTMLButtonElement>('[data-action="search"]')!;
+    await userEvent.click(box);
+    expect(screen.getByRole("dialog", { name: "Quick search" })).toBeInTheDocument();
+    expect(box).toHaveAttribute("aria-expanded", "true");
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Quick search" })).toBeNull();
+    expect(box).toHaveFocus();
 
-    await act(() => router.navigate({ to: "/" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
     await userEvent.keyboard("{Control>}k{/Control}");
-    await waitFor(() => expect(router.state.location.pathname).toBe("/search"));
-    expect(await screen.findByText("Search is on its way")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toHaveFocus();
   });
 });
 

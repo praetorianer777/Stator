@@ -18,14 +18,17 @@ for (const { path, heading } of PAGES) {
   });
 }
 
-test("the search box and Ctrl K both lead to search", async ({ page }) => {
+test("the search box and Ctrl K both open quick search", async ({ page }) => {
+  const palette = page.getByRole("dialog", { name: "Quick search" });
   await openShell(page, "/spaces");
   await page.locator('[data-action="search"]').click();
-  await expect(page).toHaveURL(/\/search$/);
+  await expect(palette).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(palette).toHaveCount(0);
 
   await openShell(page, "/");
   await page.keyboard.press("Control+k");
-  await expect(page).toHaveURL(/\/search$/);
+  await expect(palette.getByRole("combobox")).toBeFocused();
 });
 
 test("an unknown path shows the not-found page inside the shell, with a way home", async ({ page }) => {
