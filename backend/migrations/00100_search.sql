@@ -107,6 +107,11 @@ CREATE POLICY page_visit_tenant_isolation ON page_visit
     USING (org_id = current_org_id()) WITH CHECK (org_id = current_org_id());
 CREATE POLICY page_visit_admin_bypass ON page_visit TO stator_admin USING (true) WITH CHECK (true);
 
+-- A person's visits are their own, and only of pages they may still view.
+CREATE POLICY page_visit_viewer ON page_visit AS RESTRICTIVE FOR ALL TO stator_app
+    USING (user_id = current_actor_id() AND perm_page_viewable(page_id, current_actor_id()))
+    WITH CHECK (user_id = current_actor_id() AND perm_page_viewable(page_id, current_actor_id()));
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON page_visit TO stator_app, stator_admin;
 
 -- +goose Down

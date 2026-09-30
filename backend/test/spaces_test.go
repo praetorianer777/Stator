@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
@@ -214,10 +215,12 @@ func appConn(t *testing.T) *pgx.Conn {
 	return conn
 }
 
-// actAs scopes a raw connection to an organization, as a transaction would.
-func actAs(t *testing.T, conn *pgx.Conn, org uuid.UUID) {
+// actAs scopes a raw connection to an organization and a person in it, as a
+// transaction would.
+func actAs(t *testing.T, conn *pgx.Conn, org, user uuid.UUID) {
 	t.Helper()
-	if _, err := conn.Exec(context.Background(), `SELECT set_config($1, $2, false)`, tenant.PostgresVar, org.String()); err != nil {
+	if _, err := conn.Exec(context.Background(), `SELECT set_config($1, $2, false), set_config($3, $4, false)`,
+		tenant.PostgresVar, org.String(), db.UserVar, user.String()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -275,7 +278,7 @@ func TestSpaceRowsAreWalledByTheDatabase(t *testing.T) {
 		}
 	}
 
-	actAs(t, conn, b.org)
+	actAs(t, conn, b.org, b.user)
 	for _, table := range []string{"space", "page"} {
 		if got := count(`SELECT count(*) FROM `+table+` WHERE org_id = $1`, a.org); got != 0 {
 			t.Errorf("organization B sees %d of A's rows in %s", got, table)
@@ -289,7 +292,7 @@ func TestSpaceRowsAreWalledByTheDatabase(t *testing.T) {
 	refused(t, conn, "putting B's page in A's space", `INSERT INTO page (org_id, space_id, parent_id, rank, title) VALUES ($1, $2, $3, 'W', 'Planted')`, b.org, spaceA, homeB)
 	refused(t, conn, "making A's page B's home", `UPDATE space SET home_page_id = $2 WHERE id = $1`, spaceB, homeA)
 
-	actAs(t, conn, a.org)
+	actAs(t, conn, a.org, a.user)
 	refused(t, conn, "a second root in a space", `INSERT INTO page (org_id, space_id, rank, title) VALUES ($1, $2, 'W', 'Second root')`, a.org, spaceA)
 	refused(t, conn, "a parent in another space", `INSERT INTO page (org_id, space_id, parent_id, rank, title) VALUES ($1, $2, $3, 'W', 'Astray')`, a.org, spaceA, homeA2)
 	refused(t, conn, "another space's page as the home", `UPDATE space SET home_page_id = $2 WHERE id = $1`, spaceA, homeA2)

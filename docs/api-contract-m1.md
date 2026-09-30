@@ -9,8 +9,7 @@ Whoever builds one removes the mark, routes its handler and keeps this file
 true.
 
 All paths are under `/api/v1` and need a member of the organization. "View",
-"edit" and so on in the tables are the page and space rights of #19; until
-#19 lands they are `perm.Check` as it is today (every member views and edits).
+"edit" and so on in the tables are the page and space rights of #19.
 A page or space the caller may not view is answered 404, never 403: existence
 is privileged. Errors use the one envelope; the codes named here are the ones
 a client branches on.
@@ -201,6 +200,13 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
   list applies to the page, own or inherited, whether or not the caller passes
   it; **`TreeNode.restricted`** says the same for view lists. The web client
   offers only what `can` allows.
+- **Pickers** match the start of a person's name, of any word of it, or of
+  their email, and the start of a group's name or of any word of it,
+  ignoring case. A `limit` outside 1 to 50 is 422. `everyone` is answered
+  with the name `Everyone`; the client may show its own words for it.
+- **Lists of pages.** Every query that lists pages narrows itself with
+  `perm.ViewablePage(alias, n)`, the SQL condition `perm_page_viewable(
+  alias.id, $n)`, which is the rule above: search and macros use it too.
 - **Everywhere.** A page the caller may not view is 404 and missing from the
   tree, the outline, `hasChildren`, the trash list, search, recent pages and
   its attachments. The database enforces the same: policies on pages, drafts,

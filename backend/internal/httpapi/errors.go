@@ -126,6 +126,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &pageField) {
 		return ErrValidation(map[string]string{pageField.Field: pageField.Message})
 	}
+	var permField *perm.FieldError
+	if errors.As(err, &permField) {
+		return ErrValidation(map[string]string{permField.Field: permField.Message})
+	}
 	var searchField *search.FieldError
 	if errors.As(err, &searchField) {
 		return ErrValidation(map[string]string{searchField.Field: searchField.Message})
@@ -186,6 +190,12 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
 	case errors.Is(err, page.ErrNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
+	case errors.Is(err, perm.ErrFixed):
+		return ErrConflict("Administering the organization follows the owner and admin roles. Change somebody's role under Users instead.")
+	case errors.Is(err, perm.ErrUnknownPermission):
+		return ErrNotFound("There is no such global permission. Choose use, createSpace or administer.")
+	case errors.Is(err, page.ErrLocksOut):
+		return ErrConflict("These restrictions would leave you unable to view or edit the page. Add yourself, or a group you are in, to both lists.")
 	case errors.Is(err, page.ErrNotInTrash):
 		return ErrNotFound("That page is not in this space's trash. Reload the trash; somebody may have restored or deleted it.")
 	case errors.Is(err, page.ErrHomeNotTrashed), errors.Is(err, page.ErrCycle), errors.Is(err, page.ErrHomeFixed), errors.Is(err, page.ErrNotASibling):

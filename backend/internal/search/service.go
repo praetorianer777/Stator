@@ -24,23 +24,6 @@ func NewService(cluster *db.Cluster) *Service {
 	return &Service{db: cluster}
 }
 
-// viewable is true when the actor, parameter $actorParam, may view page alias.
-// It stands in for perm.ViewablePage, whose signature it has; the trash is the caller's.
-//
-// Until #19 a member sees every space, and an unpublished page and everything
-// below it are its creator's alone. TODO(#19): use perm.ViewablePage instead.
-func viewable(alias string, actorParam int) string {
-	actor := "$" + strconv.Itoa(actorParam) + "::uuid"
-	return `(EXISTS (SELECT 1 FROM org_member vm WHERE vm.user_id = ` + actor + `)
-		AND NOT EXISTS (
-			WITH RECURSIVE up (id, parent_id, version, created_by) AS (
-				SELECT v.id, v.parent_id, v.version, v.created_by FROM page v WHERE v.id = ` + alias + `.id
-				UNION ALL
-				SELECT v.id, v.parent_id, v.version, v.created_by FROM page v JOIN up ON v.id = up.parent_id
-			)
-			SELECT 1 FROM up WHERE up.version = 0 AND up.created_by IS DISTINCT FROM ` + actor + `))`
-}
-
 // found is what every search reads: published pages out of the trash that the
 // actor, parameter $1, may view, with the version they are at.
 const found = `
@@ -101,8 +84,8 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 		args = append(args, v)
 		return "$" + strconv.Itoa(len(args))
 	}
-	pages := []string{viewable("p", 1)}
-	files := []string{viewable("p", 1)}
+	pages := []string{perm.ViewablePage("p", 1)}
+	files := []string{perm.ViewablePage("p", 1)}
 	var tsq string
 	pageScore, fileScore := `FALSE, 0::real`, `FALSE, 0::real`
 	if q.Text != "" {
@@ -225,7 +208,7 @@ func (s *Service) Quick(ctx context.Context, actor perm.Actor, typed, spaceKey s
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.title, s.key, s.name, `+pathOf+`
-			`+found+` AND `+viewable("p", 1)+` AND p.search_vector @@ `+query+within+`
+			`+found+` AND `+perm.ViewablePage("p", 1)+` AND p.search_vector @@ `+query+within+`
 			ORDER BY starts_with(lower(p.title), lower($3)) DESC, ts_rank(p.search_vector, `+query+`) DESC,
 			         char_length(p.title), v.created_at DESC, p.id
 			LIMIT $4`, args...)
@@ -256,7 +239,7 @@ func (s *Service) Recent(ctx context.Context, actor perm.Actor, limit int) ([]Re
 			FROM page_visit r
 			JOIN page p ON p.org_id = r.org_id AND p.id = r.page_id
 			JOIN space s ON s.id = p.space_id
-			WHERE r.user_id = $1 AND p.trashed_at IS NULL AND `+viewable("p", 1)+`
+			WHERE r.user_id = $1 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 1)+`
 			ORDER BY r.visited_at DESC, p.id
 			LIMIT $2`, actor.UserID, limit)
 		if err != nil {
@@ -282,7 +265,7 @@ func (s *Service) Visit(ctx context.Context, actor perm.Actor, id uuid.UUID) (db
 		tag, err := tx.Exec(ctx, `
 			INSERT INTO page_visit (org_id, user_id, page_id)
 			SELECT p.org_id, $1, p.id FROM page p
-			WHERE p.id = $2 AND p.trashed_at IS NULL AND `+viewable("p", 1)+`
+			WHERE p.id = $2 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 1)+`
 			ON CONFLICT (org_id, user_id, page_id) DO UPDATE SET visited_at = now()`, actor.UserID, id)
 		if err != nil {
 			return fmt.Errorf("note the visit: %w", err)

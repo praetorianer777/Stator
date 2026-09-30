@@ -447,7 +447,7 @@ func TestAttachmentRowsAreWalledByTheDatabase(t *testing.T) {
 		t.Errorf("an unscoped connection sees %d files", got)
 	}
 
-	actAs(t, conn, b.org)
+	actAs(t, conn, b.org, b.user)
 	if got := count(`SELECT count(*) FROM attachment WHERE id = $1`, fileA); got != 0 {
 		t.Error("B sees A's file")
 	}
@@ -457,7 +457,7 @@ func TestAttachmentRowsAreWalledByTheDatabase(t *testing.T) {
 	refused(t, conn, "a tombstone naming A's object", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyA, b.org)
 	refused(t, conn, "a tombstone in A", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyA, a.org)
 
-	actAs(t, conn, a.org)
+	actAs(t, conn, a.org, a.user)
 	refused(t, conn, "moving a file off its bytes", `UPDATE attachment SET page_id = $2 WHERE id = $1`, fileA, homeA)
 	refused(t, conn, "a key of one's choosing", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, object_key) VALUES ($1, $2, 'x', 1, 'org/elsewhere')`, a.org, homeA)
 	refused(t, conn, "an empty file", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 0)`, a.org, homeA)

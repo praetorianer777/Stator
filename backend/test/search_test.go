@@ -455,7 +455,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("B reads none of A's visits or index", func(t *testing.T) {
-		actAs(t, conn, b.org)
+		actAs(t, conn, b.org, b.user)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_visit`).Scan(&n); err != nil || n != 0 {
 			t.Errorf("B reads %d visits (%v)", n, err)
@@ -469,8 +469,56 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 		untouched(t, conn, "deleting A's visits from B", `DELETE FROM page_visit WHERE page_id = $1`, pageA)
 	})
 
+	t.Run("a visit is its visitor's, and only of a page they may view", func(t *testing.T) {
+		slug := h.slugOf(t, a.org)
+		annID, benID := h.addPerson(t, a.org, "member"), h.addPerson(t, a.org, "member")
+		ann, ben := api.as(t, annID, a.org, slug), api.as(t, benID, a.org, slug)
+		closed := docsA.add(docsA.homeID, "Closed plan", map[string]any{"body": textDoc("hidden words")})
+		want(t, ownerA.upload(t, pagePath(closed, "/attachments"), "closed-notes.txt", []byte("x")), http.StatusCreated, "a file on it")
+		want(t, restrict(t, ownerA, closed, []any{user(annID)}, nil), http.StatusOK, "restrict the page to ann")
+		want(t, ann.post(t, pagePath(closed, "/visit"), nil), http.StatusNoContent, "ann visits")
+		want(t, ben.post(t, pagePath(pageA, "/visit"), nil), http.StatusNoContent, "ben visits an open page")
+
+		if got := ben.post(t, pagePath(closed, "/visit"), nil); got.Status != http.StatusNotFound {
+			t.Errorf("ben visits the restricted page: %d", got.Status)
+		}
+		for _, q := range []string{"closed", "hidden"} {
+			r := searchFor(t, ben, url.Values{"q": {q}})
+			for _, title := range hitTitles(t, r) {
+				if title != "Secret plan" {
+					t.Errorf("ben finds %q for %s: %s", title, q, r.Raw)
+				}
+			}
+		}
+		if got := pageTitles(t, want(t, ben.get(t, "/api/v1/search/quick?q=clo"), http.StatusOK, "quick")); len(got) != 0 {
+			t.Errorf("ben's quick search shows %v", got)
+		}
+		if got := hitTitles(t, searchFor(t, ann, url.Values{"q": {"closed"}})); !sameSet(got, []string{"Closed plan", "closed-notes.txt"}) {
+			t.Errorf("ann finds %v", got)
+		}
+
+		actAs(t, conn, a.org, benID)
+		var n int
+		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_visit`).Scan(&n); err != nil || n != 1 {
+			t.Errorf("ben reads %d visits, want his own one (%v)", n, err)
+		}
+		if err := conn.QueryRow(ctx, `SELECT count(*) FROM attachment WHERE page_id = $1`, closed).Scan(&n); err != nil || n != 0 {
+			t.Errorf("ben reads %d files of the restricted page (%v)", n, err)
+		}
+		refused(t, conn, "a visit of a page ben may not view", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, benID, closed)
+		refused(t, conn, "a visit in ann's name", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, annID, pageA)
+		untouched(t, conn, "ann's visits from ben", `UPDATE page_visit SET visited_at = now() WHERE user_id = $1`, annID)
+		untouched(t, conn, "deleting ann's visits from ben", `DELETE FROM page_visit WHERE user_id = $1`, annID)
+		refused(t, conn, "handing ben's visit to ann", `UPDATE page_visit SET user_id = $1 WHERE user_id = $2`, annID, benID)
+
+		actAs(t, conn, a.org, annID)
+		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_visit WHERE page_id = $1`, closed).Scan(&n); err != nil || n != 1 {
+			t.Errorf("ann reads %d of her visits to the page (%v)", n, err)
+		}
+	})
+
 	t.Run("the index cannot be written, only derived", func(t *testing.T) {
-		actAs(t, conn, a.org)
+		actAs(t, conn, a.org, a.user)
 		refused(t, conn, "planting words", `UPDATE page SET search_vector = to_tsvector('planted') WHERE id = $1`, pageA)
 		refused(t, conn, "a visit for somebody outside the organization", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, b.user, pageA)
 		if _, err := conn.Exec(ctx, `UPDATE page SET title = 'Renamed plan' WHERE id = $1`, pageA); err != nil {
