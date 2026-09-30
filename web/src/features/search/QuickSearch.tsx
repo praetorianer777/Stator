@@ -128,7 +128,7 @@ export function QuickSearch({ onClose }: { onClose: () => void }) {
                   >
                     <Icon.Page className="shrink-0 text-ink-muted" />
                     <span className="min-w-0 flex-1 truncate text-ink">{page.title}</span>
-                    <span className="max-w-[45%] shrink-0 truncate text-2xs text-ink-subtle">{[page.spaceName, ...page.path.slice(1)].join(" / ")}</span>
+                    <span className="max-w-[45%] shrink-0 truncate text-2xs text-ink-muted">{[page.spaceName, ...page.path.slice(1)].join(" / ")}</span>
                   </div>
                 ))}
               </div>
