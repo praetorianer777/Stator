@@ -68,12 +68,13 @@ function stubPage({
     ancestors: [{ id: home.id, title: "Handbook", home: true }],
     can: { edit, delete: edit, restrict: edit, comment: true },
   });
+  const where = aSpace({ can: { ...space.can, editPages: edit } });
   const sent = stubApi({
-    "GET /spaces": { status: 200, body: { spaces: [space] } },
-    "GET /spaces/DOCS": { status: 200, body: { space } },
+    "GET /spaces": { status: 200, body: { spaces: [where] } },
+    "GET /spaces/DOCS": { status: 200, body: { space: where } },
     "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
     "GET /spaces/DOCS/outline": { status: 200, body: { pages: [] } },
-    [`GET /pages/${pageId}`]: { status: 200, body: { page, space } },
+    [`GET /pages/${pageId}`]: { status: 200, body: { page, space: where } },
     [`GET /pages/${pageId}/attachments`]: () => ({ status: 200, body: { attachments: list } }),
     ...more,
   });

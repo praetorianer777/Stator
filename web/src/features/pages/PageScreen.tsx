@@ -114,7 +114,8 @@ export function PageScreen({ pageId }: { pageId: string }) {
       <KnownAttachmentsContext value={attachmentIds}>
         <DocView doc={page.body} />
       </KnownAttachmentsContext>
-      <AttachmentPanel pageId={page.id} editable={page.can.edit} />
+      {/* The same rule as the Edit button: page.can is filled in only once page permissions (#19) exist. */}
+      <AttachmentPanel pageId={page.id} editable={space.can.editPages} />
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
       {(dialog === "move" || dialog === "copy") && (
         <PlaceDialog

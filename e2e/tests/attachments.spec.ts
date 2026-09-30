@@ -1,6 +1,8 @@
+import { mkdir, truncate, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { Locator, Page, TestInfo } from "@playwright/test";
 import { expect } from "../fixtures/auth";
-import type { StatorApi } from "../fixtures/api";
+import { must, type StatorApi } from "../fixtures/api";
 import { orgTest as test } from "../fixtures/org";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -11,6 +13,17 @@ const PIXEL_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAD
 // The compose stack takes the API's default, attachment.DefaultMaxSize.
 const UPLOAD_LIMIT_BYTES = 50 * 1024 * 1024;
 const OVERSIZE_BYTES = UPLOAD_LIMIT_BYTES + 1024 * 1024;
+
+/** A file past the limit, written sparse to the test's own folder: Playwright takes no buffer that large. */
+async function oversizeFile(testInfo: TestInfo, name: string): Promise<string> {
+  const path = testInfo.outputPath(name);
+  await mkdir(dirname(path), { recursive: true });
+  await truncate(path, OVERSIZE_BYTES).catch(async () => {
+    await writeFile(path, "");
+    await truncate(path, OVERSIZE_BYTES);
+  });
+  return path;
+}
 
 const panel = (page: Page) => page.locator("[data-attachments]");
 const row = (page: Page, name: string) => panel(page).locator(`[data-attachment="${name}"]`);
@@ -136,11 +149,13 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     await expect(doc.getByRole("link", { name: "Download steps.txt" })).toBeVisible();
     await expect(row(page, "pasted.png")).toBeVisible();
 
-    const { data } = await api.GET("/pages/{pageID}", { params: { path: { pageID: wiki.id } } });
-    const stored = JSON.stringify(data?.page.body);
-    const [pasted] = (await attachmentsOf(api, wiki.id)).filter((a) => a.fileName === "pasted.png");
-    expect(stored).toContain(`{"type":"image","attrs":{"attachmentId":"${pasted?.id}","alt":"A single pixel","width":240}}`);
-    expect(stored).toContain('"type":"attachment"');
+    const { page: saved } = must(await api.GET("/pages/{pageID}", { params: { path: { pageID: wiki.id } } }));
+    const blocks = (saved.body as { content: Array<{ type: string; attrs?: unknown; content?: Array<{ type: string; attrs?: unknown }> }> }).content;
+    const files = await attachmentsOf(api, wiki.id);
+    const idOf = (name: string) => files.find((a) => a.fileName === name)?.id;
+    expect(blocks.find((b) => b.type === "image")?.attrs).toEqual({ attachmentId: idOf("pasted.png"), alt: "A single pixel", width: 240 });
+    const chips = blocks.flatMap((b) => b.content ?? []).filter((n) => n.type === "attachment");
+    expect(chips.map((c) => c.attrs)).toEqual([{ attachmentId: idOf("steps.txt"), fileName: "steps.txt" }]);
   });
 
   test("a deleted file shows as missing where the page used it", async ({ page, api }, testInfo) => {
@@ -163,7 +178,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     await page.goto(`/s/${key}/p/${wiki.id}/runbook`);
     await panel(page)
       .locator("[data-attachment-input]")
-      .setInputFiles({ name: "backup.tar", mimeType: "application/x-tar", buffer: Buffer.alloc(OVERSIZE_BYTES) });
+      .setInputFiles(await oversizeFile(testInfo, "backup.tar"));
     const refusal = panel(page).getByRole("alert");
     await expect(refusal).toContainText("backup.tar (51 MB) is larger than this site accepts.", { timeout: 15_000 });
     await expect(refusal).toContainText("Make the file smaller, or split it into parts, and attach it again.");
@@ -219,7 +234,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
       await expect(page.locator("[data-doc] [data-image-missing]")).toBeVisible();
       await panel(page)
         .locator("[data-attachment-input]")
-        .setInputFiles({ name: "huge.bin", mimeType: "application/octet-stream", buffer: Buffer.alloc(OVERSIZE_BYTES) });
+        .setInputFiles(await oversizeFile(testInfo, "huge.bin"));
       await expect(panel(page).getByRole("alert")).toBeVisible({ timeout: 15_000 });
       await expectAccessible(page);
     });
