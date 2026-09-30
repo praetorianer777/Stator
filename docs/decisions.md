@@ -3,6 +3,35 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: Search reads a page's words in the database, and trims in its SQL
+
+A page's title, weighted A, and the plain text of its body, weighted B, are a
+stored generated `tsvector` column on `page` with a GIN index. The plain text
+comes from `page_plain_text`, a SQL function that reads the document as
+`document.PlainText` does, rather than from the service: a generated column
+cannot call Go, and a text column the service kept would be stale after any
+writer that forgot it, raw SQL and the migration's own backfill included.
+The integration suite holds the two readings to the same answer. The body's
+text is cut at 200000 characters, since a `tsvector` holds at most 1 MB of
+lexemes and a page may be 2 MB.
+
+The configuration `stator_search` is `simple` with `unaccent`: case and
+accents are ignored, words are not stemmed, as in Armature, because one
+organization writes in more than one language. Queries go through
+`websearch_to_tsquery`. A hit whose title matches every word comes before one
+that matches only in the body, then `ts_rank`, then the latest change, which
+is the latest published version, so moving a page to another place in the
+tree does not count as changing it. Quick search asks for each typed word as
+the prefix of a title lexeme (`'word':*A`), built from letters and digits
+only, so nothing typed reaches the tsquery syntax.
+
+Titles and snippets are `ts_headline` output with two private use
+characters as delimiters, stripped from the text first, then split into
+`{text, match}` runs; no markup ever leaves the server. Visibility is a
+condition inside the query that finds the hits, so `total` never counts a page
+the caller may not read. It is `perm.ViewablePage` once #19 lands; until
+then a stand-in with the same signature applies today's rule.
+
 ## 2026-09-29: History is append only, and a comparison aligns blocks, then words
 
 `page_version` rows are written once. The app role may only read and insert

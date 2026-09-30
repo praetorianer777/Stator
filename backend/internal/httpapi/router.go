@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -48,6 +49,7 @@ type Server struct {
 	Themes    *theme.Service
 	Spaces    *space.Service
 	Pages     *page.Service
+	Search    *search.Service
 	// Fresh remembers each caller's last write between requests; nil leaves
 	// reads unpinned, which is only right without replicas.
 	Fresh Freshness
@@ -188,6 +190,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/versions/{versionNumber}", s.handleGetVersion)
 			r.Post("/pages/{pageID}/versions/{versionNumber}/restore", s.handleRestoreVersion)
 			r.Get("/pages/{pageID}/compare", s.handleCompareVersions)
+			r.Post("/pages/{pageID}/visit", s.handleVisitPage)
+			r.Get("/search", s.handleSearch)
+			r.Get("/search/quick", s.handleQuickSearch)
+			r.Get("/recent-pages", s.handleRecentPages)
 			mountPending(r)
 		})
 	})
