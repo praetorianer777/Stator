@@ -25,7 +25,27 @@ export function DocView({ doc, className, size = "base" }: { doc: DocNode | null
   );
 }
 
-type Copy = (anchor: string) => void;
+/**
+ * A comparison's blocks in reading order, each marked as kept, added, removed
+ * or changed in words as well as in colour.
+ */
+export function DocDiffView({ blocks }: { blocks: { change: "equal" | "inserted" | "deleted" | "modified"; node: DocNode }[] }) {
+  const labels = { inserted: t.history.added, deleted: t.history.removed, modified: t.history.changed };
+  return (
+    <div className="doc-content text-base text-ink" data-doc data-diff-view>
+      {blocks.map((block, i) => (
+        <div key={i} className="doc-diff-block" data-diff-block={block.change}>
+          {block.change !== "equal" && <span className="doc-diff-label">{labels[block.change]}</span>}
+          <Block node={block.node} copy={null} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Null where headings get no anchors: a comparison can show one heading twice,
+// and two elements with one id break its links and its accessibility.
+type Copy = ((anchor: string) => void) | null;
 
 function Blocks({ nodes, copy }: { nodes: DocNode[] | undefined; copy: Copy }) {
   return (
@@ -127,7 +147,7 @@ function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
 
 function Heading({ node, copy }: { node: DocNode; copy: Copy }) {
   const level = Math.min(Math.max(Number(node.attrs?.level ?? 1), 1), 3);
-  const anchor = typeof node.attrs?.id === "string" && ANCHOR_PATTERN.test(node.attrs.id) ? node.attrs.id : undefined;
+  const anchor = copy && typeof node.attrs?.id === "string" && ANCHOR_PATTERN.test(node.attrs.id) ? node.attrs.id : undefined;
   // The page's title is its h1, so a document's levels start one down.
   const tag = `h${level + 1}`;
   const text = textOf(node);
@@ -140,7 +160,7 @@ function Heading({ node, copy }: { node: DocNode; copy: Copy }) {
           label={t.editor.copyHeadingLinkTo(text)}
           size="xs"
           className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-          onClick={() => copy(anchor)}
+          onClick={() => copy?.(anchor)}
           data-copy-heading-link={anchor}
         />
       )}
@@ -152,7 +172,9 @@ function CodeBlock({ node }: { node: DocNode }) {
   const code = (node.content ?? []).map((n) => n.text ?? "").join("");
   const language = typeof node.attrs?.language === "string" && node.attrs.language ? node.attrs.language : undefined;
   let body: ReactNode = code;
-  if (language && lowlight.registered(language)) body = hast(lowlight.highlight(language, code));
+  // Text a comparison marks keeps its marks, which highlighting would drop.
+  if ((node.content ?? []).some((n) => n.marks?.length)) body = inline(node.content);
+  else if (language && lowlight.registered(language)) body = hast(lowlight.highlight(language, code));
   return (
     <pre data-language={language}>
       {language && <span className="doc-code-language">{languageLabel(language)}</span>}
@@ -216,6 +238,26 @@ function marked(text: string, marks: DocNode["marks"], mention?: string): ReactN
         break;
       case "strike":
         out = <s>{out}</s>;
+        break;
+      // Only a comparison carries these two; a screen reader is told where
+      // each starts and ends, since it announces neither element by itself.
+      case "diffInsert":
+        out = (
+          <ins data-diff="insert">
+            <span className="sr-only">{t.history.insertedStart}</span>
+            {out}
+            <span className="sr-only">{t.history.insertedEnd}</span>
+          </ins>
+        );
+        break;
+      case "diffDelete":
+        out = (
+          <del data-diff="delete">
+            <span className="sr-only">{t.history.deletedStart}</span>
+            {out}
+            <span className="sr-only">{t.history.deletedEnd}</span>
+          </del>
+        );
         break;
       case "link": {
         const href = safeHref(mark.attrs?.href);

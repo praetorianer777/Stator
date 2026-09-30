@@ -212,6 +212,12 @@ describe("files in the page editor", () => {
       "GET /spaces/DOCS/outline": { status: 200, body: { pages: [] } },
       [`GET /pages/${pageId}`]: { status: 200, body: { page, space } },
       [`GET /pages/${pageId}/attachments`]: { status: 200, body: { attachments: [shot] } },
+      [`GET /pages/${pageId}/draft`]: { status: 200, body: { draft: null } },
+      // The editor autosaves a draft once a picture goes in.
+      [`PUT /pages/${pageId}/draft`]: {
+        status: 200,
+        body: { draft: { pageId, title: page.title, body: page.body, baseVersion: page.version, updatedAt: "2026-09-29T10:00:00Z" } },
+      },
     });
     return stubUploads();
   }

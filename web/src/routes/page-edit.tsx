@@ -1,5 +1,6 @@
 import { createRoute } from "@tanstack/react-router";
 import { pageQuery } from "@/api/pages";
+import { draftQuery } from "@/api/versions";
 import { spaceRoute } from "./space";
 
 // The editor is most of the bundle's weight, and most visits only read, so
@@ -7,5 +8,11 @@ import { spaceRoute } from "./space";
 export const pageEditRoute = createRoute({
   getParentRoute: () => spaceRoute,
   path: "/p/$pageId/$slug/edit",
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(pageQuery(params.pageId)),
+  // The draft is read afresh: the form starts from it once, and another tab
+  // may have saved a newer one since this one last looked.
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(pageQuery(params.pageId)),
+      context.queryClient.fetchQuery({ ...draftQuery(params.pageId), staleTime: 0 }),
+    ]),
 }).lazy(() => import("./page-edit.lazy").then((module) => module.Route));

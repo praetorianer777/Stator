@@ -3,7 +3,7 @@ import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 
@@ -46,7 +46,7 @@ test.describe("spaces", { tag: ["@auth"] }, () => {
     await page.getByLabel("Title", { exact: true }).fill("Welcome");
     await page.locator("#page-body").click();
     await page.keyboard.type("Everything starts here.");
-    await page.locator('[data-action="save-page"]').click();
+    await publishFromEditor(page);
 
     await expect(page).toHaveURL(new RegExp(`/s/${key}$`));
     await expect(heading(page)).toHaveText("Welcome");

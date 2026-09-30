@@ -158,6 +158,9 @@ func TestAMappedGroupGrantsItsRoleAndTakesItBack(t *testing.T) {
 	})
 
 	t.Run("the list of members says the role comes from the provider", func(t *testing.T) {
+		// Alice's sign-in wrote the role, and only her own reads are promised
+		// it at once; the administrator's list may come from the replica.
+		h.settle(t)
 		resp, body := admin.get(t, a.URL+httpapi.APIPrefix+"/users")
 		var out struct {
 			Members []struct {

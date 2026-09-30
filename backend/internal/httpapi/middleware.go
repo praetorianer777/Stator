@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
@@ -160,7 +161,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		case err == nil:
 			ctx := context.WithValue(r.Context(), ctxPrincipal, principal)
 			if principal.InOrg() {
-				ctx = tenant.WithOrg(ctx, *principal.Org)
+				ctx = db.WithUser(tenant.WithOrg(ctx, *principal.Org), principal.UserID)
 			}
 			r = r.WithContext(ctx)
 		case errors.Is(err, auth.ErrInvalidToken):
