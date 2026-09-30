@@ -14,7 +14,9 @@ A crash of the machine can lose less than a second of writes, but never
 consistency: what survives is a prefix of what was committed. The replica
 does not take the setting, since nothing commits there. It still replays
 only what the primary has flushed, and read-your-writes already sends a read
-to the primary while the replica lags.
+to the primary while the replica lags. The integration suite's `settle`
+flushes the WAL before it waits, since the write position it used to wait for
+can stop short of a commit that is still in the buffers.
 
 This is for the development and test stack alone. Production, and every
 layout of the Helm chart, keep the default, and `tests/test-helm.sh` fails if
