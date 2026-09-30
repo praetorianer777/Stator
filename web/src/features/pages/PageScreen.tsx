@@ -3,9 +3,10 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useTrashPage } from "@/api/trash";
-import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, type Crumb, type MenuItem } from "@/components/ui";
+import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { DocView } from "@/features/editor/DocView";
+import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { NewPageDialog } from "./NewPageDialog";
@@ -30,13 +31,38 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
   return crumbs;
 }
 
-type Dialog = "new" | "move" | "copy";
+type Dialog = "new" | "move" | "copy" | "restrictions";
+
+/** Says a page is narrowed to some people, and opens who and why. */
+function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
+  const why = page.restricted.view ? t.restrictions.indicatorView : t.restrictions.indicatorEdit;
+  return (
+    <Tooltip text={why}>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`${t.restrictions.indicator}. ${t.restrictions.showWhy}`}
+        className="inline-flex h-6 items-center gap-1 rounded-control border border-border bg-surface-raised px-1.5 text-2xs font-medium text-ink-muted hover:border-border-strong hover:text-ink"
+        data-page-restricted={page.restricted.view ? "view" : "edit"}
+      >
+        <Icon.Lock />
+        {t.restrictions.indicator}
+      </button>
+    </Tooltip>
+  );
+}
 
 /** A page as a reader sees it: its place, its title, who last changed it, and its document. */
 export function PageScreen({ pageId }: { pageId: string }) {
   const { data, isLoading, error, refetch } = usePage(pageId);
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
+  // A dialog is about the page it was opened on, so going to another page closes it.
+  const [dialogPage, setDialogPage] = useState(pageId);
+  if (dialogPage !== pageId) {
+    setDialogPage(pageId);
+    setDialog(undefined);
+  }
   const trash = useTrashPage(data?.space.key ?? "");
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (isLoading || !data) return <Skeleton />;
@@ -49,9 +75,12 @@ export function PageScreen({ pageId }: { pageId: string }) {
   };
 
   const actions: MenuItem[] = [];
-  if (!page.home) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
-  actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
-  if (!page.home) {
+  if (!page.home && page.can.edit) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
+  if (space.can.editPages) actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
+  if (page.can.restrict) {
+    actions.push({ label: t.restrictions.menu, icon: <Icon.Lock />, onSelect: () => setDialog("restrictions"), attrs: { "data-action": "page-restrictions" } });
+  }
+  if (!page.home && page.can.delete) {
     actions.push({
       label: t.page.moveToTrash,
       danger: true,
@@ -75,39 +104,51 @@ export function PageScreen({ pageId }: { pageId: string }) {
       <PageHeader
         crumbs={pageCrumbs(space, page)}
         title={<span data-page-title>{page.title}</span>}
-        meta={t.page.updated(page.updatedByName, updatedAt.format(new Date(page.updatedAt)))}
+        meta={
+          <span className="flex flex-wrap items-center gap-2">
+            {t.page.updated(page.updatedByName, updatedAt.format(new Date(page.updatedAt)))}
+            {(page.restricted.view || page.restricted.edit) && <RestrictedBadge page={page} onOpen={() => setDialog("restrictions")} />}
+          </span>
+        }
         actions={
-          space.can.editPages && (
+          (page.can.edit || actions.length > 0) && (
             <>
-              <Button variant="secondary" icon={<Icon.Plus />} onClick={() => setDialog("new")} data-action="new-page">
-                {t.page.newPage}
-              </Button>
-              <Button variant="secondary" icon={<Icon.Edit />} onClick={edit} data-action="edit-page">
-                {t.page.edit}
-              </Button>
-              <Menu
-                label={t.page.actions}
-                align="end"
-                items={actions}
-                trigger={(props) => (
-                  <IconButton
-                    icon={<Icon.More />}
-                    label={t.page.actions}
-                    variant="secondary"
-                    onClick={props.toggle}
-                    aria-haspopup={props["aria-haspopup"]}
-                    aria-expanded={props["aria-expanded"]}
-                    aria-controls={props["aria-controls"]}
-                    data-action="page-menu"
-                  />
-                )}
-              />
+              {page.can.edit && (
+                <>
+                  <Button variant="secondary" icon={<Icon.Plus />} onClick={() => setDialog("new")} data-action="new-page">
+                    {t.page.newPage}
+                  </Button>
+                  <Button variant="secondary" icon={<Icon.Edit />} onClick={edit} data-action="edit-page">
+                    {t.page.edit}
+                  </Button>
+                </>
+              )}
+              {actions.length > 0 && (
+                <Menu
+                  label={t.page.actions}
+                  align="end"
+                  items={actions}
+                  trigger={(props) => (
+                    <IconButton
+                      icon={<Icon.More />}
+                      label={t.page.actions}
+                      variant="secondary"
+                      onClick={props.toggle}
+                      aria-haspopup={props["aria-haspopup"]}
+                      aria-expanded={props["aria-expanded"]}
+                      aria-controls={props["aria-controls"]}
+                      data-action="page-menu"
+                    />
+                  )}
+                />
+              )}
             </>
           )
         }
       />
       {trash.error && <ErrorBanner>{trash.error.message}</ErrorBanner>}
       <DocView doc={page.body} />
+      {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
       {(dialog === "move" || dialog === "copy") && (
         <PlaceDialog

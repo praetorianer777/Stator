@@ -151,3 +151,8 @@ export const PAGE_SLUG_FALLBACK = "page";
 export const TREE_INDENT_PX = 12;
 /** The share of a tree row at its top and bottom where a dropped page goes beside it rather than under it. */
 export const TREE_DROP_EDGE = 0.25;
+
+/** How long the people and groups picker waits after a keystroke before it asks. */
+export const PICKER_DEBOUNCE_MS = 200;
+/** How many people and how many groups the picker offers at once; the API allows 50. */
+export const PICKER_LIMIT = 8;

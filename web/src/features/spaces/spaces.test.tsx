@@ -170,6 +170,7 @@ describe("space settings", () => {
     const sent = stubApi({
       "GET /spaces/DOCS": { status: 200, body: { space } },
       "PATCH /spaces/DOCS": { status: 200, body: { space: renamed } },
+      "GET /spaces/DOCS/permissions": { status: 200, body: { grants: [] } },
     });
     await renderAt("/s/DOCS/settings");
     const name = await screen.findByLabelText("Name");
@@ -182,13 +183,13 @@ describe("space settings", () => {
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(screen.getByRole("tab", { name: "Permissions" }));
-    expect(await screen.findByText(/Everyone in the organization can read every page of this space/)).toBeInTheDocument();
+    expect(await screen.findByText(/Who may do what in this space/)).toBeInTheDocument();
   });
 
   it("show a member the details without letting them change them", async () => {
     stubApi({ "GET /spaces/DOCS": { status: 200, body: { space: aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: true } }) } } });
     await renderAt("/s/DOCS/settings", { me: member });
-    expect(await screen.findByText("Only an administrator of your organization can change this space's details.")).toBeInTheDocument();
+    expect(await screen.findByText("Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization.")).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveAttribute("readonly");
     expect(screen.queryByRole("button", { name: "Save details" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete space" })).toBeNull();

@@ -64,15 +64,17 @@ export function TrashPanel({ space }: { space: Space }) {
                 <Td className="text-ink-muted">{item.parentInTree ? s.backUnder(item.parentTitle) : s.underHome}</Td>
                 <Td>
                   <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      aria-label={s.restoreItem(item.title)}
-                      onClick={() => restore.mutate(item.id, { onSuccess: () => setNotice(s.restored(item.title)) })}
-                      data-action="restore-page"
-                    >
-                      {s.restore}
-                    </Button>
+                    {space.can.deletePages && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        aria-label={s.restoreItem(item.title)}
+                        onClick={() => restore.mutate(item.id, { onSuccess: () => setNotice(s.restored(item.title)) })}
+                        data-action="restore-page"
+                      >
+                        {s.restore}
+                      </Button>
+                    )}
                     {space.can.purgeTrash && (
                       <Button
                         size="sm"

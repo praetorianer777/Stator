@@ -5,6 +5,7 @@ import { useDeleteSpace, useSpace, useUpdateSpace, type Space } from "@/api/spac
 import { Button, Card, ErrorBanner, Field, PageHeader, SectionTitle, Skeleton, TabPanel, Tabs } from "@/components/ui";
 import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
+import { SpacePermissions } from "@/features/permissions/SpacePermissions";
 import { TrashPanel } from "./TrashPanel";
 
 export type SettingsTab = "details" | "permissions" | "trash";
@@ -47,7 +48,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
       />
       <TabPanel id={SETTINGS_PANEL_ID} label={t.spaceSettings[tab]} className="space-y-6">
         {tab === "details" && <Details key={space.id} space={space} />}
-        {tab === "permissions" && <Permissions />}
+        {tab === "permissions" && <SpacePermissions space={space} />}
         {tab === "trash" && <TrashPanel space={space} />}
       </TabPanel>
     </div>
@@ -128,14 +129,5 @@ function DeleteSpace({ space }: { space: Space }) {
         {t.spaceSettings.delete}
       </Button>
     </Card>
-  );
-}
-
-function Permissions() {
-  return (
-    <div className="space-y-2 text-sm text-ink-muted" data-space-permissions>
-      <p>{t.spaceSettings.permissionsIntro}</p>
-      <p>{t.spaceSettings.permissionsLater}</p>
-    </div>
   );
 }

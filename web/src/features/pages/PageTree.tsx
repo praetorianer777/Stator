@@ -138,6 +138,8 @@ function Item({ node, level }: { node: TreeNode; level: number }) {
   const navigate = useNavigate();
   const open = node.hasChildren && tree.expanded.has(node.id);
   const current = node.id === tree.currentId;
+  // The tree does not know each page's edit lists; the API refuses a move past one, and the tree says so.
+  const movable = tree.space.can.editPages;
   const over = tree.drag.over?.id === node.id ? tree.drag.over.zone : undefined;
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -182,6 +184,7 @@ function Item({ node, level }: { node: TreeNode; level: number }) {
         break;
       case "m":
       case "M":
+        if (!movable) break;
         handled();
         tree.onMove(node);
         break;
@@ -224,9 +227,9 @@ function Item({ node, level }: { node: TreeNode; level: number }) {
       aria-level={level}
       aria-expanded={node.hasChildren ? open : undefined}
       aria-selected={current}
-      aria-keyshortcuts="M"
+      aria-keyshortcuts={movable ? "M" : undefined}
       tabIndex={tree.roving === node.id ? 0 : -1}
-      draggable
+      draggable={movable}
       onDragStart={onDragStart}
       onDragEnd={() => {
         tree.drag.from.current = null;
@@ -265,6 +268,12 @@ function Item({ node, level }: { node: TreeNode; level: number }) {
         <PageLink spaceKey={tree.space.key} id={node.id} title={node.title} tabIndex={-1} className="min-w-0 flex-1 truncate">
           {node.title}
         </PageLink>
+        {node.restricted && (
+          <span className="flex shrink-0 items-center text-ink-subtle" data-tree-restricted>
+            <Icon.Lock />
+            <span className="sr-only">{t.restrictions.treeView}</span>
+          </span>
+        )}
       </div>
       {open && (
         <div role="group">

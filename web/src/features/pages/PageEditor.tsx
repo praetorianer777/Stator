@@ -18,6 +18,7 @@ export function PageEditor({ pageId }: { pageId: string }) {
   const { data, isLoading, error, refetch } = usePage(pageId);
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (isLoading || !data) return <Skeleton />;
+  if (!data.page.can.edit) return <ErrorBanner>{t.page.cannotEdit}</ErrorBanner>;
   // Keyed by the page alone: a save changes the version, and a form started
   // afresh would drop the save's own callback, which leaves the editor.
   return <PageForm key={data.page.id} page={data.page} space={data.space} />;

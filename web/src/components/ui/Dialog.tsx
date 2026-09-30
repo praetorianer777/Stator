@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { t } from "@/i18n";
 import { IconButton } from "./Button";
 import { Icon } from "@/components/icons";
+import { cx } from "./cx";
 import { useEscape, useFocusReturn } from "./overlay";
 
 /**
@@ -11,11 +12,14 @@ import { useEscape, useFocusReturn } from "./overlay";
  */
 export function Dialog({
   title,
+  wide = false,
   onClose,
   children,
   ...rest
 }: {
   title: string;
+  /** Room for a form with lists side by side. */
+  wide?: boolean;
   onClose: () => void;
   children: ReactNode;
   [attr: `data-${string}`]: string | undefined;
@@ -33,7 +37,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md rounded-overlay border border-border bg-surface-overlay p-4 shadow-2"
+        className={cx("max-h-[85vh] w-full overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-4 shadow-2", wide ? "max-w-2xl" : "max-w-md")}
       >
         <div className="mb-3 flex items-center gap-2">
           <h2 id={titleId} className="min-w-0 flex-1 truncate text-base font-semibold text-ink">

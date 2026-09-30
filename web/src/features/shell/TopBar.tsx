@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { administers, useJoinRequests, useLogout, useMe } from "@/api/auth";
 import { Avatar, Button, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { useCanAdministerOrg } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { DRAWER_ID } from "./state";
 
@@ -30,6 +31,7 @@ export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; 
   const logout = useLogout();
   const name = me?.user.name ?? t.account.guest;
   const admin = administers(me?.organization?.role);
+  const orgAdmin = useCanAdministerOrg();
   const waiting = useJoinRequests(admin).data?.length ?? 0;
   const items: MenuItem[] = [
     { label: t.account.profile, icon: <Icon.User />, onSelect: () => {}, disabled: true },
@@ -52,6 +54,14 @@ export function TopBar({ narrow, drawerOpen, onOpenDrawer }: { narrow: boolean; 
       icon: <Icon.Users />,
       onSelect: () => navigate({ to: "/settings/sso" }),
       attrs: { "data-action": "sso-settings" },
+    });
+  }
+  if (orgAdmin) {
+    items.push({
+      label: t.account.permissions,
+      icon: <Icon.Lock />,
+      onSelect: () => navigate({ to: "/settings/permissions" }),
+      attrs: { "data-action": "org-permissions" },
     });
   }
   items.push({
