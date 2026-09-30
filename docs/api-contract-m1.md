@@ -211,9 +211,10 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
   whole subject list.
 - **Space permissions.** `view`, `addPages` (add, edit, move, copy, publish,
   restore versions, attach files), `addComments`, `delete` (move pages to the
-  trash and back, delete others' comments and files), `administer` (settings,
-  permissions, purge and empty the trash, delete the space). Every permission
-  implies `view`, and `administer` implies all. Organization administrators
+  trash and back, delete others' files), `administer` (settings, permissions,
+  delete others' comments since #180, purge and empty the trash, delete the
+  space). Every permission implies `view`, and `administer` implies all.
+  Organization administrators
   hold every permission in every space, so no space can be orphaned. A new
   space grants everyone `view`, `addPages`, `addComments` and `delete`, and its
   creator `administer`; the migration gives every existing space the same,

@@ -15,8 +15,8 @@ import (
 
 func commentDoc(text string) map[string]any { return textDoc(text) }
 
-// commenters is a space's grant to everyone without delete, which a new
-// space gives everyone and which would let anybody delete anybody's comment.
+// commenters is a space's grant to everyone without delete or administer, so
+// only the owner, an organization administrator, deletes others' pages.
 var commenters = map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments"}}
 
 // startThread posts a new thread below a page and answers it.
@@ -232,7 +232,7 @@ func TestCommentsOverTheAPI(t *testing.T) {
 		want(t, reply(t, carl, opening, "Still here."), http.StatusCreated, "carl replies through the placeholder")
 	})
 
-	t.Run("a space deleter deletes anybody's, which is audited; a thread wholly deleted goes", func(t *testing.T) {
+	t.Run("an administrator deletes anybody's, which is audited; a thread wholly deleted goes", func(t *testing.T) {
 		threads := threadsOf(t, owner, plan, "")
 		second := threads[1]
 		secondID := second["id"].(string)
@@ -307,7 +307,7 @@ func hitTypes(t *testing.T, c *client, path string) []string {
 
 // Straight through SQL as stator_app, the database holds comments to the same
 // rules: read with the page, written in one's own name where one may comment,
-// changed by the author, deleted by the author or the space's deleter.
+// changed by the author, deleted by the author or the space's administrator.
 func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
@@ -382,7 +382,7 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 		denied(t, conn, "bringing a deleted comment back", `UPDATE comment SET body = '{"type":"doc"}', deleted_at = NULL, deleted_by = NULL WHERE id = $1`, bens)
 	})
 
-	t.Run("without addComments nothing is written, and without delete nobody else's goes", func(t *testing.T) {
+	t.Run("without addComments nothing is written, and only an administrator deletes somebody else's", func(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/spaces/CRAW/permissions", map[string]any{"grants": []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		}}), http.StatusOK, "CRAW is read only")
@@ -412,6 +412,97 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 			SELECT count(*) FROM made`, home.org, carlID, uuid.New(), open, bens).Scan(&n)
 		if err != nil || n != 0 {
 			t.Errorf("a notification about a deleted comment was written: %d %v", n, err)
+		}
+	})
+}
+
+// Deleting somebody else's comment is moderation (#180): the space's delete
+// does not reach it, its administer does, through the API and SQL alike.
+func TestDeletingOthersCommentsTakesAdminister(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "comment-moderation")
+	slug := h.slugOf(t, home.org)
+	owner := api.as(t, home.user, home.org, slug)
+	annID, benID, danID := h.namedPerson(t, home.org, "Ann Author"), h.namedPerson(t, home.org, "Ben Member"), h.namedPerson(t, home.org, "Dan Admin")
+	ann, ben, dan := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, danID, home.org, slug)
+
+	docs := newTree(t, owner, "CMOD", "Moderation")
+	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("The plan.")})
+	want(t, owner.put(t, "/api/v1/spaces/CMOD/permissions", map[string]any{"grants": []any{
+		map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments", "delete"}},
+		map[string]any{"subject": user(danID), "permissions": []any{"administer"}},
+	}}), http.StatusOK, "everyone deletes in CMOD, and dan administers it")
+	h.settle(t)
+	var threads [6]string
+	for i := range threads {
+		threads[i] = startThread(t, ann, plan, "Ann's words.")["id"].(string)
+	}
+	h.settle(t)
+
+	canDelete := func(c *client, id string) any {
+		t.Helper()
+		for _, th := range threadsOf(t, c, plan, "") {
+			for _, each := range commentsIn(th) {
+				if each["id"] == id {
+					return each["can"].(map[string]any)["delete"]
+				}
+			}
+		}
+		t.Fatalf("%s is not listed", id)
+		return nil
+	}
+	audited := func(id string, actor uuid.UUID) int {
+		t.Helper()
+		return h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'comment.deleted' AND target_id = $2 AND actor_user_id = $3`, home.org, id, actor)
+	}
+
+	t.Run("through the API", func(t *testing.T) {
+		if got := canDelete(ben, threads[0]); got != false {
+			t.Errorf("ben, who holds the space's delete, is offered delete on ann's comment: %v", got)
+		}
+		r := want(t, ben.delete(t, "/api/v1/comments/"+threads[0]), http.StatusForbidden, "ben deletes ann's comment")
+		if code := errorCode(t, r); code != "forbidden" {
+			t.Errorf("ben is refused with %s", code)
+		}
+		for name, c := range map[string]*client{"dan, a space admin": dan, "the owner, an organization admin": owner, "ann, the author": ann} {
+			if got := canDelete(c, threads[0]); got != true {
+				t.Errorf("%s is not offered delete: %v", name, got)
+			}
+		}
+		want(t, dan.delete(t, "/api/v1/comments/"+threads[0]), http.StatusNoContent, "dan deletes ann's comment")
+		if n := audited(threads[0], danID); n != 1 {
+			t.Errorf("dan's delete was audited %d times", n)
+		}
+		want(t, ann.delete(t, "/api/v1/comments/"+threads[1]), http.StatusNoContent, "ann deletes her own")
+		if n := audited(threads[1], annID); n != 0 {
+			t.Errorf("ann's delete of her own was audited %d times", n)
+		}
+	})
+
+	t.Run("straight through SQL", func(t *testing.T) {
+		conn := appConn(t)
+		ctx := context.Background()
+		del := `UPDATE comment SET body = NULL, deleted_at = now(), deleted_by = $2 WHERE id = $1`
+		actAs(t, conn, home.org, benID)
+		denied(t, conn, "ben deleting ann's comment", del, threads[2], benID)
+		denied(t, conn, "ben blanking ann's comment", `UPDATE comment SET body = NULL WHERE id = $1`, threads[2])
+		denied(t, conn, "ben emptying ann's comment", `UPDATE comment SET body = '{"type":"doc","content":[]}', edited_at = now() WHERE id = $1`, threads[2])
+		actAs(t, conn, home.org, danID)
+		if _, err := conn.Exec(ctx, del, threads[3], danID); err != nil {
+			t.Errorf("dan, a space admin, may not delete ann's comment: %v", err)
+		}
+		actAs(t, conn, home.org, home.user)
+		if _, err := conn.Exec(ctx, del, threads[4], home.user); err != nil {
+			t.Errorf("the owner may not delete ann's comment: %v", err)
+		}
+		actAs(t, conn, home.org, annID)
+		if _, err := conn.Exec(ctx, del, threads[5], annID); err != nil {
+			t.Errorf("ann may not delete her own: %v", err)
+		}
+		var body *string
+		if err := h.super.QueryRow(ctx, `SELECT body::text FROM comment WHERE id = $1`, threads[2]).Scan(&body); err != nil || body == nil {
+			t.Errorf("ann's words are gone after ben was refused: %v %v", body, err)
 		}
 	})
 }

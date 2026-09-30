@@ -195,6 +195,28 @@ describe("the comments below a page", () => {
     await waitFor(() => expect(sent.some((each) => each.method === "DELETE" && each.path === `/comments/${replyId}`)).toBe(true));
   });
 
+  it("offers Delete on somebody else's comment only where the comment allows it, and names whose it is", async () => {
+    const sent = stubPage({
+      threads: [
+        aThread({ comments: [aComment({ can: { edit: false, delete: false } })] }),
+        aThread({
+          id: otherThreadId,
+          comments: [aComment({ id: otherThreadId, threadId: otherThreadId, body: say("Who writes the notes?"), can: { edit: false, delete: true } })],
+        }),
+      ],
+      more: { [`DELETE /comments/${otherThreadId}`]: { status: 204 } },
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    const [member, moderated] = await within(await screen.findByRole("region", { name: /Comments/ })).findAllByRole("article");
+    expect(within(member!).queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(within(moderated!).queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(within(moderated!).getByRole("button", { name: "Delete" }));
+    expect(window.confirm).toHaveBeenCalledWith("Delete Grace Hopper's comment? Its words go for good, and the deletion is recorded.");
+    await waitFor(() => expect(sent.some((each) => each.method === "DELETE" && each.path === `/comments/${otherThreadId}`)).toBe(true));
+  });
+
   it("leaves a thread as it was when Escape cancels, and shows a refusal in its sentence", async () => {
     stubPage({
       more: {

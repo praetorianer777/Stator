@@ -11,11 +11,12 @@ routes its handler and keeps this file true.
 All paths are under `/api/v1` and need a member of the organization with
 `use`. "View", "comment", "edit" and "delete" are the rights of #19:
 `page.can.comment` is the space's `addComments` on a page the caller may
-view, and "space delete" is the space's `delete`. A page, space or comment
-the caller may not view is 404, never 403. A trashed page's comments, watches
-and notifications are 404 or left out like the page. The codes named here
-are the ones a client branches on; everything else is the one envelope with
-a sentence.
+view, "space delete" is the space's `delete`, and "space administer" is its
+`administer`, which space and organization admins hold. A page, space or
+comment the caller may not view is 404, never 403. A trashed page's
+comments, watches and notifications are 404 or left out like the page. The
+codes named here are the ones a client branches on; everything else is the
+one envelope with a sentence.
 
 ## Migrations and packages
 
@@ -26,10 +27,11 @@ a sentence.
 | 00153 | comments (#22) | the ties from `notification` to comments, which must follow 00152 |
 | 00141 | inline comments (#23) | a thread's quote, detachment and resolution, the mark stripped from versions, the anchor check in `page_write_guard` |
 | 00154 | mentions (#24) | `perm_page_viewable_published` for the picker, and the policy that an outbox event mentions only members |
+| 00155 | comments (#180) | `perm_comment_deletable` asks for space administer, not space delete, to delete somebody else's comment |
 
 Mentions need no table: the ids are read from the document on each publish
 and comment and travel in the outbox event. The next free number in 00150
-to 00159 is 00155.
+to 00159 is 00156.
 
 Types live in `internal/comment`, `internal/watch` and `internal/notify`.
 The outbox is `internal/events`, as in Armature.
@@ -43,7 +45,7 @@ The outbox is `internal/events`, as in Armature.
 | `GET /comments/{commentID}` | view its page | `{thread}`, the whole thread holding it |
 | `POST /comments/{commentID}/replies` | comment | 201 `{comment, thread}` |
 | `PATCH /comments/{commentID}` | its author, and comment | `{comment}`; 403 `forbidden` for anybody else's |
-| `DELETE /comments/{commentID}` | its author, or space delete | 204; 403 `forbidden` |
+| `DELETE /comments/{commentID}` | its author, or space administer | 204; 403 `forbidden` |
 
 Changed: `Page` gains `comments: {page, inline, detached}`.
 
@@ -69,8 +71,9 @@ Changed: `Page` gains `comments: {page, inline, detached}`.
   an administrator, as in Armature.
 - **Deleting** is soft: the row stays, `deleted: true`, `body: null`, the
   author's name kept, and the words are gone for good in the same statement.
-  The author may delete their own while they may view the page; anyone with
-  space delete may delete anyone's, and that is written to the audit log
+  The author may delete their own while they may view the page. Deleting
+  somebody else's is moderation, so it needs space administer (#180); space
+  delete is for pages alone. A moderator's delete is written to the audit log
   (`comment.deleted`). A deleted comment stays in its thread as a placeholder
   while the thread has a comment that is not deleted; a thread whose every
   comment is deleted is left out of the list and of the counts. Deleting a
@@ -85,7 +88,8 @@ Changed: `Page` gains `comments: {page, inline, detached}`.
   hit's title. `author` matches the comment's author.
 - **The database** holds `stator_app` to the same: reading a comment needs
   view of its page, writing one needs `addComments` and view, changing a body
-  needs to be its author, and a soft delete needs the author or space delete.
+  needs to be its author, and a soft delete needs the author or space
+  administer.
   The integration suite tries each refused write straight through SQL.
 
 ## #23 Inline comments

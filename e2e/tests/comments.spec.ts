@@ -154,6 +154,41 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(comments(bob).locator('[data-action="delete-comment"]')).toHaveCount(0);
   });
 
+  test("only an administrator of the space is offered Delete on somebody else's comment", async ({ api, apiAs, pageAs }, testInfo) => {
+    const space = await freshSpace(api, testInfo, "Moderate");
+    const plan = await createPage(api, space.homePageId, uniqueName(testInfo, "Moderated"), doc("Words."));
+    const started = must(await api.POST("/pages/{pageID}/comments", { params: { path: { pageID: plan.id } }, body: { body: doc("Alice's thought.") } })).thread;
+    const bobId = String((await (await apiAs("bob")).GET("/auth/me")).data?.user.id);
+    const everyoneMay = {
+      subject: { type: "everyone" as const },
+      permissions: ["view" as const, "addPages" as const, "addComments" as const, "delete" as const],
+    };
+
+    const bob = await pageAs("bob");
+    const alices = comments(bob).locator(`[data-comment="${started.id}"]`);
+    await expect(async () => {
+      await openPage(bob, space.key, plan);
+      await expect(alices).toContainText("Alice's thought.", { timeout: 1_000 });
+    }).toPass();
+    await expect(comments(bob).locator('[data-action="reply"]')).toBeVisible();
+    await expect(alices.locator('[data-action="delete-comment"]')).toHaveCount(0);
+
+    must(
+      await api.PUT("/spaces/{spaceKey}/permissions", {
+        params: { path: { spaceKey: space.key } },
+        body: { grants: [everyoneMay, { subject: { type: "user", id: bobId }, permissions: ["administer"] }] },
+      }),
+    );
+    await expect(async () => {
+      await bob.reload();
+      await expect(alices.locator('[data-action="delete-comment"]')).toBeVisible({ timeout: 1_000 });
+    }).toPass();
+    await expectAccessible(bob);
+    bob.once("dialog", (dialog) => void dialog.accept());
+    await alices.locator('[data-action="delete-comment"]').click();
+    await expect(alices).toHaveCount(0);
+  });
+
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
     test(`the comments are accessible and keyboard usable in ${scheme}`, async ({ page, api }, testInfo) => {
       const space = await freshSpace(api, testInfo, `Axe ${scheme}`);
