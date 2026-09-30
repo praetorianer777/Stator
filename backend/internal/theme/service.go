@@ -201,6 +201,9 @@ const (
 	// SourceOrganization is the organization's default, shown to whoever has
 	// not chosen.
 	SourceOrganization Source = "organization"
+	// SourceArmature is the person's active Armature theme, which they follow
+	// (#34); see docs/api-contract-m3.md.
+	SourceArmature Source = "armature"
 	// SourceBuiltIn is the stylesheet's own look: nothing chosen and no
 	// default, or the built-in theme chosen over the default.
 	SourceBuiltIn Source = ""

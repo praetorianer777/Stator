@@ -34,6 +34,9 @@ type APIError struct {
 	Message string `json:"message"`
 	// Fields carries per-field validation messages keyed by field name.
 	Fields map[string]string `json:"fields,omitempty"`
+	// Position is the 1-based character an NQL query went wrong at, as
+	// Armature reports it with bad_query.
+	Position *int `json:"position,omitempty"`
 	// RequestID lets a user quote something we can find in the logs.
 	RequestID string `json:"requestId,omitempty"`
 

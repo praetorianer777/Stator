@@ -29,7 +29,7 @@ func TestEveryPendingRouteAnswersNotImplemented(t *testing.T) {
 }
 
 // Somebody who has not signed in learns nothing about a pending operation
-// that a built one would not tell them either.
+// that a built one would not tell them either; a public one answers them 501.
 func TestAPendingRouteStillWantsASignIn(t *testing.T) {
 	router := tokenServer(t).Routes(nil)
 	for _, op := range operations {
@@ -37,8 +37,11 @@ func TestAPendingRouteStillWantsASignIn(t *testing.T) {
 			continue
 		}
 		path := APIPrefix + pathParamPattern.ReplaceAllString(op.path, uuid.NewString())
-		resp, _ := serve(t, router, withBearer(op.method, path, "nobody", `{}`))
-		if resp.StatusCode != http.StatusUnauthorized {
+		resp, body := serve(t, router, withBearer(op.method, path, "nobody", `{}`))
+		switch {
+		case op.public && (resp.StatusCode != http.StatusNotImplemented || errorOf(t, body)["code"] != "not_implemented"):
+			t.Errorf("public %s %s answered %d to nobody, want 501 not_implemented", op.method, op.path, resp.StatusCode)
+		case !op.public && resp.StatusCode != http.StatusUnauthorized:
 			t.Errorf("%s %s answered %d to nobody, want 401", op.method, op.path, resp.StatusCode)
 		}
 	}
