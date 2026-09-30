@@ -171,6 +171,24 @@ and the versioning [Semantic Versioning](https://semver.org/).
   link to each. The list comes from `GET /pages/{id}/below`, which holds only
   pages the reader may view, out of the trash, published or their own. A
   comparison of versions describes each block's settings in words.
+- Watching. A person watches a page alone, a page and every page below it,
+  or a whole space, from the page's header, which also says what covers the
+  page from above and lists who watches it. Creating a page and publishing a
+  version of it make the author watch it, unless they stopped watching it or
+  turned that off. Coverage is read when a change is delivered, so a moved
+  page is covered by its new place. `/settings/watching` lists one's watches.
+- Notifications. A publish or a restore that tells the watchers reaches
+  each of them once, never the author: in the app, through a bell in the top
+  bar whose badge polls the unread count and asks again when the window
+  regains focus, and by mail, at once or in an hourly or daily digest.
+  `/settings/notifications` switches each kind in the app and by mail. The
+  worker drains a transactional outbox with `FOR UPDATE SKIP LOCKED`, so
+  several workers may run and restart, and writes each row acting for its
+  recipient, so nobody is told about a page they may not view; the list,
+  the count and a digest check again when they are read or sent.
+- Mail settings `STATOR_SMTP_ADDR` and `STATOR_MAIL_FROM`, and `mail.smtpAddr`
+  and `mail.from` in the chart. Compose sends every mail to Mailpit. Without
+  a relay only the rows in the app are written.
 
 ### Changed
 

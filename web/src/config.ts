@@ -200,3 +200,16 @@ export const LABEL_SUGGESTION_LIMIT = 8;
 export const LABEL_SUGGEST_DEBOUNCE_MS = 150;
 /** How many pages one page of a label's list shows, within the API's limit of 100. */
 export const LABEL_PAGE_SIZE = 20;
+
+/** How often the notification badge asks for the unread count; it also asks when the window regains focus. */
+export const UNREAD_POLL_MS = 30_000;
+/** Above this many unread the badge shows the number with a plus. */
+export const UNREAD_BADGE_MAX = 99;
+/** How many notifications the panel lists, within the API's limit of 100. */
+export const NOTIFICATION_PANEL_SIZE = 20;
+/** How many watchers the watchers dialog lists, the most the API gives at once. */
+export const WATCHERS_LIMIT = 100;
+/** How many of the caller's watches one page of the watching list shows, within the API's limit of 100. */
+export const WATCHES_PAGE_SIZE = 20;
+/** The hour, in UTC, a daily digest goes out, matching the API's notify.DailyDigestHour. */
+export const DAILY_DIGEST_HOUR_UTC = 8;

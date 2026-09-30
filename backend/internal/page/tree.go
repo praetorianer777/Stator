@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/rank"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
 var (
@@ -326,6 +327,9 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 			id, sp.ID, in.ParentID, r, title, nullJSON(in.Body), actor.UserID); err != nil {
 			return fmt.Errorf("save the page: %w", err)
 		}
+		if err := watch.Auto(ctx, tx, actor.UserID, id); err != nil {
+			return fmt.Errorf("watch the page: %w", err)
+		}
 		if in.Publish {
 			made, _, err := load(ctx, tx, actor, id, true)
 			if err != nil {
@@ -530,6 +534,9 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			SELECT r.org_id, m.new_id, r.kind, r.subject_type, r.user_id, r.group_id
 			FROM page_restriction r JOIN unnest($1::uuid[], $2::uuid[]) AS m (old_id, new_id) ON r.page_id = m.old_id`, olds, news); err != nil {
 			return fmt.Errorf("copy the restrictions: %w", err)
+		}
+		if err := watch.Auto(ctx, tx, actor.UserID, made); err != nil {
+			return fmt.Errorf("watch the copy: %w", err)
 		}
 		out, _, err = load(ctx, tx, actor, made, false)
 		return err

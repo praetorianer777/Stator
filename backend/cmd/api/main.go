@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
@@ -34,6 +35,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/version"
+	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
 // Server timeouts. The write timeout outlasts the request timeout, so a slow
@@ -138,6 +140,8 @@ func run() error {
 		Perms:           perm.NewService(cluster),
 		Search:          search.NewService(cluster),
 		Labels:          label.NewService(cluster, pages),
+		Watches:         watch.NewService(cluster),
+		Notifications:   notify.NewService(cluster),
 		CookieName:      cfg.Auth.SessionCookie,
 		Secure:          cfg.Auth.SecureCookies,
 		AppBaseURL:      cfg.AppBaseURL,

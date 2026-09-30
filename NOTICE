@@ -55,3 +55,8 @@ Adapted from Armature:
   siblings, with Spread added
 - web/src/features/search/QuickSearch.tsx: the keyboard handling, the
   listbox and the Ctrl K shortcut of features/palette/CommandPalette.tsx
+- backend/internal/events, internal/notify, internal/mail and migrations
+  00150 to 00152: internal/events (Emit, the outbox table and its claim with
+  SKIP LOCKED), internal/notify (the fan-out, preferences and digest) and
+  internal/mail, and migrations 00001_foundation (outbox_event),
+  00032_notifications and 00040_outbox_trace

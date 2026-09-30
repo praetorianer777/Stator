@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -21,6 +22,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
 // readinessTimeout bounds the database round trip behind /readyz, so a probe
@@ -54,6 +56,10 @@ type Server struct {
 	Pages     *page.Service
 	Search    *search.Service
 	Labels    *label.Service
+	// Watches keeps who follows which pages and spaces; Notifications what
+	// they were told and how they want to hear.
+	Watches       *watch.Service
+	Notifications *notify.Service
 	// Perms answers the permission screens and the use check in front of
 	// every route; nil lets everybody who is a member through.
 	Perms *perm.Service
@@ -227,6 +233,17 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/search", s.handleSearch)
 			r.Get("/search/quick", s.handleQuickSearch)
 			r.Get("/recent-pages", s.handleRecentPages)
+			r.Put("/pages/{pageID}/watch", s.handleWatchPage)
+			r.Delete("/pages/{pageID}/watch", s.handleUnwatchPage)
+			r.Get("/pages/{pageID}/watchers", s.handleListWatchers)
+			r.Put("/spaces/{spaceKey}/watch", s.handleWatchSpace)
+			r.Delete("/spaces/{spaceKey}/watch", s.handleUnwatchSpace)
+			r.Get("/watches", s.handleListWatches)
+			r.Get("/notifications", s.handleListNotifications)
+			r.Get("/notifications/unread-count", s.handleUnreadCount)
+			r.Post("/notifications/read", s.handleMarkRead)
+			r.Get("/notification-preferences", s.handleNotificationPreferences)
+			r.Put("/notification-preferences", s.handleSaveNotificationPreferences)
 			mountPending(r)
 		})
 	})

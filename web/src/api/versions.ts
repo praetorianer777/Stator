@@ -139,7 +139,8 @@ export function useRestoreVersion(pageId: string) {
       (
         await api.POST("/pages/{pageID}/versions/{versionNumber}/restore", {
           params: { path: { pageID: pageId, versionNumber: number } },
-          body: comment ? { baseVersion, comment } : { baseVersion },
+          // A restore is announced as a publish is by default, since it changes the page as much.
+          body: comment ? { baseVersion, comment, notifyWatchers: true } : { baseVersion, notifyWatchers: true },
         })
       ).data!.page as Page,
     onSuccess: (page) => published(queryClient, page),

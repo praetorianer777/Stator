@@ -66,6 +66,8 @@ DOCKER_GO_STACK = $(call go_run,--network $(STACK_NET) \
 	-e STATOR_S3_SECRET_KEY='$(S3_SECRET_KEY)' \
 	-e STATOR_TEST_WEB_URL=http://web \
 	-e STATOR_TEST_KEYCLOAK_URL=http://keycloak:8080 \
+	-e STATOR_SMTP_ADDR=mailpit:1025 \
+	-e STATOR_TEST_MAILPIT_URL=http://mailpit:8025 \
 	$(1))
 
 .PHONY: stack-env
@@ -84,6 +86,7 @@ stack-env:
 		'S3_PORT=$(S3_PORT)' \
 		'STATOR_WEB_URL=http://localhost:$(WEB_PORT)' \
 		'STATOR_KEYCLOAK_URL=http://localhost:$(KEYCLOAK_PORT)' \
+		'STATOR_MAILPIT_URL=http://localhost:$(MAILPIT_PORT)' \
 		'STATOR_TEST_ENDPOINTS_TOKEN=$(STATOR_TEST_ENDPOINTS_TOKEN)' \
 		'STATOR_TEST_SUPERUSER_URL=postgres://stator:$(POSTGRES_PASSWORD)@127.0.0.1:$(POSTGRES_PORT)/stator?sslmode=disable' \
 		> $(STACK_ENV_FILE)

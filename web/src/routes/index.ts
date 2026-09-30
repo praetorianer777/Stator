@@ -8,6 +8,7 @@ import { appRoute } from "./app";
 import { devEditorRoute } from "./dev-editor";
 import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
+import { notificationSettingsRoute, watchingRoute } from "./notifications";
 import { homeRoute } from "./pages";
 import { pageEditRoute } from "./page-edit";
 import { orgPermissionsRoute } from "./permissions";
@@ -34,6 +35,8 @@ const routeTree = rootRoute.addChildren([
     themeNewRoute,
     themeEditRoute,
     tokensRoute,
+    notificationSettingsRoute,
+    watchingRoute,
     ssoRoute,
     orgPermissionsRoute,
     devEditorRoute,
