@@ -7,6 +7,7 @@ import type { Space } from "@/api/spaces";
 import { useDiscardDraft, useDraft, usePublish, useSaveDraft, type Draft, type PublishOptions } from "@/api/versions";
 import { Button, ErrorBanner, Field, PageHeader, Skeleton } from "@/components/ui";
 import { useEditorAttachments } from "@/features/attachments/hooks";
+import { DocPageContext } from "@/features/editor/BlockViews";
 import { Editor } from "@/features/editor/Editor";
 import { emptyDoc, type Doc } from "@/features/editor/schema";
 import { DRAFT_AUTOSAVE_MS, PAGE_TITLE_MAX_LENGTH } from "@/config";
@@ -274,17 +275,19 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
       {files.errors.map((message) => (
         <ErrorBanner key={message}>{message}</ErrorBanner>
       ))}
-      <Editor
-        id="page-body"
-        value={initialBody}
-        onChange={(doc) => {
-          setBody(doc);
-          changed();
-        }}
-        onSubmit={() => openPublish()}
-        upload={files.upload}
-        attachments={files.index}
-      />
+      <DocPageContext value={{ id: page.id, spaceKey: space.key }}>
+        <Editor
+          id="page-body"
+          value={initialBody}
+          onChange={(doc) => {
+            setBody(doc);
+            changed();
+          }}
+          onSubmit={() => openPublish()}
+          upload={files.upload}
+          attachments={files.index}
+        />
+      </DocPageContext>
       {dialog && <PublishDialog title={title} busy={publish.isPending} onClose={() => setDialog(false)} onPublish={(options) => void onPublish(options)} />}
     </form>
   );

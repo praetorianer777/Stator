@@ -104,6 +104,12 @@ export const TABLE_DEFAULT_COLS = 3;
 export const MENTION_MAX_SUGGESTIONS = 8;
 /** How long "Link copied" stays after copying a heading's link. */
 export const COPY_FEEDBACK_MS = 2000;
+/** The deepest heading a new table of contents lists: all of them. */
+export const TOC_DEFAULT_MAX_LEVEL = EDITOR_HEADING_LEVELS[EDITOR_HEADING_LEVELS.length - 1];
+/** The most levels a child pages block may name, matching the API's MaxChildPagesDepth. */
+export const CHILD_PAGES_MAX_DEPTH = 10;
+/** How many pages one child pages block lists at most, matching the API's MaxBelow. */
+export const CHILD_PAGES_LIMIT = 500;
 
 /** The languages a code block offers, by highlighting grammar, and the name the picker shows. */
 export const CODE_LANGUAGES = [

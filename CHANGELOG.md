@@ -163,6 +163,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   page's labels. A copy takes its original's labels. A label is seen only
   with its page: autocomplete, lists and search leave out the labels of
   pages the reader may not view, and the database refuses them to raw SQL.
+- Table of contents and child pages blocks, both from the slash menu. A table
+  of contents links to the page's headings down to the level chosen in the
+  block, and follows the headings as they are typed. A child pages block
+  lists the direct children or the whole subtree, down to a number of levels
+  or all of them, in tree order, by title or the latest change first, with a
+  link to each. The list comes from `GET /pages/{id}/below`, which holds only
+  pages the reader may view, out of the trash, published or their own. A
+  comparison of versions describes each block's settings in words.
 
 ### Changed
 

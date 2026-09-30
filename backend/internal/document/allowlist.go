@@ -84,6 +84,9 @@ const (
 	MaxImageWidth = 4000
 	// maxFileNameLength matches the longest file name an upload keeps.
 	maxFileNameLength = 200
+	// MaxChildPagesDepth is the most levels a child pages block names; a null
+	// depth is every level.
+	MaxChildPagesDepth = 10
 )
 
 // UUIDPattern is an id as the API writes it, in lower case.
@@ -94,7 +97,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "image"}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "image", "tableOfContents", "childPages"}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment"}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -110,6 +113,13 @@ var (
 var (
 	PanelKinds      = []string{"info", "note", "success", "warning", "error"}
 	CellBackgrounds = []string{"neutral", "accent", "success", "warning", "danger"}
+)
+
+// ChildPagesScopes and ChildPagesSorts are what a child pages block lists and
+// in which order; the API's list of the pages below a page takes the same.
+var (
+	ChildPagesScopes = []string{"children", "subtree"}
+	ChildPagesSorts  = []string{"tree", "title", "updated"}
 )
 
 // Allowed is the one table the validator, the generated
@@ -165,6 +175,16 @@ var Allowed = Allowlist{
 				"attachmentId": {Kind: KindString, Pattern: UUIDPattern},
 				"alt":          {Kind: KindString, Nullable: true, MaxLength: MaxAltLength},
 				"width":        {Kind: KindInteger, Nullable: true, Min: 1, Max: MaxImageWidth},
+			},
+		},
+		"tableOfContents": {
+			Attrs: map[string]Attr{"maxLevel": {Kind: KindInteger, Min: 1, Max: MaxHeadingLevel}},
+		},
+		"childPages": {
+			Attrs: map[string]Attr{
+				"scope": {Kind: KindString, Enum: ChildPagesScopes},
+				"depth": {Kind: KindInteger, Nullable: true, Min: 1, Max: MaxChildPagesDepth},
+				"sort":  {Kind: KindString, Enum: ChildPagesSorts},
 			},
 		},
 		"attachment": {
