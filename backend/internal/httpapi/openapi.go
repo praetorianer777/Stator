@@ -10,6 +10,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
+	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -186,6 +187,23 @@ var operations = []operation{
 		query: []param{{name: "limit", schema: intParam, description: "1 to 20; 10 when absent."}}, responses: ok(env{"pages": []search.RecentPage{}})},
 	{method: "POST", path: "/pages/{pageID}/visit", handler: "handleVisitPage", tag: "search", summary: "Note that the caller opened a page, for their recent pages.",
 		responses: none()},
+
+	// Labels (#17).
+	{method: "GET", path: "/pages/{pageID}/labels", handler: "handleListPageLabels", tag: "labels", summary: "The labels on a page, by name.",
+		responses: ok(env{"labels": []string{}})},
+	{method: "POST", path: "/pages/{pageID}/labels", handler: "handleAddPageLabel", tag: "labels", summary: "Put a label on a page, normalized to one lower case word; one it carries already is no change.",
+		request: label.LabelInput{}, responses: ok(env{"labels": []string{}})},
+	{method: "DELETE", path: "/pages/{pageID}/labels/{labelName}", handler: "handleRemovePageLabel", tag: "labels", summary: "Take a label off a page; one it does not carry is no change.",
+		responses: none()},
+	{method: "GET", path: "/labels", handler: "handleSuggestLabels", tag: "labels", summary: "Labels on pages the caller may view that start with the words typed, the most used first.",
+		query: []param{
+			{name: "q", description: "What was typed so far; empty offers the most used labels."},
+			{name: "space", description: "A space key to stay inside."},
+			{name: "limit", schema: intParam, description: "1 to 50; 10 when absent."},
+		}, responses: ok(env{"labels": []label.LabelSuggestion{}})},
+	{method: "GET", path: "/labels/{labelName}/pages", handler: "handleListLabelPages", tag: "labels", summary: "The pages out of the trash that carry a label and that the caller may view, by title.",
+		query:     append([]param{{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."}}, pageQuery...),
+		responses: ok(env{"pages": []label.LabeledPage{}, "total": 0, "limit": 0, "offset": 0})},
 
 	// Permissions (#19).
 	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "permissions", summary: "What the caller may do across the organization, which decides which buttons to draw.",

@@ -95,12 +95,15 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 		pageScore = `to_tsvector(` + config + `, p.title) @@ ` + tsq + `, ts_rank(p.search_vector, ` + tsq + `)`
 		fileScore = `TRUE, ts_rank(a.search_vector, ` + tsq + `)`
 	}
-	// Labels arrive with #17, comments later; until then nothing carries one.
-	if !q.wants(HitPage) || len(q.Labels) > 0 {
+	if !q.wants(HitPage) {
 		pages = append(pages, `FALSE`)
 	}
+	// Labels are on pages; a file carries none, so a label filter leaves files out.
 	if !q.wants(HitAttachment) || len(q.Labels) > 0 {
 		files = append(files, `FALSE`)
+	}
+	if len(q.Labels) > 0 {
+		pages = append(pages, `EXISTS (SELECT 1 FROM page_label pl WHERE pl.org_id = p.org_id AND pl.page_id = p.id AND pl.name = ANY(`+bind(q.Labels)+`))`)
 	}
 	if len(q.Spaces) > 0 {
 		keys := bind(q.Spaces)
@@ -147,7 +150,8 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 			ORDER BY ` + order + `
 			LIMIT ` + limit + ` OFFSET ` + offset + `
 		)
-		SELECT h.kind, h.attachment_id, h.page_id, h.page_title, h.key, h.name, ` + title + `, ` + snippet + `, h.changed_at, h.by_name
+		SELECT h.kind, h.attachment_id, h.page_id, h.page_title, h.key, h.name, ` + title + `, ` + snippet + `, h.changed_at, h.by_name,
+		       CASE WHEN h.kind = 'page' THEN ARRAY(SELECT pl.name FROM page_label pl WHERE pl.page_id = h.page_id ORDER BY pl.name) ELSE '{}' END
 		FROM chosen h ORDER BY h.ord`
 
 	out := []Hit{}
@@ -167,10 +171,12 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 				marked, body string
 			)
 			if err := rows.Scan(&h.Type, &h.AttachmentID, &h.Page.ID, &h.Page.Title, &h.Page.SpaceKey, &h.Page.SpaceName,
-				&marked, &body, &h.UpdatedAt, &h.UpdatedByName); err != nil {
+				&marked, &body, &h.UpdatedAt, &h.UpdatedByName, &h.Labels); err != nil {
 				return err
 			}
-			h.Labels = []string{}
+			if h.Labels == nil {
+				h.Labels = []string{}
+			}
 			if tsq != "" {
 				h.Title, h.Snippet = Split(marked), Split(body)
 			} else {
