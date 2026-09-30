@@ -58,8 +58,8 @@ replica pool every `STATOR_DB_HEALTH_INTERVAL` and takes the pool out of the
 rotation when none of them is fit, so a broken replica stops costing each
 read a round trip.
 
-Read-your-writes: `Cluster.Write` returns the WAL position past its commit.
-Handlers hand it to `noteWrite`, which records it in Valkey
+Read-your-writes: `Cluster.Write` returns the WAL position past its commit,
+or, for a refused write, the primary's position at the refusal. Handlers hand it to `noteWrite`, which records it in Valkey
 (`internal/freshness`, `STATOR_VALKEY_URL`) under the caller's key for
 `STATOR_READ_YOUR_WRITES_TTL`. On the caller's next request the
 `readYourWrites` middleware pins the request to that position with
@@ -144,6 +144,9 @@ SeaweedFS (S3), Mailpit, Keycloak with the `stator-dev` realm
 (`deploy/keycloak/realm.json`), the one-shot `migrate` and `seed`, `api`,
 `worker`, and `web`. Every service has a health check and the dependencies
 wait on them, so `docker compose up --wait` returns once the stack answers.
+The primary runs with `synchronous_commit=off`: a commit that waited for the
+host's disk could take seconds on a busy machine. Only this stack does so; see
+`docs/decisions.md`.
 
 Two images are built. `Dockerfile.backend` holds every Go binary, stamped with
 `VERSION`, and each service picks one by its command. `Dockerfile.web` builds
@@ -198,8 +201,10 @@ The browser suite (`e2e/`, `mk/e2e.mk`) runs in Microsoft's Playwright image
 of the version `e2e/package.json` pins, on the host's network, and reaches the
 stack on its published ports: the session cookie and the sign-in redirects are
 bound to `http://localhost:$WEB_PORT`, so the browser has to see what a person
-sees. A setup project signs alice and bob in once and stores their sessions
-under `e2e/.auth/`, and leaves `demo` showing the built-in theme, as does a
+sees. The container's `/tmp`, which holds the browser profiles, their caches
+and the videos being recorded, is a tmpfs: on the host's disk, other writers
+could freeze every browser for seconds. A setup project signs alice and bob in
+once and stores their sessions under `e2e/.auth/`, and leaves `demo` showing the built-in theme, as does a
 teardown project after the last spec; specs tagged `@auth` skip while the
 stack cannot sign anyone in. Chromium runs at desktop size and at 360x740.
 What no endpoint makes yet, such as an organization whose provider is down,

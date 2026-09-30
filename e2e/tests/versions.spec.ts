@@ -26,6 +26,9 @@ async function typeIntoDraft(page: Page, text: string) {
   await page.locator("#page-body").click();
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.type(text);
+  // The autosave's pause and the save are waited for one after the other, so
+  // the pause does not eat into the time the save itself is given.
+  await expect(draftStatus(page)).toHaveAttribute("data-draft-status", /^(saving|saved)$/);
   await expect(draftStatus(page)).toHaveAttribute("data-draft-status", "saved");
 }
 

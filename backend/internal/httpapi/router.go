@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -50,6 +51,7 @@ type Server struct {
 	Themes    *theme.Service
 	Spaces    *space.Service
 	Pages     *page.Service
+	Search    *search.Service
 	// Perms answers the permission screens and the use check in front of
 	// every route; nil lets everybody who is a member through.
 	Perms *perm.Service
@@ -211,6 +213,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/compare", s.handleCompareVersions)
 			r.Get("/pages/{pageID}/restrictions", s.handleGetPageRestrictions)
 			r.Put("/pages/{pageID}/restrictions", s.handleSetPageRestrictions)
+			r.Post("/pages/{pageID}/visit", s.handleVisitPage)
+			r.Get("/search", s.handleSearch)
+			r.Get("/search/quick", s.handleQuickSearch)
+			r.Get("/recent-pages", s.handleRecentPages)
 			mountPending(r)
 		})
 	})

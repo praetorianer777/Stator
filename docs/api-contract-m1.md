@@ -52,6 +52,9 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
   `compare?from=<page.version>&to=draft`, then either discards the draft or
   saves it again with `baseVersion` set to the current version, which takes
   the other publish as its base, and publishes again. There is no force flag.
+  The refusal holds the caller's next reads to the state it was decided on,
+  so the page read after it names the newer version and the comparison finds
+  it, even on a replica that has not replayed that publish yet.
 - **Discard.** Deletes the draft; the page stays as last published. For an
   unpublished page it stays with the content it was made with; trashing it is
   how it goes.
@@ -107,8 +110,11 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
 | `POST /pages/{pageID}/visit` | view | 204 |
 
 - **What is found.** The published title and body of pages (the body's plain
-  text from `internal/document`), attachment file names, and comments once
-  comments exist. Never drafts, unpublished pages or anything in the trash.
+  text from `internal/document`), the names of the files attached to
+  them (not their contents), and comments once comments exist. Never
+  drafts, unpublished pages or anything in the trash, nor a file on such a
+  page. A file's hit has the file name as `title`, an empty `snippet`, and
+  its upload as the change and its uploader as the author.
 - **Query syntax** (`q`, at most 200 characters, else 422 on `q`): as
   PostgreSQL's `websearch_to_tsquery`. Every word must match, `"quoted words"`
   match as a phrase, `or` matches either side, `-word` leaves out what has it.

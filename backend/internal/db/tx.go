@@ -18,15 +18,27 @@ const setOrgSQL = `SELECT set_config($1, $2, true)`
 const currentLSNSQL = `SELECT pg_current_wal_insert_lsn()::text`
 
 // Write runs fn in a read-write transaction on the primary and returns the WAL
-// position that reflects it, for PinLSN to keep the caller's later reads fresh.
+// position reflecting it, or its refusal, for PinLSN to keep later reads fresh.
 func (c *Cluster) Write(ctx context.Context, fn func(context.Context, DBTX) error) (LSN, error) {
 	err := c.inTx(ctx, c.primary, pgx.TxOptions{AccessMode: pgx.ReadWrite}, func(ctx context.Context, tx pgx.Tx) error {
 		return fn(ctx, tx)
 	})
 	if err != nil {
-		return 0, err
+		return c.refusedLSN(ctx), err
 	}
 	return c.committedLSN(ctx, c.primary)
+}
+
+// refusedLSN is where the primary stood when a write was refused, or zero,
+// which pins nothing, when it cannot say.
+func (c *Cluster) refusedLSN(ctx context.Context) LSN {
+	// A refusal such as a publish conflict tells the caller of somebody else's
+	// newer write, and the read they make next to see it must not miss it.
+	lsn, err := c.committedLSN(ctx, c.primary)
+	if err != nil {
+		return 0
+	}
+	return lsn
 }
 
 // committedLSN is read after the commit, never inside the transaction: the

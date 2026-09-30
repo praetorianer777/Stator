@@ -16,8 +16,11 @@ E2E_REPORT_PORT ?= 9323
 # cookie only from http://localhost:$(WEB_PORT), and the sign-in sends the
 # browser to Keycloak's published port, so the browser has to reach the stack
 # exactly as a person at this machine does. --ipc=host because Chromium runs
-# out of the default 64 MB of shared memory.
-DOCKER_PLAYWRIGHT = docker run --rm --init --ipc=host --network host $(DOCKER_NODE_TTY) \
+# out of the default 64 MB of shared memory. /tmp, where the browsers keep
+# their profiles and caches and Playwright its videos, is in memory: on the
+# host's disk, a burst of writes from anything else froze every browser for
+# seconds at a time, long enough to fail any expectation that was waiting.
+DOCKER_PLAYWRIGHT = docker run --rm --init --ipc=host --network host --tmpfs /tmp:exec,mode=1777 $(DOCKER_NODE_TTY) \
 	-u $(UID_GID) \
 	-v $(ROOT):/src \
 	-v $(E2E_NPM_CACHE):/npmcache \
