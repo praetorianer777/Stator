@@ -142,6 +142,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
   best match or latest change, and pages through the results; the query and
   every filter are in the address. Opening a page notes the visit for the
   reader's recent pages.
+- Page templates. `GET /templates` and `GET /templates/{templateKey}` serve
+  the built-ins: meeting notes, how-to guide, troubleshooting article,
+  retrospective, decision record, product requirements and project plan,
+  each a document the allowlist validates, with a title such as
+  `Meeting notes {date}` where one helps. The new page dialog offers a blank
+  page and every template as a radio group with a read-only preview of the
+  chosen one; the page is made unpublished with that body and opens in the
+  editor.
+- Hints: a template's placeholder text, the new `hint` mark, drawn muted and
+  slanted. The first keystroke, paste, Backspace or Delete in a hint takes all
+  of it away, and the database strips what is left of any hint from every
+  published version and published page.
 
 ### Changed
 

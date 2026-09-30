@@ -3,6 +3,46 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: Templates are served by the API, and hints never get published
+
+The built-in templates are one JSON file, `backend/internal/template/builtin/en.json`,
+compiled into the api and served by `GET /templates` and
+`GET /templates/{templateKey}`, in the shape Armature gives its project and
+dashboard templates: a key, a name, a description and `builtIn`. Each body is
+the document the editor stores, so the Go validator and the web's allowlist
+test both judge the file as they judge a page, and the web client never
+carries a copy of its own. Serving them rather than bundling them in the
+client leaves room for an organization's own templates, which will be rows
+keyed by id in the same shape and the same list. A title may hold `{date}`,
+which the client fills with the local day, since only it knows the author's
+time zone.
+
+The text is English for now. Translating it will mean a file per language
+beside `en.json`, with the same keys in the same order, each body written
+whole by its translator rather than assembled from strings, since a
+translated template may want a different structure; the API will pick the
+file by the caller's language and fall back to English for a key a
+translation lacks. Names and descriptions go with the bodies, so one file is
+everything a translator touches.
+
+Placeholder text is a mark, `hint`, on ordinary text. A node would have
+needed a text content of its own and a way to turn into a paragraph on
+input; a mark is text the editor already knows how to type into, and the
+allowlist only had to learn a name. The editor takes the whole run of hint
+text away on the first keystroke, paste, Backspace or Delete that lands in
+it, and takes the range from the input rather than the selection, since a
+browser reports the first key after a click before the selection follows.
+
+A hint is never content, so publishing strips it rather than keeping its
+words as plain text: a hint left in would read as the author's own sentence.
+The database does it, with a trigger on `page_version` and on `page` once
+its version is above 0, calling `document_without_hints`. Every way a page
+gets published, the copy of an unpublished page and raw SQL included, is
+held to it without the service having to remember. Only hinted text goes;
+the label before it and the empty block it sat in stay, so the published
+page keeps the template's structure. An unpublished page and a draft keep
+their hints, because they are what the author is still filling in.
+
 ## 2026-09-30: The compose stack's commits do not wait for the disk
 
 The primary in `deploy/docker-compose.yml` runs with `synchronous_commit=off`.
