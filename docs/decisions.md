@@ -3,6 +3,52 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: The worker tells each person acting for them, and a digest is due by its rows
+
+Notifications follow Armature's: an event is written to `outbox_event` in
+the transaction of the change, one row per person per event is what they
+were told, and a mail is a copy of that row. Three things differ.
+
+The worker reads the table itself with `FOR UPDATE SKIP LOCKED`, inside the
+transaction that marks each event done, instead of relaying it to a Valkey
+stream, as the contract of M2 says. Any number of workers may run and be
+restarted: one holds an event at a time, a crash before the commit hands it
+to the next pass, and the unique `(event, person)` makes the second pass
+write nothing. An event whose handler fails waits five seconds more for each
+failure and is given up after ten, with its last error kept, so one bad
+event cannot hold up the rest. Done events are deleted after a week.
+
+Who could hear of an event is read across people as the worker's role,
+through `page_watch_coverage`, which the app role may not call. Each row is
+then written in a transaction of the app role acting for its recipient, so
+the policy that lets a person insert only their own row about a page they
+may view refuses a row that should not be. The check does not rest on the
+fan-out remembering it, and the integration suite restricts a page after
+somebody watched it and sees nothing reach them. Rows are never written
+about a page in the trash, and the list, the count and a digest read only
+rows about pages the reader may still view, out of the trash.
+
+A digest's schedule is read from the rows: an hourly bundle is due at the
+next full hour after its oldest row, a daily one at the next 08:00 UTC.
+Armature keeps the last send in the worker's memory, which two workers or a
+restart would each start afresh. The bundle is taken with `DELETE ...
+RETURNING` in the transaction that sends it, so a second worker waits and
+finds nothing, and a failed send leaves the queue for the next pass. A mail
+sent at once goes after its row is committed, and a failed send is logged
+and not tried again: a second pass finds the row and cannot tell whether the
+mail went, and a notice twice is worse than a mail missed with the row still
+in the app.
+
+A page first published tells its space's watchers, subtree watchers above
+it, and whoever watches the page right above it, since a new child is a
+change of that page as its readers see it; a page watch further up covers
+that page alone. Every path that publishes writes the event, copies aside,
+so mentions (#24) take effect however a page is published; only publish and
+restore carry `notifyWatchers`. The history's restore sends it set, as the
+publish dialog offers it ticked, and its question says the watchers are
+told. The preferences show the email switch off and unavailable while the
+kind is off in the app, which is what the server does with it.
+
 ## 2026-09-30: Generated blocks store their settings, never their output
 
 A table of contents stores only the deepest heading level it lists, and a

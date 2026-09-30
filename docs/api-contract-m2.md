@@ -271,7 +271,7 @@ as publish stores it.
   | `commented` | the page's watchers | a new thread or a reply |
   | `resolved` | everybody who wrote in the thread | resolved or reopened |
   | `published` | the page's watchers | version 2 on, with `notifyWatchers` |
-  | `created` | watchers of the pages above and of the space | version 1, with `notifyWatchers` |
+  | `created` | subtree watchers above, page watchers of the page right above, and the space's | version 1, with `notifyWatchers` |
 
   A person gets at most one notification per event, the first kind of the
   table that applies to them, so a watcher mentioned in a comment is told
@@ -279,7 +279,7 @@ as publish stores it.
   `publish: true`, `PATCH` and copies tell no watchers: they have no flag,
   and scripts should not flood anybody. Restore tells them when its
   `notifyWatchers` is set. The publish dialog offers the flag ticked, as in
-  M1.
+  M1; the history's restore sends it set and says so when it asks.
 - **Never about a page one may not view.** The fan-out writes a row only
   for a person who may view the page at that moment (`perm_page_viewable`
   with that person), the list and the count read only rows whose page the
@@ -321,8 +321,9 @@ as publish stores it.
   puts the slug right) and a link to the preferences.
 - **The database** lets `stator_app` read, and mark read, only the actor's
   own notifications, and read and write only their own preferences. The
-  fan-out writes others' rows as the worker, per organization, and the
-  integration suite proves through SQL that no person reads another's rows
-  or a row about a page they may not view.
+  fan-out plans as the worker, per organization, and writes each row acting
+  for its recipient, so the database itself refuses a row about a page they
+  may not view; the integration suite proves through SQL that no person
+  reads another's rows or a row about a page they may not view.
 - Notifications go with their page when it is purged and with their comment
   when it is deleted, and are hidden while the page is in the trash.

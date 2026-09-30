@@ -12,10 +12,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/notify"
 )
 
-// The service refusing is not proof. Straight through SQL as stator_app, a
-// person reads and writes only their own watches, opt outs, notifications,
-// preferences and digest queue, only about what they may view, only in their
-// own organization, and adds events only in their own name.
+// Straight through SQL as stator_app, a person reaches only their own watching
+// and notification rows, about what they may view, and adds events as themselves.
 func TestWatchesAndNotificationsAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)

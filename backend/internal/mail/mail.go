@@ -18,9 +18,8 @@ type Mail struct {
 	Body    string
 }
 
-// headerValue keeps one header on one line. A page title or a name is
-// somebody else's words, and a newline in them would start a header of their
-// choosing.
+// headerValue keeps a header on one line: a newline in a page title or a
+// name would start a header of its writer's choosing.
 func headerValue(s string) string {
 	return strings.Map(func(r rune) rune {
 		if r == '\r' || r == '\n' || r < 0x20 {

@@ -17,9 +17,8 @@ import (
 // an hourly bundle goes out close to the hour.
 const DigestInterval = time.Minute
 
-// Due says whether a bundle whose oldest row came at oldest goes out now:
-// hourly ones at the next full hour, daily ones at the next DailyDigestHour
-// UTC, and rows queued before somebody chose off at once.
+// Due says whether a bundle whose oldest row came at oldest goes now: hourly
+// at the next full hour, daily at DailyDigestHour UTC, and a leftover at once.
 func Due(digest Digest, oldest, now time.Time) bool {
 	oldest, now = oldest.UTC(), now.UTC()
 	switch digest {
@@ -35,9 +34,8 @@ func Due(digest Digest, oldest, now time.Time) bool {
 	return true
 }
 
-// Digester mails each person's queued notifications as one bundle, on their
-// schedule. When a bundle is due is read from the rows, so any number of
-// workers may run and restart without sending one twice.
+// Digester mails each person's queue as one bundle on their schedule, read
+// from the rows so several workers and restarts never send one twice.
 type Digester struct {
 	db     *db.Cluster
 	mailer mail.Mailer

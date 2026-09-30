@@ -22,7 +22,7 @@ type FieldError struct {
 
 func (e *FieldError) Error() string { return e.Message }
 
-// On says whether a switch is on for a kind; a kind nobody set is on.
+// On says whether the switch for a kind is on; a kind it does not know is on.
 func (s Switches) On(kind Kind) bool {
 	switch kind {
 	case KindMentioned:
