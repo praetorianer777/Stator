@@ -90,6 +90,39 @@ and the versioning [Semantic Versioning](https://semver.org/).
   draft compare block by block with inserted and deleted words marked, and
   a restore publishes an old version again as the newest. The database
   keeps version numbers without gaps and the history append only.
+- Permissions in the API. Global: `use`, granted to everyone by default,
+  without which a member is answered 403 `no_access`; `createSpace`; and
+  `administer`, which follows the owner and admin roles. Per space, for
+  people, groups and everyone: view, add pages, add comments, delete and
+  administer; a new space, and every existing one, grants everyone all but
+  administer and its creator administer. Per page, view and edit
+  restrictions of people and groups that the pages below inherit, which
+  narrow the space's permissions and never bind space or organization
+  administrators; a save that would lock its saver out is refused.
+  `space.can` and `page.can` follow the rules, `GET /access/me` says what the
+  caller may do, and `/people` and `/groups` serve the pickers. Row level
+  security holds raw SQL as the app role to the same rules for the person a
+  transaction names, and every change is written to the audit log.
+- Drafts and history in the web client. The editor saves to a private
+  draft a moment after typing stops and publishes it from a dialog with an
+  optional comment and whether to notify watchers; when somebody published
+  in between, it says so and offers to compare, keep the draft over their
+  version, or discard it. Unpublished pages and waiting drafts are marked
+  on the page and in the tree. A page's history lists every version with
+  who published it, when and why, shows any one read-only, compares two
+  versions or a version with the draft, with added text underlined and
+  removed text struck through and announced to screen readers, and
+  restores a version as a new one after asking.
+- Search in the API. `GET /search` finds the published titles and bodies of
+  pages and the names of their files, with quoted phrases, `or` and
+  `-word`, ignoring case and accents, ranks title matches above body
+  matches, and filters by space, author, label, type and a range of days.
+  Titles and snippets come as plain text runs with the matches flagged,
+  never markup. `GET /search/quick` matches the start of title words for the
+  top bar and the command palette, and `GET /recent-pages` lists the pages a
+  person opened last, as noted by `POST /pages/{id}/visit`. Drafts,
+  unpublished pages and the trash are never found, and totals count only
+  what the caller may read.
 - Search in the web client. The top bar's box and Ctrl or Cmd+K open quick
   search, which offers page titles as they are typed and recent pages while
   nothing is, works from the keyboard as a combobox, and opens the full
@@ -100,6 +133,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
   reader's recent pages.
 
 ### Changed
+
+- Renaming and deleting a space and purging its trash are for the space's
+  administrators, and making spaces for whoever holds `createSpace`, rather
+  than for the organization's administrators alone.
 
 - `PATCH /pages/{id}` publishes the title and body as the next version with
   no comment. Existing pages become version 1 of themselves.
@@ -142,3 +179,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   was, or under the home page when the page it was under is gone.
   Administrators delete an item for good or empty the trash, which the
   audit log records.
+- Files on pages, in the API: upload as a multipart part named `file`, list
+  a page's files, download, and delete for good. Uploads are refused over
+  `STATOR_UPLOAD_LIMIT` (50 MB unless set, as `attachments.uploadLimit` in
+  the chart) with a message naming the limit. Images report their width and
+  height. A download is an attachment with `nosniff`; with `inline=1`,
+  pictures, PDFs and plain text show in place, and SVG and HTML never do.
+  Files stay with a trashed page, come along when it is copied (the copy's
+  version 1 names the copy's own files, so purging the original leaves its
+  history whole), and leave
+  the bucket when it is purged, its space is deleted or its file is
+  deleted; the worker removes what is left behind.

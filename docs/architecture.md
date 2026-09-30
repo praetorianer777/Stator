@@ -37,6 +37,9 @@ Keycloak / any OIDC provider <── login ──┘
 Every table carries an organisation and a row-level security policy keyed on
 `current_org_id()`, which each transaction sets. The application connects as
 `stator_app`, which cannot bypass RLS; migrations run as `stator_admin`.
+Each transaction of a request also names the person it acts for, read by
+`current_actor_id()`, and restrictive policies hold `stator_app` to that
+person's space permissions and page restrictions (see `docs/decisions.md`).
 
 ### Reads, writes and replicas
 

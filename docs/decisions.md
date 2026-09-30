@@ -3,6 +3,134 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: Search reads a page's words in the database, and trims in its SQL
+
+A page's title, weighted A, and the plain text of its body, weighted B, are a
+stored generated `tsvector` column on `page` with a GIN index. The plain text
+comes from `page_plain_text`, a SQL function that reads the document as
+`document.PlainText` does, rather than from the service: a generated column
+cannot call Go, and a text column the service kept would be stale after any
+writer that forgot it, raw SQL and the migration's own backfill included.
+The integration suite holds the two readings to the same answer. The body's
+text is cut at 200000 characters, since a `tsvector` holds at most 1 MB of
+lexemes and a page may be 2 MB.
+
+The configuration `stator_search` is `simple` with `unaccent`: case and
+accents are ignored, words are not stemmed, as in Armature, because one
+organization writes in more than one language. Queries go through
+`websearch_to_tsquery`. A hit whose title matches every word comes before one
+that matches only in the body, then `ts_rank`, then the latest change, which
+is the latest published version, so moving a page to another place in the
+tree does not count as changing it. Quick search asks for each typed word as
+the prefix of a title lexeme (`'word':*A`), built from letters and digits
+only, so nothing typed reaches the tsquery syntax.
+
+Titles and snippets are `ts_headline` output with two private use
+characters as delimiters, stripped from the text first, then split into
+`{text, match}` runs; no markup ever leaves the server. Visibility is a
+condition inside the query that finds the hits, so `total` never counts a page
+the caller may not read. It is `perm.ViewablePage`, the rule every list of
+pages uses, and the restrictive policies of #19 hold raw SQL to the same. A
+person's visits are their own: `page_visit_viewer` lets the app role read
+and write only the actor's visits, and only of pages they may still view.
+
+Files are found by name only. Their bytes are in the bucket, and reading the
+text of plain text files would mean fetching every upload into the database
+and holding a second copy there; a name is what people search a file by. The
+name is indexed as written and with each run of punctuation as a space, since
+the parser would read `plan_v2.pdf` as one path. A file follows its page: on a
+page the caller may not view, an unpublished page or one in the trash, it is
+not found. Pages and files are ranked together, a file counting as a title
+match.
+
+## 2026-09-30: Permissions are rows, rules are SQL functions, and the database knows who asks
+
+Grants are rows, as in Armature: `global_grant` for `use` and
+`createSpace`, `space_grant` per space and permission, `page_restriction`
+per page and list, each naming a person, a group or (for grants) everyone.
+`administer` of the organization is not a row: it is the owner and admin
+roles, so it can neither drift from them nor be taken from the last
+administrator. Organization administrators hold every permission in every
+space, so no space is ever orphaned, and nobody without `use` holds
+anything. A new organization grants everyone `use`, and a new space grants
+everyone view, add pages, add comments and delete and its creator
+administer, by triggers, so a space made by any path starts the same; the
+migration gave every existing space the same, which was the behaviour
+before.
+
+Each transaction names the person it acts for in `app.user_id`, beside
+`app.org_id`, set from the request by `db.WithUser`, and the rules are SQL
+functions of that person: `perm_space_holds`, `perm_page_viewable`,
+`perm_page_editable` and the ones they call. The policies call them, and the
+service does too: every list of pages narrows its query with
+`perm.ViewablePage`, which is `perm_page_viewable`, so the tree, the outline,
+`hasChildren`, the trash, copies and search cannot disagree about what a
+person sees. The service decides single acts in Go (`perm.Decide`,
+`perm.PageRules`) from facts the same functions read, which keeps the rules
+testable alone and lets it answer 403 or 404 in a sentence; an integration
+test holds the Go rules and the SQL ones to each other page by page.
+
+A view restriction hides the page and every page below it, an edit
+restriction stops editing and deleting them, and a person has to pass every
+list on the page and above it. That makes inheritance a walk up the tree at
+read time instead of copies of the lists kept below, so a move takes on its
+new parents' lists and keeps its own without rewriting anything. A save that
+would leave its saver unable to view or edit the page is refused unless they
+administer the space; the home page takes no view list, which is what the
+space's view is for.
+
+What the database enforces, for `stator_app`, with restrictive policies and
+one trigger:
+
+- reading spaces, pages, versions, drafts (one's own only), files,
+  restrictions and grants follows the same rules as the service, `use`
+  included;
+- putting a file on a page or taking it off needs edit of the page;
+- writing a page's content or place needs edit, its trash marks need delete,
+  purging needs administer of the space, and a new page needs edit of its
+  parent, which `page_write_guard` tells apart since a policy cannot see
+  which columns an update changes;
+- versions and drafts need edit, restrictions need edit of their page and no
+  view list on a home page, space grants need administer of the space, global
+  grants an organization administrator, and a new space `createSpace`.
+
+Moves of pages the actor cannot see, which trashing a subtree, restoring an
+item and reordering siblings make, go through a few `SECURITY DEFINER`
+functions (`page_trash`, `page_untrash`, `page_place`, `page_purge`,
+`space_empty_trash`, `page_sibling_ranks`), each of which checks the rule for
+the page the actor named, taking the actor from the transaction.
+
+What only the service enforces: that a restriction save does not lock its
+saver out, and every answer's shape, such as 404 rather than 403 for what
+may not be seen. And what nothing below the api can enforce: `app.user_id`
+is set by whoever holds a `stator_app` connection, as `app.org_id` is, so the
+database holds a connection to the person it names but cannot tell a forged
+name. That credential is the api's alone, and the policies turn a query
+that forgets whom it is for into one that sees nothing.
+
+## 2026-09-29: A deleted file leaves a tombstone, written by the database
+
+Attachments work as in Armature. The bytes go to the bucket inside the
+transaction that writes the row, so a refused upload leaves no row. A
+deleted row leaves a tombstone, and the bytes are removed after the commit,
+by the request that deleted it or by the worker's reaper. Armature writes
+tombstones in the service. Here a trigger on `attachment` writes them, so
+every path that removes a row leaves one: a delete, a purged page, emptied
+trash, a deleted space or organization, and raw SQL. Purges and space
+deletes then sweep the organization's tombstones before answering. The
+tombstone table has no foreign key to `org`, so an organization's
+tombstones outlive it until the reaper has emptied its prefix, which is
+what Armature arrived at with its migration 00900.
+
+The object key is a generated column, `org/<org>/page/<page>/<id>`, and a
+tombstone must name a key under its own organization's prefix. The app role
+has no UPDATE on either table. Without these, a tenant could point a row or
+a tombstone at another tenant's object, and the reaper, which works across
+tenants, would delete it. Files are copied with their page by reading and
+writing each object inside the copy's transaction, as an upload does. A
+copy that fails after writing some objects leaves them unreachable in the
+bucket, which costs space but breaks nothing.
+
 ## 2026-09-29: History is append only, and a comparison aligns blocks, then words
 
 `page_version` rows are written once. The app role may only read and insert
@@ -12,9 +140,7 @@ whoever writes them, and it locks the page row, so two publishes queue.
 Publishing inserts the version, then copies it onto `page`, in one
 transaction. A draft is keyed on page and person, and references the
 membership, so leaving the organization takes a person's drafts with it.
-The database walls drafts off by organization; that one person's draft is
-hidden from the next is the service's rule until #19 gives the database a
-notion of who is asking.
+The database walls drafts off by organization, and since #19 by person too.
 
 An unpublished page is `version = 0`, and whether somebody may see it is its
 `created_by`, checked for the page and every page above it wherever a page is

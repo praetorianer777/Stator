@@ -21,12 +21,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
@@ -39,7 +42,9 @@ type apiServer struct {
 	accounts *auth.Service
 	store    objectstore.Store
 	themes   *theme.Service
-	h        *harness
+	// attachments takes files up to testUploadLimit, so a refusal is cheap.
+	attachments *attachment.Service
+	h           *harness
 
 	mu         sync.Mutex
 	lastWriter *client
@@ -77,9 +82,11 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	}
 	accounts := auth.NewService(h.cluster, cheapPasswords(), time.Hour)
 	a := &apiServer{accounts: accounts, store: store, themes: theme.NewService(h.cluster, store), h: h}
+	pages := page.NewService(h.cluster)
+	a.attachments = attachment.NewService(h.cluster, store, pages).WithMaxSize(testUploadLimit).WithLogger(discard())
 	server := &httpapi.Server{
 		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
-		Spaces: space.NewService(h.cluster), Pages: page.NewService(h.cluster),
+		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie,
 	}
 	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))
@@ -140,7 +147,7 @@ func (a *apiServer) as(t *testing.T, user, org uuid.UUID, slug string) *client {
 		t.Fatalf("open a session: %v", err)
 	}
 	o := tenant.Org{ID: org, Slug: slug}
-	c := &client{api: a, token: token, user: user, ctx: tenant.WithOrg(context.Background(), o), http: cookieJarClient()}
+	c := &client{api: a, token: token, user: user, ctx: db.WithUser(tenant.WithOrg(context.Background(), o), user), http: cookieJarClient()}
 	base, _ := url.Parse(a.srv.URL)
 	c.http.Jar.SetCookies(base, []*http.Cookie{{Name: a.h.cfg.Auth.SessionCookie, Value: token, Path: "/"}})
 	return c

@@ -13,6 +13,10 @@ Adapted from Armature:
 - deploy/charts/stator: deploy/charts/armature, its helpers, the CNPG cluster,
   the bundled Postgres and Valkey, and the roles, secrets, migrate and seed Jobs
 - backend/internal/objectstore: the S3 client of internal/attachment
+- backend/internal/attachment, attachment_handlers.go and migration 00080:
+  internal/attachment (service, reaper, tombstones), the attachment
+  handlers, ParseSize and ARMATURE_UPLOAD_LIMIT from internal/config, and
+  migrations 00015, 00016 and 00900
 - backend/internal/theme and its migrations: internal/theme, migrations
   00050_themes, 00902_org_default_theme and 00906_theme_names_per_organization
 - backend/internal/httpapi/theme_handlers.go: the theme handlers and routes

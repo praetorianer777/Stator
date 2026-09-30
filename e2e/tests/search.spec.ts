@@ -9,6 +9,7 @@ import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../
 const hit = (page: Page, title: string) => page.locator(`[data-search-hit="${title}"]`);
 const palette = (page: Page) => page.getByRole("dialog", { name: "Quick search" });
 const option = (page: Page, title: string) => palette(page).locator(`[data-quick-search-option="${title}"]`);
+const paragraph = (text: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
 // A script's writes can reach the index a moment after they answer, and the
 // browser reads from a replica of its own, so a search is asked again until
@@ -34,7 +35,7 @@ test.describe("search", { tag: ["@auth"] }, () => {
 
   test("finds a page by its title and by words of its body, with the matches marked", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Find");
-    await createPage(api, space.homePageId, "Zephyr quarterly report", "The flamingo budget grew this quarter.");
+    await createPage(api, space.homePageId, "Zephyr quarterly report", paragraph("The flamingo budget grew this quarter."));
 
     await searchUntil(page, "/search?q=zephyr", (p) => hit(p, "Zephyr quarterly report"));
     await expect(hit(page, "Zephyr quarterly report").locator("mark").first()).toHaveText("Zephyr");
@@ -129,7 +130,7 @@ test.describe("search", { tag: ["@auth"] }, () => {
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
     test(`the search page and quick search pass axe in ${scheme}`, async ({ page, api }, testInfo) => {
       const space = await freshSpace(api, testInfo, "Axe");
-      await createPage(api, space.homePageId, "Puffin guide", "Where the puffin nests.");
+      await createPage(api, space.homePageId, "Puffin guide", paragraph("Where the puffin nests."));
       await startInScheme(page, scheme);
 
       await searchUntil(page, "/search?q=puffin", (p) => hit(p, "Puffin guide"));

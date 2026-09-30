@@ -152,6 +152,13 @@ export const TREE_INDENT_PX = 12;
 /** The share of a tree row at its top and bottom where a dropped page goes beside it rather than under it. */
 export const TREE_DROP_EDGE = 0.25;
 
+/** How long the editor waits after the last keystroke before it saves the draft. */
+export const DRAFT_AUTOSAVE_MS = 1000;
+/** The longest version comment, matching the API's page.MaxCommentLength. */
+export const VERSION_COMMENT_MAX_LENGTH = 500;
+/** How many versions the history shows at a time. */
+export const HISTORY_PAGE_SIZE = 20;
+
 /** How long quick search waits after the last key before it asks the server. */
 export const QUICK_SEARCH_DEBOUNCE_MS = 150;
 /** How many pages quick search and the recent pages list offer at once, within the API's limit of 20. */

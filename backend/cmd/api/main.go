@@ -15,6 +15,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
@@ -24,6 +25,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/internal/space"
@@ -117,6 +120,7 @@ func run() error {
 	sso := oidc.NewService(cluster, box, cfg.Auth.OIDCRedirectURL).
 		WithHTTPClient(oidc.Backchannel(cfg.Auth.OIDCBackchannel))
 
+	pages := page.NewService(cluster)
 	server := &httpapi.Server{
 		DB:              cluster,
 		Fresh:           fresh,
@@ -128,7 +132,10 @@ func run() error {
 		Telemetry:       tel,
 		Themes:          theme.NewService(cluster, store),
 		Spaces:          space.NewService(cluster),
-		Pages:           page.NewService(cluster),
+		Pages:           pages,
+		Attachments:     attachment.NewService(cluster, store, pages).WithMaxSize(cfg.UploadLimit).WithLogger(log),
+		Perms:           perm.NewService(cluster),
+		Search:          search.NewService(cluster),
 		CookieName:      cfg.Auth.SessionCookie,
 		Secure:          cfg.Auth.SecureCookies,
 		AppBaseURL:      cfg.AppBaseURL,

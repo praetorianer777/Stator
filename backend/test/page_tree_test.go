@@ -242,13 +242,13 @@ func TestTheTreeIsGuardedByTheDatabase(t *testing.T) {
 	theirs := docsB.add(docsB.homeID, "Theirs")
 
 	conn := appConn(t)
-	actAs(t, conn, a.org)
+	actAs(t, conn, a.org, a.user)
 	refused(t, conn, "a page under its own grandchild", `UPDATE page SET parent_id = $2 WHERE id = $1`, top, low)
 	refused(t, conn, "a page under itself", `UPDATE page SET parent_id = $1 WHERE id = $1`, top)
 	refused(t, conn, "a new page that is its own parent", `INSERT INTO page (id, org_id, space_id, parent_id, rank, title) VALUES ($1, $2, (SELECT space_id FROM page WHERE id = $3), $1, 'W', 'Loop')`, uuid.NewString(), a.org, top)
 	refused(t, conn, "a page under another organization's page", `UPDATE page SET parent_id = $2 WHERE id = $1`, mid, theirs)
 
-	actAs(t, conn, b.org)
+	actAs(t, conn, b.org, b.user)
 	untouched(t, conn, "moving A's page from B", `UPDATE page SET parent_id = $2 WHERE id = $1`, mid, theirs)
 
 	var parent string

@@ -16,7 +16,8 @@ import (
 // Service keeps pages. Every method reads the page's space first, which is
 // where whether the actor may see or change it is decided.
 type Service struct {
-	db *db.Cluster
+	db            *db.Cluster
+	copyObservers []CopyObserver
 }
 
 func NewService(cluster *db.Cluster) *Service {
@@ -43,14 +44,13 @@ func scan(row pgx.Row) (*Page, error) {
 }
 
 // load reads a page and its space, refusing with ErrNotFound what the actor
-// may not see, what is in the trash and what is below somebody else's
-// unpublished page; lock takes the page for writing.
+// may not view and what is in the trash; lock takes the page for writing.
 func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock bool) (*Page, *space.Space, error) {
-	sql := selectPages + ` WHERE p.id = $1 AND` + live
+	sql := selectPages + ` WHERE p.id = $1 AND` + live + ` AND ` + perm.ViewablePage("p", 2)
 	if lock {
 		sql += ` FOR UPDATE OF p`
 	}
-	p, err := scan(tx.QueryRow(ctx, sql, id))
+	p, err := scan(tx.QueryRow(ctx, sql, id, actor.UserID))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -61,11 +61,16 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	if err != nil {
 		return nil, nil, err
 	}
-	if hidden, err := hiddenFrom(ctx, tx, actor, id); err != nil {
+	access, _, err := perm.ForPage(ctx, tx, actor, id)
+	if err != nil {
 		return nil, nil, err
-	} else if hidden {
+	}
+	if !access.View {
 		return nil, nil, ErrNotFound
 	}
+	p.access = access
+	p.Can = access.Can()
+	p.Restricted = Restricted{View: access.ViewRestricted, Edit: access.EditRestricted}
 	if p.Ancestors, err = ancestors(ctx, tx, id); err != nil {
 		return nil, nil, err
 	}
@@ -81,22 +86,23 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	return p, sp, nil
 }
 
-// visible narrows a query on page p to what the actor may see: published
-// pages and their own unpublished ones. Parameter $2 must be the actor.
-const visible = ` (p.version > 0 OR p.created_by = $2)`
-
-// hiddenFrom reports whether the page or one above it is an unpublished page
-// of somebody else's, which hides it and everything below it.
-func hiddenFrom(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) (bool, error) {
-	var hidden bool
-	err := tx.QueryRow(ctx, `
-		WITH RECURSIVE up (id, parent_id, version, created_by) AS (
-			SELECT id, parent_id, version, created_by FROM page WHERE id = $1
-			UNION ALL
-			SELECT p.id, p.parent_id, p.version, p.created_by FROM page p JOIN up ON p.id = up.parent_id
-		)
-		SELECT EXISTS (SELECT 1 FROM up WHERE version = 0 AND created_by IS DISTINCT FROM $2)`, id, actor.UserID).Scan(&hidden)
-	return hidden, err
+// must refuses an action on a loaded page that its access does not allow.
+func (p *Page) must(action perm.Action) error {
+	allowed := false
+	switch action {
+	case perm.EditPages:
+		allowed = p.access.Edit
+	case perm.DeletePages:
+		allowed = p.access.Delete
+	case perm.AddComments:
+		allowed = p.access.Comment
+	case perm.ViewSpace:
+		allowed = p.access.View
+	}
+	if !allowed {
+		return &perm.DeniedError{Action: action}
+	}
+	return nil
 }
 
 // Get is one page with the space it is in.
@@ -130,11 +136,11 @@ func (s *Service) Update(ctx context.Context, actor perm.Actor, id uuid.UUID, in
 	}
 	var out *Page
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		current, sp, err := load(ctx, tx, actor, id, true)
+		current, _, err := load(ctx, tx, actor, id, true)
 		if err != nil {
 			return err
 		}
-		if err := perm.Check(ctx, tx, actor, perm.EditPages, sp.ID); err != nil {
+		if err := current.must(perm.EditPages); err != nil {
 			return err
 		}
 		if in.Version != current.Version {
