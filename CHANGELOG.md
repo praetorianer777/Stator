@@ -213,6 +213,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   no version, and neither versions nor comparisons show the mark. The
   database lets a commenter change a page's body by the mark of their own new
   thread alone.
+- Mentions. An at sign in a page or a comment looks up the organization's
+  people as you type and names the one picked; the list marks somebody who
+  cannot see the page, who may still be named and is not told. Publishing a
+  page, by any path but a copy, tells the people its new version names for
+  the first time, whether or not the watchers are told; a comment tells the
+  people it names, and an edit only those it adds, nobody twice. Nobody is
+  told about their own mention, a mention makes nobody watch the page, and
+  the notification quotes the block or the comment that names them. A
+  mention holds a member's id, and the database refuses an event that
+  mentions anybody the organization does not hold.
 
 ### Changed
 
@@ -227,6 +237,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
   organization's files can be listed and removed together.
 
 ### Fixed
+
+- Saving an edited comment puts focus back on its Edit button every time,
+  not only when the save's answer and the next frame came in the right order.
 
 - Subtle text (hints, timestamps, placeholders) meets WCAG AA: 4.5:1 or more
   on every surface in both palettes, and in the Deep-Tech and Constellation

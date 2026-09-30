@@ -41,6 +41,35 @@ kind of mark. A reply to a resolved thread reopens it without a
 `thread.reopened` event: the reply tells the thread's writers already, and
 two notifications for one act would be one too many.
 
+## 2026-09-30: A mention is read from the document, and the database holds it to members
+
+Mentions keep no table of their own. On every publish the service compares
+the mentions of the new version with the one before, and on a comment with
+the words it replaces, and the outbox event carries the people named for the
+first time. What a page or comment says is the only record, so nothing can
+drift from it, and a republish or a restore finds nobody new.
+
+The allowlist holds a mention's id to a uuid, and the service keeps only
+members who may view the page as the change commits; the worker checks again
+when it writes each row acting for its recipient. A mention of somebody who
+left, or never belonged, stays in the text and tells nobody, as the contract
+says, instead of refusing a save over a name the author cannot fix. What the
+database adds is that an outbox event may mention members alone, so a
+forged event cannot reach a stranger.
+
+A comment edit tells only the people it adds, and the worker leaves out
+anybody who already has a notification about that comment, of any kind. The
+rows are the memory: a name removed and put back does not tell anybody
+twice, and no table of who was told has to follow deletes and purges.
+
+The picker's `canView` comes from `perm_page_viewable_published`, the view
+rule without the unpublished rule, as a SQL function beside the others, so
+the author of a new page sees whom a mention will reach once it is
+published. The editor looks people up after `MENTION_SEARCH_DEBOUNCE_MS` of
+quiet and narrows the last answer at once while the next is on its way; a
+lookup the list outlived is aborted and its answer dropped. The development
+editor keeps its fixed people, which the touch and keyboard specs rely on.
+
 ## 2026-09-30: The worker tells each person acting for them, and a digest is due by its rows
 
 Notifications follow Armature's: an event is written to `outbox_event` in
