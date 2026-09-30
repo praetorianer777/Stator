@@ -15,6 +15,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
@@ -118,6 +119,7 @@ func run() error {
 	sso := oidc.NewService(cluster, box, cfg.Auth.OIDCRedirectURL).
 		WithHTTPClient(oidc.Backchannel(cfg.Auth.OIDCBackchannel))
 
+	pages := page.NewService(cluster)
 	server := &httpapi.Server{
 		DB:              cluster,
 		Fresh:           fresh,
@@ -129,7 +131,8 @@ func run() error {
 		Telemetry:       tel,
 		Themes:          theme.NewService(cluster, store),
 		Spaces:          space.NewService(cluster),
-		Pages:           page.NewService(cluster),
+		Pages:           pages,
+		Attachments:     attachment.NewService(cluster, store, pages).WithMaxSize(cfg.UploadLimit).WithLogger(log),
 		Search:          search.NewService(cluster),
 		CookieName:      cfg.Auth.SessionCookie,
 		Secure:          cfg.Auth.SecureCookies,

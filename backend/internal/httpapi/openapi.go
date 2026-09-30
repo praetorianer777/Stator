@@ -208,13 +208,13 @@ var operations = []operation{
 		query: pickerQuery, responses: ok(env{"groups": []perm.Group{}})},
 
 	// Attachments (#20), as Armature serves them.
-	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tag: "attachments", summary: "The files on a page, the latest first.", pending: true,
+	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tag: "attachments", summary: "The files on a page, the latest first.",
 		responses: ok(env{"attachments": []attachment.Attachment{}})},
-	{method: "POST", path: "/pages/{pageID}/attachments", handler: "handleUploadAttachment", tag: "attachments", summary: "Put a file on a page, as a multipart part named file; refused with too_large over the upload limit.", multipart: true, pending: true,
+	{method: "POST", path: "/pages/{pageID}/attachments", handler: "handleUploadAttachment", tag: "attachments", summary: "Put a file on a page, as a multipart part named file; refused with too_large over the upload limit.", multipart: true,
 		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 413: errorEnvelope{}}},
-	{method: "GET", path: "/attachments/{attachmentID}", handler: "handleDownloadAttachment", tag: "attachments", summary: "The bytes of a file, as a download.", binary: true, pending: true,
+	{method: "GET", path: "/attachments/{attachmentID}", handler: "handleDownloadAttachment", tag: "attachments", summary: "The bytes of a file, as a download.", binary: true,
 		query: []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: ok(nil)},
-	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a file off its page for good.", pending: true,
+	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a file off its page for good.",
 		responses: none()},
 }
 

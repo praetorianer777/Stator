@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -54,6 +53,12 @@ WHERE p.trashed_at IS NULL AND p.version > 0`
 // config is the text search configuration of migration 00100.
 const config = `'stator_search'::regconfig`
 
+// spacedName readies a file name for ts_headline, which would read
+// "plan_v2.pdf" as one path; Split undoes it.
+func spacedName(column string) string {
+	return `regexp_replace(translate(` + column + `, '` + startSel + stopSel + openAngle + nameGap + `', ''), '([^[:alnum:][:space:]])', '` + nameGap + `\1` + nameGap + `', 'g')`
+}
+
 // unmarked readies a text column for ts_headline; Split undoes it.
 func unmarked(column string) string {
 	return `translate(translate(` + column + `, '` + startSel + stopSel + openAngle + `', ''), '<', '` + openAngle + `')`
@@ -68,6 +73,27 @@ const pathOf = `ARRAY(
 	)
 	SELECT title FROM up ORDER BY depth DESC)`
 
+// pageHits and attachmentHits are the two kinds of hit a search reads, each a
+// row of the same shape, among published pages out of the trash that the actor,
+// parameter $1, may view. An attachment carries the version its page is at.
+const (
+	pageHits = `
+SELECT 'page' AS kind, NULL::uuid AS attachment_id, p.id AS page_id, p.title AS page_title,
+       p.title AS title, p.body, s.key, s.name, v.created_at AS changed_at, COALESCE(vu.name, '') AS by_name, %s
+FROM page p
+JOIN space s ON s.id = p.space_id
+JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = p.version
+LEFT JOIN app_user vu ON vu.id = v.created_by
+WHERE p.trashed_at IS NULL AND p.version > 0`
+	attachmentHits = `
+SELECT 'attachment', a.id, p.id, p.title, a.file_name, NULL::jsonb, s.key, s.name, a.created_at, COALESCE(au.name, ''), %s
+FROM attachment a
+JOIN page p ON p.org_id = a.org_id AND p.id = a.page_id
+JOIN space s ON s.id = p.space_id
+LEFT JOIN app_user au ON au.id = a.uploaded_by
+WHERE p.trashed_at IS NULL AND p.version > 0`
+)
+
 // Search answers a full search with one page of hits and how many there are.
 func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit, int, error) {
 	args := []any{actor.UserID}
@@ -75,56 +101,76 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 		args = append(args, v)
 		return "$" + strconv.Itoa(len(args))
 	}
-	conds := []string{viewable("p", 1)}
+	pages := []string{viewable("p", 1)}
+	files := []string{viewable("p", 1)}
 	var tsq string
+	pageScore, fileScore := `FALSE, 0::real`, `FALSE, 0::real`
 	if q.Text != "" {
 		tsq = `websearch_to_tsquery(` + config + `, ` + bind(q.Text) + `)`
-		conds = append(conds, `p.search_vector @@ `+tsq)
+		pages = append(pages, `p.search_vector @@ `+tsq)
+		files = append(files, `a.search_vector @@ `+tsq)
+		pageScore = `to_tsvector(` + config + `, p.title) @@ ` + tsq + `, ts_rank(p.search_vector, ` + tsq + `)`
+		fileScore = `TRUE, ts_rank(a.search_vector, ` + tsq + `)`
 	}
-	// Labels arrive with #17; until then no page carries one.
+	// Labels arrive with #17, comments later; until then nothing carries one.
 	if !q.wants(HitPage) || len(q.Labels) > 0 {
-		conds = append(conds, `FALSE`)
+		pages = append(pages, `FALSE`)
+	}
+	if !q.wants(HitAttachment) || len(q.Labels) > 0 {
+		files = append(files, `FALSE`)
 	}
 	if len(q.Spaces) > 0 {
-		conds = append(conds, `s.key = ANY(`+bind(q.Spaces)+`)`)
+		keys := bind(q.Spaces)
+		pages = append(pages, `s.key = ANY(`+keys+`)`)
+		files = append(files, `s.key = ANY(`+keys+`)`)
 	}
 	if len(q.Authors) > 0 {
-		conds = append(conds, `EXISTS (SELECT 1 FROM page_version a WHERE a.org_id = p.org_id AND a.page_id = p.id AND a.created_by = ANY(`+bind(q.Authors)+`))`)
+		authors := bind(q.Authors)
+		pages = append(pages, `EXISTS (SELECT 1 FROM page_version pa WHERE pa.org_id = p.org_id AND pa.page_id = p.id AND pa.created_by = ANY(`+authors+`))`)
+		files = append(files, `a.uploaded_by = ANY(`+authors+`)`)
 	}
 	if q.After != nil {
-		conds = append(conds, `v.created_at >= `+bind(*q.After))
+		after := bind(*q.After)
+		pages = append(pages, `v.created_at >= `+after)
+		files = append(files, `a.created_at >= `+after)
 	}
 	if q.Before != nil {
-		conds = append(conds, `v.created_at < `+bind(*q.Before))
+		before := bind(*q.Before)
+		pages = append(pages, `v.created_at < `+before)
+		files = append(files, `a.created_at < `+before)
 	}
-	where := found + ` AND ` + strings.Join(conds, ` AND `)
+	hits := `WITH hit (kind, attachment_id, page_id, page_title, title, body, key, name, changed_at, by_name, title_match, rank) AS (` +
+		fmt.Sprintf(pageHits, pageScore) + ` AND ` + strings.Join(pages, ` AND `) + `
+		UNION ALL` +
+		fmt.Sprintf(attachmentHits, fileScore) + ` AND ` + strings.Join(files, ` AND `) + `
+	)`
 
-	order := `v.created_at DESC, p.id`
+	order := `h.changed_at DESC, h.kind DESC, COALESCE(h.attachment_id, h.page_id)`
 	if !q.ByUpdate && tsq != "" {
-		order = `to_tsvector(` + config + `, p.title) @@ ` + tsq + ` DESC, ts_rank(p.search_vector, ` + tsq + `) DESC, ` + order
+		order = `h.title_match DESC, h.rank DESC, ` + order
 	}
 	countArgs := len(args)
-	title, snippet := `h.title`, `left(page_plain_text(h.body), `+strconv.Itoa(snippetScanChars)+`)`
+	title := `h.title`
+	snippet := `CASE WHEN h.kind = 'page' THEN left(page_plain_text(h.body), ` + strconv.Itoa(snippetScanChars) + `) ELSE '' END`
 	if tsq != "" {
-		title = `ts_headline(` + config + `, ` + unmarked(`h.title`) + `, ` + tsq + `, ` + bind(titleOptions) + `)`
-		snippet = `ts_headline(` + config + `, ` + unmarked(`left(page_plain_text(h.body), `+strconv.Itoa(headlineChars)+`)`) + `, ` + tsq + `, ` + bind(headlineOptions) + `)`
+		titleOpts, snippetOpts := bind(titleOptions), bind(headlineOptions)
+		title = `CASE WHEN h.kind = 'page' THEN ts_headline(` + config + `, ` + unmarked(`h.title`) + `, ` + tsq + `, ` + titleOpts + `)
+			ELSE ts_headline(` + config + `, ` + spacedName(`h.title`) + `, ` + tsq + `, ` + titleOpts + `) END`
+		snippet = `CASE WHEN h.kind = 'page' THEN ts_headline(` + config + `, ` + unmarked(`left(page_plain_text(h.body), `+strconv.Itoa(headlineChars)+`)`) + `, ` + tsq + `, ` + snippetOpts + `) ELSE '' END`
 	}
 	limit, offset := bind(q.Limit), bind(q.Offset)
-	sql := `
-		WITH h AS (
-			SELECT p.id, p.title, p.body, s.key, s.name, v.created_at, COALESCE(vu.name, '') AS by_name,
-			       row_number() OVER (ORDER BY ` + order + `) AS ord
-			` + where + `
+	sql := hits + `, chosen AS (
+			SELECT h.*, row_number() OVER (ORDER BY ` + order + `) AS ord FROM hit h
 			ORDER BY ` + order + `
 			LIMIT ` + limit + ` OFFSET ` + offset + `
 		)
-		SELECT h.id, h.key, h.name, h.title, ` + title + `, ` + snippet + `, h.created_at, h.by_name
-		FROM h ORDER BY h.ord`
+		SELECT h.kind, h.attachment_id, h.page_id, h.page_title, h.key, h.name, ` + title + `, ` + snippet + `, h.changed_at, h.by_name
+		FROM chosen h ORDER BY h.ord`
 
-	hits := []Hit{}
+	out := []Hit{}
 	var total int
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if err := tx.QueryRow(ctx, `SELECT count(*) `+where, args[:countArgs]...).Scan(&total); err != nil {
+		if err := tx.QueryRow(ctx, hits+` SELECT count(*) FROM hit`, args[:countArgs]...).Scan(&total); err != nil {
 			return fmt.Errorf("count the hits: %w", err)
 		}
 		rows, err := tx.Query(ctx, sql, args...)
@@ -134,27 +180,24 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 		defer rows.Close()
 		for rows.Next() {
 			var (
-				h             Hit
-				marked, body  string
-				updatedAt     time.Time
-				updatedByName string
+				h            Hit
+				marked, body string
 			)
-			if err := rows.Scan(&h.Page.ID, &h.Page.SpaceKey, &h.Page.SpaceName, &h.Page.Title, &marked, &body, &updatedAt, &updatedByName); err != nil {
+			if err := rows.Scan(&h.Type, &h.AttachmentID, &h.Page.ID, &h.Page.Title, &h.Page.SpaceKey, &h.Page.SpaceName,
+				&marked, &body, &h.UpdatedAt, &h.UpdatedByName); err != nil {
 				return err
 			}
-			h.Type = HitPage
 			h.Labels = []string{}
-			h.UpdatedAt, h.UpdatedByName = updatedAt, updatedByName
 			if tsq != "" {
 				h.Title, h.Snippet = Split(marked), Split(body)
 			} else {
 				h.Title, h.Snippet = Plain(marked), Plain(firstWords(body, snippetMinWords))
 			}
-			hits = append(hits, h)
+			out = append(out, h)
 		}
 		return rows.Err()
 	})
-	return hits, total, err
+	return out, total, err
 }
 
 // How much of a body is read for its snippet. A headline reads its whole

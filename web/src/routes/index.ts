@@ -9,6 +9,7 @@ import { devEditorRoute } from "./dev-editor";
 import { loginRoute } from "./login";
 import { homeRoute, searchRoute } from "./pages";
 import { pageEditRoute } from "./page-edit";
+import { pageHistoryRoute } from "./page-history";
 import { pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
 import { spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
@@ -23,7 +24,7 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     spacesRoute,
     spaceNewRoute,
-    spaceRoute.addChildren([spaceHomeRoute, pageRoute, pageEditRoute, spaceSettingsRoute]),
+    spaceRoute.addChildren([spaceHomeRoute, pageRoute, pageEditRoute, pageHistoryRoute, spaceSettingsRoute]),
     searchRoute,
     themesRoute,
     themeNewRoute,

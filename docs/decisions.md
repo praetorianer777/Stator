@@ -32,6 +32,38 @@ condition inside the query that finds the hits, so `total` never counts a page
 the caller may not read. It is `perm.ViewablePage` once #19 lands; until
 then a stand-in with the same signature applies today's rule.
 
+Files are found by name only. Their bytes are in the bucket, and reading the
+text of plain text files would mean fetching every upload into the database
+and holding a second copy there; a name is what people search a file by. The
+name is indexed as written and with each run of punctuation as a space, since
+the parser would read `plan_v2.pdf` as one path. A file follows its page: on a
+page the caller may not view, an unpublished page or one in the trash, it is
+not found. Pages and files are ranked together, a file counting as a title
+match.
+
+## 2026-09-29: A deleted file leaves a tombstone, written by the database
+
+Attachments work as in Armature. The bytes go to the bucket inside the
+transaction that writes the row, so a refused upload leaves no row. A
+deleted row leaves a tombstone, and the bytes are removed after the commit,
+by the request that deleted it or by the worker's reaper. Armature writes
+tombstones in the service. Here a trigger on `attachment` writes them, so
+every path that removes a row leaves one: a delete, a purged page, emptied
+trash, a deleted space or organization, and raw SQL. Purges and space
+deletes then sweep the organization's tombstones before answering. The
+tombstone table has no foreign key to `org`, so an organization's
+tombstones outlive it until the reaper has emptied its prefix, which is
+what Armature arrived at with its migration 00900.
+
+The object key is a generated column, `org/<org>/page/<page>/<id>`, and a
+tombstone must name a key under its own organization's prefix. The app role
+has no UPDATE on either table. Without these, a tenant could point a row or
+a tombstone at another tenant's object, and the reaper, which works across
+tenants, would delete it. Files are copied with their page by reading and
+writing each object inside the copy's transaction, as an upload does. A
+copy that fails after writing some objects leaves them unreachable in the
+bucket, which costs space but breaks nothing.
+
 ## 2026-09-29: History is append only, and a comparison aligns blocks, then words
 
 `page_version` rows are written once. The app role may only read and insert

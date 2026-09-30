@@ -76,6 +76,16 @@ ALTER TABLE page ADD COLUMN search_vector tsvector GENERATED ALWAYS AS (
 
 CREATE INDEX page_search_idx ON page USING gin (search_vector);
 
+-- A file is found by its name. The parser reads "plan_v2.pdf" as one path, so
+-- the name is also indexed with every run of punctuation as a space, which
+-- finds it by "plan" as well. The bytes are in the bucket, out of reach here.
+ALTER TABLE attachment ADD COLUMN search_vector tsvector GENERATED ALWAYS AS (
+    setweight(to_tsvector('stator_search'::regconfig,
+        file_name || ' ' || regexp_replace(file_name, '[^[:alnum:]]+', ' ', 'g')), 'A')
+) STORED;
+
+CREATE INDEX attachment_search_idx ON attachment USING gin (search_vector);
+
 -- The last time each person opened each page, for their recent pages.
 CREATE TABLE page_visit (
     org_id     uuid NOT NULL,
@@ -101,6 +111,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON page_visit TO stator_app, stator_admin;
 
 -- +goose Down
 DROP TABLE IF EXISTS page_visit;
+DROP INDEX IF EXISTS attachment_search_idx;
+ALTER TABLE attachment DROP COLUMN IF EXISTS search_vector;
 DROP INDEX IF EXISTS page_search_idx;
 ALTER TABLE page DROP COLUMN IF EXISTS search_vector;
 DROP FUNCTION IF EXISTS page_plain_text(jsonb);

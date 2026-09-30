@@ -36,6 +36,9 @@ const (
 	DefaultS3Bucket        = "stator-files"
 	DefaultS3Region        = "us-east-1"
 	DefaultSessionTTL      = 720 * time.Hour
+	// DefaultUploadLimit is attachment.DefaultMaxSize, which a test holds
+	// the two to; this package cannot import that one.
+	DefaultUploadLimit int64 = 50 << 20
 	// OIDCCallbackPath is where an identity provider sends the browser back,
 	// under the web client's origin, which proxies the API.
 	OIDCCallbackPath = "/api/v1/auth/oidc/callback"
@@ -62,7 +65,9 @@ type Config struct {
 	Auth      Auth
 	Telemetry Telemetry
 	S3        S3
-	Bootstrap Bootstrap
+	// UploadLimit is the largest file a page takes, in bytes.
+	UploadLimit int64
+	Bootstrap   Bootstrap
 	// TestEndpoints serves the throwaway organizations of the browser suite.
 	TestEndpoints TestEndpoints
 
@@ -229,6 +234,7 @@ func Load() (Config, error) {
 			Region:    l.str("STATOR_S3_REGION", DefaultS3Region),
 			UseSSL:    l.boolean("STATOR_S3_USE_SSL", false),
 		},
+		UploadLimit: l.size("STATOR_UPLOAD_LIMIT", DefaultUploadLimit),
 		Bootstrap: Bootstrap{
 			AdminEmail: l.str("STATOR_BOOTSTRAP_ADMIN_EMAIL", ""),
 			// Not trimmed: a password is exactly what was typed.
@@ -400,6 +406,42 @@ func (l *loader) duration(key string, def time.Duration) time.Duration {
 		return def
 	}
 	return d
+}
+
+func (l *loader) size(key string, def int64) int64 {
+	v := l.str(key, "")
+	if v == "" {
+		return def
+	}
+	n, err := ParseSize(v)
+	if err != nil {
+		l.problem(fmt.Sprintf("%s is %q; set it to a size such as 50MB.", key, v))
+		return def
+	}
+	return n
+}
+
+// ParseSize reads a byte count with an optional unit, as Armature does: B,
+// K, KB, M, MB, G or GB, in either case, with or without a space.
+func ParseSize(text string) (int64, error) {
+	text = strings.ToUpper(strings.TrimSpace(text))
+	units := []struct {
+		suffix string
+		scale  int64
+	}{{"GB", 1 << 30}, {"G", 1 << 30}, {"MB", 1 << 20}, {"M", 1 << 20}, {"KB", 1 << 10}, {"K", 1 << 10}, {"B", 1}}
+	scale := int64(1)
+	for _, u := range units {
+		if strings.HasSuffix(text, u.suffix) {
+			text = strings.TrimSpace(strings.TrimSuffix(text, u.suffix))
+			scale = u.scale
+			break
+		}
+	}
+	n, err := strconv.ParseInt(text, 10, 64)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("%q is not a size such as 50MB", text)
+	}
+	return n * scale, nil
 }
 
 // secretKey reads the encryption key. Development may run without one, and then

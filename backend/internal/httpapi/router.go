@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
@@ -50,6 +51,8 @@ type Server struct {
 	Spaces    *space.Service
 	Pages     *page.Service
 	Search    *search.Service
+	// Attachments keeps the files on pages; nil answers that storage is off.
+	Attachments *attachment.Service
 	// Fresh remembers each caller's last write between requests; nil leaves
 	// reads unpinned, which is only right without replicas.
 	Fresh Freshness
@@ -182,6 +185,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/pages/{pageID}", s.handleTrashPage)
 			r.Post("/pages/{pageID}/move", s.handleMovePage)
 			r.Post("/pages/{pageID}/copy", s.handleCopyPage)
+			r.Get("/pages/{pageID}/attachments", s.handleListAttachments)
+			r.Post("/pages/{pageID}/attachments", s.handleUploadAttachment)
+			r.Get("/attachments/{attachmentID}", s.handleDownloadAttachment)
+			r.Delete("/attachments/{attachmentID}", s.handleDeleteAttachment)
 			r.Get("/pages/{pageID}/draft", s.handleGetDraft)
 			r.Put("/pages/{pageID}/draft", s.handleSaveDraft)
 			r.Delete("/pages/{pageID}/draft", s.handleDiscardDraft)

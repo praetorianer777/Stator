@@ -213,6 +213,68 @@ func TestSearchOverTheAPI(t *testing.T) {
 		}
 	})
 
+	t.Run("files are found by their names, on pages the caller may read", func(t *testing.T) {
+		upload := func(c *client, pageID, name string) string {
+			t.Helper()
+			return obj(t, want(t, c.upload(t, pagePath(pageID, "/attachments"), name, []byte("contents")), http.StatusCreated, "upload "+name), "attachment")["id"].(string)
+		}
+		fileID := upload(ann, runbook, "Deploy-Plan_v2.txt")
+		r := searchFor(t, ben, url.Values{"q": {"plan"}, "type": {"attachment"}})
+		hits := list(t, r, "hits")
+		if len(hits) != 1 || number(r.Body["total"]) != 1 {
+			t.Fatalf("plan finds %s", r.Raw)
+		}
+		hit := hits[0].(map[string]any)
+		page := hit["page"].(map[string]any)
+		if hit["type"] != "attachment" || hit["attachmentId"] != fileID || hit["commentId"] != nil ||
+			page["id"] != runbook || page["title"] != "Deploy runbook" || page["spaceKey"] != "OPS" || hit["updatedByName"] == "" {
+			t.Fatalf("the file's hit is %v", hit)
+		}
+		if got := joined(hit["title"]); got != "Deploy-Plan_v2.txt" {
+			t.Errorf("the file's name reads %q", got)
+		}
+		if got := matched(hit["title"]); len(got) != 1 || got[0] != "Plan" {
+			t.Errorf("the file's name marks %v", got)
+		}
+		if len(hit["snippet"].([]any)) != 0 {
+			t.Errorf("a file has a snippet: %v", hit["snippet"])
+		}
+		if got := hitTitles(t, searchFor(t, ben, url.Values{"q": {"deploy-plan_v2.txt"}})); !sameSet(got, []string{"Deploy-Plan_v2.txt"}) {
+			t.Errorf("the whole name finds %v", got)
+		}
+
+		for what, c := range map[string]struct {
+			params url.Values
+			want   []string
+		}{
+			"everything":         {url.Values{"q": {"deploy"}}, []string{"Deploy runbook", "Rollback", "Café notes", "Deploy-Plan_v2.txt"}},
+			"pages only":         {url.Values{"q": {"deploy"}, "type": {"page"}}, []string{"Deploy runbook", "Rollback", "Café notes"}},
+			"its uploader":       {url.Values{"q": {"deploy"}, "author": {annID.String()}, "type": {"attachment"}}, []string{"Deploy-Plan_v2.txt"}},
+			"somebody else":      {url.Values{"q": {"deploy"}, "author": {home.user.String()}, "type": {"attachment"}}, nil},
+			"another space":      {url.Values{"q": {"deploy"}, "space": {"DEV"}, "type": {"attachment"}}, nil},
+			"its space":          {url.Values{"space": {"OPS"}, "type": {"attachment"}}, []string{"Deploy-Plan_v2.txt"}},
+			"after its upload":   {url.Values{"q": {"plan"}, "updatedAfter": {"2999-01-01"}}, nil},
+			"a label, not yet":   {url.Values{"q": {"plan"}, "label": {"x"}}, nil},
+			"comments, not yet":  {url.Values{"q": {"plan"}, "type": {"comment"}}, nil},
+			"files and comments": {url.Values{"q": {"plan"}, "type": {"comment", "attachment"}}, []string{"Deploy-Plan_v2.txt"}},
+		} {
+			if got := hitTitles(t, searchFor(t, ben, c.params)); !sameSet(got, c.want) {
+				t.Errorf("%s: %v, want %v", what, got, c.want)
+			}
+		}
+
+		scratch := ops.add(ops.homeID, "Scratch")
+		upload(owner, scratch, "trashed-memo.txt")
+		want(t, owner.delete(t, pagePath(scratch)), http.StatusNoContent, "trash the page")
+		mine := obj(t, want(t, ann.post(t, "/api/v1/pages", map[string]any{"parentId": dev.homeID, "title": "Private"}), http.StatusCreated, "an unpublished page"), "page")["id"].(string)
+		upload(ann, mine, "unpublished-memo.txt")
+		for _, c := range []*client{ann, ben, owner} {
+			if r := searchFor(t, c, url.Values{"q": {"memo"}}); number(r.Body["total"]) != 0 {
+				t.Errorf("a file on a trashed or unpublished page is found: %s", r.Raw)
+			}
+		}
+	})
+
 	t.Run("another organization finds none of it", func(t *testing.T) {
 		away := h.makeMember(t, "search-away")
 		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))

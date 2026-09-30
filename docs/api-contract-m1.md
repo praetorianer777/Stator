@@ -108,9 +108,11 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
 | `POST /pages/{pageID}/visit` | view | 204 |
 
 - **What is found.** The published title and body of pages (the body's plain
-  text from `internal/document`), attachment file names once #20 has
-  landed, and comments once comments exist. Never drafts, unpublished
-  pages or anything in the trash.
+  text from `internal/document`), the names of the files attached to
+  them (not their contents), and comments once comments exist. Never
+  drafts, unpublished pages or anything in the trash, nor a file on such a
+  page. A file's hit has the file name as `title`, an empty `snippet`, and
+  its upload as the change and its uploader as the author.
 - **Query syntax** (`q`, at most 200 characters, else 422 on `q`): as
   PostgreSQL's `websearch_to_tsquery`. Every word must match, `"quoted words"`
   match as a phrase, `or` matches either side, `-word` leaves out what has it.

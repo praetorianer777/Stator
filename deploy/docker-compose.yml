@@ -26,6 +26,8 @@ x-s3-env: &s3-env
   STATOR_S3_BUCKET: stator-files
   STATOR_S3_ACCESS_KEY: ${S3_ACCESS_KEY:-stator}
   STATOR_S3_SECRET_KEY: ${S3_SECRET_KEY:-stator-dev-secret}
+  # The largest file a page takes; nginx passes any size through to the api.
+  STATOR_UPLOAD_LIMIT: 50MB
 
 # Sign-in. The key seals the provider's client secret and is for development
 # only. The browser reaches Keycloak on the published port, which is also the

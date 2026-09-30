@@ -14,6 +14,7 @@ const (
 	startSel  = "\uE000"
 	stopSel   = "\uE001"
 	openAngle = "\uE002"
+	nameGap   = "\uE003"
 )
 
 // Snippet sizes, in words: about thirty around the matches, or the body's
@@ -64,6 +65,8 @@ func Split(marked string) []Segment {
 			}
 		case string(r) == openAngle:
 			run.WriteByte('<')
+		case string(r) == nameGap:
+			continue
 		case unicode.IsSpace(r):
 			if !space {
 				run.WriteByte(' ')
@@ -101,7 +104,7 @@ func joinMatches(in []Segment) []Segment {
 
 // Plain is text as one unmatched segment, whitespace collapsed.
 func Plain(text string) []Segment {
-	return Split(strings.NewReplacer(startSel, "", stopSel, "", openAngle, "").Replace(text))
+	return Split(strings.NewReplacer(startSel, "", stopSel, "", openAngle, "", nameGap, "").Replace(text))
 }
 
 // firstWords is the start of a body, for a hit found by its filters alone.
