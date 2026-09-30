@@ -27,8 +27,8 @@ Keycloak / any OIDC provider <── login ──┘
 - An operation agreed before it is built carries `pending: true` in the table:
   the router answers it 501 `not_implemented` and the integration suite does
   not expect it covered. Whoever builds it removes the mark and routes its
-  handler; `docs/api-contract-m1.md` and `docs/api-contract-m2.md` are the
-  agreements behind them.
+  handler; `docs/api-contract-m1.md`, `docs/api-contract-m2.md` and
+  `docs/api-contract-m3.md` are the agreements behind them.
 - Migrations: goose, embedded in the binary, applied by `cmd/migrate`.
 - Configuration: environment variables only, prefix `STATOR_`.
 - Observability: `log/slog`, Prometheus metrics, OpenTelemetry traces.
@@ -120,10 +120,14 @@ process, which is only right for a single api process. `/readyz` and
   issue or a table from an NQL query; selected text can become new issues.
 - **Back in Armature.** On publish, Stator syncs remote links so an issue lists
   the pages that mention it (Cloudster1/Armature#14).
-- **Freshness.** Armature webhooks, verified by HMAC signature, invalidate the
-  cached issues.
+- **Freshness.** Answers are cached per person in Valkey for a minute, and
+  Armature webhooks, verified by HMAC signature, invalidate them sooner.
+- **Reaching out.** Every outbound call passes `netguard`, which refuses
+  addresses inside the network unless `STATOR_OUTBOUND_ALLOW` names them.
 - **Themes.** Armature theme files import unchanged, and a user can follow
   their active Armature theme.
+
+`docs/api-contract-m3.md` says how each of these works.
 
 ## Testing
 
