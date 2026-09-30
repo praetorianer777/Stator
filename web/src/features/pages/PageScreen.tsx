@@ -8,6 +8,7 @@ import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Toolt
 import { Icon } from "@/components/icons";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSection";
+import { InlineComments } from "@/features/comments/InlineComments";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocPageContext } from "@/features/editor/BlockViews";
@@ -204,14 +205,23 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
           </Button>
         </div>
       )}
-      <KnownAttachmentsContext value={attachmentIds}>
-        <DocPageContext value={{ id: page.id, spaceKey: space.key }}>
-          <DocView doc={page.body} />
-        </DocPageContext>
-      </KnownAttachmentsContext>
-      <PageLabels page={page} />
-      <AttachmentPanel pageId={page.id} editable={page.can.edit} />
-      <CommentsSection page={page} thread={thread} />
+      <InlineComments
+        page={page}
+        thread={thread}
+        below={
+          <>
+            <PageLabels page={page} />
+            <AttachmentPanel pageId={page.id} editable={page.can.edit} />
+            <CommentsSection page={page} thread={thread} />
+          </>
+        }
+      >
+        <KnownAttachmentsContext value={attachmentIds}>
+          <DocPageContext value={{ id: page.id, spaceKey: space.key }}>
+            <DocView doc={page.body} />
+          </DocPageContext>
+        </KnownAttachmentsContext>
+      </InlineComments>
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
       {(dialog === "move" || dialog === "copy") && (

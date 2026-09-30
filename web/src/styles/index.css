@@ -584,6 +584,21 @@
     color: var(--color-ink-muted);
     font-style: italic;
   }
+  /* A passage with a thread on it is underlined as well as tinted, so it is
+   * found without colour; the open one is marked more strongly. */
+  .doc-content mark.doc-passage {
+    color: inherit;
+    cursor: pointer;
+    background: var(--color-warning-subtle);
+    text-decoration: underline dotted var(--color-warning);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+  .doc-content mark.doc-passage[data-active] {
+    background: var(--color-accent-subtle);
+    text-decoration-style: solid;
+    text-decoration-color: var(--color-accent);
+  }
   .doc-content p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;
@@ -667,6 +682,25 @@
     letter-spacing: 0.02em;
     text-transform: uppercase;
     color: var(--color-ink-muted);
+  }
+}
+
+/* Where the page leaves room beside it, a passage's thread opens in a panel at
+   the side, and the page moves over for it; elsewhere the panel sits in the
+   page's flow, right below its text. */
+@media (width >= 80rem) {
+  article:has(> [data-passage-panel]) {
+    margin-right: 22rem;
+  }
+  [data-passage-panel] {
+    position: fixed;
+    top: 4.5rem;
+    right: 1.5rem;
+    width: 20rem;
+    max-height: calc(100vh - 6rem);
+    margin-top: 0;
+    overflow-y: auto;
+    z-index: 10;
   }
 }
 

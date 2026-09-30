@@ -10,7 +10,8 @@ import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
 import { languageLabel, lowlight } from "./languages";
-import { ANCHOR_PATTERN, CELL_BACKGROUNDS, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
+import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
+import { Passage, usePassages, type BlockPath } from "./passages";
 
 /**
  * A document drawn as elements, never as HTML: every node becomes the React
@@ -35,7 +36,7 @@ export function DocView({
   return (
     <div className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
       <HeadingsContext value={headings}>
-        <Blocks nodes={doc.content} copy={anchors ? copy : null} />
+        <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
       </HeadingsContext>
       {status}
     </div>
@@ -74,7 +75,7 @@ export function DocDiffView({ blocks }: { blocks: { change: "equal" | "inserted"
       {blocks.map((block, i) => (
         <div key={i} className="doc-diff-block" data-diff-block={block.change}>
           {block.change !== "equal" && <span className="doc-diff-label">{labels[block.change]}</span>}
-          <Block node={block.node} copy={null} />
+          <Block node={block.node} copy={null} path={[i]} />
         </div>
       ))}
     </div>
@@ -85,11 +86,11 @@ export function DocDiffView({ blocks }: { blocks: { change: "equal" | "inserted"
 // and two elements with one id break its links and its accessibility.
 type Copy = ((anchor: string) => void) | null;
 
-function Blocks({ nodes, copy }: { nodes: DocNode[] | undefined; copy: Copy }) {
+function Blocks({ nodes, copy, path }: { nodes: DocNode[] | undefined; copy: Copy; path: BlockPath }) {
   return (
     <>
       {(nodes ?? []).map((node, i) => (
-        <Block key={i} node={node} copy={copy} />
+        <Block key={i} node={node} copy={copy} path={[...path, i]} />
       ))}
     </>
   );
@@ -101,17 +102,18 @@ function oneOf<T extends string>(values: readonly T[], value: unknown): T | unde
   return typeof value === "string" && (values as readonly string[]).includes(value) ? (value as T) : undefined;
 }
 
-function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
+function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPath }): ReactNode {
+  const block = usePassages() ? path.join(".") : undefined;
   switch (node.type) {
     case "paragraph":
-      return <p>{inline(node.content)}</p>;
+      return <p data-block={block}>{inline(node.content)}</p>;
     case "heading":
-      return <Heading node={node} copy={copy} />;
+      return <Heading node={node} copy={copy} block={block} />;
     case "bulletList":
-      return <ul>{items(node.content, copy)}</ul>;
+      return <ul>{items(node.content, copy, path)}</ul>;
     case "orderedList": {
       const start = Number(node.attrs?.start ?? 1);
-      return <ol start={Number.isInteger(start) && start !== 1 ? start : undefined}>{items(node.content, copy)}</ol>;
+      return <ol start={Number.isInteger(start) && start !== 1 ? start : undefined}>{items(node.content, copy, path)}</ol>;
     }
     case "taskList":
       return (
@@ -122,7 +124,7 @@ function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
               <li key={i} data-checked={checked}>
                 <input type="checkbox" checked={checked} readOnly disabled aria-label={t.editor.taskDone} />
                 <div>
-                  <Blocks nodes={item.content} copy={copy} />
+                  <Blocks nodes={item.content} copy={copy} path={[...path, i]} />
                 </div>
               </li>
             );
@@ -132,7 +134,7 @@ function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
     case "blockquote":
       return (
         <blockquote>
-          <Blocks nodes={node.content} copy={copy} />
+          <Blocks nodes={node.content} copy={copy} path={path} />
         </blockquote>
       );
     case "codeBlock":
@@ -158,7 +160,7 @@ function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
                         style={{ textAlign: oneOf(CELL_ALIGNS, cell.attrs?.align) }}
                         data-background={oneOf(CELL_BACKGROUNDS, cell.attrs?.background)}
                       >
-                        <Blocks nodes={cell.content} copy={copy} />
+                        <Blocks nodes={cell.content} copy={copy} path={[...path, r, c]} />
                       </Tag>
                     );
                   })}
@@ -172,7 +174,7 @@ function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
       const kind = oneOf(PANEL_KINDS, node.attrs?.kind) ?? "info";
       return (
         <div role="note" data-panel={kind} aria-label={t.editor.panels[kind]}>
-          <Blocks nodes={node.content} copy={copy} />
+          <Blocks nodes={node.content} copy={copy} path={path} />
         </div>
       );
     }
@@ -209,7 +211,7 @@ function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
   }
 }
 
-function Heading({ node, copy }: { node: DocNode; copy: Copy }) {
+function Heading({ node, copy, block }: { node: DocNode; copy: Copy; block?: string }) {
   const level = Math.min(Math.max(Number(node.attrs?.level ?? 1), 1), 3);
   const anchor = copy && typeof node.attrs?.id === "string" && ANCHOR_PATTERN.test(node.attrs.id) ? node.attrs.id : undefined;
   // The page's title is its h1, so a document's levels start one down.
@@ -217,7 +219,7 @@ function Heading({ node, copy }: { node: DocNode; copy: Copy }) {
   const text = textOf(node);
   return (
     <div className="doc-heading group" data-heading>
-      {createElement(tag, { id: anchor, "data-level": level }, inline(node.content))}
+      {createElement(tag, { id: anchor, "data-level": level, "data-block": block }, inline(node.content))}
       {anchor && (
         <IconButton
           icon={<Icon.Hash />}
@@ -259,10 +261,10 @@ function hast(node: Root | ElementContent): ReactNode {
   return null;
 }
 
-function items(nodes: DocNode[] | undefined, copy: Copy): ReactNode {
+function items(nodes: DocNode[] | undefined, copy: Copy, path: BlockPath): ReactNode {
   return (nodes ?? []).map((item, i) => (
     <li key={i}>
-      <Blocks nodes={item.content} copy={copy} />
+      <Blocks nodes={item.content} copy={copy} path={[...path, i]} />
     </li>
   ));
 }
@@ -302,6 +304,9 @@ function marked(text: string, marks: DocNode["marks"], mention?: string): ReactN
         break;
       case "strike":
         out = <s>{out}</s>;
+        break;
+      case INLINE_COMMENT_MARK:
+        if (typeof mark.attrs?.threadId === "string") out = <Passage threadId={mark.attrs.threadId}>{out}</Passage>;
         break;
       case "hint":
         out = <span data-hint="">{out}</span>;

@@ -218,3 +218,13 @@ export const DAILY_DIGEST_HOUR_UTC = 8;
 export const COMMENT_EDITOR_ROWS = 4;
 /** How long a thread a notification led to stays marked, so the eye finds it after the scroll. */
 export const COMMENT_HIGHLIGHT_MS = 2500;
+/** How often a new passage is marked afresh after somebody changed the page meanwhile, before giving up. */
+export const INLINE_ANCHOR_RETRIES = 2;
+/** The key that, with Ctrl or Cmd and Alt, comments on the selected text; a KeyboardEvent code, since Alt changes the key on a Mac. */
+export const INLINE_COMMENT_KEY_CODE = "KeyM";
+/** The same shortcut as aria-keyshortcuts names it. */
+export const INLINE_COMMENT_SHORTCUT = "Control+Alt+M";
+/** How far below the selection the comment button floats, in pixels. */
+export const INLINE_COMMENT_BUTTON_GAP_PX = 6;
+/** The most characters of a passage a thread shows; the server keeps up to 500. */
+export const INLINE_QUOTE_SHOWN_LENGTH = 200;
