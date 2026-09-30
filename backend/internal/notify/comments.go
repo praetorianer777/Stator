@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -57,6 +58,42 @@ func planCommentCreated(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	}
 	for _, id := range watchers {
 		plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: KindCommented})
+	}
+	return plan, nil
+}
+
+// planCommentEdited tells the people an edit named for the first time,
+// leaving out anybody already told about the comment.
+func planCommentEdited(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) {
+	var in events.CommentEdited
+	if err := json.Unmarshal(e.Payload, &in); err != nil || len(in.Mentioned) == 0 {
+		return nil, nil
+	}
+	var body []byte
+	err := tx.QueryRow(ctx, `
+		SELECT body FROM comment WHERE id = $1 AND org_id = current_org_id() AND deleted_at IS NULL`,
+		in.CommentID).Scan(&body)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	told, err := people(ctx, tx, `
+		SELECT user_id FROM notification WHERE comment_id = $1 AND org_id = current_org_id()`, in.CommentID)
+	if err != nil {
+		return nil, err
+	}
+	var excerpt string
+	if root, err := document.ParseComment(body); err == nil {
+		excerpt = Excerpt(document.PlainText(root))
+	}
+	thread, comment := in.ThreadID, in.CommentID
+	plan := &Plan{Actor: in.ActorID, Subject: Subject{PageID: in.PageID, ThreadID: &thread, CommentID: &comment, Excerpt: excerpt}}
+	for _, id := range in.Mentioned {
+		if !slices.Contains(told, id) {
+			plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: KindMentioned})
+		}
 	}
 	return plan, nil
 }

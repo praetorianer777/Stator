@@ -273,9 +273,19 @@ func add(ctx context.Context, tx db.DBTX, actor perm.Actor, id, threadID, pageID
 		VALUES (current_org_id(), $1, $2, $3, $4, $5)`, id, threadID, pageID, actor.UserID, []byte(body)); err != nil {
 		return fmt.Errorf("add the comment: %w", err)
 	}
+	mentioned, err := toTell(ctx, tx, pageID, nil, body)
+	if err != nil {
+		return err
+	}
 	return events.Emit(ctx, tx, events.TopicCommentCreated, events.CommentCreated{
-		CommentID: id, ThreadID: threadID, PageID: pageID, ActorID: actor.UserID, Reply: reply, Mentioned: []uuid.UUID{},
+		CommentID: id, ThreadID: threadID, PageID: pageID, ActorID: actor.UserID, Reply: reply, Mentioned: mentioned,
 	})
+}
+
+// toTell are the people body names and before did not, narrowed to those a
+// mention tells.
+func toTell(ctx context.Context, tx db.DBTX, pageID uuid.UUID, before, body json.RawMessage) ([]uuid.UUID, error) {
+	return perm.MentionsToTell(ctx, tx, pageID, document.MentionIDs(document.NewMentions(document.MentionsIn(before), document.MentionsIn(body))))
 }
 
 // Start begins a thread below a published page.
@@ -378,8 +388,21 @@ func (s *Service) Edit(ctx context.Context, actor perm.Actor, commentID uuid.UUI
 		if err := p.canComment(); err != nil {
 			return err
 		}
+		var before []byte
+		if err := tx.QueryRow(ctx, `SELECT body FROM comment WHERE id = $1`, commentID).Scan(&before); err != nil {
+			return fmt.Errorf("read the comment: %w", err)
+		}
 		if _, err := tx.Exec(ctx, `UPDATE comment SET body = $2, edited_at = now() WHERE id = $1`, commentID, []byte(body)); err != nil {
 			return fmt.Errorf("change the comment: %w", err)
+		}
+		mentioned, err := toTell(ctx, tx, h.page, before, body)
+		if err != nil {
+			return err
+		}
+		if err := events.Emit(ctx, tx, events.TopicCommentEdited, events.CommentEdited{
+			CommentID: commentID, ThreadID: h.thread, PageID: h.page, ActorID: actor.UserID, Mentioned: mentioned,
+		}); err != nil {
+			return err
 		}
 		t, err := thread(ctx, tx, actor, p, h.thread)
 		if err != nil {

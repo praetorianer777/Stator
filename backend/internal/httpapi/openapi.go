@@ -283,7 +283,7 @@ var operations = []operation{
 		responses: map[int]any{200: env{"thread": comment.Thread{}}, 409: errorEnvelope{}}},
 
 	// Mentions (#24).
-	{method: "GET", path: "/pages/{pageID}/mentionable", handler: "handleListMentionable", tag: "mentions", pending: true,
+	{method: "GET", path: "/pages/{pageID}/mentionable", handler: "handleListMentionable", tag: "mentions",
 		summary: "Members to mention on a page, each saying whether they may view it once published; only those are told.",
 		query:   pickerQuery, responses: ok(env{"people": []perm.Mentionable{}})},
 
