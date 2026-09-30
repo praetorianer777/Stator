@@ -46,6 +46,8 @@ render() { # description args...
         # The api serves them only for the browser suite; a deployment must
         # never switch them on, nor even hand it a token.
         check "${what}: the test endpoints stay off" "$(grep -c 'STATOR_TEST_ENDPOINTS' <<<"${RENDERED}")" "0"
+        # Only the compose stack trades commit durability for speed.
+        check "${what}: commits wait for the disk" "$(grep -c 'synchronous_commit' <<<"${RENDERED}")" "0"
     else
         fail "${what}: helm template"
         echo "${RENDERED}" | sed 's/^/      /'
