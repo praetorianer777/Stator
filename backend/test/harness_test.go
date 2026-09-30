@@ -88,9 +88,12 @@ func (h *harness) settle(t *testing.T) {
 	if h.replica == nil {
 		return
 	}
+	// With synchronous_commit off a commit can still sit in the WAL buffers,
+	// unsent. Emitting a message with flush writes out everything before it,
+	// so the replica need not wait for the WAL writer.
 	var text string
-	if err := h.super.QueryRow(context.Background(), `SELECT pg_current_wal_lsn()::text`).Scan(&text); err != nil {
-		t.Fatalf("read the primary's position: %v", err)
+	if err := h.super.QueryRow(context.Background(), `SELECT pg_logical_emit_message(false, 'stator-settle', '', true)::text`).Scan(&text); err != nil {
+		t.Fatalf("flush the primary's WAL: %v", err)
 	}
 	lsn, err := db.ParseLSN(text)
 	if err != nil {
