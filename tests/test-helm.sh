@@ -48,6 +48,8 @@ render() { # description args...
         check "${what}: the test endpoints stay off" "$(grep -c 'STATOR_TEST_ENDPOINTS' <<<"${RENDERED}")" "0"
         # Only the compose stack trades commit durability for speed.
         check "${what}: commits wait for the disk" "$(grep -c 'synchronous_commit' <<<"${RENDERED}")" "0"
+        # The stub stands in for Armature in the test stacks alone.
+        check "${what}: no armature-stub" "$(grep -c 'armature-stub' <<<"${RENDERED}")" "0"
     else
         fail "${what}: helm template"
         echo "${RENDERED}" | sed 's/^/      /'
@@ -97,6 +99,13 @@ check "the upload limit is set, and can be changed" \
 check "mail is off until a relay is named, then goes from the sender set" \
     "$(grep -c 'STATOR_SMTP_ADDR' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set mail.smtpAddr=smtp.example:25 --set 'mail.from=Wiki <wiki@example.com>' 2>&1 | grep -E 'STATOR_(SMTP_ADDR|MAIL_FROM)' | tr -d ' ' | paste -sd ' ')" \
     '0 STATOR_SMTP_ADDR:"smtp.example:25" STATOR_MAIL_FROM:"Wiki<wiki@example.com>"'
+
+check "nothing inside the network is reached until named" "$(grep -cE 'STATOR_(OUTBOUND_ALLOW|ARMATURE_BACKCHANNEL)' <<<"${RENDERED}")" "0"
+check "the guard lets through what is named, and Armature is reached where it is mapped" \
+    "$(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set 'network.outboundAllow={armature-api.armature.svc,10.40.0.0/16}' \
+        --set 'armature.backchannel.https://armature\.example\.com=http://armature-api.armature.svc:8080' 2>&1 \
+        | grep -E 'STATOR_(OUTBOUND_ALLOW|ARMATURE_BACKCHANNEL)' | tr -d ' ' | paste -sd ' ')" \
+    'STATOR_OUTBOUND_ALLOW:"armature-api.armature.svc,10.40.0.0/16" STATOR_ARMATURE_BACKCHANNEL:"https://armature.example.com=http://armature-api.armature.svc:8080"'
 
 echo "⎈ CloudNativePG with one instance"
 render "cnpg, 1 instance" --set cnpg.enabled=true --set cnpg.spec.instances=1

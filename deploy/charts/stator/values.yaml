@@ -165,6 +165,17 @@ auth:
 network:
   # Extra browser origins allowed to call the API. Same-origin needs none.
   corsOrigins: []
+  # Host names and CIDRs inside the network that outbound calls, such as those
+  # to an organization's Armature, may reach anyway. Every other address in
+  # the cluster's and the node's networks is refused. Empty allows none.
+  outboundAllow: []
+
+armature:
+  # public-origin: reachable-origin, for an Armature this release reaches at
+  # another address than the one people open it at, such as
+  # {"https://armature.example.com": "http://armature-api.armature.svc:8080"}.
+  # The reachable host must then be in network.outboundAllow as well.
+  backchannel: {}
 
 telemetry:
   # /metrics has no authentication. Keep it on the cluster network.
