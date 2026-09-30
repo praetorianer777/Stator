@@ -78,15 +78,24 @@ const (
 	maxIDLength = 128
 	// maxLanguageLength bounds a code block's language name.
 	maxLanguageLength = 32
+	// MaxAltLength bounds an image's description.
+	MaxAltLength = 500
+	// MaxImageWidth bounds an image's stored width, in pixels, as a column's.
+	MaxImageWidth = 4000
+	// maxFileNameLength matches the longest file name an upload keeps.
+	maxFileNameLength = 200
 )
+
+// UUIDPattern is an id as the API writes it, in lower case.
+const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
 
 // AnchorPattern is what a heading anchor looks like: lowercase words of
 // letters and digits joined by single hyphens.
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel"}
-	inlineNodes = []string{"text", "hardBreak", "mention"}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "image"}
+	inlineNodes = []string{"text", "hardBreak", "mention", "attachment"}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
 		"rowspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -149,6 +158,20 @@ var Allowed = Allowlist{
 				"id":                    {Kind: KindString, MaxLength: maxIDLength, Pattern: `^\S+$`},
 				"label":                 {Kind: KindString, MaxLength: maxLabelLength, Pattern: `\S`},
 				"mentionSuggestionChar": {Kind: KindString, Nullable: true, Enum: []string{"@"}},
+			},
+		},
+		"image": {
+			Attrs: map[string]Attr{
+				"attachmentId": {Kind: KindString, Pattern: UUIDPattern},
+				"alt":          {Kind: KindString, Nullable: true, MaxLength: MaxAltLength},
+				"width":        {Kind: KindInteger, Nullable: true, Min: 1, Max: MaxImageWidth},
+			},
+		},
+		"attachment": {
+			Inline: true,
+			Attrs: map[string]Attr{
+				"attachmentId": {Kind: KindString, Pattern: UUIDPattern},
+				"fileName":     {Kind: KindString, MaxLength: maxFileNameLength, Pattern: `\S`},
 			},
 		},
 	},

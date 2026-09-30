@@ -5,6 +5,9 @@ import type { Space } from "@/api/spaces";
 import { useTrashPage } from "@/api/trash";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
+import { usePageAttachmentIds } from "@/features/attachments/hooks";
+import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocView } from "@/features/editor/DocView";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
@@ -38,6 +41,7 @@ export function PageScreen({ pageId }: { pageId: string }) {
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
   const trash = useTrashPage(data?.space.key ?? "");
+  const attachmentIds = usePageAttachmentIds(pageId);
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (isLoading || !data) return <Skeleton />;
   const { page, space } = data;
@@ -134,7 +138,11 @@ export function PageScreen({ pageId }: { pageId: string }) {
           </Button>
         </div>
       )}
-      <DocView doc={page.body} />
+      <KnownAttachmentsContext value={attachmentIds}>
+        <DocView doc={page.body} />
+      </KnownAttachmentsContext>
+      {/* The same rule as the Edit button: page.can is filled in only once page permissions (#19) exist. */}
+      <AttachmentPanel pageId={page.id} editable={space.can.editPages} />
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
       {(dialog === "move" || dialog === "copy") && (
         <PlaceDialog

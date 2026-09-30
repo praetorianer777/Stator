@@ -146,6 +146,14 @@ describe("the web editor against the server's allowlist", () => {
     e.chain().focus("end").insertTable({ rows: 2, cols: 2, withHeaderRow: true }).setCellAttribute("background", "accent").toggleHeaderColumn().run();
     e.chain().focus("end").setCodeBlock({ language: "go" }).insertContent("x := 1").run();
     e.chain().focus("end").setPanel("error").setHeading({ level: 3 }).run();
+    const attachmentId = "0195f000-0000-7000-8000-0000000000f1";
+    e.chain()
+      .focus("end")
+      .insertContent([
+        { type: "image", attrs: { attachmentId, alt: "A picture", width: 480 } },
+        { type: "paragraph", content: [{ type: "attachment", attrs: { attachmentId, fileName: "plan.pdf" } }] },
+      ])
+      .run();
     docs.push(e.getJSON() as DocNode);
 
     for (const doc of docs) expect(problems(doc)).toEqual([]);
@@ -162,6 +170,9 @@ describe("the web editor against the server's allowlist", () => {
       '"checked":true',
       '"start":3',
       '"language":"go"',
+      '"type":"image"',
+      '"width":480',
+      '"type":"attachment"',
     ]) {
       expect(all).toContain(needle);
     }

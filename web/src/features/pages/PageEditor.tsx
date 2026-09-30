@@ -6,6 +6,7 @@ import { pageQuery, usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useDiscardDraft, useDraft, usePublish, useSaveDraft, type Draft, type PublishOptions } from "@/api/versions";
 import { Button, ErrorBanner, Field, PageHeader, Skeleton } from "@/components/ui";
+import { useEditorAttachments } from "@/features/attachments/hooks";
 import { Editor } from "@/features/editor/Editor";
 import { emptyDoc, type Doc } from "@/features/editor/schema";
 import { DRAFT_AUTOSAVE_MS, PAGE_TITLE_MAX_LENGTH } from "@/config";
@@ -59,6 +60,7 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
   const [state, setState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState("");
   const [titleError, setTitleError] = useState("");
+  const files = useEditorAttachments(page.id);
   const [dialog, setDialog] = useState(false);
   const [conflict, setConflict] = useState<{ latest: number; options: PublishOptions } | null>(null);
 
@@ -268,6 +270,9 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
         error={titleError}
         controlSize="lg"
       />
+      {files.errors.map((message) => (
+        <ErrorBanner key={message}>{message}</ErrorBanner>
+      ))}
       <Editor
         id="page-body"
         value={initialBody}
@@ -276,6 +281,8 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
           changed();
         }}
         onSubmit={() => openPublish()}
+        upload={files.upload}
+        attachments={files.index}
       />
       {dialog && <PublishDialog title={title} busy={publish.isPending} onClose={() => setDialog(false)} onPublish={(options) => void onPublish(options)} />}
     </form>
