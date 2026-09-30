@@ -167,7 +167,7 @@ func (h *harness) makeMember(t *testing.T, slug string) member {
 		_, _ = h.super.Exec(context.Background(), `DELETE FROM org WHERE id = $1`, m.org)
 		_, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE id = $1`, m.user)
 	})
-	m.ctx = tenant.WithOrg(ctx, tenant.Org{ID: m.org, Slug: full})
+	m.ctx = db.WithUser(tenant.WithOrg(ctx, tenant.Org{ID: m.org, Slug: full}), m.user)
 	h.settle(t)
 	return m
 }

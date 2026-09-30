@@ -124,11 +124,11 @@ func (s *Service) SaveDraft(ctx context.Context, actor perm.Actor, id uuid.UUID,
 	}
 	var out *Draft
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		p, sp, err := load(ctx, tx, actor, id, false)
+		p, _, err := load(ctx, tx, actor, id, false)
 		if err != nil {
 			return err
 		}
-		if err := perm.Check(ctx, tx, actor, perm.EditPages, sp.ID); err != nil {
+		if err := p.must(perm.EditPages); err != nil {
 			return err
 		}
 		if in.BaseVersion < 0 || in.BaseVersion > p.Version {
@@ -171,11 +171,11 @@ func (s *Service) Publish(ctx context.Context, actor perm.Actor, id uuid.UUID, i
 		version *VersionEntry
 	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		p, sp, err := load(ctx, tx, actor, id, true)
+		p, _, err := load(ctx, tx, actor, id, true)
 		if err != nil {
 			return err
 		}
-		if err := perm.Check(ctx, tx, actor, perm.EditPages, sp.ID); err != nil {
+		if err := p.must(perm.EditPages); err != nil {
 			return err
 		}
 		draft, err := draftOf(ctx, tx, actor, id, true)
@@ -265,11 +265,11 @@ func (s *Service) RestoreVersion(ctx context.Context, actor perm.Actor, id uuid.
 		entry *VersionEntry
 	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		p, sp, err := load(ctx, tx, actor, id, true)
+		p, _, err := load(ctx, tx, actor, id, true)
 		if err != nil {
 			return err
 		}
-		if err := perm.Check(ctx, tx, actor, perm.EditPages, sp.ID); err != nil {
+		if err := p.must(perm.EditPages); err != nil {
 			return err
 		}
 		old, err := version(ctx, tx, id, number)

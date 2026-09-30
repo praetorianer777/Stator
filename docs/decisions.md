@@ -3,6 +3,69 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: Permissions are rows, rules are SQL functions, and the database knows who asks
+
+Grants are rows, as in Armature: `global_grant` for `use` and
+`createSpace`, `space_grant` per space and permission, `page_restriction`
+per page and list, each naming a person, a group or (for grants) everyone.
+`administer` of the organization is not a row: it is the owner and admin
+roles, so it can neither drift from them nor be taken from the last
+administrator. Organization administrators hold every permission in every
+space, so no space is ever orphaned, and nobody without `use` holds
+anything. A new organization grants everyone `use`, and a new space grants
+everyone view, add pages, add comments and delete and its creator
+administer, by triggers, so a space made by any path starts the same; the
+migration gave every existing space the same, which was the behaviour
+before.
+
+Each transaction names the person it acts for in `app.user_id`, beside
+`app.org_id`, set from the request by `db.WithUser`, and the rules are SQL
+functions of that person: `perm_space_holds`, `perm_page_viewable`,
+`perm_page_editable` and the ones they call. The policies call them, and the
+service does too: every list of pages narrows its query with
+`perm.ViewablePage`, which is `perm_page_viewable`, so the tree, the outline,
+`hasChildren`, the trash, copies and search cannot disagree about what a
+person sees. The service decides single acts in Go (`perm.Decide`,
+`perm.PageRules`) from facts the same functions read, which keeps the rules
+testable alone and lets it answer 403 or 404 in a sentence; an integration
+test holds the Go rules and the SQL ones to each other page by page.
+
+A view restriction hides the page and every page below it, an edit
+restriction stops editing and deleting them, and a person has to pass every
+list on the page and above it. That makes inheritance a walk up the tree at
+read time instead of copies of the lists kept below, so a move takes on its
+new parents' lists and keeps its own without rewriting anything. A save that
+would leave its saver unable to view or edit the page is refused unless they
+administer the space; the home page takes no view list, which is what the
+space's view is for.
+
+What the database enforces, for `stator_app`, with restrictive policies and
+one trigger:
+
+- reading spaces, pages, versions, drafts (one's own only), restrictions and
+  grants follows the same rules as the service, `use` included;
+- writing a page's content or place needs edit, its trash marks need delete,
+  purging needs administer of the space, and a new page needs edit of its
+  parent, which `page_write_guard` tells apart since a policy cannot see
+  which columns an update changes;
+- versions and drafts need edit, restrictions need edit of their page and no
+  view list on a home page, space grants need administer of the space, global
+  grants an organization administrator, and a new space `createSpace`.
+
+Moves of pages the actor cannot see, which trashing a subtree, restoring an
+item and reordering siblings make, go through a few `SECURITY DEFINER`
+functions (`page_trash`, `page_untrash`, `page_place`, `page_purge`,
+`space_empty_trash`, `page_sibling_ranks`), each of which checks the rule for
+the page the actor named, taking the actor from the transaction.
+
+What only the service enforces: that a restriction save does not lock its
+saver out, and every answer's shape, such as 404 rather than 403 for what
+may not be seen. And what nothing below the api can enforce: `app.user_id`
+is set by whoever holds a `stator_app` connection, as `app.org_id` is, so the
+database holds a connection to the person it names but cannot tell a forged
+name. That credential is the api's alone, and the policies turn a query
+that forgets whom it is for into one that sees nothing.
+
 ## 2026-09-29: History is append only, and a comparison aligns blocks, then words
 
 `page_version` rows are written once. The app role may only read and insert
@@ -12,9 +75,7 @@ whoever writes them, and it locks the page row, so two publishes queue.
 Publishing inserts the version, then copies it onto `page`, in one
 transaction. A draft is keyed on page and person, and references the
 membership, so leaving the organization takes a person's drafts with it.
-The database walls drafts off by organization; that one person's draft is
-hidden from the next is the service's rule until #19 gives the database a
-notion of who is asking.
+The database walls drafts off by organization, and since #19 by person too.
 
 An unpublished page is `version = 0`, and whether somebody may see it is its
 `created_by`, checked for the page and every page above it wherever a page is

@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
@@ -48,6 +49,9 @@ type Server struct {
 	Themes    *theme.Service
 	Spaces    *space.Service
 	Pages     *page.Service
+	// Perms answers the permission screens and the use check in front of
+	// every route; nil lets everybody who is a member through.
+	Perms *perm.Service
 	// Fresh remembers each caller's last write between requests; nil leaves
 	// reads unpinned, which is only right without replicas.
 	Fresh Freshness
@@ -122,10 +126,16 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/users/requests/{userID}", s.handleDeclineJoinRequest)
 			r.Get("/org/tokens", s.handleListOrgAPITokens)
 			r.Delete("/org/tokens/{tokenID}", s.handleRevokeOrgAPIToken)
+			r.Get("/org/permissions", s.handleListGlobalPermissions)
+			r.Put("/org/permissions/{permission}", s.handleSetGlobalPermission)
 		})
 
+		// What the caller may do is theirs to read even without use, so the
+		// client can say why everything else is refused.
+		r.With(requireOrg).Get("/access/me", s.handleMyAccess)
+
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg)
+			r.Use(requireOrg, s.requireUse)
 			r.Get("/tokens", s.handleListAPITokens)
 			// Making one is for a session only, so a leaked token cannot mint a
 			// longer lived one and outlive its own revocation.
@@ -137,7 +147,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		// signed in. The fixed paths come first so "active" is never an id.
 		r.With(requireAuth).Get("/themes/examples", s.handleThemeExamples)
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg)
+			r.Use(requireOrg, s.requireUse)
 			r.Get("/themes", s.handleListThemes)
 			r.Post("/themes", s.handleCreateTheme)
 			r.Get("/themes/active", s.handleActiveTheme)
@@ -162,7 +172,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		}
 
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg)
+			r.Use(requireOrg, s.requireUse)
+			r.Get("/people", s.handleListPeople)
+			r.Get("/groups", s.handleListGroups)
 			r.Get("/spaces", s.handleListSpaces)
 			r.Post("/spaces", s.handleCreateSpace)
 			r.Get("/spaces/{spaceKey}", s.handleGetSpace)
@@ -170,6 +182,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/spaces/{spaceKey}", s.handleDeleteSpace)
 			r.Get("/spaces/{spaceKey}/pages", s.handleListPages)
 			r.Get("/spaces/{spaceKey}/outline", s.handleSpaceOutline)
+			r.Get("/spaces/{spaceKey}/permissions", s.handleListSpacePermissions)
+			r.Put("/spaces/{spaceKey}/permissions", s.handleSetSpacePermissions)
 			r.Get("/spaces/{spaceKey}/trash", s.handleListTrash)
 			r.Delete("/spaces/{spaceKey}/trash", s.handleEmptyTrash)
 			r.Post("/spaces/{spaceKey}/trash/{pageID}/restore", s.handleRestorePage)
@@ -188,6 +202,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/versions/{versionNumber}", s.handleGetVersion)
 			r.Post("/pages/{pageID}/versions/{versionNumber}/restore", s.handleRestoreVersion)
 			r.Get("/pages/{pageID}/compare", s.handleCompareVersions)
+			r.Get("/pages/{pageID}/restrictions", s.handleGetPageRestrictions)
+			r.Put("/pages/{pageID}/restrictions", s.handleSetPageRestrictions)
 			mountPending(r)
 		})
 	})

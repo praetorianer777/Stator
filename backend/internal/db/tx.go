@@ -10,7 +10,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
-// setOrgSQL binds the row level security variable for the current transaction.
+// setOrgSQL binds a row level security variable for the current transaction.
 // SET LOCAL takes no bind parameter; set_config does, and its true makes it local.
 const setOrgSQL = `SELECT set_config($1, $2, true)`
 
@@ -88,6 +88,11 @@ func (c *Cluster) inTx(
 	if hasOrg {
 		if _, err := tx.Exec(ctx, setOrgSQL, tenant.PostgresVar, org.ID.String()); err != nil {
 			return fmt.Errorf("apply tenant scope: %w", err)
+		}
+		if user, ok := UserFrom(ctx); ok {
+			if _, err := tx.Exec(ctx, setOrgSQL, UserVar, user.String()); err != nil {
+				return fmt.Errorf("apply the acting person: %w", err)
+			}
 		}
 	}
 	if err := fn(ctx, tx); err != nil {

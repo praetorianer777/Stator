@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/internal/space"
@@ -129,6 +130,7 @@ func run() error {
 		Themes:          theme.NewService(cluster, store),
 		Spaces:          space.NewService(cluster),
 		Pages:           page.NewService(cluster),
+		Perms:           perm.NewService(cluster),
 		CookieName:      cfg.Auth.SessionCookie,
 		Secure:          cfg.Auth.SecureCookies,
 		AppBaseURL:      cfg.AppBaseURL,

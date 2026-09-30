@@ -44,24 +44,19 @@ func (s *Service) Trash(ctx context.Context, actor perm.Actor, id uuid.UUID) (db
 		if err := lockTrees(ctx, tx, id); err != nil {
 			return err
 		}
-		current, sp, err := load(ctx, tx, actor, id, true)
+		current, _, err := load(ctx, tx, actor, id, true)
 		if err != nil {
 			return err
 		}
 		if current.Home {
 			return ErrHomeNotTrashed
 		}
-		if err := perm.Check(ctx, tx, actor, perm.EditPages, sp.ID); err != nil {
+		if err := current.must(perm.DeletePages); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `
-			WITH RECURSIVE below (id) AS (
-				SELECT $1::uuid
-				UNION ALL
-				SELECT p.id FROM page p JOIN below b ON p.parent_id = b.id WHERE`+live+`
-			)
-			UPDATE page SET trashed_at = now(), trashed_by = $2, trash_id = $1
-			WHERE id IN (SELECT id FROM below)`, id, actor.UserID)
+		// The database marks the pages below too, those the actor cannot
+		// see included, once it has checked the page itself.
+		_, err = tx.Exec(ctx, `SELECT page_trash($1)`, id)
 		return err
 	})
 }
@@ -79,7 +74,7 @@ func trashSpace(ctx context.Context, tx db.DBTX, actor perm.Actor, key string, a
 func (s *Service) ListTrash(ctx context.Context, actor perm.Actor, spaceKey string) ([]TrashItem, error) {
 	out := []TrashItem{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		sp, err := trashSpace(ctx, tx, actor, spaceKey, perm.EditPages)
+		sp, err := trashSpace(ctx, tx, actor, spaceKey, perm.DeletePages)
 		if err != nil {
 			return err
 		}
@@ -90,8 +85,7 @@ func (s *Service) ListTrash(ctx context.Context, actor perm.Actor, spaceKey stri
 			FROM page p
 			JOIN page parent ON parent.id = p.parent_id
 			LEFT JOIN app_user u ON u.id = p.trashed_by
-			WHERE p.space_id = $1 AND p.trash_id = p.id AND`+visible+`
-			  AND (parent.version > 0 OR parent.created_by = $2)
+			WHERE p.space_id = $1 AND p.trash_id = p.id AND `+perm.ViewablePage("p", 2)+`
 			ORDER BY p.trashed_at DESC, p.id`, sp.ID, actor.UserID)
 		if err != nil {
 			return err
@@ -123,7 +117,7 @@ func (s *Service) Restore(ctx context.Context, actor perm.Actor, spaceKey string
 		if err := lockTrees(ctx, tx, id); err != nil {
 			return err
 		}
-		sp, err := trashSpace(ctx, tx, actor, spaceKey, perm.EditPages)
+		sp, err := trashSpace(ctx, tx, actor, spaceKey, perm.DeletePages)
 		if err != nil {
 			return err
 		}
@@ -131,16 +125,27 @@ func (s *Service) Restore(ctx context.Context, actor perm.Actor, spaceKey string
 		if err != nil {
 			return err
 		}
+		if access, _, err := perm.ForPage(ctx, tx, actor, id); err != nil {
+			return err
+		} else if !access.View {
+			return ErrNotInTrash
+		} else if !access.Delete {
+			return &perm.DeniedError{Action: perm.DeletePages}
+		}
 		var parentInTree bool
-		if err := tx.QueryRow(ctx, `SELECT trashed_at IS NULL FROM page WHERE id = $1`, parent).Scan(&parentInTree); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page WHERE id = $1 AND trashed_at IS NULL)`, parent).Scan(&parentInTree); err != nil {
 			return err
 		}
+		var home *uuid.UUID
+		var homeRank *string
 		if !parentInTree {
-			if err := underHome(ctx, tx, sp, id); err != nil {
+			r, err := rankAt(ctx, tx, Placement{ParentID: sp.HomePageID}, id)
+			if err != nil {
 				return err
 			}
+			home, homeRank = &sp.HomePageID, &r
 		}
-		if _, err := tx.Exec(ctx, `UPDATE page SET trashed_at = NULL, trashed_by = NULL, trash_id = NULL WHERE trash_id = $1`, id); err != nil {
+		if _, err := tx.Exec(ctx, `SELECT page_untrash($1, $2, $3)`, id, home, homeRank); err != nil {
 			return err
 		}
 		out, _, err = load(ctx, tx, actor, id, false)
@@ -155,8 +160,7 @@ func underHome(ctx context.Context, tx db.DBTX, sp *space.Space, id uuid.UUID) e
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, `UPDATE page SET parent_id = $2, rank = $3 WHERE id = $1`, id, sp.HomePageID, r)
-	return err
+	return place(ctx, tx, []uuid.UUID{id}, sp.HomePageID, []string{r})
 }
 
 // Purge deletes an item of the trash for good. Items deleted earlier from
@@ -190,11 +194,11 @@ func (s *Service) Purge(ctx context.Context, actor perm.Actor, spaceKey string, 
 				return err
 			}
 		}
-		tag, err := tx.Exec(ctx, `DELETE FROM page WHERE trash_id = $1`, id)
-		if err != nil {
+		var gone int64
+		if err := tx.QueryRow(ctx, `SELECT page_purge($1)`, id).Scan(&gone); err != nil {
 			return fmt.Errorf("purge the page: %w", err)
 		}
-		return record(ctx, tx, actor, audit.ActionPagePurged, id, map[string]any{"space": sp.Key, "title": title, "pages": tag.RowsAffected()})
+		return record(ctx, tx, actor, audit.ActionPagePurged, id, map[string]any{"space": sp.Key, "title": title, "pages": gone})
 	})
 }
 
@@ -208,11 +212,11 @@ func (s *Service) EmptyTrash(ctx context.Context, actor perm.Actor, spaceKey str
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('page-tree:' || $1::text, 0))`, sp.ID); err != nil {
 			return err
 		}
-		tag, err := tx.Exec(ctx, `DELETE FROM page WHERE space_id = $1 AND trash_id IS NOT NULL`, sp.ID)
-		if err != nil {
+		var gone int64
+		if err := tx.QueryRow(ctx, `SELECT space_empty_trash($1)`, sp.ID).Scan(&gone); err != nil {
 			return fmt.Errorf("empty the trash: %w", err)
 		}
-		return record(ctx, tx, actor, audit.ActionTrashEmptied, sp.ID, map[string]any{"space": sp.Key, "pages": tag.RowsAffected()})
+		return record(ctx, tx, actor, audit.ActionTrashEmptied, sp.ID, map[string]any{"space": sp.Key, "pages": gone})
 	})
 }
 
