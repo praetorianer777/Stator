@@ -16,6 +16,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
@@ -149,6 +150,12 @@ var operations = []operation{
 	{method: "DELETE", path: "/pages/{pageID}", handler: "handleTrashPage", tag: "pages", summary: "Move a page and every page below it to its space's trash.", responses: none()},
 	{method: "POST", path: "/pages/{pageID}/move", handler: "handleMovePage", tag: "pages", summary: "Move a page under another, in its space or another, with or without its children; a move under itself is refused.", request: page.MoveInput{}, responses: ok(env{"page": page.Page{}})},
 	{method: "POST", path: "/pages/{pageID}/copy", handler: "handleCopyPage", tag: "pages", summary: "Copy a page, with or without the pages below it, under a parent in its space or another.", request: page.CopyInput{}, responses: created(env{"page": page.Page{}})},
+
+	// Templates (#15).
+	{method: "GET", path: "/templates", handler: "handleListTemplates", tag: "templates", summary: "The documents a new page can start from, in the order to offer them; send one's body and title with POST /pages.",
+		responses: ok(env{"templates": []template.Template{}})},
+	{method: "GET", path: "/templates/{templateKey}", handler: "handleGetTemplate", tag: "templates", summary: "One template by its key.",
+		responses: ok(env{"template": template.Template{}})},
 
 	// Drafts and publishing (#13).
 	{method: "GET", path: "/pages/{pageID}/draft", handler: "handleGetDraft", tag: "drafts", summary: "The caller's own draft of a page, or null when they have none.",

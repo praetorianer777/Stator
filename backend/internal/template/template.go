@@ -1,0 +1,81 @@
+// Package template holds the documents a new page can start from.
+//
+// Built-ins are data, not rows: one JSON file per language under builtin/,
+// read once at start. Each body is a document as the editor stores it, so the
+// allowlist judges it like any page, and its hints are text carrying the
+// hint mark, which the database strips from whatever is published.
+package template
+
+import (
+	"bytes"
+	"embed"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"sync"
+)
+
+// DateToken in a title is replaced by the client with the day the page is made.
+const DateToken = "{date}"
+
+// Template is one document a page can start from.
+type Template struct {
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	// Title is what the new page is called, with DateToken for today; empty
+	// leaves the title to the author.
+	Title string `json:"title"`
+	// Body is the whole document the page starts with.
+	Body    json.RawMessage `json:"body"`
+	BuiltIn bool            `json:"builtIn"`
+}
+
+// ErrUnknown is returned for a key that names no template.
+var ErrUnknown = errors.New("no such template")
+
+//go:embed builtin/*.json
+var builtinFiles embed.FS
+
+// Language is the one the built-ins are written in until they are translated.
+const Language = "en"
+
+var builtins = sync.OnceValues(func() ([]Template, error) {
+	raw, err := builtinFiles.ReadFile("builtin/" + Language + ".json")
+	if err != nil {
+		return nil, err
+	}
+	var file struct {
+		Templates []Template `json:"templates"`
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&file); err != nil {
+		return nil, fmt.Errorf("read the built-in templates: %w", err)
+	}
+	for i := range file.Templates {
+		file.Templates[i].BuiltIn = true
+	}
+	return file.Templates, nil
+})
+
+// BuiltIns are the templates shipped with the product, in the order offered.
+func BuiltIns() []Template {
+	list, err := builtins()
+	if err != nil {
+		// The file is compiled in and a unit test reads it, so this is a
+		// broken build rather than something a request could cause.
+		panic(err)
+	}
+	return list
+}
+
+// ByKey finds one template.
+func ByKey(key string) (Template, error) {
+	for _, t := range BuiltIns() {
+		if t.Key == key {
+			return t, nil
+		}
+	}
+	return Template{}, ErrUnknown
+}
