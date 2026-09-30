@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { BelowPage } from "@/api/tree";
+import type { AppRouter } from "@/routes";
 import { renderAt, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
@@ -41,6 +42,10 @@ function stubPage(doc: ReturnType<typeof body>, below: Answer | ((request: Reque
     "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
     [`GET /pages/${PAGE_ID}`]: { status: 200, body: { page, space } },
     [`GET /pages/${PAGE_ID}/draft`]: { status: 200, body: { draft: null } },
+    [`PUT /pages/${PAGE_ID}/draft`]: async (request) => {
+      const input = (await request.json()) as { title: string; body: unknown; baseVersion: number };
+      return { status: 200, body: { draft: { pageId: PAGE_ID, ...input, updatedAt: "2026-09-30T08:00:00Z" } } };
+    },
     [`GET /pages/${PAGE_ID}/attachments`]: { status: 200, body: { attachments: [] } },
     [`GET /pages/${PAGE_ID}/below`]: (request) => {
       asked.push(new URL(request.url, "http://app.test").searchParams);
@@ -48,6 +53,17 @@ function stubPage(doc: ReturnType<typeof body>, below: Answer | ((request: Reque
     },
   });
   return { sent, asked };
+}
+
+/**
+ * Closes the editor, which saves the draft it still holds, and waits for that
+ * save to land so it cannot outlive the test. Returns the body saved.
+ */
+async function closeEditor(router: AppRouter, sent: ReturnType<typeof stubApi>) {
+  await userEvent.click(document.querySelector<HTMLElement>('[data-action="close-editor"]')!);
+  await waitFor(() => expect(sent.some((r) => r.method === "PUT")).toBe(true));
+  await waitFor(() => expect(router.options.context.queryClient.isMutating()).toBe(0));
+  return (sent.filter((r) => r.method === "PUT").at(-1)!.body as { body: { content: DocNode[] } }).body;
 }
 
 const toc = (maxLevel = 3): DocNode => ({ type: "tableOfContents", attrs: { maxLevel } });
@@ -148,8 +164,8 @@ describe("the editor", () => {
   it(
     "keeps the table of contents up to date as headings are typed, and sets its depth from the keyboard",
     async () => {
-      stubPage(body(toc(), heading(1, "Install", "install"), { type: "paragraph" }));
-      await renderAt(`/s/DOCS/p/${PAGE_ID}/guide/edit`);
+      const { sent } = stubPage(body(toc(), heading(1, "Install", "install"), { type: "paragraph" }));
+      const router = await renderAt(`/s/DOCS/p/${PAGE_ID}/guide/edit`);
       const box = await screen.findByRole("textbox", { name: "Page content" }, { timeout: 10_000 });
       const nav = await within(box).findByRole("navigation", { name: "Table of contents" });
       expect(
@@ -191,6 +207,10 @@ describe("the editor", () => {
       );
       expect(levels).toHaveValue("1");
       expect(await axeViolations()).toEqual([]);
+
+      const saved = await closeEditor(router, sent);
+      expect(saved.content[0]).toEqual(toc(1));
+      expect(saved.content[2]).toMatchObject({ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Linux" }] });
     },
     EDITOR_TEST_MS,
   );
@@ -198,11 +218,11 @@ describe("the editor", () => {
   it(
     "lists the pages below with settings a keyboard reaches, and asks again when they change",
     async () => {
-      const { asked } = stubPage(body(childPages("children", null, "tree")), {
+      const { sent, asked } = stubPage(body(childPages("children", null, "tree")), {
         status: 200,
         body: { pages: [child("0195f000-0000-7000-8000-0000000000c1", "Setup", PAGE_ID, 1)], truncated: false },
       });
-      await renderAt(`/s/DOCS/p/${PAGE_ID}/guide/edit`);
+      const router = await renderAt(`/s/DOCS/p/${PAGE_ID}/guide/edit`);
       const box = await screen.findByRole("textbox", { name: "Page content" }, { timeout: 10_000 });
       const nav = await within(box).findByRole("navigation", { name: "Child pages" });
       await within(nav).findByRole("link", { name: "Setup" });
@@ -223,6 +243,8 @@ describe("the editor", () => {
       await user.selectOptions(sort, "By title");
       await waitFor(() => expect(Object.fromEntries(asked[asked.length - 1]!)).toEqual({ scope: "subtree", depth: "3", sort: "title" }));
       expect(await axeViolations()).toEqual([]);
+
+      expect((await closeEditor(router, sent)).content[0]).toEqual(childPages("subtree", 3, "title"));
     },
     EDITOR_TEST_MS,
   );
