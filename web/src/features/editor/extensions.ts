@@ -12,20 +12,11 @@ import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 import { Markdown } from "@tiptap/markdown";
 import { t } from "@/i18n";
 import { lowlight } from "./languages";
-import {
-  ANCHOR_PATTERN,
-  CELL_BACKGROUNDS,
-  HEADING_LEVELS,
-  PANEL_KINDS,
-  dedupe,
-  safeHref,
-  slug,
-  type CellBackground,
-  type PanelKind,
-} from "./schema";
+import { ANCHOR_PATTERN, CELL_BACKGROUNDS, HEADING_LEVELS, PANEL_KINDS, dedupe, safeHref, slug, type CellBackground, type PanelKind } from "./schema";
 import type { SlashItem } from "./slashItems";
 import type { AttachmentIndex } from "./attachmentIndex";
 import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachments";
+import { ChildPages, TableOfContents } from "./blockNodes";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -297,6 +288,8 @@ export function editorExtensions({ placeholder, mention, slash, submit, upload, 
       suggestion: { char: "@", items: () => [], ...mention },
     }),
     SlashMenu.configure({ suggestion: slash }),
+    TableOfContents,
+    ChildPages,
     Image.configure({ index: attachments }),
     AttachmentChip.configure({ index: attachments }),
     FileUpload.configure({ upload }),
@@ -314,4 +307,3 @@ export function editorExtensions({ placeholder, mention, slash, submit, upload, 
     }),
   ];
 }
-

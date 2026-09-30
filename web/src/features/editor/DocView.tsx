@@ -1,10 +1,13 @@
 // biome-ignore-all lint/suspicious/noArrayIndexKey: a node has no identity but its place, and a read-only view never reorders them
-import { Fragment, createElement, type ReactNode } from "react";
+import { Fragment, createContext, createElement, useContext, useMemo, type MouseEvent, type ReactNode } from "react";
 import type { Element as HastElement, ElementContent, Root } from "hast";
 import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { DocAttachment, DocImage } from "./AttachmentView";
+import { ChildPagesList, TocList, childPagesSummary, tocSummary } from "./BlockViews";
+import { childPagesOptions } from "./childPages";
+import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
 import { languageLabel, lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
@@ -16,12 +19,36 @@ import { ANCHOR_PATTERN, CELL_BACKGROUNDS, PANEL_KINDS, safeHref, textOf, type D
  */
 export function DocView({ doc, className, size = "base" }: { doc: DocNode | null | undefined; className?: string; size?: "sm" | "base" }) {
   const { copy, status } = useCopyHeadingLink();
+  const headings = useMemo(() => headingsOfDoc(doc), [doc]);
   if (!doc) return null;
   return (
     <div className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
-      <Blocks nodes={doc.content} copy={copy} />
+      <HeadingsContext value={headings}>
+        <Blocks nodes={doc.content} copy={copy} />
+      </HeadingsContext>
       {status}
     </div>
+  );
+}
+
+const HeadingsContext = createContext<FoundHeading[]>([]);
+
+// The router is left out of it: the heading is on this page, so only the
+// address's fragment changes, and nothing needs loading again.
+function followHeading(anchor: string, event: MouseEvent<HTMLAnchorElement>) {
+  const target = document.getElementById(anchor);
+  if (!target) return;
+  event.preventDefault();
+  target.scrollIntoView?.({ block: "start" });
+  window.history.replaceState(window.history.state, "", `#${encodeURIComponent(anchor)}`);
+}
+
+function DocToc({ node }: { node: DocNode }) {
+  const headings = useContext(HeadingsContext);
+  return (
+    <nav aria-label={t.editor.toc.label} data-toc className="doc-block">
+      <TocList entries={buildToc(headings, tocMaxLevel(node.attrs?.maxLevel))} onFollow={followHeading} />
+    </nav>
   );
 }
 
@@ -140,6 +167,32 @@ function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
     }
     case "image":
       return <DocImage node={node} />;
+    // A comparison says what the block asks for rather than drawing it: its
+    // headings and pages are the page's now, not the version's.
+    case "tableOfContents":
+      if (!copy) {
+        return (
+          <p className="doc-block doc-block-summary" data-toc>
+            {tocSummary(tocMaxLevel(node.attrs?.maxLevel))}
+          </p>
+        );
+      }
+      return <DocToc node={node} />;
+    case "childPages": {
+      const options = childPagesOptions(node.attrs);
+      if (!copy) {
+        return (
+          <p className="doc-block doc-block-summary" data-child-pages>
+            {childPagesSummary(options)}
+          </p>
+        );
+      }
+      return (
+        <nav aria-label={t.editor.childPages.label} data-child-pages className="doc-block">
+          <ChildPagesList options={options} />
+        </nav>
+      );
+    }
     default:
       return <p>{textOf(node)}</p>;
   }

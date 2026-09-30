@@ -7,6 +7,7 @@ import type { Space } from "@/api/spaces";
 import { useComparison, useRestoreVersion, useVersion, useVersions, type CompareRef, type CompareSide, type VersionEntry } from "@/api/versions";
 import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Tag, Td, Th, type Crumb } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocDiffView, DocView } from "@/features/editor/DocView";
 import { HISTORY_PAGE_SIZE } from "@/config";
 import { t } from "@/i18n";
@@ -290,7 +291,11 @@ function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number
       {!latest && <p className="text-sm text-ink-muted">{t.history.oldVersionNote(page.version)}</p>}
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
-      {version && <DocView doc={version.body} />}
+      {version && (
+        <DocPageContext value={{ id: page.id, spaceKey: space.key }}>
+          <DocView doc={version.body} />
+        </DocPageContext>
+      )}
     </article>
   );
 }

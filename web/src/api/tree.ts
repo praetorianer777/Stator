@@ -33,6 +33,18 @@ export function useChildren(spaceKey: string, parentId?: string) {
   });
 }
 
+/** A page under another, as a child pages block lists it. */
+export type BelowPage = Wire["BelowPage"];
+
+/** The pages under a page the reader may view, each after its parent, as a child pages block asks for them. */
+export function usePagesBelow(pageId: string | undefined, query: { scope: "children" | "subtree"; sort: "tree" | "title" | "updated"; depth?: number }) {
+  return useQuery({
+    queryKey: [...treeQueryKey, "below", pageId, query.scope, query.sort, query.depth ?? "all"],
+    queryFn: async () => (await api.GET("/pages/{pageID}/below", { params: { path: { pageID: pageId! }, query } })).data!,
+    enabled: Boolean(pageId),
+  });
+}
+
 export function useOutline(spaceKey: string | undefined) {
   return useQuery({
     queryKey: [...treeQueryKey, spaceKey, "outline"],

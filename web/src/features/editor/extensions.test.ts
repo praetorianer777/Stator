@@ -72,6 +72,8 @@ describe("the slash menu's blocks", () => {
       panelSuccess: (d) => find(d, "panel")[0]?.attrs?.kind === "success",
       panelWarning: (d) => find(d, "panel")[0]?.attrs?.kind === "warning",
       panelError: (d) => find(d, "panel")[0]?.attrs?.kind === "error",
+      tableOfContents: (d) => d.content?.[0]?.type === "tableOfContents" && d.content[0].attrs?.maxLevel === 3,
+      childPages: (d) => JSON.stringify(find(d, "childPages")[0]?.attrs) === JSON.stringify({ scope: "children", depth: null, sort: "tree" }),
     };
     expect(SLASH_ITEMS.map((item) => item.key).sort()).toEqual(Object.keys(expected).sort());
     for (const item of SLASH_ITEMS) {

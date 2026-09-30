@@ -3,6 +3,25 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: Generated blocks store their settings, never their output
+
+A table of contents stores only the deepest heading level it lists, and a
+child pages block only its scope, depth and sort. Both are drawn afresh each
+time: the table from the headings of the document it sits in, the list from
+`GET /pages/{id}/below` as the viewing reader may see it. Storing the list
+would put titles of pages somebody may not view into a body everybody reads,
+and would go stale on every move, rename or trash; storing the table would
+duplicate the headings it is made from. The list route narrows itself with
+`perm.ViewablePage` like every other list of pages, and stops at 500 pages,
+keeping the shallowest so a cut list is still a tree.
+
+A comparison of versions describes the blocks in words ("Child pages: all
+pages below, every level, by title") rather than drawing them. Drawn, both
+sides would show the page's headings and pages as they are now, not as they
+were, and a change of settings would look like no change at all. Exports
+have no path of their own yet: printing the page, which is how a PDF is
+made, prints the reader's view, which draws both blocks.
+
 ## 2026-09-30: A label is a word on a page, not a row of its own
 
 Armature keeps labels in a table of the organization's words, each with a

@@ -401,6 +401,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/below": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The pages under a page that the caller may view, out of the trash, each after its parent, for a child pages block; truncated says the list stopped at its limit. */
+        get: operations["listPagesBelow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/compare": {
         parameters: {
             query?: never;
@@ -1170,6 +1187,17 @@ export interface components {
             assetId: string;
             /** @enum {string} */
             fit: "cover" | "tile";
+        };
+        BelowPage: {
+            depth: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parentId: string;
+            title: string;
+            unpublished: boolean;
+            /** Format: date-time */
+            updatedAt: string;
         };
         Can: {
             addComments: boolean;
@@ -2787,6 +2815,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPagesBelow: {
+        parameters: {
+            query?: {
+                /** @description children, the default, or subtree. */
+                scope?: "children" | "subtree";
+                /** @description For subtree, how many levels down, 1 to 10; every level when absent. */
+                depth?: number;
+                /** @description How siblings are ordered: tree, the default, title, or updated, the latest change first. */
+                sort?: "tree" | "title" | "updated";
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["BelowPage"][];
+                        truncated: boolean;
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
