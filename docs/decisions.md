@@ -3,6 +3,29 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: A refused write shows its caller what refused it
+
+A publish conflict tells its caller that somebody else published since their
+draft began. The editor then reads the page to learn that version's number,
+and offers to compare it with the draft. The refusal was decided on the
+primary, but the reads after it were held only to the caller's own last write,
+which came before the other publish, so a replica that had not replayed that
+publish could answer them: the editor offered "Compare your draft with version
+1" while version 2 had refused it, and the comparison could miss version 2.
+
+`Cluster.Write` therefore returns, with a refused write, the primary's
+position at the refusal, and the handler notes it under the caller's key as it
+notes any write. What the caller reads next is then at least as new as what
+refused them. This keeps read-your-writes keyed by session: nobody's reads wait
+for another person's write, unless the API has just told them of it.
+
+The other way was to put the current version in the 409's body. It was not
+taken because the error envelope is one shape for every refusal, and a number
+in it would serve the dialog but not the comparison the dialog leads to, which
+reads that version next. Every refusal that speaks of newer state, a stale
+`PATCH` or restore among them, is covered the same way without a field of its
+own. The price is one more query on the primary for each refused write.
+
 ## 2026-09-30: Search reads a page's words in the database, and trims in its SQL
 
 A page's title, weighted A, and the plain text of its body, weighted B, are a
