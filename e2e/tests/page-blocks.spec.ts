@@ -81,6 +81,8 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
     await expect(list.getByRole("link", { name: "Linux" })).toBeVisible();
     await expect(page.locator("[data-draft-status]")).toHaveAttribute("data-draft-status", "saved");
     await publishFromEditor(page);
+    // Opened afresh, so the page starts at its top rather than where the editor was scrolled to.
+    await page.goto(`/s/${space.key}/p/${guide.id}/guide`);
 
     const shown = toc(page.locator("[data-doc]"));
     await expect(shown.getByRole("link")).toHaveText(["Install", "Troubleshooting"]);
