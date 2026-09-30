@@ -1,6 +1,5 @@
-// Command armature-stub stands in for Armature in the integration suite and
-// the browser suite. It serves the part of Armature's API Stator calls, in
-// Armature's shapes, which a contract test holds to Armature's own document.
+// Command armature-stub stands in for Armature in the test suites, serving
+// the part of its API Stator calls, held to Armature's document by a test.
 package main
 
 import (

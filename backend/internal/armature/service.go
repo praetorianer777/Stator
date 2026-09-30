@@ -554,12 +554,13 @@ func (e *endpoint) owns(me *Me) bool {
 }
 
 // learnOrg keeps the Armature organization's id from the first token that
-// checks out. It writes as the admin role, since a member's token teaches it,
-// and only while the address is still the one that was asked.
+// checks out, while the address is still the one that was asked.
 func (s *Service) learnOrg(ctx context.Context, org uuid.UUID, e *endpoint, me *Me) {
 	if e.ArmatureOrgID != nil || me.OrgID == uuid.Nil {
 		return
 	}
+	// As the admin role: a member's token teaches it, and stator_app may not
+	// write it, so nobody can pin it with raw SQL.
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
 			UPDATE armature_connection SET armature_org_id = $2

@@ -24,9 +24,8 @@ const APIPath = "/api/v1"
 const DocumentTitle = "Armature"
 
 var (
-	// ErrRejected is Armature answering 401: the token is revoked, expired or
-	// was never one. It is never relayed as a 401, which would read as
-	// "sign in to Stator".
+	// ErrRejected is Armature answering 401 to the token. It is never relayed
+	// as a 401, which would read as "sign in to Stator".
 	ErrRejected = errors.New("Armature did not accept the token")
 	// ErrUnreachable covers no answer in time, an address the guard refused,
 	// a 5xx, a 429 and an answer that could not be read.
@@ -70,9 +69,8 @@ type Client struct {
 	http *http.Client
 }
 
-// NewClient returns the client every Armature call goes through: dialled by
-// netguard with allow, addresses rewritten by backchannel first, each call
-// bounded by CallTimeout.
+// NewClient returns the client every Armature call goes through: netguard
+// with allow, backchannel rewrites first, each call bounded by CallTimeout.
 func NewClient(allow netguard.Allow, backchannel map[string]string) *Client {
 	var transport http.RoundTripper = netguard.Transport(allow)
 	if len(backchannel) > 0 {
@@ -81,10 +79,8 @@ func NewClient(allow netguard.Allow, backchannel map[string]string) *Client {
 	return &Client{http: netguard.WithTransport(CallTimeout, transport)}
 }
 
-// rewriting sends a request for a public origin to the address this process
-// reaches it at, keeping the public Host header. In the compose stack the
-// browser opens the stub on a published localhost port, which inside the
-// api container is the container itself.
+// rewriting sends a request for a public origin to where this process reaches
+// it, keeping the public Host header, as oidc.Backchannel does.
 type rewriting struct {
 	rewrites map[string]string
 	next     http.RoundTripper

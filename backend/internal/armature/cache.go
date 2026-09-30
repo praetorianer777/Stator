@@ -73,9 +73,8 @@ func ThemeKey(org, tokenID uuid.UUID) string { return orgKey(org, "theme:"+token
 // EventKey marks a webhook event as acted on.
 func EventKey(org, eventID uuid.UUID) string { return orgKey(org, "event:"+eventID.String()) }
 
-// Issue reads the cached answer for issueKey as the owner of tokenID into
-// out, which may come back null for an issue they may not see. ok is false
-// for a miss, including a field older than IssueCacheTTL.
+// Issue reads the owner of tokenID's answer for issueKey into out, null for
+// an issue they may not see; false is a miss, a field past its TTL included.
 func (c *Cache) Issue(ctx context.Context, org, tokenID uuid.UUID, issueKey string, out any) (ok bool) {
 	return c.getField(ctx, IssueKey(org, issueKey), tokenID.String(), IssueCacheTTL, out)
 }
@@ -137,9 +136,9 @@ func (c *Cache) ForgetSearches(ctx context.Context, org uuid.UUID) {
 }
 
 // FirstDelivery marks a webhook event as acted on and says whether it is the
-// first time. Without a cache every delivery is the first: the worst a replay
-// does is clear entries that are not there.
+// first time; without a cache every delivery is.
 func (c *Cache) FirstDelivery(ctx context.Context, org, eventID uuid.UUID) bool {
+	// The worst a replay does then is clear entries that are not there.
 	if c == nil {
 		return true
 	}
