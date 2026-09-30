@@ -1,6 +1,7 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
+import { caretTo } from "../fixtures/editor";
 import { mailsTo, mailText } from "../fixtures/mail";
 import { orgTest as test } from "../fixtures/org";
 import { uniqueName } from "../fixtures/seed";
@@ -70,8 +71,7 @@ test.describe("watching and notifications", { tag: ["@auth"] }, () => {
 
     await openPage(page, space.key, runbook);
     await page.locator('[data-action="edit-page"]').click();
-    await page.locator("#page-body").click();
-    await page.keyboard.press("ControlOrMeta+End");
+    await caretTo(page.locator("#page-body"), "end");
     await page.keyboard.type(" Rollback steps added.");
     await expect(page.locator("[data-draft-status]")).toHaveAttribute("data-draft-status", "saved");
     await page.locator('[data-action="publish"]').click();

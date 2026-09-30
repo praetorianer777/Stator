@@ -1,6 +1,7 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
+import { caretTo, focusEditor } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -53,7 +54,15 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
     const space = await freshSpace(api, testInfo, "Blocks");
     const guide = await createPage(api, space.homePageId, "Guide", {
       type: "doc",
-      content: [paragraph(), h(1, "Install", "install"), ...filler(), h(1, "Troubleshooting", "troubleshooting"), h(2, "Logs", "logs"), paragraph("The end.")],
+      content: [
+        paragraph(),
+        h(1, "Install", "install"),
+        ...filler(),
+        h(1, "Troubleshooting", "troubleshooting"),
+        h(2, "Logs", "logs"),
+        paragraph("The end."),
+        paragraph(),
+      ],
     });
     const setup = await createPage(api, guide.id, "Setup");
     await createPage(api, setup.id, "Linux");
@@ -62,17 +71,18 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
       await page.goto(`/s/${space.key}/p/${guide.id}/guide/edit`);
       await expect(editorBox(page)).toContainText("Troubleshooting", { timeout: 2_000 });
     }).toPass();
-    await editorBox(page).click();
-    await page.keyboard.press("ControlOrMeta+Home");
+    await caretTo(editorBox(page), "start");
     await insert(page, "contents");
     const contents = toc(editorBox(page));
     await expect(contents.getByRole("link")).toHaveText(["Install", "Troubleshooting", "Logs"]);
     await contents.getByLabel("Headings to list").selectOption({ label: "Heading 1 only" });
     await expect(contents.getByRole("link")).toHaveText(["Install", "Troubleshooting"]);
 
-    await editorBox(page).locator("p", { hasText: "The end." }).click();
-    await page.keyboard.press("End");
-    await page.keyboard.press("Enter");
+    // The empty paragraph at the end takes the block: an Enter after the caret
+    // key would split wherever ProseMirror last saw the caret, as it reads the
+    // browser's move only when the selection change event arrives.
+    await focusEditor(editorBox(page).locator("p", { hasText: "The end." }));
+    await page.keyboard.press("ControlOrMeta+End");
     await insert(page, "child");
     const list = children(editorBox(page));
     await expect(list.getByRole("link", { name: "Setup" })).toBeVisible();

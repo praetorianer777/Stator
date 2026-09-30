@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
+import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -23,8 +24,7 @@ async function publishVersion(api: StatorApi, id: string, text: string, comment 
 
 /** Types at the end of the open editor's body and waits until the draft is saved. */
 async function typeIntoDraft(page: Page, text: string) {
-  await page.locator("#page-body").click();
-  await page.keyboard.press("ControlOrMeta+End");
+  await caretTo(page.locator("#page-body"), "end");
   await page.keyboard.type(text);
   // The autosave's pause and the save are waited for one after the other, so
   // the pause does not eat into the time the save itself is given.
