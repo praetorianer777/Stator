@@ -48,6 +48,8 @@ type Space struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 	// Can says what the reader may do here, so the interface offers only that.
 	Can perm.Can `json:"can"`
+	// Watching says whether the caller watches the whole space.
+	Watching bool `json:"watching"`
 }
 
 // CreateInput is a new space as the form sends it.
