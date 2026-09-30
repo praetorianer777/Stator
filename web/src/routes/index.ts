@@ -5,6 +5,7 @@ import { meQueryKey } from "@/api/auth";
 import { Skeleton } from "@/components/ui";
 import { LOGIN_PATH } from "@/config";
 import { appRoute } from "./app";
+import { armatureSettingsRoute } from "./armature";
 import { devEditorRoute } from "./dev-editor";
 import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
@@ -13,6 +14,7 @@ import { homeRoute } from "./pages";
 import { pageEditRoute } from "./page-edit";
 import { orgPermissionsRoute } from "./permissions";
 import { pageHistoryRoute } from "./page-history";
+import { profileRoute } from "./profile";
 import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
 import { spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
@@ -35,10 +37,12 @@ const routeTree = rootRoute.addChildren([
     themeNewRoute,
     themeEditRoute,
     tokensRoute,
+    profileRoute,
     notificationSettingsRoute,
     watchingRoute,
     ssoRoute,
     orgPermissionsRoute,
+    armatureSettingsRoute,
     devEditorRoute,
   ]),
 ]);

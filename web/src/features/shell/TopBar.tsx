@@ -45,7 +45,7 @@ export function TopBar({
   const orgAdmin = useCanAdministerOrg();
   const waiting = useJoinRequests(admin).data?.length ?? 0;
   const items: MenuItem[] = [
-    { label: t.account.profile, icon: <Icon.User />, onSelect: () => {}, disabled: true },
+    { label: t.account.profile, icon: <Icon.User />, onSelect: () => navigate({ to: "/settings/profile" }), attrs: { "data-action": "profile" } },
     { label: t.account.themes, icon: <Icon.Palette />, onSelect: () => navigate({ to: "/settings/themes" }), attrs: { "data-action": "themes" } },
     { label: t.account.tokens, icon: <Icon.Key />, onSelect: () => navigate({ to: "/settings/tokens" }), attrs: { "data-action": "tokens" } },
     {
@@ -80,6 +80,12 @@ export function TopBar({
       icon: <Icon.Lock />,
       onSelect: () => navigate({ to: "/settings/permissions" }),
       attrs: { "data-action": "org-permissions" },
+    });
+    items.push({
+      label: t.account.armature,
+      icon: <Icon.Link />,
+      onSelect: () => navigate({ to: "/settings/armature" }),
+      attrs: { "data-action": "armature-settings" },
     });
   }
   items.push({

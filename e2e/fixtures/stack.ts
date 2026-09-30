@@ -42,6 +42,11 @@ export function testEndpointsToken(): string {
   return setting("STATOR_TEST_ENDPOINTS_TOKEN");
 }
 
+/** The armature-stub as a browser opens it, which is the address an administrator connects; read when first needed. */
+export function armatureURL(): string {
+  return setting("STATOR_ARMATURE_URL");
+}
+
 /** The stack's database as its superuser, for arranging what no endpoint makes; read when first needed. */
 export function superuserURL(): string {
   return setting("STATOR_TEST_SUPERUSER_URL");

@@ -311,8 +311,12 @@ services:
 
   # Stands in for Armature: the part of its API Stator calls, in its shapes,
   # held to Armature's document by a contract test. Never in the chart.
+  # It runs the image the api builds rather than building it a fifth time:
+  # the classic builder tags one image from every build at once, and a fifth
+  # tagging raced the others often enough to fail the stack's start.
   armature-stub:
-    <<: *backend
+    image: ${COMPOSE_PROJECT_NAME:-stator}-backend
+    pull_policy: never
     command: ["/app/armature-stub"]
     ports:
       - "127.0.0.1:${ARMATURE_STUB_PORT:-8190}:8080"
