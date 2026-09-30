@@ -11,8 +11,9 @@ export function trashQueryKey(spaceKey: string) {
   return ["trash", spaceKey] as const;
 }
 
-export function useTrash(spaceKey: string) {
+export function useTrash(spaceKey: string, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: trashQueryKey(spaceKey),
     queryFn: async (): Promise<TrashItem[]> => (await api.GET("/spaces/{spaceKey}/trash", { params: { path: { spaceKey } } })).data!.items,
   });

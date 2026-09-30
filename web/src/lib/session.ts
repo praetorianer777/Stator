@@ -1,14 +1,19 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
+import { accessQueryKey, isNoAccess, type GlobalCan } from "@/api/permissions";
 import { LOGIN_PATH, QUERY_STALE_MS } from "@/config";
 
 /** Marks a query or mutation that answers a 401 itself, such as asking who is signed in. */
 export const HANDLES_UNAUTHORIZED = { handlesUnauthorized: true } as const;
 
-/** The application's query client. A 401 from any request means the session is gone, and onUnauthorized says what follows. */
+/**
+ * The application's query client. A 401 from any request means the session is gone, and onUnauthorized says what follows;
+ * a 403 no_access means the organization does not let the caller in, which the shell reads from the access query.
+ */
 export function createQueryClient(onUnauthorized: (client: QueryClient) => void): QueryClient {
   const onError = (error: unknown, meta: Record<string, unknown> | undefined) => {
     if (error instanceof ApiError && error.isUnauthenticated && !meta?.handlesUnauthorized) onUnauthorized(client);
+    if (isNoAccess(error)) client.setQueryData<GlobalCan>(accessQueryKey, { use: false, createSpace: false, administer: false });
   };
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({ onError: (error, query) => onError(error, query.meta) }),

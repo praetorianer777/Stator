@@ -10,12 +10,13 @@ const deletedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", time
 /** A space's trash: what was deleted, by whom and where it goes back; restoring for editors, purging for administrators. */
 export function TrashPanel({ space }: { space: Space }) {
   const s = t.spaceSettings;
-  const { data: items, isLoading, error, refetch } = useTrash(space.key);
+  const { data: items, isLoading, error, refetch } = useTrash(space.key, space.can.deletePages);
   const restore = useRestorePage(space.key);
   const purge = usePurgePage(space.key);
   const empty = useEmptyTrash(space.key);
   const [notice, setNotice] = useState("");
   const failure = restore.error ?? purge.error ?? empty.error;
+  if (!space.can.deletePages) return <p className="text-sm text-ink-muted" data-space-trash={space.key}>{s.notTrasher}</p>;
 
   return (
     <div className="space-y-4" data-space-trash={space.key}>
@@ -64,15 +65,17 @@ export function TrashPanel({ space }: { space: Space }) {
                 <Td className="text-ink-muted">{item.parentInTree ? s.backUnder(item.parentTitle) : s.underHome}</Td>
                 <Td>
                   <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      aria-label={s.restoreItem(item.title)}
-                      onClick={() => restore.mutate(item.id, { onSuccess: () => setNotice(s.restored(item.title)) })}
-                      data-action="restore-page"
-                    >
-                      {s.restore}
-                    </Button>
+                    {space.can.deletePages && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        aria-label={s.restoreItem(item.title)}
+                        onClick={() => restore.mutate(item.id, { onSuccess: () => setNotice(s.restored(item.title)) })}
+                        data-action="restore-page"
+                      >
+                        {s.restore}
+                      </Button>
+                    )}
                     {space.can.purgeTrash && (
                       <Button
                         size="sm"

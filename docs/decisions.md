@@ -3,6 +3,49 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: The compose stack's commits do not wait for the disk
+
+The primary in `deploy/docker-compose.yml` runs with `synchronous_commit=off`.
+On a host running several gates, a single fsync of the WAL took up to about
+9 s, and every commit waited for it: removing a member once took 8.7 s, longer
+than any timeout the browser suite allows. With the setting off, a commit
+returns once its WAL is written, and the WAL writer flushes it shortly after.
+A crash of the machine can lose less than a second of writes, but never
+consistency: what survives is a prefix of what was committed. The replica
+does not take the setting, since nothing commits there. It still replays
+only what the primary has flushed, and read-your-writes already sends a read
+to the primary while the replica lags. The integration suite's `settle`
+flushes the WAL before it waits, since the write position it used to wait for
+can stop short of a commit that is still in the buffers.
+
+This is for the development and test stack alone. Production, and every
+layout of the Helm chart, keep the default, and `tests/test-helm.sh` fails if
+a rendered chart names `synchronous_commit`. Nothing else about durability
+changes.
+
+## 2026-09-30: A refused write shows its caller what refused it
+
+A publish conflict tells its caller that somebody else published since their
+draft began. The editor then reads the page to learn that version's number,
+and offers to compare it with the draft. The refusal was decided on the
+primary, but the reads after it were held only to the caller's own last write,
+which came before the other publish, so a replica that had not replayed that
+publish could answer them: the editor offered "Compare your draft with version
+1" while version 2 had refused it, and the comparison could miss version 2.
+
+`Cluster.Write` therefore returns, with a refused write, the primary's
+position at the refusal, and the handler notes it under the caller's key as it
+notes any write. What the caller reads next is then at least as new as what
+refused them. This keeps read-your-writes keyed by session: nobody's reads wait
+for another person's write, unless the API has just told them of it.
+
+The other way was to put the current version in the 409's body. It was not
+taken because the error envelope is one shape for every refusal, and a number
+in it would serve the dialog but not the comparison the dialog leads to, which
+reads that version next. Every refusal that speaks of newer state, a stale
+`PATCH` or restore among them, is covered the same way without a field of its
+own. The price is one more query on the primary for each refused write.
+
 ## 2026-09-30: Search reads a page's words in the database, and trims in its SQL
 
 A page's title, weighted A, and the plain text of its body, weighted B, are a

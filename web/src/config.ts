@@ -147,11 +147,22 @@ export const PAGE_SLUG_MAX_LENGTH = 60;
 /** The slug of a page whose title leaves nothing usable in an address. */
 export const PAGE_SLUG_FALLBACK = "page";
 
+/** The widths, in pixels, an image in a page can be set to; null keeps its natural size. */
+export const IMAGE_WIDTHS = { small: 240, medium: 480, large: 720, original: null } as const;
+/** The longest alternative text of an image, matching the API's limit. */
+export const IMAGE_ALT_MAX_LENGTH = 500;
+/** The widest an image's width attribute may be, matching the API's MaxImageWidth. */
+export const IMAGE_MAX_WIDTH_PX = 4000;
+
 /** How far each level of the page tree is indented. */
 export const TREE_INDENT_PX = 12;
 /** The share of a tree row at its top and bottom where a dropped page goes beside it rather than under it. */
 export const TREE_DROP_EDGE = 0.25;
 
+/** How long the people and groups picker waits after a keystroke before it asks. */
+export const PICKER_DEBOUNCE_MS = 200;
+/** How many people and how many groups the picker offers at once; the API allows 50. */
+export const PICKER_LIMIT = 8;
 /** How long the editor waits after the last keystroke before it saves the draft. */
 export const DRAFT_AUTOSAVE_MS = 1000;
 /** The longest version comment, matching the API's page.MaxCommentLength. */

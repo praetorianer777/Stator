@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useSpaces } from "@/api/spaces";
-import { useViewer } from "@/api/viewer";
+import { useCanCreateSpace } from "@/features/permissions/access";
 import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
@@ -8,9 +8,9 @@ import { t } from "@/i18n";
 /** Every space the reader may see, and for administrators the way to make another. */
 export function SpaceDirectory() {
   const { data: spaces, isLoading, error, refetch } = useSpaces();
-  const { administers } = useViewer();
+  const mayCreate = useCanCreateSpace();
   const navigate = useNavigate();
-  const create = administers ? (
+  const create = mayCreate ? (
     <Button icon={<Icon.Plus />} onClick={() => navigate({ to: "/spaces/new" })} data-action="new-space">
       {t.spaces.create}
     </Button>
@@ -25,7 +25,7 @@ export function SpaceDirectory() {
         <EmptyState
           icon={<Icon.Space />}
           title={t.spaces.emptyTitle}
-          description={administers ? t.spaces.emptyBody : t.spaces.emptyBodyMember}
+          description={mayCreate ? t.spaces.emptyBody : t.spaces.emptyBodyMember}
           action={create}
         />
       )}

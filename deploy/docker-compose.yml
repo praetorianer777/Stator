@@ -80,6 +80,12 @@ services:
       # api's replica health check reads.
       - -c
       - track_commit_timestamp=on
+      # A commit does not wait for its WAL to reach the disk: on a busy host
+      # one flush took up to 9 s, longer than the browser suite waits. A crash
+      # loses under a second of writes, never consistency. Never in the chart
+      # or in production; see docs/decisions.md.
+      - -c
+      - synchronous_commit=off
     volumes:
       - primary-data:/var/lib/postgresql/18/docker
       - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro

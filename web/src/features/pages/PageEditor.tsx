@@ -6,6 +6,7 @@ import { pageQuery, usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useDiscardDraft, useDraft, usePublish, useSaveDraft, type Draft, type PublishOptions } from "@/api/versions";
 import { Button, ErrorBanner, Field, PageHeader, Skeleton } from "@/components/ui";
+import { useEditorAttachments } from "@/features/attachments/hooks";
 import { Editor } from "@/features/editor/Editor";
 import { emptyDoc, type Doc } from "@/features/editor/schema";
 import { DRAFT_AUTOSAVE_MS, PAGE_TITLE_MAX_LENGTH } from "@/config";
@@ -21,6 +22,7 @@ import { PublishDialog } from "./PublishDialog";
 export function PageEditor({ pageId }: { pageId: string }) {
   const page = usePage(pageId);
   const draft = useDraft(pageId);
+  if (page.data && !page.data.page.can.edit) return <ErrorBanner>{t.page.cannotEdit}</ErrorBanner>;
   const error = page.error ?? draft.error;
   if (error)
     return (
@@ -59,6 +61,7 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
   const [state, setState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState("");
   const [titleError, setTitleError] = useState("");
+  const files = useEditorAttachments(page.id);
   const [dialog, setDialog] = useState(false);
   const [conflict, setConflict] = useState<{ latest: number; options: PublishOptions } | null>(null);
 
@@ -72,6 +75,9 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Saves run one after another, so an older one can never land last.
   const chain = useRef<Promise<boolean>>(Promise.resolve(true));
+  // Only the last save queued speaks for the draft: an older one that ends
+  // while a newer one waits must neither call it saved nor mark it unsaved.
+  const queued = useRef(0);
 
   function flush(): Promise<boolean> {
     clearTimeout(timer.current);
@@ -84,14 +90,16 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
     }
     dirty.current = false;
     setState("saving");
+    const turn = ++queued.current;
     const run = chain.current.then(() =>
       saveRef.current({ title: input.title, body: input.body ?? emptyDoc, baseVersion: input.base }).then(
         () => {
           setHasDraft(true);
-          if (!dirty.current) setState("saved");
+          if (turn === queued.current && !dirty.current) setState("saved");
           return true;
         },
         (error: Error) => {
+          if (turn !== queued.current) return false;
           dirty.current = true;
           setSaveError(error.message);
           setState("error");
@@ -263,6 +271,9 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
         error={titleError}
         controlSize="lg"
       />
+      {files.errors.map((message) => (
+        <ErrorBanner key={message}>{message}</ErrorBanner>
+      ))}
       <Editor
         id="page-body"
         value={initialBody}
@@ -271,6 +282,8 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
           changed();
         }}
         onSubmit={() => openPublish()}
+        upload={files.upload}
+        attachments={files.index}
       />
       {dialog && <PublishDialog title={title} busy={publish.isPending} onClose={() => setDialog(false)} onPublish={(options) => void onPublish(options)} />}
     </form>

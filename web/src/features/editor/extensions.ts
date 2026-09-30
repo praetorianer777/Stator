@@ -24,6 +24,8 @@ import {
   type PanelKind,
 } from "./schema";
 import type { SlashItem } from "./slashItems";
+import type { AttachmentIndex } from "./attachmentIndex";
+import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachments";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -261,10 +263,14 @@ export interface ExtensionOptions {
   mention?: Partial<MentionOptions>["suggestion"];
   slash?: Partial<SlashMenuOptions["suggestion"]>;
   submit?: () => void;
+  /** Where a dropped, pasted or picked file goes; without it the editor takes no files. */
+  upload?: UploadFile;
+  /** Which files the page still has, so a deleted one is drawn as missing. */
+  attachments?: AttachmentIndex;
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
-export function editorExtensions({ placeholder, mention, slash, submit }: ExtensionOptions = {}): AnyExtension[] {
+export function editorExtensions({ placeholder, mention, slash, submit, upload, attachments }: ExtensionOptions = {}): AnyExtension[] {
   return [
     StarterKit.configure({
       underline: false,
@@ -291,6 +297,9 @@ export function editorExtensions({ placeholder, mention, slash, submit }: Extens
       suggestion: { char: "@", items: () => [], ...mention },
     }),
     SlashMenu.configure({ suggestion: slash }),
+    Image.configure({ index: attachments }),
+    AttachmentChip.configure({ index: attachments }),
+    FileUpload.configure({ upload }),
     Extension.create({
       name: "submitOnModEnter",
       addKeyboardShortcuts() {
