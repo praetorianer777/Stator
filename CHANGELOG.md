@@ -134,6 +134,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   person opened last, as noted by `POST /pages/{id}/visit`. Drafts,
   unpublished pages and the trash are never found, and totals count only
   what the caller may read.
+- Search in the web client. The top bar's box and Ctrl or Cmd+K open quick
+  search, which offers page titles as they are typed and recent pages while
+  nothing is, works from the keyboard as a combobox, and opens the full
+  search for the words on Enter. The search page shows hits with their
+  matches marked, filters by space, type, label, author and date, orders by
+  best match or latest change, and pages through the results; the query and
+  every filter are in the address. Opening a page notes the visit for the
+  reader's recent pages.
 
 ### Changed
 

@@ -68,6 +68,9 @@ function heldAnswers() {
 const draftStatus = () => document.querySelector("[data-draft-status]");
 
 const EDIT_PATH = `/s/DOCS/p/${PAGE_ID}/plans/edit`;
+// Every page view notes a visit, which is not the change a test makes.
+const isVisit = (r: { path: string }) => r.path.endsWith("/visit");
+const isChange = (r: { method: string; path: string }) => r.method === "POST" && !isVisit(r);
 const puts = (sent: ReturnType<typeof stubApi>) => sent.filter((r) => r.method === "PUT" && r.path === `/pages/${PAGE_ID}/draft`);
 
 describe("the editor", () => {
@@ -83,7 +86,7 @@ describe("the editor", () => {
       expect(await screen.findByText("Draft saved. Only you can see it until you publish.", {}, AUTOSAVE_WAIT)).toBeInTheDocument();
       expect(puts(sent)).toHaveLength(1);
       expect(puts(sent)[0]!.body).toMatchObject({ title: "Plans 2027", baseVersion: 3, body: { type: "doc" } });
-      expect(sent.some((r) => r.method === "POST" || r.method === "PATCH")).toBe(false);
+      expect(sent.some((r) => isChange(r) || r.method === "PATCH")).toBe(false);
     },
     EDITOR_TEST_MS,
   );
@@ -128,7 +131,7 @@ describe("the editor", () => {
       await userEvent.click(notify);
       await userEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
       await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/plans-for-next-year`));
-      expect(sent.find((r) => r.method === "POST")?.body).toEqual({ comment: "Added the budget.", notifyWatchers: false });
+      expect(sent.find(isChange)?.body).toEqual({ comment: "Added the budget.", notifyWatchers: false });
       expect(puts(sent)).toHaveLength(0);
     },
     EDITOR_TEST_MS,
@@ -147,8 +150,8 @@ describe("the editor", () => {
       await userEvent.type(title, "Plans now");
       await userEvent.click(screen.getByRole("button", { name: "Publish" }));
       await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Publish" }));
-      await waitFor(() => expect(sent.some((r) => r.method === "POST")).toBe(true));
-      const order = sent.filter((r) => r.method !== "GET").map((r) => r.method);
+      await waitFor(() => expect(sent.some(isChange)).toBe(true));
+      const order = sent.filter((r) => r.method !== "GET" && !isVisit(r)).map((r) => r.method);
       expect(order).toEqual(["PUT", "POST"]);
     },
     EDITOR_TEST_MS,
@@ -163,7 +166,7 @@ describe("the editor", () => {
       await userEvent.click(screen.getByRole("button", { name: "Publish" }));
       expect(await screen.findByText("A page needs a title.")).toBeInTheDocument();
       expect(await screen.findByText("A page needs a title before the draft can be saved.", {}, AUTOSAVE_WAIT)).toBeInTheDocument();
-      expect(sent.some((r) => r.method !== "GET")).toBe(false);
+      expect(sent.some((r) => r.method !== "GET" && !isVisit(r))).toBe(false);
     },
     EDITOR_TEST_MS,
   );
@@ -290,7 +293,7 @@ describe("the editor", () => {
       await userEvent.click(within(panel).getByRole("button", { name: "Keep my draft and publish" }));
       await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/plans-for-next-year`));
       expect(puts(sent).map((r) => (r.body as { baseVersion: number }).baseVersion)).toEqual([4]);
-      expect(sent.filter((r) => r.method === "POST")).toHaveLength(2);
+      expect(sent.filter(isChange)).toHaveLength(2);
     },
     EDITOR_TEST_MS,
   );
@@ -460,10 +463,10 @@ describe("a page's history", () => {
     await renderAt(HISTORY_PATH);
     const restore = await screen.findByRole("button", { name: "Restore version 2" });
     await userEvent.click(restore);
-    expect(sent.some((r) => r.method === "POST")).toBe(false);
+    expect(sent.some(isChange)).toBe(false);
     await userEvent.click(restore);
     expect(await screen.findByText("Restored version 2 as version 4.")).toBeInTheDocument();
-    expect(sent.find((r) => r.method === "POST")?.body).toEqual({ baseVersion: 3 });
+    expect(sent.find(isChange)?.body).toEqual({ baseVersion: 3 });
     expect(confirm).toHaveBeenLastCalledWith(
       "Restore version 2? It is published again as a new version on top of the history, and nothing in the history is lost.",
     );

@@ -53,3 +53,5 @@ Adapted from Armature:
   internal/project/project.go, the shape of a project key
 - backend/internal/rank: internal/rank, the lexicographic ranks that order
   siblings, with Spread added
+- web/src/features/search/QuickSearch.tsx: the keyboard handling, the
+  listbox and the Ctrl K shortcut of features/palette/CommandPalette.tsx

@@ -10,6 +10,9 @@ import { placesFor } from "./PlaceDialog";
 
 afterEach(() => vi.unstubAllGlobals());
 
+// Every page view notes a visit, which is not the change a test makes.
+const isChange = (r: { method: string; path: string }) => r.method === "POST" && !r.path.endsWith("/visit");
+
 const space = aSpace();
 const home = aPage();
 const ids = { one: "0195f000-0000-7000-8000-0000000000a1", two: "0195f000-0000-7000-8000-0000000000a2", oneA: "0195f000-0000-7000-8000-0000000000b1" };
@@ -131,8 +134,8 @@ describe("the page tree", () => {
     expect(over.defaultPrevented).toBe(true);
     fireEvent.drop(oneRow, { dataTransfer, clientY: 0 });
 
-    await waitFor(() => expect(sent.some((r) => r.method === "POST")).toBe(true));
-    expect(sent.find((r) => r.method === "POST")?.body).toEqual({ parentId: ids.one });
+    await waitFor(() => expect(sent.some(isChange)).toBe(true));
+    expect(sent.find(isChange)?.body).toEqual({ parentId: ids.one });
     expect(await screen.findByText("Moved Two.")).toBeInTheDocument();
   });
 
@@ -147,7 +150,7 @@ describe("the page tree", () => {
     fireEvent(below, over);
     expect(over.defaultPrevented).toBe(false);
     fireEvent.drop(below, { dataTransfer, clientY: 0 });
-    expect(sent.some((r) => r.method === "POST")).toBe(false);
+    expect(sent.some(isChange)).toBe(false);
   });
 
   it("moves a page from the keyboard through a dialog", async () => {
@@ -164,8 +167,8 @@ describe("the page tree", () => {
     await userEvent.selectOptions(parent, ids.one);
     await userEvent.click(within(dialog).getByRole("button", { name: "Move page" }));
 
-    await waitFor(() => expect(sent.some((r) => r.method === "POST")).toBe(true));
-    expect(sent.find((r) => r.method === "POST")?.body).toEqual({ parentId: ids.one, withChildren: true });
+    await waitFor(() => expect(sent.some(isChange)).toBe(true));
+    expect(sent.find(isChange)?.body).toEqual({ parentId: ids.one, withChildren: true });
     await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${ids.two}/two`));
   });
 });
@@ -182,6 +185,6 @@ describe("a new page", () => {
     await userEvent.type(within(dialog).getByLabelText("Title"), "Onboarding");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${made.id}/onboarding/edit`));
-    expect(sent.find((r) => r.method === "POST")?.body).toEqual({ parentId: home.id, title: "Onboarding" });
+    expect(sent.find(isChange)?.body).toEqual({ parentId: home.id, title: "Onboarding" });
   });
 });

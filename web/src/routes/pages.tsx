@@ -4,7 +4,7 @@ import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
 
-// Placeholders until the recent pages and search exist: each says what it is for, in the
+// A placeholder until the home page has more to show: it says what it is for, in the
 // empty state, which is where a first-time visitor reads that.
 
 function Home() {
@@ -26,14 +26,4 @@ function Home() {
   );
 }
 
-function Search() {
-  return (
-    <>
-      <PageHeader title={t.nav.search} />
-      <EmptyState icon={<Icon.Search />} title={t.search.comingTitle} description={t.search.comingBody} />
-    </>
-  );
-}
-
 export const homeRoute = createRoute({ getParentRoute: () => appRoute, path: "/", component: Home });
-export const searchRoute = createRoute({ getParentRoute: () => appRoute, path: "/search", component: Search });

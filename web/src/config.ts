@@ -169,3 +169,15 @@ export const DRAFT_AUTOSAVE_MS = 1000;
 export const VERSION_COMMENT_MAX_LENGTH = 500;
 /** How many versions the history shows at a time. */
 export const HISTORY_PAGE_SIZE = 20;
+
+/** How long quick search waits after the last key before it asks the server. */
+export const QUICK_SEARCH_DEBOUNCE_MS = 150;
+/** How many pages quick search and the recent pages list offer at once, within the API's limit of 20. */
+export const QUICK_SEARCH_LIMIT = 8;
+export const RECENT_PAGES_LIMIT = 8;
+/** How many hits one page of search results shows, within the API's limit of 100. */
+export const SEARCH_PAGE_SIZE = 20;
+/** The longest query, matching the API's limit. */
+export const SEARCH_QUERY_MAX_LENGTH = 200;
+/** How many people the author filter offers, the most the API gives at once. */
+export const SEARCH_PEOPLE_LIMIT = 50;
