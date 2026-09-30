@@ -175,6 +175,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Labels on pages the caller may view that start with the words typed, the most used first. */
+        get: operations["suggestLabels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/labels/{labelName}/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The pages out of the trash that carry a label and that the caller may view, by title. */
+        get: operations["listLabelPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/oidc-provider": {
         parameters: {
             query?: never;
@@ -415,6 +449,41 @@ export interface paths {
         post?: never;
         /** Throw the caller's draft away; the page stays as last published. */
         delete: operations["discardDraft"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The labels on a page, by name. */
+        get: operations["listPageLabels"];
+        put?: never;
+        /** Put a label on a page, normalized to one lower case word; one it carries already is no change. */
+        post: operations["addPageLabel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/labels/{labelName}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a label off a page; one it does not carry is no change. */
+        delete: operations["removePageLabel"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1069,6 +1138,9 @@ export interface components {
             scopes: "read"[];
             secret?: string;
         };
+        AddInput: {
+            name: string;
+        };
         AdmitRequest: {
             /** @enum {string} */
             role: "owner" | "admin" | "member";
@@ -1307,6 +1379,19 @@ export interface components {
             requestedAt: string;
             /** Format: uuid */
             userId: string;
+        };
+        LabeledPage: {
+            /** Format: uuid */
+            id: string;
+            labels: string[];
+            path: string[];
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+            unpublished: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            updatedByName: string;
         };
         LoginRequest: {
             email: string;
@@ -1665,6 +1750,10 @@ export interface components {
             id?: string;
             /** @enum {string} */
             type: "user" | "group" | "everyone";
+        };
+        Suggestion: {
+            name: string;
+            pages: number;
         };
         SwitchOrgRequest: {
             slug: string;
@@ -2089,6 +2178,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    suggestLabels: {
+        parameters: {
+            query?: {
+                /** @description What was typed so far; empty offers the most used labels. */
+                q?: string;
+                /** @description A space key to stay inside. */
+                space?: string;
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        labels: components["schemas"]["Suggestion"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listLabelPages: {
+        parameters: {
+            query?: {
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                labelName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        limit: number;
+                        offset: number;
+                        pages: components["schemas"]["LabeledPage"][];
+                        total: number;
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -2781,6 +2950,106 @@ export interface operations {
             header?: never;
             path: {
                 pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPageLabels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        labels: string[];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    addPageLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        labels: string[];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removePageLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                labelName: string;
             };
             cookie?: never;
         };

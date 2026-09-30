@@ -10,6 +10,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+
+	"github.com/praetorianer777/stator/backend/internal/label"
 )
 
 // FieldError is a refusal of one query parameter, which the client shows next
@@ -60,8 +62,13 @@ func ParseQuery(v url.Values) (Query, error) {
 		}
 		q.Authors = append(q.Authors, id)
 	}
-	for _, name := range v["label"] {
-		if name = strings.TrimSpace(name); name != "" {
+	for _, raw := range v["label"] {
+		// A name that is no label matches nothing, as an unknown space does.
+		name, err := label.Normalize(raw)
+		if err != nil {
+			name = strings.TrimSpace(raw)
+		}
+		if name != "" {
 			q.Labels = append(q.Labels, name)
 		}
 	}

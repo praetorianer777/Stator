@@ -13,6 +13,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -52,6 +53,7 @@ type Server struct {
 	Spaces    *space.Service
 	Pages     *page.Service
 	Search    *search.Service
+	Labels    *label.Service
 	// Perms answers the permission screens and the use check in front of
 	// every route; nil lets everybody who is a member through.
 	Perms *perm.Service
@@ -199,6 +201,11 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/pages/{pageID}", s.handleTrashPage)
 			r.Post("/pages/{pageID}/move", s.handleMovePage)
 			r.Post("/pages/{pageID}/copy", s.handleCopyPage)
+			r.Get("/pages/{pageID}/labels", s.handleListPageLabels)
+			r.Post("/pages/{pageID}/labels", s.handleAddPageLabel)
+			r.Delete("/pages/{pageID}/labels/{labelName}", s.handleRemovePageLabel)
+			r.Get("/labels", s.handleSuggestLabels)
+			r.Get("/labels/{labelName}/pages", s.handleListLabelPages)
 			r.Get("/pages/{pageID}/attachments", s.handleListAttachments)
 			r.Post("/pages/{pageID}/attachments", s.handleUploadAttachment)
 			r.Get("/attachments/{attachmentID}", s.handleDownloadAttachment)
