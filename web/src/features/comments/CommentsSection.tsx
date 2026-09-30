@@ -225,6 +225,18 @@ function CommentView({ pageId, comment }: { pageId: string; comment: Comment }) 
   const me = useMe().data?.user.id;
   const [editing, setEditing] = useState(false);
   const editRef = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
+  const stopEditing = () => {
+    restoreFocus.current = true;
+    setEditing(false);
+  };
+  // The edit button is back only once the form is gone, which a save commits
+  // outside any event; an effect runs after that commit, a frame may not.
+  useEffect(() => {
+    if (editing || !restoreFocus.current) return;
+    restoreFocus.current = false;
+    editRef.current?.focus();
+  }, [editing]);
   const author = authorOf(comment);
   return (
     <div className="flex gap-2.5" data-comment={comment.id} data-deleted={comment.deleted || undefined}>
@@ -256,17 +268,13 @@ function CommentView({ pageId, comment }: { pageId: string; comment: Comment }) 
                 edit.mutate(
                   { commentId: comment.id, body },
                   {
-                    onSuccess: () => {
-                      setEditing(false);
-                      requestAnimationFrame(() => editRef.current?.focus());
-                    },
+                    onSuccess: stopEditing,
                   },
                 )
               }
               onCancel={() => {
                 edit.reset();
-                setEditing(false);
-                requestAnimationFrame(() => editRef.current?.focus());
+                stopEditing();
               }}
             />
           </div>
