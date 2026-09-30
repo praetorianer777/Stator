@@ -1,5 +1,19 @@
 {
   "nodes": {
+    "attachment": {
+      "attrs": {
+        "attachmentId": {
+          "kind": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "fileName": {
+          "kind": "string",
+          "maxLength": 200,
+          "pattern": "\\S"
+        }
+      },
+      "inline": true
+    },
     "blockquote": {
       "content": [
         "paragraph",
@@ -11,7 +25,8 @@
         "codeBlock",
         "horizontalRule",
         "table",
-        "panel"
+        "panel",
+        "image"
       ]
     },
     "bulletList": {
@@ -43,7 +58,8 @@
         "codeBlock",
         "horizontalRule",
         "table",
-        "panel"
+        "panel",
+        "image"
       ]
     },
     "hardBreak": {
@@ -66,11 +82,31 @@
       "content": [
         "text",
         "hardBreak",
-        "mention"
+        "mention",
+        "attachment"
       ],
       "allowsMarks": true
     },
     "horizontalRule": {},
+    "image": {
+      "attrs": {
+        "alt": {
+          "kind": "string",
+          "nullable": true,
+          "maxLength": 500
+        },
+        "attachmentId": {
+          "kind": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "width": {
+          "kind": "integer",
+          "nullable": true,
+          "min": 1,
+          "max": 4000
+        }
+      }
+    },
     "listItem": {
       "content": [
         "paragraph",
@@ -82,7 +118,8 @@
         "codeBlock",
         "horizontalRule",
         "table",
-        "panel"
+        "panel",
+        "image"
       ]
     },
     "mention": {
@@ -152,14 +189,16 @@
         "codeBlock",
         "horizontalRule",
         "table",
-        "panel"
+        "panel",
+        "image"
       ]
     },
     "paragraph": {
       "content": [
         "text",
         "hardBreak",
-        "mention"
+        "mention",
+        "attachment"
       ],
       "allowsMarks": true
     },
@@ -217,7 +256,8 @@
         "codeBlock",
         "horizontalRule",
         "table",
-        "panel"
+        "panel",
+        "image"
       ]
     },
     "tableHeader": {
@@ -269,7 +309,8 @@
         "codeBlock",
         "horizontalRule",
         "table",
-        "panel"
+        "panel",
+        "image"
       ]
     },
     "tableRow": {
@@ -294,7 +335,8 @@
         "codeBlock",
         "horizontalRule",
         "table",
-        "panel"
+        "panel",
+        "image"
       ]
     },
     "taskList": {

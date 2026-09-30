@@ -41,7 +41,7 @@ func writeBlocks(b *strings.Builder, blocks []Node, depth int) {
 }
 
 // InlineText flattens a block's inline children: text, mentions as @Name,
-// and breaks as newlines.
+// files by name and breaks as newlines.
 func InlineText(n Node) string {
 	var b strings.Builder
 	for _, c := range n.Content {
@@ -53,6 +53,9 @@ func InlineText(n Node) string {
 			b.WriteString("@" + label)
 		case "hardBreak":
 			b.WriteByte('\n')
+		case "attachment":
+			name, _ := c.Attrs["fileName"].(string)
+			b.WriteString(name)
 		}
 	}
 	return b.String()

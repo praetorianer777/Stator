@@ -4,6 +4,7 @@ import type { Element as HastElement, ElementContent, Root } from "hast";
 import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
+import { DocAttachment, DocImage } from "./AttachmentView";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
 import { languageLabel, lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
@@ -137,6 +138,8 @@ function Block({ node, copy }: { node: DocNode; copy: Copy }): ReactNode {
         </div>
       );
     }
+    case "image":
+      return <DocImage node={node} />;
     default:
       return <p>{textOf(node)}</p>;
   }
@@ -212,6 +215,8 @@ function inlineNode(node: DocNode): ReactNode {
       return <br />;
     case "mention":
       return marked(`@${String(node.attrs?.label ?? "")}`, node.marks, String(node.attrs?.id ?? ""));
+    case "attachment":
+      return <DocAttachment node={node} />;
     default:
       return textOf(node);
   }

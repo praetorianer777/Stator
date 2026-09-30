@@ -193,3 +193,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
   history whole), and leave
   the bucket when it is purged, its space is deleted or its file is
   deleted; the worker removes what is left behind.
+- Files on pages, in the web client. Each page lists its attachments under
+  the document, attached with the picker or by dropping them on the list,
+  with the
+  progress of each upload; they download from the list, and deleting one
+  asks first. A file over the upload limit is refused with a sentence that
+  names the limit and says what to do. In the editor a pasted, dropped or
+  picked picture goes up first and then shows as an image with alternative
+  text and a width to choose, and any other file as a chip that downloads
+  it. A file deleted from the page shows as missing where the page used it.
