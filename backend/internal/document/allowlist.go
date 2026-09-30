@@ -200,6 +200,9 @@ var Allowed = Allowlist{
 		"italic": {},
 		"strike": {},
 		"code":   {},
+		// hint is a template's placeholder text: shown muted, replaced on the
+		// first keystroke, and stripped by the database from what is published.
+		"hint": {},
 		"link": {Attrs: map[string]Attr{
 			"href":   {Kind: KindString, MaxLength: MaxHrefLength, URL: true},
 			"target": {Kind: KindString, Nullable: true, Enum: []string{"_blank"}},

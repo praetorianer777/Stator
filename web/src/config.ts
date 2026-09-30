@@ -148,6 +148,10 @@ export const SPACE_NAME_MAX_LENGTH = 100;
 export const SPACE_DESCRIPTION_MAX_LENGTH = 1000;
 /** The longest page title, matching the API's MaxTitleLength. */
 export const PAGE_TITLE_MAX_LENGTH = 255;
+/** Where a template's title takes the day the page is made, matching the API's template.DateToken. */
+export const TEMPLATE_DATE_TOKEN = "{date}";
+/** The picker's value for a page that starts empty; no template key can be empty. */
+export const BLANK_TEMPLATE = "";
 /** How far a page's title runs into its address before it is cut. */
 export const PAGE_SLUG_MAX_LENGTH = 60;
 /** The slug of a page whose title leaves nothing usable in an address. */

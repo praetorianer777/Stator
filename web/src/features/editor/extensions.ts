@@ -17,6 +17,7 @@ import type { SlashItem } from "./slashItems";
 import type { AttachmentIndex } from "./attachmentIndex";
 import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachments";
 import { ChildPages, TableOfContents } from "./blockNodes";
+import { Hint } from "./hint";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -293,6 +294,7 @@ export function editorExtensions({ placeholder, mention, slash, submit, upload, 
     Image.configure({ index: attachments }),
     AttachmentChip.configure({ index: attachments }),
     FileUpload.configure({ upload }),
+    Hint,
     Extension.create({
       name: "submitOnModEnter",
       addKeyboardShortcuts() {

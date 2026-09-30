@@ -852,6 +852,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The documents a new page can start from, in the order to offer them; send one's body and title with POST /pages. */
+        get: operations["listTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/templates/{templateKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One template by its key. */
+        get: operations["getTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/themes": {
         parameters: {
             query?: never;
@@ -1790,6 +1824,15 @@ export interface components {
         Tag: {
             description?: string;
             name: string;
+        };
+        Template: {
+            /** @description A JSON value. */
+            body: unknown;
+            builtIn: boolean;
+            description: string;
+            key: string;
+            name: string;
+            title: string;
         };
         Theme: {
             active: boolean;
@@ -4064,6 +4107,70 @@ export interface operations {
                 content: {
                     "application/json": {
                         page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        templates: components["schemas"]["Template"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        template: components["schemas"]["Template"];
                     };
                 };
             };

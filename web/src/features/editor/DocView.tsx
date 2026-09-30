@@ -17,14 +17,25 @@ import { ANCHOR_PATTERN, CELL_BACKGROUNDS, PANEL_KINDS, safeHref, textOf, type D
  * element that means it, so nothing a person typed is ever parsed as markup
  * and an unsafe link is shown as text.
  */
-export function DocView({ doc, className, size = "base" }: { doc: DocNode | null | undefined; className?: string; size?: "sm" | "base" }) {
+export function DocView({
+  doc,
+  className,
+  size = "base",
+  anchors = true,
+}: {
+  doc: DocNode | null | undefined;
+  className?: string;
+  size?: "sm" | "base";
+  /** False for a preview beside the page, whose headings must not take the page's anchors. */
+  anchors?: boolean;
+}) {
   const { copy, status } = useCopyHeadingLink();
   const headings = useMemo(() => headingsOfDoc(doc), [doc]);
   if (!doc) return null;
   return (
     <div className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
       <HeadingsContext value={headings}>
-        <Blocks nodes={doc.content} copy={copy} />
+        <Blocks nodes={doc.content} copy={anchors ? copy : null} />
       </HeadingsContext>
       {status}
     </div>
@@ -291,6 +302,9 @@ function marked(text: string, marks: DocNode["marks"], mention?: string): ReactN
         break;
       case "strike":
         out = <s>{out}</s>;
+        break;
+      case "hint":
+        out = <span data-hint="">{out}</span>;
         break;
       // Only a comparison carries these two; a screen reader is told where
       // each starts and ends, since it announces neither element by itself.

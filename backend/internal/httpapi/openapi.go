@@ -18,6 +18,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
@@ -157,6 +158,12 @@ var operations = []operation{
 			{name: "depth", schema: intParam, description: "For subtree, how many levels down, 1 to 10; every level when absent."},
 			{name: "sort", schema: &openapi.Schema{Type: "string", Enum: document.ChildPagesSorts}, description: "How siblings are ordered: tree, the default, title, or updated, the latest change first."},
 		}, responses: ok(env{"pages": []page.BelowPage{}, "truncated": false})},
+
+	// Templates (#15).
+	{method: "GET", path: "/templates", handler: "handleListTemplates", tag: "templates", summary: "The documents a new page can start from, in the order to offer them; send one's body and title with POST /pages.",
+		responses: ok(env{"templates": []template.Template{}})},
+	{method: "GET", path: "/templates/{templateKey}", handler: "handleGetTemplate", tag: "templates", summary: "One template by its key.",
+		responses: ok(env{"template": template.Template{}})},
 
 	// Drafts and publishing (#13).
 	{method: "GET", path: "/pages/{pageID}/draft", handler: "handleGetDraft", tag: "drafts", summary: "The caller's own draft of a page, or null when they have none.",

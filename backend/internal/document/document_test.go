@@ -17,6 +17,7 @@ const richDoc = `{"type":"doc","content":[
   {"type":"text","text":" first","marks":[{"type":"strike"}]},
   {"type":"hardBreak"},
   {"type":"text","text":"x := 1","marks":[{"type":"code"}]},
+  {"type":"text","text":"Say more","marks":[{"type":"hint"}]},
   {"type":"text","text":"site","marks":[{"type":"link","attrs":{"href":"https://example.test","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"title":null}}]}]},
  {"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"one"}]}]}]},
  {"type":"orderedList","attrs":{"start":3,"type":null},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"three"}]}]}]},
@@ -183,7 +184,7 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 	want := strings.Join([]string{
 		"Plan",
 		"Ask @Ada Lovelace first",
-		"x := 1site",
+		"x := 1Say moresite",
 		"one",
 		"three",
 		"done",

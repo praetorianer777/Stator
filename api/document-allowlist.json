@@ -399,6 +399,7 @@
   "marks": {
     "bold": {},
     "code": {},
+    "hint": {},
     "italic": {},
     "link": {
       "attrs": {

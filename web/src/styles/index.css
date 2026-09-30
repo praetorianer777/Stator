@@ -578,6 +578,12 @@
     border-radius: var(--radius-control);
     background: var(--color-accent-subtle);
   }
+  /* A template's hint reads as a prompt, not as content: muted and slanted,
+   * so the difference is not carried by colour alone. */
+  .doc-content [data-hint] {
+    color: var(--color-ink-muted);
+    font-style: italic;
+  }
   .doc-content p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;
