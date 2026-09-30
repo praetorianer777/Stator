@@ -250,6 +250,48 @@ func TestDraftsAndPublishingOverTheAPI(t *testing.T) {
 	})
 }
 
+// A publish conflict tells its caller of somebody else's newer version, so
+// their next reads show it, even when a replica has not replayed it.
+func TestAPublishConflictShowsItsCallerTheNewerVersion(t *testing.T) {
+	h := newHarness(t)
+	needReplica(t, h)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "conflict-read")
+	slug := h.slugOf(t, home.org)
+	owner := api.as(t, home.user, home.org, slug)
+	annID := h.addPerson(t, home.org, "member")
+	ann := api.as(t, annID, home.org, slug)
+	ben := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	docs := newTree(t, owner, "RACE", "Race")
+
+	made := want(t, ann.post(t, "/api/v1/pages", map[string]any{"parentId": docs.homeID, "title": "Plan", "body": textDoc("Idea"), "publish": true}), http.StatusCreated, "make a page")
+	pageID := obj(t, made, "page")["id"].(string)
+	want(t, ann.put(t, pagePath(pageID, "/draft"), map[string]any{"title": "Plan", "body": textDoc("Idea", "Ann's"), "baseVersion": 1}), http.StatusOK, "ann drafts")
+	want(t, ben.put(t, pagePath(pageID, "/draft"), map[string]any{"title": "Plan", "body": textDoc("Idea", "Ben's"), "baseVersion": 1}), http.StatusOK, "ben drafts")
+	h.settle(t)
+	h.pauseReplay(t)
+	ann.eager, ben.eager = true, true
+
+	want(t, ben.post(t, pagePath(pageID, "/publish"), map[string]any{}), http.StatusOK, "ben publishes first")
+	late := ann.post(t, pagePath(pageID, "/publish"), map[string]any{})
+	if late.Status != http.StatusConflict || errorCode(t, late) != "publish_conflict" {
+		t.Fatalf("a publish over a newer version: %d %s", late.Status, late.Raw)
+	}
+
+	stranger := api.as(t, annID, home.org, slug)
+	stranger.eager = true
+	if p := obj(t, want(t, stranger.get(t, pagePath(pageID)), http.StatusOK, "a fresh browser reads"), "page"); number(p["version"]) != 1 {
+		t.Fatalf("a fresh browser read version %v, so the replica was not behind", p["version"])
+	}
+	if p := obj(t, want(t, ann.get(t, pagePath(pageID)), http.StatusOK, "ann reads after the refusal"), "page"); number(p["version"]) != 2 {
+		t.Fatalf("after a conflict with version 2 its caller read version %v", p["version"])
+	}
+	cmp := obj(t, want(t, ann.get(t, pagePath(pageID, "/compare?from=2&to=draft")), http.StatusOK, "compare the newer version with the draft"), "comparison")
+	if number(obj(t, response{Body: cmp}, "from")["number"]) != 2 {
+		t.Fatalf("the comparison is %v", cmp)
+	}
+}
+
 // History lists every version, any two compare, and a restore publishes an
 // old version again as the newest.
 func TestHistoryCompareAndRestoreOverTheAPI(t *testing.T) {

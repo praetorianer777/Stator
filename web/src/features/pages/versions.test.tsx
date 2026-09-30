@@ -44,7 +44,7 @@ const conflict: Answer = {
 };
 
 /** The API around one page of a small space; more answers go on top. */
-function stubPage(more: Record<string, Answer | ((request: Request) => Answer)> = {}, { page = plans, draft = null as Draft | null } = {}) {
+function stubPage(more: Record<string, Answer | ((request: Request) => Answer | Promise<Answer>)> = {}, { page = plans, draft = null as Draft | null } = {}) {
   return stubApi({
     "GET /spaces": { status: 200, body: { spaces: [space] } },
     "GET /spaces/DOCS": { status: 200, body: { space } },
@@ -55,6 +55,17 @@ function stubPage(more: Record<string, Answer | ((request: Request) => Answer)> 
     ...more,
   });
 }
+
+const savedDraft: Answer = { status: 200, body: { draft: aDraft() } };
+const saveFailed: Answer = { status: 503, body: { error: { code: "unavailable", message: "The server is busy." } } };
+
+/** Answers that wait until the test lets each one go, in the order they were asked. */
+function heldAnswers() {
+  const waiting: Array<(answer: Answer) => void> = [];
+  return { waiting, answer: () => new Promise<Answer>((resolve) => waiting.push(resolve)) };
+}
+
+const draftStatus = () => document.querySelector("[data-draft-status]");
 
 const EDIT_PATH = `/s/DOCS/p/${PAGE_ID}/plans/edit`;
 const puts = (sent: ReturnType<typeof stubApi>) => sent.filter((r) => r.method === "PUT" && r.path === `/pages/${PAGE_ID}/draft`);
@@ -153,6 +164,95 @@ describe("the editor", () => {
       expect(await screen.findByText("A page needs a title.")).toBeInTheDocument();
       expect(await screen.findByText("A page needs a title before the draft can be saved.", {}, AUTOSAVE_WAIT)).toBeInTheDocument();
       expect(sent.some((r) => r.method !== "GET")).toBe(false);
+    },
+    EDITOR_TEST_MS,
+  );
+
+  it(
+    "says saving until the last of overlapping saves lands, however slow the first",
+    async () => {
+      const saves = heldAnswers();
+      const sent = stubPage({ [`PUT /pages/${PAGE_ID}/draft`]: saves.answer });
+      await renderAt(EDIT_PATH);
+      const title = await screen.findByLabelText("Title");
+      await userEvent.clear(title);
+      await userEvent.type(title, "Plans A");
+      await waitFor(() => expect(saves.waiting).toHaveLength(1), AUTOSAVE_WAIT);
+      await userEvent.type(title, " B");
+      expect(draftStatus()).toHaveAttribute("data-draft-status", "pending");
+      await waitFor(() => expect(draftStatus()).toHaveAttribute("data-draft-status", "saving"), AUTOSAVE_WAIT);
+
+      saves.waiting[0]!(savedDraft);
+      await waitFor(() => expect(saves.waiting).toHaveLength(2));
+      expect(draftStatus()).toHaveAttribute("data-draft-status", "saving");
+      saves.waiting[1]!(savedDraft);
+      await waitFor(() => expect(draftStatus()).toHaveAttribute("data-draft-status", "saved"));
+      expect(puts(sent).map((r) => (r.body as { title: string }).title)).toEqual(["Plans A", "Plans A B"]);
+    },
+    EDITOR_TEST_MS,
+  );
+
+  it(
+    "says a failed save failed, and saved once a later one lands",
+    async () => {
+      let tries = 0;
+      stubPage({ [`PUT /pages/${PAGE_ID}/draft`]: () => (++tries === 1 ? saveFailed : savedDraft) });
+      await renderAt(EDIT_PATH);
+      const title = await screen.findByLabelText("Title");
+      await userEvent.clear(title);
+      await userEvent.type(title, "Plans A");
+      expect(await screen.findByText(/Your draft could not be saved: The server is busy\./, {}, AUTOSAVE_WAIT)).toBeInTheDocument();
+      expect(draftStatus()).toHaveAttribute("data-draft-status", "error");
+      await userEvent.type(title, " B");
+      await waitFor(() => expect(draftStatus()).toHaveAttribute("data-draft-status", "saved"), AUTOSAVE_WAIT);
+      expect(screen.queryByText(/Your draft could not be saved/)).toBeNull();
+    },
+    EDITOR_TEST_MS,
+  );
+
+  it(
+    "does not call the draft unsaved when an older save fails while a newer one waits",
+    async () => {
+      const saves = heldAnswers();
+      stubPage({ [`PUT /pages/${PAGE_ID}/draft`]: saves.answer });
+      await renderAt(EDIT_PATH);
+      const title = await screen.findByLabelText("Title");
+      await userEvent.clear(title);
+      await userEvent.type(title, "Plans A");
+      await waitFor(() => expect(saves.waiting).toHaveLength(1), AUTOSAVE_WAIT);
+      await userEvent.type(title, " B");
+      await waitFor(() => expect(draftStatus()).toHaveAttribute("data-draft-status", "saving"), AUTOSAVE_WAIT);
+
+      saves.waiting[0]!(saveFailed);
+      await waitFor(() => expect(saves.waiting).toHaveLength(2));
+      expect(draftStatus()).toHaveAttribute("data-draft-status", "saving");
+      saves.waiting[1]!(savedDraft);
+      await waitFor(() => expect(draftStatus()).toHaveAttribute("data-draft-status", "saved"));
+      expect(screen.queryByText(/Your draft could not be saved/)).toBeNull();
+    },
+    EDITOR_TEST_MS,
+  );
+
+  it(
+    "learns the newer version from a read made after the conflict, not from its own copy",
+    async () => {
+      let current = plans;
+      const sent = stubPage(
+        {
+          [`GET /pages/${PAGE_ID}`]: () => ({ status: 200, body: { page: current, space } }),
+          [`POST /pages/${PAGE_ID}/publish`]: () => {
+            current = aPage({ ...plans, version: 5 });
+            return conflict;
+          },
+        },
+        { draft: aDraft() },
+      );
+      await renderAt(EDIT_PATH);
+      await userEvent.click(await screen.findByRole("button", { name: "Publish" }));
+      await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Publish" }));
+      expect(await screen.findByRole("button", { name: "Compare with version 5" })).toBeInTheDocument();
+      const refused = sent.findIndex((r) => r.method === "POST");
+      expect(sent.slice(refused + 1).some((r) => r.method === "GET" && r.path === `/pages/${PAGE_ID}`)).toBe(true);
     },
     EDITOR_TEST_MS,
   );

@@ -58,8 +58,8 @@ replica pool every `STATOR_DB_HEALTH_INTERVAL` and takes the pool out of the
 rotation when none of them is fit, so a broken replica stops costing each
 read a round trip.
 
-Read-your-writes: `Cluster.Write` returns the WAL position past its commit.
-Handlers hand it to `noteWrite`, which records it in Valkey
+Read-your-writes: `Cluster.Write` returns the WAL position past its commit,
+or, for a refused write, the primary's position at the refusal. Handlers hand it to `noteWrite`, which records it in Valkey
 (`internal/freshness`, `STATOR_VALKEY_URL`) under the caller's key for
 `STATOR_READ_YOUR_WRITES_TTL`. On the caller's next request the
 `readYourWrites` middleware pins the request to that position with
