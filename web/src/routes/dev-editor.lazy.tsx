@@ -3,7 +3,7 @@ import { createLazyRoute } from "@tanstack/react-router";
 import { PageHeader, SectionTitle } from "@/components/ui";
 import { DocView } from "@/features/editor/DocView";
 import { Editor } from "@/features/editor/Editor";
-import type { Doc } from "@/features/editor/schema";
+import type { Doc, Mentionable } from "@/features/editor/schema";
 import { t } from "@/i18n";
 import { devEditorRoute } from "./dev-editor";
 
@@ -40,6 +40,19 @@ const sample: Doc = {
   ],
 };
 
+// No source of people is wired into the editor yet, so the browser suite
+// reaches the mention list through these.
+const people: Mentionable[] = [
+  { id: "dev-ada", name: "Ada Lovelace", email: "ada@example.test" },
+  { id: "dev-alan", name: "Alan Turing", email: "alan@example.test" },
+  { id: "dev-alonzo", name: "Alonzo Church", email: "alonzo@example.test" },
+  { id: "dev-anita", name: "Anita Borg", email: "anita@example.test" },
+  { id: "dev-annie", name: "Annie Easley", email: "annie@example.test" },
+  { id: "dev-adele", name: "Adele Goldberg", email: "adele@example.test" },
+  { id: "dev-andrew", name: "Andrew Tanenbaum", email: "andrew@example.test" },
+  { id: "dev-alfred", name: "Alfred Aho", email: "alfred@example.test" },
+];
+
 // Pages do not exist yet, so the editor is reachable here for the browser
 // suite; nothing in the navigation links to it.
 function DevEditor() {
@@ -48,7 +61,7 @@ function DevEditor() {
     <>
       <PageHeader title={t.devEditor.title} />
       <div className="space-y-6" data-dev-editor>
-        <Editor id="dev-editor" value={sample} onChange={setDoc} />
+        <Editor id="dev-editor" value={sample} onChange={setDoc} people={people} />
         <section aria-labelledby="dev-editor-preview" className="space-y-2">
           <SectionTitle id="dev-editor-preview">{t.devEditor.preview}</SectionTitle>
           <div data-dev-preview>

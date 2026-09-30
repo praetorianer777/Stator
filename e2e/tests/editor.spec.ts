@@ -9,6 +9,17 @@ const SLASH_ITEM_COUNT = 18;
 const TABLE_SIZE = 3;
 // Enough paragraphs that the stored document outgrows its box.
 const STORED_LINES = 12;
+// A swipe is a finger dragged this far, in this many moves, starting this far
+// inside the list's lower edge.
+const SWIPE_PX = 400;
+const SWIPE_STEPS = 10;
+const SWIPE_INSET_PX = 12;
+// The slash menu's options wrap on a narrow screen, so reaching its end takes
+// a few swipes, as it would take a thumb.
+const MAX_SWIPES = 4;
+// The development page offers eight people, which never outgrow the mention
+// list, so the swipe test gives the list less room to have something to scroll.
+const SHORT_LIST_CSS = "[data-mention-list] { max-height: 6rem; }";
 // One class for each colour the stylesheet gives highlighted code, all of
 // which the development page's sample reaches.
 const HIGHLIGHT_CLASSES = [
@@ -62,6 +73,21 @@ async function emptyEditor(page: Page) {
 async function shownWithin(list: Locator, option: Locator): Promise<boolean> {
   const [outer, inner] = await Promise.all([list.boundingBox(), option.boundingBox()]);
   return !!outer && !!inner && inner.y >= outer.y && inner.y + inner.height <= outer.y + outer.height;
+}
+
+/** Drags one finger up across a list, through the browser's own touch input. */
+async function swipeUp(page: Page, list: Locator) {
+  const area = await list.boundingBox();
+  if (!area) throw new Error("The list to swipe is not on the screen.");
+  const x = area.x + area.width / 2;
+  const from = area.y + area.height - SWIPE_INSET_PX;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y: from }] });
+  for (let step = 1; step <= SWIPE_STEPS; step++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: from - (SWIPE_PX * step) / SWIPE_STEPS }] });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
 }
 
 async function insert(page: Page, query: string) {
@@ -290,5 +316,57 @@ test.describe("the editor", { tag: "@desktop" }, () => {
     await page.keyboard.press("PageDown");
     await expect.poll(() => stored.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
     await expectAccessible(page);
+  });
+});
+
+test.describe("the editor on a touch screen", { tag: "@mobile" }, () => {
+  test("a swipe scrolls the slash menu and a tap picks from it", async ({ page }) => {
+    await emptyEditor(page);
+    await page.keyboard.type("/");
+    const menu = page.getByRole("listbox", { name: "Insert a block" });
+    const options = menu.getByRole("option");
+    await expect.poll(() => menu.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    await expect.poll(() => shownWithin(menu, options.last())).toBe(false);
+    await expectAccessible(page);
+
+    const pageTop = await page.evaluate(() => window.scrollY);
+    await swipeUp(page, menu);
+    await expect.poll(() => menu.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    for (let swipe = 1; swipe < MAX_SWIPES && !(await shownWithin(menu, options.last())); swipe++) await swipeUp(page, menu);
+    await expect.poll(() => shownWithin(menu, options.last())).toBe(true);
+    expect(await page.evaluate(() => window.scrollY)).toBe(pageTop);
+    await expect(box(page)).toBeFocused();
+    await expectAccessible(page);
+
+    const error = menu.locator('[data-slash-item="panelError"]');
+    await expect.poll(() => shownWithin(menu, error)).toBe(true);
+    await error.tap();
+    await expect(page.locator("[data-slash-menu]")).toHaveCount(0);
+    await expect(box(page).locator('[data-panel="error"]')).toBeVisible();
+    await expect(box(page)).toBeFocused();
+  });
+
+  test("a swipe scrolls the mention list and a tap picks from it", async ({ page }) => {
+    await emptyEditor(page);
+    await page.addStyleTag({ content: SHORT_LIST_CSS });
+    await page.keyboard.type("@a");
+    const list = page.getByRole("listbox", { name: "People to mention" });
+    const options = list.getByRole("option");
+    await expect.poll(() => list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    await expect.poll(() => shownWithin(list, options.last())).toBe(false);
+    await expectAccessible(page);
+
+    const pageTop = await page.evaluate(() => window.scrollY);
+    await swipeUp(page, list);
+    await expect.poll(() => shownWithin(list, options.last())).toBe(true);
+    expect(await page.evaluate(() => window.scrollY)).toBe(pageTop);
+    await expect(box(page)).toBeFocused();
+    await expectAccessible(page);
+
+    const name = await options.last().getAttribute("data-mention-option");
+    await options.last().tap();
+    await expect(list).toHaveCount(0);
+    await expect(box(page).locator("[data-mention]")).toHaveText(`@${name}`);
+    await expect(box(page)).toBeFocused();
   });
 });
