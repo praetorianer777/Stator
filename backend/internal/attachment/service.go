@@ -81,21 +81,21 @@ func scan(row pgx.Row) (*stored, error) {
 	return &a, nil
 }
 
-// find reads a file and checks the actor may see its page; one on a page they
-// may not see, or one in the trash, is not found.
-func find(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) (*stored, uuid.UUID, error) {
+// find reads a file and its page, checking the actor may see the page; one on
+// a page they may not see, or one in the trash, is not found.
+func find(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) (*stored, *page.Page, error) {
 	found, err := scan(tx.QueryRow(ctx, selectAttachment+` WHERE a.id = $1`, id))
 	if err != nil {
-		return nil, uuid.Nil, err
+		return nil, nil, err
 	}
-	_, sp, err := page.Load(ctx, tx, actor, found.PageID)
+	p, _, err := page.Load(ctx, tx, actor, found.PageID)
 	if errors.Is(err, page.ErrNotFound) {
-		return nil, uuid.Nil, ErrNotFound
+		return nil, nil, ErrNotFound
 	}
 	if err != nil {
-		return nil, uuid.Nil, err
+		return nil, nil, err
 	}
-	return found, sp.ID, nil
+	return found, p, nil
 }
 
 // List is the files on a page, the latest first.
@@ -151,12 +151,12 @@ func (s *Service) Upload(ctx context.Context, actor perm.Actor, pageID uuid.UUID
 
 	var created *Attachment
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, sp, err := page.Load(ctx, tx, actor, pageID)
+		p, _, err := page.Load(ctx, tx, actor, pageID)
 		if err != nil {
 			return err
 		}
-		if err := perm.Check(ctx, tx, actor, perm.EditPages, sp.ID); err != nil {
-			return err
+		if !p.Can.Edit {
+			return &perm.DeniedError{Action: perm.EditPages}
 		}
 		id, err := uuid.NewV7()
 		if err != nil {
@@ -210,15 +210,15 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, id uuid.UUID) (d
 	var found *stored
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var (
-			space uuid.UUID
-			err   error
+			p   *page.Page
+			err error
 		)
-		found, space, err = find(ctx, tx, actor, id)
+		found, p, err = find(ctx, tx, actor, id)
 		if err != nil {
 			return err
 		}
-		if err := perm.Check(ctx, tx, actor, perm.EditPages, space); err != nil {
-			return err
+		if !p.Can.Edit {
+			return &perm.DeniedError{Action: perm.EditPages}
 		}
 		// No row lock first: that takes UPDATE, which the app role does not
 		// have. Of two deletes racing, the one that removes nothing lost.

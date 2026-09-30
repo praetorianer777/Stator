@@ -90,6 +90,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
   draft compare block by block with inserted and deleted words marked, and
   a restore publishes an old version again as the newest. The database
   keeps version numbers without gaps and the history append only.
+- Permissions in the API. Global: `use`, granted to everyone by default,
+  without which a member is answered 403 `no_access`; `createSpace`; and
+  `administer`, which follows the owner and admin roles. Per space, for
+  people, groups and everyone: view, add pages, add comments, delete and
+  administer; a new space, and every existing one, grants everyone all but
+  administer and its creator administer. Per page, view and edit
+  restrictions of people and groups that the pages below inherit, which
+  narrow the space's permissions and never bind space or organization
+  administrators; a save that would lock its saver out is refused.
+  `space.can` and `page.can` follow the rules, `GET /access/me` says what the
+  caller may do, and `/people` and `/groups` serve the pickers. Row level
+  security holds raw SQL as the app role to the same rules for the person a
+  transaction names, and every change is written to the audit log.
 - Drafts and history in the web client. The editor saves to a private
   draft a moment after typing stops and publishes it from a dialog with an
   optional comment and whether to notify watchers; when somebody published
@@ -102,6 +115,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
   restores a version as a new one after asking.
 
 ### Changed
+
+- Renaming and deleting a space and purging its trash are for the space's
+  administrators, and making spaces for whoever holds `createSpace`, rather
+  than for the organization's administrators alone.
 
 - `PATCH /pages/{id}` publishes the title and body as the next version with
   no comment. Existing pages become version 1 of themselves.

@@ -43,9 +43,9 @@ type TreeNode struct {
 	Title       string    `json:"title"`
 	HasChildren bool      `json:"hasChildren"`
 	// Unpublished marks a page only its creator sees; Restricted, one whose
-	// view is narrowed here or above, which the tree query does not select yet.
+	// view is narrowed here or above.
 	Unpublished bool `json:"unpublished"`
-	Restricted  bool `json:"restricted" db:"-"`
+	Restricted  bool `json:"restricted"`
 }
 
 // OutlineEntry is one page of a whole space in reading order, for choosing
@@ -92,12 +92,10 @@ type CopyInput struct {
 // live narrows a query on page p to what the tree shows: nothing in the trash.
 const live = ` p.trashed_at IS NULL`
 
-// childrenOf lists a parent's children in order, leaving one out.
+// childrenOf lists a parent's children in order, leaving one out: all of
+// them, the ones the actor cannot see included, so a new rank fits among all.
 func childrenOf(ctx context.Context, tx db.DBTX, parent, except uuid.UUID) ([]sibling, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT p.id, p.rank FROM page p
-		WHERE p.parent_id = $1 AND p.id <> $2 AND`+live+`
-		ORDER BY p.rank, p.id`, parent, except)
+	rows, err := tx.Query(ctx, `SELECT id, rank FROM page_sibling_ranks($1, $2)`, parent, except)
 	if err != nil {
 		return nil, err
 	}
@@ -153,17 +151,26 @@ func rankAt(ctx context.Context, tx db.DBTX, where Placement, except uuid.UUID) 
 	if err != nil {
 		return "", err
 	}
+	ids := make([]uuid.UUID, len(siblings))
 	for i := range siblings {
-		if _, err := tx.Exec(ctx, `UPDATE page SET rank = $2 WHERE id = $1`, siblings[i].ID, fresh[i]); err != nil {
-			return "", err
-		}
+		ids[i] = siblings[i].ID
 		siblings[i].Rank = fresh[i]
+	}
+	if err := place(ctx, tx, ids, where.ParentID, fresh); err != nil {
+		return "", err
 	}
 	return rank.Between(bounds())
 }
 
+// place hangs pages under a parent at the ranks given, through the database
+// function that may move pages the actor cannot see.
+func place(ctx context.Context, tx db.DBTX, ids []uuid.UUID, parent uuid.UUID, ranks []string) error {
+	_, err := tx.Exec(ctx, `SELECT page_place($1, $2, $3)`, ids, parent, ranks)
+	return err
+}
+
 // parentFor reads and locks the page a page goes under, and asks whether the
-// actor may add pages to its space.
+// actor may add pages there.
 func parentFor(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) (*Page, *space.Space, error) {
 	p, sp, err := load(ctx, tx, actor, id, false)
 	if err != nil {
@@ -172,7 +179,7 @@ func parentFor(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) 
 	if _, err := tx.Exec(ctx, `SELECT 1 FROM page WHERE id = $1 FOR NO KEY UPDATE`, id); err != nil {
 		return nil, nil, err
 	}
-	if err := perm.Check(ctx, tx, actor, perm.EditPages, sp.ID); err != nil {
+	if err := p.must(perm.EditPages); err != nil {
 		return nil, nil, err
 	}
 	return p, sp, nil
@@ -225,20 +232,24 @@ func (s *Service) Children(ctx context.Context, actor perm.Actor, spaceKey strin
 			under = *parent
 		}
 		var found bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page p WHERE p.id = $1 AND p.space_id = $2 AND`+live+`)`, under, sp.ID).Scan(&found); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page p WHERE p.id = $1 AND p.space_id = $2 AND`+live+` AND `+perm.ViewablePage("p", 3)+`)`,
+			under, sp.ID, actor.UserID).Scan(&found); err != nil {
 			return err
 		}
-		if hidden, err := hiddenFrom(ctx, tx, actor, under); err != nil {
-			return err
-		} else if !found || hidden {
+		if !found {
 			return ErrNotFound
+		}
+		above, _, err := perm.ForPage(ctx, tx, actor, under)
+		if err != nil {
+			return err
 		}
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.parent_id, p.title,
-			       EXISTS (SELECT 1 FROM page c WHERE c.parent_id = p.id AND`+liveChild+` AND (c.version > 0 OR c.created_by = $2)),
-			       p.version = 0
-			FROM page p WHERE p.parent_id = $1 AND`+live+` AND`+visible+`
-			ORDER BY p.rank, p.id`, under, actor.UserID)
+			       EXISTS (SELECT 1 FROM page c WHERE c.parent_id = p.id AND`+liveChild+` AND `+perm.ViewablePage("c", 2)+`),
+			       p.version = 0,
+			       $3 OR EXISTS (SELECT 1 FROM page_restriction r WHERE r.page_id = p.id AND r.kind = 'view')
+			FROM page p WHERE p.parent_id = $1 AND`+live+` AND `+perm.ViewablePage("p", 2)+`
+			ORDER BY p.rank, p.id`, under, actor.UserID, above.ViewRestricted)
 		if err != nil {
 			return err
 		}
@@ -271,7 +282,7 @@ func (s *Service) Outline(ctx context.Context, actor perm.Actor, spaceKey string
 				UNION ALL
 				SELECT p.id, p.parent_id, p.title, t.depth + 1, (t.path || p.rank || chr(2) || p.id::text || chr(1)) COLLATE "C"
 				FROM page p JOIN tree t ON p.parent_id = t.id
-				WHERE`+live+` AND`+visible+`
+				WHERE`+live+` AND `+perm.ViewablePage("p", 2)+`
 			)
 			SELECT id, parent_id, title, depth FROM tree ORDER BY path`, sp.HomePageID, actor.UserID)
 		if err != nil {
@@ -306,11 +317,13 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		if err != nil {
 			return err
 		}
-		var id uuid.UUID
-		if err := tx.QueryRow(ctx, `
-			INSERT INTO page (org_id, space_id, parent_id, rank, title, body, created_by, updated_by)
-			VALUES (current_org_id(), $1, $2, $3, $4, COALESCE($5::jsonb, '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb), $6, $6)
-			RETURNING id`, sp.ID, in.ParentID, r, title, nullJSON(in.Body), actor.UserID).Scan(&id); err != nil {
+		// Made here rather than returned, which the policies would refuse:
+		// the statement's own snapshot does not hold the row it writes.
+		id := uuid.Must(uuid.NewV7())
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by)
+			VALUES ($1, current_org_id(), $2, $3, $4, $5, COALESCE($6::jsonb, '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb), $7, $7)`,
+			id, sp.ID, in.ParentID, r, title, nullJSON(in.Body), actor.UserID); err != nil {
 			return fmt.Errorf("save the page: %w", err)
 		}
 		if in.Publish {
@@ -344,14 +357,14 @@ func (s *Service) Move(ctx context.Context, actor perm.Actor, id uuid.UUID, in M
 		if err := lockTrees(ctx, tx, id, in.ParentID); err != nil {
 			return err
 		}
-		current, from, err := load(ctx, tx, actor, id, true)
+		current, _, err := load(ctx, tx, actor, id, true)
 		if err != nil {
 			return err
 		}
 		if current.Home {
 			return ErrHomeFixed
 		}
-		if err := perm.Check(ctx, tx, actor, perm.EditPages, from.ID); err != nil {
+		if err := current.must(perm.EditPages); err != nil {
 			return err
 		}
 		_, to, err := parentFor(ctx, tx, actor, in.ParentID)
@@ -396,11 +409,15 @@ func letChildrenStay(ctx context.Context, tx db.DBTX, p *Page) error {
 	if err := tx.QueryRow(ctx, `SELECT rank FROM page WHERE id = $1`, p.ID).Scan(&current); err != nil {
 		return err
 	}
-	err = tx.QueryRow(ctx, `
-		SELECT p.rank FROM page p WHERE p.parent_id = $1 AND p.id <> $2 AND`+live+` AND (p.rank, p.id) > ($3, $2)
-		ORDER BY p.rank, p.id LIMIT 1`, *p.ParentID, p.ID, current).Scan(&next)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	siblings, err := childrenOf(ctx, tx, *p.ParentID, p.ID)
+	if err != nil {
 		return err
+	}
+	for _, s := range siblings {
+		if s.Rank > current || (s.Rank == current && s.ID.String() > p.ID.String()) {
+			next = s.Rank
+			break
+		}
 	}
 	ranks, err := rank.Spread(current, next, len(children))
 	if err != nil {
@@ -409,12 +426,11 @@ func letChildrenStay(ctx context.Context, tx db.DBTX, p *Page) error {
 			return err
 		}
 	}
+	ids := make([]uuid.UUID, len(children))
 	for i, child := range children {
-		if _, err := tx.Exec(ctx, `UPDATE page SET parent_id = $2, rank = $3 WHERE id = $1`, child.ID, *p.ParentID, ranks[i]); err != nil {
-			return err
-		}
+		ids[i] = child.ID
 	}
-	return nil
+	return place(ctx, tx, ids, *p.ParentID, ranks)
 }
 
 // Copy makes a new page like this one, with its title and body, under a
@@ -449,7 +465,7 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 				SELECT p.id, p.parent_id, 0 FROM page p WHERE p.id = $1
 				UNION ALL
 				SELECT p.id, p.parent_id, b.depth + 1 FROM page p JOIN below b ON p.parent_id = b.id
-				WHERE $2 AND`+live+` AND (p.version > 0 OR p.created_by = $7)
+				WHERE $2 AND`+live+` AND `+perm.ViewablePage("p", 7)+`
 			), fresh AS MATERIALIZED (
 				SELECT id AS old_id, uuidv7() AS new_id, parent_id, depth FROM below
 			), made AS (
@@ -461,7 +477,6 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 				       p.body, $7, $7
 				FROM fresh f JOIN page p ON p.id = f.old_id LEFT JOIN fresh up ON up.old_id = f.parent_id
 				ORDER BY f.depth
-				RETURNING id
 			)
 			SELECT old_id, new_id FROM fresh ORDER BY depth`,
 			id, in.WithChildren, to.ID, in.ParentID, r, title, actor.UserID)
@@ -482,6 +497,10 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			}
 		}
 		made := copies[id]
+		olds, news := make([]uuid.UUID, len(pairs)), make([]uuid.UUID, len(pairs))
+		for i, pair := range pairs {
+			olds[i], news[i] = pair.From, pair.To
+		}
 		// A statement of its own, because the version trigger reads the page
 		// rows, which the statement that inserts them cannot see. It comes
 		// after the observers, so version 1 holds the body they rewrote.
@@ -503,6 +522,14 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			)
 			UPDATE page SET version = 1 WHERE id IN (SELECT id FROM copied)`, made); err != nil {
 			return fmt.Errorf("publish the copy: %w", err)
+		}
+		// Each copy keeps its original's own lists, and takes on those above
+		// where it lands.
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id, group_id)
+			SELECT r.org_id, m.new_id, r.kind, r.subject_type, r.user_id, r.group_id
+			FROM page_restriction r JOIN unnest($1::uuid[], $2::uuid[]) AS m (old_id, new_id) ON r.page_id = m.old_id`, olds, news); err != nil {
+			return fmt.Errorf("copy the restrictions: %w", err)
 		}
 		out, _, err = load(ctx, tx, actor, made, false)
 		return err

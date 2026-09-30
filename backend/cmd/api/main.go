@@ -25,6 +25,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/internal/space"
@@ -132,6 +133,7 @@ func run() error {
 		Spaces:          space.NewService(cluster),
 		Pages:           pages,
 		Attachments:     attachment.NewService(cluster, store, pages).WithMaxSize(cfg.UploadLimit).WithLogger(log),
+		Perms:           perm.NewService(cluster),
 		CookieName:      cfg.Auth.SessionCookie,
 		Secure:          cfg.Auth.SecureCookies,
 		AppBaseURL:      cfg.AppBaseURL,

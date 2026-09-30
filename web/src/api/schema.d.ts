@@ -635,7 +635,7 @@ export interface paths {
         /** Every space the caller may see, by name. */
         get: operations["listSpaces"];
         put?: never;
-        /** Make a space and its home page. For administrators. */
+        /** Make a space and its home page. For whoever may create spaces. */
         post: operations["createSpace"];
         delete?: never;
         options?: never;
@@ -654,11 +654,11 @@ export interface paths {
         get: operations["getSpace"];
         put?: never;
         post?: never;
-        /** Delete a space and every page in it. For administrators. */
+        /** Delete a space and every page in it. For the space's administrators. */
         delete: operations["deleteSpace"];
         options?: never;
         head?: never;
-        /** Rename or describe a space. For administrators. */
+        /** Rename or describe a space. For the space's administrators. */
         patch: operations["updateSpace"];
         trace?: never;
     };

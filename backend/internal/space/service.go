@@ -51,10 +51,14 @@ func Load(ctx context.Context, tx db.DBTX, actor perm.Actor, where string, arg a
 	if err != nil {
 		return nil, err
 	}
-	if !perm.Allowed(ctx, tx, actor, perm.ViewSpace, s.ID) {
+	f, err := perm.LoadFacts(ctx, tx, actor, s.ID)
+	if err != nil {
+		return nil, err
+	}
+	if !perm.Decide(f, perm.ViewSpace) {
 		return nil, ErrNotFound
 	}
-	s.Can = perm.On(ctx, tx, actor, s.ID)
+	s.Can = f.Can()
 	return s, nil
 }
 
@@ -68,7 +72,7 @@ const ByID = `s.id = $1`
 func (s *Service) List(ctx context.Context, actor perm.Actor) ([]Space, error) {
 	out := []Space{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectSpaces+` ORDER BY lower(s.name), s.key`)
+		rows, err := tx.Query(ctx, selectSpaces+` WHERE `+perm.ViewableSpace("s", 1)+` ORDER BY lower(s.name), s.key`, actor.UserID)
 		if err != nil {
 			return err
 		}
@@ -86,8 +90,12 @@ func (s *Service) List(ctx context.Context, actor perm.Actor) ([]Space, error) {
 			return err
 		}
 		for _, one := range all {
-			if perm.Allowed(ctx, tx, actor, perm.ViewSpace, one.ID) {
-				one.Can = perm.On(ctx, tx, actor, one.ID)
+			f, err := perm.LoadFacts(ctx, tx, actor, one.ID)
+			if err != nil {
+				return err
+			}
+			if perm.Decide(f, perm.ViewSpace) {
+				one.Can = f.Can()
 				out = append(out, *one)
 			}
 		}
@@ -127,20 +135,21 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		if err := perm.Check(ctx, tx, actor, perm.CreateSpace, uuid.Nil); err != nil {
 			return err
 		}
-		var id uuid.UUID
-		err := tx.QueryRow(ctx, `
-			INSERT INTO space (org_id, key, name, description, created_by)
-			VALUES (current_org_id(), $1, $2, $3, $4) RETURNING id`, key, name, description, actor.UserID).Scan(&id)
+		// The ids are made here rather than returned: a row the statement
+		// writes is not yet one its own snapshot lets the policies see.
+		id, home := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
+		_, err := tx.Exec(ctx, `
+			INSERT INTO space (id, org_id, key, name, description, created_by)
+			VALUES ($1, current_org_id(), $2, $3, $4, $5)`, id, key, name, description, actor.UserID)
 		if isUnique(err) {
 			return &FieldError{Field: "key", Message: fmt.Sprintf("The key %s is taken by another space. Choose another.", key)}
 		}
 		if err != nil {
 			return fmt.Errorf("save the space: %w", err)
 		}
-		var home uuid.UUID
-		if err := tx.QueryRow(ctx, `
-			INSERT INTO page (org_id, space_id, rank, title, created_by, updated_by)
-			VALUES (current_org_id(), $1, $2, $3, $4, $4) RETURNING id`, id, rank.Initial(), name, actor.UserID).Scan(&home); err != nil {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO page (id, org_id, space_id, rank, title, created_by, updated_by)
+			VALUES ($1, current_org_id(), $2, $3, $4, $5, $5)`, home, id, rank.Initial(), name, actor.UserID); err != nil {
 			return fmt.Errorf("make the home page: %w", err)
 		}
 		// Everybody who sees the space sees its home page, so it starts published.
