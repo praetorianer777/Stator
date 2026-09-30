@@ -17,6 +17,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
@@ -140,6 +141,7 @@ func run() error {
 		Perms:           perm.NewService(cluster),
 		Search:          search.NewService(cluster),
 		Labels:          label.NewService(cluster, pages),
+		Comments:        comment.NewService(cluster),
 		Watches:         watch.NewService(cluster),
 		Notifications:   notify.NewService(cluster),
 		CookieName:      cfg.Auth.SessionCookie,

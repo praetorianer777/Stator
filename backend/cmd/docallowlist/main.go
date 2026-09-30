@@ -1,5 +1,6 @@
-// Command docallowlist writes the document allowlist, the nodes and marks a
-// page may hold, as JSON to the path given or to stdout.
+// Command docallowlist writes the document allowlists as JSON: what a page
+// may hold to the first path given, and what a comment may hold to the
+// second, or the page's to stdout when no path is given.
 package main
 
 import (
@@ -10,17 +11,30 @@ import (
 )
 
 func main() {
-	encoded, err := document.Allowed.JSON()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	if len(os.Args) > 1 {
-		if err := os.WriteFile(os.Args[1], encoded, 0o644); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+	lists := []document.Allowlist{document.Allowed, document.CommentAllowed}
+	if len(os.Args) == 1 {
+		encoded, err := document.Allowed.JSON()
+		if err != nil {
+			fail(err)
 		}
+		os.Stdout.Write(encoded)
 		return
 	}
-	os.Stdout.Write(encoded)
+	for i, path := range os.Args[1:] {
+		if i >= len(lists) {
+			fail(fmt.Errorf("give at most %d paths", len(lists)))
+		}
+		encoded, err := lists[i].JSON()
+		if err != nil {
+			fail(err)
+		}
+		if err := os.WriteFile(path, encoded, 0o644); err != nil {
+			fail(err)
+		}
+	}
+}
+
+func fail(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
 }

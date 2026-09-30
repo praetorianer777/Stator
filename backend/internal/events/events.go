@@ -54,6 +54,18 @@ type PagePublished struct {
 	Mentioned []uuid.UUID `json:"mentioned"`
 }
 
+// CommentCreated is a new thread or a reply.
+type CommentCreated struct {
+	CommentID uuid.UUID `json:"commentId"`
+	ThreadID  uuid.UUID `json:"threadId"`
+	PageID    uuid.UUID `json:"pageId"`
+	ActorID   uuid.UUID `json:"actorId"`
+	// Reply is a comment at the end of a thread somebody else may have begun.
+	Reply bool `json:"reply"`
+	// Mentioned are the people the comment names.
+	Mentioned []uuid.UUID `json:"mentioned"`
+}
+
 // Emit writes an event in the caller's transaction, the one that makes the
 // change. The payload's actorId must be the person the transaction acts for.
 func Emit(ctx context.Context, tx db.DBTX, topic string, payload any) error {
