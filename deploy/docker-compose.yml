@@ -38,6 +38,15 @@ x-auth-env: &auth-env
   STATOR_SECRET_KEY: ${STATOR_SECRET_KEY:-c3RhdG9yLWRldmVsb3BtZW50LW9ubHktc2VjcmV0LWs=}
   STATOR_OIDC_BACKCHANNEL: http://localhost:${KEYCLOAK_PORT:-8180}=http://keycloak:8080
 
+# Armature, as the stub stands in for it. An administrator connects
+# http://localhost:${ARMATURE_STUB_PORT}, the address a browser opens; the api
+# and the worker reach it on the stack's network. The guard lets the stub's
+# host through here only; the chart allows nothing inside the network. For a
+# real Armature on the host, see docs/api-contract-m3.md.
+x-armature-env: &armature-env
+  STATOR_OUTBOUND_ALLOW: armature-stub
+  STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080
+
 # Who an organization of the stack is made with: the realm's people, let in
 # ahead of time, and the realm as its provider. The seed gives them to demo;
 # the api gives them to every throwaway organization of the browser suite.
@@ -245,6 +254,8 @@ services:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
+      armature-stub:
+        condition: service_healthy
       # After the seed rather than beside it: a stack that answers is one a
       # browser test can sign in to, and `up --wait` accepts a one-shot
       # container only when something waits for it.
@@ -253,7 +264,7 @@ services:
     environment:
       # The session cookie is checked against the origin the browser uses,
       # which is the web container's published port; auth-env names it.
-      <<: [*app-db-env, *s3-env, *auth-env, *bootstrap-env]
+      <<: [*app-db-env, *s3-env, *auth-env, *bootstrap-env, *armature-env]
       STATOR_HTTP_ADDR: ":8080"
       STATOR_LOG_LEVEL: debug
       # The browser suite makes an organization per spec file through these;
@@ -283,7 +294,7 @@ services:
       seaweedfs:
         condition: service_healthy
     environment:
-      <<: [*app-db-env, *s3-env]
+      <<: [*app-db-env, *s3-env, *armature-env]
       STATOR_LOG_LEVEL: debug
       STATOR_APP_URL: http://localhost:${WEB_PORT:-8000}
       # Every notification mail lands in Mailpit, as in Armature.
@@ -296,6 +307,21 @@ services:
       timeout: 3s
       retries: 5
       start_period: 30s
+      start_interval: 1s
+
+  # Stands in for Armature: the part of its API Stator calls, in its shapes,
+  # held to Armature's document by a contract test. Never in the chart.
+  armature-stub:
+    <<: *backend
+    command: ["/app/armature-stub"]
+    ports:
+      - "127.0.0.1:${ARMATURE_STUB_PORT:-8190}:8080"
+    healthcheck:
+      test: ["CMD", "/app/armature-stub", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
       start_interval: 1s
 
   web:
