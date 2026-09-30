@@ -85,6 +85,7 @@ func (s *Server) handleDeleteSpace(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
+	s.sweepFiles(r.Context())
 	respondNoContent(w)
 }
 
@@ -255,6 +256,7 @@ func (s *Server) handlePurgePage(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
+	s.sweepFiles(r.Context())
 	respondNoContent(w)
 }
 
@@ -265,5 +267,6 @@ func (s *Server) handleEmptyTrash(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
+	s.sweepFiles(r.Context())
 	respondNoContent(w)
 }

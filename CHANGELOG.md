@@ -103,6 +103,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   caller may do, and `/people` and `/groups` serve the pickers. Row level
   security holds raw SQL as the app role to the same rules for the person a
   transaction names, and every change is written to the audit log.
+- Drafts and history in the web client. The editor saves to a private
+  draft a moment after typing stops and publishes it from a dialog with an
+  optional comment and whether to notify watchers; when somebody published
+  in between, it says so and offers to compare, keep the draft over their
+  version, or discard it. Unpublished pages and waiting drafts are marked
+  on the page and in the tree. A page's history lists every version with
+  who published it, when and why, shows any one read-only, compares two
+  versions or a version with the draft, with added text underlined and
+  removed text struck through and announced to screen readers, and
+  restores a version as a new one after asking.
 
 ### Changed
 
@@ -151,3 +161,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   was, or under the home page when the page it was under is gone.
   Administrators delete an item for good or empty the trash, which the
   audit log records.
+- Files on pages, in the API: upload as a multipart part named `file`, list
+  a page's files, download, and delete for good. Uploads are refused over
+  `STATOR_UPLOAD_LIMIT` (50 MB unless set, as `attachments.uploadLimit` in
+  the chart) with a message naming the limit. Images report their width and
+  height. A download is an attachment with `nosniff`; with `inline=1`,
+  pictures, PDFs and plain text show in place, and SVG and HTML never do.
+  Files stay with a trashed page, come along when it is copied (the copy's
+  version 1 names the copy's own files, so purging the original leaves its
+  history whole), and leave
+  the bucket when it is purged, its space is deleted or its file is
+  deleted; the worker removes what is left behind.

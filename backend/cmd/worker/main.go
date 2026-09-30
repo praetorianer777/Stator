@@ -1,5 +1,5 @@
-// Command worker will run everything that happens outside a request. For now it
-// connects, serves its metrics and waits to be stopped.
+// Command worker runs everything that happens outside a request: for now the
+// reaper that removes the bytes of deleted files.
 package main
 
 import (
@@ -10,8 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/version"
 )
@@ -66,6 +68,20 @@ func run() error {
 	}
 	if err := tel.Register(observability.NewClusterCollector(cluster)); err != nil {
 		return err
+	}
+
+	store, err := objectstore.Open(objectstore.Config{
+		Endpoint: cfg.S3.Endpoint, Bucket: cfg.S3.Bucket, AccessKey: cfg.S3.AccessKey,
+		SecretKey: cfg.S3.SecretKey, Region: cfg.S3.Region, UseSSL: cfg.S3.UseSSL,
+	})
+	if err != nil {
+		return err
+	}
+	if objectstore.IsUnavailable(store) {
+		log.Warn("the attachment reaper is off: STATOR_S3_ENDPOINT is not set")
+	} else {
+		reaper := attachment.NewReaper(attachment.NewService(cluster, store, nil).WithLogger(log), log, attachment.DefaultReapInterval)
+		go reaper.Run(ctx)
 	}
 
 	build := version.Current()

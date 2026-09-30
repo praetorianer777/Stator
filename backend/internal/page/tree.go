@@ -483,21 +483,27 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 		if err != nil {
 			return fmt.Errorf("copy the page: %w", err)
 		}
-		pairs, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) ([2]uuid.UUID, error) {
-			var pair [2]uuid.UUID
-			err := row.Scan(&pair[0], &pair[1])
-			return pair, err
-		})
+		pairs, err := pgx.CollectRows(rows, pgx.RowToStructByPos[copied])
 		if err != nil {
 			return fmt.Errorf("copy the page: %w", err)
 		}
-		made := pairs[0][1]
+		copies := make(map[uuid.UUID]uuid.UUID, len(pairs))
+		for _, p := range pairs {
+			copies[p.From] = p.To
+		}
+		for _, o := range s.copyObservers {
+			if err := o.PagesCopied(ctx, tx, copies); err != nil {
+				return err
+			}
+		}
+		made := copies[id]
 		olds, news := make([]uuid.UUID, len(pairs)), make([]uuid.UUID, len(pairs))
 		for i, pair := range pairs {
-			olds[i], news[i] = pair[0], pair[1]
+			olds[i], news[i] = pair.From, pair.To
 		}
 		// A statement of its own, because the version trigger reads the page
-		// rows, which the statement that inserts them cannot see.
+		// rows, which the statement that inserts them cannot see. It comes
+		// after the observers, so version 1 holds the body they rewrote.
 		if _, err := tx.Exec(ctx, `
 			WITH RECURSIVE copied (id) AS (
 				SELECT $1::uuid

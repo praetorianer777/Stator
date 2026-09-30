@@ -526,7 +526,19 @@ CREATE POLICY page_restriction_editors_change ON page_restriction AS RESTRICTIVE
 CREATE POLICY page_restriction_editors_remove ON page_restriction AS RESTRICTIVE FOR DELETE TO stator_app
     USING (perm_page_editable(page_id, current_actor_id()));
 
+-- A file is its page's: seen with it, put on and taken off by who edits it.
+-- A copy's files keep their uploader, so the uploader is not checked.
+CREATE POLICY attachment_viewers ON attachment AS RESTRICTIVE FOR SELECT TO stator_app
+    USING (perm_page_viewable(page_id, current_actor_id()));
+CREATE POLICY attachment_editors_add ON attachment AS RESTRICTIVE FOR INSERT TO stator_app
+    WITH CHECK (perm_page_editable(page_id, current_actor_id()));
+CREATE POLICY attachment_editors_remove ON attachment AS RESTRICTIVE FOR DELETE TO stator_app
+    USING (perm_page_editable(page_id, current_actor_id()));
+
 -- +goose Down
+DROP POLICY IF EXISTS attachment_editors_remove ON attachment;
+DROP POLICY IF EXISTS attachment_editors_add ON attachment;
+DROP POLICY IF EXISTS attachment_viewers ON attachment;
 DROP POLICY IF EXISTS page_restriction_editors_remove ON page_restriction;
 DROP POLICY IF EXISTS page_restriction_editors_change ON page_restriction;
 DROP POLICY IF EXISTS page_restriction_editors_add ON page_restriction;

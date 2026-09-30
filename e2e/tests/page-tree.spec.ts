@@ -3,7 +3,7 @@ import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
-import { childTitles, createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { childTitles, createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 
 const tree = (page: Page) => page.locator("[data-page-tree]");
 const item = (page: Page, title: string) => tree(page).getByRole("treeitem", { name: title, exact: true });
@@ -31,14 +31,14 @@ test.describe("the page tree", { tag: ["@auth"] }, () => {
     await expect(page).toHaveURL(/\/p\/[0-9a-f-]+\/onboarding\/edit$/);
     await page.locator("#page-body").click();
     await page.keyboard.type("Start here.");
-    await page.locator('[data-action="save-page"]').click();
+    await publishFromEditor(page);
     await expect(page).toHaveURL(/\/p\/[0-9a-f-]+\/onboarding$/);
     await expect(item(page, "Onboarding")).toHaveAttribute("aria-selected", "true");
 
     await page.locator('[data-action="new-page"]').click();
     await page.getByRole("dialog").getByLabel("Title", { exact: true }).fill("First week");
     await page.locator('[data-action="confirm-new-page"]').click();
-    await page.locator('[data-action="save-page"]').click();
+    await publishFromEditor(page);
     await expect(heading(page)).toHaveText("First week");
     await expect(item(page, "First week")).toHaveAttribute("aria-level", "2");
     await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Onboarding" })).toBeVisible();

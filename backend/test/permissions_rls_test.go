@@ -33,6 +33,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	open := docs.add(docs.homeID, "Open")
 	want(t, restrict(t, ann, top, []any{user(annID), user(bobID)}, []any{user(annID)}), http.StatusOK, "ann restricts Top")
 	want(t, ann.put(t, pagePath(low, "/draft"), map[string]any{"title": "Draft", "body": textDoc("secret"), "baseVersion": 1}), http.StatusOK, "ann drafts Low")
+	want(t, ann.upload(t, pagePath(low, "/attachments"), "low.txt", []byte("secret")), http.StatusCreated, "ann attaches to Low")
 	reading := newTree(t, owner, "READ", "Read only")
 	readPage := reading.add(reading.homeID, "Read me")
 	want(t, owner.put(t, "/api/v1/spaces/READ/permissions", map[string]any{"grants": []any{
@@ -64,7 +65,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 
 	t.Run("somebody off a view list reads nothing below it", func(t *testing.T) {
 		actAs(t, conn, home.org, carlID)
-		for table, column := range map[string]string{"page": "id", "page_version": "page_id", "page_restriction": "page_id", "page_draft": "page_id"} {
+		for table, column := range map[string]string{"page": "id", "page_version": "page_id", "page_restriction": "page_id", "page_draft": "page_id", "attachment": "page_id"} {
 			if n := count(`SELECT count(*) FROM `+table+` WHERE `+column+` = ANY ($1)`, []string{top, low}); n != 0 {
 				t.Errorf("carl reads %d rows of %s", n, table)
 			}
@@ -86,6 +87,8 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 			t.Fatalf("bob does not read Low: %d", n)
 		}
 		denied(t, conn, "retitling it", `UPDATE page SET title = 'Bob''s' WHERE id = $1`, low)
+		denied(t, conn, "a file on it", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1)`, home.org, low)
+		untouched(t, conn, "its files", `DELETE FROM attachment WHERE page_id = $1`, low)
 		denied(t, conn, "trashing it", `UPDATE page SET trashed_at = now(), trash_id = id WHERE id = $1`, low)
 		denied(t, conn, "publishing a version of it", `INSERT INTO page_version (org_id, page_id, number, title, body, created_by) VALUES ($1, $2, 2, 'Bob''s', '{}', $3)`, home.org, low, bobID)
 		denied(t, conn, "a draft of it", `INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version) VALUES ($1, $2, $3, 'Bob''s', '{}', 1)`, home.org, low, bobID)

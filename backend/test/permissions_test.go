@@ -286,6 +286,23 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 			t.Errorf("Low inherits %v", above)
 		}
 
+		file := obj(t, want(t, ann.upload(t, pagePath(low, "/attachments"), "plan.txt", []byte("secret")), http.StatusCreated, "ann attaches to Low"), "attachment")["id"].(string)
+		if got := bob.upload(t, pagePath(low, "/attachments"), "bob.txt", []byte("x")); got.Status != http.StatusForbidden {
+			t.Errorf("bob attached below an edit list: %d", got.Status)
+		}
+		if got := bob.delete(t, "/api/v1/attachments/"+file); got.Status != http.StatusForbidden {
+			t.Errorf("bob removed a file below an edit list: %d", got.Status)
+		}
+		if n := len(list(t, want(t, bob.get(t, pagePath(low, "/attachments")), http.StatusOK, "bob lists Low's files"), "attachments")); n != 1 {
+			t.Errorf("bob sees %d of Low's files", n)
+		}
+		if got := carl.get(t, pagePath(low, "/attachments")); got.Status != http.StatusNotFound {
+			t.Errorf("carl lists a hidden page's files: %d", got.Status)
+		}
+		if resp, _ := carl.download(t, "/api/v1/attachments/"+file); resp.StatusCode != http.StatusNotFound {
+			t.Errorf("carl downloads a hidden page's file: %d", resp.StatusCode)
+		}
+
 		lockout := restrict(t, ann, low, []any{user(bobID)}, nil)
 		if lockout.Status != http.StatusConflict || errorCode(t, lockout) != "conflict" {
 			t.Errorf("a save that locks ann out: %d %s", lockout.Status, lockout.Raw)

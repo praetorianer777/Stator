@@ -42,8 +42,10 @@ space's view is for.
 What the database enforces, for `stator_app`, with restrictive policies and
 one trigger:
 
-- reading spaces, pages, versions, drafts (one's own only), restrictions and
-  grants follows the same rules as the service, `use` included;
+- reading spaces, pages, versions, drafts (one's own only), files,
+  restrictions and grants follows the same rules as the service, `use`
+  included;
+- putting a file on a page or taking it off needs edit of the page;
 - writing a page's content or place needs edit, its trash marks need delete,
   purging needs administer of the space, and a new page needs edit of its
   parent, which `page_write_guard` tells apart since a policy cannot see
@@ -65,6 +67,29 @@ is set by whoever holds a `stator_app` connection, as `app.org_id` is, so the
 database holds a connection to the person it names but cannot tell a forged
 name. That credential is the api's alone, and the policies turn a query
 that forgets whom it is for into one that sees nothing.
+
+## 2026-09-29: A deleted file leaves a tombstone, written by the database
+
+Attachments work as in Armature. The bytes go to the bucket inside the
+transaction that writes the row, so a refused upload leaves no row. A
+deleted row leaves a tombstone, and the bytes are removed after the commit,
+by the request that deleted it or by the worker's reaper. Armature writes
+tombstones in the service. Here a trigger on `attachment` writes them, so
+every path that removes a row leaves one: a delete, a purged page, emptied
+trash, a deleted space or organization, and raw SQL. Purges and space
+deletes then sweep the organization's tombstones before answering. The
+tombstone table has no foreign key to `org`, so an organization's
+tombstones outlive it until the reaper has emptied its prefix, which is
+what Armature arrived at with its migration 00900.
+
+The object key is a generated column, `org/<org>/page/<page>/<id>`, and a
+tombstone must name a key under its own organization's prefix. The app role
+has no UPDATE on either table. Without these, a tenant could point a row or
+a tombstone at another tenant's object, and the reaper, which works across
+tenants, would delete it. Files are copied with their page by reading and
+writing each object inside the copy's transaction, as an upload does. A
+copy that fails after writing some objects leaves them unreachable in the
+bucket, which costs space but breaks nothing.
 
 ## 2026-09-29: History is append only, and a comparison aligns blocks, then words
 
