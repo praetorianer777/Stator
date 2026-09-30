@@ -3,6 +3,35 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-29: History is append only, and a comparison aligns blocks, then words
+
+`page_version` rows are written once. The app role may only read and insert
+them; they leave with their page, by the cascade. A trigger refuses any
+number but the page's current version plus one, so numbers have no gaps
+whoever writes them, and it locks the page row, so two publishes queue.
+Publishing inserts the version, then copies it onto `page`, in one
+transaction. A draft is keyed on page and person, and references the
+membership, so leaving the organization takes a person's drafts with it.
+The database walls drafts off by organization; that one person's draft is
+hidden from the next is the service's rule until #19 gives the database a
+notion of who is asking.
+
+An unpublished page is `version = 0`, and whether somebody may see it is its
+`created_by`, checked for the page and every page above it wherever a page is
+read. A copy of a subtree leaves out what the copier cannot see.
+
+A comparison first matches identical top-level blocks by their longest
+common subsequence. Between two matches, blocks of the same type are paired
+the same way and compared inside: text blocks word by word, where a word
+whose marks changed counts as replaced; lists, quotes and panels child by
+child, a child added or removed inside them marked whole; tables cell by
+cell, but only while every row has the same cells, else the table is
+deleted and inserted. A heading's anchor and a cell's width and colours do
+not stop a comparison. Past about four million cells an alignment gives up
+on the middle and shows it replaced, so a huge rewrite cannot exhaust the
+server. The draft side of a comparison is number 0 with `draft: true`,
+written by the caller.
+
 ## 2026-09-29: A deleted page stays in place, marked, until it is purged
 
 Deleting a page marks it and every page below it still in the tree with
