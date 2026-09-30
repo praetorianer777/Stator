@@ -3,7 +3,6 @@ package page
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -40,11 +39,13 @@ func scan(row pgx.Row) (*Page, error) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
+	p.Unpublished = p.Version == 0
 	return &p, err
 }
 
 // load reads a page and its space, refusing with ErrNotFound what the actor
-// may not see and what is in the trash; lock takes the page for writing.
+// may not see, what is in the trash and what is below somebody else's
+// unpublished page; lock takes the page for writing.
 func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock bool) (*Page, *space.Space, error) {
 	sql := selectPages + ` WHERE p.id = $1 AND` + live
 	if lock {
@@ -61,10 +62,42 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	if err != nil {
 		return nil, nil, err
 	}
+	if hidden, err := hiddenFrom(ctx, tx, actor, id); err != nil {
+		return nil, nil, err
+	} else if hidden {
+		return nil, nil, ErrNotFound
+	}
 	if p.Ancestors, err = ancestors(ctx, tx, id); err != nil {
 		return nil, nil, err
 	}
+	var draft DraftRef
+	err = tx.QueryRow(ctx, `SELECT base_version, updated_at FROM page_draft WHERE page_id = $1 AND user_id = $2`,
+		id, actor.UserID).Scan(&draft.BaseVersion, &draft.UpdatedAt)
+	switch {
+	case err == nil:
+		p.Draft = &draft
+	case !errors.Is(err, pgx.ErrNoRows):
+		return nil, nil, err
+	}
 	return p, sp, nil
+}
+
+// visible narrows a query on page p to what the actor may see: published
+// pages and their own unpublished ones. Parameter $2 must be the actor.
+const visible = ` (p.version > 0 OR p.created_by = $2)`
+
+// hiddenFrom reports whether the page or one above it is an unpublished page
+// of somebody else's, which hides it and everything below it.
+func hiddenFrom(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) (bool, error) {
+	var hidden bool
+	err := tx.QueryRow(ctx, `
+		WITH RECURSIVE up (id, parent_id, version, created_by) AS (
+			SELECT id, parent_id, version, created_by FROM page WHERE id = $1
+			UNION ALL
+			SELECT p.id, p.parent_id, p.version, p.created_by FROM page p JOIN up ON p.id = up.parent_id
+		)
+		SELECT EXISTS (SELECT 1 FROM up WHERE version = 0 AND created_by IS DISTINCT FROM $2)`, id, actor.UserID).Scan(&hidden)
+	return hidden, err
 }
 
 // Get is one page with the space it is in.
@@ -81,7 +114,8 @@ func (s *Service) Get(ctx context.Context, actor perm.Actor, id uuid.UUID) (*Pag
 	return p, sp, err
 }
 
-// Update saves a new title or body over the version it was made from.
+// Update publishes a new title or body as the next version, with no
+// comment, over the version it was made from. Drafts are left alone.
 func (s *Service) Update(ctx context.Context, actor perm.Actor, id uuid.UUID, in UpdateInput) (*Page, db.LSN, error) {
 	var title string
 	if in.Title != nil {
@@ -114,10 +148,8 @@ func (s *Service) Update(ctx context.Context, actor perm.Actor, id uuid.UUID, in
 		if in.Body != nil {
 			body = in.Body
 		}
-		if _, err := tx.Exec(ctx, `
-			UPDATE page SET title = $2, body = $3, version = version + 1, updated_by = $4 WHERE id = $1`,
-			id, title, body, actor.UserID); err != nil {
-			return fmt.Errorf("save the page: %w", err)
+		if _, err := publish(ctx, tx, actor, current, release{title: title, body: body}); err != nil {
+			return err
 		}
 		out, _, err = load(ctx, tx, actor, id, false)
 		return err

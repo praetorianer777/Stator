@@ -288,6 +288,106 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 	})
 }
 
+// publishOver makes body the page's next version behind the policies' back,
+// for documents the editor's nodes are not yet allowed to carry.
+func (h *harness) publishOver(t *testing.T, pageID, body string) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := h.super.Exec(ctx, `
+		INSERT INTO page_version (org_id, page_id, number, title, body)
+		SELECT org_id, id, version + 1, title, $2 FROM page WHERE id = $1`, pageID, body); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.super.Exec(ctx, `UPDATE page SET version = version + 1, body = $2 WHERE id = $1`, pageID, body); err != nil {
+		t.Fatal(err)
+	}
+	h.settle(t)
+}
+
+func imageDoc(id string) string {
+	return fmt.Sprintf(`{"type":"doc","content":[{"type":"image","attrs":{"attachmentId":%q,"alt":"plan","width":null}}]}`, id)
+}
+
+// imageIn is the file the first block of a document shows.
+func imageIn(t *testing.T, body any) string {
+	t.Helper()
+	blocks, _ := body.(map[string]any)["content"].([]any)
+	if len(blocks) == 0 {
+		t.Fatalf("no blocks in %v", body)
+	}
+	attrs, _ := blocks[0].(map[string]any)["attrs"].(map[string]any)
+	id, _ := attrs["attachmentId"].(string)
+	return id
+}
+
+// A copy's history is its own: version 1 names the copy's files, and
+// purging the original takes nothing the copy's versions show (#152).
+func TestACopysHistoryKeepsItsOwnFiles(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "files-history")
+	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	docs := newTree(t, owner, "HIST", "History")
+	original := docs.add(docs.homeID, "Original")
+	fileID := obj(t, want(t, owner.upload(t, "/api/v1/pages/"+original+"/attachments", "plan.png", pngOf(t, 2, 2)), http.StatusCreated, "upload"), "attachment")["id"].(string)
+	h.publishOver(t, original, imageDoc(fileID))
+
+	copied := obj(t, want(t, owner.post(t, "/api/v1/pages/"+original+"/copy", map[string]any{"parentId": docs.homeID}), http.StatusCreated, "copy"), "page")
+	copyID := copied["id"].(string)
+	mine := list(t, want(t, owner.get(t, "/api/v1/pages/"+copyID+"/attachments"), http.StatusOK, "the copy's files"), "attachments")
+	if len(mine) != 1 {
+		t.Fatalf("the copy has %d files", len(mine))
+	}
+	copyFile := mine[0].(map[string]any)["id"].(string)
+	versionOne := func(what string) {
+		t.Helper()
+		v := obj(t, want(t, owner.get(t, "/api/v1/pages/"+copyID+"/versions/1"), http.StatusOK, what), "version")
+		if got := imageIn(t, v["body"]); got != copyFile {
+			t.Fatalf("%s: version 1 of the copy shows %s, want its own file %s", what, got, copyFile)
+		}
+	}
+	versionOne("version 1 of the copy")
+
+	want(t, owner.delete(t, "/api/v1/pages/"+original), http.StatusNoContent, "trash the original")
+	want(t, owner.delete(t, "/api/v1/spaces/HIST/trash/"+original), http.StatusNoContent, "purge the original")
+	versionOne("version 1 after the purge")
+	if resp, _ := owner.download(t, "/api/v1/attachments/"+copyFile); resp.StatusCode != http.StatusOK {
+		t.Fatalf("the copy's file after the purge: %d", resp.StatusCode)
+	}
+
+	want(t, owner.patch(t, "/api/v1/pages/"+copyID, map[string]any{"body": map[string]any{"type": "doc", "content": []any{map[string]any{"type": "paragraph"}}}, "version": 1}), http.StatusOK, "publish version 2 of the copy")
+	restored := obj(t, want(t, owner.post(t, "/api/v1/pages/"+copyID+"/versions/1/restore", map[string]any{"baseVersion": 2}), http.StatusOK, "restore version 1"), "page")
+	if got := imageIn(t, restored["body"]); got != copyFile {
+		t.Fatalf("the restored copy shows %s, want %s", got, copyFile)
+	}
+}
+
+// A restored version keeps naming a file deleted since, which then answers
+// not found, so the reader draws it as missing; nothing is resurrected.
+func TestARestoredVersionShowsADeletedFileAsMissing(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "files-restore")
+	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	docs := newTree(t, owner, "REST", "Restore")
+	pageID := docs.add(docs.homeID, "Page")
+	fileID := obj(t, want(t, owner.upload(t, "/api/v1/pages/"+pageID+"/attachments", "plan.png", pngOf(t, 2, 2)), http.StatusCreated, "upload"), "attachment")["id"].(string)
+	h.publishOver(t, pageID, imageDoc(fileID))
+	want(t, owner.patch(t, "/api/v1/pages/"+pageID, map[string]any{"body": map[string]any{"type": "doc", "content": []any{map[string]any{"type": "paragraph"}}}, "version": 2}), http.StatusOK, "publish version 3")
+	want(t, owner.delete(t, "/api/v1/attachments/"+fileID), http.StatusNoContent, "delete the file")
+
+	restored := obj(t, want(t, owner.post(t, "/api/v1/pages/"+pageID+"/versions/2/restore", map[string]any{"baseVersion": 3}), http.StatusOK, "restore version 2"), "page")
+	if got := imageIn(t, restored["body"]); got != fileID {
+		t.Fatalf("the restored page shows %s, want the reference to %s kept", got, fileID)
+	}
+	if got := owner.get(t, "/api/v1/attachments/"+fileID); got.Status != http.StatusNotFound {
+		t.Fatalf("a deleted file came back with the version: %d", got.Status)
+	}
+	if n := len(list(t, want(t, owner.get(t, "/api/v1/pages/"+pageID+"/attachments"), http.StatusOK, "list"), "attachments")); n != 0 {
+		t.Fatalf("the page lists %d files after the restore", n)
+	}
+}
+
 // Deleting an organization cascades to its files, and the tombstones it
 // leaves behind let the worker's reaper empty its prefix.
 func TestTheReaperEmptiesADeletedOrganization(t *testing.T) {

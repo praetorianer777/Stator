@@ -143,6 +143,15 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 			VALUES (current_org_id(), $1, $2, $3, $4, $4) RETURNING id`, id, rank.Initial(), name, actor.UserID).Scan(&home); err != nil {
 			return fmt.Errorf("make the home page: %w", err)
 		}
+		// Everybody who sees the space sees its home page, so it starts published.
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
+			SELECT org_id, id, 1, title, body, created_by FROM page WHERE id = $1`, home); err != nil {
+			return fmt.Errorf("publish the home page: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `UPDATE page SET version = 1 WHERE id = $1`, home); err != nil {
+			return fmt.Errorf("publish the home page: %w", err)
+		}
 		if _, err := tx.Exec(ctx, `UPDATE space SET home_page_id = $2 WHERE id = $1`, id, home); err != nil {
 			return fmt.Errorf("name the home page: %w", err)
 		}

@@ -322,7 +322,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a page under a parent, last unless a place is named. */
+        /** Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set. */
         post: operations["createPage"];
         delete?: never;
         options?: never;
@@ -345,7 +345,7 @@ export interface paths {
         delete: operations["trashPage"];
         options?: never;
         head?: never;
-        /** Save a page's title or body over the version it was made from. */
+        /** Publish a new title or body as the next version, with no comment, over the version it was made from; drafts are left alone. */
         patch: operations["updatePage"];
         trace?: never;
     };
@@ -2633,7 +2633,7 @@ export interface operations {
     compareVersions: {
         parameters: {
             query?: {
-                /** @description A version number, or draft; the version before to when absent. */
+                /** @description A version number, 0 for the empty page, or draft; when absent the version before to, or the draft's base version when to is draft. */
                 from?: string;
                 /** @description A version number, or draft; the latest version when absent. */
                 to?: string;
