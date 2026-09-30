@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { useMe } from "@/api/auth";
 import { useDeleteComment, useEditComment, useReply, useStartThread, useThreads, type Comment, type Thread } from "@/api/comments";
 import type { Page } from "@/api/pages";
@@ -24,7 +24,7 @@ function messageOf(error: Error | null): string | undefined {
 }
 
 /** The editor, loaded on first use, with a line in its place while it comes. */
-function Composer(props: Parameters<typeof CommentEditor>[0]) {
+export function Composer(props: Parameters<typeof CommentEditor>[0]) {
   return (
     <Suspense fallback={<p className="text-sm text-ink-muted">{t.comments.loadingEditor}</p>}>
       <CommentEditor {...props} />
@@ -133,7 +133,20 @@ export function CommentsSection({ page, thread }: { page: Page; thread?: string 
   );
 }
 
-function ThreadView({ pageId, thread, highlighted }: { pageId: string; thread: Thread; highlighted: boolean }) {
+/** A first comment and its replies, with what the caller may do; `lead` goes above them and `actions` below. */
+export function ThreadView({
+  pageId,
+  thread,
+  highlighted,
+  lead,
+  actions,
+}: {
+  pageId: string;
+  thread: Thread;
+  highlighted: boolean;
+  lead?: ReactNode;
+  actions?: ReactNode;
+}) {
   const reply = useReply(pageId);
   const [replying, setReplying] = useState(false);
   const replyRef = useRef<HTMLButtonElement>(null);
@@ -150,6 +163,7 @@ function ThreadView({ pageId, thread, highlighted }: { pageId: string; thread: T
       data-thread={thread.id}
       data-highlighted={highlighted || undefined}
     >
+      {lead}
       <CommentView pageId={pageId} comment={first} />
       {replies.length > 0 && (
         <ol className="mt-3 space-y-3 border-l-2 border-border pl-3 sm:ml-8" aria-label={t.comments.replies(replies.length)}>
@@ -160,7 +174,7 @@ function ThreadView({ pageId, thread, highlighted }: { pageId: string; thread: T
           ))}
         </ol>
       )}
-      {thread.can.reply && (
+      {(thread.can.reply || actions) && (
         <div className="mt-3 sm:ml-8">
           {replying ? (
             <Composer
@@ -188,9 +202,14 @@ function ThreadView({ pageId, thread, highlighted }: { pageId: string; thread: T
               }}
             />
           ) : (
-            <Button ref={replyRef} size="sm" variant="ghost" onClick={() => setReplying(true)} data-action="reply">
-              {t.comments.reply}
-            </Button>
+            <div className="flex flex-wrap gap-1">
+              {thread.can.reply && (
+                <Button ref={replyRef} size="sm" variant="ghost" onClick={() => setReplying(true)} data-action="reply">
+                  {t.comments.reply}
+                </Button>
+              )}
+              {actions}
+            </div>
           )}
         </div>
       )}

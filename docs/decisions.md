@@ -3,6 +3,44 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: A passage is a mark in the live body, checked by the database, and found again by its words
+
+An inline thread's passage is the mark `inlineComment` on the words in
+`page.body`, not an offset kept beside the page. The editor carries a mark
+along with the text it edits, so a passage survives edits around it without
+the server following each keystroke, and a draft holds the marks the editor
+loaded. Versions never hold the mark: a trigger strips it from every
+`page_version`, as it strips hints, and a comparison takes it out of a draft
+before aligning, so history reads as if there were no threads.
+
+Somebody who may comment and not edit still changes `page.body` when they
+start a thread. The service compares the body sent, without the new mark,
+with the stored one, and answers 409 `anchor_conflict` when anybody changed
+the page meanwhile. The database does not rest on that: `page_write_guard`
+lets a body change by somebody without edit only when it adds the mark of
+one new inline thread of their own on this page and nothing else, compared
+by `document_without_anchors`, which joins again the text only the mark set
+apart. Go's `document.DropMarks` normalizes the same way. The page's
+`updated_at` stays for such a change, so a comment does not look like an
+edit.
+
+Each publish settles the marks in its transaction: a thread keeps the marks
+the body carries, a thread without one is put back where its quote occurs
+exactly once in one text block, and anything else is detached for good. A
+detached thread is never anchored again, even when a restore brings its
+words back: the words may be back in a new sense, and a thread that jumps
+back is harder to follow than one that says its passage is gone. Resolved
+threads are settled like open ones, so reopening one finds its passage.
+Marks that name no live thread of the page are dropped, which is also what
+keeps a client from inventing anchors through a draft; a copy takes none.
+
+Code blocks take no marks, as in the editor, so their text takes no inline
+comments; the contract named them among the text blocks, and a mark in code
+would have needed an exception in the allowlist and in the editor for one
+kind of mark. A reply to a resolved thread reopens it without a
+`thread.reopened` event: the reply tells the thread's writers already, and
+two notifications for one act would be one too many.
+
 ## 2026-09-30: The worker tells each person acting for them, and a digest is due by its rows
 
 Notifications follow Armature's: an event is written to `outbox_event` in

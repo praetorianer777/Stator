@@ -10,6 +10,9 @@ export const HEADING_LEVELS = EDITOR_HEADING_LEVELS;
 export const CHILD_PAGES_SCOPES = ["children", "subtree"] as const;
 export const CHILD_PAGES_SORTS = ["tree", "title", "updated"] as const;
 
+/** The mark an inline thread's passage carries in a page body. */
+export const INLINE_COMMENT_MARK = "inlineComment";
+
 export type PanelKind = (typeof PANEL_KINDS)[number];
 export type CellBackground = (typeof CELL_BACKGROUNDS)[number];
 export type ChildPagesScope = (typeof CHILD_PAGES_SCOPES)[number];

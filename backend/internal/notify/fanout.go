@@ -87,6 +87,8 @@ func NewFanOut(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog
 	f := &FanOut{db: cluster, mailer: mailer, appURL: strings.TrimRight(appURL, "/"), log: log, planners: map[string]Planner{}}
 	f.planners[events.TopicPagePublished] = planPublished
 	f.planners[events.TopicCommentCreated] = planCommentCreated
+	f.planners[events.TopicThreadResolved] = planThreadResolved
+	f.planners[events.TopicThreadReopened] = planThreadResolved
 	return f
 }
 

@@ -400,6 +400,15 @@
     "bold": {},
     "code": {},
     "hint": {},
+    "inlineComment": {
+      "attrs": {
+        "threadId": {
+          "kind": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "repeatable": true
+    },
     "italic": {},
     "link": {
       "attrs": {

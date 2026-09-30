@@ -42,9 +42,11 @@ type NodeSpec struct {
 	AllowsMarks bool            `json:"allowsMarks,omitempty"`
 }
 
-// MarkSpec is one mark type and its attributes.
+// MarkSpec is one mark type and its attributes. A repeatable mark may sit on
+// one piece of text several times, each time with other attributes.
 type MarkSpec struct {
-	Attrs map[string]Attr `json:"attrs,omitempty"`
+	Attrs      map[string]Attr `json:"attrs,omitempty"`
+	Repeatable bool            `json:"repeatable,omitempty"`
 }
 
 // Allowlist is every node and mark a stored document may hold.
@@ -89,6 +91,9 @@ const (
 	// depth is every level.
 	MaxChildPagesDepth = 10
 )
+
+// AnchorMark names the mark an inline thread's passage carries in a page body.
+const AnchorMark = "inlineComment"
 
 // UUIDPattern is an id as the API writes it, in lower case.
 const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
@@ -204,6 +209,11 @@ var Allowed = Allowlist{
 		// hint is a template's placeholder text: shown muted, replaced on the
 		// first keystroke, and stripped by the database from what is published.
 		"hint": {},
+		// The passage an inline thread is about. Passages may overlap, and
+		// the database strips the mark from every version.
+		AnchorMark: {Repeatable: true, Attrs: map[string]Attr{
+			"threadId": {Kind: KindString, Pattern: UUIDPattern},
+		}},
 		"link": {Attrs: map[string]Attr{
 			"href":   {Kind: KindString, MaxLength: MaxHrefLength, URL: true},
 			"target": {Kind: KindString, Nullable: true, Enum: []string{"_blank"}},

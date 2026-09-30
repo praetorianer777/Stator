@@ -61,6 +61,39 @@ func planCommentCreated(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	return plan, nil
 }
 
+// planThreadResolved tells everybody who wrote in a thread, unless it was
+// wholly deleted meanwhile, that it was resolved or reopened.
+func planThreadResolved(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) {
+	var in events.ThreadResolved
+	if err := json.Unmarshal(e.Payload, &in); err != nil {
+		return nil, nil
+	}
+	var quote string
+	err := tx.QueryRow(ctx, `
+		SELECT COALESCE(t.quote, '') FROM comment_thread t
+		WHERE t.id = $1 AND t.org_id = current_org_id()
+		  AND EXISTS (SELECT 1 FROM comment c WHERE c.org_id = t.org_id AND c.thread_id = t.id AND c.deleted_at IS NULL)`,
+		in.ThreadID).Scan(&quote)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	thread := in.ThreadID
+	plan := &Plan{Actor: in.ActorID, Subject: Subject{PageID: in.PageID, ThreadID: &thread, Excerpt: Excerpt(quote)}}
+	writers, err := people(ctx, tx, `
+		SELECT DISTINCT author_id FROM comment
+		WHERE thread_id = $1 AND org_id = current_org_id() AND author_id IS NOT NULL`, in.ThreadID)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range writers {
+		plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: KindResolved})
+	}
+	return plan, nil
+}
+
 func people(ctx context.Context, tx db.DBTX, sql string, args ...any) ([]uuid.UUID, error) {
 	rows, err := tx.Query(ctx, sql, args...)
 	if err != nil {

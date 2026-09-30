@@ -66,6 +66,13 @@ type CommentCreated struct {
 	Mentioned []uuid.UUID `json:"mentioned"`
 }
 
+// ThreadResolved is an inline thread resolved, or reopened, by its topic.
+type ThreadResolved struct {
+	ThreadID uuid.UUID `json:"threadId"`
+	PageID   uuid.UUID `json:"pageId"`
+	ActorID  uuid.UUID `json:"actorId"`
+}
+
 // Emit writes an event in the caller's transaction, the one that makes the
 // change. The payload's actorId must be the person the transaction acts for.
 func Emit(ctx context.Context, tx db.DBTX, topic string, payload any) error {

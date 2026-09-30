@@ -439,7 +439,8 @@ func letChildrenStay(ctx context.Context, tx db.DBTX, p *Page) error {
 
 // Copy makes a new page like this one, with its title and body, under a
 // parent in this space or another, and with its children the pages below it
-// the actor sees. Copies are published at version 1, with no history.
+// the actor sees. Copies are published at version 1, with no history, and
+// without the original's inline threads.
 func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in CopyInput) (*Page, db.LSN, error) {
 	var title *string
 	if in.Title != nil {
@@ -478,7 +479,7 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 				       CASE WHEN f.depth = 0 THEN $4 ELSE up.new_id END,
 				       CASE WHEN f.depth = 0 THEN $5 ELSE p.rank END,
 				       CASE WHEN f.depth = 0 THEN COALESCE($6, p.title) ELSE p.title END,
-				       p.body, $7, $7
+				       document_unanchored(p.body), $7, $7
 				FROM fresh f JOIN page p ON p.id = f.old_id LEFT JOIN fresh up ON up.old_id = f.parent_id
 				ORDER BY f.depth
 			)

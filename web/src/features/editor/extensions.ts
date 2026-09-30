@@ -19,6 +19,7 @@ import type { AttachmentIndex } from "./attachmentIndex";
 import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachments";
 import { ChildPages, TableOfContents } from "./blockNodes";
 import { Hint } from "./hint";
+import { InlineComment } from "./inlineComment";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -340,5 +341,6 @@ export function editorExtensions({ variant = "page", placeholder, mention, slash
     AttachmentChip.configure({ index: attachments }),
     FileUpload.configure({ upload }),
     Hint,
+    InlineComment,
   ];
 }

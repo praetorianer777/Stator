@@ -153,10 +153,15 @@ func (v validator) node(n Node, parent NodeSpec, depth int) error {
 		if !ok {
 			return v.invalid("This %s uses a %q style, which the editor cannot show; take it out.", m.Type)
 		}
-		if seen[m.Type] {
+		key := m.Type
+		if ms.Repeatable {
+			attrs, _ := json.Marshal(m.Attrs)
+			key += string(attrs)
+		}
+		if seen[key] {
 			return v.invalid("This %s applies the %q style twice to the same text.", m.Type)
 		}
-		seen[m.Type] = true
+		seen[key] = true
 		if err := v.checkAttrs(m.Attrs, ms.Attrs, fmt.Sprintf("the %q style", m.Type)); err != nil {
 			return err
 		}

@@ -201,6 +201,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
   leads to its thread with `?thread=`. Comments are search hits of type
   `comment`. The database holds raw SQL to the same rules: comments are read
   with their page and written only in one's own name, where one may comment.
+- Inline comments. Select text in a page and comment on it from a floating
+  button or Ctrl+Alt+M, without the right to edit the page; the passage is
+  highlighted and its thread opens in a panel beside the page, or below the
+  text on narrow screens. Threads are resolved and reopened by anybody who
+  may comment, which tells everybody who wrote in them, and a reply reopens
+  one; resolved threads are hidden behind a toggle. Every publish keeps each
+  thread on its passage, finds it again by its words when the passage was
+  not carried along, and otherwise detaches the thread for good; detached
+  threads are listed with their quote below the page. Marking a passage makes
+  no version, and neither versions nor comparisons show the mark. The
+  database lets a commenter change a page's body by the mark of their own new
+  thread alone.
 
 ### Changed
 

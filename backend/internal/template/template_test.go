@@ -11,14 +11,14 @@ import (
 
 var keyPattern = regexp.MustCompile(`^[a-z]+(-[a-z]+)*$`)
 
-func hasHint(n document.Node) bool {
+func hasMark(n document.Node, mark string) bool {
 	for _, m := range n.Marks {
-		if m.Type == "hint" {
+		if m.Type == mark {
 			return true
 		}
 	}
 	for _, c := range n.Content {
-		if hasHint(c) {
+		if hasMark(c, mark) {
 			return true
 		}
 	}
@@ -51,8 +51,11 @@ func TestEveryBuiltInIsADocumentThePageWouldTake(t *testing.T) {
 			continue
 		}
 		root, _ := document.Parse(tpl.Body)
-		if !hasHint(root) {
+		if !hasMark(root, "hint") {
 			t.Errorf("%s has no hint to guide its author", tpl.Key)
+		}
+		if hasMark(root, document.AnchorMark) {
+			t.Errorf("%s marks a passage for a thread, which only a page has", tpl.Key)
 		}
 		for _, h := range document.Headings(root) {
 			if h.Anchor == "" {
