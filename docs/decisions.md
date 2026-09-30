@@ -3,6 +3,24 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-09-30: Deleting somebody else's comment is moderation, and takes space administer
+
+Since #176, a space's `delete` let its holder delete anybody's comment, and
+a new space grants `delete` to everyone (#159), so by default every member
+could remove every other member's words. The product owner decided (#180)
+that removing another person's comment is moderation, not housekeeping of
+pages: it takes the space's `administer`, which space and organization
+admins hold as #19 defines. The space's `delete` keeps its meaning for pages,
+trash and restore, and no longer reaches comments. Authors still delete
+their own while they may view the page, and a moderator's delete is still
+audited as `comment.deleted`.
+
+The rule is `perm_comment_deletable`, which migration 00155 redefines, so the
+service, the `can.delete` flag the web reads and `comment_write_guard` for
+raw SQL as `stator_app` all ask the same question. Blanking a comment without
+deleting it is no way around it: the body is the author's alone to change,
+and the table's check keeps a null body tied to a delete.
+
 ## 2026-09-30: A passage is a mark in the live body, checked by the database, and found again by its words
 
 An inline thread's passage is the mark `inlineComment` on the words in
@@ -133,10 +151,8 @@ Who may do what is the contract's: comment needs view and the space's
 `addComments` on a published page out of the trash, and never the page's
 edit list, since a comment does not change the page. Editing is the
 author's alone while they may comment. Deleting is the author's while they
-may view the page, or anybody's who holds the space's `delete`, which a new
-space grants everyone, as it grants deleting pages. An organization that
-wants only some people to remove others' comments takes `delete` from
-everyone; the audit log records every such deletion either way. A policy
+may view the page, or anybody's who holds the space's `administer` (see
+the entry on moderation above). A policy
 cannot tell an edit from a delete, so `comment_write_guard` does, as
 `page_write_guard` does for pages, and the app role may update only `body`,
 `edited_at`, `deleted_at` and `deleted_by`.

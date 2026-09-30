@@ -193,9 +193,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
   subset of the page allowlist (text, headings, lists, quotes, code, links
   and mentions, at most 64 KB), written in an editor of their own that
   arrives with the first comment somebody writes. Only the author edits a
-  comment; the author, or anybody with the space's delete, deletes it, which
-  leaves a placeholder while the thread has replies, is recorded in the audit
-  log when it is somebody else's, and takes back the notifications about it.
+  comment. The author deletes it, and so does an administrator of the space
+  or the organization, but not somebody who merely holds the space's delete,
+  which is for pages. A delete leaves a placeholder while the thread has
+  replies, is recorded in the audit log when it is somebody else's, and takes
+  back the notifications about it.
   The page's header counts its comments. A new thread tells the page's
   watchers, a reply everybody who wrote in the thread, and a notification
   leads to its thread with `?thread=`. Comments are search hits of type

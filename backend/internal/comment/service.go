@@ -56,8 +56,9 @@ type onPage struct {
 	id, space uuid.UUID
 	published bool
 	access    perm.PageAccess
-	// deleteAny is the space's delete, which lets its holder delete anybody's comment.
-	deleteAny bool
+	// moderate is the space's administer: deleting somebody else's comment is
+	// moderation, which the space's delete does not cover.
+	moderate bool
 }
 
 func loadPage(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) (*onPage, error) {
@@ -83,7 +84,7 @@ func loadPage(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) (
 	if err != nil {
 		return nil, err
 	}
-	p.deleteAny = facts.HoldsSpace(perm.SpaceDelete)
+	p.moderate = facts.HoldsSpace(perm.SpaceAdminister)
 	return &p, nil
 }
 
@@ -152,7 +153,7 @@ func threads(ctx context.Context, tx db.DBTX, actor perm.Actor, p *onPage, where
 		mine := c.AuthorID != nil && *c.AuthorID == actor.UserID
 		c.Can = CommentCan{
 			Edit:   !c.Deleted && mine && p.access.Comment,
-			Delete: !c.Deleted && (mine || p.deleteAny),
+			Delete: !c.Deleted && (mine || p.moderate),
 		}
 		if n := len(out); n == 0 || out[n-1].ID != threadID {
 			may := p.published && p.access.Comment
@@ -419,7 +420,7 @@ func (s *Service) Edit(ctx context.Context, actor perm.Actor, commentID uuid.UUI
 }
 
 // Delete takes a comment's words away and leaves its place in the thread.
-// Its author may while they may view the page; the space's delete may for
+// Its author may while they may view the page; the space's administer may for
 // anybody's, and that is written to the audit log. A deleted one is no change.
 func (s *Service) Delete(ctx context.Context, actor perm.Actor, commentID uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -428,7 +429,7 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, commentID uuid.U
 			return err
 		}
 		mine := h.author != nil && *h.author == actor.UserID
-		if !mine && !p.deleteAny {
+		if !mine && !p.moderate {
 			return ErrNotYours
 		}
 		if h.deleted {
