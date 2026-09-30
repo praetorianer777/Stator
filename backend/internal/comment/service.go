@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -28,6 +29,10 @@ var (
 	ErrUnpublished = errors.New("publish the page before commenting on it")
 	// ErrNotYours refuses changing somebody else's comment.
 	ErrNotYours = errors.New("that comment is somebody else's")
+	// ErrNotInline refuses resolving a thread below the page.
+	ErrNotInline = errors.New("only a thread on a passage is resolved")
+	// ErrThreadTaken refuses a new thread whose id is in use already.
+	ErrThreadTaken = errors.New("that thread id is taken")
 )
 
 // FieldError is a refusal of one field of the request.
@@ -109,10 +114,12 @@ func cleanBody(body json.RawMessage) (json.RawMessage, error) {
 }
 
 const selectComments = `
-SELECT t.id, t.page_id, t.kind, c.id, c.author_id, COALESCE(u.name, ''), c.body, c.deleted_at IS NOT NULL, c.created_at, c.edited_at
+SELECT t.id, t.page_id, t.kind, t.quote, t.detached_at IS NOT NULL, t.resolved_at, COALESCE(r.name, ''),
+       c.id, c.author_id, COALESCE(u.name, ''), c.body, c.deleted_at IS NOT NULL, c.created_at, c.edited_at
 FROM comment_thread t
 JOIN comment c ON c.org_id = t.org_id AND c.thread_id = t.id
-LEFT JOIN app_user u ON u.id = c.author_id`
+LEFT JOIN app_user u ON u.id = c.author_id
+LEFT JOIN app_user r ON r.id = t.resolved_by`
 
 // threads reads a page's threads in order, leaving out those wholly deleted,
 // and says what the actor may do to each.
@@ -127,10 +134,15 @@ func threads(ctx context.Context, tx db.DBTX, actor perm.Actor, p *onPage, where
 		var (
 			threadID, pageID uuid.UUID
 			kind             Kind
+			quote            *string
+			detached         bool
+			resolvedAt       *time.Time
+			resolvedBy       string
 			c                Comment
 			body             []byte
 		)
-		if err := rows.Scan(&threadID, &pageID, &kind, &c.ID, &c.AuthorID, &c.AuthorName, &body, &c.Deleted, &c.CreatedAt, &c.EditedAt); err != nil {
+		if err := rows.Scan(&threadID, &pageID, &kind, &quote, &detached, &resolvedAt, &resolvedBy,
+			&c.ID, &c.AuthorID, &c.AuthorName, &body, &c.Deleted, &c.CreatedAt, &c.EditedAt); err != nil {
 			return nil, err
 		}
 		c.ThreadID = threadID
@@ -143,10 +155,19 @@ func threads(ctx context.Context, tx db.DBTX, actor perm.Actor, p *onPage, where
 			Delete: !c.Deleted && (mine || p.deleteAny),
 		}
 		if n := len(out); n == 0 || out[n-1].ID != threadID {
-			out = append(out, Thread{
+			may := p.published && p.access.Comment
+			t := Thread{
 				ID: threadID, PageID: pageID, Kind: kind, Comments: []Comment{},
-				Can: ThreadCan{Reply: p.published && p.access.Comment},
-			})
+				Resolved: resolvedAt != nil, ResolvedAt: resolvedAt, ResolvedByName: resolvedBy,
+				Can: ThreadCan{Reply: may, Resolve: may && kind == KindInline},
+			}
+			if kind == KindInline && quote != nil {
+				t.Anchor = &Anchor{State: AnchorAnchored, Quote: *quote}
+				if detached {
+					t.Anchor.State = AnchorDetached
+				}
+			}
+			out = append(out, t)
 		}
 		last := &out[len(out)-1]
 		last.Comments = append(last.Comments, c)
@@ -315,6 +336,13 @@ func (s *Service) Reply(ctx context.Context, actor perm.Actor, commentID uuid.UU
 		if err := add(ctx, tx, actor, id, h.thread, h.page, body, true); err != nil {
 			return err
 		}
+		// The reply already tells the thread's writers, so reopening this
+		// way emits nothing more.
+		if _, err := tx.Exec(ctx, `
+			UPDATE comment_thread SET resolved_at = NULL, resolved_by = NULL
+			WHERE id = $1 AND resolved_at IS NOT NULL`, h.thread); err != nil {
+			return fmt.Errorf("reopen the thread: %w", err)
+		}
 		if out, err = thread(ctx, tx, actor, p, h.thread); err != nil {
 			return err
 		}
@@ -401,12 +429,19 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, commentID uuid.U
 	})
 }
 
-// CountsOf is a page's comments as its header shows them; inline and
-// detached threads are #23's.
+// CountsOf is a page's comments as its header shows them: the comments below
+// it, and its open inline threads, anchored and detached.
 func CountsOf(ctx context.Context, tx db.DBTX, pageID uuid.UUID) (Counts, error) {
 	var c Counts
 	err := tx.QueryRow(ctx, `
-		SELECT count(*) FROM comment c JOIN comment_thread t ON t.org_id = c.org_id AND t.id = c.thread_id
-		WHERE c.page_id = $1 AND c.deleted_at IS NULL AND t.kind = 'page'`, pageID).Scan(&c.Page)
+		SELECT
+			(SELECT count(*) FROM comment c JOIN comment_thread t ON t.org_id = c.org_id AND t.id = c.thread_id
+			 WHERE c.page_id = $1 AND c.deleted_at IS NULL AND t.kind = 'page'),
+			count(*) FILTER (WHERE t.detached_at IS NULL),
+			count(*) FILTER (WHERE t.detached_at IS NOT NULL)
+		FROM comment_thread t
+		WHERE t.page_id = $1 AND t.kind = 'inline' AND t.resolved_at IS NULL
+		  AND EXISTS (SELECT 1 FROM comment c WHERE c.org_id = t.org_id AND c.thread_id = t.id AND c.deleted_at IS NULL)`,
+		pageID).Scan(&c.Page, &c.Inline, &c.Detached)
 	return c, err
 }

@@ -16,7 +16,7 @@ const (
 	MaxBodyBytes = document.MaxCommentBytes
 	// AnchorMark is the mark an inline thread's passage carries in the page
 	// body; its threadId attribute names the thread.
-	AnchorMark = "inlineComment"
+	AnchorMark = document.AnchorMark
 	// MaxQuoteLength bounds the text of the passage an inline thread keeps.
 	MaxQuoteLength = 500
 )

@@ -211,6 +211,14 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, comment.ErrUnpublished):
 		return &APIError{Status: http.StatusConflict, Code: "unpublished",
 			Message: "This page has not been published yet, so nobody else can read a comment on it. Publish the page first, then comment."}
+	case errors.Is(err, comment.ErrAnchorConflict):
+		return &APIError{Status: http.StatusConflict, Code: "anchor_conflict",
+			Message: "The page changed after you selected the passage. Read the page again and select the passage once more."}
+	case errors.Is(err, comment.ErrNotInline):
+		return &APIError{Status: http.StatusConflict, Code: "not_inline",
+			Message: "Only a thread on a passage can be resolved or reopened. Reply to a thread below the page instead."}
+	case errors.Is(err, comment.ErrThreadTaken):
+		return ErrConflict("That thread id is taken. Pick the passage again, which gives it a new id.")
 	case errors.Is(err, comment.ErrNotYours):
 		return ErrForbidden("You can only change or delete your own comments. Ask an administrator of the space to delete somebody else's.")
 	case errors.Is(err, perm.ErrFixed):

@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/events"
@@ -41,6 +42,11 @@ type release struct {
 // actor watch it and tells the outbox. The caller has checked the actor may edit it.
 func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r release) (*VersionEntry, error) {
 	number := p.Version + 1
+	body, err := comment.SettleAnchors(ctx, tx, p.ID, r.body)
+	if err != nil {
+		return nil, err
+	}
+	r.body = body
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO page_version (org_id, page_id, number, title, body, comment, notify_watchers, restored_from, created_by)
 		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -360,6 +366,13 @@ func (s *Service) Compare(ctx context.Context, actor perm.Actor, id uuid.UUID, f
 		}
 		toSide, toBody, err := side(ctx, tx, actor, p, draft, *to)
 		if err != nil {
+			return err
+		}
+		// A draft keeps the marks of inline threads, which are not content.
+		if fromBody, err = document.WithoutAnchors(fromBody); err != nil {
+			return err
+		}
+		if toBody, err = document.WithoutAnchors(toBody); err != nil {
 			return err
 		}
 		blocks, err := Diff(fromBody, toBody)
