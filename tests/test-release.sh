@@ -12,7 +12,22 @@ SRC="$(cd "$(dirname "$0")/.." && pwd)"
 export GIT_AUTHOR_NAME=Tester GIT_AUTHOR_EMAIL=tester@example.com
 export GIT_COMMITTER_NAME=Tester GIT_COMMITTER_EMAIL=tester@example.com
 
-W="$(mktemp -d)"
+# Every commit starts auto maintenance in the background. Once, in CI, it was
+# still writing into .git/objects when the next case removed the repository:
+# rm failed, cp then copied the fixture into the leftover directory, and the
+# case ran in something that was no repository at all.
+export GIT_CONFIG_COUNT=2
+export GIT_CONFIG_KEY_0=maintenance.auto GIT_CONFIG_VALUE_0=false
+export GIT_CONFIG_KEY_1=gc.auto GIT_CONFIG_VALUE_1=0
+
+# A broken fixture makes every later case fail for the wrong reason, so the
+# script stops right after the command that broke it has printed its error.
+fixture_failed() {
+    echo "❌ The test fixture broke while $1. The error above is the cause; fix it and run the script again." >&2
+    exit 1
+}
+
+W="$(mktemp -d)" || fixture_failed "creating the temporary directory"
 trap 'rm -rf "${W}"' EXIT
 
 FAILED=0
@@ -26,35 +41,35 @@ REPO="${W}/repo"
 # version it expects instead of tracking what its predecessors released.
 build_pristine() { # target tagged
     local dir="$1" tagged="$2"
-    rm -rf "${dir}"
-    mkdir -p "${dir}"
-    cp "${SRC}/release.sh" "${dir}/release.sh"
-    printf '0.1.0
-' > "${dir}/VERSION"
-    cat > "${dir}/CHANGELOG.md" <<'EOF'
+    rm -rf "${dir}" "${dir}.remote" || fixture_failed "removing ${dir}"
+    mkdir -p "${dir}" || fixture_failed "creating ${dir}"
+    cp "${SRC}/release.sh" "${dir}/release.sh" || fixture_failed "copying release.sh"
+    printf '0.1.0\n' > "${dir}/VERSION" || fixture_failed "writing VERSION"
+    cat > "${dir}/CHANGELOG.md" <<'EOF' || fixture_failed "writing CHANGELOG.md"
 # Changelog
 
 All notable changes to this project are documented here.
 
 ## [Unreleased]
 EOF
-    printf 'release-notes-*.md\n' > "${dir}/.gitignore"
-    git -C "${dir}" init -q -b main
-    git -C "${dir}" add -A
-    git -C "${dir}" commit -qm "feat: the first feature"
-    git init -q --bare "${dir}.remote"
-    git -C "${dir}" remote add origin "${dir}.remote"
-    git -C "${dir}" push -q -u origin main
-    git -C "${dir}" remote set-head origin main
-    [[ "${tagged}" == tagged ]] && git -C "${dir}" tag -a v0.1.0 -m "v0.1.0"
-    return 0
+    printf 'release-notes-*.md\n' > "${dir}/.gitignore" || fixture_failed "writing .gitignore"
+    git -C "${dir}" init -q -b main || fixture_failed "initialising ${dir}"
+    git -C "${dir}" add -A || fixture_failed "staging the files in ${dir}"
+    git -C "${dir}" commit -qm "feat: the first feature" || fixture_failed "committing in ${dir}"
+    git init -q --bare "${dir}.remote" || fixture_failed "initialising ${dir}.remote"
+    git -C "${dir}" remote add origin "${dir}.remote" || fixture_failed "adding the remote to ${dir}"
+    git -C "${dir}" push -q -u origin main || fixture_failed "pushing ${dir} to its remote"
+    git -C "${dir}" remote set-head origin main || fixture_failed "setting origin/HEAD in ${dir}"
+    if [[ "${tagged}" == tagged ]]; then
+        git -C "${dir}" tag -a v0.1.0 -m "v0.1.0" || fixture_failed "tagging v0.1.0 in ${dir}"
+    fi
 }
 
 use_fixture() { # tagged|untagged
-    rm -rf "${REPO}" "${REPO}.remote"
-    cp -a "${W}/pristine-$1" "${REPO}"
-    cp -a "${W}/pristine-$1.remote" "${REPO}.remote"
-    git -C "${REPO}" remote set-url origin "${REPO}.remote"
+    rm -rf "${REPO}" "${REPO}.remote" || fixture_failed "removing the previous case's repository"
+    cp -a "${W}/pristine-$1" "${REPO}" || fixture_failed "copying the $1 fixture"
+    cp -a "${W}/pristine-$1.remote" "${REPO}.remote" || fixture_failed "copying the $1 fixture's remote"
+    git -C "${REPO}" remote set-url origin "${REPO}.remote" || fixture_failed "pointing the copy at its remote"
 }
 
 commit() { # subject [body]
