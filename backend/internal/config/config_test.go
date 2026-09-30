@@ -25,7 +25,7 @@ func clean(t *testing.T) {
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
 		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
-		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM",
+		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
 	} {
 		t.Setenv(key, "")
 	}
@@ -395,5 +395,33 @@ func TestMailNeedsARelayAndASender(t *testing.T) {
 	t.Setenv("STATOR_MAIL_FROM", "Stator <wiki@example.com>")
 	if cfg, err = Load(); err != nil || cfg.Mail.SMTPAddr != "mailpit:1025" {
 		t.Errorf("mail through mailpit is %+v, %v", cfg.Mail, err)
+	}
+}
+
+func TestArmatureIsReachedAsTheOperatorSays(t *testing.T) {
+	clean(t)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Armature.OutboundAllow != "" || len(cfg.Armature.Backchannel) != 0 {
+		t.Errorf("nothing inside the network is reached by default, got %+v", cfg.Armature)
+	}
+
+	clean(t)
+	t.Setenv("STATOR_OUTBOUND_ALLOW", "armature-stub")
+	t.Setenv("STATOR_ARMATURE_BACKCHANNEL", "http://localhost:20008/=http://armature-stub:8080")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Armature.OutboundAllow != "armature-stub" || cfg.Armature.Backchannel["http://localhost:20008"] != "http://armature-stub:8080" {
+		t.Errorf("settings read as %+v", cfg.Armature)
+	}
+
+	clean(t)
+	t.Setenv("STATOR_ARMATURE_BACKCHANNEL", "armature-stub")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_ARMATURE_BACKCHANNEL") {
+		t.Errorf("an unreadable pair was not refused by name: %v", err)
 	}
 }
