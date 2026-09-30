@@ -20,7 +20,7 @@ func clean(t *testing.T) {
 		"STATOR_VALKEY_URL", "STATOR_SESSION_COOKIE",
 		"STATOR_SECURE_COOKIES", "STATOR_OTEL_ENDPOINT", "STATOR_OTEL_SAMPLE_RATIO",
 		"STATOR_S3_ENDPOINT", "STATOR_S3_BUCKET", "STATOR_S3_ACCESS_KEY", "STATOR_S3_SECRET_KEY",
-		"STATOR_S3_REGION", "STATOR_S3_USE_SSL",
+		"STATOR_S3_REGION", "STATOR_S3_USE_SSL", "STATOR_UPLOAD_LIMIT",
 		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
@@ -29,6 +29,30 @@ func clean(t *testing.T) {
 		t.Setenv(key, "")
 	}
 	t.Setenv("STATOR_DB_PRIMARY_URL", "postgres://app@db/stator")
+}
+
+func TestUploadLimitReadsSizes(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want int64
+	}{{"50MB", 50 << 20}, {"2g", 2 << 30}, {"512 kb", 512 << 10}, {"1048576", 1 << 20}, {"", DefaultUploadLimit}} {
+		clean(t)
+		t.Setenv("STATOR_UPLOAD_LIMIT", tc.text)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("%q: %v", tc.text, err)
+		}
+		if cfg.UploadLimit != tc.want {
+			t.Errorf("%q read as %d, want %d", tc.text, cfg.UploadLimit, tc.want)
+		}
+	}
+	for _, bad := range []string{"lots", "-5MB", "0"} {
+		clean(t)
+		t.Setenv("STATOR_UPLOAD_LIMIT", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_UPLOAD_LIMIT") {
+			t.Errorf("%q should be refused by name, got %v", bad, err)
+		}
+	}
 }
 
 func TestDefaults(t *testing.T) {
