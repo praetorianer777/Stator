@@ -73,7 +73,7 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
     await editorBox(page).locator("p", { hasText: "The end." }).click();
     await page.keyboard.press("End");
     await page.keyboard.press("Enter");
-    await insert(page, "child pages");
+    await insert(page, "child");
     const list = children(editorBox(page));
     await expect(list.getByRole("link", { name: "Setup" })).toBeVisible();
     await expect(list.getByRole("link", { name: "Linux" })).toHaveCount(0);
