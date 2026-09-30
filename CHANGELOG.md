@@ -80,8 +80,21 @@ and the versioning [Semantic Versioning](https://semver.org/).
   `DELETE /api/v1/test/orgs/{slug}` removes it with all its rows and files.
   The api refuses them in production and the Helm chart never sets them.
   The theme specs each run in an organization of their own, in parallel.
+- Drafts and published versions in the API. Each person autosaves a private
+  draft of a page (`/pages/{id}/draft`) and publishes it with an optional
+  comment as the next numbered version; a draft begun before somebody
+  else's publish is refused with `publish_conflict` until it is saved again
+  over theirs. A new page stays its creator's alone until published, unless
+  it is made with `publish: true`. Every page's history lists its versions,
+  any version reads as it was, two versions or a version and the caller's
+  draft compare block by block with inserted and deleted words marked, and
+  a restore publishes an old version again as the newest. The database
+  keeps version numbers without gaps and the history append only.
 
 ### Changed
+
+- `PATCH /pages/{id}` publishes the title and body as the next version with
+  no comment. Existing pages become version 1 of themselves.
 
 - Stored files are keyed under `org/<organization id>/`, so an
   organization's files can be listed and removed together.
@@ -121,8 +134,20 @@ and the versioning [Semantic Versioning](https://semver.org/).
   was, or under the home page when the page it was under is gone.
   Administrators delete an item for good or empty the trash, which the
   audit log records.
-- Files on pages. Each page lists its attachments under the document,
-  attached with the picker or by dropping them on the list, with the
+- Files on pages, in the API: upload as a multipart part named `file`, list
+  a page's files, download, and delete for good. Uploads are refused over
+  `STATOR_UPLOAD_LIMIT` (50 MB unless set, as `attachments.uploadLimit` in
+  the chart) with a message naming the limit. Images report their width and
+  height. A download is an attachment with `nosniff`; with `inline=1`,
+  pictures, PDFs and plain text show in place, and SVG and HTML never do.
+  Files stay with a trashed page, come along when it is copied (the copy's
+  version 1 names the copy's own files, so purging the original leaves its
+  history whole), and leave
+  the bucket when it is purged, its space is deleted or its file is
+  deleted; the worker removes what is left behind.
+- Files on pages, in the web client. Each page lists its attachments under
+  the document, attached with the picker or by dropping them on the list,
+  with the
   progress of each upload; they download from the list, and deleting one
   asks first. A file over the upload limit is refused with a sentence that
   names the limit and says what to do. In the editor a pasted, dropped or

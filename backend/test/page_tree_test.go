@@ -25,10 +25,10 @@ func newTree(t *testing.T, c *client, key, name string) *tree {
 	return &tree{t: t, c: c, key: key, homeID: sp["homePageId"].(string)}
 }
 
-// add makes a page under a parent, with more fields such as afterId.
+// add publishes a page under a parent, with more fields such as afterId.
 func (tr *tree) add(parent, title string, more ...map[string]any) string {
 	tr.t.Helper()
-	body := map[string]any{"parentId": parent, "title": title}
+	body := map[string]any{"parentId": parent, "title": title, "publish": true}
 	for _, m := range more {
 		for k, v := range m {
 			body[k] = v

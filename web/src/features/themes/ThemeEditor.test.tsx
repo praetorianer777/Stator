@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ThemesApi from "@/api/themes";
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { THEME_PREVIEW_DEBOUNCE_MS } from "@/config";
 import { CUSTOM_THEME_STYLE_ID } from "@/lib/theme";
 import { emptySpec } from "@/lib/theme-css";
 import { renderAt } from "@/test/app";
@@ -79,14 +80,25 @@ describe("the theme editor", () => {
 
   it("changes a colour of one palette, and previews it on the page when asked", async () => {
     await renderAt("/settings/themes/new");
-    await userEvent.type(await screen.findByLabelText("Theme name"), "Magenta");
-    const accent = screen.getByLabelText("Links, the current item");
-    await userEvent.clear(accent);
-    await userEvent.type(accent, "#ff0066");
+    // Pasted rather than typed: every keystroke redraws all 43 colour fields,
+    // and on a busy machine the keystrokes alone outlasted the test's time.
+    await userEvent.click(await screen.findByLabelText("Theme name"));
+    await userEvent.paste("Magenta");
+    await userEvent.click(screen.getByLabelText("Links, the current item"));
+    await userEvent.paste("#ff0066");
     expect(screen.getByText("1 of 43 colours changed.")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("switch", { name: "Preview on this page" }));
-    await waitFor(() => expect(document.getElementById(CUSTOM_THEME_STYLE_ID)?.textContent).toContain("--color-accent: #ff0066;"));
+    // The preview waits for the draft to settle; the clock is moved past that
+    // rather than waited out.
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole("switch", { name: "Preview on this page" }));
+      expect(document.getElementById(CUSTOM_THEME_STYLE_ID)).toBeNull();
+      act(() => vi.advanceTimersByTime(THEME_PREVIEW_DEBOUNCE_MS));
+      expect(document.getElementById(CUSTOM_THEME_STYLE_ID)?.textContent).toContain("--color-accent: #ff0066;");
+    } finally {
+      vi.useRealTimers();
+    }
 
     await userEvent.click(screen.getByRole("button", { name: "Save theme" }));
     const [input] = api.create.mock.calls[0]!;

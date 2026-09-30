@@ -8,6 +8,8 @@ E2E_NPM_CACHE := $(ROOT)/.cache/npm
 
 WORKERS ?= 4
 ONLY ?=
+# Runs each chosen test this many times, to shake out a flake: REPEAT=20 ONLY=<grep>.
+REPEAT ?=
 E2E_REPORT_PORT ?= 9323
 
 # On the host's network rather than the stack's: the api trusts the session
@@ -24,6 +26,7 @@ DOCKER_PLAYWRIGHT = docker run --rm --init --ipc=host --network host $(DOCKER_NO
 	-e HOME=/tmp \
 	-e CI \
 	-e ONLY='$(ONLY)' \
+	-e REPEAT='$(REPEAT)' \
 	-w /src/e2e $(PLAYWRIGHT_IMAGE)
 
 # npm ci only when the lock file changed since the last install, which keeps
@@ -36,11 +39,11 @@ e2e-npm: ## Run an npm command in the Playwright container: make e2e-npm ARGS="i
 	$(DOCKER_PLAYWRIGHT) npm $(ARGS)
 
 .PHONY: test-e2e
-test-e2e: ## Run the browser suite against this checkout's running stack: ONLY=<grep> WORKERS=<n>
+test-e2e: ## Run the browser suite against this checkout's running stack: ONLY=<grep> WORKERS=<n> REPEAT=<n>
 	@[ -f $(STACK_ENV_FILE) ] && docker compose ps --status running --services 2>/dev/null | grep -qx web \
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
 	@mkdir -p $(E2E_NPM_CACHE)
-	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx tsc --noEmit && npx playwright test --workers=$(WORKERS) $${ONLY:+--grep "$$ONLY"}'
+	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx tsc --noEmit && npx playwright test --workers=$(WORKERS) $${ONLY:+--grep "$$ONLY"} $${REPEAT:+--repeat-each "$$REPEAT"}'
 
 .PHONY: e2e-report
 e2e-report: ## Serve the last browser run's HTML report, traces included

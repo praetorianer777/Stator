@@ -25,9 +25,9 @@ export async function deleteSpace(api: StatorApi, key: string): Promise<void> {
 
 export type Page = components["schemas"]["Page"];
 
-/** Adds a page under a parent, last among its children. */
+/** Adds a published page under a parent, last among its children, as a script would. */
 export async function createPage(api: StatorApi, parentId: string, title: string): Promise<Page> {
-  return must(await api.POST("/pages", { body: { parentId, title } })).page;
+  return must(await api.POST("/pages", { body: { parentId, title, publish: true } })).page;
 }
 
 /** The titles directly under a parent of a space, in order. */

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
@@ -120,6 +121,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &spaceField) {
 		return ErrValidation(map[string]string{spaceField.Field: spaceField.Message})
 	}
+	var pageField *page.FieldError
+	if errors.As(err, &pageField) {
+		return ErrValidation(map[string]string{pageField.Field: pageField.Message})
+	}
 	var denied *perm.DeniedError
 	if errors.As(err, &denied) {
 		return ErrForbidden(denied.Error())
@@ -182,6 +187,28 @@ func toAPIError(err error) *APIError {
 		return ErrConflict(sentence(err.Error()))
 	case errors.Is(err, page.ErrStale):
 		return ErrConflict("Somebody else saved this page after you opened it. Copy your changes, reload the page and make them again.")
+	case errors.Is(err, attachment.ErrNotFound):
+		return ErrNotFound("That file was not found. It may have been deleted, or its page moved to the trash.")
+	case errors.Is(err, attachment.ErrTooLarge):
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(err.Error())}
+	case errors.Is(err, attachment.ErrEmpty):
+		return ErrValidation(map[string]string{"file": sentence(attachment.ErrEmpty.Error())})
+	case errors.Is(err, objectstore.ErrNoObject):
+		return &APIError{Status: http.StatusNotFound, Code: "file_missing", Message: "The file's contents are missing from storage. Upload it again, or ask an administrator to check the file storage.", cause: err}
+	case errors.Is(err, page.ErrPublishConflict):
+		return &APIError{Status: http.StatusConflict, Code: "publish_conflict",
+			Message: "Somebody published this page after you began your draft. Compare the two, then discard your draft or save it again over theirs and publish."}
+	case errors.Is(err, page.ErrNoDraft):
+		return &APIError{Status: http.StatusConflict, Code: "no_draft",
+			Message: "You have no draft of this page to publish. Edit the page first; your changes are saved as a draft."}
+	case errors.Is(err, page.ErrDraftNotFound):
+		return ErrNotFound("You have no draft of this page. Compare two versions instead, or edit the page to start one.")
+	case errors.Is(err, page.ErrVersionNotFound):
+		return ErrNotFound("That version of the page was not found. Open the page's history to see the versions it has.")
+	case errors.Is(err, page.ErrRestoreStale):
+		return ErrConflict("Somebody published this page after you opened its history. Reload the history and restore again.")
+	case errors.Is(err, page.ErrRestoreLatest):
+		return ErrConflict("That is already the latest version of the page. Pick an older version to restore.")
 	case errors.Is(err, theme.ErrNotFound):
 		return ErrNotFound("That theme was not found. It may have been deleted or taken private.")
 	case errors.Is(err, theme.ErrAssetNotFound):

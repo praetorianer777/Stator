@@ -143,33 +143,33 @@ var operations = []operation{
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash", handler: "handleEmptyTrash", tag: "trash", summary: "Delete everything in the space's trash for good. For administrators.", responses: none()},
 	{method: "POST", path: "/spaces/{spaceKey}/trash/{pageID}/restore", handler: "handleRestorePage", tag: "trash", summary: "Put a trashed page back where it was, or under the home page when that is gone.", responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash/{pageID}", handler: "handlePurgePage", tag: "trash", summary: "Delete a trashed page and what went with it for good. For administrators.", responses: none()},
-	{method: "POST", path: "/pages", handler: "handleCreatePage", tag: "pages", summary: "Add a page under a parent, last unless a place is named.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
+	{method: "POST", path: "/pages", handler: "handleCreatePage", tag: "pages", summary: "Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
 	{method: "GET", path: "/pages/{pageID}", handler: "handleGetPage", tag: "pages", summary: "One page with its body, and the space it is in.", responses: ok(pageResponse{})},
-	{method: "PATCH", path: "/pages/{pageID}", handler: "handleUpdatePage", tag: "pages", summary: "Save a page's title or body over the version it was made from.", request: page.UpdateInput{}, responses: ok(env{"page": page.Page{}})},
+	{method: "PATCH", path: "/pages/{pageID}", handler: "handleUpdatePage", tag: "pages", summary: "Publish a new title or body as the next version, with no comment, over the version it was made from; drafts are left alone.", request: page.UpdateInput{}, responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/pages/{pageID}", handler: "handleTrashPage", tag: "pages", summary: "Move a page and every page below it to its space's trash.", responses: none()},
 	{method: "POST", path: "/pages/{pageID}/move", handler: "handleMovePage", tag: "pages", summary: "Move a page under another, in its space or another, with or without its children; a move under itself is refused.", request: page.MoveInput{}, responses: ok(env{"page": page.Page{}})},
 	{method: "POST", path: "/pages/{pageID}/copy", handler: "handleCopyPage", tag: "pages", summary: "Copy a page, with or without the pages below it, under a parent in its space or another.", request: page.CopyInput{}, responses: created(env{"page": page.Page{}})},
 
 	// Drafts and publishing (#13).
-	{method: "GET", path: "/pages/{pageID}/draft", handler: "handleGetDraft", tag: "drafts", summary: "The caller's own draft of a page, or null when they have none.", pending: true,
+	{method: "GET", path: "/pages/{pageID}/draft", handler: "handleGetDraft", tag: "drafts", summary: "The caller's own draft of a page, or null when they have none.",
 		responses: ok(env{"draft": (*page.Draft)(nil)})},
-	{method: "PUT", path: "/pages/{pageID}/draft", handler: "handleSaveDraft", tag: "drafts", summary: "Autosave the caller's draft of a page; nobody else sees it.", pending: true,
+	{method: "PUT", path: "/pages/{pageID}/draft", handler: "handleSaveDraft", tag: "drafts", summary: "Autosave the caller's draft of a page; nobody else sees it.",
 		request: page.DraftInput{}, responses: ok(env{"draft": page.Draft{}})},
-	{method: "DELETE", path: "/pages/{pageID}/draft", handler: "handleDiscardDraft", tag: "drafts", summary: "Throw the caller's draft away; the page stays as last published.", pending: true,
+	{method: "DELETE", path: "/pages/{pageID}/draft", handler: "handleDiscardDraft", tag: "drafts", summary: "Throw the caller's draft away; the page stays as last published.",
 		responses: none()},
-	{method: "POST", path: "/pages/{pageID}/publish", handler: "handlePublishPage", tag: "drafts", summary: "Publish the caller's draft as the next version; refused with publish_conflict when somebody published since the draft began.", pending: true,
+	{method: "POST", path: "/pages/{pageID}/publish", handler: "handlePublishPage", tag: "drafts", summary: "Publish the caller's draft as the next version; refused with publish_conflict when somebody published since the draft began.",
 		request: page.PublishInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
 
 	// History (#14).
-	{method: "GET", path: "/pages/{pageID}/versions", handler: "handleListVersions", tag: "history", summary: "A page's published versions, the latest first.", pending: true,
+	{method: "GET", path: "/pages/{pageID}/versions", handler: "handleListVersions", tag: "history", summary: "A page's published versions, the latest first.",
 		query: pageQuery, responses: ok(env{"versions": []page.VersionEntry{}, "total": 0, "limit": 0, "offset": 0})},
-	{method: "GET", path: "/pages/{pageID}/versions/{versionNumber}", handler: "handleGetVersion", tag: "history", summary: "One published version with its body, to read it as it was.", pending: true,
+	{method: "GET", path: "/pages/{pageID}/versions/{versionNumber}", handler: "handleGetVersion", tag: "history", summary: "One published version with its body, to read it as it was.",
 		responses: ok(env{"version": page.Version{}})},
-	{method: "POST", path: "/pages/{pageID}/versions/{versionNumber}/restore", handler: "handleRestoreVersion", tag: "history", summary: "Publish an older version's title and body again, as the next version.", pending: true,
+	{method: "POST", path: "/pages/{pageID}/versions/{versionNumber}/restore", handler: "handleRestoreVersion", tag: "history", summary: "Publish an older version's title and body again, as the next version.",
 		request: page.RestoreInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
-	{method: "GET", path: "/pages/{pageID}/compare", handler: "handleCompareVersions", tag: "history", summary: "What changed between two versions of a page, or between a version and the caller's draft.", pending: true,
+	{method: "GET", path: "/pages/{pageID}/compare", handler: "handleCompareVersions", tag: "history", summary: "What changed between two versions of a page, or between a version and the caller's draft.",
 		query: []param{
-			{name: "from", description: "A version number, or draft; the version before to when absent."},
+			{name: "from", description: "A version number, 0 for the empty page, or draft; when absent the version before to, or the draft's base version when to is draft."},
 			{name: "to", description: "A version number, or draft; the latest version when absent."},
 		}, responses: ok(env{"comparison": page.Comparison{}})},
 
@@ -208,13 +208,13 @@ var operations = []operation{
 		query: pickerQuery, responses: ok(env{"groups": []perm.Group{}})},
 
 	// Attachments (#20), as Armature serves them.
-	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tag: "attachments", summary: "The files on a page, the latest first.", pending: true,
+	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tag: "attachments", summary: "The files on a page, the latest first.",
 		responses: ok(env{"attachments": []attachment.Attachment{}})},
-	{method: "POST", path: "/pages/{pageID}/attachments", handler: "handleUploadAttachment", tag: "attachments", summary: "Put a file on a page, as a multipart part named file; refused with too_large over the upload limit.", multipart: true, pending: true,
+	{method: "POST", path: "/pages/{pageID}/attachments", handler: "handleUploadAttachment", tag: "attachments", summary: "Put a file on a page, as a multipart part named file; refused with too_large over the upload limit.", multipart: true,
 		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 413: errorEnvelope{}}},
-	{method: "GET", path: "/attachments/{attachmentID}", handler: "handleDownloadAttachment", tag: "attachments", summary: "The bytes of a file, as a download.", binary: true, pending: true,
+	{method: "GET", path: "/attachments/{attachmentID}", handler: "handleDownloadAttachment", tag: "attachments", summary: "The bytes of a file, as a download.", binary: true,
 		query: []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: ok(nil)},
-	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a file off its page for good.", pending: true,
+	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a file off its page for good.",
 		responses: none()},
 }
 

@@ -76,6 +76,9 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
       }).observe(document, { childList: true, subtree: true });
     });
     await page.reload();
+    // The load event can fire before the first draw: the app draws nothing
+    // until the server has said who is signed in.
+    await page.waitForFunction(() => "themeAtFirstDraw" in window);
     expect(await page.evaluate(() => (window as unknown as { themeAtFirstDraw?: boolean }).themeAtFirstDraw)).toBe(true);
     expect(await rootVar(page, "--color-canvas")).toBe("#123456");
   });
