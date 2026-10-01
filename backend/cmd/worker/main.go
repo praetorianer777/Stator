@@ -1,6 +1,6 @@
 // Command worker runs everything that happens outside a request: the outbox
 // with the notifications it fans out and the page links it syncs to Armature,
-// the notifications' digests, and the file reaper.
+// the notifications' digests, the file reaper, and the audit log's retention.
 package main
 
 import (
@@ -13,6 +13,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
@@ -114,6 +115,7 @@ func run() error {
 	if mailer != nil {
 		go notify.NewDigester(cluster, mailer, cfg.AppBaseURL, log).Run(ctx)
 	}
+	go audit.NewRetention(cluster, cfg.RetainAudit, log).Run(ctx)
 
 	build := version.Current()
 	log.Info("worker started", "env", cfg.Env, "version", build.Version, "commit", build.Commit)

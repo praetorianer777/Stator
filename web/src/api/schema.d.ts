@@ -232,6 +232,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who did what to the organization, newest first: members, sign-in, tokens, spaces, permissions, deletions for good and exports; next is the cursor for the window after, null at the end. For administrators. */
+        get: operations["listAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The log as a CSV file, newest first, narrowed like the list; the export is itself recorded. Refused with export_too_large past 50000 entries. For administrators. */
+        get: operations["exportAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit/facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The actions, people and kinds of target the log holds, to narrow it by, and how many days an entry is kept, 0 for ever. For administrators. */
+        get: operations["auditFacets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -1929,7 +1980,7 @@ export interface components {
             bypassed: boolean;
             grants: components["schemas"]["SpaceGrant"][];
             /** @enum {string} */
-            kind: "orgAdmin" | "use" | "space" | "unpublished" | "list" | "view" | "published";
+            kind: "orgAdmin" | "use" | "space" | "unpublished" | "list" | "view" | "published" | "home";
             /** @enum {string} */
             list?: "view" | "edit";
             listed: components["schemas"]["Subject"][];
@@ -1986,6 +2037,34 @@ export interface components {
             size: number;
             uploadedByName: string;
             width: number | null;
+        };
+        AuditActor: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        AuditEntry: {
+            /** @enum {string} */
+            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.shared";
+            /** Format: uuid */
+            actorId: string | null;
+            actorName: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description A JSON value. */
+            data: unknown;
+            /** Format: uuid */
+            id: string;
+            ip: string;
+            /** Format: uuid */
+            targetId: string | null;
+            targetType: string;
+        };
+        AuditFacets: {
+            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.shared")[];
+            actors: components["schemas"]["AuditActor"][];
+            retentionDays: number;
+            targetTypes: string[];
         };
         Backdrop: {
             /** Format: uuid */
@@ -3760,6 +3839,137 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAudit: {
+        parameters: {
+            query?: {
+                /** @description One action. */
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.shared";
+                /** @description The person who acted. */
+                actor?: string;
+                /** @description What kind of thing the entries are about, such as space or user. */
+                targetType?: string;
+                /** @description The id of the thing the entries are about. */
+                target?: string;
+                /** @description The first day, YYYY-MM-DD in UTC, or the first instant with its zone. */
+                from?: string;
+                /** @description The last day, YYYY-MM-DD in UTC and inclusive, or the instant the range ends before. */
+                to?: string;
+                /** @description 1 to 200; 50 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entries: components["schemas"]["AuditEntry"][];
+                        next: string | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportAudit: {
+        parameters: {
+            query?: {
+                /** @description One action. */
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.shared";
+                /** @description The person who acted. */
+                actor?: string;
+                /** @description What kind of thing the entries are about, such as space or user. */
+                targetType?: string;
+                /** @description The id of the thing the entries are about. */
+                target?: string;
+                /** @description The first day, YYYY-MM-DD in UTC, or the first instant with its zone. */
+                from?: string;
+                /** @description The last day, YYYY-MM-DD in UTC and inclusive, or the instant the range ends before. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    auditFacets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        facets: components["schemas"]["AuditFacets"];
+                    };
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

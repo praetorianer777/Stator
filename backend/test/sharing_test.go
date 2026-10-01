@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/share"
@@ -102,6 +103,7 @@ func TestSharingOverTheAPI(t *testing.T) {
 	t.Run("a page closed to anybody named is refused with a sentence, and nothing is delivered", func(t *testing.T) {
 		sharesBefore := h.countRows(t, `SELECT count(*) FROM page_share WHERE org_id = $1`, home.org)
 		eventsBefore := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2`, home.org, events.TopicPageShared)
+		auditBefore := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = $2`, home.org, audit.ActionPageShared)
 		annBefore := len(sharedOf(t, ann, secret))
 		for what, recipients := range map[string][]any{
 			"carl and ann":      {user(annID), user(carlID)},
@@ -125,6 +127,9 @@ func TestSharingOverTheAPI(t *testing.T) {
 		}
 		if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2`, home.org, events.TopicPageShared); n != eventsBefore {
 			t.Errorf("a refused share left an event")
+		}
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = $2`, home.org, audit.ActionPageShared); n != auditBefore {
+			t.Errorf("a refused share was recorded in the audit log")
 		}
 		if got := sharedOf(t, ann, secret); len(got) != annBefore {
 			t.Errorf("ann, named beside carl, was told anyway: %v", got)

@@ -102,6 +102,7 @@ export const Icon = {
   Hash: makeIcon("hash", ["M6 2.5 4.5 13.5", "M11.5 2.5 10 13.5", "M3 6h10.5", "M2.5 10H13"]),
   Label: makeIcon("label", ["M2.5 2.5h5.3l5.7 5.7-5.3 5.3-5.7-5.7z", "M5.5 5.5h.01"]),
   Lock: makeIcon("lock", ["M3.5 7.5h9v6h-9z", "M5.5 7.5v-2a2.5 2.5 0 0 1 5 0v2"]),
+  Shield: makeIcon("shield", ["M8 2 3 4v4c0 3 2.2 5 5 6 2.8-1 5-3 5-6V4z", "m6 8 1.5 1.5L10.5 6"]),
   Key: makeIcon("key", ["M5.5 12.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "m7.6 7.4 5.4-5.4", "m11 4 1.5 1.5", "m9.5 5.5 1.5 1.5"]),
   Copy: makeIcon("copy", ["M5.5 5.5h8v8h-8z", "M10.5 5.5v-3h-8v8h3"]),
   Bell: makeIcon("bell", ["M4 11V7a4 4 0 0 1 8 0v4l1 1.5H3z", "M6.5 13.5a1.5 1.5 0 0 0 3 0"]),

@@ -262,6 +262,13 @@ export const PROFILE_PATH = "/settings/profile";
 export const ARMATURE_SECTION_ID = "armature";
 /** Where an administrator connects the organization's Armature. */
 export const ARMATURE_SETTINGS_PATH = "/settings/armature";
+
+/** Where an administrator reads the organization's audit log. */
+export const AUDIT_PATH = "/settings/audit";
+/** Entries the audit log shows per page, within the API's 200; the export has the rest. */
+export const AUDIT_PAGE_SIZE = 50;
+/** Where the audit log is downloaded as a spreadsheet, under the API's base. */
+export const AUDIT_EXPORT_PATH = "/audit/export";
 /** How every Armature personal access token and webhook secret starts, as Armature makes them. */
 export const ARMATURE_TOKEN_PREFIX = "armature_pat_";
 export const ARMATURE_WEBHOOK_SECRET_PREFIX = "armature_whs_";

@@ -11,6 +11,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
@@ -85,6 +86,10 @@ type Server struct {
 	// Armature keeps the organization's connection and the members' tokens;
 	// nil answers that Armature is out of reach.
 	Armature *armature.Service
+	// Audit reads the record for administrators and keeps exports; nil refuses
+	// both. AuditRetention is how long the worker keeps an entry, zero forever.
+	Audit          *audit.Service
+	AuditRetention time.Duration
 	// Fresh remembers each caller's last write between requests; nil leaves
 	// reads unpinned, which is only right without replicas.
 	Fresh Freshness
@@ -204,6 +209,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/armature/connection", s.handleGetArmatureConnection)
 			r.Put("/armature/connection", s.handleSaveArmatureConnection)
 			r.Delete("/armature/connection", s.handleRemoveArmatureConnection)
+			r.Get("/audit", s.handleListAudit)
+			r.Get("/audit/facets", s.handleAuditFacets)
+			r.Get("/audit/export", s.handleExportAudit)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(requireOrg, s.requireUse)

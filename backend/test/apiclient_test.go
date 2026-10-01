@@ -22,8 +22,10 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/praetorianer777/stator/backend/internal/attachment"
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
+	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/home"
@@ -97,6 +99,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
 		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Shares: share.NewService(h.cluster),
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),
+		Audit: audit.NewService(h.cluster), AuditRetention: config.DefaultRetainAudit,
 	}
 	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))
 	t.Cleanup(a.srv.Close)

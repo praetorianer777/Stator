@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui";
 import { LOGIN_PATH } from "@/config";
 import { appRoute } from "./app";
 import { armatureSettingsRoute } from "./armature";
+import { auditRoute } from "./audit";
 import { devEditorRoute } from "./dev-editor";
 import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
@@ -43,6 +44,7 @@ const routeTree = rootRoute.addChildren([
     ssoRoute,
     orgPermissionsRoute,
     armatureSettingsRoute,
+    auditRoute,
     devEditorRoute,
   ]),
 ]);

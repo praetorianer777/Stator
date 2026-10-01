@@ -9,6 +9,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
@@ -405,6 +406,18 @@ var operations = []operation{
 	{method: "DELETE", path: "/armature/connection", handler: "handleRemoveArmatureConnection", tag: "armature",
 		summary:   "Disconnect Armature, forgetting every stored token and the webhook secret. For administrators.",
 		responses: none()},
+
+	// The audit log (#107), as Armature's administrators read theirs.
+	{method: "GET", path: "/audit", handler: "handleListAudit", tag: "audit",
+		summary: "Who did what to the organization, newest first: members, sign-in, tokens, spaces, permissions, deletions for good and exports; next is the cursor for the window after, null at the end. For administrators.",
+		query:   append(auditQuery, keysetQueryOf(audit.DefaultLimit, audit.MaxLimit)...), responses: ok(env{"entries": []audit.AuditEntry{}, "next": (*string)(nil)})},
+	{method: "GET", path: "/audit/facets", handler: "handleAuditFacets", tag: "audit",
+		summary:   "The actions, people and kinds of target the log holds, to narrow it by, and how many days an entry is kept, 0 for ever. For administrators.",
+		responses: ok(env{"facets": audit.AuditFacets{}})},
+	{method: "GET", path: "/audit/export", handler: "handleExportAudit", tag: "audit",
+		summary: "The log as a CSV file, newest first, narrowed like the list; the export is itself recorded. Refused with export_too_large past " + strconv.Itoa(audit.MaxExport) + " entries. For administrators.",
+		binary:  true, query: auditQuery, responses: map[int]any{200: nil, 422: errorEnvelope{}}},
+
 	{method: "GET", path: "/armature/account", handler: "handleGetArmatureAccount", tag: "armature",
 		summary:   "Whether the caller connected their Armature token, and whom it acts as.",
 		responses: ok(env{"account": armature.Account{}})},
@@ -493,10 +506,25 @@ var (
 // keysetQuery is a window of a list read newest first: how many, and where
 // the window before it ended.
 func keysetQuery(max int) []param {
+	return keysetQueryOf(20, max)
+}
+
+// keysetQueryOf is keysetQuery for a list whose window is not 20 by default.
+func keysetQueryOf(def, max int) []param {
 	return []param{
-		{name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(max) + "; 20 when absent."},
+		{name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(max) + "; " + strconv.Itoa(def) + " when absent."},
 		{name: "cursor", description: "The next of the window before; the first window when absent."},
 	}
+}
+
+// auditQuery narrows the audit log; every part is optional.
+var auditQuery = []param{
+	{name: "action", schema: &openapi.Schema{Type: "string", Enum: audit.Actions}, description: "One action."},
+	{name: "actor", schema: &openapi.Schema{Type: "string", Format: "uuid"}, description: "The person who acted."},
+	{name: "targetType", description: "What kind of thing the entries are about, such as space or user."},
+	{name: "target", schema: &openapi.Schema{Type: "string", Format: "uuid"}, description: "The id of the thing the entries are about."},
+	{name: "from", description: "The first day, YYYY-MM-DD in UTC, or the first instant with its zone."},
+	{name: "to", description: "The last day, YYYY-MM-DD in UTC and inclusive, or the instant the range ends before."},
 }
 
 // isErrorEnvelope marks a refusal a client has to tell apart, listed with its
@@ -546,6 +574,8 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["IssueStatus.category"] = &openapi.Schema{Type: "string", Enum: armature.StatusCategories}
 	// A group grants member or admin; owner is never the provider's to give.
 	granted := &openapi.Schema{Type: "string", Enum: []string{string(auth.RoleAdmin), string(auth.RoleMember)}}
+	b.FieldOverrides["AuditEntry.action"] = &openapi.Schema{Type: "string", Enum: audit.Actions}
+	b.FieldOverrides["AuditFacets.actions"] = &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: audit.Actions}}
 	b.FieldOverrides["GroupRole.role"] = granted
 	b.FieldOverrides["SetGroupRoleRequest.role"] = granted
 

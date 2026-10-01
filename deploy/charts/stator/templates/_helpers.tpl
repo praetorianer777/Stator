@@ -223,6 +223,7 @@ STATOR_DB_MAX_REPLICA_LAG: {{ .Values.database.pool.maxReplicaLag | quote }}
 STATOR_DB_REPLICA_LAG_SAMPLES: {{ .Values.database.pool.replicaLagSamples | quote }}
 STATOR_READ_YOUR_WRITES_TTL: {{ .Values.database.readYourWritesTTL | quote }}
 STATOR_UPLOAD_LIMIT: {{ .Values.attachments.uploadLimit | quote }}
+STATOR_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
 {{- with .Values.mail.smtpAddr }}
 STATOR_SMTP_ADDR: {{ . | quote }}
 STATOR_MAIL_FROM: {{ $.Values.mail.from | quote }}

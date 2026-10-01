@@ -18,9 +18,10 @@ func inspected(f Facts, published bool, chain ...InspectLink) InspectFacts {
 			ViewListed: len(l.View.Listed) > 0, OnViewList: l.View.On, EditListed: len(l.Edit.Listed) > 0, OnEditList: l.Edit.On})
 	}
 	a := PageRules(f, links)
+	trashable := !chain[len(chain)-1].Page.Home
 	out := InspectFacts{OrgAdmin: f.OrgAdmin(), Use: f.HoldsGlobal(UseStator), Space: map[SpacePermission]bool{},
-		Chain: chain, Published: published,
-		Verdict: map[Right]bool{RightView: a.View, RightEdit: a.Edit, RightDelete: a.Delete, RightComment: a.Comment && published}}
+		Chain: chain, Published: published, Trashable: trashable,
+		Verdict: map[Right]bool{RightView: a.View, RightEdit: a.Edit, RightDelete: a.Delete && trashable, RightComment: a.Comment && published}}
 	for _, p := range SpacePermissions {
 		out.Space[p] = f.HoldsSpace(p)
 	}
@@ -100,6 +101,10 @@ func TestEveryRefusalNamesTheStepThatDecidesIt(t *testing.T) {
 			RightView: {false, StepUnpublished}}},
 		{"an unpublished page takes no comments", inspected(member(openSpace...), false, home, chainPage("Mine", false)), map[Right]verdict{
 			RightView: {true, ""}, RightEdit: {true, ""}, RightComment: {false, StepPublished}}},
+		{"a home page never goes to the trash", inspected(admin, true, home), map[Right]verdict{
+			RightView: {true, ""}, RightEdit: {true, ""}, RightDelete: {false, StepHome}, RightComment: {true, ""}}},
+		{"nor does it for somebody who cannot see it", inspected(noUse, true, home), map[Right]verdict{
+			RightDelete: {false, StepView}}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			rights := Explain(tt.facts)

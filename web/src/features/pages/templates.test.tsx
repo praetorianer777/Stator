@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { templateTitle, type Template } from "@/api/templates";
-import { renderAt, stubApi } from "@/test/app";
+import { arrival, renderAt, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
@@ -99,7 +99,7 @@ describe("the template picker", () => {
     await userEvent.click(within(dialog).getByRole("radio", { name: /^Retrospective/ }));
     expect(within(dialog).getByLabelText("Title")).toHaveValue("Retro");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${made.id}/retro/edit`));
+    await arrival(router, `/s/DOCS/p/${made.id}/retro/edit`);
     const retrospective = templates.find((tpl) => tpl.key === "retrospective");
     expect(sent.find((r) => r.method === "POST" && r.path === "/pages")?.body).toEqual({ parentId: home.id, title: "Retro", body: retrospective?.body });
   });
@@ -112,13 +112,14 @@ describe("the template picker", () => {
       "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
       "POST /pages": { status: 201, body: { page: made } },
     });
-    await renderAt("/s/DOCS");
+    const router = await renderAt("/s/DOCS");
     await userEvent.click(await screen.findByRole("button", { name: "New page" }));
     const dialog = await screen.findByRole("dialog", { name: "New page under Handbook" });
     expect(await within(dialog).findByText(/The templates could not be loaded/)).toBeInTheDocument();
     await userEvent.type(within(dialog).getByLabelText("Title"), "Retro");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
-    await waitFor(() => expect(sent.find((r) => r.method === "POST" && r.path === "/pages")?.body).toEqual({ parentId: home.id, title: "Retro" }));
+    await arrival(router, `/s/DOCS/p/${made.id}/retro/edit`);
+    expect(sent.find((r) => r.method === "POST" && r.path === "/pages")?.body).toEqual({ parentId: home.id, title: "Retro" });
   });
 });
 

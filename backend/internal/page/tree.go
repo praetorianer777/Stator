@@ -30,6 +30,10 @@ var (
 // cycleConstraint is what the database's own tree guard names in its refusal.
 const cycleConstraint = "page_tree_no_cycle"
 
+// homeTrashConstraint is the check that asks page_trashable, the one rule on
+// what may go to the trash.
+const homeTrashConstraint = "page_home_never_trashed"
+
 // Ref is a page named by id and title, as a breadcrumb or a tree shows it.
 type Ref struct {
 	ID    uuid.UUID `json:"id"`
@@ -565,6 +569,10 @@ func lockTrees(ctx context.Context, tx db.DBTX, pages ...uuid.UUID) error {
 }
 
 func isCycle(err error) bool {
+	return isConstraint(err, cycleConstraint)
+}
+
+func isConstraint(err error, name string) bool {
 	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.ConstraintName == cycleConstraint
+	return errors.As(err, &pgErr) && pgErr.ConstraintName == name
 }

@@ -154,6 +154,10 @@ describe("the sentences of the steps", () => {
     expect(stepSentence(step({ kind: "space", permission: "addPages", passed: false }), member)).toMatch(/^Does not hold the Add pages permission/);
   });
 
+  it("say a home page never goes to the trash, and what to do instead", () => {
+    expect(stepSentence(step({ kind: "home", passed: false }), member)).toMatch(/^A space's home page cannot be moved to the trash\..*delete the whole space/);
+  });
+
   it("find the step that decides, or none", () => {
     expect(decidingStep(bobsAccess.rights[0]!)).toBe(2);
     expect(decidingStep({ right: "view", allowed: true, steps: [step({})] })).toBe(-1);

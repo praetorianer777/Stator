@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
@@ -25,17 +26,21 @@ type Service struct {
 
 func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
 
-// viewable loads a page the actor may view, out of the trash, and says
-// whether it is published.
-func viewable(ctx context.Context, tx db.DBTX, actor perm.Actor, pageID uuid.UUID) (bool, error) {
-	var version int
+// shown is a page as the actor may view it, out of the trash.
+type shown struct {
+	title, spaceKey string
+	published       bool
+}
+
+func viewable(ctx context.Context, tx db.DBTX, actor perm.Actor, pageID uuid.UUID) (shown, error) {
+	var out shown
 	err := tx.QueryRow(ctx, `
-		SELECT p.version FROM page p
-		WHERE p.id = $1 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 2), pageID, actor.UserID).Scan(&version)
+		SELECT p.title, s.key, p.version > 0 FROM page p JOIN space s ON s.id = p.space_id
+		WHERE p.id = $1 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 2), pageID, actor.UserID).Scan(&out.title, &out.spaceKey, &out.published)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, ErrPageNotFound
+		return out, ErrPageNotFound
 	}
-	return version > 0, err
+	return out, err
 }
 
 // Recipients are the members and groups matching q as the pickers match
@@ -130,11 +135,11 @@ func (s *Service) Share(ctx context.Context, actor perm.Actor, pageID uuid.UUID,
 	}
 	var out Share
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		published, err := viewable(ctx, tx, actor, pageID)
+		page, err := viewable(ctx, tx, actor, pageID)
 		if err != nil {
 			return err
 		}
-		if !published {
+		if !page.published {
 			return ErrUnpublished
 		}
 		subjects, err := perm.ResolveSubjects(ctx, tx, "recipients", in.Recipients, false)
@@ -168,7 +173,12 @@ func (s *Service) Share(ctx context.Context, actor perm.Actor, pageID uuid.UUID,
 			SELECT current_org_id(), $1, unnest($2::uuid[])`, out.ID, people); err != nil {
 			return fmt.Errorf("name the people told: %w", err)
 		}
-		return events.Emit(ctx, tx, events.TopicPageShared, events.PageShared{ShareID: out.ID, PageID: pageID, ActorID: actor.UserID})
+		if err := events.Emit(ctx, tx, events.TopicPageShared, events.PageShared{ShareID: out.ID, PageID: pageID, ActorID: actor.UserID}); err != nil {
+			return err
+		}
+		// The note is left out: it is a message to the people told, not a change to the organization.
+		return perm.Record(ctx, tx, actor, audit.ActionPageShared, "page", &pageID, map[string]any{
+			"title": page.title, "space": page.spaceKey, "recipients": perm.SubjectLog(subjects), "people": len(people)})
 	})
 	if err != nil {
 		return nil, lsn, err
