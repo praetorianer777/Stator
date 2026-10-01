@@ -3,7 +3,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Editor, type EditorHandle } from "./Editor";
 import type { Doc, DocNode, Mentionable, MentionSource } from "./schema";
-import { SLASH_ITEMS } from "./slashItems";
+import { slashItemsFor } from "./slashItems";
 
 const written: Doc = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "hello" }] }] };
 
@@ -140,8 +140,10 @@ describe("the slash menu", () => {
     const { user, box } = setup();
     const list = await slash(user, box, "");
     const options = within(list).getAllByRole("option");
-    expect(options).toHaveLength(SLASH_ITEMS.length);
-    for (const item of SLASH_ITEMS) {
+    // Without an Armature to ask, its blocks are not offered.
+    expect(options).toHaveLength(slashItemsFor(false).length);
+    expect(within(list).queryByText("Armature issue")).toBeNull();
+    for (const item of slashItemsFor(false)) {
       const option = within(list).getByText(item.label).closest('[role="option"]')!;
       expect(option).toHaveTextContent(item.description);
     }

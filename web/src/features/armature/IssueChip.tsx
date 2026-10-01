@@ -88,7 +88,8 @@ const STATUS_STYLES: Record<string, string> = {
   done: "bg-status-done-subtle",
 };
 
-function TypeIcon({ icon, name }: { icon: string; name: string }) {
+/** The issue type's glyph in Armature's shape and colour; an unknown icon draws a task. */
+export function TypeIcon({ icon, name }: { icon: string; name: string }) {
   const Glyph = Icon[TYPE_ICONS[icon] ?? "Task"];
   return <Glyph label={name} size={14} className={cx("shrink-0", TYPE_INK[icon] ?? "text-ink-muted")} />;
 }

@@ -90,7 +90,7 @@ export function textOf(node: DocNode): string {
   if (node.type === "mention") return `@${String(node.attrs?.label ?? "")}`;
   if (node.type === "hardBreak") return "\n";
   if (node.type === "attachment") return String(node.attrs?.fileName ?? "");
-  if (node.type === "armatureIssue") return String(node.attrs?.key ?? "");
+  if (node.type === "armatureIssue" || node.type === "armatureIssueBlock") return String(node.attrs?.key ?? "");
   return (node.content ?? []).map(textOf).join("");
 }
 

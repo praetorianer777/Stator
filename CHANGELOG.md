@@ -257,6 +257,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
   by the keys it names. `GET /armature/issues`, `GET /armature/issues/{key}`
   and `GET /armature/projects` answer a `status` instead of failing when
   Armature cannot be asked.
+- An Armature issue block. "Armature issue" in the slash menu asks for a key
+  or an issue's address, shows the issue it found, and inserts a card with
+  the summary, type, status, priority, assignee, reporter, due date, when it
+  changed and a link to Armature, as each reader may see it. The page stores
+  only the key. Without a token or access the block shows the key and the
+  hint, as a chip does; a comparison of versions names the issue in words.
 
 ### Changed
 

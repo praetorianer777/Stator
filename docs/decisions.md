@@ -3,6 +3,27 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: An issue block is a card drawn from the chips' lookup, and its picker checks the key
+
+`armatureIssueBlock` stores the key and nothing else, for the reasons the chip
+does. Its card reads the same `ArmatureIssuesProvider` as the chips, whose
+lookup already answers every field the card shows, so a page with blocks and
+chips asks Armature once, and the card needs no request of its own. Without a
+token, or for an issue the viewer may not see, the block shows the chip's
+words inside its frame rather than an empty card, so a reader learns the same
+thing from both.
+
+The picker inserts a key only once `GET /armature/issues/{key}` finds the
+issue for the author, as the contract asks, and stores the key the issue has
+now: a block inserted today should not name an issue by a key it left. It
+reads keys and issue addresses alike, since people copy either. Searching by
+words waits for the search route of #30; a key is what authors have at hand
+when they embed an issue.
+
+A comparison of versions describes the block in words, as it does the
+generated blocks, because what the card shows is the issue now, not the
+version's.
+
 ## 2026-10-01: An issue chip is its key, and each view asks Armature once
 
 An `armatureIssue` node holds the key and nothing else. A summary in the body

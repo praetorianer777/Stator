@@ -273,6 +273,17 @@ Uses `GET /armature/issues/{issueKey}` from #28.
   and the hint, as a chip.
 - A comparison of versions describes it in words, "Armature issue CP-12", as
   generated blocks are described.
+- **As built in #29.** The block draws from the same lookup as the chips
+  (`ArmatureIssuesProvider`), so a page asks once for the keys of its chips and
+  blocks together; the picker asks `GET /armature/issues/{issueKey}` as the
+  author types, after `ARMATURE_PICKER_DEBOUNCE_MS`. The picker takes a key in
+  any case or an issue address of the connected Armature, shows the issue it
+  found, and stores the key the issue has now, so a moved issue is named by
+  its new key. The slash menu offers the block only while the organization has
+  a connection; an author without a token is told to connect. Armature answers
+  `dueDate` as a date-time at midnight UTC, and the block shows that day in
+  UTC, so no time zone moves it to the day before. Comments do not take the
+  block.
 
 ## #30 Armature issue list block from a query
 
