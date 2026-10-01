@@ -332,6 +332,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Following the Armature theme no longer drops back to the built-in theme
+  when the page is reloaded while Stator copies a changed theme: the copy is
+  finished even after the request is gone, and only a finished copy is shown.
+
 - Saving an edited comment puts focus back on its Edit button every time,
   not only when the save's answer and the next frame came in the right order.
 

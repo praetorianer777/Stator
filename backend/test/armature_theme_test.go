@@ -12,6 +12,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
 // Following the Armature theme (#34): the theme the stub shows a person is
@@ -203,6 +204,46 @@ func TestAPersonFollowsTheThemeArmatureShowsThem(t *testing.T) {
 		}
 		if mirrors(home.user) != 0 {
 			t.Error("the mirror outlived following")
+		}
+	})
+
+	// A copy takes several writes; a request that hangs up between them, or a
+	// reader that arrives between them, once left the page in the built-in theme (#200).
+	t.Run("a mirror still being copied is neither shown nor removed by another copy", func(t *testing.T) {
+		setTheme("alice", "deep-tech", false)
+		want(t, owner.put(t, "/api/v1/armature/theme", nil), http.StatusOK, "follow")
+		complete, _ := activeTheme(t, owner)
+		if complete == nil {
+			t.Fatal("following shows no theme")
+		}
+		var halfID uuid.UUID
+		_, err := h.cluster.Write(db.WithUser(owner.ctx, home.user), func(ctx context.Context, tx db.DBTX) error {
+			return tx.QueryRow(ctx, `
+				INSERT INTO theme (org_id, owner_id, name, shared, spec, armature_theme_id, armature_updated_at)
+				VALUES (current_org_id(), $1, 'Half a copy', false, '{}', $2, $3) RETURNING id`,
+				home.user, uuid.New(), theme.MirrorPending).Scan(&halfID)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		halfLeft := func() int {
+			return h.countRows(t, `SELECT count(*) FROM theme WHERE org_id = $1 AND id = $2`, home.org, halfID)
+		}
+
+		if seen, _ := activeTheme(t, owner); seen == nil || seen["id"] != complete["id"] {
+			t.Errorf("with a copy under way the active theme is %v, want the complete mirror", seen)
+		}
+		setTheme("alice", "constellation", false)
+		themeFollow(t, owner)
+		if seen, _ := activeTheme(t, owner); seen == nil || seen["name"] != "Constellation" {
+			t.Errorf("after a change the active theme is %v", seen)
+		}
+		if halfLeft() != 1 {
+			t.Error("a finished copy removed one still under way")
+		}
+		want(t, owner.delete(t, "/api/v1/armature/theme"), http.StatusNoContent, "stop following")
+		if mirrors(home.user) != 0 {
+			t.Error("stopping left a copy under way behind")
 		}
 	})
 

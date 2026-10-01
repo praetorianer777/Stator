@@ -365,7 +365,8 @@ func (s *Service) Mirror(ctx context.Context, reader uuid.UUID) (*Theme, error) 
 	var out *Theme
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		t, err := scan(tx.QueryRow(ctx, selectThemes+`
-			WHERE t.owner_id = $1 AND t.armature_theme_id IS NOT NULL ORDER BY t.created_at DESC LIMIT 1`, reader))
+			WHERE t.owner_id = $1 AND t.armature_theme_id IS NOT NULL AND t.armature_updated_at <> $2
+			ORDER BY t.created_at DESC LIMIT 1`, reader, MirrorPending))
 		if errors.Is(err, ErrNotFound) {
 			return nil
 		}
@@ -381,12 +382,22 @@ func (s *Service) Mirror(ctx context.Context, reader uuid.UUID) (*Theme, error) 
 // SaveMirror keeps pkg as the reader's copy of the Armature theme of, checked
 // as an import is, and forgets the copy it replaces.
 func (s *Service) SaveMirror(ctx context.Context, reader uuid.UUID, of MirrorOf, pkg *Package) (*Theme, db.LSN, error) {
-	made, lsn, err := s.importPackage(withMirroring(ctx), reader, pkg, &of)
+	// A follower who reloads hangs up mid-copy; the copy, or its undo, is
+	// finished anyway rather than left half made.
+	ctx = context.WithoutCancel(ctx)
+	made, lsn, err := s.importPackage(withMirroring(ctx), reader, pkg, &MirrorOf{ID: of.ID, UpdatedAt: MirrorPending})
 	if err != nil {
 		return nil, lsn, err
 	}
 	var keys []string
 	lsn, err = s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		done, err := tx.Exec(ctx, `UPDATE theme SET armature_updated_at = $2 WHERE id = $1`, made.ID, of.UpdatedAt)
+		if err != nil {
+			return err
+		}
+		if done.RowsAffected() == 0 {
+			return ErrNotFound
+		}
 		keys, err = dropMirrors(ctx, tx, reader, &made.ID)
 		return err
 	})
@@ -394,16 +405,22 @@ func (s *Service) SaveMirror(ctx context.Context, reader uuid.UUID, of MirrorOf,
 		return nil, lsn, err
 	}
 	s.dropObjects(ctx, keys)
+	made.Mirror = &of
 	return made, lsn, nil
 }
 
-// dropMirrors removes the owner's mirrors but keep, and answers the object
-// keys of their files, to remove once the rows are gone.
+// MirrorPending marks a mirror still being copied, which takes several
+// writes: no reader takes it for the theme, and no other copy removes it.
+var MirrorPending = time.Unix(0, 0).UTC()
+
+// dropMirrors removes the owner's mirrors but keep and those still being
+// copied, or every one without a keep, and answers their files' object keys.
 func dropMirrors(ctx context.Context, tx db.DBTX, owner uuid.UUID, keep *uuid.UUID) ([]string, error) {
 	rows, err := tx.Query(ctx, `
 		DELETE FROM theme_asset a USING theme t
 		WHERE a.theme_id = t.id AND t.owner_id = $1 AND t.armature_theme_id IS NOT NULL AND t.id IS DISTINCT FROM $2
-		RETURNING a.theme_id, a.id`, owner, keep)
+		  AND ($2::uuid IS NULL OR t.armature_updated_at <> $3)
+		RETURNING a.theme_id, a.id`, owner, keep, MirrorPending)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +437,9 @@ func dropMirrors(ctx context.Context, tx db.DBTX, owner uuid.UUID, keep *uuid.UU
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	_, err = tx.Exec(ctx, `DELETE FROM theme WHERE owner_id = $1 AND armature_theme_id IS NOT NULL AND id IS DISTINCT FROM $2`, owner, keep)
+	_, err = tx.Exec(ctx, `
+		DELETE FROM theme WHERE owner_id = $1 AND armature_theme_id IS NOT NULL AND id IS DISTINCT FROM $2
+		  AND ($2::uuid IS NULL OR armature_updated_at <> $3)`, owner, keep, MirrorPending)
 	return keys, err
 }
 
