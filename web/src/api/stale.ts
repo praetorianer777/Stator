@@ -14,6 +14,8 @@ export interface StaleFilter {
   space?: string;
   owner?: string;
   verification?: StaleVerification;
+  /** Lists archived pages too, which the report leaves out otherwise. */
+  archived?: boolean;
   olderThan: number;
 }
 

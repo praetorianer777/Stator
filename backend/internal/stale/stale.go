@@ -40,7 +40,7 @@ const (
 var Verifications = []Verification{Verified, Expired, Unverified}
 
 // Filter narrows the report. The zero value is every space the reader
-// administers, any owner, any verification, after DefaultDays.
+// administers, any owner and verification, nothing archived, after DefaultDays.
 type Filter struct {
 	// SpaceKey keeps the report to one space; empty is every space the
 	// reader administers.
@@ -49,6 +49,8 @@ type Filter struct {
 	Owner        *uuid.UUID
 	Unowned      bool
 	Verification Verification
+	// Archived lists archived pages too, which the report leaves out otherwise.
+	Archived bool
 	// Days is how long since a page was last published or opened.
 	Days int
 }
@@ -76,6 +78,13 @@ func ParseFilter(q url.Values) (Filter, map[string]string) {
 		f.Verification = v
 	default:
 		problems["verification"] = "Ask for verified, expired or none, or leave the verification out."
+	}
+	switch strings.TrimSpace(q.Get("archived")) {
+	case "", "false":
+	case "true":
+		f.Archived = true
+	default:
+		problems["archived"] = "Ask for archived pages with true, or leave archived out."
 	}
 	if raw := strings.TrimSpace(q.Get("olderThan")); raw != "" {
 		days, err := strconv.Atoi(raw)
@@ -107,4 +116,8 @@ type StalePage struct {
 	Verification Verification `json:"verification"`
 	// VerificationExpiresAt is when a verification runs or ran out.
 	VerificationExpiresAt *time.Time `json:"verificationExpiresAt"`
+	// Archived says the page is archived, itself or with its space.
+	Archived bool `json:"archived"`
+	// Archivable says archiving can take the page: not a home page, nor archived already.
+	Archivable bool `json:"archivable"`
 }

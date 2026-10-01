@@ -396,7 +396,7 @@ var operations = []operation{
 
 	// The stale content report (#99).
 	{method: "GET", path: "/stale-pages", handler: "handleListStalePages", tag: "stale",
-		summary: "Published pages nobody published or opened within the period, in the spaces the caller administers, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization.",
+		summary: "Published pages nobody published or opened within the period, in the spaces the caller administers, archived ones only when asked for, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization.",
 		query:   append(staleQuery, keysetQueryOf(stale.DefaultLimit, stale.MaxLimit)...), responses: ok(env{"pages": []stale.StalePage{}, "next": (*string)(nil)})},
 
 	// Notifications (#26), as Armature serves them.
@@ -543,6 +543,7 @@ var staleQuery = []param{
 	{name: "space", description: "A space key; every space the caller administers when absent."},
 	{name: "owner", description: "The id of the person who answers for the pages, or none for pages without an owner."},
 	{name: "verification", schema: &openapi.Schema{Type: "string", Enum: enumStrings(stale.Verifications)}, description: "Where the pages stand on being checked; any when absent."},
+	{name: "archived", schema: &openapi.Schema{Type: "boolean"}, description: "true to list archived pages too; false when absent."},
 	{name: "olderThan", schema: intParam, description: "Days since a page was last published or opened, " + strconv.Itoa(stale.MinDays) + " to " + strconv.Itoa(stale.MaxDays) + "; " + strconv.Itoa(stale.DefaultDays) + " when absent."},
 }
 

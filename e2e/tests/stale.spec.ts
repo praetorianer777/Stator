@@ -50,9 +50,11 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     const fresh = await createPage(api, space.homePageId, uniqueName(testInfo, "Fresh"), doc("Written today."));
     must(await api.PUT("/pages/{pageID}/owner", { params: { path: { pageID: guide.id } }, body: { userId: bobId } }));
     must(await api.PUT("/pages/{pageID}/verification", { params: { path: { pageID: guide.id } }, body: { days: 30 } }));
+    // The replica replays in commit order, so once a test sees the guide gone
+    // quiet it sees the notes and the lapse too.
+    await ageQuietly(notes.id, 120);
     await lapseVerification(guide.id);
     await ageQuietly(guide.id, 400);
-    await ageQuietly(notes.id, 120);
     return { space, guide, notes, fresh };
   }
 
@@ -108,6 +110,32 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     await expect(page).toHaveURL(new RegExp(`/settings/stale\\?space=${space.key}$`));
     await expect(page.locator("#stale-space")).toHaveValue(space.key);
     await expect(row(page, guide.title)).toBeVisible();
+  });
+
+  test("an administrator archives stale pages from the report, which leave it until archived pages are asked for", async ({ page, api, apiAs }, testInfo) => {
+    const bob = must(await (await apiAs("bob")).GET("/auth/me")).user;
+    const { space, guide, notes } = await quietSpace(api, testInfo, bob.id);
+
+    await openReport(page, space.key, guide.title);
+    await page.locator("#stale-age").selectOption(String(SHORTER_DAYS));
+    await expect(page.locator("[data-stale-row]")).toHaveCount(2);
+    const archive = page.locator('[data-action="archive-stale"]');
+    await expect(archive).toBeDisabled();
+    await page.getByRole("checkbox", { name: "Select every page shown" }).check();
+    await expect(archive).toHaveText("Archive 2 pages");
+    page.once("dialog", (dialog) => void dialog.accept());
+    await archive.click();
+    await expect(page.locator("[data-stale-actions] [role=status]")).toHaveText("Archived 2 pages.");
+    await expect(page.locator("[data-stale-row]")).toHaveCount(0);
+    expect(must(await api.GET("/pages/{pageID}", { params: { path: { pageID: guide.id } } })).page.archived).not.toBeNull();
+
+    await page.getByRole("checkbox", { name: "Include archived pages" }).check();
+    await expect(page.locator("[data-stale-row]")).toHaveCount(2);
+    for (const title of [guide.title, notes.title]) {
+      await expect(row(page, title).locator("[data-archived-mark]")).toHaveText("Archived");
+      await expect(row(page, title).getByRole("checkbox")).toHaveCount(0);
+    }
+    expect(await scrollsSideways(page)).toBe(false);
   });
 
   test("a member who administers no space is refused, and is not offered it", async ({ api, apiAs, pageAs }, testInfo) => {

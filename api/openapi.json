@@ -7185,7 +7185,7 @@
     "/stale-pages": {
       "get": {
         "operationId": "listStalePages",
-        "summary": "Published pages nobody published or opened within the period, in the spaces the caller administers, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization.",
+        "summary": "Published pages nobody published or opened within the period, in the spaces the caller administers, archived ones only when asked for, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization.",
         "tags": [
           "stale"
         ],
@@ -7217,6 +7217,14 @@
                 "expired",
                 "none"
               ]
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "true to list archived pages too; false when absent.",
+            "schema": {
+              "type": "boolean"
             }
           },
           {
@@ -12262,6 +12270,12 @@
             "type": "string",
             "format": "date-time"
           },
+          "archivable": {
+            "type": "boolean"
+          },
+          "archived": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -12326,7 +12340,9 @@
           "activeAt",
           "owner",
           "verification",
-          "verificationExpiresAt"
+          "verificationExpiresAt",
+          "archived",
+          "archivable"
         ]
       },
       "Star": {

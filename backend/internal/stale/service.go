@@ -21,11 +21,12 @@ type Service struct {
 func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
 
 // Query is the statement List runs, for the plan check in the integration
-// suite: space, owner, unowned, verification, days, cursor, then the limit.
+// suite: space, owner, unowned, verification, archived, days, cursor, limit.
 const Query = `
 	SELECT page_id, title, space_key, space_name, version, published_at, viewed_at, active_at,
-	       owner_id, owner_name, owner_can_view, verification_state, verification_expires_at
-	FROM stale_pages($1, $2, $3, $4, $5, $6, $7, $8)`
+	       owner_id, owner_name, owner_can_view, verification_state, verification_expires_at,
+	       archived, archivable
+	FROM stale_pages($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 // List is a window of stale pages after the cursor, the longest untouched
 // first, refused to a reader who administers no space or not the one named.
@@ -57,7 +58,7 @@ func (s *Service) List(ctx context.Context, actor perm.Actor, f Filter, after *k
 			v := string(f.Verification)
 			verification = &v
 		}
-		rows, err := tx.Query(ctx, Query, only, f.Owner, f.Unowned, verification, f.Days, afterAt, afterID, limit+1)
+		rows, err := tx.Query(ctx, Query, only, f.Owner, f.Unowned, verification, f.Archived, f.Days, afterAt, afterID, limit+1)
 		if err != nil {
 			return err
 		}
@@ -71,7 +72,7 @@ func (s *Service) List(ctx context.Context, actor perm.Actor, f Filter, after *k
 				verified string
 			)
 			if err := rows.Scan(&p.ID, &p.Title, &p.SpaceKey, &p.SpaceName, &p.Version, &p.PublishedAt, &p.ViewedAt, &p.ActiveAt,
-				&ownerID, &name, &canView, &verified, &p.VerificationExpiresAt); err != nil {
+				&ownerID, &name, &canView, &verified, &p.VerificationExpiresAt, &p.Archived, &p.Archivable); err != nil {
 				return err
 			}
 			if ownerID != nil {

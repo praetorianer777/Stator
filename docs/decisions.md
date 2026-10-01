@@ -41,12 +41,19 @@ link carries `from=stale` and the page then posts no visit, or working
 through the report would empty it of every page the reviewer looked at
 without deciding anything.
 
-Archiving from the report, the issue's second criterion, waits for archived
-pages (#37): the rows already carry each page's id, space and title, so a
-selection and a bulk action can be added beside them, through the archive
-endpoint #37 brings, once there is one. Telling owners about their stale
-pages is left for later; the verification reminder already tells them when a
-check runs out.
+Stale pages are what archiving (#37) is for, so the report archives them in
+bulk: the reader picks rows and the client calls the page's own
+`PUT /pages/{id}/archive` for each, one after another, rather than through
+an endpoint of the report's. Each call is then checked, audited and
+refused exactly as from the page menu, a page already taken with one above
+it is no change, and a refusal part way says how many went before it. Every
+reader of the report administers the space, which is who archives, so each
+row says only whether archiving can take it (`archivable`: not a home page,
+which stands for its space, nor a page archived already) without asking the
+rule again per row. Archived pages and pages of archived spaces leave the
+report, as they leave the tree and search, and come back marked with
+`archived=true`. Telling owners about their stale pages is left for later;
+the verification reminder already tells them when a check runs out.
 
 ## 2026-10-01: An archive is marks on the pages, frozen by the edit rule, and kept by space administrators
 

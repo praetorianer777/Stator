@@ -1629,7 +1629,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Published pages nobody published or opened within the period, in the spaces the caller administers, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization. */
+        /** Published pages nobody published or opened within the period, in the spaces the caller administers, archived ones only when asked for, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization. */
         get: operations["listStalePages"];
         put?: never;
         post?: never;
@@ -2969,6 +2969,8 @@ export interface components {
         StalePage: {
             /** Format: date-time */
             activeAt: string;
+            archivable: boolean;
+            archived: boolean;
             /** Format: uuid */
             id: string;
             owner: components["schemas"]["Owner"] | null;
@@ -7869,6 +7871,8 @@ export interface operations {
                 owner?: string;
                 /** @description Where the pages stand on being checked; any when absent. */
                 verification?: "verified" | "expired" | "none";
+                /** @description true to list archived pages too; false when absent. */
+                archived?: boolean;
                 /** @description Days since a page was last published or opened, 1 to 3650; 180 when absent. */
                 olderThan?: number;
                 /** @description 1 to 100; 25 when absent. */

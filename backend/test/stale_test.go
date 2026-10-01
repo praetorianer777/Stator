@@ -164,6 +164,7 @@ func TestStaleReportOverTheAPI(t *testing.T) {
 			"an unknown verification":                {owner.get(t, "/api/v1/stale-pages?verification=checked"), http.StatusUnprocessableEntity},
 			"no period":                              {owner.get(t, "/api/v1/stale-pages?olderThan=0"), http.StatusUnprocessableEntity},
 			"too long a period":                      {owner.get(t, "/api/v1/stale-pages?olderThan=3651"), http.StatusUnprocessableEntity},
+			"archived neither true nor false":        {owner.get(t, "/api/v1/stale-pages?archived=maybe"), http.StatusUnprocessableEntity},
 			"too large a window":                     {owner.get(t, "/api/v1/stale-pages?limit=101"), http.StatusUnprocessableEntity},
 			"a cursor this list did not give out":    {owner.get(t, "/api/v1/stale-pages?cursor=nonsense"), http.StatusUnprocessableEntity},
 			"nobody signed in":                       {nobody.get(t, "/api/v1/stale-pages"), http.StatusUnauthorized},
@@ -174,6 +175,34 @@ func TestStaleReportOverTheAPI(t *testing.T) {
 			}
 			errorCode(t, tt.r)
 		}
+	})
+
+	t.Run("archived pages and spaces leave the report unless asked for, and say they are", func(t *testing.T) {
+		for _, each := range list(t, want(t, owner.get(t, "/api/v1/stale-pages"), http.StatusOK, "the owner's report"), "pages") {
+			if p := each.(map[string]any); p["archived"] != false || p["archivable"] != true {
+				t.Errorf("%s, archived by nobody, reads archived %v, archivable %v", p["title"], p["archived"], p["archivable"])
+			}
+		}
+		want(t, ann.put(t, pagePath(old, "/archive"), nil), http.StatusOK, "ann archives Old from her report")
+		want(t, owner.put(t, "/api/v1/spaces/DOCS/archive", nil), http.StatusOK, "the owner archives DOCS")
+		h.settle(t)
+		sameList(t, "ann's report without Old", titlesOf(t, want(t, ann.get(t, "/api/v1/stale-pages"), http.StatusOK, "ann's report"), "pages"), "Ancient", "Lapsed")
+		sameList(t, "the owner's report without DOCS", titlesOf(t, want(t, owner.get(t, "/api/v1/stale-pages"), http.StatusOK, "the owner's report"), "pages"),
+			"Under the sketch", "Ancient", "Lapsed")
+		r := want(t, owner.get(t, "/api/v1/stale-pages?archived=true"), http.StatusOK, "the owner's report with the archive")
+		sameList(t, "the owner's report with the archive", titlesOf(t, r, "pages"), "Documents of old", "Under the sketch", "Ancient", "Lapsed", "Old")
+		for _, each := range list(t, r, "pages") {
+			p := each.(map[string]any)
+			archived := p["title"] == "Old" || p["title"] == "Documents of old"
+			if p["archived"] != archived || p["archivable"] != !archived {
+				t.Errorf("%s reads archived %v, archivable %v", p["title"], p["archived"], p["archivable"])
+			}
+		}
+		sameList(t, "a walk with the archive", walk(t, ann, "/api/v1/stale-pages?archived=true", "pages"), "Ancient", "Lapsed", "Old")
+		want(t, ann.delete(t, pagePath(old, "/archive")), http.StatusOK, "ann unarchives Old")
+		want(t, owner.delete(t, "/api/v1/spaces/DOCS/archive"), http.StatusOK, "the owner unarchives DOCS")
+		h.settle(t)
+		sameList(t, "ann's report with Old back", titlesOf(t, want(t, ann.get(t, "/api/v1/stale-pages"), http.StatusOK, "ann's report"), "pages"), "Ancient", "Lapsed", "Old")
 	})
 
 	t.Run("opening or publishing a page takes it off", func(t *testing.T) {
@@ -222,7 +251,7 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 		}
 		return n
 	}
-	const all = `SELECT count(*) FROM stale_pages($1, NULL, false, NULL, 180, NULL, NULL, 100)`
+	const all = `SELECT count(*) FROM stale_pages($1, NULL, false, NULL, false, 180, NULL, NULL, 100)`
 
 	t.Run("somebody who administers no space reads nothing", func(t *testing.T) {
 		actAs(t, conn, org.org, benID)
@@ -245,7 +274,7 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 		actAs(t, conn, org.org, annID)
 		var title string
 		var viewed *time.Time
-		if err := conn.QueryRow(ctx, `SELECT title, viewed_at FROM stale_pages(NULL, NULL, false, NULL, 180, NULL, NULL, 100)`).Scan(&title, &viewed); err != nil || title != "Gone quiet" || viewed == nil {
+		if err := conn.QueryRow(ctx, `SELECT title, viewed_at FROM stale_pages(NULL, NULL, false, NULL, false, 180, NULL, NULL, 100)`).Scan(&title, &viewed); err != nil || title != "Gone quiet" || viewed == nil {
 			t.Errorf("ann reads %q last viewed %v (%v)", title, viewed, err)
 		}
 		if n := count(all, nil); n != 1 {
@@ -256,6 +285,31 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 		}
 		if n := count(`SELECT count(*) FROM page_visit WHERE page_id = $1`, gone); n != 0 {
 			t.Errorf("the report opened the owner's visit to ann")
+		}
+	})
+
+	t.Run("a home page is listed but never offered for archiving", func(t *testing.T) {
+		h.backdate(t, org.org, `id = $3`, 500, ops.homeID)
+		h.settle(t)
+		actAs(t, conn, org.org, annID)
+		rows, err := conn.Query(ctx, `SELECT title, archivable FROM stale_pages(NULL, NULL, false, NULL, false, 180, NULL, NULL, 100)`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]bool{}
+		for rows.Next() {
+			var title string
+			var archivable bool
+			if err := rows.Scan(&title, &archivable); err != nil {
+				t.Fatal(err)
+			}
+			got[title] = archivable
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+		if archivable, ok := got["Reviewed"]; !ok || archivable || !got["Gone quiet"] || len(got) != 2 {
+			t.Errorf("ann reads %v, want the home page Reviewed not archivable and Gone quiet archivable", got)
 		}
 	})
 
@@ -355,7 +409,7 @@ func TestStaleReportReadsAWindowNotTheWholeOrganization(t *testing.T) {
 		}
 	}
 	started := time.Now()
-	rows, err := tx.Query(ctx, stale.Query, nil, nil, false, nil, stale.DefaultDays, nil, nil, limit+1)
+	rows, err := tx.Query(ctx, stale.Query, nil, nil, false, nil, false, stale.DefaultDays, nil, nil, limit+1)
 	if err != nil {
 		t.Fatal(err)
 	}

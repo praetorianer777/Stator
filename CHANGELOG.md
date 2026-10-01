@@ -439,11 +439,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
   administrators: published pages nobody published again or opened for at
   least 180 days, or a period of 30 to 730 days, the longest untouched first,
   with when each was last published and opened, its owner and its
-  verification. It narrows by space, owner and verification and pages by
-  cursor (`GET /stale-pages`). Each reader sees the spaces they administer,
-  and only pages they may view; opening a page from the report to review it
-  does not count as a view. Archiving from the report follows with archived
-  pages (#37).
+  verification. It narrows by space, owner and verification, leaves archived
+  pages out unless asked (`archived=true`), and pages by cursor
+  (`GET /stale-pages`). Chosen rows are archived in bulk from the report,
+  each through the page's own archive. Each reader sees the spaces they
+  administer, and only pages they may view; opening a page from the report
+  to review it does not count as a view.
 
 ### Changed
 

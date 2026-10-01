@@ -7,7 +7,10 @@ import { arrival, renderAt, signedIn, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 const carl = "0199a000-0000-7000-8000-0000000000c1";
 const runbookId = "0199a000-0000-7000-8000-0000000000a1";
@@ -24,6 +27,8 @@ const row = (over: Partial<StalePage>): StalePage => ({
   owner: null,
   verification: "none",
   verificationExpiresAt: null,
+  archived: false,
+  archivable: true,
   ...over,
 });
 
@@ -150,6 +155,79 @@ describe("the stale content report", () => {
     await renderAt(STALE_PATH, { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member" } } });
     expect(await screen.findByText(/Only administrators of a space, or of the organization, read which pages went stale/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("archives the chosen pages one at a time once the reader agrees, and reads the report again", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const archived: string[] = [];
+    let reads = 0;
+    const { sent } = report({
+      "GET /stale-pages": () => {
+        reads++;
+        return { status: 200, body: { pages: reads === 1 ? first : [], next: null } };
+      },
+      [`PUT /pages/${runbookId}/archive`]: () => {
+        archived.push(runbookId);
+        return { status: 200, body: { page: aPage({ id: runbookId }) } };
+      },
+      [`PUT /pages/${first[1]!.id}/archive`]: () => {
+        archived.push(first[1]!.id);
+        return { status: 200, body: { page: aPage({ id: first[1]!.id }) } };
+      },
+    });
+    await renderAt(STALE_PATH);
+    await screen.findByRole("table");
+    const button = screen.getByRole("button", { name: "Archive selected pages" });
+    expect(button).toBeDisabled();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Runbook" }));
+    expect(screen.getByRole("button", { name: "Archive 1 page" })).toBeEnabled();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select every page shown" }));
+    expect(screen.getByRole("checkbox", { name: "Select Onboarding" })).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Archive 2 pages" }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Archive these 2 pages and every page below them?"));
+    expect(await screen.findByText("Archived 2 pages.")).toBeInTheDocument();
+    expect(archived).toEqual([runbookId, first[1]!.id]);
+    expect(sent.filter((each) => each.method === "PUT")).toHaveLength(2);
+    expect(await screen.findByText("No stale pages")).toBeInTheDocument();
+  });
+
+  it("archives nothing when the reader thinks better of it, and says where it stopped when the server refuses", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { sent } = report({
+      [`PUT /pages/${runbookId}/archive`]: { status: 200, body: { page: aPage({ id: runbookId }) } },
+      [`PUT /pages/${first[1]!.id}/archive`]: {
+        status: 403,
+        body: { error: { code: "forbidden", message: "Only an administrator of this space can archive pages and unarchive them. Ask one of them." } },
+      },
+    });
+    await renderAt(STALE_PATH);
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select every page shown" }));
+    await userEvent.click(screen.getByRole("button", { name: "Archive 2 pages" }));
+    expect(sent.filter((each) => each.method === "PUT")).toHaveLength(0);
+
+    confirm.mockReturnValue(true);
+    await userEvent.click(screen.getByRole("button", { name: "Archive 2 pages" }));
+    expect(await screen.findByText(/Archived 1 of the pages, then stopped: Only an administrator of this space can archive pages/)).toBeInTheDocument();
+  });
+
+  it("leaves archived pages out until asked, then marks them and offers nothing to archive", async () => {
+    const { queries } = report({
+      "GET /stale-pages": (request) => {
+        const query = new URL(request.url).searchParams;
+        queries.push(query);
+        const pages = query.get("archived") === "true" ? [...first, row({ title: "Old archive", archived: true, archivable: false })] : first;
+        return { status: 200, body: { pages, next: null } };
+      },
+    });
+    await renderAt(STALE_PATH);
+    await screen.findByRole("table");
+    expect(queries[0]?.has("archived")).toBe(false);
+    await userEvent.click(screen.getByRole("checkbox", { name: "Include archived pages" }));
+    await waitFor(() => expect(queries.at(-1)?.get("archived")).toBe("true"));
+    const archivedRow = (await screen.findByText("Old archive")).closest("tr")!;
+    expect(within(archivedRow).getByText("Archived")).toBeInTheDocument();
+    expect(within(archivedRow).queryByRole("checkbox")).toBeNull();
+    expect(await axeViolations()).toEqual([]);
   });
 
   it("opens a page to review it without counting the review as a view", async () => {

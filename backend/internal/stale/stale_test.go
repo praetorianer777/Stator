@@ -30,6 +30,15 @@ func TestTheFilterReadsEachParameter(t *testing.T) {
 	if f.SpaceKey != "ops" || f.Owner == nil || *f.Owner != owner || f.Unowned || f.Verification != Expired || f.Days != 30 {
 		t.Errorf("the filter reads %+v", f)
 	}
+	if f.Archived {
+		t.Errorf("archived pages are listed unasked")
+	}
+	if f, _ := ParseFilter(url.Values{"archived": {"true"}}); !f.Archived {
+		t.Errorf("archived=true leaves archived pages out")
+	}
+	if f, problems := ParseFilter(url.Values{"archived": {"false"}}); f.Archived || len(problems) != 0 {
+		t.Errorf("archived=false reads %+v, %v", f, problems)
+	}
 	f, _ = ParseFilter(url.Values{"owner": {Unowned}, "verification": {"none"}})
 	if !f.Unowned || f.Owner != nil || f.Verification != Unverified {
 		t.Errorf("pages without an owner or a verification read %+v", f)
@@ -46,6 +55,7 @@ func TestWhatTheFilterCannotTakeIsASentenceForItsParameter(t *testing.T) {
 		{"olderThan", strconv.Itoa(MinDays - 1)},
 		{"olderThan", strconv.Itoa(MaxDays + 1)},
 		{"olderThan", "1.5"},
+		{"archived", "yes"},
 	} {
 		_, problems := ParseFilter(url.Values{tt.param: {tt.value}})
 		msg, ok := problems[tt.param]
