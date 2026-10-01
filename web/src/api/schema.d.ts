@@ -1878,7 +1878,7 @@ export interface components {
             bypassed: boolean;
             grants: components["schemas"]["SpaceGrant"][];
             /** @enum {string} */
-            kind: "orgAdmin" | "use" | "space" | "unpublished" | "list" | "view" | "published";
+            kind: "orgAdmin" | "use" | "space" | "unpublished" | "list" | "view" | "published" | "home";
             /** @enum {string} */
             list?: "view" | "edit";
             listed: components["schemas"]["Subject"][];
