@@ -70,6 +70,9 @@
       "name": "spaces"
     },
     {
+      "name": "stale"
+    },
+    {
       "name": "templates"
     },
     {
@@ -6912,6 +6915,110 @@
         }
       }
     },
+    "/stale-pages": {
+      "get": {
+        "operationId": "listStalePages",
+        "summary": "Published pages nobody published or opened within the period, in the spaces the caller administers, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization.",
+        "tags": [
+          "stale"
+        ],
+        "parameters": [
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key; every space the caller administers when absent.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "description": "The id of the person who answers for the pages, or none for pages without an owner.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "verification",
+            "in": "query",
+            "description": "Where the pages stand on being checked; any when absent.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "verified",
+                "expired",
+                "none"
+              ]
+            }
+          },
+          {
+            "name": "olderThan",
+            "in": "query",
+            "description": "Days since a page was last published or opened, 1 to 3650; 180 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 25 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The next of the window before; the first window when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StalePage"
+                      }
+                    }
+                  },
+                  "required": [
+                    "next",
+                    "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/stars": {
       "get": {
         "operationId": "listStars",
@@ -11775,6 +11882,80 @@
           "cursors",
           "icons",
           "css"
+        ]
+      },
+      "StalePage": {
+        "type": "object",
+        "properties": {
+          "activeAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Owner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "verification": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "expired",
+              "none"
+            ]
+          },
+          "verificationExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "viewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName",
+          "version",
+          "publishedAt",
+          "viewedAt",
+          "activeAt",
+          "owner",
+          "verification",
+          "verificationExpiresAt"
         ]
       },
       "Star": {

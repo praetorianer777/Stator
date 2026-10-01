@@ -420,6 +420,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   with a new notification kind, `expired`. Owner changes and verifications
   are written to the audit log. Editing a verified page keeps its
   verification; the badge's details say which version was checked.
+- A stale content report (#99), under Stale pages in the account menu for
+  organization administrators and in a space's settings for its
+  administrators: published pages nobody published again or opened for at
+  least 180 days, or a period of 30 to 730 days, the longest untouched first,
+  with when each was last published and opened, its owner and its
+  verification. It narrows by space, owner and verification and pages by
+  cursor (`GET /stale-pages`). Each reader sees the spaces they administer,
+  and only pages they may view; opening a page from the report to review it
+  does not count as a view. Archiving from the report follows with archived
+  pages (#37).
 
 ### Changed
 

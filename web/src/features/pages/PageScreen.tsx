@@ -89,7 +89,7 @@ function CommentCount({ count }: { count: number }) {
 }
 
 /** A page as a reader sees it: its place, its title, who last changed it, and its document. */
-export function PageScreen({ pageId, thread }: { pageId: string; thread?: string }) {
+export function PageScreen({ pageId, thread, reviewing = false }: { pageId: string; thread?: string; reviewing?: boolean }) {
   const { data, isLoading, error, refetch } = usePage(pageId);
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
@@ -103,7 +103,9 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
     setWatchFailed(false);
     setStarFailed(false);
   }
-  useVisit(data?.page.id);
+  // Opening a page from the stale report to review it is not reading it, or
+  // reviewing the report would empty it.
+  useVisit(reviewing ? undefined : data?.page.id);
   const trash = useTrashPage(data?.space.key ?? "");
   const attachmentIds = usePageAttachmentIds(pageId);
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;

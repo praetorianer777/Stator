@@ -25,6 +25,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
@@ -380,6 +381,11 @@ var operations = []operation{
 		summary: "Pages the caller published, holds a draft of, or made and never published, that they may still view, the latest first.",
 		query:   keysetQuery(50), responses: ok(env{"pages": []home.EditedPage{}, "next": (*string)(nil)})},
 
+	// The stale content report (#99).
+	{method: "GET", path: "/stale-pages", handler: "handleListStalePages", tag: "stale",
+		summary: "Published pages nobody published or opened within the period, in the spaces the caller administers, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization.",
+		query:   append(staleQuery, keysetQueryOf(stale.DefaultLimit, stale.MaxLimit)...), responses: ok(env{"pages": []stale.StalePage{}, "next": (*string)(nil)})},
+
 	// Notifications (#26), as Armature serves them.
 	{method: "GET", path: "/notifications", handler: "handleListNotifications", tag: "notifications",
 		summary:   "What the caller was told about pages they may still view, the latest first.",
@@ -519,6 +525,14 @@ func keysetQueryOf(def, max int) []param {
 	}
 }
 
+// staleQuery narrows the stale content report; every part is optional.
+var staleQuery = []param{
+	{name: "space", description: "A space key; every space the caller administers when absent."},
+	{name: "owner", description: "The id of the person who answers for the pages, or none for pages without an owner."},
+	{name: "verification", schema: &openapi.Schema{Type: "string", Enum: enumStrings(stale.Verifications)}, description: "Where the pages stand on being checked; any when absent."},
+	{name: "olderThan", schema: intParam, description: "Days since a page was last published or opened, " + strconv.Itoa(stale.MinDays) + " to " + strconv.Itoa(stale.MaxDays) + "; " + strconv.Itoa(stale.DefaultDays) + " when absent."},
+}
+
 // auditQuery narrows the audit log; every part is optional.
 var auditQuery = []param{
 	{name: "action", schema: &openapi.Schema{Type: "string", Enum: audit.Actions}, description: "One action."},
@@ -564,6 +578,7 @@ func Spec() *openapi.Document {
 	b.Enums[reflect.TypeOf(perm.ListKind(""))] = enumStrings(perm.ListKinds)
 	b.Enums[reflect.TypeOf(page.DiffChange(""))] = enumStrings(page.DiffChanges)
 	b.Enums[reflect.TypeOf(page.VerificationStatus(""))] = enumStrings(page.VerificationStatuses)
+	b.Enums[reflect.TypeOf(stale.Verification(""))] = enumStrings(stale.Verifications)
 	b.Enums[reflect.TypeOf(search.HitType(""))] = enumStrings(search.HitTypes)
 	b.Enums[reflect.TypeOf(comment.Kind(""))] = enumStrings(comment.Kinds)
 	b.Enums[reflect.TypeOf(comment.AnchorState(""))] = enumStrings(comment.AnchorStates)

@@ -263,6 +263,15 @@ export const AUDIT_PATH = "/settings/audit";
 export const AUDIT_PAGE_SIZE = 50;
 /** Where the audit log is downloaded as a spreadsheet, under the API's base. */
 export const AUDIT_EXPORT_PATH = "/audit/export";
+/** Where administrators read which pages nobody opened or published for a while. */
+export const STALE_PATH = "/settings/stale";
+/** Pages the stale report shows per page, within the API's 100. */
+export const STALE_PAGE_SIZE = 25;
+/** The periods the stale report offers, in days; it starts at the API's own default. */
+export const STALE_AGE_DAYS = [30, 90, 180, 365, 730] as const;
+export const STALE_DEFAULT_DAYS = 180;
+/** What a link from the stale report carries, so reviewing a page is not a view that takes it off the report. */
+export const STALE_REVIEW_FROM = "stale";
 /** How every Armature personal access token and webhook secret starts, as Armature makes them. */
 export const ARMATURE_TOKEN_PREFIX = "armature_pat_";
 export const ARMATURE_WEBHOOK_SECRET_PREFIX = "armature_whs_";

@@ -1,4 +1,5 @@
 import type { AuditAction } from "@/api/audit";
+import type { StaleVerification } from "@/api/stale";
 
 /** The English strings, and the shape every other language has to fill. */
 export const en = {
@@ -91,6 +92,7 @@ export const en = {
     permissions: "Permissions",
     armature: "Armature",
     audit: "Audit log",
+    stale: "Stale pages",
     signOut: "Sign out",
   },
   profile: {
@@ -894,6 +896,7 @@ export const en = {
     details: "Details",
     permissions: "Permissions",
     trash: "Trash",
+    stale: "Stale pages",
     save: "Save details",
     saved: "Saved.",
     notAdmin: "Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization.",
@@ -1534,6 +1537,42 @@ export const en = {
       oidc_provider: "Identity provider",
       audit_log: "Audit log",
     } as Record<string, string>,
+  },
+  stale: {
+    title: "Stale pages",
+    intro: (days: number) =>
+      `Published pages nobody has published again or opened for at least ${days} days, the longest untouched first. Check each one, then bring it up to date, verify it, or move it to the trash.`,
+    notAdmin: "Only administrators of a space, or of the organization, read which pages went stale. Ask one of them to check your space.",
+    filters: "Filter the stale pages",
+    space: "Space",
+    everySpace: "Every space you administer",
+    age: "Untouched for",
+    ageDays: (days: number) => `At least ${days} days`,
+    owner: "Owner",
+    anyOwner: "Anyone or nobody",
+    noOwner: "Nobody",
+    verification: "Verification",
+    anyVerification: "Any",
+    verifications: { verified: "Verified", expired: "Expired", none: "Not verified" } satisfies Record<StaleVerification, string>,
+    clearFilters: "Clear filters",
+    filterByOwner: (name: string) => `Show only pages ${name} owns`,
+    columnPage: "Page",
+    columnPublished: "Last published",
+    columnViewed: "Last opened",
+    columnOwner: "Owner",
+    columnVerification: "Verification",
+    neverViewed: "Never",
+    ownerNoAccess: "no longer has access",
+    until: (day: string) => `until ${day}`,
+    since: (day: string) => `since ${day}`,
+    empty: "No stale pages",
+    emptyBody: "Every page here was published or opened within the period.",
+    emptyFiltered: "Nothing matches. Choose a shorter period or clear a filter.",
+    emptyLast: "That was the last page.",
+    pages: "Pages of the report",
+    previous: "Previous",
+    next: "Next",
+    page: (n: number) => `Page ${n}`,
   },
   api: {
     unexpected: (status: number) => `The server answered with status ${status}. Try again in a moment.`,

@@ -3,6 +3,51 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: Stale pages are read from publishes and visits, by the administrators of their spaces
+
+The stale content report (#99) lists published pages, out of the trash, that
+nobody published again or opened for a period: 180 days unless the reader
+names another, from 1 to 3650 through the API, 30 to 730 in the interface.
+A page's last publish is `published_at` (#38), which only a new version
+moves, so a rank change or a move does not freshen it. Its last view is the
+latest `page_visit` of anybody, the row the recent pages already keep per
+person; nothing new is tracked. Pages are ordered by the later of the two,
+oldest first, and walked by keyset on that and the id, so a page published
+or opened between two windows leaves the report rather than shifting it.
+
+Who reads it is who looks after the space: its administrators for their
+spaces, and the organization's administrators, who administer every space,
+for all of them. A space administrator already passes every view list in
+their space and decides its permissions and its trash, so the report tells
+them nothing they could not find; a member who administers nothing is
+refused with whom to ask, and the account menu offers the report only to
+organization administrators, a space's settings to its administrators.
+Each row is still judged by `perm_page_viewable`, which keeps out a page
+below somebody else's unpublished page. Reading the report changes nothing
+and leaves no audit entry, as reading the audit log does not.
+
+Visits are each person's own under row level security, so the report is a
+SQL function, `stale_pages`, run as the schema's owner like `home_updates`:
+it keeps to `current_org_id()`, to the spaces `current_actor_id()`
+administers, and answers when a page was last opened, never by whom. The
+cheap conditions and the sort run first, over the spaces' published pages
+with one probe of `page_visit_latest_idx` each for the last view, and the
+view rule runs above the sort on as many rows as the window needs; on 4000
+stale pages a window of 26 judges 26 and takes about 70 milliseconds, which
+`TestStaleReportReadsAWindowNotTheWholeOrganization` holds.
+
+Opening a page from the report to review it does not count as a view. The
+link carries `from=stale` and the page then posts no visit, or working
+through the report would empty it of every page the reviewer looked at
+without deciding anything.
+
+Archiving from the report, the issue's second criterion, waits for archived
+pages (#37): the rows already carry each page's id, space and title, so a
+selection and a bulk action can be added beside them, through the archive
+endpoint #37 brings, once there is one. Telling owners about their stale
+pages is left for later; the verification reminder already tells them when a
+check runs out.
+
 ## 2026-10-01: A verification is a dated row beside the page, read as expired, and told by the worker
 
 An owner (#68) and a verification are rows of their own, `page_owner` and
