@@ -281,6 +281,8 @@ export const STALE_AGE_DAYS = [30, 90, 180, 365, 730] as const;
 export const STALE_DEFAULT_DAYS = 180;
 /** What a link from the stale report carries, so reviewing a page is not a view that takes it off the report. */
 export const STALE_REVIEW_FROM = "stale";
+/** Readers a page's views dialog lists at a time, within the API's 100. */
+export const PAGE_READERS_PAGE_SIZE = 25;
 /** How every Armature personal access token and webhook secret starts, as Armature makes them. */
 export const ARMATURE_TOKEN_PREFIX = "armature_pat_";
 export const ARMATURE_WEBHOOK_SECRET_PREFIX = "armature_whs_";
