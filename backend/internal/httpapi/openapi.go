@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
+	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
@@ -336,6 +337,17 @@ var operations = []operation{
 	{method: "GET", path: "/pages/{pageID}/mentionable", handler: "handleListMentionable", tag: "mentions",
 		summary: "Members to mention on a page, each saying whether they may view it once published; only those are told.",
 		query:   pickerQuery, responses: ok(env{"people": []perm.Mentionable{}})},
+
+	// Sharing (#67).
+	{method: "POST", path: "/pages/{pageID}/share", handler: "handleSharePage", tag: "sharing",
+		summary: "Send a published page, with an optional note, to people and groups who may view it; refused with cannot_view, sending nothing, when it is closed to any of them, and with rate_limited past the hourly limit.",
+		request: share.Input{}, responses: map[int]any{201: env{"share": share.Share{}}, 409: errorEnvelope{}, 422: errorEnvelope{}, 429: errorEnvelope{}}},
+	{method: "GET", path: "/pages/{pageID}/share/recipients", handler: "handleShareRecipients", tag: "sharing",
+		summary: "Members and groups to share a page with, each saying whether, or how many of its members, may view it; only those are told.",
+		query:   pickerQuery, responses: ok(env{"people": []share.Recipient{}, "groups": []share.RecipientGroup{}})},
+	{method: "GET", path: "/pages/{pageID}/viewers", handler: "handleListViewers", tag: "sharing",
+		summary: "Who may view a page, by name, and whether that is every member of the organization.",
+		query:   pageQuery, responses: ok(env{"viewers": []perm.Person{}, "total": 0, "everyone": false, "limit": 0, "offset": 0})},
 
 	// Watching (#25).
 	{method: "PUT", path: "/pages/{pageID}/watch", handler: "handleWatchPage", tag: "watching",

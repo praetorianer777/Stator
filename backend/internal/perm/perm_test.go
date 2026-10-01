@@ -174,7 +174,7 @@ func TestPickerLimits(t *testing.T) {
 			t.Errorf("PickerLimit(%d) = %d, want %d", in, got, want)
 		}
 	}
-	if got := likePrefix(`50%_a\`); got != `50\%\_a\\%` {
-		t.Errorf("likePrefix escapes to %q", got)
+	if got := LikePrefix(`50%_a\`); got != `50\%\_a\\%` {
+		t.Errorf("LikePrefix escapes to %q", got)
 	}
 }

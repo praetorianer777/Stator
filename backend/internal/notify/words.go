@@ -36,6 +36,8 @@ func Sentence(kind Kind, actor, title string, inComment bool) string {
 			return fmt.Sprintf("%s mentioned you in a comment on %s", actor, quoted)
 		}
 		return fmt.Sprintf("%s mentioned you on %s", actor, quoted)
+	case KindShared:
+		return fmt.Sprintf("%s shared %s with you", actor, quoted)
 	case KindReplied:
 		return fmt.Sprintf("%s replied in a thread on %s", actor, quoted)
 	case KindCommented:

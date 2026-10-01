@@ -147,6 +147,25 @@ func TestAMailSaysWhatHappenedAndWhere(t *testing.T) {
 	}
 }
 
+// A share is mailed as its sentence, with the sharer's note and the page's link.
+func TestASharedPageIsMailedWithItsNote(t *testing.T) {
+	page := uuid.New()
+	m := mailed{kind: KindShared, actor: "Alice", title: "Runbook", spaceKey: "OPS",
+		subject: Subject{PageID: page, Excerpt: "Read the rollback part before Friday."}}.single("bob@example.test", "https://wiki.example")
+	if m.Subject != `Alice shared "Runbook" with you` {
+		t.Errorf("the subject is %q", m.Subject)
+	}
+	for _, want := range []string{"Read the rollback part before Friday.", "https://wiki.example/s/OPS/p/" + page.String()} {
+		if !strings.Contains(m.Body, want) {
+			t.Errorf("the body lacks %q:\n%s", want, m.Body)
+		}
+	}
+	bob := uuid.New()
+	if got := Pick(uuid.Nil, []Tell{{UserID: bob, Kind: KindPublished}, {UserID: bob, Kind: KindShared}}); len(got) != 1 || got[0].Kind != KindShared {
+		t.Errorf("a share and a publish to one person pick %v", got)
+	}
+}
+
 // A lapse has nobody acting, so its mail names the page and what to do, and
 // the kind ranks last: an owner who is also mentioned hears the mention.
 func TestALapseSaysWhatToDo(t *testing.T) {

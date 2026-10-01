@@ -53,6 +53,8 @@ const (
 	ActionPageOwnerRemoved = "page.owner_removed"
 	ActionPageVerified     = "page.verified"
 	ActionPageUnverified   = "page.unverified"
+	// ActionPageShared is a page sent to people with a note; the note is not kept.
+	ActionPageShared = "page.shared"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -67,6 +69,7 @@ var Actions = []string{
 	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved,
 	ActionPageExported, ActionAuditExported,
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
+	ActionPageShared,
 }
 
 // Redacted stands in the record for a value that looked like a credential.
