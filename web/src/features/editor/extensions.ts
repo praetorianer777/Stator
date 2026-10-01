@@ -18,6 +18,7 @@ import type { SlashItem } from "./slashItems";
 import type { AttachmentIndex } from "./attachmentIndex";
 import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachments";
 import { ChildPages, TableOfContents } from "./blockNodes";
+import { Expand } from "./expand";
 import { Hint } from "./hint";
 import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, type IssueSource } from "./armatureIssue";
@@ -303,7 +304,19 @@ export interface ExtensionOptions {
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
-export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments, armature, pickIssue, pickIssueList, find }: ExtensionOptions = {}): AnyExtension[] {
+export function editorExtensions({
+  variant = "page",
+  placeholder,
+  mention,
+  slash,
+  submit,
+  upload,
+  attachments,
+  armature,
+  pickIssue,
+  pickIssueList,
+  find,
+}: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
       underline: false,
@@ -345,6 +358,7 @@ export function editorExtensions({ variant = "page", placeholder, mention, slash
     HeaderCell,
     Cell,
     Panel,
+    Expand,
     HeadingAnchors,
     SlashMenu.configure({ suggestion: slash }),
     TableOfContents,

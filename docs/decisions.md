@@ -3,6 +3,37 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: An expand block stores its title, never whether it is open
+
+An expand block is one node, `expand`, with a `title` attribute of up to 200
+characters and the same blocks inside it as a panel takes. The title is an
+attribute rather than a child node of its own because it is one line of
+plain words on a button: a node would have let marks, mentions and line
+breaks into a toggle, and would have needed rules to keep it first and
+alone. An empty title is allowed and reads as "Details", so a draft saved
+before the author names it is still a page the API takes.
+
+Whether a block is open is not stored. It is each reader's own and lasts for
+their visit: a stored state would make one author's click everybody's
+default, and would make opening a section a change to publish. Readers find
+every block closed; the editor shows every block open, since an author
+edits what is inside. A comparison of versions and a template's preview
+show them open too, since they exist to show everything, and so does a
+print, which is how a PDF is made: paper cannot be clicked open. The read
+view keeps a closed block's content in the page, hidden by its CSS, so the
+print stylesheet can show it without the view knowing it is printing.
+
+The toggle is a `button` with `aria-expanded` and `aria-controls` rather
+than `details` and `summary`, so the state is told the same way in every
+browser and to every test, and the reader's view can open a block when a
+link leads to a heading inside it: following a table of contents entry or
+arriving with the heading's address opens every closed block around it
+before scrolling there.
+
+Search reads the title as a line of the page's words, then the blocks
+inside, in `document.PlainText` and in the database's `page_plain_blocks`
+alike (migration 00176), so a page is found by a word folded away.
+
 ## 2026-10-01: A danger button writes its label in `on-danger`
 
 The danger red does two jobs: it colours error text and destructive menu

@@ -176,16 +176,23 @@ func TestALaggingConnectionFallsBackToThePrimary(t *testing.T) {
 	c := h.openCluster(t, testMaxLag, neverHealth)
 	m := h.makeMember(t, "lag")
 
+	// Every commit the replica has replayed came before the pause, so from here
+	// on it lags at least as long as it has been paused, however slow the host.
 	h.pauseReplay(t)
-	// A write replayed before the pause stops the replay clock; the backlog
-	// after it is what makes the lag measurable as time.
-	for i := range 3 {
-		addTheme(t, c, m, fmt.Sprintf("backlog-%d", i))
-		time.Sleep(lagBuildUp / 3)
+	paused := time.Now()
+	lsn := addTheme(t, c, m, "backlog")
+	// A standby that has replayed all it received reports no lag at all.
+	if !h.waitForReceipt(t, lsn, replicaCaughtWait) {
+		t.Fatal("the replica did not receive the write it is to lag behind")
 	}
+	time.Sleep(time.Until(paused.Add(lagBuildUp)))
+
+	// The pass at Open judged a replica still replaying the tests before this
+	// one, which no bound can promise to pass; the read is what is on trial.
+	c.AdmitReplicas()
 
 	before := c.Stats()
-	if got := countThemes(t, c, m.ctx, "backlog-2"); got != 1 {
+	if got := countThemes(t, c, m.ctx, "backlog"); got != 1 {
 		t.Fatalf("a read while the replica lags saw %d rows, want the primary's 1", got)
 	}
 	after := c.Stats()

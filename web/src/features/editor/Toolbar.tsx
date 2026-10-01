@@ -60,6 +60,7 @@ export function EditorToolbar({
       table: e.isActive("table"),
       panel: e.isActive("panel"),
       panelKind: (e.getAttributes("panel").kind as PanelKind | undefined) ?? "info",
+      expand: variant === "page" && e.isActive("expand"),
       // A comment's editor has no tables, and so neither command.
       canMerge: variant === "page" && e.can().mergeCells(),
       canSplit: variant === "page" && e.can().splitCell(),
@@ -286,6 +287,11 @@ export function EditorToolbar({
             ))}
           </SelectInput>
           <ToolButton label={t.editor.removePanel} action="remove-panel" run={() => chain().unsetPanel().run()} />
+        </RovingToolbar>
+      )}
+      {state.expand && (
+        <RovingToolbar label={t.editor.expandTools} data-editor-tools="expand">
+          <ToolButton label={t.editor.removeExpand} action="remove-expand" run={() => chain().unsetExpand().run()} />
         </RovingToolbar>
       )}
       {onCreateIssues && state.issueItems > 0 && (

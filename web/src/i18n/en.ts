@@ -923,6 +923,13 @@ export const en = {
     panelTools: "Panel",
     panelKind: "Panel type",
     removePanel: "Remove the panel",
+    expandTools: "Expand",
+    removeExpand: "Remove the expand, keep its content",
+    expand: {
+      title: "Expand title",
+      titlePlaceholder: "Title readers click to open",
+      untitled: "Details",
+    },
     panels: {
       info: "Info",
       note: "Note",
@@ -973,6 +980,7 @@ export const en = {
       panelSuccess: { label: "Success panel", description: "A highlighted box for a result or a tip." },
       panelWarning: { label: "Warning panel", description: "A highlighted box for something to be careful about." },
       panelError: { label: "Error panel", description: "A highlighted box for something that must not happen." },
+      expand: { label: "Expand", description: "A titled section readers open when they want the detail." },
       tableOfContents: { label: "Table of contents", description: "Links to the headings on this page, kept up to date." },
       childPages: { label: "Child pages", description: "Links to the pages below this one." },
       armatureIssue: { label: "Armature issue", description: "One issue with its status, assignee and due date, as each reader may see it." },
