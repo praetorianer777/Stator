@@ -26,6 +26,7 @@ import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
 import { EmojiSuggestion, type EmojiOptions } from "./emoji";
+import { FindReplace } from "./findReplace";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -304,6 +305,8 @@ export interface ExtensionOptions {
   editInlineValue?: (target: InlineValueTarget) => void;
   /** Draws the emoji a colon offers; without it a colon offers none. */
   emoji?: Partial<EmojiOptions["suggestion"]>;
+  /** Opens the find bar with the selected words; without it Ctrl or Cmd+F is the browser's. */
+  find?: (seed: string) => void;
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
@@ -320,6 +323,7 @@ export function editorExtensions({
   pickIssueList,
   editInlineValue,
   emoji,
+  find,
 }: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
@@ -378,5 +382,6 @@ export function editorExtensions({
     ArmatureIssueList.configure({ pick: pickIssueList }),
     Status.configure({ edit: editInlineValue }),
     DateNode.configure({ edit: editInlineValue }),
+    FindReplace.configure({ open: find }),
   ];
 }

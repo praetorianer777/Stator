@@ -11,6 +11,8 @@ import { emptyDoc, isEmptyDoc, type Doc, type Mentionable, type MentionSource } 
 import { SlashMenu } from "./SlashMenu";
 import { filterSlashItems, slashItemsFor, type SlashItem } from "./slashItems";
 import { EditorToolbar } from "./Toolbar";
+import { FindBar } from "./FindBar";
+import { selectedQuery } from "./findReplace";
 import { useSuggestion } from "./useSuggestion";
 import type { AttachmentIndex } from "./attachmentIndex";
 import type { UploadFile } from "./attachments";
@@ -116,6 +118,10 @@ export function Editor({
   const [editingValue, setEditingValue] = useState<InlineValueTarget | null>(null);
   const emojiId = useId();
   const emoji = useSuggestion<Emoji>((item) => item);
+  // The words to look for when the bar opens, and a count that tells an open
+  // bar to take focus again on a second Ctrl or Cmd+F.
+  const [finding, setFinding] = useState<{ seed: string; token: number } | null>(null);
+  const openFind = (seed: string) => setFinding((was) => ({ seed, token: (was?.token ?? 0) + 1 }));
 
   const slash = useSuggestion<SlashItem>((item) => item);
   const mention = useSuggestion<Mentionable, MentionNodeAttrs>((person) => ({ id: person.id, label: person.name }));
@@ -133,6 +139,7 @@ export function Editor({
       pickIssueList: () => setMakingList(true),
       editInlineValue: setEditingValue,
       emoji: { render: emoji.renderer },
+      find: openFind,
       slash: { items: ({ query }) => filterSlashItems(query, slashItemsFor(Boolean(armatureRef.current?.baseUrl()))), render: slash.renderer },
       mention: {
         items: ({ query }) => mentionMatches(searchesRef.current ? foundRef.current : peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
@@ -230,8 +237,11 @@ export function Editor({
           onCopyHeadingLink={copy}
           variant={variant}
           onCreateIssues={armature?.canCreate?.() ? () => setFiling(planSelection(editor.state)) : undefined}
+          finding={finding !== null}
+          onFind={variant === "page" ? () => (finding ? setFinding(null) : openFind(selectedQuery(editor.state))) : undefined}
         />
       )}
+      {finding && editor && <FindBar editor={editor} seed={finding.seed} focusToken={finding.token} onClose={() => setFinding(null)} />}
       <EditorContent editor={editor} />
       {slash.open && (
         <SlashMenu id={slashId} items={slash.open.items} active={slash.active} rect={slash.open.rect} onHover={slash.setActive} onPick={slash.open.pick} />
