@@ -10,10 +10,12 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/stator/backend/internal/config"
@@ -34,6 +36,21 @@ const replicaCatchUpWait = 15 * time.Second
 
 // replicaPollInterval is how often a wait on the replica asks it again.
 const replicaPollInterval = 20 * time.Millisecond
+
+// Bounds on the harness's own statements, so one stuck behind a lock fails its
+// test with a report of who holds what instead of hanging the whole package.
+const (
+	// statementDeadline is how long one cleanup statement may run.
+	statementDeadline = 30 * time.Second
+	// statementWatchdog is how long one runs before the locks are reported.
+	statementWatchdog = 10 * time.Second
+	// testWatchdog is how long a test runs before the locks are reported.
+	testWatchdog = 2 * time.Minute
+	// lockReportTimeout bounds taking the report itself.
+	lockReportTimeout = 5 * time.Second
+	// superuserAppName marks the harness's sessions in pg_stat_activity.
+	superuserAppName = "stator-test-superuser"
+)
 
 // harness bundles the cluster under test, connected as stator_app and
 // stator_admin, with a superuser pool used only to arrange and clean up.
@@ -62,7 +79,13 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatalf("open cluster: %v", err)
 	}
-	super, err := pgxpool.New(ctx, os.Getenv(envSuperuser))
+	superCfg, err := pgxpool.ParseConfig(os.Getenv(envSuperuser))
+	if err != nil {
+		cluster.Close()
+		t.Fatalf("parse %s: %v", envSuperuser, err)
+	}
+	superCfg.ConnConfig.RuntimeParams["application_name"] = superuserAppName
+	super, err := pgxpool.NewWithConfig(ctx, superCfg)
 	if err != nil {
 		cluster.Close()
 		t.Fatalf("connect superuser: %v", err)
@@ -74,7 +97,14 @@ func newHarness(t *testing.T) *harness {
 			t.Fatalf("connect superuser on the replica: %v", err)
 		}
 	}
+	// Registered before the test's own cleanups, so it also watches them.
+	watchdog := time.AfterFunc(testWatchdog, func() {
+		// Straight to stderr: a test that hangs until go test gives up never
+		// gets to print its log.
+		fmt.Fprintf(os.Stderr, "%s has run for %s; what the database is doing:\n%s\n", t.Name(), testWatchdog, h.lockReport())
+	})
 	t.Cleanup(func() {
+		watchdog.Stop()
 		if h.replica != nil {
 			h.replica.Close()
 		}
@@ -82,6 +112,135 @@ func newHarness(t *testing.T) *harness {
 		cluster.Close()
 	})
 	return h
+}
+
+// bound is how long a harness statement may run, and when it is reported.
+type bound struct {
+	deadline time.Duration
+	watchdog time.Duration
+}
+
+var statementBound = bound{deadline: statementDeadline, watchdog: statementWatchdog}
+
+// execBounded runs one statement within b: past b.watchdog it logs a lock
+// report, past b.deadline it gives up and returns the report taken then.
+func (h *harness) execBounded(t *testing.T, pool *pgxpool.Pool, b bound, sql string, args ...any) (string, error) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	watched := make(chan struct{})
+	watchdog := time.AfterFunc(b.watchdog, func() {
+		defer close(watched)
+		t.Logf("%q is still running after %s; what the database is doing:\n%s", sql, b.watchdog, h.lockReport())
+	})
+	var report string
+	gaveUp := make(chan struct{})
+	// The report is taken before the cancel: once the statement is cancelled,
+	// it no longer shows who it was waiting for.
+	deadline := time.AfterFunc(b.deadline, func() {
+		report = h.lockReport()
+		close(gaveUp)
+		cancel()
+	})
+	_, err := pool.Exec(ctx, sql, args...)
+	if !watchdog.Stop() {
+		<-watched
+	}
+	if !deadline.Stop() {
+		<-gaveUp
+		if err != nil {
+			return report, fmt.Errorf("%q did not finish within %s: %w", sql, b.deadline, context.DeadlineExceeded)
+		}
+	}
+	return "", err
+}
+
+// cleanupExec runs a cleanup statement within statementBound, and fails the
+// test with a lock report when it does not finish in time.
+func (h *harness) cleanupExec(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) {
+	t.Helper()
+	report, err := h.execBounded(t, pool, statementBound, sql, args...)
+	if errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("a cleanup gave up: %v. Find the session that blocks it below and make it finish:\n%s", err, report)
+	}
+}
+
+// lockReport lists the sessions that are not idle, who blocks whom, and the
+// locks involved, on a connection of its own so a full pool cannot stop it.
+func (h *harness) lockReport() string {
+	ctx, cancel := context.WithTimeout(context.Background(), lockReportTimeout)
+	defer cancel()
+	var b strings.Builder
+	stat := h.super.Stat()
+	fmt.Fprintf(&b, "superuser pool: %d of %d connections in use\n", stat.AcquiredConns(), stat.MaxConns())
+	conn, err := pgx.Connect(ctx, os.Getenv(envSuperuser))
+	if err != nil {
+		fmt.Fprintf(&b, "no lock report: connect: %v\n", err)
+		return b.String()
+	}
+	defer func() { _ = conn.Close(context.Background()) }()
+
+	rows, err := conn.Query(ctx, `
+		SELECT a.pid, COALESCE(a.application_name, ''), COALESCE(a.usename::text, ''),
+		       COALESCE(host(a.client_addr), 'local'), COALESCE(a.state, ''),
+		       COALESCE(a.wait_event_type || ':' || a.wait_event, '-'),
+		       COALESCE(to_char(now() - a.xact_start, 'HH24:MI:SS.MS'), '-'),
+		       pg_blocking_pids(a.pid)::text,
+		       left(regexp_replace(COALESCE(a.query, ''), '\s+', ' ', 'g'), 300)
+		FROM pg_stat_activity a
+		WHERE a.backend_type = 'client backend' AND a.pid <> pg_backend_pid()
+		  AND a.state IS DISTINCT FROM 'idle'
+		ORDER BY a.xact_start NULLS LAST`)
+	if err != nil {
+		fmt.Fprintf(&b, "no lock report: pg_stat_activity: %v\n", err)
+		return b.String()
+	}
+	b.WriteString("sessions (pid, application, user, client, state, wait, transaction age, blocked by, query):\n")
+	for rows.Next() {
+		var (
+			pid                                                  int32
+			app, user, client, state, wait, age, blockers, query string
+		)
+		if err := rows.Scan(&pid, &app, &user, &client, &state, &wait, &age, &blockers, &query); err != nil {
+			fmt.Fprintf(&b, "  scan: %v\n", err)
+			break
+		}
+		fmt.Fprintf(&b, "  %d %q %s %s %q %s %s %s %s\n", pid, app, user, client, state, wait, age, blockers, query)
+	}
+	rows.Close()
+
+	rows, err = conn.Query(ctx, `
+		WITH involved AS (
+		    SELECT unnest(pg_blocking_pids(pid)) AS pid FROM pg_stat_activity
+		    UNION SELECT pid FROM pg_locks WHERE NOT granted
+		)
+		SELECT l.pid, l.locktype, COALESCE(l.relation::regclass::text, '-'), l.mode, l.granted
+		FROM pg_locks l
+		WHERE l.pid IN (SELECT pid FROM involved) AND l.locktype <> 'virtualxid'
+		  -- Every write holds these on each table it touches; they block
+		  -- nothing but DDL and would bury the locks that matter.
+		  AND NOT (l.granted AND l.locktype = 'relation'
+		           AND l.mode IN ('AccessShareLock', 'RowShareLock', 'RowExclusiveLock'))
+		ORDER BY l.pid, l.granted, l.locktype, 3`)
+	if err != nil {
+		fmt.Fprintf(&b, "no lock report: pg_locks: %v\n", err)
+		return b.String()
+	}
+	b.WriteString("locks of blocked and blocking sessions (pid, type, relation, mode, granted):\n")
+	for rows.Next() {
+		var (
+			pid             int32
+			kind, rel, mode string
+			granted         bool
+		)
+		if err := rows.Scan(&pid, &kind, &rel, &mode, &granted); err != nil {
+			fmt.Fprintf(&b, "  scan: %v\n", err)
+			break
+		}
+		fmt.Fprintf(&b, "  %d %s %s %s %t\n", pid, kind, rel, mode, granted)
+	}
+	rows.Close()
+	return b.String()
 }
 
 // settle waits until the replica has replayed everything written so far, for
@@ -145,7 +304,7 @@ func (h *harness) pauseReplay(t *testing.T) {
 	if _, err := h.replica.Exec(context.Background(), `SELECT pg_wal_replay_pause()`); err != nil {
 		t.Fatalf("pause replay: %v", err)
 	}
-	t.Cleanup(func() { _, _ = h.replica.Exec(context.Background(), `SELECT pg_wal_replay_resume()`) })
+	t.Cleanup(func() { h.cleanupExec(t, h.replica, `SELECT pg_wal_replay_resume()`) })
 	// The call only asks for a pause; until replay has stopped it may still
 	// apply the write a test makes next, which then would not be held back.
 	deadline := time.Now().Add(replicaCatchUpWait)
@@ -198,8 +357,8 @@ func (h *harness) makeMember(t *testing.T, slug string) member {
 		t.Fatalf("make the user a member of %s: %v", full, err)
 	}
 	t.Cleanup(func() {
-		_, _ = h.super.Exec(context.Background(), `DELETE FROM org WHERE id = $1`, m.org)
-		_, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE id = $1`, m.user)
+		h.cleanupExec(t, h.super, `DELETE FROM org WHERE id = $1`, m.org)
+		h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, m.user)
 	})
 	m.ctx = db.WithUser(tenant.WithOrg(ctx, tenant.Org{ID: m.org, Slug: full}), m.user)
 	h.settle(t)

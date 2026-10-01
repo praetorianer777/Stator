@@ -1,11 +1,14 @@
 package events
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 	"time"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -28,6 +31,11 @@ const (
 	Retention = 7 * 24 * time.Hour
 	// pruneEvery is how often the done events past Retention are deleted.
 	pruneEvery = time.Hour
+	// ClaimLease is how long a claimed event is kept from other passes; a
+	// worker that dies holding one delays it by at most this much.
+	ClaimLease = 5 * time.Minute
+	// releaseTimeout bounds handing back a stopped pass's leases.
+	releaseTimeout = 5 * time.Second
 )
 
 // Handler acts on one event, at least once, so a second run with the same
@@ -42,7 +50,7 @@ type HandlerFunc func(ctx context.Context, e Event) error
 func (f HandlerFunc) Handle(ctx context.Context, e Event) error { return f(ctx, e) }
 
 // Worker drains the outbox. Any number may run and restart at any time: an
-// event is claimed with SKIP LOCKED in the transaction that marks it done.
+// event is leased with SKIP LOCKED, and handled once that claim is committed.
 type Worker struct {
 	db      *db.Cluster
 	handler Handler
@@ -95,64 +103,117 @@ func (w *Worker) Run(ctx context.Context) {
 	}
 }
 
+// claim is an event this worker has leased, with the attempts made before.
+type claim struct {
+	Event
+	attempts int
+}
+
 // Once claims up to one batch, hands each event to the handler and marks it
 // done, and returns how many it claimed.
 func (w *Worker) Once(ctx context.Context) (int, error) {
-	claimed := 0
+	batch, err := w.claim(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for i, c := range batch {
+		var herr error
+		if ctx.Err() == nil {
+			herr = w.handle(ctx, c.Event)
+		}
+		if ctx.Err() != nil {
+			w.release(ctx, batch[i:])
+			return len(batch), ctx.Err()
+		}
+		if err := w.settle(ctx, c, herr); err != nil {
+			w.release(ctx, batch[i:])
+			return len(batch), err
+		}
+	}
+	return len(batch), nil
+}
+
+// claim leases a batch in a transaction of its own. Holding the rows' locks
+// while the handlers run instead deadlocks unseen by Postgres: a handler's
+// write can wait on a delete of the organization, which waits on those locks.
+func (w *Worker) claim(ctx context.Context) ([]claim, error) {
+	var batch []claim
 	_, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT id, org_id, topic, payload, created_at, COALESCE(trace_parent, ''), attempts
-			FROM outbox_event
-			WHERE processed_at IS NULL AND available_at <= now()
-			ORDER BY created_at, id
-			LIMIT $1
-			FOR UPDATE SKIP LOCKED`, w.batch)
+			UPDATE outbox_event e
+			SET available_at = now() + make_interval(secs => $2)
+			FROM (
+			    SELECT id FROM outbox_event
+			    WHERE processed_at IS NULL AND available_at <= now()
+			    ORDER BY created_at, id
+			    LIMIT $1
+			    FOR UPDATE SKIP LOCKED
+			) due
+			WHERE e.id = due.id
+			RETURNING e.id, e.org_id, e.topic, e.payload, e.created_at, COALESCE(e.trace_parent, ''), e.attempts`,
+			w.batch, ClaimLease.Seconds())
 		if err != nil {
 			return err
 		}
-		type claim struct {
-			Event
-			attempts int
-		}
-		var batch []claim
+		defer rows.Close()
 		for rows.Next() {
 			var c claim
 			if err := rows.Scan(&c.ID, &c.OrgID, &c.Topic, &c.Payload, &c.CreatedAt, &c.Trace, &c.attempts); err != nil {
-				rows.Close()
 				return err
 			}
 			batch = append(batch, c)
 		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
+		return rows.Err()
+	})
+	// RETURNING keeps no order, and the oldest event goes first.
+	slices.SortFunc(batch, func(a, b claim) int {
+		if c := a.CreatedAt.Compare(b.CreatedAt); c != 0 {
+			return c
+		}
+		return bytes.Compare(a.ID[:], b.ID[:])
+	})
+	return batch, err
+}
+
+// settle marks a handled event done, or due again later after a failure.
+func (w *Worker) settle(ctx context.Context, c claim, herr error) error {
+	_, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if herr == nil {
+			_, err := tx.Exec(ctx, `UPDATE outbox_event SET processed_at = now(), attempts = attempts + 1 WHERE id = $1`, c.ID)
 			return err
 		}
-		claimed = len(batch)
-		for _, c := range batch {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			if herr := w.handle(ctx, c.Event); herr != nil {
-				attempts := c.attempts + 1
-				giveUp := attempts >= MaxAttempts
-				w.log.Warn("an event could not be delivered yet", "event", c.ID, "topic", c.Topic, "attempt", attempts, "given_up", giveUp, "error", herr)
-				if _, err := tx.Exec(ctx, `
-					UPDATE outbox_event
-					SET attempts = $2, last_error = $3,
-					    available_at = now() + make_interval(secs => $4),
-					    processed_at = CASE WHEN $5 THEN now() END
-					WHERE id = $1`, c.ID, attempts, herr.Error(), float64(attempts)*retryStep.Seconds(), giveUp); err != nil {
-					return err
-				}
-				continue
-			}
-			if _, err := tx.Exec(ctx, `UPDATE outbox_event SET processed_at = now(), attempts = attempts + 1 WHERE id = $1`, c.ID); err != nil {
-				return err
-			}
-		}
-		return nil
+		attempts := c.attempts + 1
+		giveUp := attempts >= MaxAttempts
+		w.log.Warn("an event could not be delivered yet", "event", c.ID, "topic", c.Topic, "attempt", attempts, "given_up", giveUp, "error", herr)
+		_, err := tx.Exec(ctx, `
+			UPDATE outbox_event
+			SET attempts = $2, last_error = $3,
+			    available_at = now() + make_interval(secs => $4),
+			    processed_at = CASE WHEN $5 THEN now() END
+			WHERE id = $1`, c.ID, attempts, herr.Error(), float64(attempts)*retryStep.Seconds(), giveUp)
+		return err
 	})
-	return claimed, err
+	return err
+}
+
+// release hands back what was leased and not handled, so the next pass need
+// not wait out the lease.
+func (w *Worker) release(ctx context.Context, rest []claim) {
+	if len(rest) == 0 {
+		return
+	}
+	ids := make([]uuid.UUID, len(rest))
+	for i, c := range rest {
+		ids[i] = c.ID
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), releaseTimeout)
+	defer cancel()
+	if _, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		_, err := tx.Exec(ctx, `UPDATE outbox_event SET available_at = now() WHERE id = ANY($1) AND processed_at IS NULL`, ids)
+		return err
+	}); err != nil {
+		w.log.Warn("leased events were not handed back and wait out their lease", "events", len(ids), "error", err)
+	}
 }
 
 func (w *Worker) handle(ctx context.Context, e Event) (err error) {

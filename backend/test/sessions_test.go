@@ -148,7 +148,7 @@ func TestPasswordLoginSessionsExpireAndEnd(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() {
-			_, _ = h.super.Exec(context.Background(), `UPDATE org_member SET org_role = 'owner' WHERE org_id = $1`, org.ID)
+			h.cleanupExec(t, h.super, `UPDATE org_member SET org_role = 'owner' WHERE org_id = $1`, org.ID)
 		})
 		p, err := a.accounts.Authenticate(ctx, secret)
 		if err != nil || p.Role != auth.RoleMember || p.CanAdminister() {
@@ -181,7 +181,7 @@ func TestPasswordLoginSessionsExpireAndEnd(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() {
-			_, _ = h.super.Exec(context.Background(), `UPDATE app_user SET is_active = true WHERE email = $1`, email)
+			h.cleanupExec(t, h.super, `UPDATE app_user SET is_active = true WHERE email = $1`, email)
 		})
 		if status, body := b.me(t, a); status != http.StatusForbidden {
 			t.Fatalf("/auth/me when deactivated = %d %v", status, body)
