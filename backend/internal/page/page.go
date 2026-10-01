@@ -14,6 +14,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
@@ -77,11 +78,13 @@ type Page struct {
 	// Comments counts the discussion for the page's header.
 	Comments comment.Counts `json:"comments"`
 	// Watching is how the caller follows the page.
-	Watching      watch.Watching `json:"watching"`
-	CreatedByName string         `json:"createdByName"`
-	CreatedAt     time.Time      `json:"createdAt"`
-	UpdatedByName string         `json:"updatedByName"`
-	UpdatedAt     time.Time      `json:"updatedAt"`
+	Watching watch.Watching `json:"watching"`
+	// Reactions are the emoji on the page itself.
+	Reactions     []reaction.Reaction `json:"reactions"`
+	CreatedByName string              `json:"createdByName"`
+	CreatedAt     time.Time           `json:"createdAt"`
+	UpdatedByName string              `json:"updatedByName"`
+	UpdatedAt     time.Time           `json:"updatedAt"`
 
 	access perm.PageAccess
 }

@@ -6,6 +6,7 @@ import { Avatar, Button, ErrorBanner, SectionTitle, Skeleton, cx } from "@/compo
 import { Icon } from "@/components/icons";
 import { COMMENT_HIGHLIGHT_MS } from "@/config";
 import { DocView } from "@/features/editor/DocView";
+import { CommentReactions } from "@/features/reactions/Reactions";
 import { t } from "@/i18n";
 import { useFocusWhenRendered } from "@/lib/focus";
 
@@ -168,12 +169,12 @@ export function ThreadView({
       data-highlighted={highlighted || undefined}
     >
       {lead}
-      <CommentView pageId={pageId} comment={first} />
+      <CommentView pageId={pageId} comment={first} canReact={thread.can.reply} />
       {replies.length > 0 && (
         <ol className="mt-3 space-y-3 border-l-2 border-border pl-3 sm:ml-8" aria-label={t.comments.replies(replies.length)}>
           {replies.map((each) => (
             <li key={each.id}>
-              <CommentView pageId={pageId} comment={each} />
+              <CommentView pageId={pageId} comment={each} canReact={thread.can.reply} />
             </li>
           ))}
         </ol>
@@ -222,7 +223,7 @@ export function ThreadView({
   );
 }
 
-function CommentView({ pageId, comment }: { pageId: string; comment: Comment }) {
+function CommentView({ pageId, comment, canReact }: { pageId: string; comment: Comment; canReact: boolean }) {
   const edit = useEditComment(pageId);
   const remove = useDeleteComment(pageId);
   const me = useMe().data?.user.id;
@@ -284,6 +285,7 @@ function CommentView({ pageId, comment }: { pageId: string; comment: Comment }) 
         ) : (
           <DocView doc={comment.body} anchors={false} className="doc-comment mt-1 text-sm" />
         )}
+        {!editing && <CommentReactions pageId={pageId} comment={comment} author={author} canReact={canReact} />}
         {!editing && (comment.can.edit || comment.can.delete) && (
           <div className="mt-1 flex gap-1">
             {comment.can.edit && (

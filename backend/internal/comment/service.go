@@ -16,6 +16,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
@@ -175,6 +176,24 @@ func threads(ctx context.Context, tx db.DBTX, actor perm.Actor, p *onPage, where
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+	var ids []uuid.UUID
+	for _, t := range out {
+		for _, c := range t.Comments {
+			ids = append(ids, c.ID)
+		}
+	}
+	reactions, err := reaction.OnComments(ctx, tx, actor.UserID, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		for j := range out[i].Comments {
+			c := &out[i].Comments[j]
+			if c.Reactions = reactions[c.ID]; c.Reactions == nil {
+				c.Reactions = []reaction.Reaction{}
+			}
+		}
 	}
 	live := out[:0]
 	for _, t := range out {
