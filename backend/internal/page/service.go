@@ -96,6 +96,9 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	if p.Reactions, err = reaction.OnPage(ctx, tx, actor.UserID, id); err != nil {
 		return nil, nil, err
 	}
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM star WHERE user_id = $1 AND page_id = $2)`, actor.UserID, id).Scan(&p.Starred); err != nil {
+		return nil, nil, err
+	}
 	var draft DraftRef
 	err = tx.QueryRow(ctx, `SELECT base_version, updated_at FROM page_draft WHERE page_id = $1 AND user_id = $2`,
 		id, actor.UserID).Scan(&draft.BaseVersion, &draft.UpdatedAt)

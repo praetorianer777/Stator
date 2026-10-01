@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
+	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
@@ -37,6 +38,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/version"
@@ -163,6 +165,8 @@ func run() error {
 		Reactions:       reaction.NewService(cluster),
 		Watches:         watch.NewService(cluster),
 		Notifications:   notify.NewService(cluster),
+		Stars:           star.NewService(cluster),
+		Home:            home.NewService(cluster),
 		Armature:        armatures,
 		CookieName:      cfg.Auth.SessionCookie,
 		Secure:          cfg.Auth.SecureCookies,

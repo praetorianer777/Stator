@@ -179,6 +179,7 @@ export function useSubjectSearch(q: string, enabled: boolean, withGroups = true)
     people: people.data ?? [],
     groups: withGroups ? (groups.data ?? []) : [],
     error: people.error ?? groups.error,
-    isFetching: people.isFetching || groups.isFetching,
+    /** The lists answer q itself, not a previous text kept up while q is asked. */
+    current: people.data !== undefined && !people.isPlaceholderData && (!withGroups || (groups.data !== undefined && !groups.isPlaceholderData)),
   };
 }

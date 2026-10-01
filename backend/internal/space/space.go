@@ -50,6 +50,8 @@ type Space struct {
 	Can perm.Can `json:"can"`
 	// Watching says whether the caller watches the whole space.
 	Watching bool `json:"watching"`
+	// Starred says the caller keeps the space among their stars.
+	Starred bool `json:"starred"`
 }
 
 // CreateInput is a new space as the form sends it.

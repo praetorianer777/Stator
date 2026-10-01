@@ -389,6 +389,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   written, including the panels, expand blocks, statuses, dates, mentions
   and Armature issues Markdown has no syntax for. One import takes up to
   100 MB, 1000 files and 200 pages, and one Markdown file up to 1 MB.
+- Stars and a home page (#38). A star in a page's header, on a space's home
+  page and in the space directory keeps a page or a space close; stars are
+  one's own and say nothing to anybody else. The home page lists them beside
+  the pages one viewed and edited last (drafts and unpublished pages marked),
+  and the updates others published, everywhere one may read or only in what
+  one watches. Every list leaves out what the reader may no longer view, is
+  read a window at a time by cursor (`GET /stars`, `/home/updates`,
+  `/home/edited`), and pages and spaces answer `starred`.
 
 ### Changed
 
@@ -479,3 +487,6 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - The access inspector no longer says a person may move a space's home page
   to the trash. It answers from the same database rule that keeps the home
   page out of the trash, and names it as the reason.
+- Enter in a people or group picker no longer picks a match left over from
+  the text before: while the answer to what was typed is still on its way,
+  Enter waits for it, and screen readers hear that the picker is looking.

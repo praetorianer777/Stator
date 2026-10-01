@@ -10,6 +10,9 @@ WORKERS ?= 4
 ONLY ?=
 # Runs each chosen test this many times, to shake out a flake: REPEAT=20 ONLY=<grep>.
 REPEAT ?=
+# DEBUG=pw:browser prints what Chromium writes to stderr, which names the
+# failed check when a tab crashes.
+DEBUG ?=
 E2E_REPORT_PORT ?= 9323
 
 # On the host's network rather than the stack's: the api trusts the session
@@ -28,9 +31,20 @@ DOCKER_PLAYWRIGHT = docker run --rm --init --ipc=host --network host --tmpfs /tm
 	-e npm_config_update_notifier=false \
 	-e HOME=/tmp \
 	-e CI \
+	-e DEBUG='$(DEBUG)' \
 	-e ONLY='$(ONLY)' \
 	-e REPEAT='$(REPEAT)' \
 	-w /src/e2e $(PLAYWRIGHT_IMAGE)
+
+# "Target crashed" says only that a tab died. These two say how: the kernel
+# killing it for memory counts in the container's cgroup, while a crash of
+# its own leaves a core dump with the signal on the host (SIGTRAP is a failed
+# check inside Chromium, SIGSEGV a bad memory access).
+E2E_OOM_REPORT = k=$$(sed -n "s/^oom_kill //p" /sys/fs/cgroup/memory.events 2>/dev/null); \
+	[ "$${k:-0}" -eq 0 ] || echo "The kernel killed $$k browser or test processes for lack of memory during this run. Run fewer gates at once or lower WORKERS."
+E2E_CORE_REPORT = { command -v coredumpctl >/dev/null \
+	&& coredumpctl --no-pager --since=@$$since list 2>/dev/null | grep -E "chrome|node" \
+	&& echo "These browser or test processes crashed during this run; coredumpctl info <PID> shows the stack. Rerun with DEBUG=pw:browser to see Chromium's own message."; true; }
 
 # npm ci only when the lock file changed since the last install, which keeps
 # a rerun of one spec to a couple of seconds.
@@ -46,7 +60,9 @@ test-e2e: ## Run the browser suite against this checkout's running stack: ONLY=<
 	@[ -f $(STACK_ENV_FILE) ] && docker compose ps --status running --services 2>/dev/null | grep -qx web \
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
 	@mkdir -p $(E2E_NPM_CACHE)
-	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx tsc --noEmit && npx playwright test --workers=$(WORKERS) $${ONLY:+--grep "$$ONLY"} $${REPEAT:+--repeat-each "$$REPEAT"}'
+	@since=$$(date +%s); \
+	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx tsc --noEmit && { npx playwright test --workers=$(WORKERS) $${ONLY:+--grep "$$ONLY"} $${REPEAT:+--repeat-each "$$REPEAT"}; rc=$$?; $(E2E_OOM_REPORT); exit $$rc; }'; \
+	rc=$$?; [ $$rc -eq 0 ] || $(E2E_CORE_REPORT); exit $$rc
 
 .PHONY: e2e-report
 e2e-report: ## Serve the last browser run's HTML report, traces included

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AccessReport, AccessStep } from "@/api/permissions";
 import { renderAt, stubApi, type Answer } from "@/test/app";
@@ -45,7 +45,7 @@ const bobsAccess: AccessReport = {
   ],
 };
 
-function stubPage(space = aSpace(), more: Record<string, Answer> = {}) {
+function stubPage(space = aSpace(), more: Parameters<typeof stubApi>[0] = {}) {
   return stubApi({
     "GET /spaces": { status: 200, body: { spaces: [space] } },
     "GET /spaces/DOCS": { status: 200, body: { space } },
@@ -94,6 +94,38 @@ describe("checking somebody's access", () => {
     await userEvent.type(within(dialog).getByRole("combobox", { name: "Person to check" }), "Bob");
     await userEvent.click(await within(dialog).findByRole("option", { name: /Bob Builder/ }));
     expect(await within(dialog).findByText(/Only an administrator of this space can check/)).toBeInTheDocument();
+  });
+
+  it("waits for the answer to what was typed before Enter picks", async () => {
+    const ann = { id: "0195f000-0000-7000-8000-00000000a0a0", name: "Ann Archer", email: "ann@stator.test" };
+    const bob = { id: ids.bob, name: "Bob Builder", email: "bob@stator.test" };
+    let answerBob = () => {};
+    const bobAnswered = new Promise<void>((resolve) => {
+      answerBob = resolve;
+    });
+    const sent = stubPage(aSpace(), {
+      "GET /people": async (request) => {
+        if (new URL(request.url, "http://app.test").searchParams.get("q") !== "bob") return { status: 200, body: { people: [ann] } };
+        await bobAnswered;
+        return { status: 200, body: { people: [bob] } };
+      },
+      [`GET /pages/${ids.secret}/access/${ids.bob}`]: { status: 200, body: { access: bobsAccess } },
+    });
+    const dialog = await openInspector();
+    const box = within(dialog).getByRole("combobox", { name: "Person to check" });
+    await userEvent.type(box, "ann");
+    await within(dialog).findByRole("option", { name: /Ann Archer/ });
+    await waitFor(() => expect(dialog.querySelector("[data-subject-options]")).toHaveAttribute("aria-busy", "false"));
+
+    await userEvent.clear(box);
+    await userEvent.type(box, "bob{Enter}");
+    expect(within(dialog).getByRole("option", { name: /Ann Archer/ })).toBeInTheDocument();
+    expect(dialog.querySelector("[data-subject-status]")).toHaveTextContent("Looking");
+    expect(box).toHaveValue("bob");
+
+    answerBob();
+    await within(dialog).findByRole("region", { name: "What Bob Builder may do" });
+    expect(sent.filter((r) => r.path.startsWith(`/pages/${ids.secret}/access/`)).map((r) => r.path)).toEqual([`/pages/${ids.secret}/access/${ids.bob}`]);
   });
 
   it("is not offered to somebody who does not administer the space", async () => {

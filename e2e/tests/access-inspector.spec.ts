@@ -117,8 +117,6 @@ test.describe("checking access", { tag: ["@auth"] }, () => {
     const box = dialog.getByRole("combobox", { name: "Person to check" });
     await expect(box).toBeFocused();
     await page.keyboard.type("bob");
-    // The picker keeps the last answer up while it asks again, so Enter waits for bob's to arrive.
-    await expect(dialog.locator("[data-subject-options] [role=option]").first()).toHaveAttribute("data-subject-option", "Bob Builder");
     await page.keyboard.press("Enter");
     await expect(dialog.locator('[data-access-right="view"] [data-decides]')).toContainText("Not on the view list of Plans.");
 

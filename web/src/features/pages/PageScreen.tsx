@@ -20,6 +20,7 @@ import { PageLabels } from "@/features/labels/PageLabels";
 import { PageReactions } from "@/features/reactions/Reactions";
 import { AccessDialog } from "@/features/permissions/AccessDialog";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
+import { PageStar } from "@/features/stars/StarButton";
 import { WatchMenu } from "@/features/watching/WatchMenu";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
@@ -91,12 +92,14 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
   const [watchFailed, setWatchFailed] = useState(false);
+  const [starFailed, setStarFailed] = useState(false);
   // A dialog is about the page it was opened on, so going to another page closes it.
   const [dialogPage, setDialogPage] = useState(pageId);
   if (dialogPage !== pageId) {
     setDialogPage(pageId);
     setDialog(undefined);
     setWatchFailed(false);
+    setStarFailed(false);
   }
   useVisit(data?.page.id);
   const trash = useTrashPage(data?.space.key ?? "");
@@ -163,6 +166,7 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         }
         actions={
           <>
+            <PageStar page={page} space={space} onFailure={setStarFailed} />
             {!page.unpublished && <WatchMenu page={page} space={space} onFailure={setWatchFailed} />}
             <Button variant="secondary" onClick={history} data-action="page-history">
               {t.page.history}
@@ -201,6 +205,7 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
       />
       {trash.error && <ErrorBanner>{trash.error.message}</ErrorBanner>}
       {watchFailed && <ErrorBanner>{t.watch.failed}</ErrorBanner>}
+      {starFailed && <ErrorBanner>{t.star.failed}</ErrorBanner>}
       {page.unpublished && (
         <p className="mb-4 text-sm text-ink-muted" data-unpublished-note="">
           {t.page.unpublishedNote}
