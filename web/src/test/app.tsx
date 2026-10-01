@@ -22,6 +22,9 @@ export async function renderAt(path: string, { me = signedIn }: { me?: Me | null
   const queryClient = createQueryClient((client) => sendToLogin(router, client));
   if (me) queryClient.setQueryData(meQueryKey, me);
   const router = buildRouter(queryClient, createMemoryHistory({ initialEntries: [path] }));
+  // The router draws nothing until a lazy route's chunk has arrived, which on a
+  // busy machine outlasts any polling timeout; awaiting the load has none.
+  await router.load();
   render(
     <QueryClientProvider client={queryClient}>
       <LocalizedRouter router={router} />
