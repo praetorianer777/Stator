@@ -37,6 +37,9 @@
       "name": "history"
     },
     {
+      "name": "home"
+    },
+    {
       "name": "labels"
     },
     {
@@ -1898,6 +1901,152 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/home/edited": {
+      "get": {
+        "operationId": "homeEdited",
+        "summary": "Pages the caller published, holds a draft of, or made and never published, that they may still view, the latest first.",
+        "tags": [
+          "home"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The next of the window before; the first window when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EditedPage"
+                      }
+                    }
+                  },
+                  "required": [
+                    "next",
+                    "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/home/updates": {
+      "get": {
+        "operationId": "homeUpdates",
+        "summary": "Pages others published that the caller may view, each once, the latest first; with scope watched only those the caller's watches cover.",
+        "tags": [
+          "home"
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "all when absent.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "watched"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The next of the window before; the first window when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "updates": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PageUpdate"
+                      }
+                    }
+                  },
+                  "required": [
+                    "next",
+                    "updates"
+                  ]
                 }
               }
             }
@@ -4596,6 +4745,74 @@
         }
       }
     },
+    "/pages/{pageID}/star": {
+      "delete": {
+        "operationId": "unstarPage",
+        "summary": "Take the caller's star off a page, also when there was none.",
+        "tags": [
+          "home"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "starPage",
+        "summary": "Star a page to keep it on the caller's home page; starring it again is no change.",
+        "tags": [
+          "home"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/versions": {
       "get": {
         "operationId": "listVersions",
@@ -5856,6 +6073,72 @@
         }
       }
     },
+    "/spaces/{spaceKey}/star": {
+      "delete": {
+        "operationId": "unstarSpace",
+        "summary": "Take the caller's star off a space; the stars on its pages stay.",
+        "tags": [
+          "home"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "starSpace",
+        "summary": "Star a space to keep it on the caller's home page.",
+        "tags": [
+          "home"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/spaces/{spaceKey}/trash": {
       "delete": {
         "operationId": "emptyTrash",
@@ -6093,6 +6376,73 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stars": {
+      "get": {
+        "operationId": "listStars",
+        "summary": "The caller's stars on what they may still view, the latest first; next is the cursor for the window after, null at the end.",
+        "tags": [
+          "home"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The next of the window before; the first window when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "stars": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Star"
+                      }
+                    }
+                  },
+                  "required": [
+                    "next",
+                    "stars"
+                  ]
+                }
+              }
+            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -8409,6 +8759,43 @@
           "updatedAt"
         ]
       },
+      "EditedPage": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "type": "boolean"
+          },
+          "editedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "unpublished": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName",
+          "editedAt",
+          "draft",
+          "unpublished"
+        ]
+      },
       "ErrorEnvelope": {
         "type": "object",
         "properties": {
@@ -9569,6 +9956,9 @@
           "spaceKey": {
             "type": "string"
           },
+          "starred": {
+            "type": "boolean"
+          },
           "title": {
             "type": "string"
           },
@@ -9606,6 +9996,7 @@
           "labels",
           "comments",
           "watching",
+          "starred",
           "reactions",
           "createdByName",
           "createdAt",
@@ -9770,6 +10161,47 @@
         "required": [
           "id",
           "title"
+        ]
+      },
+      "PageUpdate": {
+        "type": "object",
+        "properties": {
+          "authorName": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName",
+          "version",
+          "publishedAt",
+          "authorName",
+          "comment"
         ]
       },
       "PageUpdateInput": {
@@ -10460,6 +10892,9 @@
           "name": {
             "type": "string"
           },
+          "starred": {
+            "type": "boolean"
+          },
           "updatedAt": {
             "type": "string",
             "format": "date-time"
@@ -10477,7 +10912,8 @@
           "createdAt",
           "updatedAt",
           "can",
-          "watching"
+          "watching",
+          "starred"
         ]
       },
       "SpaceGrant": {
@@ -10592,6 +11028,45 @@
           "cursors",
           "icons",
           "css"
+        ]
+      },
+      "Star": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "space"
+            ]
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PageTitle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "starredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "kind",
+          "spaceKey",
+          "spaceName",
+          "page",
+          "starredAt"
         ]
       },
       "Stats": {
