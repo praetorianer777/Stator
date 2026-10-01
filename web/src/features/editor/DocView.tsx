@@ -12,6 +12,8 @@ import { useCopyHeadingLink } from "./CopyHeadingLink";
 import { languageLabel, lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
 import { Passage, usePassages, type BlockPath } from "./passages";
+import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
+import { ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
 /**
  * A document drawn as elements, never as HTML: every node becomes the React
@@ -32,15 +34,23 @@ export function DocView({
 }) {
   const { copy, status } = useCopyHeadingLink();
   const headings = useMemo(() => headingsOfDoc(doc), [doc]);
+  const keys = useMemo(() => issueKeysOf(doc), [doc]);
   if (!doc) return null;
   return (
     <div className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
       <HeadingsContext value={headings}>
-        <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
+        <WithIssues keys={keys}>
+          <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
+        </WithIssues>
       </HeadingsContext>
       {status}
     </div>
   );
+}
+
+// A view that names no Armature issue asks nothing about Armature.
+function WithIssues({ keys, children }: { keys: string[]; children: ReactNode }) {
+  return keys.length > 0 ? <ArmatureIssuesProvider keys={keys}>{children}</ArmatureIssuesProvider> : children;
 }
 
 const HeadingsContext = createContext<FoundHeading[]>([]);
@@ -70,14 +80,17 @@ function DocToc({ node }: { node: DocNode }) {
  */
 export function DocDiffView({ blocks }: { blocks: { change: "equal" | "inserted" | "deleted" | "modified"; node: DocNode }[] }) {
   const labels = { inserted: t.history.added, deleted: t.history.removed, modified: t.history.changed };
+  const keys = useMemo(() => issueKeysOf(blocks.map((block) => block.node)), [blocks]);
   return (
     <div className="doc-content text-base text-ink" data-doc data-diff-view>
-      {blocks.map((block, i) => (
-        <div key={i} className="doc-diff-block" data-diff-block={block.change}>
-          {block.change !== "equal" && <span className="doc-diff-label">{labels[block.change]}</span>}
-          <Block node={block.node} copy={null} path={[i]} />
-        </div>
-      ))}
+      <WithIssues keys={keys}>
+        {blocks.map((block, i) => (
+          <div key={i} className="doc-diff-block" data-diff-block={block.change}>
+            {block.change !== "equal" && <span className="doc-diff-label">{labels[block.change]}</span>}
+            <Block node={block.node} copy={null} path={[i]} />
+          </div>
+        ))}
+      </WithIssues>
     </div>
   );
 }
@@ -280,17 +293,22 @@ function inlineNode(node: DocNode): ReactNode {
     case "hardBreak":
       return <br />;
     case "mention":
-      return marked(`@${String(node.attrs?.label ?? "")}`, node.marks, String(node.attrs?.id ?? ""));
+      return marked(<span data-mention={String(node.attrs?.id ?? "")}>{`@${String(node.attrs?.label ?? "")}`}</span>, node.marks);
     case "attachment":
       return <DocAttachment node={node} />;
+    case ARMATURE_ISSUE_NODE: {
+      const key = normalizeKey(node.attrs?.key);
+      // The chip is a link of its own, and a link inside a link is neither.
+      return key ? marked(<IssueChip issueKey={key} />, node.marks?.filter((mark) => mark.type !== "link")) : null;
+    }
     default:
       return textOf(node);
   }
 }
 
 /** Marks nest in the order they are listed; a link that is not a web, mail or site address is plain text. */
-function marked(text: string, marks: DocNode["marks"], mention?: string): ReactNode {
-  let out: ReactNode = mention !== undefined ? <span data-mention={mention}>{text}</span> : text;
+function marked(content: ReactNode, marks: DocNode["marks"]): ReactNode {
+  let out: ReactNode = content;
   for (const mark of marks ?? []) {
     switch (mark.type) {
       case "bold":

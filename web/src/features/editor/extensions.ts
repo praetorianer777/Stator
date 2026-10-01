@@ -20,6 +20,7 @@ import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachment
 import { ChildPages, TableOfContents } from "./blockNodes";
 import { Hint } from "./hint";
 import { InlineComment } from "./inlineComment";
+import { ArmatureIssue, type IssueSource } from "./armatureIssue";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -288,10 +289,12 @@ export interface ExtensionOptions {
   upload?: UploadFile;
   /** Which files the page still has, so a deleted one is drawn as missing. */
   attachments?: AttachmentIndex;
+  /** What turns typed keys and pasted issue addresses into chips; without it nothing does. */
+  armature?: IssueSource;
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
-export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments }: ExtensionOptions = {}): AnyExtension[] {
+export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments, armature }: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
       underline: false,
@@ -342,5 +345,6 @@ export function editorExtensions({ variant = "page", placeholder, mention, slash
     FileUpload.configure({ upload }),
     Hint,
     InlineComment,
+    ArmatureIssue.configure({ source: armature }),
   ];
 }

@@ -14,6 +14,7 @@ import { EditorToolbar } from "./Toolbar";
 import { useSuggestion } from "./useSuggestion";
 import type { AttachmentIndex } from "./attachmentIndex";
 import type { UploadFile } from "./attachments";
+import type { IssueSource } from "./armatureIssue";
 
 /** What a form may do to the editor from outside: put words in, or empty it. */
 export interface EditorHandle {
@@ -44,6 +45,8 @@ export interface EditorProps {
   attachments?: AttachmentIndex;
   /** A comment's editor offers text and its structure, and no slash menu. */
   variant?: EditorVariant;
+  /** What turns typed keys and pasted issue addresses into Armature chips. */
+  armature?: IssueSource;
 }
 
 /**
@@ -65,6 +68,7 @@ export function Editor({
   upload,
   attachments,
   variant = "page",
+  armature,
 }: EditorProps) {
   const slashId = useId();
   const mentionId = useId();
@@ -91,6 +95,7 @@ export function Editor({
       submit: () => submitRef.current?.(),
       upload,
       attachments,
+      armature,
       slash: { items: ({ query }) => filterSlashItems(query), render: slash.renderer },
       mention: {
         items: ({ query }) => mentionMatches(searchesRef.current ? foundRef.current : peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
