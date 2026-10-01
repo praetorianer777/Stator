@@ -103,7 +103,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "image", "tableOfContents", "childPages"}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "image", "tableOfContents", "childPages", armature.NodeIssueBlock}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -200,6 +200,9 @@ var Allowed = Allowlist{
 		armature.NodeIssue: {
 			Inline: true,
 			Attrs:  map[string]Attr{"key": {Kind: KindString, Pattern: armature.KeyPattern}},
+		},
+		armature.NodeIssueBlock: {
+			Attrs: map[string]Attr{"key": {Kind: KindString, Pattern: armature.KeyPattern}},
 		},
 		"attachment": {
 			Inline: true,

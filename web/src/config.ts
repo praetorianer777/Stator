@@ -243,3 +243,5 @@ export const ARMATURE_WEBHOOK_SECRET_PREFIX = "armature_whs_";
 export const ARMATURE_LOOKUP_MAX_KEYS = 50;
 /** How long an issue chip's card waits before it shows, so a pointer passing over shows nothing. */
 export const ARMATURE_CARD_DELAY_MS = 300;
+/** How long the issue picker waits after a keystroke before it asks Armature for the key. */
+export const ARMATURE_PICKER_DEBOUNCE_MS = 250;

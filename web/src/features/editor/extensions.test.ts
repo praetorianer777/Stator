@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
-import { editorExtensions } from "./extensions";
+import { editorExtensions, type ExtensionOptions } from "./extensions";
 import type { DocNode } from "./schema";
 import { SLASH_ITEMS } from "./slashItems";
 
@@ -11,8 +11,8 @@ afterEach(() => editor?.destroy());
 
 // The editor announces itself created on the next tick, which is when it
 // anchors the headings it was given.
-async function make(content: JSONContent = { type: "doc", content: [{ type: "paragraph" }] }) {
-  editor = new Editor({ element: document.createElement("div"), extensions: editorExtensions(), content });
+async function make(content: JSONContent = { type: "doc", content: [{ type: "paragraph" }] }, options: ExtensionOptions = {}) {
+  editor = new Editor({ element: document.createElement("div"), extensions: editorExtensions(options), content });
   await new Promise((resolve) => setTimeout(resolve));
   return editor;
 }
@@ -74,14 +74,41 @@ describe("the slash menu's blocks", () => {
       panelError: (d) => find(d, "panel")[0]?.attrs?.kind === "error",
       tableOfContents: (d) => d.content?.[0]?.type === "tableOfContents" && d.content[0].attrs?.maxLevel === 3,
       childPages: (d) => JSON.stringify(find(d, "childPages")[0]?.attrs) === JSON.stringify({ scope: "children", depth: null, sort: "tree" }),
+      // The picker asks which issue; this one answers lower case, as a person might type it.
+      armatureIssue: (d) => JSON.stringify(find(d, "armatureIssueBlock")[0]?.attrs) === JSON.stringify({ key: "CP-4" }),
     };
     expect(SLASH_ITEMS.map((item) => item.key).sort()).toEqual(Object.keys(expected).sort());
     for (const item of SLASH_ITEMS) {
-      const e = await make();
+      // The picker answers later, as a dialog does, never inside the slash command.
+      const e = await make(undefined, { pickIssue: () => setTimeout(() => editor?.commands.insertArmatureIssueBlock("cp-4")) });
       item.run(e.chain().focus());
+      await new Promise((resolve) => setTimeout(resolve));
       expect(expected[item.key]?.(e.getJSON() as DocNode), item.key).toBe(true);
       e.destroy();
     }
+  });
+});
+
+describe("the Armature issue block", () => {
+  it("refuses a key that is not one, and keeps nothing but the key", async () => {
+    const e = await make();
+    expect(e.commands.insertArmatureIssueBlock("UTF-8x")).toBe(false);
+    expect(find(e.getJSON() as DocNode, "armatureIssueBlock")).toHaveLength(0);
+    e.commands.insertArmatureIssueBlock("SEC-1");
+    expect(find(e.getJSON() as DocNode, "armatureIssueBlock")[0]?.attrs).toEqual({ key: "SEC-1" });
+    expect(e.getText()).toContain("SEC-1");
+  });
+
+  it("is read back from what the editor copies, so cut and paste keep it", async () => {
+    const e = await make({ type: "doc", content: [{ type: "armatureIssueBlock", attrs: { key: "CP-4" } }] });
+    const html = e.getHTML();
+    e.destroy();
+    expect(html).toContain('data-armature-issue-block="CP-4"');
+    const again = await make();
+    again.commands.setContent(html);
+    expect(find(again.getJSON() as DocNode, "armatureIssueBlock")[0]?.attrs).toEqual({ key: "CP-4" });
+    again.commands.setContent('<div data-armature-issue-block="not a key">x</div>');
+    expect(find(again.getJSON() as DocNode, "armatureIssueBlock")).toHaveLength(0);
   });
 });
 

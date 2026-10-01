@@ -21,6 +21,7 @@ import { ChildPages, TableOfContents } from "./blockNodes";
 import { Hint } from "./hint";
 import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, type IssueSource } from "./armatureIssue";
+import { ArmatureIssueBlock } from "./armatureIssueBlock";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -291,10 +292,12 @@ export interface ExtensionOptions {
   attachments?: AttachmentIndex;
   /** What turns typed keys and pasted issue addresses into chips; without it nothing does. */
   armature?: IssueSource;
+  /** Opens the picker the slash menu's Armature issue asks which issue with. */
+  pickIssue?: () => void;
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
-export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments, armature }: ExtensionOptions = {}): AnyExtension[] {
+export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments, armature, pickIssue }: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
       underline: false,
@@ -346,5 +349,6 @@ export function editorExtensions({ variant = "page", placeholder, mention, slash
     Hint,
     InlineComment,
     ArmatureIssue.configure({ source: armature }),
+    ArmatureIssueBlock.configure({ pick: pickIssue }),
   ];
 }

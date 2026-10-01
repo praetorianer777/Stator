@@ -75,6 +75,7 @@ describe("the web editor against the server's allowlist", () => {
         { type: "paragraph", content: [{ type: "attachment", attrs: { attachmentId, fileName: "plan.pdf" } }] },
         { type: "paragraph", content: [{ type: "text", text: "Say more", marks: [{ type: "hint" }] }] },
       ])
+      .insertArmatureIssueBlock("cp-4")
       .run();
     docs.push(e.getJSON() as DocNode);
 
@@ -96,6 +97,7 @@ describe("the web editor against the server's allowlist", () => {
       '"width":480',
       '"type":"attachment"',
       '"type":"hint"',
+      '"type":"armatureIssueBlock"',
     ]) {
       expect(all).toContain(needle);
     }

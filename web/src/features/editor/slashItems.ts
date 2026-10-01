@@ -15,6 +15,8 @@ export interface SlashItem {
   /** Other words a person might type for it. */
   keywords: string[];
   run: (chain: ChainedCommands) => void;
+  /** Offered only while the organization has an Armature to ask. */
+  armature?: boolean;
 }
 
 function item(key: BlockKey, icon: ComponentType<IconProps>, keywords: string[], run: (chain: ChainedCommands) => ChainedCommands): SlashItem {
@@ -41,7 +43,13 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("panelError", Icon.Panel, ["panel", "error", "danger"], (c) => c.setPanel("error")),
   item("tableOfContents", Icon.Hash, ["toc", "contents", "headings", "outline"], (c) => c.insertTableOfContents()),
   item("childPages", Icon.Page, ["children", "pages", "subpages", "tree"], (c) => c.insertChildPages()),
+  { ...item("armatureIssue", Icon.Task, ["armature", "issue", "ticket", "card"], (c) => c.pickArmatureIssue()), armature: true },
 ];
+
+/** The blocks this editor offers: the Armature ones only where there is an Armature. */
+export function slashItemsFor(armature: boolean): SlashItem[] {
+  return armature ? SLASH_ITEMS : SLASH_ITEMS.filter((it) => !it.armature);
+}
 
 /** The blocks whose name or keywords contain what was typed after the slash. */
 export function filterSlashItems(query: string, items: SlashItem[] = SLASH_ITEMS): SlashItem[] {

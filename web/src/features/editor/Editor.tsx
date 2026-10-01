@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import type { MentionNodeAttrs } from "@tiptap/extension-mention";
@@ -9,12 +9,13 @@ import { editorExtensions, fitSchema, sanitizePasted, type EditorVariant } from 
 import { MentionList, mentionMatches } from "./MentionList";
 import { emptyDoc, isEmptyDoc, type Doc, type Mentionable, type MentionSource } from "./schema";
 import { SlashMenu } from "./SlashMenu";
-import { filterSlashItems, type SlashItem } from "./slashItems";
+import { filterSlashItems, slashItemsFor, type SlashItem } from "./slashItems";
 import { EditorToolbar } from "./Toolbar";
 import { useSuggestion } from "./useSuggestion";
 import type { AttachmentIndex } from "./attachmentIndex";
 import type { UploadFile } from "./attachments";
 import type { IssueSource } from "./armatureIssue";
+import { IssuePicker } from "@/features/armature/IssuePicker";
 
 /** What a form may do to the editor from outside: put words in, or empty it. */
 export interface EditorHandle {
@@ -83,6 +84,9 @@ export function Editor({
   searchesRef.current = mentionSource !== undefined;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const armatureRef = useRef(armature);
+  armatureRef.current = armature;
+  const [pickingIssue, setPickingIssue] = useState(false);
 
   const slash = useSuggestion<SlashItem>((item) => item);
   const mention = useSuggestion<Mentionable, MentionNodeAttrs>((person) => ({ id: person.id, label: person.name }));
@@ -96,7 +100,8 @@ export function Editor({
       upload,
       attachments,
       armature,
-      slash: { items: ({ query }) => filterSlashItems(query), render: slash.renderer },
+      pickIssue: () => setPickingIssue(true),
+      slash: { items: ({ query }) => filterSlashItems(query, slashItemsFor(Boolean(armatureRef.current?.baseUrl()))), render: slash.renderer },
       mention: {
         items: ({ query }) => mentionMatches(searchesRef.current ? foundRef.current : peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
         render: mention.renderer,
@@ -199,6 +204,15 @@ export function Editor({
         />
       )}
       {status}
+      {pickingIssue && editor && (
+        <IssuePicker
+          onClose={() => setPickingIssue(false)}
+          onInsert={(key) => {
+            setPickingIssue(false);
+            editor.chain().focus().insertArmatureIssueBlock(key).run();
+          }}
+        />
+      )}
     </div>
   );
 }

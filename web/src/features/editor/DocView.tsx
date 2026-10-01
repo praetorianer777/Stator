@@ -13,7 +13,8 @@ import { languageLabel, lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
 import { Passage, usePassages, type BlockPath } from "./passages";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
-import { ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
+import { IssueBlock } from "@/features/armature/IssueBlock";
+import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
 /**
  * A document drawn as elements, never as HTML: every node becomes the React
@@ -218,6 +219,18 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
           <ChildPagesList options={options} />
         </nav>
       );
+    }
+    case ARMATURE_ISSUE_BLOCK_NODE: {
+      const key = normalizeKey(node.attrs?.key);
+      if (!key) return null;
+      if (!copy) {
+        return (
+          <p className="doc-block doc-block-summary" data-armature-issue-block={key}>
+            {t.armature.block.summary(key)}
+          </p>
+        );
+      }
+      return <IssueBlock issueKey={key} />;
     }
     default:
       return <p>{textOf(node)}</p>;
