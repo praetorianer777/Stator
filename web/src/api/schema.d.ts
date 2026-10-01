@@ -734,6 +734,23 @@ export interface paths {
         patch: operations["updatePage"];
         trace?: never;
     };
+    "/pages/{pageID}/access/{userID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a person may do to a page and which grant or restriction decides each right, as the database answers it. For the space's administrators. */
+        get: operations["inspectPageAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/armature-links": {
         parameters: {
             query?: never;
@@ -1697,6 +1714,40 @@ export interface components {
             name: string;
             scopes: "read"[];
             secret?: string;
+        };
+        AccessPage: {
+            home: boolean;
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        AccessReport: {
+            person: components["schemas"]["Person"];
+            rights: components["schemas"]["AccessRight"][];
+            /** @enum {string} */
+            role: "owner" | "admin" | "member";
+            /** @enum {string} */
+            roleSource: "manual" | "oidc";
+        };
+        AccessRight: {
+            allowed: boolean;
+            /** @enum {string} */
+            right: "view" | "edit" | "delete" | "comment";
+            steps: components["schemas"]["AccessStep"][];
+        };
+        AccessStep: {
+            bypassed: boolean;
+            grants: components["schemas"]["SpaceGrant"][];
+            /** @enum {string} */
+            kind: "orgAdmin" | "use" | "space" | "unpublished" | "list" | "view" | "published";
+            /** @enum {string} */
+            list?: "view" | "edit";
+            listed: components["schemas"]["Subject"][];
+            page?: components["schemas"]["AccessPage"];
+            passed: boolean;
+            /** @enum {string} */
+            permission?: "view" | "addPages" | "addComments" | "delete" | "administer";
+            via: components["schemas"]["Subject"][];
         };
         Account: {
             baseUrl: string | null;
@@ -4726,6 +4777,40 @@ export interface operations {
                 content: {
                     "application/json": {
                         page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    inspectPageAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        access: components["schemas"]["AccessReport"];
                     };
                 };
             };

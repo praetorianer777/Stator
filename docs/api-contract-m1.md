@@ -196,6 +196,7 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
 | `PUT /spaces/{spaceKey}/permissions` | space administer | `{grants}` |
 | `GET /pages/{pageID}/restrictions` | view | `{restrictions}` |
 | `PUT /pages/{pageID}/restrictions` | edit | `{restrictions}`; 409 `conflict` when it locks the caller out |
+| `GET /pages/{pageID}/access/{userID}` | view, and space administer | `{access}`; 404 when the person is not a member |
 | `GET /people?q&limit`, `GET /groups?q&limit` | use | pickers, prefix match on name or email, 20 by default, at most 50 |
 
 - **Subjects.** A grant names a `user`, a `group` or `everyone` (every member
@@ -243,6 +244,24 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
   list applies to the page, own or inherited, whether or not the caller passes
   it; **`TreeNode.restricted`** says the same for view lists. The web client
   offers only what `can` allows.
+- **Inspecting access** (#81) answers, for one member and one page, each of
+  `view`, `edit`, `delete` and `comment` with `allowed` and `steps`: the
+  conditions the right depends on, in the order the rule checks them, each
+  `passed` or not. The first step not passed is the reason for a no. A step
+  is `orgAdmin` (holds everything, passes every list), `use` with the global
+  grants that reach the person in `via`, `space` with the `permission` asked
+  for and the space's `grants` that give it, `unpublished` with the `page`
+  only its author sees, `list` with its `page`, which `list`, everybody it
+  names in `listed`, the entries that name the person in `via`, and
+  `bypassed` when an administrator of the space passes it without being on
+  it, `view` (the other rights need it first) and `published` (comments wait
+  for it). Every verdict and every `passed` is what the SQL functions behind
+  the policies answer for that person (`perm_page_viewable` and its kin), so
+  the explanation is what the database enforces. `role` and `roleSource` say
+  whether an administrator's standing comes from the identity provider's
+  groups. Only an administrator of the page's space, or of the organization,
+  may ask, about anybody, themselves included; anybody else who may view the
+  page is 403, and a page they may not view is 404.
 - **Pickers** match the start of a person's name, of any word of it, or of
   their email, and the start of a group's name or of any word of it,
   ignoring case. A `limit` outside 1 to 50 is 422. `everyone` is answered
