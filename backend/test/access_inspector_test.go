@@ -85,11 +85,6 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 				report := inspect(ann, page, person)
 				got := database(person, page)
 				for _, r := range report.Rights {
-					// A check keeps the home page out of the trash whoever asks, so trashing it
-					// says nothing about the right; the space goes as a whole instead.
-					if r.Right == perm.RightDelete && page == docs.homeID {
-						continue
-					}
 					if r.Allowed != got[r.Right] {
 						t.Errorf("%s may %s %s: the inspector says %v, the database %v", name, r.Right, title, r.Allowed, got[r.Right])
 					}

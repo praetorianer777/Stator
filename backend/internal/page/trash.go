@@ -48,15 +48,15 @@ func (s *Service) Trash(ctx context.Context, actor perm.Actor, id uuid.UUID) (db
 		if err != nil {
 			return err
 		}
-		if current.Home {
-			return ErrHomeNotTrashed
-		}
 		if err := current.must(perm.DeletePages); err != nil {
 			return err
 		}
 		// The database marks the pages below too, those the actor cannot
 		// see included, once it has checked the page itself.
 		if _, err = tx.Exec(ctx, `SELECT page_trash($1)`, id); err != nil {
+			if isConstraint(err, homeTrashConstraint) {
+				return ErrHomeNotTrashed
+			}
 			return err
 		}
 		return syncLinksBelow(ctx, tx, []uuid.UUID{id}, true)
