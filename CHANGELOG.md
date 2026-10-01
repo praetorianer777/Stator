@@ -397,6 +397,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
   one watches. Every list leaves out what the reader may no longer view, is
   read a window at a time by cursor (`GET /stars`, `/home/updates`,
   `/home/edited`), and pages and spaces answer `starred`.
+- Sharing a page (#67). The page header's Share sends a published page to
+  people and groups with an optional note of up to 200 characters
+  (`POST /pages/{id}/share`); they are told in the app and by mail as a new
+  notification kind, `shared`, with its own switches in the preferences.
+  The dialog says who can already view the page (`GET /pages/{id}/viewers`)
+  and its picker marks whoever may not (`GET /pages/{id}/share/recipients`).
+  Sharing gives nobody access: a share naming a person, or a group none of
+  whose members may view the page, is refused with `cannot_view` and sends
+  nothing, a group tells only its members who may view it, and the worker
+  checks each recipient again as it writes their row. One person shares at
+  most 30 pages an hour in an organization (`rate_limited`), a limit the
+  database keeps as well. Each share is recorded in the audit log as
+  `page.shared`, naming whom it was sent to but never its note.
 - An audit log for administrators (#107), under Audit log in the account
   menu: who changed members, single sign-on, tokens, spaces, permissions,
   the default theme and the Armature connection, what was deleted for good,
@@ -471,6 +484,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 - Saving an edited comment puts focus back on its Edit button every time,
   not only when the save's answer and the next frame came in the right order.
+
+- Opening a reply or a new comment puts the caret in its editor every time.
+  When the editor's code was still loading, the focus could go to the editor
+  before it was on the page, and the keyboard was left on nothing.
 
 - Subtle text (hints, timestamps, placeholders) meets WCAG AA: 4.5:1 or more
   on every surface in both palettes, and in the Deep-Tech and Constellation
