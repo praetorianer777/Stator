@@ -41,11 +41,15 @@ export function Button({
   className,
   children,
   disabled,
+  type = "button",
   ...rest
 }: ButtonProps) {
   return (
     <button
       {...rest}
+      // Without a type the browser makes it a submit button, and any button
+      // that happens to sit inside a form would submit it.
+      type={type}
       disabled={disabled || loading}
       // aria-busy rather than swapping the label, so a screen reader announces
       // the state change without the button losing its accessible name.
@@ -98,6 +102,7 @@ export function IconButton({
   variant = "ghost",
   size = "md",
   className,
+  type = "button",
   ...rest
 }: Omit<ButtonProps, "children" | "icon" | "iconRight" | "size"> & { icon: ReactNode; label: string; size?: ControlSize | "xs" }) {
   // xs sits inside a table row or a chart label, where a full control would not.
@@ -105,7 +110,7 @@ export function IconButton({
   return (
     <button
       {...rest}
-      type={rest.type ?? "button"}
+      type={type}
       aria-label={label}
       title={label}
       className={cx(
@@ -123,10 +128,5 @@ export function IconButton({
 }
 
 export function Spinner({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cx("size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent", className)}
-    />
-  );
+  return <span aria-hidden="true" className={cx("size-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent", className)} />;
 }

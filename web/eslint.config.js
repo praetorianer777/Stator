@@ -18,6 +18,13 @@ export default tseslint.config(
       "react-hooks/exhaustive-deps": "error",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "@typescript-eslint/consistent-type-imports": "error",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXOpeningElement[name.name='button']:not(:has(> JSXAttribute[name.name='type']))",
+          message: 'Give the <button> a type: without one it submits the form it sits in. Use type="button", or type="submit" for a form\'s submit button.',
+        },
+      ],
     },
   },
   {
