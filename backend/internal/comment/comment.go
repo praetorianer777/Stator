@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/reaction"
 )
 
 const (
@@ -84,7 +85,9 @@ type Comment struct {
 	Deleted   bool            `json:"deleted"`
 	CreatedAt time.Time       `json:"createdAt"`
 	EditedAt  *time.Time      `json:"editedAt"`
-	Can       CommentCan      `json:"can"`
+	// Reactions are the emoji on the comment; none once it is deleted.
+	Reactions []reaction.Reaction `json:"reactions"`
+	Can       CommentCan          `json:"can"`
 }
 
 // CommentCan is what the caller may do to one comment.
