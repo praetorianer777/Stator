@@ -20,7 +20,7 @@ export const themeEditRoute = createRoute({
   },
 });
 
-const crumbs: Crumb[] = [
+const crumbs = (): Crumb[] => [
   { label: t.settings.title },
   {
     label: t.themes.title,
@@ -37,7 +37,7 @@ function EditorPage({ themeId }: { themeId?: string }) {
   if (themeId && error) {
     return (
       <div className="mx-auto max-w-5xl">
-        <PageHeader crumbs={crumbs} title={t.themes.editTheme} />
+        <PageHeader crumbs={crumbs()} title={t.themes.editTheme} />
         <ErrorBanner>{error.message}</ErrorBanner>
       </div>
     );
@@ -45,7 +45,7 @@ function EditorPage({ themeId }: { themeId?: string }) {
   if (themeId && (isLoading || !data)) return null;
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader crumbs={crumbs} title={data?.theme.name ?? t.themes.newTheme} />
+      <PageHeader crumbs={crumbs()} title={data?.theme.name ?? t.themes.newTheme} />
       <ThemeEditor key={data?.theme.id ?? "new"} theme={data?.theme} />
     </div>
   );

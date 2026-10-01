@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, ME_STALE_MS } from "@/config";
+import { applyLanguage, type LanguageChoice } from "@/i18n";
 import { HANDLES_UNAUTHORIZED } from "@/lib/session";
 import { api } from "./client";
 import type { components } from "./schema";
@@ -35,6 +37,24 @@ export const meQuery = {
 
 export function useMe() {
   return useQuery(meQuery);
+}
+
+/** Follows the signed-in person's language whenever the app has asked who they are; it never asks itself. */
+export function useProfileLanguage(): void {
+  const { data } = useQuery({ ...meQuery, enabled: false });
+  const choice = data?.user.locale;
+  useEffect(() => {
+    if (choice !== undefined) applyLanguage(choice);
+  }, [choice]);
+}
+
+/** Changes the caller's interface language; an empty choice follows the browser. */
+export function useSetLanguage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (locale: LanguageChoice): Promise<Me> => (await api.PATCH("/auth/me", { body: { locale } })).data!,
+    onSuccess: (me) => queryClient.setQueryData(meQueryKey, me),
+  });
 }
 
 /** Whether a role may change the organization's settings. */

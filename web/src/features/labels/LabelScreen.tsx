@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { Link } from "@tanstack/react-router";
 import { labelPath, useLabelPages, type LabeledPage } from "@/api/labels";
 import type { Space } from "@/api/spaces";
@@ -8,7 +9,7 @@ import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 import { LabelLink } from "./PageLabels";
 
-const changedOn = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+const changedOn = localDateFormat({ dateStyle: "medium" });
 
 /** The pages that carry a label, in one space or in all of them, a page of the list at a time. */
 export function LabelScreen({ name, space, page, onPage }: { name: string; space?: Space; page: number; onPage: (page: number) => void }) {

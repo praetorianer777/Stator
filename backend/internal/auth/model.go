@@ -48,6 +48,20 @@ type Member struct {
 	JoinedAt   time.Time  `json:"joinedAt"`
 }
 
+// Locale is a language the interface speaks.
+type Locale string
+
+const (
+	// LocaleBrowser is no choice: the interface follows the browser.
+	LocaleBrowser Locale = ""
+	LocaleEnglish Locale = "en"
+	LocaleGerman  Locale = "de"
+)
+
+// Locales lists every value a person may choose, in the order the API
+// documents them.
+var Locales = []Locale{LocaleBrowser, LocaleEnglish, LocaleGerman}
+
 // User is a person, global across organizations.
 type User struct {
 	ID    uuid.UUID `json:"id"`
@@ -55,6 +69,9 @@ type User struct {
 	Name  string    `json:"name"`
 	// AvatarURL is where the picture is served from; empty means initials.
 	AvatarURL string `json:"avatarUrl,omitempty"`
+	// Locale is the interface language the person chose, "en" or "de"; empty
+	// means the browser's.
+	Locale Locale `json:"locale"`
 }
 
 // CurrentOrg is the organization a session is acting in, with the caller's
@@ -94,6 +111,8 @@ var (
 	// ErrSessionStaysHome is returned when a session proven for one
 	// organization tries to act where that proof does not vouch for it.
 	ErrSessionStaysHome = errors.New("this sign-in does not reach that organization")
+	// ErrBadLocale is returned for a language the interface does not speak.
+	ErrBadLocale = errors.New("choose a language from the list")
 	// ErrNoSuchMember is returned when the person named is not a member here.
 	ErrNoSuchMember = errors.New("that person is not a member of this organization")
 	// ErrOwnerStays is returned when somebody tries to remove the owner, who

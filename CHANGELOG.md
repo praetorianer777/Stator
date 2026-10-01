@@ -336,6 +336,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   `/pages/{pageID}/reactions` and `/comments/{commentID}/reactions`, and
   `Page` and `Comment` gain `reactions`. The database holds every reaction
   to its page's view rule and to its author's name (migration 00180).
+- German and English interface (#113). Every string the web client shows
+  exists in both languages, and a missing German one fails the type check.
+  Each person chooses under Profile, Language, kept with their account by
+  `PATCH /auth/me` (`User` gains `locale`: `en`, `de`, or empty to follow
+  the browser); until they choose, the browser's own languages decide, and
+  English is the fallback. Dates and numbers are written in the language
+  shown, the page's `lang` follows it, and switching redraws the page at
+  once. Mails and the sentences the server writes stay English for now. The
+  database holds the choice to the two languages (migration 00195).
 - Status labels, dates and emoji in running text. A status is a coloured
   label with words of the author's own, drawn like an Armature issue's
   status in one of five theme colours; a date is a day picked with the

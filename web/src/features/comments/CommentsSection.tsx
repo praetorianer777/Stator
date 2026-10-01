@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { useMe } from "@/api/auth";
 import { useDeleteComment, useEditComment, useReply, useStartThread, useThreads, type Comment, type Thread } from "@/api/comments";
@@ -12,7 +13,7 @@ import { useFocusWhenRendered } from "@/lib/focus";
 
 const CommentEditor = lazy(() => import("./CommentEditor"));
 
-const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
 /** Where the page's header count and a notification's link lead. */
 export const COMMENTS_ID = "comments";

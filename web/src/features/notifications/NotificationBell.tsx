@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMarkRead, useNotifications, useUnreadCount, type Notification } from "@/api/notifications";
@@ -8,7 +9,7 @@ import { UNREAD_BADGE_MAX } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 
-const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
 /** A notification in the reader's words; the server sends only what happened. */
 export function sentence(n: Notification): string {

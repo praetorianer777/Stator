@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { useContext, useMemo, useState, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
 import { useArmatureAccount, useArmatureSearch, type ArmatureIssue } from "@/api/armature";
@@ -40,7 +41,7 @@ export function listSettings(attrs: Record<string, unknown> | undefined): IssueL
 
 export type Sort = { column: ArmatureColumn; ascending: boolean } | null;
 
-const onDay = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+const onDay = localDateFormat({ dateStyle: "medium" });
 
 /**
  * The issues a query matches, as the viewer may see them, in a table sortable
