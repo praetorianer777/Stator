@@ -74,9 +74,13 @@ test.describe("status labels, dates and emoji", { tag: ["@auth", "@desktop"] }, 
     await expect(status).toHaveText("Status In review");
     await expect(status).toHaveAttribute("data-status-label", "warning");
     await expect(editorBox(page)).toBeFocused();
+    // The caret is put back at the end as a person would, since focus that
+    // comes back from a dialog may still be settling when the next key lands.
+    await caretTo(editorBox(page), "end");
 
-    // The caret sits after the status; the left arrow selects it, and Enter opens it again.
+    // With the caret after the status, the left arrow selects it, and Enter opens it again.
     await page.keyboard.press("ArrowLeft");
+    await expect(editorBox(page).locator(".ProseMirror-selectednode .doc-status")).toHaveCount(1);
     await page.keyboard.press("Enter");
     await expect(statusDialog).toBeVisible();
     await expect(words).toHaveValue("In review");
@@ -88,6 +92,10 @@ test.describe("status labels, dates and emoji", { tag: ["@auth", "@desktop"] }, 
     await page.keyboard.press("Enter");
     await expect(statusDialog).toBeHidden();
     await expect(status).toHaveAttribute("data-status-label", "success");
+    await expect(editorBox(page)).toBeFocused();
+    // The caret is put back at the end as a person would, since focus that
+    // comes back from a dialog may still be settling when the next key lands.
+    await caretTo(editorBox(page), "end");
 
     await page.keyboard.type(" by ");
     await insert(page, "date");
@@ -100,6 +108,10 @@ test.describe("status labels, dates and emoji", { tag: ["@auth", "@desktop"] }, 
     const date = editorBox(page).locator("time");
     await expect(date).toHaveAttribute("datetime", DAY);
     await expect(date).toHaveText(DAY_SHOWN);
+    await expect(editorBox(page)).toBeFocused();
+    // The caret is put back at the end as a person would, since focus that
+    // comes back from a dialog may still be settling when the next key lands.
+    await caretTo(editorBox(page), "end");
 
     await page.keyboard.type(" :tad");
     const emoji = page.getByRole("listbox", { name: "Emoji" });
