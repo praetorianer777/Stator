@@ -126,6 +126,42 @@ check allow Bash  "$G push -u origin HEAD"
 printf '#!/bin/sh\necho "Failed: ScheduleEngine window boundary"; exit 1\n' > run-tests.sh
 check deny  Bash  "$G push -u origin HEAD"
 
+# ── One log line per invocation (#213) ───────────────────
+echo "== every invocation is logged, without the command text"
+LOGF="$W/r/.git/branch-guard.log"
+logged() { # label pattern...
+  local label="$1" line p; shift
+  line="$(tail -n 1 "$LOGF" 2>/dev/null)"
+  for p in "$@"; do
+    [[ "$line" == *"$p"* ]] || { echo "FAIL  log for $label lacks '$p': $line"; fail=1; return; }
+  done
+  echo "ok    logged  $label"
+}
+rm -f "$LOGF"
+check allow Bash  "$G status --short"
+logged "allow" $'\tdecision=allow\t' $'\tgit=status' $'\ttool=Bash\t' "hook=$W/r/.claude/hooks/branch-guard.sh" "project_dir=$W/r" "cwd=$W/r"
+check deny  Bash  "$G push origin main"
+logged "deny" $'\tdecision=deny\t' $'\tgit=push'
+check allow Write "/tmp/x"
+logged "early exit" "decision=allow (outside repo)"
+printf '#!/bin/sh\necho stub ok\n' > run-tests.sh
+check allow Bash  "GH_TOKEN=s3cret $G push -u origin HEAD"
+logged "gate" $'\tdecision=allow\t' $'\tgit=push' $'\tgate='"$W/r"$'\t' $'\tgate_secs=' $'\tgate_rc=0'
+[[ "$(tail -n 2 "$LOGF" | head -n 1)" == *$'\tdecision=gating\t'* ]] \
+  || { echo "FAIL  the gate's start was not logged"; fail=1; }
+printf '#!/bin/sh\nexit 1\n' > run-tests.sh
+check deny  Bash  "$G push -u origin HEAD"
+logged "failed gate" $'\tdecision=deny\t' $'\tgate_rc=1'
+check allow Bash  "$G -c user.name=x $C --allow-empty -m 'token s3cret' && $G log -1 | cat"
+logged "chained" $'\tgit=commit,log'
+grep -q -e s3cret -e ScheduleEngine "$LOGF" && { echo "FAIL  command text reached the log"; fail=1; }
+(( $(wc -l < "$LOGF") == 8 )) || { echo "FAIL  want 8 log lines, got $(wc -l < "$LOGF")"; fail=1; }
+printf '#!/bin/sh\nsleep 30\n' > run-tests.sh
+jq -nc --arg cwd "$W/r" '{tool_name:"Bash",cwd:$cwd,tool_input:{command:"git push"}}' > "$W/push.json"
+.claude/hooks/branch-guard.sh < "$W/push.json" > /dev/null & hook_pid=$!
+sleep 1; kill -TERM "$hook_pid"; wait "$hook_pid"
+logged "killed at the timeout" $'\tdecision=killed\t' $'\tgate='"$W/r"
+
 true
 
 # ── Worktrees (#27) ──────────────────────────────────────
@@ -161,6 +197,8 @@ check allow Bash  "$G $C -m x" "$WT"
 check deny  Bash  "$G push origin main" "$WT"
 # The gate must run the worktree's own script: the main checkout's copy fails.
 check allow Bash  "$G push -u origin HEAD" "$WT"
+LOGF="$W2/r/.git/branch-guard.log"
+logged "worktree push, in the common git dir" "cwd=$WT"$'\t' $'\tgate='"$WT"$'\t' $'\tgate_rc=0'
 
 echo "== rebase in a worktree reads that worktree's head-name"
 printf 'ours\n' > "$W2/r/conflict.txt"

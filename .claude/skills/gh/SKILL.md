@@ -62,5 +62,8 @@ gh run view --log-failed             # when CI is red
 - Branch slugs are lowercase ASCII: `feat/42-page-tree`, not `feat/42-Page-Tree`.
 - Commit messages are Conventional Commits, lowercase, imperative, subject ≤ 72 characters, and
   describe the **effect** rather than the files touched.
+- A push with `run_in_background` spends the whole gate before it is reported as started, then
+  finishes in seconds; that is the gate having passed, not skipped. Every guard decision and gate
+  duration is in `$(git rev-parse --git-common-dir)/branch-guard.log`.
 - Parallel work happens in worktrees under `.claude/worktrees/`; each gets its own compose
   project and ports from `run-tests.sh`, so gates never collide.
