@@ -45,6 +45,9 @@ export const ME_STALE_MS = 60_000;
 /** Where the organization last typed on the sign-in page is kept, so it is there next time. */
 export const LAST_ORG_KEY = "stator.last-org";
 
+/** Where this browser remembers the interface language the profile chose, so a reload starts in it. */
+export const LANGUAGE_STORAGE_KEY = "stator.language";
+
 /** The groups claim and scopes an identity provider starts with, matching the API's defaults. */
 export const SSO_DEFAULT_GROUPS_CLAIM = "groups";
 export const SSO_DEFAULT_SCOPES = "openid profile email";

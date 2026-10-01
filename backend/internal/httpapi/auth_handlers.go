@@ -77,7 +77,7 @@ func (s *Server) me(r *http.Request, p *auth.Principal) (*meResponse, error) {
 		return nil, err
 	}
 	out := &meResponse{
-		User:          auth.User{ID: p.UserID, Email: p.Email, Name: p.Name, AvatarURL: p.AvatarURL},
+		User:          auth.User{ID: p.UserID, Email: p.Email, Name: p.Name, AvatarURL: p.AvatarURL, Locale: p.Locale},
 		Organizations: organizations,
 	}
 	if p.InOrg() {
@@ -142,12 +142,41 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
-	me, err := s.me(r, PrincipalFrom(r.Context()))
+	s.handleMeAs(w, r, PrincipalFrom(r.Context()))
+}
+
+func (s *Server) handleMeAs(w http.ResponseWriter, r *http.Request, p *auth.Principal) {
+	me, err := s.me(r, p)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
 	respondJSON(w, r, http.StatusOK, me)
+}
+
+// updateMeRequest changes the caller's own settings; a field left out stays.
+type updateMeRequest struct {
+	// Locale is the interface language, "en" or "de"; empty follows the browser.
+	Locale *auth.Locale `json:"locale,omitempty"`
+}
+
+func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
+	var req updateMeRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	p := *PrincipalFrom(r.Context())
+	if req.Locale != nil {
+		lsn, err := s.Accounts.SetLocale(r.Context(), p.UserID, *req.Locale)
+		noteWrite(r.Context(), lsn)
+		if err != nil {
+			respondError(w, r, err)
+			return
+		}
+		p.Locale = *req.Locale
+	}
+	s.handleMeAs(w, r, &p)
 }
 
 type switchOrgRequest struct {

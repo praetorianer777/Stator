@@ -34,17 +34,15 @@ type TabID = "colours" | "type" | "shape" | "cursors" | "icons" | "backdrop" | "
 type Mode = "light" | "dark";
 type Effect = "none" | "constellation" | "confetti";
 
-const e = t.themes.editor;
-
-const tabs: Array<{ value: TabID; label: string }> = [
-  { value: "colours", label: e.tabColours },
-  { value: "type", label: e.tabType },
-  { value: "shape", label: e.tabShape },
-  { value: "cursors", label: e.tabCursors },
-  { value: "icons", label: e.tabIcons },
-  { value: "backdrop", label: e.tabBackdrop },
-  { value: "files", label: e.tabFiles },
-  { value: "advanced", label: e.tabAdvanced },
+const tabs = (): Array<{ value: TabID; label: string }> => [
+  { value: "colours", label: t.themes.editor.tabColours },
+  { value: "type", label: t.themes.editor.tabType },
+  { value: "shape", label: t.themes.editor.tabShape },
+  { value: "cursors", label: t.themes.editor.tabCursors },
+  { value: "icons", label: t.themes.editor.tabIcons },
+  { value: "backdrop", label: t.themes.editor.tabBackdrop },
+  { value: "files", label: t.themes.editor.tabFiles },
+  { value: "advanced", label: t.themes.editor.tabAdvanced },
 ];
 
 const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg,.woff,.woff2,font/woff,font/woff2";
@@ -125,14 +123,14 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
       )}
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-4">
-          <Field label={e.name} id="field-theme-name" value={name} onChange={(ev) => setName(ev.target.value)} required className="w-64" />
+          <Field label={t.themes.editor.name} id="field-theme-name" value={name} onChange={(ev) => setName(ev.target.value)} required className="w-64" />
           <span className="flex items-center gap-2 pb-2 text-sm text-ink-muted">
-            <Switch checked={shared} onChange={setShared} label={e.shared} data-theme-shared={shared ? "true" : "false"} />
-            {e.shared}
+            <Switch checked={shared} onChange={setShared} label={t.themes.editor.shared} data-theme-shared={shared ? "true" : "false"} />
+            {t.themes.editor.shared}
           </span>
           <span className="flex items-center gap-2 pb-2 text-sm text-ink-muted">
-            <Switch checked={preview} onChange={setPreview} label={e.preview} data-action="preview-theme" />
-            {e.preview}
+            <Switch checked={preview} onChange={setPreview} label={t.themes.editor.preview} data-action="preview-theme" />
+            {t.themes.editor.preview}
           </span>
           <span className="ml-auto flex gap-2 pb-1">
             {theme && !theme.active && (
@@ -147,7 +145,7 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
               </Button>
             )}
             <Button type="submit" loading={saving} disabled={!name.trim()} data-action="save-theme">
-              {e.save}
+              {t.themes.editor.save}
             </Button>
           </span>
         </div>
@@ -164,7 +162,7 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
         />
       )}
 
-      <Tabs<TabID> label={e.tabs} value={tab} onChange={setTab} tabs={tabs.map((each) => ({ ...each, attrs: { "data-theme-tab": each.value } }))} />
+      <Tabs<TabID> label={t.themes.editor.tabs} value={tab} onChange={setTab} tabs={tabs().map((each) => ({ ...each, attrs: { "data-theme-tab": each.value } }))} />
 
       {tab === "colours" && <ColoursTab spec={spec} patch={patch} />}
       {tab === "type" && <TypeTab spec={spec} patch={patch} assets={assets} />}
@@ -188,9 +186,9 @@ function StartFrom({ chosen, onChoose }: { chosen: string; onChoose: (example: T
   if (examples.length === 0) return null;
   return (
     <Card className="p-4" data-theme-start>
-      <SectionTitle className="mb-3">{e.startFrom}</SectionTitle>
-      <div role="radiogroup" aria-label={e.startFrom} className="grid gap-3 sm:grid-cols-3">
-        <OptionCard title={e.blank} description={e.blankBody} checked={chosen === "blank"} onSelect={() => onChoose(null)} data-theme-example="blank" />
+      <SectionTitle className="mb-3">{t.themes.editor.startFrom}</SectionTitle>
+      <div role="radiogroup" aria-label={t.themes.editor.startFrom} className="grid gap-3 sm:grid-cols-3">
+        <OptionCard title={t.themes.editor.blank} description={t.themes.editor.blankBody} checked={chosen === "blank"} onSelect={() => onChoose(null)} data-theme-example="blank" />
         {examples.map((example) => (
           <OptionCard
             key={example.key}
@@ -222,15 +220,15 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <Segmented<Mode>
-          label={e.palette}
+          label={t.themes.editor.palette}
           value={mode}
           onChange={setMode}
           options={[
-            { value: "light", label: e.light, attrs: { "data-theme-mode": "light" } },
-            { value: "dark", label: e.dark, attrs: { "data-theme-mode": "dark" } },
+            { value: "light", label: t.themes.editor.light, attrs: { "data-theme-mode": "light" } },
+            { value: "dark", label: t.themes.editor.dark, attrs: { "data-theme-mode": "dark" } },
           ]}
         />
-        <span className="text-sm text-ink-muted">{overridden === 0 ? e.nothingChanged : e.changed(overridden, TOKEN_NAMES.length)}</span>
+        <span className="text-sm text-ink-muted">{overridden === 0 ? t.themes.editor.nothingChanged : t.themes.editor.changed(overridden, TOKEN_NAMES.length)}</span>
       </div>
       {TOKEN_GROUPS.map((group) => (
         <Card key={group.id} className="p-4">
@@ -258,7 +256,7 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
                   {value && (
                     <IconButton
                       icon={<Icon.X />}
-                      label={e.resetToken(label)}
+                      label={t.themes.editor.resetToken(label)}
                       size="sm"
                       onClick={() =>
                         patch((draft) => {
@@ -291,7 +289,7 @@ function AssetSelect({
 }) {
   return (
     <SelectInput aria-label={label} controlSize="sm" value={value ?? ""} onChange={(ev) => onChange(ev.target.value || undefined)} className="w-56">
-      <option value="">{assets.length === 0 ? e.noFiles : e.chooseFile}</option>
+      <option value="">{assets.length === 0 ? t.themes.editor.noFiles : t.themes.editor.chooseFile}</option>
       {assets.map((a) => (
         <option key={a.id} value={a.id}>
           {a.name}
@@ -307,10 +305,10 @@ function TypeTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asset
     <Card className="space-y-5 p-4">
       {(["sans", "mono"] as const).map((role) => {
         const font = spec.fonts[role];
-        const family = role === "sans" ? e.textFamily : e.codeFamily;
+        const family = role === "sans" ? t.themes.editor.textFamily : t.themes.editor.codeFamily;
         return (
           <div key={role} className="space-y-2" data-theme-font={role}>
-            <SectionTitle>{role === "sans" ? e.textFace : e.codeFace}</SectionTitle>
+            <SectionTitle>{role === "sans" ? t.themes.editor.textFace : t.themes.editor.codeFace}</SectionTitle>
             <div className="flex flex-wrap items-end gap-3">
               <Field
                 label={family}
@@ -324,12 +322,12 @@ function TypeTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asset
                   })
                 }
                 className="w-64"
-                hint={e.familyHint}
+                hint={t.themes.editor.familyHint}
               />
               <span className="space-y-1 pb-5">
-                <span className="block text-sm font-medium text-ink-muted">{e.file}</span>
+                <span className="block text-sm font-medium text-ink-muted">{t.themes.editor.file}</span>
                 <AssetSelect
-                  label={e.fontFile(family)}
+                  label={t.themes.editor.fontFile(family)}
                   assets={fonts}
                   value={font?.assetId}
                   onChange={(id) =>
@@ -352,7 +350,7 @@ function TypeTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asset
                     })
                   }
                 >
-                  {e.reset}
+                  {t.themes.editor.reset}
                 </Button>
               )}
             </div>
@@ -394,10 +392,10 @@ function ShapeTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <SectionTitle className="mb-3">{e.corners}</SectionTitle>
+        <SectionTitle className="mb-3">{t.themes.editor.corners}</SectionTitle>
         <div className="flex flex-wrap gap-4">
           <NumberField
-            label={e.radiusControl}
+            label={t.themes.editor.radiusControl}
             value={spec.shape.radiusControl}
             max={THEME_MAX_RADIUS}
             placeholder="6"
@@ -409,7 +407,7 @@ function ShapeTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
             }
           />
           <NumberField
-            label={e.radiusOverlay}
+            label={t.themes.editor.radiusOverlay}
             value={spec.shape.radiusOverlay}
             max={THEME_MAX_RADIUS}
             placeholder="8"
@@ -423,12 +421,12 @@ function ShapeTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
         </div>
       </Card>
       <Card className="p-4">
-        <SectionTitle className="mb-3">{e.shadows}</SectionTitle>
+        <SectionTitle className="mb-3">{t.themes.editor.shadows}</SectionTitle>
         <div className="space-y-3">
           {SHADOW_KEYS.map((key) => (
             <Field
               key={key}
-              label={e.shadowLabels[key] ?? key}
+              label={t.themes.editor.shadowLabels[key] ?? key}
               value={spec.shadows[key] ?? ""}
               placeholder="0 1px 2px rgb(0 0 0 / 0.1)"
               onChange={(ev) =>
@@ -451,7 +449,7 @@ function CursorsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; as
   const images = assets.filter(isImage);
   return (
     <Card className="p-4">
-      <p className="mb-4 text-sm text-ink-muted">{e.cursorsIntro(THEME_CURSOR_PX)}</p>
+      <p className="mb-4 text-sm text-ink-muted">{t.themes.editor.cursorsIntro(THEME_CURSOR_PX)}</p>
       <div className="space-y-3">
         {CURSOR_KINDS.map((each) => {
           const cursor = spec.cursors[each.kind];
@@ -460,9 +458,9 @@ function CursorsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; as
             <div key={each.kind} className="flex flex-wrap items-end gap-3" data-theme-cursor={each.kind}>
               <span className="w-28 pb-2 text-sm text-ink">{label}</span>
               <span className="space-y-1">
-                <span className="block text-sm font-medium text-ink-muted">{e.picture}</span>
+                <span className="block text-sm font-medium text-ink-muted">{t.themes.editor.picture}</span>
                 <AssetSelect
-                  label={e.cursorPicture(label)}
+                  label={t.themes.editor.cursorPicture(label)}
                   assets={images}
                   value={cursor?.assetId}
                   onChange={(id) =>
@@ -476,7 +474,7 @@ function CursorsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; as
               {cursor && (
                 <>
                   <NumberField
-                    label={e.pointX}
+                    label={t.themes.editor.pointX}
                     value={cursor.hotspotX}
                     max={THEME_MAX_HOTSPOT}
                     placeholder="0"
@@ -487,7 +485,7 @@ function CursorsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; as
                     }
                   />
                   <NumberField
-                    label={e.pointY}
+                    label={t.themes.editor.pointY}
                     value={cursor.hotspotY}
                     max={THEME_MAX_HOTSPOT}
                     placeholder="0"
@@ -514,8 +512,8 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
   return (
     <Card className="p-4">
       <div className="mb-4 flex flex-wrap items-end gap-3">
-        <Field label={e.findIcon} value={query} onChange={(ev) => setQuery(ev.target.value)} className="w-56" />
-        <p className="pb-2 text-sm text-ink-muted">{e.iconsIntro}</p>
+        <Field label={t.themes.editor.findIcon} value={query} onChange={(ev) => setQuery(ev.target.value)} className="w-56" />
+        <p className="pb-2 text-sm text-ink-muted">{t.themes.editor.iconsIntro}</p>
       </div>
       <div className="divide-y divide-border">
         {shown.map(({ name, Glyph }) => {
@@ -527,9 +525,9 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
                 {name}
               </span>
               <span className="space-y-1">
-                <span className="block text-sm font-medium text-ink-muted">{e.picture}</span>
+                <span className="block text-sm font-medium text-ink-muted">{t.themes.editor.picture}</span>
                 <AssetSelect
-                  label={e.iconPicture(name)}
+                  label={t.themes.editor.iconPicture(name)}
                   assets={images}
                   value={icon?.assetId}
                   onChange={(id) =>
@@ -541,7 +539,7 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
                 />
               </span>
               <Field
-                label={e.iconPaths(name)}
+                label={t.themes.editor.iconPaths(name)}
                 id={`field-icon-${name}`}
                 rows={2}
                 value={icon?.paths?.join("\n") ?? ""}
@@ -570,7 +568,7 @@ function IconsTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; asse
                     })
                   }
                 >
-                  {e.reset}
+                  {t.themes.editor.reset}
                 </Button>
               )}
             </div>
@@ -587,12 +585,12 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
   const effect: Effect = spec.effect === "constellation" || spec.effect === "confetti" ? spec.effect : "none";
   return (
     <Card className="p-4">
-      <p className="mb-4 text-sm text-ink-muted">{e.backdropIntro}</p>
+      <p className="mb-4 text-sm text-ink-muted">{t.themes.editor.backdropIntro}</p>
       <div className="flex flex-wrap items-end gap-4">
         <span className="space-y-1">
-          <span className="block text-sm font-medium text-ink-muted">{e.picture}</span>
+          <span className="block text-sm font-medium text-ink-muted">{t.themes.editor.picture}</span>
           <AssetSelect
-            label={e.backdropPicture}
+            label={t.themes.editor.backdropPicture}
             assets={images}
             value={backdrop?.assetId}
             onChange={(id) =>
@@ -605,7 +603,7 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
         {backdrop && (
           <span className="pb-0.5">
             <Segmented<"cover" | "tile">
-              label={e.fit}
+              label={t.themes.editor.fit}
               size="sm"
               value={backdrop.fit}
               onChange={(fit) =>
@@ -614,16 +612,16 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
                 })
               }
               options={[
-                { value: "cover", label: e.fitCover },
-                { value: "tile", label: e.fitTile },
+                { value: "cover", label: t.themes.editor.fitCover },
+                { value: "tile", label: t.themes.editor.fitTile },
               ]}
             />
           </span>
         )}
       </div>
-      <p className="mt-6 mb-2 text-sm text-ink-muted">{e.effectIntro}</p>
+      <p className="mt-6 mb-2 text-sm text-ink-muted">{t.themes.editor.effectIntro}</p>
       <Segmented<Effect>
-        label={e.effect}
+        label={t.themes.editor.effect}
         size="sm"
         value={effect}
         onChange={(next) =>
@@ -633,9 +631,9 @@ function BackdropTab({ spec, patch, assets }: { spec: ThemeSpec; patch: Patch; a
           })
         }
         options={[
-          { value: "none", label: e.effectNone, attrs: { "data-theme-effect": "none" } },
-          { value: "constellation", label: e.effectConstellation, attrs: { "data-theme-effect": "constellation" } },
-          { value: "confetti", label: e.effectConfetti, attrs: { "data-theme-effect": "confetti" } },
+          { value: "none", label: t.themes.editor.effectNone, attrs: { "data-theme-effect": "none" } },
+          { value: "constellation", label: t.themes.editor.effectConstellation, attrs: { "data-theme-effect": "constellation" } },
+          { value: "confetti", label: t.themes.editor.effectConfetti, attrs: { "data-theme-effect": "confetti" } },
         ]}
       />
     </Card>
@@ -650,7 +648,7 @@ function FilesTab({ theme, spec, onNotice }: { theme?: Theme; spec: ThemeSpec; o
   if (!theme) {
     return (
       <Card className="p-4">
-        <p className="text-sm text-ink-muted">{e.saveFirst}</p>
+        <p className="text-sm text-ink-muted">{t.themes.editor.saveFirst}</p>
       </Card>
     );
   }
@@ -668,7 +666,7 @@ function FilesTab({ theme, spec, onNotice }: { theme?: Theme; spec: ThemeSpec; o
       return;
     }
     setTooBig(false);
-    uploadAsset.mutate({ id: theme!.id, file }, { onSuccess: (made) => onNotice(e.added(made.asset.name)) });
+    uploadAsset.mutate({ id: theme!.id, file }, { onSuccess: (made) => onNotice(t.themes.editor.added(made.asset.name)) });
   }
   return (
     <Card className="space-y-3 p-4">
@@ -681,40 +679,40 @@ function FilesTab({ theme, spec, onNotice }: { theme?: Theme; spec: ThemeSpec; o
           onClick={() => fileInput.current?.click()}
           data-action="add-theme-file"
         >
-          {e.addFile}
+          {t.themes.editor.addFile}
         </Button>
         <input
           ref={fileInput}
           type="file"
           accept={UPLOAD_ACCEPT}
           className="hidden"
-          aria-label={e.chooseThemeFile}
+          aria-label={t.themes.editor.chooseThemeFile}
           data-theme-file-input
           onChange={(ev) => onFile(ev.target.files?.[0])}
         />
-        <p className="text-sm text-ink-subtle">{e.filesHint}</p>
+        <p className="text-sm text-ink-subtle">{t.themes.editor.filesHint}</p>
       </div>
-      {tooBig && <ErrorBanner>{e.tooBig}</ErrorBanner>}
+      {tooBig && <ErrorBanner>{t.themes.editor.tooBig}</ErrorBanner>}
       {uploadAsset.error && <ErrorBanner>{uploadAsset.error.message}</ErrorBanner>}
       {deleteAsset.error && <ErrorBanner>{deleteAsset.error.message}</ErrorBanner>}
       {theme.assets.length === 0 ? (
-        <p className="text-sm text-ink-muted">{e.noFilesYet}</p>
+        <p className="text-sm text-ink-muted">{t.themes.editor.noFilesYet}</p>
       ) : (
         <ul className="divide-y divide-border">
           {theme.assets.map((a) => (
             <li key={a.id} className="flex items-center gap-3 py-2 text-sm" data-theme-asset={a.name}>
               <span className="min-w-0 flex-1 truncate text-ink">{a.name}</span>
               <Tag>{a.contentType}</Tag>
-              <span className="text-ink-subtle tabular-nums">{e.kilobytes(Math.max(1, Math.round(a.size / KILOBYTE)))}</span>
-              {used.has(a.id) && <Tag>{e.inUse}</Tag>}
+              <span className="text-ink-subtle tabular-nums">{t.themes.editor.kilobytes(Math.max(1, Math.round(a.size / KILOBYTE)))}</span>
+              {used.has(a.id) && <Tag>{t.themes.editor.inUse}</Tag>}
               <IconButton
                 icon={<Icon.Trash />}
-                label={e.removeFile(a.name)}
+                label={t.themes.editor.removeFile(a.name)}
                 size="sm"
                 disabled={used.has(a.id) || deleteAsset.isPending}
                 onClick={() => {
-                  if (window.confirm(e.confirmRemoveFile(a.name))) {
-                    deleteAsset.mutate({ id: theme.id, assetId: a.id }, { onSuccess: () => onNotice(e.removed(a.name)) });
+                  if (window.confirm(t.themes.editor.confirmRemoveFile(a.name))) {
+                    deleteAsset.mutate({ id: theme.id, assetId: a.id }, { onSuccess: () => onNotice(t.themes.editor.removed(a.name)) });
                   }
                 }}
                 data-action="remove-theme-file"
@@ -732,7 +730,7 @@ function AdvancedTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
   return (
     <Card className="p-4">
       <Field
-        label={e.extraCSS}
+        label={t.themes.editor.extraCSS}
         rows={THEME_CSS_ROWS}
         value={spec.css}
         onChange={(ev) =>
@@ -741,7 +739,7 @@ function AdvancedTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
           })
         }
         className="font-mono"
-        hint={e.cssHint(Math.round(size / KILOBYTE), THEME_CSS_MAX_BYTES / KILOBYTE)}
+        hint={t.themes.editor.cssHint(Math.round(size / KILOBYTE), THEME_CSS_MAX_BYTES / KILOBYTE)}
         data-theme-css=""
       />
     </Card>

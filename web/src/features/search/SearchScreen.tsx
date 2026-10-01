@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { useId, useState, type FormEvent } from "react";
 import { useMe } from "@/api/auth";
 import { ApiError } from "@/api/client";
@@ -53,7 +54,7 @@ function problem(error: Error): string {
   return error instanceof ApiError && error.status === 422 ? error.message : t.search.failed;
 }
 
-const changedOn = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+const changedOn = localDateFormat({ dateStyle: "medium" });
 
 /** The full search: words, the filters beside them, and the hits a page at a time. */
 export function SearchScreen({ address, onChange }: { address: SearchAddress; onChange: (next: SearchAddress, replace: boolean) => void }) {

@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useStopWatching, useWatches, type Watch } from "@/api/watching";
@@ -7,7 +8,7 @@ import { WATCHES_PAGE_SIZE } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 
-const since = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+const since = localDateFormat({ dateStyle: "medium" });
 
 function named(watch: Watch): string {
   return watch.page ? watch.page.title : t.watch.spaceNamed(watch.spaceName);

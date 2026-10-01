@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -23,7 +24,7 @@ export interface HistorySearch {
   offset?: number;
 }
 
-const publishedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const publishedAt = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 const when = (iso: string) => publishedAt.format(new Date(iso));
 
 /** A page's published versions: listed, read one at a time, compared and restored. */

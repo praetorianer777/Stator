@@ -1,9 +1,10 @@
+import { localDateFormat } from "@/lib/format";
 import { useState } from "react";
 import { useAdmitJoinRequest, useDeclineJoinRequest, useJoinRequests, type JoinRequest } from "@/api/auth";
 import { Button, Card, ErrorBanner } from "@/components/ui";
 import { t } from "@/i18n";
 
-const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
 /**
  * People the identity provider vouched for who found no membership here.
