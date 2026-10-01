@@ -48,59 +48,58 @@ endpoint #37 brings, once there is one. Telling owners about their stale
 pages is left for later; the verification reminder already tells them when a
 check runs out.
 
-## 2026-10-01: A share tells only who may already read, and refuses whole rather than in part
+## 2026-10-01: An archive is marks on the pages, frozen by the edit rule, and kept by space administrators
 
-Sharing a page (#67) sends it with a note to people and groups. It never
-grants anything: the page's restrictions and the space's permissions decide
-who may read, and a share that let somebody in would be a second way to
-change them that nobody administering the space could see. So the dialog
-says who can already view the page, the picker marks whoever may not, and a
-share naming such a person is refused with a sentence naming them, saying
-what to do (remove them, or ask an administrator of the space or somebody
-who may change the restrictions), and sending nothing to anybody. Sending to
-the rest would have left the sharer to notice who was missing; a refusal is
-noticed. The person refused is told nothing, so a share leaks nothing about a
-page to somebody who may not read it. Asking for access on their behalf was
-not built: the issue does not ask for it, and there is no request flow yet
-for it to join.
+Archiving (#37) works as the trash does: the page archived and every page
+below it still in the tree carry `archived_at` and `archive_id`, the page
+archived, which makes them one item of the space's archive, and nothing
+moves. A space carries `archived_at` of its own. A table of archived pages
+would have copied every column a page has and lost the place, as a trash
+table would have, and a mark on the top page alone would have made every
+list walk up the tree to learn what it may show. With the marks on each
+page, the tree, search, quick search and the home page's functions leave
+archived pages out with one condition on the row they already read. Search
+and the list of spaces include them when asked (`archived=true`, as
+Armature lists archived projects), and each space's Archive tab lists its
+items, which is how an archived page is found again.
 
-A group is different: it names people the sharer usually cannot list, and
-one member without access should not stop the rest hearing of the page. A
-group tells those of its members who may view the page, the picker says how
-many that is, and only a group none of whose members may view it is refused
-like a person.
+Archived content is read only, and the database says so in the one place
+every write already asks: `perm_page_holds`, behind edit and delete, and
+`perm_page_commentable` are false for a page that is archived or in an
+archived space. Every policy and guard that asks them (versions, drafts,
+the page row, new pages below, files, labels, restrictions, owners and
+verification, comments, reactions, passages, the trash) then refuses
+without a rule of its own, and the service's `perm.ForPage` reads the same
+state and answers 409 `archived` with a sentence that says to unarchive
+first, rather than a 403 that would send the reader to ask for a permission
+they already hold. Viewing, stars, watches and recent pages are not
+changes of the page and stay. `page_place`, which administrators may use to
+move pages they cannot edit, refuses to move an archived page out of its
+item or anything under an archived page. The access inspector shows the
+archive as a step of edit, delete and comment, naming the page archived.
 
-A share is a row, `page_share`, with the people it tells in
-`page_share_recipient`, rather than a list inside the outbox event as
-mentions are. The row is what the brake counts, what the worker reads whom
-to tell from, and what the restrictive policies hold to the rules: the app
-role may make a share only as the actor, of a published page out of the
-trash they may view, and name only members other than themselves who may
-view it; nobody reads anybody else's shares, and nobody changes or deletes
-one. An outbox event about a share must name one the actor made in the same
-transaction (its `created_at` is the transaction's `now()`), so a forged
-event cannot send an old share again. The worker writes each row acting for
-its recipient as for every kind, so access lost between the share and its
-delivery tells nobody.
+Who archives is who administers the space, for pages and for the space,
+as Armature's project administrators archive a project. Archiving takes
+the right to change pages from everybody who has it, including people on
+a page's edit list, which is more than delete does, and it is undone by
+the same people; holding delete or edit alone would let one editor freeze
+a colleague's work. The marks are written only by `page_archive` and
+`page_unarchive`, security definer functions that check the actor
+administers the space and may view the page; a trigger refuses the app
+role any other change of them, and stamps who archived a space and when.
+Only the top of an item is unarchived, and only while the page above it is
+not archived, so a page that may change never hangs under one that may not;
+a page restored from the trash under an archived page goes under the home
+page for the same reason. The home page stands for the space, which is
+archived as a whole.
 
-One person shares at most `share.MaxPerHour`, 30, pages an hour in an
-organization. The service counts the last hour to say when to try again; a
-trigger holds the same limit under an advisory lock per sharer, so two
-shares at once cannot both slip under it, and `page_share_per_hour()` names
-the number in SQL, which a test holds to the Go constant. Valkey would have
-been the obvious place for a rate limit, but it is optional here, and the
-rows are already where the shares are.
-
-The note is at most 200 characters, `notify.MaxExcerptLength`, so the
-notification carries it whole and the mail needs no field of its own. The
-kind is `shared`, second in `notify.Kinds` after `mentioned`, since a share
-too is addressed to one person; it has its own switches, on by default.
-
-Each share is written to the audit log as `page.shared`, in its own
-transaction, with the page, the people and groups named and how many were
-told. The note is not recorded: it is a message to its readers, which the
-administrators reading the log have no claim to, and it may hold anything.
-A refused share records nothing, since nothing happened.
+Deleting a page above an archived one takes the archived pages to the trash
+with their marks, as it takes pages the deleter cannot see: the trash is
+the space's, and a restore brings them back archived. Archiving or
+unarchiving does not change a page's `updated_at`, since no word of it
+changed, and is written to the audit log, as `page.archived` and
+`page.unarchived` with the number of pages, or `space.archived` and
+`space.unarchived`.
 
 ## 2026-10-01: A verification is a dated row beside the page, read as expired, and told by the worker
 

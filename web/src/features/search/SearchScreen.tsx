@@ -10,6 +10,7 @@ import { SEARCH_PAGE_SIZE, SEARCH_QUERY_MAX_LENGTH } from "@/config";
 import { LabelCombobox } from "@/features/labels/LabelCombobox";
 import { LabelLink } from "@/features/labels/PageLabels";
 import { VerifiedMark } from "@/features/stewardship/VerificationBadge";
+import { ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 import { Highlight } from "./Highlight";
@@ -24,10 +25,12 @@ export interface SearchAddress {
   updatedAfter?: string;
   updatedBefore?: string;
   sort?: SearchSort;
+  /** Archived pages and spaces are left out unless this is set. */
+  archived?: boolean;
   page?: number;
 }
 
-const FILTERS = ["space", "type", "label", "author", "updatedAfter", "updatedBefore"] as const;
+const FILTERS = ["space", "type", "label", "author", "updatedAfter", "updatedBefore", "archived"] as const;
 
 const list = (value: string | undefined): string[] =>
   (value ?? "")
@@ -46,6 +49,7 @@ function request(address: SearchAddress): SearchRequest {
     updatedAfter: address.updatedAfter,
     updatedBefore: address.updatedBefore,
     sort: address.sort,
+    archived: address.archived === true,
     offset: ((address.page ?? 1) - 1) * SEARCH_PAGE_SIZE,
   };
 }
@@ -168,6 +172,7 @@ function HitRow({ hit }: { hit: Hit }) {
           <Highlight segments={title} />
         </PageLink>
         {hit.type === "page" && hit.verified && <VerifiedMark />}
+        {hit.archived && <ArchivedMark />}
         {hit.type !== "page" && <Tag>{t.search.typeTag[hit.type]}</Tag>}
         {hit.labels.map((label) => (
           <LabelLink key={label} name={label} />
@@ -190,7 +195,7 @@ function HitRow({ hit }: { hit: Hit }) {
 
 function Filters({ address, onFilter, filtered }: { address: SearchAddress; onFilter: (patch: Partial<SearchAddress>) => void; filtered: boolean }) {
   const headingId = useId();
-  const { data: spaces } = useSpaces();
+  const { data: spaces } = useSpaces(address.archived === true);
   const { data: me } = useMe();
   const { data: people } = usePeople();
   const types = list(address.type);
@@ -207,7 +212,15 @@ function Filters({ address, onFilter, filtered }: { address: SearchAddress; onFi
           <Button
             variant="link"
             onClick={() =>
-              onFilter({ space: undefined, type: undefined, label: undefined, author: undefined, updatedAfter: undefined, updatedBefore: undefined })
+              onFilter({
+                space: undefined,
+                type: undefined,
+                label: undefined,
+                author: undefined,
+                updatedAfter: undefined,
+                updatedBefore: undefined,
+                archived: undefined,
+              })
             }
             data-action="clear-filters"
           >
@@ -279,6 +292,12 @@ function Filters({ address, onFilter, filtered }: { address: SearchAddress; onFi
         min={address.updatedAfter}
         onChange={(e) => onFilter({ updatedBefore: e.target.value || undefined })}
         data-filter="updated-before"
+      />
+      <Checkbox
+        label={t.archive.searchFilter}
+        checked={address.archived === true}
+        onChange={(e) => onFilter({ archived: e.target.checked || undefined })}
+        data-filter="archived"
       />
       <Select
         label={t.search.sort}

@@ -26,7 +26,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
-	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
@@ -77,8 +76,6 @@ type Server struct {
 	Home  *home.Service
 	// Stale reads the stale content report for administrators.
 	Stale *stale.Service
-	// Shares sends pages to people who may read them, with a note.
-	Shares *share.Service
 	// Perms answers the permission screens and the use check in front of
 	// every route; nil lets everybody who is a member through.
 	Perms *perm.Service
@@ -255,6 +252,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/spaces/{spaceKey}/outline", s.handleSpaceOutline)
 			r.Get("/spaces/{spaceKey}/permissions", s.handleListSpacePermissions)
 			r.Put("/spaces/{spaceKey}/permissions", s.handleSetSpacePermissions)
+			r.Put("/spaces/{spaceKey}/archive", s.handleArchiveSpace)
+			r.Delete("/spaces/{spaceKey}/archive", s.handleUnarchiveSpace)
+			r.Get("/spaces/{spaceKey}/archived-pages", s.handleListArchivedPages)
 			r.Get("/spaces/{spaceKey}/trash", s.handleListTrash)
 			r.Delete("/spaces/{spaceKey}/trash", s.handleEmptyTrash)
 			r.Post("/spaces/{spaceKey}/trash/{pageID}/restore", s.handleRestorePage)
@@ -265,6 +265,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/pages/{pageID}", s.handleTrashPage)
 			r.Post("/pages/{pageID}/move", s.handleMovePage)
 			r.Post("/pages/{pageID}/copy", s.handleCopyPage)
+			r.Put("/pages/{pageID}/archive", s.handleArchivePage)
+			r.Delete("/pages/{pageID}/archive", s.handleUnarchivePage)
 			r.Get("/pages/{pageID}/below", s.handleListPagesBelow)
 			r.Get("/pages/{pageID}/export", s.handleExportPage)
 			r.Get("/pages/{pageID}/markdown", s.handleGetPageMarkdown)
@@ -313,9 +315,6 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/pages/{pageID}/watch", s.handleUnwatchPage)
 			r.Get("/pages/{pageID}/watchers", s.handleListWatchers)
 			r.Get("/pages/{pageID}/mentionable", s.handleListMentionable)
-			r.Post("/pages/{pageID}/share", s.handleSharePage)
-			r.Get("/pages/{pageID}/share/recipients", s.handleShareRecipients)
-			r.Get("/pages/{pageID}/viewers", s.handleListViewers)
 			r.Put("/spaces/{spaceKey}/watch", s.handleWatchSpace)
 			r.Delete("/spaces/{spaceKey}/watch", s.handleUnwatchSpace)
 			r.Get("/watches", s.handleListWatches)

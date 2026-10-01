@@ -30,6 +30,7 @@ const hit = (over: Partial<Hit> = {}): Hit => ({
   ],
   labels: [],
   verified: false,
+  archived: false,
   updatedAt: "2026-09-29T08:00:00Z",
   updatedByName: "Ada Lovelace",
   ...over,

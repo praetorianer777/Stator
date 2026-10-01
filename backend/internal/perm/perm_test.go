@@ -112,9 +112,9 @@ func TestRestrictionsInheritAndNarrow(t *testing.T) {
 		{"restrictions only narrow the space", member(SpaceView), []ChainLink{link(true, true, true, true)},
 			PageAccess{View: true, ViewRestricted: true, EditRestricted: true}},
 		{"a space administrator is not bound", member(SpaceAdminister), []ChainLink{link(true, false, true, false)},
-			PageAccess{View: true, Edit: true, Delete: true, Comment: true, ViewRestricted: true, EditRestricted: true}},
+			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Archive: true, ViewRestricted: true, EditRestricted: true}},
 		{"an organization administrator is not bound", Facts{Member: true, Role: auth.RoleAdmin}, []ChainLink{free, link(true, false, true, false)},
-			PageAccess{View: true, Edit: true, Delete: true, Comment: true, ViewRestricted: true, EditRestricted: true}},
+			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Archive: true, ViewRestricted: true, EditRestricted: true}},
 		{"nobody sees another's unpublished page", Facts{Member: true, Role: auth.RoleOwner}, []ChainLink{free, {HiddenDraft: true}},
 			PageAccess{}},
 		{"no chain is no page", member(openSpace...), nil, PageAccess{}},
@@ -174,7 +174,7 @@ func TestPickerLimits(t *testing.T) {
 			t.Errorf("PickerLimit(%d) = %d, want %d", in, got, want)
 		}
 	}
-	if got := LikePrefix(`50%_a\`); got != `50\%\_a\\%` {
-		t.Errorf("LikePrefix escapes to %q", got)
+	if got := likePrefix(`50%_a\`); got != `50\%\_a\\%` {
+		t.Errorf("likePrefix escapes to %q", got)
 	}
 }

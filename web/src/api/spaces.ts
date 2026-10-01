@@ -15,10 +15,11 @@ export function spaceQueryKey(key: string) {
   return [...spacesQueryKey, key.toUpperCase()] as const;
 }
 
-export function useSpaces() {
+/** The spaces the reader may see; archived ones only when asked for. */
+export function useSpaces(includeArchived = false) {
   return useQuery({
-    queryKey: spacesQueryKey,
-    queryFn: async (): Promise<Space[]> => (await api.GET("/spaces")).data!.spaces,
+    queryKey: includeArchived ? [...spacesQueryKey, { archived: true }] : spacesQueryKey,
+    queryFn: async (): Promise<Space[]> => (await api.GET("/spaces", { params: { query: includeArchived ? { archived: true } : {} } })).data!.spaces,
   });
 }
 

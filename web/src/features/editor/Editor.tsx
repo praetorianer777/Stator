@@ -147,6 +147,7 @@ export function Editor({
       },
     }),
     content: (value ?? emptyDoc) as JSONContent,
+    autofocus: autoFocus ? "end" : false,
     editorProps: {
       attributes: {
         id,
@@ -163,14 +164,6 @@ export function Editor({
       onChangeRef.current(isEmptyDoc(json) ? null : json);
     },
   });
-
-  // TipTap's own autofocus runs on a timer set by the render that builds the
-  // editor. React may commit that render later, as when Suspense holds back
-  // the editor's first showing, and the focus then lands on a view that is
-  // not in the page yet. An effect runs only once it is.
-  useEffect(() => {
-    if (autoFocus && editor && !editor.isDestroyed) editor.commands.focus("end");
-  }, [autoFocus, editor]);
 
   const mentionQuery = mention.open ? mention.open.query : null;
   const replaceMentions = mention.replace;

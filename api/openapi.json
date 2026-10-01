@@ -16,6 +16,9 @@
       "name": "access"
     },
     {
+      "name": "archive"
+    },
+    {
       "name": "armature"
     },
     {
@@ -65,9 +68,6 @@
     },
     {
       "name": "search"
-    },
-    {
-      "name": "sharing"
     },
     {
       "name": "spaces"
@@ -1152,7 +1152,10 @@
                 "page.owner_removed",
                 "page.verified",
                 "page.unverified",
-                "page.shared"
+                "page.archived",
+                "page.unarchived",
+                "space.archived",
+                "space.unarchived"
               ]
             }
           },
@@ -1300,7 +1303,10 @@
                 "page.owner_removed",
                 "page.verified",
                 "page.unverified",
-                "page.shared"
+                "page.archived",
+                "page.unarchived",
+                "space.archived",
+                "space.unarchived"
               ]
             }
           },
@@ -3430,6 +3436,104 @@
         }
       }
     },
+    "/pages/{pageID}/archive": {
+      "delete": {
+        "operationId": "unarchivePage",
+        "summary": "Unarchive a page and the pages archived with it; refused for a page archived with one above it. For the space's administrators.",
+        "tags": [
+          "archive"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  },
+                  "required": [
+                    "page"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "archivePage",
+        "summary": "Archive a page with every page below it: they stay readable, leave the tree, search and the home page, and none of them changes. For the space's administrators; archiving it again is no change.",
+        "tags": [
+          "archive"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  },
+                  "required": [
+                    "page"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/armature-links": {
       "get": {
         "operationId": "listArmatureLinks",
@@ -5172,172 +5276,6 @@
         }
       }
     },
-    "/pages/{pageID}/share": {
-      "post": {
-        "operationId": "sharePage",
-        "summary": "Send a published page, with an optional note, to people and groups who may view it; refused with cannot_view, sending nothing, when it is closed to any of them, and with rate_limited past the hourly limit.",
-        "tags": [
-          "sharing"
-        ],
-        "parameters": [
-          {
-            "name": "pageID",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ShareInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "share": {
-                      "$ref": "#/components/schemas/Share"
-                    }
-                  },
-                  "required": [
-                    "share"
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pages/{pageID}/share/recipients": {
-      "get": {
-        "operationId": "shareRecipients",
-        "summary": "Members and groups to share a page with, each saying whether, or how many of its members, may view it; only those are told.",
-        "tags": [
-          "sharing"
-        ],
-        "parameters": [
-          {
-            "name": "pageID",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "q",
-            "in": "query",
-            "description": "Words the name, or a person's email, starts with.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "1 to 50; 20 when absent.",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "groups": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/RecipientGroup"
-                      }
-                    },
-                    "people": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Recipient"
-                      }
-                    }
-                  },
-                  "required": [
-                    "groups",
-                    "people"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/pages/{pageID}/star": {
       "delete": {
         "operationId": "unstarPage",
@@ -5712,90 +5650,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pages/{pageID}/viewers": {
-      "get": {
-        "operationId": "listViewers",
-        "summary": "Who may view a page, by name, and whether that is every member of the organization.",
-        "tags": [
-          "sharing"
-        ],
-        "parameters": [
-          {
-            "name": "pageID",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "1 to 100; 20 when absent.",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "everyone": {
-                      "type": "boolean"
-                    },
-                    "limit": {
-                      "type": "integer"
-                    },
-                    "offset": {
-                      "type": "integer"
-                    },
-                    "total": {
-                      "type": "integer"
-                    },
-                    "viewers": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Person"
-                      }
-                    }
-                  },
-                  "required": [
-                    "everyone",
-                    "limit",
-                    "offset",
-                    "total",
-                    "viewers"
-                  ]
                 }
               }
             }
@@ -6404,9 +6258,19 @@
     "/spaces": {
       "get": {
         "operationId": "listSpaces",
-        "summary": "Every space the caller may see, by name.",
+        "summary": "Every space the caller may see, by name; archived ones only when asked for.",
         "tags": [
           "spaces"
+        ],
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "true to list archived spaces too; false when absent.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -6610,6 +6474,154 @@
                   },
                   "required": [
                     "space"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/archive": {
+      "delete": {
+        "operationId": "unarchiveSpace",
+        "summary": "Unarchive a space; one that is not archived is no change. For the space's administrators.",
+        "tags": [
+          "archive"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "space": {
+                      "$ref": "#/components/schemas/Space"
+                    }
+                  },
+                  "required": [
+                    "space"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "archiveSpace",
+        "summary": "Archive a space: it stays readable, leaves the space list, search and the home page, and none of its pages changes. For the space's administrators; archiving it again is no change.",
+        "tags": [
+          "archive"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "space": {
+                      "$ref": "#/components/schemas/Space"
+                    }
+                  },
+                  "required": [
+                    "space"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/archived-pages": {
+      "get": {
+        "operationId": "listArchivedPages",
+        "summary": "The space's archive: each archived page the caller may view, with the pages archived with it counted, the latest first.",
+        "tags": [
+          "archive"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArchiveItem"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
                   ]
                 }
               }
@@ -8722,7 +8734,8 @@
               "list",
               "view",
               "published",
-              "home"
+              "home",
+              "archived"
             ]
           },
           "list": {
@@ -8877,6 +8890,70 @@
           "quote"
         ]
       },
+      "Archive": {
+        "type": "object",
+        "properties": {
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archivedByName": {
+            "type": "string"
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Ref"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "space": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "page",
+          "space",
+          "archivedAt",
+          "archivedByName"
+        ]
+      },
+      "ArchiveItem": {
+        "type": "object",
+        "properties": {
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archivedByName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pages": {
+            "type": "integer"
+          },
+          "parentTitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "archivedAt",
+          "archivedByName",
+          "pages",
+          "parentTitle"
+        ]
+      },
       "Asset": {
         "type": "object",
         "properties": {
@@ -9008,7 +9085,10 @@
               "page.owner_removed",
               "page.verified",
               "page.unverified",
-              "page.shared"
+              "page.archived",
+              "page.unarchived",
+              "space.archived",
+              "space.unarchived"
             ]
           },
           "actorId": {
@@ -9094,7 +9174,10 @@
                 "page.owner_removed",
                 "page.verified",
                 "page.unverified",
-                "page.shared"
+                "page.archived",
+                "page.unarchived",
+                "space.archived",
+                "space.unarchived"
               ]
             }
           },
@@ -10020,6 +10103,9 @@
       "Hit": {
         "type": "object",
         "properties": {
+          "archived": {
+            "type": "boolean"
+          },
           "attachmentId": {
             "type": [
               "string",
@@ -10083,6 +10169,7 @@
           "snippet",
           "labels",
           "verified",
+          "archived",
           "updatedAt",
           "updatedByName"
         ]
@@ -10752,7 +10839,6 @@
             "type": "string",
             "enum": [
               "mentioned",
-              "shared",
               "replied",
               "commented",
               "resolved",
@@ -10980,6 +11066,16 @@
               "$ref": "#/components/schemas/Ref"
             }
           },
+          "archived": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Archive"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "body": {
             "description": "A JSON value."
           },
@@ -11106,6 +11202,7 @@
           "reactions",
           "owner",
           "verification",
+          "archived",
           "createdByName",
           "createdAt",
           "updatedByName",
@@ -11115,6 +11212,9 @@
       "PageCan": {
         "type": "object",
         "properties": {
+          "archive": {
+            "type": "boolean"
+          },
           "comment": {
             "type": "boolean"
           },
@@ -11132,7 +11232,8 @@
           "edit",
           "delete",
           "restrict",
-          "comment"
+          "comment",
+          "archive"
         ]
       },
       "PageCreateInput": {
@@ -11630,58 +11731,6 @@
           "visitedAt"
         ]
       },
-      "Recipient": {
-        "type": "object",
-        "properties": {
-          "canView": {
-            "type": "boolean"
-          },
-          "email": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "email",
-          "canView"
-        ]
-      },
-      "RecipientGroup": {
-        "type": "object",
-        "properties": {
-          "fromProvider": {
-            "type": "boolean"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "memberCount": {
-            "type": "integer"
-          },
-          "name": {
-            "type": "string"
-          },
-          "viewers": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "memberCount",
-          "fromProvider",
-          "viewers"
-        ]
-      },
       "Ref": {
         "type": "object",
         "properties": {
@@ -12029,63 +12078,19 @@
           }
         }
       },
-      "Share": {
-        "type": "object",
-        "properties": {
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "message": {
-            "type": "string"
-          },
-          "pageId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "people": {
-            "type": "integer"
-          },
-          "recipients": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Subject"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "pageId",
-          "recipients",
-          "people",
-          "message",
-          "createdAt"
-        ]
-      },
-      "ShareInput": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          },
-          "recipients": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SubjectRef"
-            }
-          }
-        },
-        "required": [
-          "recipients"
-        ]
-      },
       "Space": {
         "type": "object",
         "properties": {
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "archivedByName": {
+            "type": "string"
+          },
           "can": {
             "$ref": "#/components/schemas/Can"
           },
@@ -12129,6 +12134,8 @@
           "homePageId",
           "createdAt",
           "updatedAt",
+          "archivedAt",
+          "archivedByName",
           "can",
           "watching",
           "starred"
@@ -12488,14 +12495,10 @@
           },
           "resolved": {
             "type": "boolean"
-          },
-          "shared": {
-            "type": "boolean"
           }
         },
         "required": [
           "mentioned",
-          "shared",
           "replied",
           "commented",
           "resolved",
@@ -12780,6 +12783,9 @@
       "TreeNode": {
         "type": "object",
         "properties": {
+          "archived": {
+            "type": "boolean"
+          },
           "hasChildren": {
             "type": "boolean"
           },
@@ -12806,6 +12812,7 @@
           "parentId",
           "title",
           "hasChildren",
+          "archived",
           "unpublished",
           "restricted"
         ]

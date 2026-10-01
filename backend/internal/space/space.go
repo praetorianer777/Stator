@@ -46,6 +46,10 @@ type Space struct {
 	HomePageID  uuid.UUID `json:"homePageId"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
+	// ArchivedAt is when the space was archived, null while it is not; an
+	// archived space stays readable and none of its pages changes.
+	ArchivedAt     *time.Time `json:"archivedAt"`
+	ArchivedByName string     `json:"archivedByName"`
 	// Can says what the reader may do here, so the interface offers only that.
 	Can perm.Can `json:"can"`
 	// Watching says whether the caller watches the whole space.

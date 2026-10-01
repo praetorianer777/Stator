@@ -51,10 +51,13 @@ const (
 	StepPublished StepKind = "published"
 	// StepHome is the page being a space's home page, which never goes to the trash.
 	StepHome StepKind = "home"
+	// StepArchived is the page or its space being archived, which nothing
+	// changes until it is unarchived; its page is the page archived, if any.
+	StepArchived StepKind = "archived"
 )
 
 // StepKinds lists every StepKind, for the API document.
-var StepKinds = []StepKind{StepOrgAdmin, StepUse, StepSpace, StepUnpublished, StepList, StepView, StepPublished, StepHome}
+var StepKinds = []StepKind{StepOrgAdmin, StepUse, StepSpace, StepUnpublished, StepList, StepView, StepPublished, StepHome, StepArchived}
 
 // ListKind is which of a page's two lists a restriction is on.
 type ListKind string
@@ -140,6 +143,10 @@ type InspectFacts struct {
 	Published bool
 	// Trashable is page_trashable, false for a space's home page.
 	Trashable bool
+	// Archived says whether the page or its space is archived; ArchivedWith
+	// is the page archived, this one or one above it.
+	Archived     Archived
+	ArchivedWith *AccessPage
 	// Verdict is the database's own answer for each right.
 	Verdict map[Right]bool
 }
@@ -157,12 +164,16 @@ func Explain(f InspectFacts) []AccessRight {
 	view.Steps = append(view.Steps, f.lists(ListView)...)
 
 	viewed := step(AccessStep{Kind: StepView, Passed: f.Verdict[RightView]})
+	var frozen []AccessStep
+	if f.Archived != NotArchived {
+		frozen = append(frozen, step(AccessStep{Kind: StepArchived, Page: f.ArchivedWith}))
+	}
 	out := []AccessRight{view}
 	for _, r := range []struct {
 		right Right
 		needs SpacePermission
 	}{{RightEdit, SpaceAddPages}, {RightDelete, SpaceDelete}} {
-		a := AccessRight{Right: r.right, Allowed: f.Verdict[r.right], Steps: []AccessStep{viewed}}
+		a := AccessRight{Right: r.right, Allowed: f.Verdict[r.right], Steps: append([]AccessStep{viewed}, frozen...)}
 		if r.right == RightDelete && !f.Trashable {
 			a.Steps = append(a.Steps, step(AccessStep{Kind: StepHome}))
 		}
@@ -170,7 +181,7 @@ func Explain(f InspectFacts) []AccessRight {
 		a.Steps = append(a.Steps, f.lists(ListEdit)...)
 		out = append(out, a)
 	}
-	comment := AccessRight{Right: RightComment, Allowed: f.Verdict[RightComment], Steps: []AccessStep{viewed}}
+	comment := AccessRight{Right: RightComment, Allowed: f.Verdict[RightComment], Steps: append([]AccessStep{viewed}, frozen...)}
 	if !f.Published {
 		comment.Steps = append(comment.Steps, step(AccessStep{Kind: StepPublished}))
 	}
@@ -315,6 +326,22 @@ func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (Insp
 	}
 	for i, p := range SpacePermissions {
 		f.Space[p] = held[i]
+	}
+	var (
+		with   AccessPage
+		withID *uuid.UUID
+	)
+	err = tx.QueryRow(ctx, `
+		SELECT CASE WHEN s.archived_at IS NOT NULL THEN 'space' WHEN p.archived_at IS NOT NULL THEN 'page' ELSE '' END,
+		       a.id, COALESCE(a.title, ''), COALESCE(a.parent_id IS NULL, false)
+		FROM page p JOIN space s ON s.id = p.space_id LEFT JOIN page a ON a.id = p.archive_id
+		WHERE p.id = $1`, page).Scan(&f.Archived, &withID, &with.Title, &with.Home)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return f, fmt.Errorf("read whether the page is archived: %w", err)
+	}
+	if withID != nil {
+		with.ID = *withID
+		f.ArchivedWith = &with
 	}
 	f.Verdict = map[Right]bool{RightView: view, RightEdit: edit, RightDelete: del && f.Trashable, RightComment: comment}
 

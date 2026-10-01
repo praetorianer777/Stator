@@ -112,7 +112,7 @@ func trashItem(ctx context.Context, tx db.DBTX, sp *space.Space, id uuid.UUID) (
 }
 
 // Restore puts an item back where it was, or last under the home page when
-// the page it was under has gone to the trash itself or been purged.
+// the page it was under has gone to the trash itself, been purged or archived.
 func (s *Service) Restore(ctx context.Context, actor perm.Actor, spaceKey string, id uuid.UUID) (*Page, db.LSN, error) {
 	var out *Page
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -134,8 +134,9 @@ func (s *Service) Restore(ctx context.Context, actor perm.Actor, spaceKey string
 		} else if !access.Delete {
 			return &perm.DeniedError{Action: perm.DeletePages}
 		}
+		// A page that may change never hangs under an archived one.
 		var parentInTree bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page WHERE id = $1 AND trashed_at IS NULL)`, parent).Scan(&parentInTree); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page WHERE id = $1 AND trashed_at IS NULL AND archived_at IS NULL)`, parent).Scan(&parentInTree); err != nil {
 			return err
 		}
 		var home *uuid.UUID

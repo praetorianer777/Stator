@@ -37,6 +37,10 @@ const (
 	PurgeTrash Action = "trash.purge"
 	// InspectAccess shows what somebody may do to a page of the space, and why.
 	InspectAccess Action = "space.inspect"
+	// ArchivePages archives pages of the space and unarchives them.
+	ArchivePages Action = "page.archive"
+	// ArchiveSpace archives the whole space and unarchives it.
+	ArchiveSpace Action = "space.archive"
 	// ReviewStale reads which pages of the space nobody opened or published
 	// for a while.
 	ReviewStale Action = "space.review"
@@ -61,9 +65,19 @@ func ActorOf(p *auth.Principal) Actor {
 var ErrDenied = errors.New("permission denied")
 
 // DeniedError says, as a sentence, what the person may not do and whom to ask.
-type DeniedError struct{ Action Action }
+// Archived names what is archived when that, not a permission, is the reason.
+type DeniedError struct {
+	Action   Action
+	Archived Archived
+}
 
 func (e *DeniedError) Error() string {
+	switch e.Archived {
+	case ArchivedPage:
+		return "This page is archived, so nothing on it changes. Ask an administrator of the space to unarchive it first."
+	case ArchivedSpace:
+		return "This space is archived, so nothing in it changes. Ask an administrator of the space to unarchive the space first."
+	}
 	switch e.Action {
 	case CreateSpace:
 		return "You may not create spaces. Ask an administrator of the organization to let you, or to make the space for you."
@@ -81,6 +95,10 @@ func (e *DeniedError) Error() string {
 		return "You may not comment in this space. Ask an administrator of the space for access."
 	case InspectAccess:
 		return "Only an administrator of this space can check what somebody may do here. Ask one of them to check it for you."
+	case ArchivePages:
+		return "Only an administrator of this space can archive pages and unarchive them. Ask one of them."
+	case ArchiveSpace:
+		return "Only an administrator of this space can archive it and unarchive it. Ask one of them."
 	case ReviewStale:
 		return "Only administrators of a space, or of the organization, can read which of its pages went stale. Ask one of them to check the space."
 	}
@@ -195,5 +213,11 @@ func ForPage(ctx context.Context, tx db.DBTX, actor Actor, page uuid.UUID) (Page
 	if err != nil {
 		return PageAccess{}, uuid.Nil, err
 	}
-	return PageRules(f, chain), space, nil
+	a := PageRules(f, chain)
+	if err := tx.QueryRow(ctx, `
+		SELECT COALESCE((SELECT CASE WHEN s.archived_at IS NOT NULL THEN 'space' WHEN p.archived_at IS NOT NULL THEN 'page' ELSE '' END
+		                 FROM page p JOIN space s ON s.id = p.space_id WHERE p.id = $1), '')`, page).Scan(&a.Archived); err != nil {
+		return PageAccess{}, uuid.Nil, fmt.Errorf("read whether the page is archived: %w", err)
+	}
+	return a.Frozen(), space, nil
 }
