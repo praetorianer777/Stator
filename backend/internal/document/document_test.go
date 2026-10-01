@@ -28,6 +28,7 @@ const richDoc = `{"type":"doc","content":[
  {"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","alt":"The plan","width":480}},
  {"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c","alt":null,"width":null}},
  {"type":"paragraph","content":[{"type":"text","text":"See "},{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5d","fileName":"report.pdf"}}]},
+ {"type":"paragraph","content":[{"type":"text","text":"Fixed in "},{"type":"armatureIssue","attrs":{"key":"CP-12"}}]},
  {"type":"table","content":[
   {"type":"tableRow","content":[
    {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Name"}]}]},
@@ -113,6 +114,11 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"image inline", para(`{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}`), `puts a "image"`},
 		{"attachment at the top", `{"type":"doc","content":[{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":"a"}}]}`, `puts a "attachment"`},
 		{"attachment without name", para(`{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":" "}}`), `fileName=`},
+		{"issue key lower case", para(`{"type":"armatureIssue","attrs":{"key":"cp-12"}}`), `key="cp-12"`},
+		{"issue key without number", para(`{"type":"armatureIssue","attrs":{"key":"CP-"}}`), `key="CP-"`},
+		{"issue key numbered from zero", para(`{"type":"armatureIssue","attrs":{"key":"CP-012"}}`), `key="CP-012"`},
+		{"issue with a summary", para(`{"type":"armatureIssue","attrs":{"key":"CP-12","summary":"secret"}}`), `attribute "summary"`},
+		{"issue at the top", `{"type":"doc","content":[{"type":"armatureIssue","attrs":{"key":"CP-12"}}]}`, `puts a "armatureIssue"`},
 		{"contents level zero", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":0}}]}`, `maxLevel=0`},
 		{"contents level too deep", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":4}}]}`, `maxLevel=4`},
 		{"contents level as string", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":"2"}}]}`, `maxLevel="2"`},
@@ -195,6 +201,7 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		"x := 1",
 		"y := 2",
 		"See report.pdf",
+		"Fixed in CP-12",
 		"Name\tRole",
 		"Ada",
 		"Careful",

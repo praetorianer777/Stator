@@ -2973,6 +2973,15 @@ export interface operations {
                     };
                 };
             };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
                 headers: {
@@ -3060,6 +3069,15 @@ export interface operations {
                         /** @enum {string} */
                         status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
                     };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

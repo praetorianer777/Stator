@@ -350,13 +350,13 @@ var operations = []operation{
 		responses: none()},
 
 	// Issues in pages (#28, #29, #30, #31), each call made as the caller.
-	{method: "GET", path: "/armature/issues", handler: "handleLookupArmatureIssues", tag: "armature", pending: true,
+	{method: "GET", path: "/armature/issues", handler: "handleLookupArmatureIssues", tag: "armature",
 		summary:   "Issues by key for smart links, as the caller may see them in Armature; status says why there are none.",
 		query:     []param{{name: "key", repeated: true, schema: &openapi.Schema{Type: "string"}, description: "Issue keys, 1 to 50."}},
-		responses: ok(env{"status": armature.Status(""), "issues": []armature.IssueResult{}})},
-	{method: "GET", path: "/armature/issues/{issueKey}", handler: "handleGetArmatureIssue", tag: "armature", pending: true,
+		responses: map[int]any{200: env{"status": armature.Status(""), "issues": []armature.IssueResult{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/armature/issues/{issueKey}", handler: "handleGetArmatureIssue", tag: "armature",
 		summary:   "One issue for an issue block or a hover card; null when the caller may not see it.",
-		responses: ok(env{"status": armature.Status(""), "issue": (*armature.Issue)(nil)})},
+		responses: map[int]any{200: env{"status": armature.Status(""), "issue": (*armature.Issue)(nil)}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/armature/search", handler: "handleSearchArmatureIssues", tag: "armature", pending: true,
 		summary: "Issues an NQL query matches, for an issue list block; refused with bad_query and its position.",
 		query: []param{
@@ -364,7 +364,7 @@ var operations = []operation{
 			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
 			{name: "offset", schema: intParam},
 		}, responses: map[int]any{200: env{"status": armature.Status(""), "issues": []armature.Issue{}, "total": 0, "limit": 0, "offset": 0, "url": ""}, 422: errorEnvelope{}}},
-	{method: "GET", path: "/armature/projects", handler: "handleListArmatureProjects", tag: "armature", pending: true,
+	{method: "GET", path: "/armature/projects", handler: "handleListArmatureProjects", tag: "armature",
 		summary:   "The Armature projects the caller may see, and whether they may file issues in each.",
 		responses: ok(env{"status": armature.Status(""), "projects": []armature.Project{}})},
 	{method: "GET", path: "/armature/issue-types", handler: "handleListArmatureIssueTypes", tag: "armature", pending: true,

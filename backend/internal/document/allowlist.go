@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"slices"
+
+	"github.com/praetorianer777/stator/backend/internal/armature"
 )
 
 // AttrKind is the JSON type an attribute's value has.
@@ -102,7 +104,7 @@ const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+
 
 var (
 	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "image", "tableOfContents", "childPages"}
-	inlineNodes = []string{"text", "hardBreak", "mention", "attachment"}
+	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
 		"rowspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -192,6 +194,12 @@ var Allowed = Allowlist{
 				"depth": {Kind: KindInteger, Nullable: true, Min: 1, Max: MaxChildPagesDepth},
 				"sort":  {Kind: KindString, Enum: ChildPagesSorts},
 			},
+		},
+		// Only the key: a summary in the body would be readable by anybody who
+		// reads the page, and would go stale.
+		armature.NodeIssue: {
+			Inline: true,
+			Attrs:  map[string]Attr{"key": {Kind: KindString, Pattern: armature.KeyPattern}},
 		},
 		"attachment": {
 			Inline: true,

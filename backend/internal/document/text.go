@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/praetorianer777/stator/backend/internal/armature"
 )
 
 // PlainText is the words of a document, one block per line and table cells
@@ -34,6 +36,11 @@ func writeBlocks(b *strings.Builder, blocks []Node, depth int) {
 			}
 			b.WriteString(strings.Join(cells, "\t"))
 			b.WriteByte('\n')
+		case armature.NodeIssueBlock:
+			if key, _ := n.Attrs["key"].(string); key != "" {
+				b.WriteString(key)
+				b.WriteByte('\n')
+			}
 		default:
 			writeBlocks(b, n.Content, depth+1)
 		}
@@ -41,7 +48,7 @@ func writeBlocks(b *strings.Builder, blocks []Node, depth int) {
 }
 
 // InlineText flattens a block's inline children: text, mentions as @Name,
-// files by name and breaks as newlines.
+// files by name, issues by key and breaks as newlines.
 func InlineText(n Node) string {
 	var b strings.Builder
 	for _, c := range n.Content {
@@ -56,6 +63,9 @@ func InlineText(n Node) string {
 		case "attachment":
 			name, _ := c.Attrs["fileName"].(string)
 			b.WriteString(name)
+		case armature.NodeIssue:
+			key, _ := c.Attrs["key"].(string)
+			b.WriteString(key)
 		}
 	}
 	return b.String()

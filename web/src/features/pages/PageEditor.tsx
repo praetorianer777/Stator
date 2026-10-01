@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
@@ -8,6 +8,9 @@ import type { Space } from "@/api/spaces";
 import { useDiscardDraft, useDraft, usePublish, useSaveDraft, type Draft, type PublishOptions } from "@/api/versions";
 import { Button, ErrorBanner, Field, PageHeader, Skeleton } from "@/components/ui";
 import { useEditorAttachments } from "@/features/attachments/hooks";
+import { ArmatureIssuesProvider } from "@/features/armature/IssueChip";
+import { issueKeysOf } from "@/features/armature/issueKeys";
+import { useIssueSource } from "@/features/armature/useIssueSource";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { Editor } from "@/features/editor/Editor";
 import { emptyDoc, type Doc } from "@/features/editor/schema";
@@ -65,6 +68,8 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
   const [titleError, setTitleError] = useState("");
   const files = useEditorAttachments(page.id);
   const mentionSource = useMentionSource(page.id);
+  const armature = useIssueSource();
+  const issueKeys = useMemo(() => issueKeysOf(body), [body]);
   const [dialog, setDialog] = useState(false);
   const [conflict, setConflict] = useState<{ latest: number; options: PublishOptions } | null>(null);
 
@@ -294,18 +299,21 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
         <ErrorBanner key={message}>{message}</ErrorBanner>
       ))}
       <DocPageContext value={{ id: page.id, spaceKey: space.key }}>
-        <Editor
-          id="page-body"
-          value={initialBody}
-          onChange={(doc) => {
-            setBody(doc);
-            changed();
-          }}
-          onSubmit={() => openPublish()}
-          upload={files.upload}
-          attachments={files.index}
-          mentionSource={mentionSource}
-        />
+        <ArmatureIssuesProvider keys={issueKeys}>
+          <Editor
+            id="page-body"
+            value={initialBody}
+            onChange={(doc) => {
+              setBody(doc);
+              changed();
+            }}
+            onSubmit={() => openPublish()}
+            upload={files.upload}
+            attachments={files.index}
+            mentionSource={mentionSource}
+            armature={armature}
+          />
+        </ArmatureIssuesProvider>
       </DocPageContext>
       {dialog && <PublishDialog title={title} busy={publish.isPending} onClose={() => setDialog(false)} onPublish={(options) => void onPublish(options)} />}
     </form>

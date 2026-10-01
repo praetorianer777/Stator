@@ -195,6 +195,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/armature/account/token", s.handleConnectArmatureAccount)
 			r.Post("/armature/account/check", s.handleCheckArmatureAccount)
 			r.Delete("/armature/account/token", s.handleDisconnectArmatureAccount)
+			r.Get("/armature/issues", s.handleLookupArmatureIssues)
+			r.Get("/armature/issues/{issueKey}", s.handleGetArmatureIssue)
+			r.Get("/armature/projects", s.handleListArmatureProjects)
 		})
 
 		if s.TestOrgs != nil {

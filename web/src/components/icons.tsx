@@ -112,6 +112,21 @@ export const Icon = {
     "M7 5h.01",
     "M10 5.5h.01",
   ]),
+  // Armature's issue type glyphs, so an issue reads by the same shape in both.
+  Bug: makeIcon("bug", [
+    "M8 5a3 3 0 0 1 3 3v2a3 3 0 0 1-6 0V8a3 3 0 0 1 3-3Z",
+    "M6 5.5 5 3.5",
+    "m10 5.5 1-2",
+    "M5 9H3",
+    "M13 9h-2",
+    "M5.5 12 4 13.5",
+    "m10.5 12 1.5 1.5",
+  ]),
+  Story: makeIcon("story", ["M5 2.5h6v11l-3-2.2-3 2.2Z"]),
+  Epic: makeIcon("epic", ["M9 2 4 9h4l-1 5 5-7H8Z"]),
+  Initiative: makeIcon("initiative", ["M4 14V2.5", "M4 3h8.5l-2 3 2 3H4"]),
+  Task: makeIcon("task", ["M3 3h10v10H3Z", "m5.5 8 2 2 3.5-4"]),
+  Subtask: makeIcon("subtask", ["M4 2.5v6a2 2 0 0 0 2 2h7", "m10.5 8 2.5 2.5-2.5 2.5"]),
 } as const;
 
 export type IconName = keyof typeof Icon;
