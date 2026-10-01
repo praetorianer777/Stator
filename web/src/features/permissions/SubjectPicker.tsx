@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type KeyboardEvent } from "react";
+import { useEffect, useEffectEvent, useId, useState, type KeyboardEvent } from "react";
 import { subjectKey, useSubjectSearch, type Subject } from "@/api/permissions";
 import { Icon } from "@/components/icons";
 import { ErrorBanner, Input, cx } from "@/components/ui";
@@ -45,8 +45,12 @@ export function SubjectPicker({
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  // Enter pressed while the list still answers an earlier text picks once the answer to this one is in.
+  const [enterPending, setEnterPending] = useState(false);
   const q = useDebounced(text.trim(), PICKER_DEBOUNCE_MS);
   const found = useSubjectSearch(q, open, !peopleOnly);
+  const fresh = q === text.trim() && found.current;
+  const loading = !fresh && !found.error;
 
   const options: Option[] = [];
   if (allowEveryone && t.permissions.everyone.toLowerCase().startsWith(q.toLowerCase())) {
@@ -63,7 +67,18 @@ export function SubjectPicker({
     setOpen(false);
     setText("");
     setActive(0);
+    setEnterPending(false);
   }
+
+  const pickWhenAnswered = useEffectEvent(() => {
+    setEnterPending(false);
+    const option = shown[current];
+    if (fresh && option) pick(option);
+  });
+  const answered = enterPending && !loading;
+  useEffect(() => {
+    if (answered) pickWhenAnswered();
+  }, [answered]);
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown") {
@@ -76,12 +91,15 @@ export function SubjectPicker({
     } else if (event.key === "Enter") {
       // Enter picks rather than submitting the form the picker sits in.
       event.preventDefault();
+      if (!open) return;
       const option = shown[current];
-      if (open && option) pick(option);
+      if (fresh && option) pick(option);
+      else if (loading) setEnterPending(true);
     } else if (event.key === "Escape" && open) {
       // Closes the list, not the dialog around it.
       event.stopPropagation();
       setOpen(false);
+      setEnterPending(false);
     }
   }
 
@@ -108,9 +126,13 @@ export function SubjectPicker({
             setText(event.target.value);
             setOpen(true);
             setActive(0);
+            setEnterPending(false);
           }}
           onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
+          onBlur={() => {
+            setOpen(false);
+            setEnterPending(false);
+          }}
           onKeyDown={onKeyDown}
         />
         <div
@@ -118,6 +140,7 @@ export function SubjectPicker({
           role="listbox"
           aria-label={peopleOnly ? t.access.pickerOptions : t.permissions.pickerOptions}
           hidden={!expanded || shown.length === 0}
+          aria-busy={loading}
           className="absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
           data-subject-options
         >
@@ -146,11 +169,17 @@ export function SubjectPicker({
             </div>
           ))}
         </div>
+        {/* Over a list still showing the last answer the loading note is for screen readers alone. */}
         <p
           role="status"
-          className="absolute inset-x-0 top-full z-30 mt-1 rounded-overlay border border-border bg-surface-overlay px-2 py-1.5 text-sm text-ink-subtle shadow-2 empty:hidden"
+          className={
+            shown.length > 0
+              ? "sr-only"
+              : "absolute inset-x-0 top-full z-30 mt-1 rounded-overlay border border-border bg-surface-overlay px-2 py-1.5 text-sm text-ink-subtle shadow-2 empty:hidden"
+          }
+          data-subject-status
         >
-          {expanded && shown.length === 0 ? (found.isFetching ? t.permissions.pickerLoading : t.permissions.pickerEmpty) : ""}
+          {expanded ? (loading ? t.permissions.pickerLoading : shown.length === 0 ? t.permissions.pickerEmpty : "") : ""}
         </p>
       </div>
       {found.error && <ErrorBanner>{found.error.message}</ErrorBanner>}
