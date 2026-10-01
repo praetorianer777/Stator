@@ -7,6 +7,7 @@ import { Button, EmptyState, ErrorBanner, IconButton, PageHeader, SectionTitle, 
 import { Icon } from "@/components/icons";
 import { PageLink } from "@/features/pages/PageLink";
 import { StarGlyph } from "@/features/stars/StarButton";
+import { VerifiedMark } from "@/features/stewardship/VerificationBadge";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 
@@ -173,12 +174,15 @@ function Updates({ scope }: { scope: UpdateScope }) {
       <ul className="flex flex-col divide-y divide-border">
         {updates.map((update) => (
           <li key={update.id} className="flex min-w-0 flex-col gap-0.5 py-3" data-update-row={update.title}>
-            <PageLink
-              spaceKey={update.spaceKey}
-              id={update.id}
-              title={update.title}
-              className="truncate font-medium text-ink hover:text-accent hover:underline"
-            />
+            <span className="flex min-w-0 items-center gap-2">
+              <PageLink
+                spaceKey={update.spaceKey}
+                id={update.id}
+                title={update.title}
+                className="truncate font-medium text-ink hover:text-accent hover:underline"
+              />
+              {update.verified && <VerifiedMark />}
+            </span>
             <span className="text-sm text-ink-muted">{t.home.published(update.authorName || t.home.somebody, update.version)}</span>
             {update.comment && <span className="text-sm break-words text-ink">{update.comment}</span>}
             <span className="text-xs text-ink-subtle">

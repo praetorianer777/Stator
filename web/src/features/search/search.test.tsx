@@ -29,6 +29,7 @@ const hit = (over: Partial<Hit> = {}): Hit => ({
     { text: " <b>starts</b> here.", match: false },
   ],
   labels: [],
+  verified: false,
   updatedAt: "2026-09-29T08:00:00Z",
   updatedByName: "Ada Lovelace",
   ...over,
@@ -154,6 +155,19 @@ describe("the full search", () => {
     expect(file).toHaveTextContent("On Onboarding");
     expect(screen.getByText("2 results")).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
+  });
+
+  it("marks a verified page among the hits", async () => {
+    stubApi({
+      "GET /search": results([hit({ verified: true }), hit({ type: "attachment", attachmentId: "0195f000-0000-7000-8000-0000000000b1", verified: true })]),
+      "GET /spaces": { status: 200, body: { spaces: [space] } },
+    });
+    await renderAt("/search?q=onboarding");
+    const rows = await screen.findAllByRole("listitem");
+    const page = rows.find((row) => row.getAttribute("data-hit-type") === "page")!;
+    expect(within(page).getByText("Verified")).toHaveAttribute("data-verification-badge", "verified");
+    const file = rows.find((row) => row.getAttribute("data-hit-type") === "attachment")!;
+    expect(within(file).queryByText("Verified")).toBeNull();
   });
 
   it("keeps every filter in the address and sends each to the API", async () => {

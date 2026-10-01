@@ -876,3 +876,25 @@
     display: none;
   }
 }
+
+/* A page's verification badge: words in ink on a tint of the role its state
+ * names, as a status label, so it reads in every theme and says its state in
+ * words; the glyph takes the role's own colour where that reads on the tint. */
+@layer components {
+  .verification-badge {
+    background: var(--verification-fill);
+    color: var(--color-ink);
+  }
+  .verification-badge svg {
+    color: var(--verification-glyph);
+  }
+  [data-verification-badge="verified"] {
+    --verification-fill: var(--color-success-subtle);
+    --verification-glyph: var(--color-success);
+  }
+  /* The warning colour falls under 3:1 on its own tint in some themes. */
+  [data-verification-badge="expired"] {
+    --verification-fill: var(--color-warning-subtle);
+    --verification-glyph: var(--color-ink);
+  }
+}

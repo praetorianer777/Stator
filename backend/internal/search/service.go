@@ -170,7 +170,8 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 			LIMIT ` + limit + ` OFFSET ` + offset + `
 		)
 		SELECT h.kind, h.attachment_id, h.comment_id, h.page_id, h.page_title, h.key, h.name, ` + title + `, ` + snippet + `, h.changed_at, h.by_name,
-		       CASE WHEN h.kind = 'page' THEN ARRAY(SELECT pl.name FROM page_label pl WHERE pl.page_id = h.page_id ORDER BY pl.name) ELSE '{}' END
+		       CASE WHEN h.kind = 'page' THEN ARRAY(SELECT pl.name FROM page_label pl WHERE pl.page_id = h.page_id ORDER BY pl.name) ELSE '{}' END,
+		       EXISTS (SELECT 1 FROM page_verification pv WHERE pv.page_id = h.page_id AND pv.expires_at > now())
 		FROM chosen h ORDER BY h.ord`
 
 	out := []Hit{}
@@ -190,7 +191,7 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 				marked, body string
 			)
 			if err := rows.Scan(&h.Type, &h.AttachmentID, &h.CommentID, &h.Page.ID, &h.Page.Title, &h.Page.SpaceKey, &h.Page.SpaceName,
-				&marked, &body, &h.UpdatedAt, &h.UpdatedByName, &h.Labels); err != nil {
+				&marked, &body, &h.UpdatedAt, &h.UpdatedByName, &h.Labels, &h.Verified); err != nil {
 				return err
 			}
 			if h.Labels == nil {

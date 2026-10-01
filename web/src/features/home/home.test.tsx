@@ -28,6 +28,7 @@ function update(over: Partial<PageUpdate> = {}): PageUpdate {
     publishedAt: "2026-10-01T10:00:00Z",
     authorName: "Grace Hopper",
     comment: "Tidied the steps",
+    verified: false,
     ...over,
   };
 }
@@ -83,6 +84,20 @@ describe("the home page", () => {
     stubHome({ "GET /home/updates": { status: 200, body: { updates: [update({ version: 1, comment: "", authorName: "" })], next: null } } });
     await renderAt("/");
     expect(await screen.findByText("Somebody created this page")).toBeInTheDocument();
+  });
+
+  it("marks a verified page among the updates", async () => {
+    stubHome({
+      "GET /home/updates": {
+        status: 200,
+        body: { updates: [update({ verified: true }), update({ id: runbook, title: "Runbook", verified: false })], next: null },
+      },
+    });
+    await renderAt("/");
+    const guideRow = (await within(list("updates")).findByRole("link", { name: "Guide" })).closest("li")!;
+    expect(within(guideRow).getByText("Verified")).toHaveAttribute("data-verification-badge", "verified");
+    const runbookRow = within(list("updates")).getByRole("link", { name: "Runbook" }).closest("li")!;
+    expect(within(runbookRow).queryByText("Verified")).toBeNull();
   });
 
   it("switches to what the reader watches, from the keyboard too", async () => {

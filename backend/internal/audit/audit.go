@@ -40,6 +40,11 @@ const (
 	// ActionCommentDeleted is somebody else's comment deleted with the
 	// space's delete permission; one's own is not recorded.
 	ActionCommentDeleted = "comment.deleted"
+	// Stewardship: who answers for a page, and whether it was checked.
+	ActionPageOwnerSet     = "page.owner_set"
+	ActionPageOwnerRemoved = "page.owner_removed"
+	ActionPageVerified     = "page.verified"
+	ActionPageUnverified   = "page.unverified"
 )
 
 // Entry is one act to record.

@@ -3,8 +3,11 @@ package home
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/keyset"
+	"github.com/praetorianer777/stator/backend/internal/page"
 )
 
 // Service reads the home page's lists, each through a database function that
@@ -39,7 +42,21 @@ func (s *Service) Updates(ctx context.Context, scope Scope, after *keyset.Cursor
 			}
 			out = append(out, u)
 		}
-		return rows.Err()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		ids := make([]uuid.UUID, len(out))
+		for i, u := range out {
+			ids[i] = u.ID
+		}
+		verified, err := page.VerifiedAmong(ctx, tx, ids)
+		if err != nil {
+			return err
+		}
+		for i := range out {
+			out[i].Verified = verified[out[i].ID]
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, nil, err

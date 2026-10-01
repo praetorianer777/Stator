@@ -316,6 +316,20 @@ var operations = []operation{
 		summary: "Take the caller's emoji off a comment, if it is there.",
 		query:   emojiQuery, responses: ok(env{"reactions": []reaction.Reaction{}})},
 
+	// Owners and verification (#68).
+	{method: "PUT", path: "/pages/{pageID}/owner", handler: "handleSetPageOwner", tag: "verification",
+		summary: "Name the person who answers for a page, a member who may view it; needs edit of the published page.",
+		request: page.OwnerInput{}, responses: map[int]any{200: env{"owner": page.Owner{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/pages/{pageID}/owner", handler: "handleRemovePageOwner", tag: "verification",
+		summary:   "Leave a page without an owner, also when it had none; needs edit.",
+		responses: none()},
+	{method: "PUT", path: "/pages/{pageID}/verification", handler: "handleVerifyPage", tag: "verification",
+		summary: "Say the page is right as it stands, for days days (90 when left out, at most 730); replaces any verification before. The owner is told when it runs out.",
+		request: page.VerifyInput{}, responses: map[int]any{200: env{"verification": page.Verification{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/pages/{pageID}/verification", handler: "handleUnverifyPage", tag: "verification",
+		summary:   "Take a page's verification away, also when it had none; needs edit.",
+		responses: none()},
+
 	// Mentions (#24).
 	{method: "GET", path: "/pages/{pageID}/mentionable", handler: "handleListMentionable", tag: "mentions",
 		summary: "Members to mention on a page, each saying whether they may view it once published; only those are told.",
@@ -521,6 +535,7 @@ func Spec() *openapi.Document {
 	b.Enums[reflect.TypeOf(perm.StepKind(""))] = enumStrings(perm.StepKinds)
 	b.Enums[reflect.TypeOf(perm.ListKind(""))] = enumStrings(perm.ListKinds)
 	b.Enums[reflect.TypeOf(page.DiffChange(""))] = enumStrings(page.DiffChanges)
+	b.Enums[reflect.TypeOf(page.VerificationStatus(""))] = enumStrings(page.VerificationStatuses)
 	b.Enums[reflect.TypeOf(search.HitType(""))] = enumStrings(search.HitTypes)
 	b.Enums[reflect.TypeOf(comment.Kind(""))] = enumStrings(comment.Kinds)
 	b.Enums[reflect.TypeOf(comment.AnchorState(""))] = enumStrings(comment.AnchorStates)

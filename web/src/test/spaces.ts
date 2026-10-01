@@ -39,6 +39,8 @@ export function aPage(over: Partial<Page> = {}): Page {
     watching: { page: false, subtree: false, inherited: null },
     starred: false,
     reactions: [],
+    owner: null,
+    verification: null,
     createdByName: "Ada Lovelace",
     createdAt: "2026-09-29T08:00:00Z",
     updatedByName: "Ada Lovelace",
