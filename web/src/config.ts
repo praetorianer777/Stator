@@ -280,3 +280,11 @@ export const STATUS_LABEL_MAX_LENGTH = 40;
 export const EMOJI_MAX_SUGGESTIONS = 8;
 /** What a colon offers before a letter is typed, by shortcode, most used first. */
 export const EMOJI_COMMON: readonly string[] = ["+1", "white_check_mark", "x", "warning", "tada", "rocket", "eyes", "heart"];
+
+/** What one Markdown import may weigh, its files included, matching the API's limit. */
+export const MARKDOWN_IMPORT_MAX_BYTES = 100 * 1024 * 1024;
+
+/** The file names a Markdown import reads as pages; anything else is a file a page may show. */
+export const MARKDOWN_FILE_PATTERN = /\.(md|markdown)$/i;
+/** An archive the API unpacks before it reads the pages in it. */
+export const ZIP_FILE_PATTERN = /\.zip$/i;
