@@ -12,6 +12,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/rank"
 	"github.com/praetorianer777/stator/backend/internal/space"
@@ -410,6 +411,19 @@ func (s *Service) Move(ctx context.Context, actor perm.Actor, id uuid.UUID, in M
 		// The space is in every address Armature holds for the pages moved.
 		if to.ID != current.SpaceID {
 			if err := syncLinksBelow(ctx, tx, []uuid.UUID{id}, withChildren); err != nil {
+				return err
+			}
+		}
+		// A new place among the same siblings is an order, not a move, and an
+		// unpublished page has only its author to tell.
+		moved := to.ID != current.SpaceID || current.ParentID == nil || *current.ParentID != in.ParentID
+		if moved && current.Version > 0 {
+			parent := in.ParentID
+			if err := events.Emit(ctx, tx, events.TopicPageMoved, events.PageMoved{
+				PageID: id, ActorID: actor.UserID,
+				FromSpaceID: current.SpaceID, FromParentID: current.ParentID,
+				ToSpaceID: to.ID, ToParentID: &parent,
+			}); err != nil {
 				return err
 			}
 		}

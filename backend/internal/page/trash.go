@@ -11,6 +11,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -58,6 +59,11 @@ func (s *Service) Trash(ctx context.Context, actor perm.Actor, id uuid.UUID) (db
 				return ErrHomeNotTrashed
 			}
 			return err
+		}
+		if current.Version > 0 {
+			if err := events.Emit(ctx, tx, events.TopicPageDeleted, events.PageDeleted{PageID: id, ActorID: actor.UserID, SpaceID: current.SpaceID}); err != nil {
+				return err
+			}
 		}
 		return syncLinksBelow(ctx, tx, []uuid.UUID{id}, true)
 	})

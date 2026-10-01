@@ -1,7 +1,7 @@
 // Command worker runs everything that happens outside a request: the outbox
 // with the notifications it fans out and the page links it syncs to Armature,
-// the notifications' digests, the file reaper, the audit log's retention, and
-// the watch on page verifications that run out.
+// the notifications' digests, the file reaper, the audit log's retention,
+// the watch on page verifications that run out, and the outbound webhooks.
 package main
 
 import (
@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/version"
+	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
 
 // flushTimeout bounds sending the traces still in hand at shutdown.
@@ -107,12 +108,16 @@ func run() error {
 			return err
 		}
 	} else {
-		log.Warn("STATOR_SECRET_KEY is not set, so no stored Armature token opens and every page link to Armature fails")
+		log.Warn("STATOR_SECRET_KEY is not set, so no stored Armature token opens and every page link to Armature and every webhook delivery fails")
 	}
 	allow := netguard.ParseAllow(cfg.Armature.OutboundAllow)
 	armatures := armature.NewService(cluster, box, armature.NewClient(allow, cfg.Armature.Backchannel), nil,
 		armature.Options{AppURL: cfg.AppBaseURL, Allow: allow, Development: cfg.Env == config.EnvDevelopment, Log: log})
-	handlers := events.NewMux(fanOut).Route(events.TopicArmatureLinks, armature.NewLinkSync(armatures, log))
+	// Queuing a webhook delivery is idempotent, so it goes before the fan-out,
+	// which a failed queue would otherwise run twice.
+	hooks := webhook.NewService(cluster, box, webhook.Options{AppURL: cfg.AppBaseURL, Allow: allow, Log: log})
+	handlers := events.NewMux(events.Chain{hooks, fanOut}).Route(events.TopicArmatureLinks, armature.NewLinkSync(armatures, log))
+	go webhook.NewSender(hooks, log).Run(ctx)
 	go events.NewWorker(cluster, handlers, log).Run(ctx)
 	go page.NewLapseWatch(cluster, log, cfg.VerificationCheck).Run(ctx)
 	if mailer != nil {

@@ -44,6 +44,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/watch"
+	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
 
 // Server timeouts. The write timeout outlasts the request timeout, so a slow
@@ -171,11 +172,13 @@ func run() error {
 		Armature:        armatures,
 		Audit:           audit.NewService(cluster),
 		AuditRetention:  cfg.RetainAudit,
-		CookieName:      cfg.Auth.SessionCookie,
-		Secure:          cfg.Auth.SecureCookies,
-		AppBaseURL:      cfg.AppBaseURL,
-		CheckOrigin:     cfg.IsProduction(),
-		RequestTimeout:  cfg.RequestTimeout,
+		Webhooks: webhook.NewService(cluster, box,
+			webhook.Options{AppURL: cfg.AppBaseURL, Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Log: log}),
+		CookieName:     cfg.Auth.SessionCookie,
+		Secure:         cfg.Auth.SecureCookies,
+		AppBaseURL:     cfg.AppBaseURL,
+		CheckOrigin:    cfg.IsProduction(),
+		RequestTimeout: cfg.RequestTimeout,
 	}
 	if cfg.TestEndpoints.Enabled {
 		log.Warn("STATOR_TEST_ENDPOINTS is on: " + httpapi.APIPrefix + "/test makes and deletes organizations for anybody with its token")
