@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createEvent, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { TreeNode } from "@/api/tree";
-import { renderAt, stubApi, type Answer } from "@/test/app";
+import { arrival, renderAt, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 import { dropPlacement, dropZone } from "./PageTree";
@@ -191,7 +191,7 @@ describe("a new page", () => {
     expect(await within(dialog).findByText("A page needs a title.")).toBeInTheDocument();
     await userEvent.type(within(dialog).getByLabelText("Title"), "Onboarding");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${made.id}/onboarding/edit`));
+    await arrival(router, `/s/DOCS/p/${made.id}/onboarding/edit`);
     expect(sent.find(isChange)?.body).toEqual({ parentId: home.id, title: "Onboarding" });
   });
 });
