@@ -23,7 +23,8 @@ Keycloak / any OIDC provider <── login ──┘
 - One package per domain in `internal/`, each with a `Service`, a `model.go`
   and plain SQL. No ORM, no query generator: pgx v5 and hand-written SQL.
 - Router: chi v5. A single route table drives the router, the OpenAPI document
-  (`api/openapi.json`), and the consistency tests between them.
+  (`api/openapi.json`), the MCP tools at `POST /api/v1/mcp` (`docs/mcp.md`),
+  and the consistency tests between them.
 - An operation agreed before it is built carries `pending: true` in the table:
   the router answers it 501 `not_implemented` and the integration suite does
   not expect it covered. Whoever builds it removes the mark and routes its

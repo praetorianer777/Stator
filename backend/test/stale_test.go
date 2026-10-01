@@ -205,6 +205,28 @@ func TestStaleReportOverTheAPI(t *testing.T) {
 		sameList(t, "ann's report with Old back", titlesOf(t, want(t, ann.get(t, "/api/v1/stale-pages"), http.StatusOK, "ann's report"), "pages"), "Ancient", "Lapsed", "Old")
 	})
 
+	t.Run("an assistant reads it as an administrator and is refused it as a member", func(t *testing.T) {
+		_, annToken := makeToken(t, ann, map[string]any{"name": "assistant", "scopes": []string{"read"}})
+		_, benToken := makeToken(t, ben, map[string]any{"name": "assistant", "scopes": []string{"read"}})
+		agent := &mcpSession{c: api.withToken(annToken)}
+		if !agent.tools(t)["list_stale_pages"] {
+			t.Fatal("a read-only token is not offered list_stale_pages")
+		}
+		res := agent.call(t, "list_stale_pages", map[string]any{})
+		if res["isError"] == true {
+			t.Fatalf("the tool refused ann: %s", toolText(res))
+		}
+		var titles []string
+		for _, each := range res["structuredContent"].(map[string]any)["pages"].([]any) {
+			titles = append(titles, each.(map[string]any)["title"].(string))
+		}
+		sameList(t, "ann's report through the tool", titles, "Ancient", "Lapsed", "Old")
+		res = (&mcpSession{c: api.withToken(benToken)}).call(t, "list_stale_pages", map[string]any{})
+		if res["isError"] != true || !strings.Contains(toolText(res), "Only administrators of a space, or of the organization") {
+			t.Errorf("the tool answered ben %v", res)
+		}
+	})
+
 	t.Run("opening or publishing a page takes it off", func(t *testing.T) {
 		want(t, ben.post(t, pagePath(ancient, "/visit"), nil), http.StatusNoContent, "ben opens Ancient")
 		publishDraft(t, owner, lapsed, "Lapsed", "Brought up to date.", false, "Refreshed")

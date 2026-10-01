@@ -337,6 +337,14 @@ export const de: Messages = {
     revokeLabel: (name: string) => `${name} widerrufen`,
     confirmRevoke: (name: string) => `${name} widerrufen? Alles, was es verwendet, wird ab sofort abgewiesen.`,
     revoked: (name: string) => `${name} wurde widerrufen.`,
+    mcpTitle: "Einen Assistenten verbinden",
+    mcpBody:
+      "Ein Assistent, der das Model Context Protocol spricht, kann unter der Adresse unten in Ihrem Namen Seiten suchen, lesen und schreiben. Geben Sie seinem Client eines Ihrer Tokens als Bearer im Authorization-Header mit.",
+    mcpEndpoint: "MCP-Adresse",
+    mcpConfig: "Einstellungen für den Client",
+    mcpReadOnly:
+      "Mit einem Token, das nur liest, werden dem Assistenten nur die lesenden Werkzeuge angeboten: Er kann Seiten suchen und lesen, aber keine ändern.",
+    mcpTokenPlaceholder: "<Ihr Token>",
   },
   login: {
     title: "Anmelden",

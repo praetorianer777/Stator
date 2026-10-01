@@ -5,7 +5,16 @@ import { ApiError } from "@/api/client";
 import { useCreateToken, useRevokeToken, useTokens, type ApiToken } from "@/api/tokens";
 import { Button, Card, Checkbox, EmptyState, ErrorBanner, Field, PageHeader, Select, Table, Tag, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { COPY_FEEDBACK_MS, DAY_MS, TOKEN_DEFAULT_EXPIRY_DAYS, TOKEN_EXPIRY_DAYS, TOKEN_NAME_MAX_LENGTH, TOKEN_READ_SCOPE } from "@/config";
+import {
+  COPY_FEEDBACK_MS,
+  DAY_MS,
+  MCP_PATH,
+  MCP_SERVER_NAME,
+  TOKEN_DEFAULT_EXPIRY_DAYS,
+  TOKEN_EXPIRY_DAYS,
+  TOKEN_NAME_MAX_LENGTH,
+  TOKEN_READ_SCOPE,
+} from "@/config";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
 
@@ -110,7 +119,41 @@ function TokensPage() {
           </Table>
         )}
       </section>
+      <ConnectAssistant />
     </div>
+  );
+}
+
+/** The client settings an MCP client takes, with the token left for the reader to fill in. */
+export function mcpClientSettings(endpoint: string, token: string): string {
+  return JSON.stringify({ mcpServers: { [MCP_SERVER_NAME]: { type: "http", url: endpoint, headers: { Authorization: `Bearer ${token}` } } } }, null, 2);
+}
+
+function ConnectAssistant() {
+  const endpoint = `${window.location.origin}${MCP_PATH}`;
+  return (
+    <section aria-labelledby="tokens-mcp" className="mt-8 space-y-3" data-mcp>
+      <h2 id="tokens-mcp" className="text-sm font-semibold text-ink">
+        {t.tokens.mcpTitle}
+      </h2>
+      <p className="text-sm text-ink-muted">{t.tokens.mcpBody}</p>
+      <Field
+        label={t.tokens.mcpEndpoint}
+        value={endpoint}
+        readOnly
+        className="font-mono text-xs"
+        onFocus={(event) => event.target.select()}
+        data-mcp-endpoint
+      />
+      <figure className="space-y-1">
+        <figcaption className="text-sm font-medium text-ink">{t.tokens.mcpConfig}</figcaption>
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: settings wider than the page scroll, and a keyboard scrolls only what has focus */}
+        <pre tabIndex={0} className="overflow-x-auto rounded-control bg-surface-sunken p-3 font-mono text-xs text-ink" data-mcp-config>
+          {mcpClientSettings(endpoint, t.tokens.mcpTokenPlaceholder)}
+        </pre>
+      </figure>
+      <p className="text-xs text-ink-muted">{t.tokens.mcpReadOnly}</p>
+    </section>
   );
 }
 

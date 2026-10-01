@@ -326,6 +326,13 @@ export const en = {
     revokeLabel: (name: string) => `Revoke ${name}`,
     confirmRevoke: (name: string) => `Revoke ${name}? Anything using it is refused from now on.`,
     revoked: (name: string) => `${name} was revoked.`,
+    mcpTitle: "Connect an assistant",
+    mcpBody:
+      "An assistant that speaks the Model Context Protocol can search, read and write pages as you at the address below. Give its client one of your tokens as a bearer in the Authorization header.",
+    mcpEndpoint: "MCP address",
+    mcpConfig: "Client settings",
+    mcpReadOnly: "With a read-only token the assistant is offered only the tools that read: it can search and read pages, and never changes one.",
+    mcpTokenPlaceholder: "<your token>",
   },
   login: {
     title: "Sign in",

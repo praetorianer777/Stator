@@ -41,6 +41,11 @@ link carries `from=stale` and the page then posts no visit, or working
 through the report would empty it of every page the reviewer looked at
 without deciding anything.
 
+The report is also a read tool for assistants, `list_stale_pages`, as the
+audit log is one for administrators: it runs as the token's person through
+the same route, so an assistant helping a space administrator tidy up gets
+the same rows, and a member's assistant the same refusal.
+
 Stale pages are what archiving (#37) is for, so the report archives them in
 bulk: the reader picks rows and the client calls the page's own
 `PUT /pages/{id}/archive` for each, one after another, rather than through
@@ -54,6 +59,54 @@ rule again per row. Archived pages and pages of archived spaces leave the
 report, as they leave the tree and search, and come back marked with
 `archived=true`. Telling owners about their stale pages is left for later;
 the verification reminder already tells them when a check runs out.
+
+## 2026-10-01: MCP is the route table, dispatched in process as the caller
+
+An assistant reaches Stator over the Model Context Protocol (#106) the way
+it reaches Armature: a tool is a row of the operation table marked with a
+name and a sentence, its input schema is that row reflected by the builder
+that writes `api/openapi.json`, and a tool call is the HTTP call it stands
+for, built in the api process and run through the router's whole chain as
+the caller. Authentication, the read-only rule, the use check, the handlers
+and the row level security apply to it without knowing it exists, so a tool
+answers what the API answers that person and is refused with the same
+sentence. A second set of handlers for tools would have been a second place
+to get a permission wrong. The protocol is spoken with the standard library
+over one stateless endpoint, `POST /api/v1/mcp`, which the integration
+suite holds to the document like any other.
+
+Callers bring a personal access token as a bearer, as in Armature; there is
+no OAuth flow, since Armature has none and a token is already a person in
+one organization that the tokens page makes and revokes. The issue asks
+that a read-only token expose only read tools, which Armature does not do:
+`tools/list` leaves out every writing tool for such a token, and a writing
+tool called anyway is refused with the read-only sentence before its call is
+made. The endpoint itself is exempt from the read-only middleware, since
+it carries reads too; the calls it carries pass through that middleware
+again.
+
+Which operations are tools follows Armature's rule, reads and safe writes:
+reading spaces, pages, versions, search, labels, comments, people,
+notifications, a space's archive and, for administrators, the audit log;
+and writing pages, labels and comments. Archiving and unarchiving are a
+space administrator's, and are not tools. Nothing that deletes,
+administers, changes who may do what, reaches other people's attention
+(shares, reactions, watches, stars), vouches for a page (owners,
+verification), or reorganizes the tree is a
+tool; a person does those where they can see what they are doing. Armature
+issues are left to Armature's own endpoint. Every operation of the table is
+either a tool or declined with a reason in `mcp_test.go`, and a route added
+without a decision fails the unit tests, so the choice is never made by
+forgetting.
+
+Pages are offered as Markdown besides their documents, through the
+converter the page menu uses: Armature has no Markdown to follow, but a
+model reads and writes Markdown far better than an editor's document. A
+multipart operation can be a tool when its row names the file it sends:
+the tool takes the text as `content` and sends it as that one file, so
+`replace_page_markdown` and `import_markdown` are the Markdown operations
+the page menu calls, not new ones. Nothing in the compose stack, the nginx
+configuration or the chart changes, since the endpoint lives under `/api`.
 
 ## 2026-10-01: An archive is marks on the pages, frozen by the edit rule, and kept by space administrators
 
