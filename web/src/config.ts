@@ -224,6 +224,12 @@ export const COMMENT_EDITOR_ROWS = 4;
 export const COMMENT_HIGHLIGHT_MS = 2500;
 /** How often a new passage is marked afresh after somebody changed the page meanwhile, before giving up. */
 export const INLINE_ANCHOR_RETRIES = 2;
+/**
+ * The emoji the reaction picker offers, each named in t.reactions.names. The API takes any one
+ * emoji, so a fuller picker can replace this list without a change on the server.
+ */
+export const REACTION_CHOICES = ["👍", "❤️", "🎉", "😄", "😮", "👀", "🚀", "✅"] as const;
+
 /** The key that, with Ctrl or Cmd and Alt, comments on the selected text; a KeyboardEvent code, since Alt changes the key on a Mac. */
 export const INLINE_COMMENT_KEY_CODE = "KeyM";
 /** The same shortcut as aria-keyshortcuts names it. */

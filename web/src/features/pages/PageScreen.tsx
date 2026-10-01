@@ -15,6 +15,7 @@ import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocView } from "@/features/editor/DocView";
 import { PageLabels } from "@/features/labels/PageLabels";
+import { PageReactions } from "@/features/reactions/Reactions";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
 import { WatchMenu } from "@/features/watching/WatchMenu";
 import { t } from "@/i18n";
@@ -211,6 +212,7 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         thread={thread}
         below={
           <>
+            <PageReactions page={page} />
             <PageLabels page={page} />
             <ArmatureLinks page={page} />
             <AttachmentPanel pageId={page.id} editable={page.can.edit} />

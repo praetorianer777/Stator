@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/template"
@@ -283,6 +284,20 @@ var operations = []operation{
 		summary:   "Open a resolved inline thread again; refused with not_inline below the page.",
 		responses: map[int]any{200: env{"thread": comment.Thread{}}, 409: errorEnvelope{}}},
 
+	// Reactions (#66).
+	{method: "POST", path: "/pages/{pageID}/reactions", handler: "handleReactToPage", tag: "reactions",
+		summary: "Put the caller's emoji on a page; again is no change. Needs the right to comment; refused with unpublished before the first publish.",
+		request: reaction.Input{}, responses: map[int]any{200: env{"reactions": []reaction.Reaction{}}, 409: errorEnvelope{}}},
+	{method: "DELETE", path: "/pages/{pageID}/reactions", handler: "handleUnreactPage", tag: "reactions",
+		summary: "Take the caller's emoji off a page, if it is there.",
+		query:   emojiQuery, responses: ok(env{"reactions": []reaction.Reaction{}})},
+	{method: "POST", path: "/comments/{commentID}/reactions", handler: "handleReactToComment", tag: "reactions",
+		summary: "Put the caller's emoji on a comment that is not deleted; again is no change. Needs the right to comment.",
+		request: reaction.Input{}, responses: ok(env{"reactions": []reaction.Reaction{}})},
+	{method: "DELETE", path: "/comments/{commentID}/reactions", handler: "handleUnreactComment", tag: "reactions",
+		summary: "Take the caller's emoji off a comment, if it is there.",
+		query:   emojiQuery, responses: ok(env{"reactions": []reaction.Reaction{}})},
+
 	// Mentions (#24).
 	{method: "GET", path: "/pages/{pageID}/mentionable", handler: "handleListMentionable", tag: "mentions",
 		summary: "Members to mention on a page, each saying whether they may view it once published; only those are told.",
@@ -402,6 +417,7 @@ var (
 		{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
 		{name: "offset", schema: intParam},
 	}
+	emojiQuery  = []param{{name: "emoji", description: "The emoji to take off, as it was put on."}}
 	pickerQuery = []param{
 		{name: "q", description: "Words the name, or a person's email, starts with."},
 		{name: "limit", schema: intParam, description: "1 to 50; 20 when absent."},

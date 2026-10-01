@@ -1237,6 +1237,31 @@ export const en = {
       failed: "The comments on passages could not be loaded. Try again in a moment.",
     },
   },
+  reactions: {
+    page: "Reactions to this page",
+    comment: (name: string) => `Reactions to ${name}'s comment`,
+    add: "Add a reaction",
+    picker: "Pick a reaction",
+    toggle: (emoji: string, n: number) => `${emoji} ${n === 1 ? "1 reaction" : `${n} reactions`}`,
+    you: "You",
+    formerMember: "a former member",
+    /** Who put an emoji on, the caller first, the rest counted once the names run out. */
+    who: (names: string[], more: number, emoji: string) => {
+      const all = more > 0 ? [...names, more === 1 ? "1 other" : `${more} others`] : names;
+      const list = all.length <= 1 ? (all[0] ?? "") : `${all.slice(0, -1).join(", ")} and ${all[all.length - 1]}`;
+      return `${list} reacted with ${emoji}`;
+    },
+    names: {
+      "👍": "Thumbs up",
+      "❤️": "Heart",
+      "🎉": "Celebrate",
+      "😄": "Smile",
+      "😮": "Surprised",
+      "👀": "Looking",
+      "🚀": "Rocket",
+      "✅": "Done",
+    } as Record<string, string>,
+  },
   api: {
     unexpected: (status: number) => `The server answered with status ${status}. Try again in a moment.`,
   },

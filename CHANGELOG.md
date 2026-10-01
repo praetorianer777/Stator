@@ -326,6 +326,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   heading inside it. Printing, and so a PDF, shows every section open, as
   does a comparison of versions. The page stores only the title and the
   blocks, and search finds a page by both.
+- Reactions (#66). Below a published page and below each comment, members
+  who may comment put an emoji on from a picker and take theirs back with
+  one click or key; each emoji shows its count, whether it is yours, and,
+  on hover or focus, who reacted, you first, the first ten by name and the
+  rest counted. Readers without the right to comment see the same and add
+  nothing. A deleted comment loses its reactions. `POST` and `DELETE` on
+  `/pages/{pageID}/reactions` and `/comments/{commentID}/reactions`, and
+  `Page` and `Comment` gain `reactions`. The database holds every reaction
+  to its page's view rule and to its author's name (migration 00180).
 
 ### Changed
 

@@ -3,6 +3,41 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: A reaction is a row per person and emoji, given where one may comment
+
+A reaction (#66) is one row naming its page, the comment when it is on one,
+the person and the emoji, unique over the four. A comment's reaction names
+the comment's page too, and a foreign key to the comment's id and page keeps
+the two together, so the page's view rule reads every reaction without a
+join: the same `perm_page_viewable` decides who sees a reaction as who sees
+the page. Nothing notifies: a reaction is meant to be lighter than a reply,
+and the issue asks only for the reactions and who gave them.
+
+Putting one on takes the right to comment, `perm_page_commentable`, on a
+published page out of the trash. A reaction is feedback in the discussion,
+so a space that keeps somebody from commenting keeps them from reacting,
+and an administrator has one switch for both. Taking one's own off needs
+only view, as deleting one's own comment does. The database holds the app
+role to the same with restrictive policies, and to the actor's own name; it
+may not update a reaction at all. A deleted comment is a placeholder and
+takes none: a trigger refuses a new one with a share lock on the comment, so
+it and the delete wait for each other, and the delete takes the existing
+ones with it, as it takes the notifications.
+
+The API takes any one emoji, checked in Go by its code points (`reaction.Clean`)
+and in the database by length and by having no letters or spaces, so the web
+client's picker can grow without a change on the server; a person puts at
+most 20 different emoji on one thing. Each reaction answers its count,
+whether the caller gave it, and the first ten people by name, earliest
+first, which is what the tooltip says: the caller first as "You", then the
+names, then how many more. The names travel with the page and the comment
+lists, so hovering asks nothing of the server.
+
+In the web client each emoji is a toggle button with `aria-pressed`, and who
+reacted is both its tooltip and its description, so a screen reader hears it
+on focus. Somebody who may not react can still focus the buttons, which are
+`aria-disabled` rather than disabled, to learn who reacted.
+
 ## 2026-10-01: An expand block stores its title, never whether it is open
 
 An expand block is one node, `expand`, with a `title` attribute of up to 200
