@@ -35,7 +35,7 @@ x-s3-env: &s3-env
 # keycloak:8080. The callback defaults to STATOR_APP_URL, which nginx proxies.
 x-auth-env: &auth-env
   STATOR_APP_URL: http://localhost:${WEB_PORT:-8000}
-  STATOR_SECRET_KEY: ${STATOR_SECRET_KEY:-c3RhdG9yLWRldmVsb3BtZW50LW9ubHktc2VjcmV0LWs=}
+  STATOR_SECRET_KEY: &secret-key ${STATOR_SECRET_KEY:-c3RhdG9yLWRldmVsb3BtZW50LW9ubHktc2VjcmV0LWs=}
   STATOR_OIDC_BACKCHANNEL: http://localhost:${KEYCLOAK_PORT:-8180}=http://keycloak:8080
 
 # Armature, as the stub stands in for it. An administrator connects
@@ -297,6 +297,8 @@ services:
       <<: [*app-db-env, *s3-env, *armature-env]
       STATOR_LOG_LEVEL: debug
       STATOR_APP_URL: http://localhost:${WEB_PORT:-8000}
+      # Opens the members' Armature tokens, to sync page links as them.
+      STATOR_SECRET_KEY: *secret-key
       # Every notification mail lands in Mailpit, as in Armature.
       STATOR_SMTP_ADDR: mailpit:1025
       STATOR_MAIL_FROM: Stator <no-reply@stator.test>

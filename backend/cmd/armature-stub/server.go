@@ -96,6 +96,7 @@ func (s *stub) handler() http.Handler {
 	mux.HandleFunc("GET "+stubPrefix+"/{tenant}/issues/{issueKey}", s.control((*stub).heldIssue))
 	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/people/{person}/read-only-projects", s.control((*stub).setReads))
 	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/refused-summary", s.control((*stub).setRefused))
+	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/remote-links/outage", s.control((*stub).setOutage))
 	// Unlocked while it posts, so a receiver that calls back finds the stub free.
 	mux.HandleFunc("POST "+stubPrefix+"/{tenant}/webhooks", func(w http.ResponseWriter, r *http.Request) {
 		s.world.mu.Lock()
@@ -412,11 +413,26 @@ func linkView(l *remoteLink) map[string]any {
 }
 
 func (s *stub) linkedIssue(c *call) *issue {
+	if c.tenant.outage > 0 {
+		c.tenant.outage--
+		refuse(c.w, c.tenant.outageStatus, "unavailable", "Armature is not available right now. Try again in a moment.")
+		return nil
+	}
 	is := c.tenant.lookup(c.person, c.r.PathValue("issueKey"))
 	if is == nil {
 		refuse(c.w, http.StatusNotFound, "not_found", "That issue was not found.")
 	}
 	return is
+}
+
+// linkWritable refuses a change to an issue's links in a project the person
+// may only read, as Armature asks for issue.write there.
+func (s *stub) linkWritable(c *call, is *issue) bool {
+	if !c.person.writes(is.Project) {
+		refuse(c.w, http.StatusForbidden, "forbidden", "You may not change the links of issues in this project.")
+		return false
+	}
+	return true
 }
 
 func (s *stub) listLinks(c *call) {
@@ -448,7 +464,7 @@ func (s *stub) putLink(c *call) {
 		return
 	}
 	is := s.linkedIssue(c)
-	if is == nil {
+	if is == nil || !s.linkWritable(c, is) {
 		return
 	}
 	if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
@@ -478,7 +494,7 @@ func (s *stub) deleteLink(c *call) {
 		return
 	}
 	is := s.linkedIssue(c)
-	if is == nil {
+	if is == nil || !s.linkWritable(c, is) {
 		return
 	}
 	id, err := uuid.Parse(c.r.PathValue("remoteLinkID"))
@@ -638,17 +654,39 @@ func (s *stub) setRefused(c *call) {
 	c.w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *stub) setOutage(c *call) {
+	var req struct {
+		// Status answers the next Count remote link calls, a 5xx or a 429.
+		Status int `json:"status"`
+		Count  int `json:"count"`
+	}
+	if !decode(c, &req) {
+		return
+	}
+	if req.Count > 0 && req.Status != http.StatusTooManyRequests && (req.Status < 500 || req.Status > 599) {
+		refuseField(c.w, "status", "Name a 5xx status or 429.")
+		return
+	}
+	c.tenant.outage, c.tenant.outageStatus = max(req.Count, 0), req.Status
+	c.w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *stub) allLinks(c *call) {
 	out := []map[string]any{}
 	byID := map[uuid.UUID]*issue{}
 	for _, is := range c.tenant.issues {
 		byID[is.ID] = is
 	}
+	names := map[uuid.UUID]string{}
+	for _, p := range c.tenant.people {
+		names[p.ID] = p.Display
+	}
 	for _, l := range c.tenant.links {
 		v := linkView(l)
 		if is := byID[l.IssueID]; is != nil {
 			v["issueKey"] = is.Key
 		}
+		v["createdByName"] = names[l.CreatedBy]
 		out = append(out, v)
 	}
 	respond(c.w, http.StatusOK, map[string]any{"remoteLinks": out})

@@ -465,6 +465,37 @@ Uses `GET /armature/issues/{issueKey}` from #28.
 - A new connection address or organization drops the records (#27); the links
   already in the old instance stay there, keyed by url, and a later sync to the
   same instance finds them by url again.
+- **As built in #32.** Migrations 00167 (`armature_remote_link`, readable by
+  `stator_app` only for pages the actor may view and written by the worker
+  alone, and a trigger that drops the records when the connection moves or
+  goes), 00168 (`armature_names_issue`, `page_open_to_members` and
+  `armature_links_emit`) and 00169 (an `armature.links` event is exactly
+  `{pageId, actorId}`). A publish emits with `events.Emit` when the page names
+  an issue or carries links; moves, restrictions, the space's permissions,
+  trash, restore, purge, emptying the trash and deleting the space call
+  `armature_links_emit`, which writes one event per page below as well,
+  without telling the caller which pages those are. A space's permissions
+  and its deletion count as changes too, since they change the title or end
+  the page. `page_open_to_members` is no view list on the way up and an
+  `everyone` grant on the space. The worker is `events.NewMux(fanOut)` with
+  `armature.NewLinkSync` routed for the topic; it holds an advisory lock per
+  page, marks the keys it is about to put `pending`, deletes a link whose url
+  changed before it puts the new one, and keeps what it did when Armature
+  stops answering, so the retry only does the rest. Failed sentences name the
+  actor. `armature.KeysIn` reads the keys, `armature.PlanLinks` compares them
+  with the records, and `armature.LinkTitle` cuts a title to Armature's 255
+  characters. `GET /pages/{id}/armature-links` answers `links: []` for an
+  unpublished page and while the organization has no connection; a key the
+  worker has not reached is `pending`. On the web, "Linked in Armature" sits
+  under the labels, keyed by the page's version, and asks again every
+  `ARMATURE_LINKS_POLL_MS` while a key is pending. The stub gained
+  `PUT /_stub/{tenant}/remote-links/outage` (`status`, a 5xx or 429, and
+  `count`, how many remote link calls answer it), refuses link writes with
+  403 `forbidden` in a project the person may only read, and names each
+  link's creator as `createdByName` under `GET /_stub/{tenant}/remote-links`.
+  The compose worker gets `STATOR_SECRET_KEY`; the integration suite reads it
+  as `STATOR_TEST_SECRET_KEY`, and the worker's address as
+  `STATOR_TEST_APP_URL`.
 
 ## #33 Receive Armature webhooks to refresh cached issues
 

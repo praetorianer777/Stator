@@ -396,6 +396,12 @@ func (s *Service) Move(ctx context.Context, actor perm.Actor, id uuid.UUID, in M
 			}
 			return fmt.Errorf("move the page: %w", err)
 		}
+		// The space is in every address Armature holds for the pages moved.
+		if to.ID != current.SpaceID {
+			if err := syncLinksBelow(ctx, tx, []uuid.UUID{id}, withChildren); err != nil {
+				return err
+			}
+		}
 		out, _, err = load(ctx, tx, actor, id, false)
 		return err
 	})
@@ -538,6 +544,9 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 		}
 		if err := watch.Auto(ctx, tx, actor.UserID, made); err != nil {
 			return fmt.Errorf("watch the copy: %w", err)
+		}
+		if err := syncLinksBelow(ctx, tx, news, false); err != nil {
+			return err
 		}
 		out, _, err = load(ctx, tx, actor, made, false)
 		return err

@@ -11,6 +11,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/rank"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -217,6 +218,11 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, key string) (db.
 		}
 		if err := perm.Check(ctx, tx, actor, perm.DeleteSpace, current.ID); err != nil {
 			return err
+		}
+		// Before the pages go: the sync finds them gone and takes their links
+		// off the issues they named.
+		if _, err := tx.Exec(ctx, `SELECT armature_links_emit_space($1, false, $2)`, current.ID, events.TraceParent(ctx)); err != nil {
+			return fmt.Errorf("sync the space's Armature links: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM space WHERE id = $1`, current.ID); err != nil {
 			return err

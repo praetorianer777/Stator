@@ -178,7 +178,7 @@ func TestIssuesAreFiledFromASelectionAsTheCaller(t *testing.T) {
 	})
 
 	t.Run("a token Armature no longer takes is marked and never sent again", func(t *testing.T) {
-		box, _ := secret.New(testSecretKey)
+		box, _ := secret.New(testSecretKey(t))
 		bound := append(append([]byte("armature.token:"), home.org[:]...), bobID[:]...)
 		revoked, _ := box.Seal([]byte("armature_pat_revoked"), bound)
 		if _, err := h.super.Exec(context.Background(), `UPDATE armature_token SET token = $2 WHERE user_id = $1`, bobID, revoked); err != nil {

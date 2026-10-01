@@ -56,8 +56,10 @@ func (s *Service) Trash(ctx context.Context, actor perm.Actor, id uuid.UUID) (db
 		}
 		// The database marks the pages below too, those the actor cannot
 		// see included, once it has checked the page itself.
-		_, err = tx.Exec(ctx, `SELECT page_trash($1)`, id)
-		return err
+		if _, err = tx.Exec(ctx, `SELECT page_trash($1)`, id); err != nil {
+			return err
+		}
+		return syncLinksBelow(ctx, tx, []uuid.UUID{id}, true)
 	})
 }
 
@@ -148,6 +150,9 @@ func (s *Service) Restore(ctx context.Context, actor perm.Actor, spaceKey string
 		if _, err := tx.Exec(ctx, `SELECT page_untrash($1, $2, $3)`, id, home, homeRank); err != nil {
 			return err
 		}
+		if err := syncLinksBelow(ctx, tx, []uuid.UUID{id}, true); err != nil {
+			return err
+		}
 		out, _, err = load(ctx, tx, actor, id, false)
 		return err
 	})
@@ -194,6 +199,10 @@ func (s *Service) Purge(ctx context.Context, actor perm.Actor, spaceKey string, 
 				return err
 			}
 		}
+		// Before the rows go, which the database finds the pages below by.
+		if err := syncLinksBelow(ctx, tx, []uuid.UUID{id}, true); err != nil {
+			return err
+		}
 		var gone int64
 		if err := tx.QueryRow(ctx, `SELECT page_purge($1)`, id).Scan(&gone); err != nil {
 			return fmt.Errorf("purge the page: %w", err)
@@ -210,6 +219,9 @@ func (s *Service) EmptyTrash(ctx context.Context, actor perm.Actor, spaceKey str
 			return err
 		}
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('page-tree:' || $1::text, 0))`, sp.ID); err != nil {
+			return err
+		}
+		if err := syncLinksOfSpace(ctx, tx, sp.ID, true); err != nil {
 			return err
 		}
 		var gone int64

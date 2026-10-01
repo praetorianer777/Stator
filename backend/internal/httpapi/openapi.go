@@ -375,7 +375,7 @@ var operations = []operation{
 		request: armature.CreateIssuesInput{}, responses: map[int]any{201: env{"issues": []armature.Issue{}, "failed": (*armature.CreateFailure)(nil)}, 409: errorEnvelope{}, 502: errorEnvelope{}}},
 
 	// Pages in Armature (#32).
-	{method: "GET", path: "/pages/{pageID}/armature-links", handler: "handleListArmatureLinks", tag: "armature", pending: true,
+	{method: "GET", path: "/pages/{pageID}/armature-links", handler: "handleListArmatureLinks", tag: "armature",
 		summary:   "The issues a page's published version names, and whether each carries its remote link in Armature yet.",
 		responses: ok(env{"links": []armature.Link{}})},
 

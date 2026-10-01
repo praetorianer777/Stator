@@ -1,5 +1,6 @@
 // Command worker runs everything that happens outside a request: the outbox
-// with the notifications it fans out, their digests, and the file reaper.
+// with the notifications it fans out and the page links it syncs to Armature,
+// the notifications' digests, and the file reaper.
 package main
 
 import (
@@ -10,14 +11,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/mail"
+	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
+	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/version"
 )
 
@@ -94,7 +98,19 @@ func run() error {
 		mailer = mail.SMTPMailer{Addr: cfg.Mail.SMTPAddr, From: cfg.Mail.From}
 	}
 	fanOut := notify.NewFanOut(cluster, mailer, cfg.AppBaseURL, log)
-	go events.NewWorker(cluster, fanOut, log).Run(ctx)
+	var box *secret.Box
+	if cfg.SecretKey != nil {
+		if box, err = secret.New(cfg.SecretKey); err != nil {
+			return err
+		}
+	} else {
+		log.Warn("STATOR_SECRET_KEY is not set, so no stored Armature token opens and every page link to Armature fails")
+	}
+	allow := netguard.ParseAllow(cfg.Armature.OutboundAllow)
+	armatures := armature.NewService(cluster, box, armature.NewClient(allow, cfg.Armature.Backchannel), nil,
+		armature.Options{AppURL: cfg.AppBaseURL, Allow: allow, Development: cfg.Env == config.EnvDevelopment, Log: log})
+	handlers := events.NewMux(fanOut).Route(events.TopicArmatureLinks, armature.NewLinkSync(armatures, log))
+	go events.NewWorker(cluster, handlers, log).Run(ctx)
 	if mailer != nil {
 		go notify.NewDigester(cluster, mailer, cfg.AppBaseURL, log).Run(ctx)
 	}

@@ -122,6 +122,10 @@ type tenant struct {
 	// refused is a summary every create refuses, so a test can make
 	// Armature refuse one item of several.
 	refused string
+	// outage is how many remote link calls still answer outageStatus, so a
+	// test can watch a sync be tried again.
+	outage       int
+	outageStatus int
 }
 
 type world struct {

@@ -181,3 +181,31 @@ func (w *Worker) prune(ctx context.Context) {
 		w.log.Warn("old outbox events could not be pruned", "error", err)
 	}
 }
+
+// Mux hands each event to the handler of its topic and any other to the
+// fallback, so a topic that fails is retried without running the others again.
+type Mux struct {
+	routes   map[string]Handler
+	fallback Handler
+}
+
+// NewMux routes every topic not named to fallback, which may be nil.
+func NewMux(fallback Handler) *Mux {
+	return &Mux{routes: map[string]Handler{}, fallback: fallback}
+}
+
+// Route sends a topic's events to h.
+func (m *Mux) Route(topic string, h Handler) *Mux {
+	m.routes[topic] = h
+	return m
+}
+
+func (m *Mux) Handle(ctx context.Context, e Event) error {
+	if h, ok := m.routes[e.Topic]; ok {
+		return h.Handle(ctx, e)
+	}
+	if m.fallback == nil {
+		return nil
+	}
+	return m.fallback.Handle(ctx, e)
+}
