@@ -61,9 +61,9 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT id, email, name, COALESCE(avatar_url, ''), is_active, password_hash
+			SELECT id, email, name, COALESCE(avatar_url, ''), COALESCE(locale, ''), is_active, password_hash
 			FROM app_user WHERE email = $1`, email,
-		).Scan(&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &active, &stored)
+		).Scan(&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &active, &stored)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		_, _, _ = VerifyPassword(password, decoyHash, s.params)
@@ -129,7 +129,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 // round trip; outer joins, since a person may have no organization yet.
 const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
-       u.id, u.email, u.name, COALESCE(u.avatar_url, ''), u.is_active,
+       u.id, u.email, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.is_active,
        o.id, o.slug, o.name, m.org_role
 FROM user_session s
 JOIN app_user u ON u.id = s.user_id
@@ -159,7 +159,7 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
 			&sessionID, &lastSeen, &p.Proof,
-			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &active,
+			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &active,
 			&orgID, &orgSlug, &orgName, &memberRole,
 		)
 	})
@@ -270,6 +270,18 @@ func (s *Service) SwitchOrg(ctx context.Context, sessionID, userID uuid.UUID, sl
 		return nil, 0, err
 	}
 	return &org, lsn, nil
+}
+
+// SetLocale records the language a person reads the interface in;
+// LocaleBrowser hands the choice back to their browser.
+func (s *Service) SetLocale(ctx context.Context, userID uuid.UUID, locale Locale) (db.LSN, error) {
+	if !slices.Contains(Locales, locale) {
+		return 0, ErrBadLocale
+	}
+	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		_, err := tx.Exec(ctx, `UPDATE app_user SET locale = NULLIF($2, '') WHERE id = $1`, userID, string(locale))
+		return err
+	})
 }
 
 // OrgBySlug finds an organization by the slug in a URL. It runs on the admin

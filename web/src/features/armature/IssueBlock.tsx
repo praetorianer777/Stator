@@ -1,13 +1,14 @@
+import { localDateFormat } from "@/lib/format";
 import type { ReactNode } from "react";
 import type { ArmatureIssue } from "@/api/armature";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { IssueChip, StatusLozenge, TypeIcon, useChip } from "./IssueChip";
 
-const changedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const changedAt = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 // Armature keeps a due date as a day at midnight UTC; read in the viewer's
 // zone it could fall on the day before.
-const dueOn = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" });
+const dueOn = localDateFormat({ dateStyle: "medium", timeZone: "UTC" });
 
 /** A due date as the day Armature names. */
 export function formatDue(dueDate: string | null | undefined): string | null {
