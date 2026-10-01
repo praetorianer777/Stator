@@ -141,5 +141,5 @@ func TestWatchesAndNotificationsAreWalledByTheDatabase(t *testing.T) {
 }
 
 func allKinds(on bool) map[string]any {
-	return map[string]any{"mentioned": on, "replied": on, "commented": on, "resolved": on, "published": on, "created": on}
+	return map[string]any{"mentioned": on, "shared": on, "replied": on, "commented": on, "resolved": on, "published": on, "created": on}
 }

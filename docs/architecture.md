@@ -87,6 +87,7 @@ process, which is only right for a single api process. `/readyz` and
 | `label`, `watch`, `notify` | labels, watchers, in-app and email notifications |
 | `star`, `home` | starred pages and spaces, the home page's updates and edits |
 | `stale` | the stale content report: pages nobody published or opened for a while, for the administrators of their spaces |
+| `share` | sending a page to people and groups who may view it, with a note |
 | `keyset` | the cursor a list ordered by time hands out for its next window |
 | `template` | page templates |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |

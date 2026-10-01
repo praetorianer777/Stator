@@ -271,8 +271,8 @@ func PickerLimit(limit int) int {
 	return limit
 }
 
-// likePrefix is a LIKE pattern matching what starts with the text typed.
-func likePrefix(q string) string {
+// LikePrefix is a LIKE pattern matching what starts with the text typed.
+func LikePrefix(q string) string {
 	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 	return r.Replace(strings.TrimSpace(q)) + "%"
 }
@@ -285,7 +285,7 @@ func (s *Service) People(ctx context.Context, actor Actor, q string, limit int) 
 			SELECT u.id, u.name, u.email::text FROM org_member m JOIN app_user u ON u.id = m.user_id
 			WHERE m.org_id = current_org_id()
 			  AND (u.name ILIKE $1 OR u.name ILIKE '% ' || $1 OR u.email::text ILIKE $1)
-			ORDER BY lower(u.name), u.email LIMIT $2`, likePrefix(q), PickerLimit(limit))
+			ORDER BY lower(u.name), u.email LIMIT $2`, LikePrefix(q), PickerLimit(limit))
 		if err != nil {
 			return err
 		}
@@ -304,7 +304,7 @@ func (s *Service) Groups(ctx context.Context, actor Actor, q string, limit int) 
 			SELECT g.id, g.name, (SELECT count(*)::int FROM group_member gm WHERE gm.group_id = g.id), g.source = 'oidc'
 			FROM groups g
 			WHERE g.name ILIKE $1 OR g.name ILIKE '% ' || $1
-			ORDER BY lower(g.name), g.id LIMIT $2`, likePrefix(q), PickerLimit(limit))
+			ORDER BY lower(g.name), g.id LIMIT $2`, LikePrefix(q), PickerLimit(limit))
 		if err != nil {
 			return err
 		}
