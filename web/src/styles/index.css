@@ -427,6 +427,16 @@
     font-weight: 500;
     color: var(--color-accent);
   }
+  /* The ink stays the text's own, so a match reads as well as the words around it. */
+  .doc-content [data-find-match] {
+    border-radius: 2px;
+    background: var(--color-warning-subtle);
+    box-shadow: 0 0 0 1px var(--color-warning);
+  }
+  .doc-content [data-find-match="current"] {
+    background: var(--color-accent-subtle);
+    box-shadow: 0 0 0 2px var(--color-focus);
+  }
   .doc-content .doc-table-wrap,
   .doc-content .tableWrapper {
     overflow-x: auto;

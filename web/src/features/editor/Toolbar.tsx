@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
 import { Button, Field, IconButton, Menu, SelectInput } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { CODE_LANGUAGES, TABLE_DEFAULT_COLS, TABLE_DEFAULT_ROWS } from "@/config";
+import { CODE_LANGUAGES, FIND_SHORTCUT, TABLE_DEFAULT_COLS, TABLE_DEFAULT_ROWS } from "@/config";
 import { t } from "@/i18n";
 import { languageLabel } from "./languages";
 import type { EditorVariant } from "./extensions";
@@ -27,12 +27,18 @@ export function EditorToolbar({
   onCopyHeadingLink,
   variant = "page",
   onCreateIssues,
+  finding = false,
+  onFind,
 }: {
   editor: Editor;
   onCopyHeadingLink: (anchor: string) => void;
   variant?: EditorVariant;
   /** Turns the selection into Armature issues; without it the action is not offered. */
   onCreateIssues?: () => void;
+  /** Whether the find bar is open. */
+  finding?: boolean;
+  /** Opens or closes the find bar; without it the control is not offered. */
+  onFind?: () => void;
 }) {
   const state = useEditorState({
     editor,
@@ -157,6 +163,21 @@ export function EditorToolbar({
           />
         ))}
         {variant === "page" && <AttachButton editor={editor} />}
+        {onFind && (
+          <>
+            <Separator />
+            <IconButton
+              icon={<Icon.Search />}
+              label={t.editor.find.open}
+              size="sm"
+              aria-expanded={finding}
+              aria-keyshortcuts={FIND_SHORTCUT}
+              data-editor-action="find"
+              onMouseDown={keepSelection}
+              onClick={onFind}
+            />
+          </>
+        )}
       </RovingToolbar>
       {linking && (
         <LinkForm

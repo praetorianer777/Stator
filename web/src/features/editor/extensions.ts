@@ -23,6 +23,7 @@ import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
+import { FindReplace } from "./findReplace";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -297,10 +298,12 @@ export interface ExtensionOptions {
   pickIssue?: () => void;
   /** Opens the settings dialog the slash menu's Armature issue list starts with. */
   pickIssueList?: () => void;
+  /** Opens the find bar with the selected words; without it Ctrl or Cmd+F is the browser's. */
+  find?: (seed: string) => void;
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
-export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments, armature, pickIssue, pickIssueList }: ExtensionOptions = {}): AnyExtension[] {
+export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments, armature, pickIssue, pickIssueList, find }: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
       underline: false,
@@ -354,5 +357,6 @@ export function editorExtensions({ variant = "page", placeholder, mention, slash
     ArmatureIssue.configure({ source: armature }),
     ArmatureIssueBlock.configure({ pick: pickIssue }),
     ArmatureIssueList.configure({ pick: pickIssueList }),
+    FindReplace.configure({ open: find }),
   ];
 }
