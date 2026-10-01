@@ -3,6 +3,27 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: The push gate runs before a background push starts, not inside it
+
+Two agent pushes (#205, #212) looked as if they had skipped `./run-tests.sh`:
+the background push finished two seconds after it was reported as started.
+Their transcripts show it did not skip. A `PreToolUse` hook runs before the
+tool, and for a Bash call with `run_in_background` Claude Code waits for the
+hook before it starts the background task, so the whole gate (15m51s for
+#205, 9m37s for #212) passed while the call itself was pending, and the
+push that ran afterwards had nothing left to wait for. A push from a worktree
+here behaved the same, with the gate running in the worktree. This is how the
+harness orders hooks and background tasks, not something the guard can
+change, so the guard is left as it is and the time to look at is the delay
+before "Command running in background", or the `gate_secs` the guard logs.
+
+Every hook invocation now appends a line to `branch-guard.log` in the common
+git dir, so the next doubt is settled by reading it rather than by replaying.
+Worktree agents run with `CLAUDE_PROJECT_DIR` set to the main checkout, so
+the hook that guards them is the main checkout's working copy, not their
+own: a change to the guard protects agents only once the main checkout has
+it, and the log's `hook=` field says which copy ran.
+
 ## 2026-10-01: A status is words on a theme tint, a date is a day, an emoji is text
 
 A `status` node stores its words and one of five colours by theme role
