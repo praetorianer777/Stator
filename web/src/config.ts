@@ -104,6 +104,8 @@ export const TABLE_DEFAULT_COLS = 3;
 export const MENTION_MAX_SUGGESTIONS = 8;
 /** How long typing after an at sign settles before the people are looked up. */
 export const MENTION_SEARCH_DEBOUNCE_MS = 150;
+/** Find and replace in the editor, as aria-keyshortcuts names it; Cmd+F on a Mac. */
+export const FIND_SHORTCUT = "Control+F";
 /** How long "Link copied" stays after copying a heading's link. */
 export const COPY_FEEDBACK_MS = 2000;
 /** The deepest heading a new table of contents lists: all of them. */
