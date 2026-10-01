@@ -245,3 +245,21 @@ export const ARMATURE_LOOKUP_MAX_KEYS = 50;
 export const ARMATURE_CARD_DELAY_MS = 300;
 /** How long the issue picker waits after a keystroke before it asks Armature for the key. */
 export const ARMATURE_PICKER_DEBOUNCE_MS = 250;
+/** The columns an Armature issue list may show, in the order the dialog offers them; the server's allowlist holds the same. */
+export const ARMATURE_COLUMNS = ["key", "summary", "type", "status", "priority", "assignee", "reporter", "created", "updated", "due"] as const;
+export type ArmatureColumn = (typeof ARMATURE_COLUMNS)[number];
+/** What a new issue list shows, as armature.DefaultColumns. */
+export const ARMATURE_DEFAULT_COLUMNS: readonly ArmatureColumn[] = ["key", "summary", "status", "assignee"];
+/** The most columns and rows a list takes, and the rows a new one shows, as the API bounds them. */
+export const ARMATURE_LIST_MAX_COLUMNS = 10;
+export const ARMATURE_LIST_MAX_LIMIT = 100;
+export const ARMATURE_LIST_DEFAULT_LIMIT = 20;
+/** How many rows a list asks for at a time; Show more asks for the next ones, up to its limit. */
+export const ARMATURE_LIST_PAGE_SIZE = 20;
+/** The longest NQL query a list keeps, as armature.MaxQueryLength. */
+export const ARMATURE_QUERY_MAX_LENGTH = 2000;
+/** How long the list dialog waits after a keystroke before Armature checks the query. */
+export const ARMATURE_QUERY_CHECK_DEBOUNCE_MS = 400;
+/** Armature's priorities, lowest first, and its status categories in workflow order, for sorting rows. */
+export const ARMATURE_PRIORITIES: readonly string[] = ["lowest", "low", "medium", "high", "highest"];
+export const ARMATURE_STATUS_CATEGORIES: readonly string[] = ["todo", "in_progress", "done"];

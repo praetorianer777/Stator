@@ -18,18 +18,21 @@ const (
 	KindInteger  AttrKind = "integer"
 	KindBoolean  AttrKind = "boolean"
 	KindIntegers AttrKind = "integers"
+	// KindStrings is a list of distinct strings, each one of Enum.
+	KindStrings AttrKind = "strings"
 	// KindNull is an attribute the editor always writes and always leaves empty.
 	KindNull AttrKind = "null"
 )
 
 // Attr is what one attribute may hold. Min and Max bound each integer;
-// MaxLength counts a string's characters or a list's items.
+// MinLength and MaxLength count a string's characters or a list's items.
 type Attr struct {
 	Kind      AttrKind `json:"kind"`
 	Nullable  bool     `json:"nullable,omitempty"`
 	Enum      []string `json:"enum,omitempty"`
 	Min       int      `json:"min,omitempty"`
 	Max       int      `json:"max,omitempty"`
+	MinLength int      `json:"minLength,omitempty"`
 	MaxLength int      `json:"maxLength,omitempty"`
 	Pattern   string   `json:"pattern,omitempty"`
 	URL       bool     `json:"url,omitempty"`
@@ -103,7 +106,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "image", "tableOfContents", "childPages", armature.NodeIssueBlock}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -127,6 +130,14 @@ var (
 	ChildPagesScopes = []string{"children", "subtree"}
 	ChildPagesSorts  = []string{"tree", "title", "updated"}
 )
+
+func issueColumns() []string {
+	out := make([]string, len(armature.Columns))
+	for i, c := range armature.Columns {
+		out[i] = string(c)
+	}
+	return out
+}
 
 // Allowed is the one table the validator, the generated
 // api/document-allowlist.json and the web editor's test all read.
@@ -203,6 +214,15 @@ var Allowed = Allowlist{
 		},
 		armature.NodeIssueBlock: {
 			Attrs: map[string]Attr{"key": {Kind: KindString, Pattern: armature.KeyPattern}},
+		},
+		// The query and how to show it, never its rows: each reader's view
+		// asks Armature for the rows that reader may see.
+		armature.NodeIssueList: {
+			Attrs: map[string]Attr{
+				"query":   {Kind: KindString, MaxLength: armature.MaxQueryLength, Pattern: `\S`},
+				"columns": {Kind: KindStrings, Enum: issueColumns(), MinLength: 1, MaxLength: armature.MaxColumns},
+				"limit":   {Kind: KindInteger, Min: 1, Max: armature.MaxListLimit},
+			},
 		},
 		"attachment": {
 			Inline: true,

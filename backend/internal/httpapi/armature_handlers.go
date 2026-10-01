@@ -200,3 +200,28 @@ func (s *Server) handleListArmatureProjects(w http.ResponseWriter, r *http.Reque
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "projects": projects})
 }
+
+// The list block (#30): one page of the issues an NQL query matches, as the
+// caller may see them in Armature.
+func (s *Server) handleSearchArmatureIssues(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	limit, offset, bad := window(r, armature.DefaultListLimit, armature.MaxListLimit)
+	if bad != nil {
+		respondError(w, r, bad)
+		return
+	}
+	status, found, err := s.Armature.Search(r.Context(), r.URL.Query().Get("q"), limit, offset)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if found == nil {
+		found = &armature.SearchResult{Issues: []armature.Issue{}, Limit: limit, Offset: offset}
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{
+		"status": status, "issues": found.Issues, "total": found.Total, "limit": found.Limit, "offset": found.Offset, "url": found.URL,
+	})
+}

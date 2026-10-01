@@ -30,6 +30,7 @@ const richDoc = `{"type":"doc","content":[
  {"type":"paragraph","content":[{"type":"text","text":"See "},{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5d","fileName":"report.pdf"}}]},
  {"type":"paragraph","content":[{"type":"text","text":"Fixed in "},{"type":"armatureIssue","attrs":{"key":"CP-12"}}]},
  {"type":"armatureIssueBlock","attrs":{"key":"CP-7"}},
+ {"type":"armatureIssueList","attrs":{"query":"project = CP AND statusCategory != done","columns":["key","summary","due"],"limit":20}},
  {"type":"table","content":[
   {"type":"tableRow","content":[
    {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Name"}]}]},
@@ -57,6 +58,9 @@ func TestValidateAcceptsEveryAllowedConstruct(t *testing.T) {
 func TestValidateRefusesInASentence(t *testing.T) {
 	para := func(inner string) string {
 		return `{"type":"doc","content":[{"type":"paragraph","content":[` + inner + `]}]}`
+	}
+	list := func(attrs string) string {
+		return `{"type":"doc","content":[{"type":"armatureIssueList","attrs":{` + attrs + `}}]}`
 	}
 	link := func(href string) string {
 		b, _ := json.Marshal(href)
@@ -125,6 +129,18 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"issue block with a summary", `{"type":"doc","content":[{"type":"armatureIssueBlock","attrs":{"key":"CP-7","summary":"secret"}}]}`, `attribute "summary"`},
 		{"issue block with content", `{"type":"doc","content":[{"type":"armatureIssueBlock","attrs":{"key":"CP-7"},"content":[{"type":"paragraph"}]}]}`, `holds none`},
 		{"issue block inline", para(`{"type":"armatureIssueBlock","attrs":{"key":"CP-7"}}`), `puts a "armatureIssueBlock"`},
+		{"issue list blank query", list(`"query":"  ","columns":["key"],"limit":20`), `query="  "`},
+		{"issue list long query", list(`"query":"` + strings.Repeat("a", 2001) + `","columns":["key"],"limit":20`), `query=`},
+		{"issue list no columns", list(`"query":"project = CP","columns":[],"limit":20`), `columns=[]`},
+		{"issue list unknown column", list(`"query":"project = CP","columns":["key","storyPoints"],"limit":20`), `columns=`},
+		{"issue list column twice", list(`"query":"project = CP","columns":["key","key"],"limit":20`), `columns=`},
+		{"issue list columns as text", list(`"query":"project = CP","columns":"key","limit":20`), `columns="key"`},
+		{"issue list column not text", list(`"query":"project = CP","columns":[1],"limit":20`), `columns=[1]`},
+		{"issue list eleven columns", list(`"query":"project = CP","columns":["key","summary","type","status","priority","assignee","reporter","created","updated","due","key"],"limit":20`), `columns=`},
+		{"issue list limit zero", list(`"query":"project = CP","columns":["key"],"limit":0`), `limit=0`},
+		{"issue list limit too high", list(`"query":"project = CP","columns":["key"],"limit":101`), `limit=101`},
+		{"issue list with rows", list(`"query":"project = CP","columns":["key"],"limit":20,"issues":[{"key":"CP-1"}]`), `attribute "issues"`},
+		{"issue list inline", para(`{"type":"armatureIssueList","attrs":{"query":"project = CP","columns":["key"],"limit":20}}`), `puts a "armatureIssueList"`},
 		{"contents level zero", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":0}}]}`, `maxLevel=0`},
 		{"contents level too deep", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":4}}]}`, `maxLevel=4`},
 		{"contents level as string", `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":"2"}}]}`, `maxLevel="2"`},

@@ -44,6 +44,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("tableOfContents", Icon.Hash, ["toc", "contents", "headings", "outline"], (c) => c.insertTableOfContents()),
   item("childPages", Icon.Page, ["children", "pages", "subpages", "tree"], (c) => c.insertChildPages()),
   { ...item("armatureIssue", Icon.Task, ["armature", "issue", "ticket", "card"], (c) => c.pickArmatureIssue()), armature: true },
+  { ...item("armatureIssueList", Icon.Table, ["armature", "issues", "query", "nql", "list"], (c) => c.pickArmatureIssueList()), armature: true },
 ];
 
 /** The blocks this editor offers: the Armature ones only where there is an Armature. */

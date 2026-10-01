@@ -3,6 +3,32 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: An issue list stores its query, and each reader asks for their own rows
+
+`armatureIssueList` keeps the query, the columns and the most rows, never
+the rows: what a query finds depends on who asks, since Armature answers
+`currentUser()` and the projects the reader may see, and rows in the body
+would be readable by everybody who reads the page and would go stale. Each
+view asks `GET /armature/search` as the reader, cached per token row for a
+minute, so twenty readers of one page cost Armature twenty searches at most
+once a minute each.
+
+A query Armature cannot read is the author's to fix, so the search answers
+422 `bad_query` with Armature's sentence and the position rather than a
+status, and the block shows where it went wrong. The settings dialog checks
+the query with the same route and `limit=1` as it is typed, and refuses to
+save a query Armature refused, so a typo is seen before it is published.
+
+Rows arrive a page at a time and "Show more" asks for the next page up to
+the block's limit, rather than all of them at once, so a list of a hundred
+rows does not hold the page while Armature answers. Sorting by a column
+orders the rows already fetched; ordering on the server is the query's own
+`ORDER BY`, which the author writes.
+
+The allowlist gains the `strings` kind for the columns: a list of distinct
+values from an enum, with `minLength` and `maxLength`. The web client's
+test reads the same rule from `api/document-allowlist.json`.
+
 ## 2026-10-01: An issue block is a card drawn from the chips' lookup, and its picker checks the key
 
 `armatureIssueBlock` stores the key and nothing else, for the reasons the chip

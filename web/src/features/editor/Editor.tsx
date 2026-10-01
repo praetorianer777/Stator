@@ -16,6 +16,8 @@ import type { AttachmentIndex } from "./attachmentIndex";
 import type { UploadFile } from "./attachments";
 import type { IssueSource } from "./armatureIssue";
 import { IssuePicker } from "@/features/armature/IssuePicker";
+import { IssueListDialog } from "@/features/armature/IssueListDialog";
+import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
 
 /** What a form may do to the editor from outside: put words in, or empty it. */
 export interface EditorHandle {
@@ -87,6 +89,7 @@ export function Editor({
   const armatureRef = useRef(armature);
   armatureRef.current = armature;
   const [pickingIssue, setPickingIssue] = useState(false);
+  const [makingList, setMakingList] = useState(false);
 
   const slash = useSuggestion<SlashItem>((item) => item);
   const mention = useSuggestion<Mentionable, MentionNodeAttrs>((person) => ({ id: person.id, label: person.name }));
@@ -101,6 +104,7 @@ export function Editor({
       attachments,
       armature,
       pickIssue: () => setPickingIssue(true),
+      pickIssueList: () => setMakingList(true),
       slash: { items: ({ query }) => filterSlashItems(query, slashItemsFor(Boolean(armatureRef.current?.baseUrl()))), render: slash.renderer },
       mention: {
         items: ({ query }) => mentionMatches(searchesRef.current ? foundRef.current : peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
@@ -210,6 +214,17 @@ export function Editor({
           onInsert={(key) => {
             setPickingIssue(false);
             editor.chain().focus().insertArmatureIssueBlock(key).run();
+          }}
+        />
+      )}
+      {makingList && editor && (
+        <IssueListDialog
+          initial={{ query: "", columns: [...ARMATURE_DEFAULT_COLUMNS], limit: ARMATURE_LIST_DEFAULT_LIMIT }}
+          isNew
+          onClose={() => setMakingList(false)}
+          onSave={(settings) => {
+            setMakingList(false);
+            editor.chain().focus().insertArmatureIssueList(settings).run();
           }}
         />
       )}

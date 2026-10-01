@@ -228,6 +228,20 @@ func attrValid(rule Attr, value any) bool {
 			}
 		}
 		return true
+	case KindStrings:
+		list, ok := value.([]any)
+		if !ok || len(list) < rule.MinLength || len(list) > rule.MaxLength {
+			return false
+		}
+		seen := make(map[string]bool, len(list))
+		for _, item := range list {
+			s, ok := item.(string)
+			if !ok || seen[s] || !slices.Contains(rule.Enum, s) {
+				return false
+			}
+			seen[s] = true
+		}
+		return true
 	case KindString:
 		s, ok := value.(string)
 		if !ok {

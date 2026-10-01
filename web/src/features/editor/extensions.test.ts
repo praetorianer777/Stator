@@ -76,11 +76,16 @@ describe("the slash menu's blocks", () => {
       childPages: (d) => JSON.stringify(find(d, "childPages")[0]?.attrs) === JSON.stringify({ scope: "children", depth: null, sort: "tree" }),
       // The picker asks which issue; this one answers lower case, as a person might type it.
       armatureIssue: (d) => JSON.stringify(find(d, "armatureIssueBlock")[0]?.attrs) === JSON.stringify({ key: "CP-4" }),
+      armatureIssueList: (d) =>
+        JSON.stringify(find(d, "armatureIssueList")[0]?.attrs) === JSON.stringify({ query: "project = CP", columns: ["key", "due"], limit: 5 }),
     };
     expect(SLASH_ITEMS.map((item) => item.key).sort()).toEqual(Object.keys(expected).sort());
     for (const item of SLASH_ITEMS) {
-      // The picker answers later, as a dialog does, never inside the slash command.
-      const e = await make(undefined, { pickIssue: () => setTimeout(() => editor?.commands.insertArmatureIssueBlock("cp-4")) });
+      // The pickers answer later, as a dialog does, never inside the slash command.
+      const e = await make(undefined, {
+        pickIssue: () => setTimeout(() => editor?.commands.insertArmatureIssueBlock("cp-4")),
+        pickIssueList: () => setTimeout(() => editor?.commands.insertArmatureIssueList({ query: "project = CP", columns: ["key", "due"], limit: 5 })),
+      });
       item.run(e.chain().focus());
       await new Promise((resolve) => setTimeout(resolve));
       expect(expected[item.key]?.(e.getJSON() as DocNode), item.key).toBe(true);

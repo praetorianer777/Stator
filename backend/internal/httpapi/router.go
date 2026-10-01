@@ -198,6 +198,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/armature/issues", s.handleLookupArmatureIssues)
 			r.Get("/armature/issues/{issueKey}", s.handleGetArmatureIssue)
 			r.Get("/armature/projects", s.handleListArmatureProjects)
+			r.Get("/armature/search", s.handleSearchArmatureIssues)
 		})
 
 		if s.TestOrgs != nil {

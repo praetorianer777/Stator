@@ -67,7 +67,7 @@ test.describe("the Armature issue block", { tag: ["@auth"] }, () => {
     const box = page.locator("#page-body");
     await caretTo(box, "end");
     await page.keyboard.press("Enter");
-    await page.keyboard.type("/armature");
+    await page.keyboard.type("/ticket");
     await expect(page.locator('[data-slash-item="armatureIssue"]')).toBeVisible();
     await page.keyboard.press("Enter");
 

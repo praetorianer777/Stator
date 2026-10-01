@@ -17,6 +17,37 @@
         }
       }
     },
+    "armatureIssueList": {
+      "attrs": {
+        "columns": {
+          "kind": "strings",
+          "enum": [
+            "key",
+            "summary",
+            "type",
+            "status",
+            "priority",
+            "assignee",
+            "reporter",
+            "created",
+            "updated",
+            "due"
+          ],
+          "minLength": 1,
+          "maxLength": 10
+        },
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 100
+        },
+        "query": {
+          "kind": "string",
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      }
+    },
     "attachment": {
       "attrs": {
         "attachmentId": {
@@ -46,7 +77,8 @@
         "image",
         "tableOfContents",
         "childPages",
-        "armatureIssueBlock"
+        "armatureIssueBlock",
+        "armatureIssueList"
       ]
     },
     "bulletList": {
@@ -107,7 +139,8 @@
         "image",
         "tableOfContents",
         "childPages",
-        "armatureIssueBlock"
+        "armatureIssueBlock",
+        "armatureIssueList"
       ]
     },
     "hardBreak": {
@@ -171,7 +204,8 @@
         "image",
         "tableOfContents",
         "childPages",
-        "armatureIssueBlock"
+        "armatureIssueBlock",
+        "armatureIssueList"
       ]
     },
     "mention": {
@@ -244,7 +278,8 @@
         "image",
         "tableOfContents",
         "childPages",
-        "armatureIssueBlock"
+        "armatureIssueBlock",
+        "armatureIssueList"
       ]
     },
     "paragraph": {
@@ -315,7 +350,8 @@
         "image",
         "tableOfContents",
         "childPages",
-        "armatureIssueBlock"
+        "armatureIssueBlock",
+        "armatureIssueList"
       ]
     },
     "tableHeader": {
@@ -371,7 +407,8 @@
         "image",
         "tableOfContents",
         "childPages",
-        "armatureIssueBlock"
+        "armatureIssueBlock",
+        "armatureIssueList"
       ]
     },
     "tableOfContents": {
@@ -409,7 +446,8 @@
         "image",
         "tableOfContents",
         "childPages",
-        "armatureIssueBlock"
+        "armatureIssueBlock",
+        "armatureIssueList"
       ]
     },
     "taskList": {

@@ -320,6 +320,19 @@ Uses `GET /armature/issues/{issueKey}` from #28.
   and `limit=1`, and offers the columns as checkboxes in `armature.Columns`
   order.
 - The list is never part of the plain text: its rows are not the page's words.
+- **As built in #30.** `armature.Service.Search` caches each answer under the
+  viewer's token row with `PutSearch`; a status other than `ok` answers
+  `issues: []`, `total: 0` and `url: ""`. Armature's 400 `bad_query` becomes
+  422 `bad_query` with its sentence and `position`, and any other refusal of
+  the search is `unreachable`. The `strings` kind also takes `minLength`, and
+  its items must be distinct. The web client asks for
+  `ARMATURE_LIST_PAGE_SIZE`, 20, rows at a time, and "Show more" asks for the
+  next ones up to the block's `limit`; sorting orders the rows fetched so far,
+  empty values last. A bad query shows Armature's sentence and the character
+  to every reader, and the marked query to whoever may edit the page, with
+  "Edit list", which opens the editor; in the editor the settings dialog
+  opens instead. A comparison of versions names the list by its query, as
+  generated blocks are described, and asks Armature nothing.
 
 ## #31 Create Armature issues from selected text
 

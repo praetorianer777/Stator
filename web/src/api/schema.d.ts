@@ -3131,6 +3131,7 @@ export interface operations {
                 q?: string;
                 /** @description 1 to 100; 20 when absent. */
                 limit?: number;
+                /** @description How many matches to skip; 0 when absent. */
                 offset?: number;
             };
             header?: never;
