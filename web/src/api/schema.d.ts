@@ -576,6 +576,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller. */
+        post: operations["mcp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/notification-preferences": {
         parameters: {
             query?: never;
@@ -2916,6 +2933,20 @@ export interface components {
             edit: components["schemas"]["SubjectRef"][];
             view: components["schemas"]["SubjectRef"][];
         };
+        RpcError: {
+            code: number;
+            /** @description A JSON value. */
+            data?: unknown;
+            message: string;
+        };
+        RpcResponse: {
+            error?: components["schemas"]["RpcError"];
+            /** @description A JSON value. */
+            id: unknown;
+            jsonrpc: string;
+            /** @description A JSON value. */
+            result?: unknown;
+        };
         SaveOIDCProviderRequest: {
             clientId: string;
             clientSecret?: string;
@@ -4857,6 +4888,46 @@ export interface operations {
                         total: number;
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    mcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RpcResponse"];
+                };
+            };
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

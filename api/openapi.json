@@ -52,6 +52,9 @@
       "name": "markdown"
     },
     {
+      "name": "mcp"
+    },
+    {
       "name": "mentions"
     },
     {
@@ -2537,6 +2540,50 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "post": {
+        "operationId": "mcp",
+        "summary": "The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller.",
+        "tags": [
+          "mcp"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "A JSON-RPC 2.0 request as the Model Context Protocol defines it."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted"
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -12088,6 +12135,45 @@
         "required": [
           "view",
           "edit"
+        ]
+      },
+      "RpcError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "data": {
+            "description": "A JSON value."
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "RpcResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/RpcError"
+          },
+          "id": {
+            "description": "A JSON value."
+          },
+          "jsonrpc": {
+            "type": "string"
+          },
+          "result": {
+            "description": "A JSON value."
+          }
+        },
+        "required": [
+          "jsonrpc",
+          "id"
         ]
       },
       "SaveOIDCProviderRequest": {

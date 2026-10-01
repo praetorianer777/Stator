@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ApiToken } from "@/api/tokens";
-import { DAY_MS, TOKEN_DEFAULT_EXPIRY_DAYS } from "@/config";
+import { DAY_MS, MCP_PATH, TOKEN_DEFAULT_EXPIRY_DAYS } from "@/config";
 import { renderAt, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { expiryFrom } from "./tokens";
@@ -46,6 +46,18 @@ describe("the tokens page", () => {
     expect(within(row("stale")).getByText("Expired")).toBeInTheDocument();
     expect(within(row("deploy")).queryByText("Expired")).toBeNull();
     expect(document.querySelector("[data-fresh-token]")).toBeNull();
+  });
+
+  it("says how to connect an assistant, with the address and client settings", async () => {
+    stubApi({ "GET /tokens": { status: 200, body: { tokens: [] } } });
+    await renderAt("/settings/tokens");
+    expect(await screen.findByRole("heading", { level: 2, name: "Connect an assistant" })).toBeInTheDocument();
+    const endpoint = `${window.location.origin}${MCP_PATH}`;
+    expect(screen.getByLabelText("MCP address")).toHaveValue(endpoint);
+    const settings = JSON.parse(document.querySelector("[data-mcp-config]")?.textContent ?? "{}");
+    expect(settings.mcpServers.stator).toEqual({ type: "http", url: endpoint, headers: { Authorization: "Bearer <your token>" } });
+    expect(screen.getByText(/only the tools that read/)).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
   });
 
   it("says what a token is for when there is none", async () => {

@@ -71,6 +71,15 @@ type operation struct {
 	// pending routes are agreed but not built yet: they answer 501, and the
 	// integration suite does not expect them covered. See docs/architecture.md.
 	pending bool
+	// raw says any JSON is accepted, as rawNote describes it.
+	raw     bool
+	rawNote string
+	// tool names the operation for an assistant and toolHelp is the sentence
+	// the model reads; empty means it is not offered (see mcp_test.go for why).
+	tool, toolHelp string
+	// toolFile is the name a multipart tool sends its content under when the
+	// call names none.
+	toolFile string
 }
 
 // operations is the table. Order is by area, then by path; paths are relative
@@ -90,7 +99,7 @@ var operations = []operation{
 	{method: "GET", path: "/auth/oidc/callback", handler: "handleOIDCCallback", tag: "auth", summary: "Where the identity provider sends the browser back; sets the session cookie.", public: true, redirect: true,
 		query: []param{{name: "state"}, {name: "code"}, {name: "error"}}, responses: map[int]any{}},
 	{method: "POST", path: "/auth/logout", handler: "handleLogout", tag: "auth", summary: "End the session.", responses: none()},
-	{method: "GET", path: "/auth/me", handler: "handleMe", tag: "auth", summary: "Who is signed in, and the organizations they may act in.",
+	{method: "GET", path: "/auth/me", handler: "handleMe", tool: "whoami", toolHelp: "Who the token belongs to and which organization it acts in.", tag: "auth", summary: "Who is signed in, and the organizations they may act in.",
 		responses: ok(meResponse{})},
 	{method: "PATCH", path: "/auth/me", handler: "handleUpdateMe", tag: "auth", summary: "Change the caller's own settings, such as the language the interface speaks to them.",
 		request: updateMeRequest{}, responses: map[int]any{200: meResponse{}, 422: errorEnvelope{}}},
@@ -145,23 +154,23 @@ var operations = []operation{
 	{method: "GET", path: "/themes/{themeID}/assets/{assetID}", handler: "handleThemeAsset", tag: "themes", summary: "The bytes of a theme's file, as a download.", binary: true, responses: ok(nil)},
 	{method: "DELETE", path: "/themes/{themeID}/assets/{assetID}", handler: "handleDeleteThemeAsset", tag: "themes", summary: "Take a file off a theme it no longer uses.", responses: none()},
 
-	{method: "GET", path: "/spaces", handler: "handleListSpaces", tag: "spaces", summary: "Every space the caller may see, by name; archived ones only when asked for.",
+	{method: "GET", path: "/spaces", handler: "handleListSpaces", tool: "list_spaces", toolHelp: "The spaces the caller may see, with the keys other tools take; archived true lists archived ones too.", tag: "spaces", summary: "Every space the caller may see, by name; archived ones only when asked for.",
 		query:     []param{{name: "archived", schema: &openapi.Schema{Type: "boolean"}, description: "true to list archived spaces too; false when absent."}},
 		responses: ok(env{"spaces": []space.Space{}})},
 	{method: "POST", path: "/spaces", handler: "handleCreateSpace", tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
-	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
+	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For the space's administrators.", responses: none()},
 
-	{method: "GET", path: "/spaces/{spaceKey}/pages", handler: "handleListPages", tag: "pages", summary: "The pages directly under a parent, by default under the space's home page, in order.",
+	{method: "GET", path: "/spaces/{spaceKey}/pages", handler: "handleListPages", tool: "list_child_pages", toolHelp: "The pages directly under a parent page, in order; without parent, those under the space's home page.", tag: "pages", summary: "The pages directly under a parent, by default under the space's home page, in order.",
 		query: []param{{name: "parent", description: "The page whose children to list.", schema: &openapi.Schema{Type: "string", Format: "uuid"}}}, responses: ok(env{"pages": []page.TreeNode{}})},
-	{method: "GET", path: "/spaces/{spaceKey}/outline", handler: "handleSpaceOutline", tag: "pages", summary: "Every page of a space in reading order, with its depth, for choosing where a page goes.", responses: ok(env{"pages": []page.OutlineEntry{}})},
+	{method: "GET", path: "/spaces/{spaceKey}/outline", handler: "handleSpaceOutline", tool: "get_space_outline", toolHelp: "Every page of a space in reading order with its depth, to find a page or where a new one goes.", tag: "pages", summary: "Every page of a space in reading order, with its depth, for choosing where a page goes.", responses: ok(env{"pages": []page.OutlineEntry{}})},
 	// Archive (#37).
 	{method: "PUT", path: "/spaces/{spaceKey}/archive", handler: "handleArchiveSpace", tag: "archive", summary: "Archive a space: it stays readable, leaves the space list, search and the home page, and none of its pages changes. For the space's administrators; archiving it again is no change.",
 		responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/archive", handler: "handleUnarchiveSpace", tag: "archive", summary: "Unarchive a space; one that is not archived is no change. For the space's administrators.",
 		responses: ok(env{"space": space.Space{}})},
-	{method: "GET", path: "/spaces/{spaceKey}/archived-pages", handler: "handleListArchivedPages", tag: "archive", summary: "The space's archive: each archived page the caller may view, with the pages archived with it counted, the latest first.",
+	{method: "GET", path: "/spaces/{spaceKey}/archived-pages", handler: "handleListArchivedPages", tool: "list_archived_pages", toolHelp: "The pages archived in a space that the caller may view; they stay readable with get_page and get_page_markdown.", tag: "archive", summary: "The space's archive: each archived page the caller may view, with the pages archived with it counted, the latest first.",
 		responses: ok(env{"items": []page.ArchiveItem{}})},
 	{method: "PUT", path: "/pages/{pageID}/archive", handler: "handleArchivePage", tag: "archive", summary: "Archive a page with every page below it: they stay readable, leave the tree, search and the home page, and none of them changes. For the space's administrators; archiving it again is no change.",
 		responses: ok(env{"page": page.Page{}})},
@@ -171,13 +180,13 @@ var operations = []operation{
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash", handler: "handleEmptyTrash", tag: "trash", summary: "Delete everything in the space's trash for good. For administrators.", responses: none()},
 	{method: "POST", path: "/spaces/{spaceKey}/trash/{pageID}/restore", handler: "handleRestorePage", tag: "trash", summary: "Put a trashed page back where it was, or under the home page when that is gone.", responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash/{pageID}", handler: "handlePurgePage", tag: "trash", summary: "Delete a trashed page and what went with it for good. For administrators.", responses: none()},
-	{method: "POST", path: "/pages", handler: "handleCreatePage", tag: "pages", summary: "Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
-	{method: "GET", path: "/pages/{pageID}", handler: "handleGetPage", tag: "pages", summary: "One page with its body, and the space it is in.", responses: ok(pageResponse{})},
-	{method: "PATCH", path: "/pages/{pageID}", handler: "handleUpdatePage", tag: "pages", summary: "Publish a new title or body as the next version, with no comment, over the version it was made from; drafts are left alone.", request: page.UpdateInput{}, responses: ok(env{"page": page.Page{}})},
+	{method: "POST", path: "/pages", handler: "handleCreatePage", tool: "create_page", toolHelp: "Add a page under parentId; body is a document as get_page returns one, and publish true makes it visible to the space at once.", tag: "pages", summary: "Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
+	{method: "GET", path: "/pages/{pageID}", handler: "handleGetPage", tool: "get_page", toolHelp: "One page with its title, its body as a document, its version and its space.", tag: "pages", summary: "One page with its body, and the space it is in.", responses: ok(pageResponse{})},
+	{method: "PATCH", path: "/pages/{pageID}", handler: "handleUpdatePage", tool: "update_page", toolHelp: "Publish a new title or body document as the next version; version is the one the change was made from.", tag: "pages", summary: "Publish a new title or body as the next version, with no comment, over the version it was made from; drafts are left alone.", request: page.UpdateInput{}, responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/pages/{pageID}", handler: "handleTrashPage", tag: "pages", summary: "Move a page and every page below it to its space's trash.", responses: none()},
 	{method: "POST", path: "/pages/{pageID}/move", handler: "handleMovePage", tag: "pages", summary: "Move a page under another, in its space or another, with or without its children; a move under itself is refused.", request: page.MoveInput{}, responses: ok(env{"page": page.Page{}})},
 	{method: "POST", path: "/pages/{pageID}/copy", handler: "handleCopyPage", tag: "pages", summary: "Copy a page, with or without the pages below it, under a parent in its space or another.", request: page.CopyInput{}, responses: created(env{"page": page.Page{}})},
-	{method: "GET", path: "/pages/{pageID}/below", handler: "handleListPagesBelow", tag: "pages", summary: "The pages under a page that the caller may view, out of the trash, each after its parent, for a child pages block; truncated says the list stopped at its limit.",
+	{method: "GET", path: "/pages/{pageID}/below", handler: "handleListPagesBelow", tool: "list_pages_below", toolHelp: "The pages under a page the caller may view; scope subtree takes every level.", tag: "pages", summary: "The pages under a page that the caller may view, out of the trash, each after its parent, for a child pages block; truncated says the list stopped at its limit.",
 		query: []param{
 			{name: "scope", schema: &openapi.Schema{Type: "string", Enum: document.ChildPagesScopes}, description: "children, the default, or subtree."},
 			{name: "depth", schema: intParam, description: "For subtree, how many levels down, 1 to 10; every level when absent."},
@@ -187,18 +196,18 @@ var operations = []operation{
 	// Markdown import and export (#90); docs/markdown.md says how each block is written.
 	{method: "GET", path: "/pages/{pageID}/export", handler: "handleExportPage", tag: "markdown", summary: "A page as a .zip of Markdown with its files, and with subtree the pages below it the caller may view, in folders.", binary: true,
 		query: []param{{name: "subtree", schema: &openapi.Schema{Type: "boolean"}, description: "true to take the pages below it too; false when absent."}}, responses: ok(nil)},
-	{method: "GET", path: "/pages/{pageID}/markdown", handler: "handleGetPageMarkdown", tag: "markdown", summary: "A page as one Markdown file, its files named where its export puts them.", binary: true,
+	{method: "GET", path: "/pages/{pageID}/markdown", handler: "handleGetPageMarkdown", tool: "get_page_markdown", toolHelp: "A page as Markdown, the easiest way to read it.", tag: "markdown", summary: "A page as one Markdown file, its files named where its export puts them.", binary: true,
 		responses: ok(nil)},
-	{method: "PUT", path: "/pages/{pageID}/markdown", handler: "handleReplacePageMarkdown", tag: "markdown", summary: "Publish one Markdown file, sent with the files it shows as parts named file, as the next version of a page; its one leading level 1 heading becomes the title.", multipart: true,
+	{method: "PUT", path: "/pages/{pageID}/markdown", handler: "handleReplacePageMarkdown", tool: "replace_page_markdown", toolHelp: "Publish Markdown in content as the next version of a page; version is the one it replaces, and a leading level 1 heading becomes the title.", toolFile: "page.md", tag: "markdown", summary: "Publish one Markdown file, sent with the files it shows as parts named file, as the next version of a page; its one leading level 1 heading becomes the title.", multipart: true,
 		query:     []param{{name: "version", schema: intParam, description: "The version the Markdown replaces; a newer one refuses it with conflict."}},
 		responses: map[int]any{200: env{"page": page.Page{}, "warnings": []string{}}, 409: errorEnvelope{}, 413: errorEnvelope{}}},
-	{method: "POST", path: "/pages/{pageID}/import", handler: "handleImportMarkdown", tag: "markdown", summary: "Make pages under a page from Markdown files and their folders, sent as parts named file with their paths, or as a .zip; each folder of Markdown is a page too.", multipart: true,
+	{method: "POST", path: "/pages/{pageID}/import", handler: "handleImportMarkdown", tool: "import_markdown", toolHelp: "Make a new published page under pageID from Markdown in content; its leading level 1 heading becomes the title.", toolFile: "page.md", tag: "markdown", summary: "Make pages under a page from Markdown files and their folders, sent as parts named file with their paths, or as a .zip; each folder of Markdown is a page too.", multipart: true,
 		responses: map[int]any{201: env{"pages": []mdio.Imported{}, "warnings": []string{}}, 413: errorEnvelope{}}},
 
 	// Templates (#15).
-	{method: "GET", path: "/templates", handler: "handleListTemplates", tag: "templates", summary: "The documents a new page can start from, in the order to offer them; send one's body and title with POST /pages.",
+	{method: "GET", path: "/templates", handler: "handleListTemplates", tool: "list_templates", toolHelp: "The documents a new page can start from.", tag: "templates", summary: "The documents a new page can start from, in the order to offer them; send one's body and title with POST /pages.",
 		responses: ok(env{"templates": []template.Template{}})},
-	{method: "GET", path: "/templates/{templateKey}", handler: "handleGetTemplate", tag: "templates", summary: "One template by its key.",
+	{method: "GET", path: "/templates/{templateKey}", handler: "handleGetTemplate", tool: "get_template", toolHelp: "One template's title and body, to send to create_page.", tag: "templates", summary: "One template by its key.",
 		responses: ok(env{"template": template.Template{}})},
 
 	// Drafts and publishing (#13).
@@ -212,20 +221,20 @@ var operations = []operation{
 		request: page.PublishInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
 
 	// History (#14).
-	{method: "GET", path: "/pages/{pageID}/versions", handler: "handleListVersions", tag: "history", summary: "A page's published versions, the latest first.",
+	{method: "GET", path: "/pages/{pageID}/versions", handler: "handleListVersions", tool: "list_versions", toolHelp: "A page's published versions, the latest first.", tag: "history", summary: "A page's published versions, the latest first.",
 		query: pageQuery, responses: ok(env{"versions": []page.VersionEntry{}, "total": 0, "limit": 0, "offset": 0})},
-	{method: "GET", path: "/pages/{pageID}/versions/{versionNumber}", handler: "handleGetVersion", tag: "history", summary: "One published version with its body, to read it as it was.",
+	{method: "GET", path: "/pages/{pageID}/versions/{versionNumber}", handler: "handleGetVersion", tool: "get_version", toolHelp: "One published version of a page with its body, as it was.", tag: "history", summary: "One published version with its body, to read it as it was.",
 		responses: ok(env{"version": page.Version{}})},
 	{method: "POST", path: "/pages/{pageID}/versions/{versionNumber}/restore", handler: "handleRestoreVersion", tag: "history", summary: "Publish an older version's title and body again, as the next version.",
 		request: page.RestoreInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
-	{method: "GET", path: "/pages/{pageID}/compare", handler: "handleCompareVersions", tag: "history", summary: "What changed between two versions of a page, or between a version and the caller's draft.",
+	{method: "GET", path: "/pages/{pageID}/compare", handler: "handleCompareVersions", tool: "compare_versions", toolHelp: "What changed between two versions of a page.", tag: "history", summary: "What changed between two versions of a page, or between a version and the caller's draft.",
 		query: []param{
 			{name: "from", description: "A version number, 0 for the empty page, or draft; when absent the version before to, or the draft's base version when to is draft."},
 			{name: "to", description: "A version number, or draft; the latest version when absent."},
 		}, responses: ok(env{"comparison": page.Comparison{}})},
 
 	// Search (#18).
-	{method: "GET", path: "/search", handler: "handleSearch", tag: "search", summary: "Pages, attachments and comments whose words match, among what the caller may see.",
+	{method: "GET", path: "/search", handler: "handleSearch", tool: "search", toolHelp: "Find pages, files and comments by their words among what the caller may see; q takes words, quoted phrases, or and -word.", tag: "search", summary: "Pages, attachments and comments whose words match, among what the caller may see.",
 		query: searchQuery, responses: ok(env{"hits": []search.Hit{}, "total": 0, "limit": 0, "offset": 0})},
 	{method: "GET", path: "/search/quick", handler: "handleQuickSearch", tag: "search", summary: "Pages whose titles start with the words typed so far, for the top bar and the command palette.",
 		query: []param{
@@ -239,19 +248,19 @@ var operations = []operation{
 		responses: none()},
 
 	// Labels (#17).
-	{method: "GET", path: "/pages/{pageID}/labels", handler: "handleListPageLabels", tag: "labels", summary: "The labels on a page, by name.",
+	{method: "GET", path: "/pages/{pageID}/labels", handler: "handleListPageLabels", tool: "list_page_labels", toolHelp: "The labels on a page.", tag: "labels", summary: "The labels on a page, by name.",
 		responses: ok(env{"labels": []string{}})},
-	{method: "POST", path: "/pages/{pageID}/labels", handler: "handleAddPageLabel", tag: "labels", summary: "Put a label on a page, normalized to one lower case word; one it carries already is no change.",
+	{method: "POST", path: "/pages/{pageID}/labels", handler: "handleAddPageLabel", tool: "add_page_label", toolHelp: "Put a label, one lower case word, on a page.", tag: "labels", summary: "Put a label on a page, normalized to one lower case word; one it carries already is no change.",
 		request: label.LabelInput{}, responses: ok(env{"labels": []string{}})},
 	{method: "DELETE", path: "/pages/{pageID}/labels/{labelName}", handler: "handleRemovePageLabel", tag: "labels", summary: "Take a label off a page; one it does not carry is no change.",
 		responses: none()},
-	{method: "GET", path: "/labels", handler: "handleSuggestLabels", tag: "labels", summary: "Labels on pages the caller may view that start with the words typed, the most used first.",
+	{method: "GET", path: "/labels", handler: "handleSuggestLabels", tool: "list_labels", toolHelp: "Labels in use that start with q, the most used first.", tag: "labels", summary: "Labels on pages the caller may view that start with the words typed, the most used first.",
 		query: []param{
 			{name: "q", description: "What was typed so far; empty offers the most used labels."},
 			{name: "space", description: "A space key to stay inside."},
 			{name: "limit", schema: intParam, description: "1 to 50; 10 when absent."},
 		}, responses: ok(env{"labels": []label.LabelSuggestion{}})},
-	{method: "GET", path: "/labels/{labelName}/pages", handler: "handleListLabelPages", tag: "labels", summary: "The pages out of the trash that carry a label and that the caller may view, by title.",
+	{method: "GET", path: "/labels/{labelName}/pages", handler: "handleListLabelPages", tool: "list_label_pages", toolHelp: "The pages that carry a label.", tag: "labels", summary: "The pages out of the trash that carry a label and that the caller may view, by title.",
 		query:     append([]param{{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."}}, pageQuery...),
 		responses: ok(env{"pages": []label.LabeledPage{}, "total": 0, "limit": 0, "offset": 0})},
 
@@ -272,13 +281,13 @@ var operations = []operation{
 		request: page.RestrictionsInput{}, responses: ok(env{"restrictions": page.Restrictions{}})},
 	{method: "GET", path: "/pages/{pageID}/access/{userID}", handler: "handleInspectPageAccess", tag: "permissions", summary: "What a person may do to a page and which grant or restriction decides each right, as the database answers it. For the space's administrators.",
 		responses: ok(env{"access": perm.AccessReport{}})},
-	{method: "GET", path: "/people", handler: "handleListPeople", tag: "permissions", summary: "Members of the organization, to pick whom to grant something.",
+	{method: "GET", path: "/people", handler: "handleListPeople", tool: "list_people", toolHelp: "Members of the organization by name, with the ids other tools take.", tag: "permissions", summary: "Members of the organization, to pick whom to grant something.",
 		query: pickerQuery, responses: ok(env{"people": []perm.Person{}})},
 	{method: "GET", path: "/groups", handler: "handleListGroups", tag: "permissions", summary: "Groups of the organization, to pick whom to grant something.",
 		query: pickerQuery, responses: ok(env{"groups": []perm.Group{}})},
 
 	// Attachments (#20), as Armature serves them.
-	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tag: "attachments", summary: "The files on a page, the latest first.",
+	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tool: "list_attachments", toolHelp: "The files on a page, with their names and sizes.", tag: "attachments", summary: "The files on a page, the latest first.",
 		responses: ok(env{"attachments": []attachment.Attachment{}})},
 	{method: "POST", path: "/pages/{pageID}/attachments", handler: "handleUploadAttachment", tag: "attachments", summary: "Put a file on a page, as a multipart part named file; refused with too_large over the upload limit.", multipart: true,
 		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 413: errorEnvelope{}}},
@@ -288,17 +297,17 @@ var operations = []operation{
 		responses: none()},
 
 	// Comments (#22) and inline comments (#23); see docs/api-contract-m2.md.
-	{method: "GET", path: "/pages/{pageID}/comments", handler: "handleListComments", tag: "comments",
+	{method: "GET", path: "/pages/{pageID}/comments", handler: "handleListComments", tool: "list_comments", toolHelp: "A page's comment threads, oldest first.", tag: "comments",
 		summary:   "A page's threads with their comments, oldest first: below the page, inline, or both; resolved ones included.",
 		query:     []param{{name: "kind", schema: &openapi.Schema{Type: "string", Enum: enumStrings(comment.Kinds)}, description: "page or inline; both when absent."}},
 		responses: ok(env{"threads": []comment.Thread{}})},
-	{method: "POST", path: "/pages/{pageID}/comments", handler: "handleStartThread", tag: "comments",
+	{method: "POST", path: "/pages/{pageID}/comments", handler: "handleStartThread", tool: "add_comment", toolHelp: "Start a comment thread below a published page; body is a document like a page's.", tag: "comments",
 		summary: "Start a thread below a published page; refused with unpublished before its first publish.",
 		request: comment.ThreadInput{}, responses: map[int]any{201: env{"thread": comment.Thread{}}, 409: errorEnvelope{}}},
 	{method: "POST", path: "/pages/{pageID}/inline-comments", handler: "handleStartInlineThread", tag: "comments",
 		summary: "Start a thread on a passage, sending the published body with the passage marked; refused with anchor_conflict when the body changed meanwhile.",
 		request: comment.InlineThreadInput{}, responses: map[int]any{201: env{"thread": comment.Thread{}, "page": page.Page{}}, 409: errorEnvelope{}}},
-	{method: "GET", path: "/comments/{commentID}", handler: "handleGetThread", tag: "comments",
+	{method: "GET", path: "/comments/{commentID}", handler: "handleGetThread", tool: "get_comment_thread", toolHelp: "The whole thread a comment belongs to.", tag: "comments",
 		summary:   "The whole thread a comment belongs to, where a notification leads.",
 		responses: ok(env{"thread": comment.Thread{}})},
 	{method: "PATCH", path: "/comments/{commentID}", handler: "handleEditComment", tag: "comments",
@@ -307,7 +316,7 @@ var operations = []operation{
 	{method: "DELETE", path: "/comments/{commentID}", handler: "handleDeleteComment", tag: "comments",
 		summary:   "Delete one's own comment, or anybody's with the space's delete permission; its words go, its replies stay.",
 		responses: none()},
-	{method: "POST", path: "/comments/{commentID}/replies", handler: "handleReply", tag: "comments",
+	{method: "POST", path: "/comments/{commentID}/replies", handler: "handleReply", tool: "reply_to_comment", toolHelp: "Reply at the end of the thread a comment belongs to; body is a document like a page's.", tag: "comments",
 		summary: "Reply at the end of the thread a comment belongs to; a resolved thread opens again.",
 		request: comment.BodyInput{}, responses: created(env{"comment": comment.Comment{}, "thread": comment.Thread{}})},
 	{method: "POST", path: "/comments/{commentID}/resolve", handler: "handleResolveThread", tag: "comments",
@@ -397,7 +406,7 @@ var operations = []operation{
 	{method: "GET", path: "/stars", handler: "handleListStars", tag: "home",
 		summary: "The caller's stars on what they may still view, the latest first; next is the cursor for the window after, null at the end.",
 		query:   keysetQuery(100), responses: ok(env{"stars": []star.Star{}, "next": (*string)(nil)})},
-	{method: "GET", path: "/home/updates", handler: "handleHomeUpdates", tag: "home",
+	{method: "GET", path: "/home/updates", handler: "handleHomeUpdates", tool: "list_recent_updates", toolHelp: "Pages others published lately that the caller may view, the latest first.", tag: "home",
 		summary:   "Pages others published that the caller may view, each once, the latest first; with scope watched only those the caller's watches cover.",
 		query:     append([]param{{name: "scope", schema: &openapi.Schema{Type: "string", Enum: enumStrings(home.Scopes)}, description: "all when absent."}}, keysetQuery(50)...),
 		responses: ok(env{"updates": []home.PageUpdate{}, "next": (*string)(nil)})},
@@ -406,7 +415,7 @@ var operations = []operation{
 		query:   keysetQuery(50), responses: ok(env{"pages": []home.EditedPage{}, "next": (*string)(nil)})},
 
 	// Notifications (#26), as Armature serves them.
-	{method: "GET", path: "/notifications", handler: "handleListNotifications", tag: "notifications",
+	{method: "GET", path: "/notifications", handler: "handleListNotifications", tool: "list_notifications", toolHelp: "What the caller was told about pages, the latest first.", tag: "notifications",
 		summary:   "What the caller was told about pages they may still view, the latest first.",
 		query:     append([]param{{name: "unread", schema: &openapi.Schema{Type: "boolean"}, description: "true lists only what is not read yet."}}, pageQuery...),
 		responses: ok(env{"notifications": []notify.Notification{}, "total": 0, "limit": 0, "offset": 0})},
@@ -435,7 +444,7 @@ var operations = []operation{
 		responses: none()},
 
 	// The audit log (#107), as Armature's administrators read theirs.
-	{method: "GET", path: "/audit", handler: "handleListAudit", tag: "audit",
+	{method: "GET", path: "/audit", handler: "handleListAudit", tool: "list_audit_log", toolHelp: "Who did what in the organization, newest first. For administrators.", tag: "audit",
 		summary: "Who did what to the organization, newest first: members, sign-in, tokens, spaces, permissions, deletions for good and exports; next is the cursor for the window after, null at the end. For administrators.",
 		query:   append(auditQuery, keysetQueryOf(audit.DefaultLimit, audit.MaxLimit)...), responses: ok(env{"entries": []audit.AuditEntry{}, "next": (*string)(nil)})},
 	{method: "GET", path: "/audit/facets", handler: "handleAuditFacets", tag: "audit",
@@ -503,6 +512,9 @@ var operations = []operation{
 	{method: "DELETE", path: "/armature/theme", handler: "handleUnfollowArmatureTheme", tag: "armature",
 		summary:   "Stop following the Armature theme and return to the organization's default.",
 		responses: none()},
+
+	{method: "POST", path: "/mcp", handler: "handleMCP", id: "mcp", tag: "mcp", summary: "The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller.",
+		raw: true, rawNote: "A JSON-RPC 2.0 request as the Model Context Protocol defines it.", responses: map[int]any{200: rpcResponse{}, 202: nil}},
 }
 
 var (
@@ -570,8 +582,9 @@ func enumStrings[T ~string](values []T) []string {
 	return out
 }
 
-// Spec builds the OpenAPI document from the table.
-func Spec() *openapi.Document {
+// specBuilder is the builder with every override the table relies on, shared
+// by the document and the MCP tools so both describe a type alike.
+func specBuilder() *openapi.Builder {
 	b := openapi.NewBuilder()
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
@@ -606,6 +619,12 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["AuditFacets.actions"] = &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: audit.Actions}}
 	b.FieldOverrides["GroupRole.role"] = granted
 	b.FieldOverrides["SetGroupRoleRequest.role"] = granted
+	return b
+}
+
+// Spec builds the OpenAPI document from the table.
+func Spec() *openapi.Document {
+	b := specBuilder()
 
 	doc := &openapi.Document{
 		OpenAPI: "3.1.0",
@@ -662,6 +681,10 @@ func Spec() *openapi.Document {
 			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
 				"multipart/form-data": {Schema: &openapi.Schema{Type: "object", Required: []string{"file"},
 					Properties: map[string]*openapi.Schema{"file": {Type: "string", Format: "binary"}}}},
+			}}
+		case op.raw:
+			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
+				"application/json": {Schema: &openapi.Schema{Description: op.rawNote}},
 			}}
 		case op.request != nil:
 			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
