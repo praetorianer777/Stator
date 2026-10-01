@@ -349,6 +349,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   highlighting borrows, those that fell short are darker in the light
   palettes, with the hue kept.
   A unit test and a browser check in several languages hold it there.
+- Danger buttons meet WCAG AA in the dark palette and in the Deep-Tech and
+  Constellation themes: a new `on-danger` colour writes their label, white
+  on the light palettes' red and dark on the dark palettes' lighter red.
+  Links and the current item in the Deep-Tech and Constellation light
+  themes are a darker accent, and Constellation's dark column carries its
+  own danger and accent labels; the hue is kept throughout. The unit test
+  now also checks accent and danger text on every surface and on their
+  tints, and every label on its fill. "Disconnect Armature" is a danger
+  button again.
 - Spaces: a key that is part of every address (`/s/{key}`), a name, a
   description and a home page, the root of the space's pages. A directory
   at `/spaces` lists them; administrators create, rename, describe and

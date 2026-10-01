@@ -42,7 +42,7 @@ export function ConnectionSettings() {
           <SectionTitle id="armature-disconnect">{t.armature.disconnectTitle}</SectionTitle>
           <p className="text-sm text-ink-muted">{t.armature.disconnectIntro}</p>
           {remove.error && <ErrorBanner>{remove.error.message}</ErrorBanner>}
-          <Button variant="secondary" onClick={disconnect} loading={remove.isPending} data-action="disconnect-armature">
+          <Button variant="danger" onClick={disconnect} loading={remove.isPending} data-action="disconnect-armature">
             {t.armature.disconnect}
           </Button>
         </section>

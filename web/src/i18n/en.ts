@@ -575,6 +575,7 @@ export const en = {
       danger: "Destructive",
       "danger-hover": "Destructive, hovered",
       "danger-subtle": "Destructive background",
+      "on-danger": "Text on a destructive button",
       success: "Done, saved",
       "success-subtle": "Done background",
       warning: "In flight, capacity",

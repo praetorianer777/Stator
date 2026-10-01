@@ -47,6 +47,8 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
       await expect(page.getByLabel("Webhook address", { exact: true })).toHaveValue(new RegExp(`/api/v1/armature/webhook/${tenant}$`));
       await expect(page.getByLabel("Webhook secret", { exact: true })).toHaveValue("");
       await expect(page.locator("body")).not.toContainText(WEBHOOK_SECRET);
+      // The disconnect button is the danger variant, so axe judges its colours too.
+      await expect(page.locator('[data-action="disconnect-armature"]')).toBeVisible();
       await expectAccessible(page);
 
       await page.locator('[data-action="account"]').click();

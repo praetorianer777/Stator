@@ -10,8 +10,8 @@ import { armatureURL } from "../fixtures/stack";
 const patFor = (tenant: string, person: string) => `armature_pat_${tenant}_${person}`;
 const SCHEMES: ColourScheme[] = ["light", "dark"];
 // The light accents of the two examples, as the stylesheet sets them.
-const DEEP_TECH_ACCENT = "#2f6fd6";
-const CONSTELLATION_ACCENT = "#1f7fb8";
+const DEEP_TECH_ACCENT = "#1f5fc5";
+const CONSTELLATION_ACCENT = "#00699e";
 
 const customStyle = (page: Page) => page.locator("style#stator-theme");
 const rootVar = (page: Page, name: string) => page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
@@ -83,15 +83,14 @@ test.describe("following the Armature theme", { tag: ["@auth"] }, () => {
 
   for (const scheme of SCHEMES) {
     test(`the follow setting is accessible in ${scheme}`, async ({ page, api, freshOrg, request }) => {
-      // Armature's built-in theme, which Stator's matches, so axe judges
-      // the setting rather than the colours of an example theme.
-      await stub(request, `${freshOrg.slug}/people/alice/theme`, { theme: "" });
+      // Deep-Tech, which the stub shows alice, so axe judges an example
+      // theme's colours as well as the setting.
       await startInScheme(page, scheme);
       must(await api.PUT("/armature/theme"));
       await page.goto("/settings/themes");
       await expect(followSwitch(page)).toHaveAttribute("aria-checked", "true");
-      await expect(page.locator("main")).toContainText("You are using the built-in theme, as you do in Armature.");
-      await expect(customStyle(page)).toHaveCount(0);
+      await expect(page.locator("main")).toContainText("You are using Deep-Tech, your theme in Armature.");
+      await expect(customStyle(page)).toBeAttached();
       await expectAccessible(page);
 
       // A theme Stator cannot use says why, and the page falls back.
@@ -102,6 +101,15 @@ test.describe("following the Armature theme", { tag: ["@auth"] }, () => {
       await page.reload();
       await expect(note(page)).toContainText("Armature's theme cannot be used in Stator");
       await expect(customStyle(page)).toHaveCount(0);
+      await expectAccessible(page);
+    });
+
+    test(`a danger button in Deep-Tech is accessible in ${scheme}`, async ({ page, api }) => {
+      await startInScheme(page, scheme);
+      must(await api.PUT("/armature/theme"));
+      await page.goto("/settings/armature");
+      await expect(customStyle(page)).toBeAttached();
+      await expect(page.locator('[data-action="disconnect-armature"]')).toBeVisible();
       await expectAccessible(page);
     });
   }
