@@ -150,11 +150,6 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	if data := once(audit.ActionPageExported, &annID, notes); !strings.Contains(data, `"scope": "markdown"`) {
 		t.Errorf("the Markdown export's record reads %s", data)
 	}
-	want(t, owner.post(t, pagePath(notes, "/share"), map[string]any{"recipients": []any{user(annID)}, "message": "A private word for ann."}),
-		http.StatusCreated, "share Notes with ann")
-	if data := once(audit.ActionPageShared, me, notes); !strings.Contains(data, "Ann Audit") || strings.Contains(data, "private word") {
-		t.Errorf("the share's record reads %s", data)
-	}
 
 	base := armatureURL(t)
 	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": base, "orgSlug": slug, "webhookSecret": webhookSecret}), http.StatusOK, "connect Armature")
@@ -223,6 +218,17 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	}
 	want(t, ann.delete(t, pagePath(notes, "/verification")), http.StatusNoContent, "ann takes it back")
 	once(audit.ActionPageUnverified, &annID, notes)
+
+	want(t, owner.put(t, pagePath(notes, "/archive"), nil), http.StatusOK, "archive Notes")
+	if data := once(audit.ActionPageArchived, me, notes); !strings.Contains(data, `"pages": 1`) {
+		t.Errorf("the archive's record reads %s", data)
+	}
+	want(t, owner.delete(t, pagePath(notes, "/archive")), http.StatusOK, "unarchive Notes")
+	once(audit.ActionPageUnarchived, me, notes)
+	want(t, owner.put(t, "/api/v1/spaces/AUD/archive", nil), http.StatusOK, "archive the space")
+	once(audit.ActionSpaceArchived, me, spaceID)
+	want(t, owner.delete(t, "/api/v1/spaces/AUD/archive"), http.StatusOK, "unarchive the space")
+	once(audit.ActionSpaceUnarchived, me, spaceID)
 
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)

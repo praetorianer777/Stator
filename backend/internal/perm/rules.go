@@ -68,7 +68,7 @@ func Decide(f Facts, action Action) bool {
 		return f.HoldsSpace(SpaceAddComments)
 	case DeletePages:
 		return f.HoldsSpace(SpaceDelete)
-	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess:
+	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace:
 		return f.HoldsSpace(SpaceAdminister)
 	}
 	return false
@@ -110,6 +110,10 @@ type ChainLink struct {
 // PageAccess is what one person may do to one page.
 type PageAccess struct {
 	View, Edit, Delete, Comment bool
+	// Archive is archiving the page and unarchiving it, which its space's
+	// administrators may; Archived says whether it is, and how.
+	Archive  bool
+	Archived Archived
 	// ViewRestricted and EditRestricted say whether any list of that kind
 	// applies, whether or not the person passes it.
 	ViewRestricted, EditRestricted bool
@@ -117,7 +121,8 @@ type PageAccess struct {
 
 // Can is the access as the interface is told it.
 func (a PageAccess) Can() PageCan {
-	return PageCan{Edit: a.Edit, Delete: a.Delete, Restrict: a.Edit, Comment: a.Comment}
+	return PageCan{Edit: a.Edit, Delete: a.Delete, Restrict: a.Edit, Comment: a.Comment,
+		Archive: a.Archive && a.Archived != ArchivedSpace}
 }
 
 // PageRules decides a page from the facts of its space and its chain, the
@@ -144,6 +149,7 @@ func PageRules(f Facts, chain []ChainLink) PageAccess {
 	a.Edit = a.View && f.HoldsSpace(SpaceAddPages) && editLists
 	a.Delete = a.View && f.HoldsSpace(SpaceDelete) && editLists
 	a.Comment = a.View && f.HoldsSpace(SpaceAddComments)
+	a.Archive = a.View && f.HoldsSpace(SpaceAdminister)
 	return a
 }
 

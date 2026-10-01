@@ -78,12 +78,14 @@ func (s *Service) Below(ctx context.Context, actor perm.Actor, id uuid.UUID, q B
 	}
 	var found []BelowPage
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var ok bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page p WHERE p.id = $1 AND`+live+` AND `+perm.ViewablePage("p", 2)+`)`,
-			id, actor.UserID).Scan(&ok); err != nil {
+		// An archived page lists what was archived with it; any other leaves
+		// archived pages out, as the tree does.
+		var archived *bool
+		if err := tx.QueryRow(ctx, `SELECT (SELECT p.archived_at IS NOT NULL FROM page p WHERE p.id = $1 AND`+live+` AND `+perm.ViewablePage("p", 2)+`)`,
+			id, actor.UserID).Scan(&archived); err != nil {
 			return err
 		}
-		if !ok {
+		if archived == nil {
 			return ErrNotFound
 		}
 		// Breadth first, so the cut at MaxBelow keeps every parent of what it
@@ -91,14 +93,14 @@ func (s *Service) Below(ctx context.Context, actor perm.Actor, id uuid.UUID, q B
 		rows, err := tx.Query(ctx, `
 			WITH RECURSIVE below (id, parent_id, title, depth, unpublished, updated_at, rank) AS (
 				SELECT p.id, p.parent_id, p.title, 1, p.version = 0, p.updated_at, p.rank
-				FROM page p WHERE p.parent_id = $1 AND`+live+` AND `+perm.ViewablePage("p", 2)+`
+				FROM page p WHERE p.parent_id = $1 AND`+live+` AND (p.archived_at IS NULL OR $5) AND `+perm.ViewablePage("p", 2)+`
 				UNION ALL
 				SELECT p.id, p.parent_id, p.title, b.depth + 1, p.version = 0, p.updated_at, p.rank
 				FROM page p JOIN below b ON p.parent_id = b.id
-				WHERE ($3 = 0 OR b.depth < $3) AND`+live+` AND `+perm.ViewablePage("p", 2)+`
+				WHERE ($3 = 0 OR b.depth < $3) AND`+live+` AND (p.archived_at IS NULL OR $5) AND `+perm.ViewablePage("p", 2)+`
 			)
 			SELECT id, parent_id, title, depth, unpublished, updated_at, rank FROM below
-			ORDER BY depth, rank, id LIMIT $4`, id, actor.UserID, depth, MaxBelow+1)
+			ORDER BY depth, rank, id LIMIT $4`, id, actor.UserID, depth, MaxBelow+1, *archived)
 		if err != nil {
 			return err
 		}

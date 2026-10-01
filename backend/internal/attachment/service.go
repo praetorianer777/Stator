@@ -156,7 +156,7 @@ func (s *Service) Upload(ctx context.Context, actor perm.Actor, pageID uuid.UUID
 			return err
 		}
 		if !p.Can.Edit {
-			return &perm.DeniedError{Action: perm.EditPages}
+			return p.Refusal(perm.EditPages)
 		}
 		id, err := uuid.NewV7()
 		if err != nil {
@@ -218,7 +218,7 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, id uuid.UUID) (d
 			return err
 		}
 		if !p.Can.Edit {
-			return &perm.DeniedError{Action: perm.EditPages}
+			return p.Refusal(perm.EditPages)
 		}
 		// No row lock first: that takes UPDATE, which the app role does not
 		// have. Of two deletes racing, the one that removes nothing lost.

@@ -6,9 +6,11 @@ import { Button, Card, ErrorBanner, Field, PageHeader, SectionTitle, Skeleton, T
 import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
 import { SpacePermissions } from "@/features/permissions/SpacePermissions";
+import { ArchivePanel } from "@/features/archive/ArchivePanel";
+import { SpaceArchive } from "@/features/archive/SpaceArchive";
 import { TrashPanel } from "./TrashPanel";
 
-export type SettingsTab = "details" | "permissions" | "trash";
+export type SettingsTab = "details" | "permissions" | "trash" | "archive";
 
 const SETTINGS_PANEL_ID = "space-settings-panel";
 
@@ -42,6 +44,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
               { value: "details", label: t.spaceSettings.details, attrs: { "data-settings-tab": "details" } },
               { value: "permissions", label: t.spaceSettings.permissions, attrs: { "data-settings-tab": "permissions" } },
               { value: "trash", label: t.spaceSettings.trash, attrs: { "data-settings-tab": "trash" } },
+              { value: "archive", label: t.spaceSettings.archive, attrs: { "data-settings-tab": "archive" } },
             ]}
           />
         }
@@ -50,6 +53,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
         {tab === "details" && <Details key={space.id} space={space} />}
         {tab === "permissions" && <SpacePermissions space={space} />}
         {tab === "trash" && <TrashPanel space={space} />}
+        {tab === "archive" && <ArchivePanel space={space} />}
       </TabPanel>
     </div>
   );
@@ -103,6 +107,7 @@ function Details({ space }: { space: Space }) {
           </div>
         )}
       </form>
+      {space.can.administer && <SpaceArchive space={space} />}
       {space.can.delete && <DeleteSpace space={space} />}
     </>
   );

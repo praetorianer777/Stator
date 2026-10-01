@@ -110,6 +110,8 @@ type PageCan struct {
 	Delete   bool `json:"delete"`
 	Restrict bool `json:"restrict"`
 	Comment  bool `json:"comment"`
+	// Archive is archiving the page with the pages below it, or unarchiving it.
+	Archive bool `json:"archive"`
 }
 
 // Person is a member of the organization, as a picker offers them.

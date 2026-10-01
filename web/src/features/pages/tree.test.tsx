@@ -23,6 +23,7 @@ const node = (id: string, parentId: string, title: string, hasChildren = false):
   hasChildren,
   unpublished: false,
   restricted: false,
+  archived: false,
 });
 const levels: Record<string, TreeNode[]> = {
   home: [node(ids.one, home.id, "One", true), node(ids.two, home.id, "Two")],

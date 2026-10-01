@@ -28,6 +28,7 @@ func NewService(cluster *db.Cluster) *Service {
 
 const selectSpaces = `
 SELECT s.id, s.key, s.name, s.description, s.home_page_id, s.created_at, s.updated_at,
+       s.archived_at, COALESCE((SELECT u.name FROM app_user u WHERE u.id = s.archived_by), ''),
        EXISTS (SELECT 1 FROM watch w WHERE w.space_id = s.id AND w.user_id = current_actor_id()),
        EXISTS (SELECT 1 FROM star st WHERE st.space_id = s.id AND st.user_id = current_actor_id())
 FROM space s`
@@ -37,7 +38,7 @@ func scan(row pgx.Row) (*Space, error) {
 		s    Space
 		home *uuid.UUID
 	)
-	err := row.Scan(&s.ID, &s.Key, &s.Name, &s.Description, &home, &s.CreatedAt, &s.UpdatedAt, &s.Watching, &s.Starred)
+	err := row.Scan(&s.ID, &s.Key, &s.Name, &s.Description, &home, &s.CreatedAt, &s.UpdatedAt, &s.ArchivedAt, &s.ArchivedByName, &s.Watching, &s.Starred)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -61,8 +62,18 @@ func Load(ctx context.Context, tx db.DBTX, actor perm.Actor, where string, arg a
 	if !perm.Decide(f, perm.ViewSpace) {
 		return nil, ErrNotFound
 	}
-	s.Can = f.Can()
+	s.Can = can(f, s)
 	return s, nil
+}
+
+// can is what the facts offer in a space, which in an archived one is reading
+// and administering it.
+func can(f perm.Facts, s *Space) perm.Can {
+	c := f.Can()
+	if s.ArchivedAt != nil {
+		c.EditPages, c.AddComments, c.DeletePages = false, false, false
+	}
+	return c
 }
 
 // ByKey is the where clause of Load for a key, which it normalizes.
@@ -71,11 +82,13 @@ const ByKey = `s.key = upper(btrim($1))`
 // ByID is the where clause of Load for an id.
 const ByID = `s.id = $1`
 
-// List is every space the actor may see, by name.
-func (s *Service) List(ctx context.Context, actor perm.Actor) ([]Space, error) {
+// List is every space the actor may see, by name, archived ones only when
+// asked for, as Armature lists its projects.
+func (s *Service) List(ctx context.Context, actor perm.Actor, includeArchived bool) ([]Space, error) {
 	out := []Space{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectSpaces+` WHERE `+perm.ViewableSpace("s", 1)+` ORDER BY lower(s.name), s.key`, actor.UserID)
+		rows, err := tx.Query(ctx, selectSpaces+` WHERE `+perm.ViewableSpace("s", 1)+` AND ($2 OR s.archived_at IS NULL)
+			ORDER BY lower(s.name), s.key`, actor.UserID, includeArchived)
 		if err != nil {
 			return err
 		}
@@ -98,7 +111,7 @@ func (s *Service) List(ctx context.Context, actor perm.Actor) ([]Space, error) {
 				return err
 			}
 			if perm.Decide(f, perm.ViewSpace) {
-				one.Can = f.Can()
+				one.Can = can(f, one)
 				out = append(out, *one)
 			}
 		}
@@ -203,6 +216,37 @@ func (s *Service) Update(ctx context.Context, actor perm.Actor, key string, in U
 		}
 		if err := record(ctx, tx, actor, audit.ActionSpaceUpdated, current.ID, map[string]any{"key": current.Key, "name": name}); err != nil {
 			return err
+		}
+		out, err = Load(ctx, tx, actor, ByID, current.ID)
+		return err
+	})
+	return out, lsn, err
+}
+
+// Archive archives a space, or with archived false unarchives it. Archiving
+// it twice, or unarchiving one that is not, is no change.
+func (s *Service) Archive(ctx context.Context, actor perm.Actor, key string, archived bool) (*Space, db.LSN, error) {
+	var out *Space
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		current, err := Load(ctx, tx, actor, ByKey+` FOR UPDATE`, key)
+		if err != nil {
+			return err
+		}
+		if err := perm.Check(ctx, tx, actor, perm.ArchiveSpace, current.ID); err != nil {
+			return err
+		}
+		if (current.ArchivedAt != nil) != archived {
+			// The database stamps when and by whom from the change itself.
+			if _, err := tx.Exec(ctx, `UPDATE space SET archived_at = CASE WHEN $2 THEN now() END WHERE id = $1`, current.ID, archived); err != nil {
+				return fmt.Errorf("archive the space: %w", err)
+			}
+			action := audit.ActionSpaceArchived
+			if !archived {
+				action = audit.ActionSpaceUnarchived
+			}
+			if err := record(ctx, tx, actor, action, current.ID, map[string]any{"key": current.Key, "name": current.Name}); err != nil {
+				return err
+			}
 		}
 		out, err = Load(ctx, tx, actor, ByID, current.ID)
 		return err

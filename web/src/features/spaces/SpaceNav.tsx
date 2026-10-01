@@ -39,6 +39,9 @@ export function SpaceNav({ open, onToggle, onNavigate }: { open: boolean; onTogg
             {t.space.trash}
           </NavItem>
         )}
+        <NavItem to={`/s/${space.key}/settings`} search={{ tab: "archive" }} icon="Archive" rail={false} onNavigate={onNavigate}>
+          {t.space.archive}
+        </NavItem>
         <NavItem to={`/s/${space.key}/settings`} icon="Settings" rail={false} onNavigate={onNavigate}>
           {t.space.settings}
         </NavItem>

@@ -56,27 +56,34 @@ const pathOf = `ARRAY(
 	)
 	SELECT title FROM up ORDER BY depth DESC)`
 
+// archivedOf is whether page p or its space s is archived; unarchived says
+// the same as a condition, for what a search leaves out unless asked.
+const (
+	archivedOf = `(p.archived_at IS NOT NULL OR s.archived_at IS NOT NULL)`
+	unarchived = `p.archived_at IS NULL AND s.archived_at IS NULL`
+)
+
 // pageHits, attachmentHits and commentHits are the kinds of hit a search
 // reads, each a row of the same shape, among published pages out of the trash
 // that the actor, parameter $1, may view. A comment is titled by its page.
 const (
 	pageHits = `
 SELECT 'page' AS kind, NULL::uuid AS attachment_id, NULL::uuid AS comment_id, p.id AS page_id, p.title AS page_title,
-       p.title AS title, p.body, s.key, s.name, v.created_at AS changed_at, COALESCE(vu.name, '') AS by_name, %s
+       p.title AS title, p.body, s.key, s.name, v.created_at AS changed_at, COALESCE(vu.name, '') AS by_name, ` + archivedOf + `, %s
 FROM page p
 JOIN space s ON s.id = p.space_id
 JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = p.version
 LEFT JOIN app_user vu ON vu.id = v.created_by
 WHERE p.trashed_at IS NULL AND p.version > 0`
 	attachmentHits = `
-SELECT 'attachment', a.id, NULL::uuid, p.id, p.title, a.file_name, NULL::jsonb, s.key, s.name, a.created_at, COALESCE(au.name, ''), %s
+SELECT 'attachment', a.id, NULL::uuid, p.id, p.title, a.file_name, NULL::jsonb, s.key, s.name, a.created_at, COALESCE(au.name, ''), ` + archivedOf + `, %s
 FROM attachment a
 JOIN page p ON p.org_id = a.org_id AND p.id = a.page_id
 JOIN space s ON s.id = p.space_id
 LEFT JOIN app_user au ON au.id = a.uploaded_by
 WHERE p.trashed_at IS NULL AND p.version > 0`
 	commentHits = `
-SELECT 'comment', NULL::uuid, c.id, p.id, p.title, p.title, c.body, s.key, s.name, COALESCE(c.edited_at, c.created_at), COALESCE(cu.name, ''), %s
+SELECT 'comment', NULL::uuid, c.id, p.id, p.title, p.title, c.body, s.key, s.name, COALESCE(c.edited_at, c.created_at), COALESCE(cu.name, ''), ` + archivedOf + `, %s
 FROM comment c
 JOIN page p ON p.org_id = c.org_id AND p.id = c.page_id
 JOIN space s ON s.id = p.space_id
@@ -104,6 +111,11 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 		pageScore = `to_tsvector(` + config + `, p.title) @@ ` + tsq + `, ts_rank(p.search_vector, ` + tsq + `)`
 		fileScore = `TRUE, ts_rank(a.search_vector, ` + tsq + `)`
 		commentScore = `FALSE, ts_rank(c.search_vector, ` + tsq + `)`
+	}
+	if !q.Archived {
+		pages = append(pages, unarchived)
+		files = append(files, unarchived)
+		comments = append(comments, unarchived)
 	}
 	if !q.wants(HitPage) {
 		pages = append(pages, `FALSE`)
@@ -142,7 +154,7 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 		files = append(files, `a.created_at < `+before)
 		comments = append(comments, `COALESCE(c.edited_at, c.created_at) < `+before)
 	}
-	hits := `WITH hit (kind, attachment_id, comment_id, page_id, page_title, title, body, key, name, changed_at, by_name, title_match, rank) AS (` +
+	hits := `WITH hit (kind, attachment_id, comment_id, page_id, page_title, title, body, key, name, changed_at, by_name, archived, title_match, rank) AS (` +
 		fmt.Sprintf(pageHits, pageScore) + ` AND ` + strings.Join(pages, ` AND `) + `
 		UNION ALL` +
 		fmt.Sprintf(attachmentHits, fileScore) + ` AND ` + strings.Join(files, ` AND `) + `
@@ -169,7 +181,7 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 			ORDER BY ` + order + `
 			LIMIT ` + limit + ` OFFSET ` + offset + `
 		)
-		SELECT h.kind, h.attachment_id, h.comment_id, h.page_id, h.page_title, h.key, h.name, ` + title + `, ` + snippet + `, h.changed_at, h.by_name,
+		SELECT h.kind, h.attachment_id, h.comment_id, h.page_id, h.page_title, h.key, h.name, ` + title + `, ` + snippet + `, h.changed_at, h.by_name, h.archived,
 		       CASE WHEN h.kind = 'page' THEN ARRAY(SELECT pl.name FROM page_label pl WHERE pl.page_id = h.page_id ORDER BY pl.name) ELSE '{}' END,
 		       EXISTS (SELECT 1 FROM page_verification pv WHERE pv.page_id = h.page_id AND pv.expires_at > now())
 		FROM chosen h ORDER BY h.ord`
@@ -191,7 +203,7 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 				marked, body string
 			)
 			if err := rows.Scan(&h.Type, &h.AttachmentID, &h.CommentID, &h.Page.ID, &h.Page.Title, &h.Page.SpaceKey, &h.Page.SpaceName,
-				&marked, &body, &h.UpdatedAt, &h.UpdatedByName, &h.Labels, &h.Verified); err != nil {
+				&marked, &body, &h.UpdatedAt, &h.UpdatedByName, &h.Archived, &h.Labels, &h.Verified); err != nil {
 				return err
 			}
 			if h.Labels == nil {
@@ -217,7 +229,7 @@ const (
 )
 
 // Quick finds pages whose title words start with each word typed, the best
-// title matches first; spaceKey, when set, stays inside one space.
+// title matches first, archived ones never; spaceKey stays inside one space.
 func (s *Service) Quick(ctx context.Context, actor perm.Actor, typed, spaceKey string, limit int) ([]PageHit, error) {
 	out := []PageHit{}
 	tsq := PrefixQuery(typed)
@@ -234,7 +246,7 @@ func (s *Service) Quick(ctx context.Context, actor perm.Actor, typed, spaceKey s
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.title, s.key, s.name, `+pathOf+`
-			`+found+` AND `+perm.ViewablePage("p", 1)+` AND p.search_vector @@ `+query+within+`
+			`+found+` AND `+unarchived+` AND `+perm.ViewablePage("p", 1)+` AND p.search_vector @@ `+query+within+`
 			ORDER BY starts_with(lower(p.title), lower($3)) DESC, ts_rank(p.search_vector, `+query+`) DESC,
 			         char_length(p.title), v.created_at DESC, p.id
 			LIMIT $4`, args...)

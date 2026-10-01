@@ -87,11 +87,14 @@ type Page struct {
 	Owner *Owner `json:"owner"`
 	// Verification is the last check that the page is right, null when
 	// nobody verified it.
-	Verification  *Verification `json:"verification"`
-	CreatedByName string        `json:"createdByName"`
-	CreatedAt     time.Time     `json:"createdAt"`
-	UpdatedByName string        `json:"updatedByName"`
-	UpdatedAt     time.Time     `json:"updatedAt"`
+	Verification *Verification `json:"verification"`
+	// Archived says how the page is archived, null when it is not; an
+	// archived page is read only until it is unarchived.
+	Archived      *Archive  `json:"archived"`
+	CreatedByName string    `json:"createdByName"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedByName string    `json:"updatedByName"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 
 	access perm.PageAccess
 }

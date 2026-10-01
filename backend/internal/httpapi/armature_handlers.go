@@ -266,7 +266,7 @@ func (s *Server) handleCreateArmatureIssues(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if !found.Can.Edit {
-		respondError(w, r, &perm.DeniedError{Action: perm.EditPages})
+		respondError(w, r, found.Refusal(perm.EditPages))
 		return
 	}
 	if err := armature.CheckCreate(&req); err != nil {
