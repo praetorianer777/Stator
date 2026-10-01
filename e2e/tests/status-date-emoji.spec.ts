@@ -138,49 +138,67 @@ test.describe("status labels, dates and emoji", { tag: ["@auth", "@desktop"] }, 
     }
   });
 
+  const COLOURS = ["neutral", "accent", "success", "warning", "danger"];
+
+  /** A page with a date and a status of every colour, opened in the given palette; returns its path. */
+  async function board(page: Page, api: StatorApi, testInfo: TestInfo, scheme: ColourScheme): Promise<string> {
+    const space = await freshSpace(api, testInfo, "Axe");
+    const made = await createPage(api, space.homePageId, "Board", {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Due " },
+            { type: "date", attrs: { date: DAY } },
+            ...COLOURS.flatMap((color) => [
+              { type: "text", text: " " },
+              { type: "status", attrs: { label: `State ${color}`, color } },
+            ]),
+          ],
+        },
+      ],
+    });
+    await startInScheme(page, scheme);
+    return `/s/${space.key}/p/${made.id}/board`;
+  }
+
+  async function openBoardEditor(page: Page, path: string, scheme: ColourScheme): Promise<void> {
+    await openEditor(page, path, "State danger");
+    await expect(editorBox(page).locator(".doc-status")).toHaveCount(COLOURS.length);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
+  }
+
+  // A scan of the whole page takes about a second, and five in one test went
+  // past the timeout on a busy machine, so each test holds at most two.
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
-    test(`every status colour and a date pass axe in ${scheme}, read, edited and in their dialogs`, async ({ page, api }, testInfo) => {
-      const space = await freshSpace(api, testInfo, "Axe");
-      const colours = ["neutral", "accent", "success", "warning", "danger"];
-      const board = await createPage(api, space.homePageId, "Board", {
-        type: "doc",
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              { type: "text", text: "Due " },
-              { type: "date", attrs: { date: DAY } },
-              ...colours.flatMap((color) => [
-                { type: "text", text: " " },
-                { type: "status", attrs: { label: `State ${color}`, color } },
-              ]),
-            ],
-          },
-        ],
-      });
-      await startInScheme(page, scheme);
-      const path = `/s/${space.key}/p/${board.id}/board`;
+    test(`every status colour and a date pass axe in ${scheme} when read`, async ({ page, api }, testInfo) => {
+      const path = await board(page, api, testInfo, scheme);
       await expect(async () => {
         await page.goto(path);
-        await expect(readView(page).locator(".doc-status")).toHaveCount(colours.length, { timeout: 1_000 });
+        await expect(readView(page).locator(".doc-status")).toHaveCount(COLOURS.length, { timeout: 1_000 });
       }).toPass();
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
       await expectAccessible(page);
+    });
 
-      await openEditor(page, path, "State danger");
-      await expect(editorBox(page).locator(".doc-status")).toHaveCount(colours.length);
+    test(`every status colour and a date pass axe in ${scheme} in the editor, and so does the emoji list`, async ({ page, api }, testInfo) => {
+      await openBoardEditor(page, await board(page, api, testInfo, scheme), scheme);
       await expectAccessible(page);
+      await caretTo(editorBox(page), "end");
+      await page.keyboard.type(" :");
+      await expect(page.getByRole("listbox", { name: "Emoji" }).getByRole("option")).toHaveCount(8);
+      await expectAccessible(page);
+    });
+
+    test(`the status and date dialogs pass axe in ${scheme}`, async ({ page, api }, testInfo) => {
+      await openBoardEditor(page, await board(page, api, testInfo, scheme), scheme);
       await editorBox(page).locator(".doc-status").first().click();
       await expect(page.getByRole("dialog", { name: "Status" })).toBeVisible();
       await expectAccessible(page);
       await page.keyboard.press("Escape");
       await editorBox(page).locator("time").click();
       await expect(page.getByRole("dialog", { name: "Date" })).toBeVisible();
-      await expectAccessible(page);
-      await page.keyboard.press("Escape");
-      await caretTo(editorBox(page), "end");
-      await page.keyboard.type(" :");
-      await expect(page.getByRole("listbox", { name: "Emoji" }).getByRole("option")).toHaveCount(8);
       await expectAccessible(page);
     });
   }
