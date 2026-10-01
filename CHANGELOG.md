@@ -434,6 +434,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
   shows archived spaces when asked (`GET /spaces?archived=true`). The access
   inspector names the archive as what refuses a change, and archiving and
   unarchiving are written to the audit log.
+- An MCP server at `POST /api/v1/mcp` (#106), so an assistant can search,
+  read and write pages as the person whose token it holds. Its tools are
+  rows of the route table marked with a name and a sentence, as in
+  Armature, and each call runs as the HTTP call it stands for, through the
+  same middleware, handlers and row level security. Pages read and write as
+  Markdown (`get_page_markdown`, `replace_page_markdown`, `import_markdown`)
+  besides their documents; search, spaces, versions, labels, comments,
+  people and notifications are there to read. A read-only token is offered
+  only the reading tools, and nothing removes, shares, administers or
+  touches another person's attention. The tokens page says how to connect a
+  client, and `docs/mcp.md` lists the tools.
 
 ### Changed
 

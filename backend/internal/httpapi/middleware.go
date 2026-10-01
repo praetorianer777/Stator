@@ -186,7 +186,9 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 // so the promise holds for every route including ones added later.
 func readOnlyToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !safeMethod(r.Method) && PrincipalFrom(r.Context()).ReadOnly() {
+		// MCP carries reads and writes alike; the rule is applied to the calls
+		// it carries, which run through this chain again.
+		if !safeMethod(r.Method) && r.URL.Path != mcpPath && PrincipalFrom(r.Context()).ReadOnly() {
 			respondError(w, r, errReadOnlyToken)
 			return
 		}

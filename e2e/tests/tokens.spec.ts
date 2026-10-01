@@ -18,6 +18,28 @@ function asScript(secret: string, path = ME_PATH): Promise<Response> {
   return fetch(`${WEB_URL}${path}`, { headers: { Authorization: `Bearer ${secret}` } });
 }
 
+type ToolResult = { isError?: boolean; content: { text: string }[]; structuredContent?: { user?: { email: string } } };
+
+/** One JSON-RPC call to the MCP endpoint, the way an assistant's client makes it. */
+async function mcp<T>(endpoint: string, secret: string, method: string, params?: object): Promise<T> {
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  expect(response.status).toBe(200);
+  return (await response.json()).result as T;
+}
+
+async function makeToken(page: Page, name: string, readOnly: boolean): Promise<string> {
+  await page.getByLabel("Token name", { exact: true }).fill(name);
+  if (readOnly) await page.getByLabel("Read only", { exact: true }).check();
+  await page.locator('[data-action="create-token"]').click();
+  const secret = await page.getByLabel("Your new token", { exact: true }).inputValue();
+  await page.locator('[data-action="token-done"]').click();
+  return secret;
+}
+
 test.describe("personal access tokens", { tag: ["@auth", "@desktop"] }, () => {
   // Only this worker's, since the specs run side by side as the same person
   // and one revoking the other's token mid-test would fail it.
@@ -92,5 +114,32 @@ test.describe("personal access tokens", { tag: ["@auth", "@desktop"] }, () => {
     });
     expect(write.status).toBe(403);
     expect((await write.json()).error.code).toBe("read_only_token");
+  });
+
+  test("an assistant connects at the address shown and is offered what its token may do", async ({ page }, testInfo) => {
+    await openShell(page, TOKENS_PATH);
+    await expect(page.getByRole("heading", { level: 2, name: "Connect an assistant" })).toBeVisible();
+    const endpoint = await page.getByLabel("MCP address", { exact: true }).inputValue();
+    expect(endpoint).toBe(`${WEB_URL}/api/v1/mcp`);
+    await expect(page.locator("[data-mcp-config]")).toContainText(endpoint);
+    await expectAccessible(page);
+
+    const writer = await makeToken(page, uniqueName(testInfo, "assistant"), false);
+    const reader = await makeToken(page, uniqueName(testInfo, "reading-assistant"), true);
+
+    const names = async (secret: string) => (await mcp<{ tools: { name: string }[] }>(endpoint, secret, "tools/list")).tools.map((tool) => tool.name);
+    expect(await names(writer)).toEqual(expect.arrayContaining(["search", "get_page_markdown", "create_page", "replace_page_markdown"]));
+    const readable = await names(reader);
+    expect(readable).toEqual(expect.arrayContaining(["search", "get_page_markdown"]));
+    expect(readable).not.toContain("create_page");
+
+    const me = await mcp<ToolResult>(endpoint, reader, "tools/call", { name: "whoami", arguments: {} });
+    expect(me.structuredContent?.user?.email).toContain(USERS.alice.username);
+    const refused = await mcp<ToolResult>(endpoint, reader, "tools/call", {
+      name: "create_page",
+      arguments: { parentId: crypto.randomUUID(), title: "Not allowed" },
+    });
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]?.text).toContain("can only read");
   });
 });

@@ -40,7 +40,8 @@ func TestAReadOnlyTokenIsRefusedEveryWrite(t *testing.T) {
 	s := tokenServer(t)
 	router := s.Routes(nil)
 	for _, route := range Catalog() {
-		if route.Method == http.MethodGet {
+		// MCP carries reads too; its writing tools are refused in mcp_test.go.
+		if route.Method == http.MethodGet || APIPrefix+route.Path == mcpPath {
 			continue
 		}
 		path := APIPrefix + pathParamPattern.ReplaceAllString(route.Path, uuid.NewString())
