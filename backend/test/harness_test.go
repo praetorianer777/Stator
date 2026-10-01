@@ -32,6 +32,9 @@ const (
 // to replay what was arranged behind the policies' back.
 const replicaCatchUpWait = 15 * time.Second
 
+// replicaPollInterval is how often a wait on the replica asks it again.
+const replicaPollInterval = 20 * time.Millisecond
+
 // harness bundles the cluster under test, connected as stator_app and
 // stator_admin, with a superuser pool used only to arrange and clean up.
 type harness struct {
@@ -107,10 +110,22 @@ func (h *harness) settle(t *testing.T) {
 // waitForReplica reports whether the replica replays lsn within the wait.
 func (h *harness) waitForReplica(t *testing.T, lsn db.LSN, wait time.Duration) bool {
 	t.Helper()
+	return h.waitForPosition(t, `SELECT COALESCE(pg_last_wal_replay_lsn(), '0/0')::text`, lsn, wait)
+}
+
+// waitForReceipt reports whether the replica receives lsn within the wait,
+// whether or not it replays it.
+func (h *harness) waitForReceipt(t *testing.T, lsn db.LSN, wait time.Duration) bool {
+	t.Helper()
+	return h.waitForPosition(t, `SELECT COALESCE(pg_last_wal_receive_lsn(), '0/0')::text`, lsn, wait)
+}
+
+func (h *harness) waitForPosition(t *testing.T, positionSQL string, lsn db.LSN, wait time.Duration) bool {
+	t.Helper()
 	deadline := time.Now().Add(wait)
 	for {
 		var text string
-		if err := h.replica.QueryRow(context.Background(), `SELECT COALESCE(pg_last_wal_replay_lsn(), '0/0')::text`).Scan(&text); err != nil {
+		if err := h.replica.QueryRow(context.Background(), positionSQL).Scan(&text); err != nil {
 			t.Fatalf("read the replica's position: %v", err)
 		}
 		if at, err := db.ParseLSN(text); err == nil && at >= lsn {
@@ -119,7 +134,7 @@ func (h *harness) waitForReplica(t *testing.T, lsn db.LSN, wait time.Duration) b
 		if time.Now().After(deadline) {
 			return false
 		}
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(replicaPollInterval)
 	}
 }
 
@@ -131,6 +146,22 @@ func (h *harness) pauseReplay(t *testing.T) {
 		t.Fatalf("pause replay: %v", err)
 	}
 	t.Cleanup(func() { _, _ = h.replica.Exec(context.Background(), `SELECT pg_wal_replay_resume()`) })
+	// The call only asks for a pause; until replay has stopped it may still
+	// apply the write a test makes next, which then would not be held back.
+	deadline := time.Now().Add(replicaCatchUpWait)
+	for {
+		var state string
+		if err := h.replica.QueryRow(context.Background(), `SELECT pg_get_wal_replay_pause_state()`).Scan(&state); err != nil {
+			t.Fatalf("read the replay pause state: %v", err)
+		}
+		if state == "paused" {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("replay was still %s after %s", state, replicaCatchUpWait)
+		}
+		time.Sleep(replicaPollInterval)
+	}
 }
 
 func (h *harness) resumeReplay(t *testing.T) {
