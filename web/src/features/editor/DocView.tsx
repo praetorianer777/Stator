@@ -1,5 +1,5 @@
 // biome-ignore-all lint/suspicious/noArrayIndexKey: a node has no identity but its place, and a read-only view never reorders them
-import { Fragment, createContext, createElement, useContext, useMemo, type MouseEvent, type ReactNode } from "react";
+import { Fragment, createContext, createElement, useContext, useEffect, useMemo, useRef, type MouseEvent, type ReactNode } from "react";
 import type { Element as HastElement, ElementContent, Root } from "hast";
 import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -9,6 +9,7 @@ import { ChildPagesList, TocList, childPagesSummary, tocSummary } from "./BlockV
 import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
+import { ExpandView, revealInExpands } from "./ExpandView";
 import { languageLabel, lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
 import { Passage, usePassages, type BlockPath } from "./passages";
@@ -38,9 +39,19 @@ export function DocView({
   const { copy, status } = useCopyHeadingLink();
   const headings = useMemo(() => headingsOfDoc(doc), [doc]);
   const keys = useMemo(() => issueKeysOf(doc), [doc]);
+  const root = useRef<HTMLDivElement>(null);
+  const shown = Boolean(doc);
+  // The browser scrolled to the address's heading before the page was drawn,
+  // and cannot reach one inside a closed expand block at all.
+  useEffect(() => {
+    if (!shown || !anchors) return;
+    const anchor = anchorOfLocation();
+    const target = anchor ? root.current?.querySelector(`[id="${CSS.escape(anchor)}"]`) : null;
+    if (target && revealInExpands(target)) target.scrollIntoView?.({ block: "start" });
+  }, [shown, anchors]);
   if (!doc) return null;
   return (
-    <div className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
+    <div ref={root} className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
       <HeadingsContext value={headings}>
         <WithIssues keys={keys}>
           <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
@@ -56,6 +67,14 @@ function WithIssues({ keys, children }: { keys: string[]; children: ReactNode })
   return keys.length > 0 ? <ArmatureIssuesProvider keys={keys}>{children}</ArmatureIssuesProvider> : children;
 }
 
+function anchorOfLocation(): string {
+  try {
+    return decodeURIComponent(window.location.hash.slice(1));
+  } catch {
+    return "";
+  }
+}
+
 const HeadingsContext = createContext<FoundHeading[]>([]);
 
 // The router is left out of it: the heading is on this page, so only the
@@ -64,6 +83,7 @@ function followHeading(anchor: string, event: MouseEvent<HTMLAnchorElement>) {
   const target = document.getElementById(anchor);
   if (!target) return;
   event.preventDefault();
+  revealInExpands(target);
   target.scrollIntoView?.({ block: "start" });
   window.history.replaceState(window.history.state, "", `#${encodeURIComponent(anchor)}`);
 }
@@ -194,6 +214,13 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
         </div>
       );
     }
+    // A comparison or a preview shows everything, as a print does.
+    case "expand":
+      return (
+        <ExpandView title={node.attrs?.title} initiallyOpen={!copy}>
+          <Blocks nodes={node.content} copy={copy} path={path} />
+        </ExpandView>
+      );
     case "image":
       return <DocImage node={node} />;
     // A comparison says what the block asks for rather than drawing it: its
@@ -327,7 +354,12 @@ function inlineNode(node: DocNode): ReactNode {
     case ARMATURE_ISSUE_NODE: {
       const key = normalizeKey(node.attrs?.key);
       // The chip is a link of its own, and a link inside a link is neither.
-      return key ? marked(<IssueChip issueKey={key} />, node.marks?.filter((mark) => mark.type !== "link")) : null;
+      return key
+        ? marked(
+            <IssueChip issueKey={key} />,
+            node.marks?.filter((mark) => mark.type !== "link"),
+          )
+        : null;
     }
     default:
       return textOf(node);

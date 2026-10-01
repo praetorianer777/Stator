@@ -93,6 +93,8 @@ const (
 	// MaxChildPagesDepth is the most levels a child pages block names; a null
 	// depth is every level.
 	MaxChildPagesDepth = 10
+	// MaxExpandTitleLength bounds an expand block's title, one line on its toggle.
+	MaxExpandTitleLength = 200
 )
 
 // AnchorMark names the mark an inline thread's passage carries in a page body.
@@ -106,7 +108,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -177,8 +179,11 @@ var Allowed = Allowlist{
 		"tableCell":      {Content: blockNodes, Attrs: cellAttrs},
 		"tableHeader":    {Content: blockNodes, Attrs: cellAttrs},
 		"panel":          {Content: blockNodes, Attrs: map[string]Attr{"kind": {Kind: KindString, Enum: PanelKinds}}},
-		"text":           {Inline: true},
-		"hardBreak":      {Inline: true},
+		// Whether it is open is each reader's own, so only its title is stored;
+		// an empty title reads as a stock label.
+		"expand":    {Content: blockNodes, Attrs: map[string]Attr{"title": {Kind: KindString, MaxLength: MaxExpandTitleLength}}},
+		"text":      {Inline: true},
+		"hardBreak": {Inline: true},
 		"mention": {
 			Inline: true,
 			Attrs: map[string]Attr{
@@ -259,7 +264,8 @@ var Allowed = Allowlist{
 const MaxCommentBytes = 64 << 10
 
 // CommentNodes and CommentMarks are what a comment may hold, by name: text
-// and its structure, never files, tables, panels, generated blocks or hints.
+// and its structure, never files, tables, panels, expand blocks, generated
+// blocks or hints.
 var (
 	CommentNodes = []string{"doc", "paragraph", "heading", "bulletList", "orderedList", "listItem", "blockquote", "codeBlock", "hardBreak", "text", "mention"}
 	CommentMarks = []string{"bold", "italic", "strike", "code", "link"}

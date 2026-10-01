@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor } from "@tiptap/core";
-import { CODE_LANGUAGES, EDITOR_HEADING_LEVELS } from "@/config";
+import { CODE_LANGUAGES, EDITOR_HEADING_LEVELS, EXPAND_TITLE_MAX_LENGTH } from "@/config";
 import { allowlist, attrProblem, problems } from "@/test/allowlist";
 import { anchorHeadings, editorExtensions } from "./extensions";
 import { CELL_BACKGROUNDS, PANEL_KINDS, slug, type DocNode } from "./schema";
@@ -74,6 +74,7 @@ describe("the web editor against the server's allowlist", () => {
         { type: "image", attrs: { attachmentId, alt: "A picture", width: 480 } },
         { type: "paragraph", content: [{ type: "attachment", attrs: { attachmentId, fileName: "plan.pdf" } }] },
         { type: "paragraph", content: [{ type: "text", text: "Say more", marks: [{ type: "hint" }] }] },
+        { type: "expand", attrs: { title: "More" }, content: [{ type: "paragraph", content: [{ type: "text", text: "Hidden" }] }] },
       ])
       .insertArmatureIssueBlock("cp-4")
       .run();
@@ -103,6 +104,7 @@ describe("the web editor against the server's allowlist", () => {
       '"type":"attachment"',
       '"type":"hint"',
       '"type":"armatureIssueBlock"',
+      '"type":"expand","attrs":{"title":"More"}',
       '"columns":["summary","due"]',
     ]) {
       expect(all).toContain(needle);
@@ -115,6 +117,7 @@ describe("the web editor against the server's allowlist", () => {
     expect(enumOf("tableCell", "background")).toEqual([...CELL_BACKGROUNDS]);
     expect(enumOf("tableHeader", "background")).toEqual([...CELL_BACKGROUNDS]);
     expect(allowlist.nodes.heading?.attrs?.level?.max).toBe(Math.max(...EDITOR_HEADING_LEVELS));
+    expect(allowlist.nodes.expand?.attrs?.title?.maxLength).toBe(EXPAND_TITLE_MAX_LENGTH);
     const language = allowlist.nodes.codeBlock?.attrs?.language;
     for (const { id } of CODE_LANGUAGES) expect(attrProblem(language!, id), id).toBeNull();
     const anchor = allowlist.nodes.heading?.attrs?.id;
