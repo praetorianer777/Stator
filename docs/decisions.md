@@ -40,6 +40,30 @@ pictures need the files' ids. A failure part way trashes what was made, and
 nobody else has seen any of it. `docs/markdown.md` lists how each node is
 written and what does not come back as it left.
 
+## 2026-10-01: The outbox worker leases events instead of holding their locks
+
+A push gate (#217) hung for ten minutes in a test's cleanup, `DELETE FROM
+org`. The worker claimed a batch with `FOR UPDATE SKIP LOCKED` and kept the
+transaction open while the handlers ran. A handler writes on connections of
+its own, and a write that names the organization (a notification, a link)
+waits for a delete of that organization to end; the delete cascades to the
+claimed events and waits for the worker's transaction, which waits for the
+handler. Postgres sees no deadlock, since one side of the cycle is the
+worker's Go code, so both wait for ever. Deleting an organization while its
+events are being handled would hang the same way in production.
+
+The worker now claims a batch in a transaction of its own that sets each
+event's `available_at` a lease ahead (`events.ClaimLease`, five minutes) and
+commits, then handles each event and marks it in another short transaction.
+Other workers skip a leased event as they skipped a locked one; a worker that
+dies holding a lease delays its events by the lease, not for ever, and one
+that stops hands back what it had not reached. Delivery stays at least once.
+
+The integration harness bounds its cleanup statements (30 s) and logs who
+blocks whom from `pg_stat_activity` and `pg_locks` once one runs for 10 s, or
+a test for two minutes, so a lock wait fails one test with its cause instead
+of the whole package with a goroutine dump.
+
 ## 2026-10-01: The interface speaks German and English; the server stays English
 
 Every string the web client shows lives in `web/src/i18n`, and #113 adds a
