@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"slices"
@@ -323,4 +325,41 @@ func (s *Server) handleListArmatureLinks(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"links": links})
+}
+
+// Webhooks (#33): Armature signs each delivery with the organization's
+// secret. An unknown organization, one without a secret and a wrong
+// signature get one answer, so the address never tells which exist.
+
+var errBadSignature = &APIError{Status: http.StatusUnauthorized, Code: "bad_signature",
+	Message: "The signature does not match. Check that the webhook secret in Armature is the one saved in Stator under Settings, Armature."}
+
+var errWebhookTooLarge = &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large",
+	Message: "The delivery is larger than Stator reads. Subscribe the endpoint to the issue topics only."}
+
+func (s *Server) handleArmatureWebhook(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, armature.WebhookMaxBytes))
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		respondError(w, r, errWebhookTooLarge)
+		return
+	}
+	if err != nil {
+		respondError(w, r, ErrBadRequest("The delivery could not be read. Armature sends it again by itself."))
+		return
+	}
+	err = s.Armature.Webhook(r.Context(), chi.URLParam(r, "orgSlug"), body, r.Header.Get(armature.SignatureHeader))
+	if errors.Is(err, armature.ErrBadSignature) {
+		respondError(w, r, errBadSignature)
+		return
+	}
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondNoContent(w)
 }

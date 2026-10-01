@@ -961,6 +961,16 @@
               }
             }
           },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
             "content": {

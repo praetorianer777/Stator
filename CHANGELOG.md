@@ -296,6 +296,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   page tries it again. The page shows "Linked in Armature" with each key's
   state, and `GET /pages/{id}/armature-links` answers it. The compose worker
   now gets `STATOR_SECRET_KEY`, which it needs to open the members' tokens.
+- Armature webhooks. `POST /armature/webhook/{orgSlug}` takes Armature's
+  deliveries, checks `X-Armature-Signature-256` against the organization's
+  sealed secret in constant time, and clears the cached issues an
+  `issue.created`, `issue.updated`, `issue.transitioned` or `comment.added`
+  names, the old key of a moved issue and every cached search, so a chip, a
+  block or a list shows a change at the next view instead of within a minute.
+  An event id is acted on once in 24 hours, other topics are acknowledged and
+  ignored, a body over 1 MiB is 413, and an unknown organization, one without
+  a secret and a wrong signature all answer the same 401 `bad_signature`.
 
 ### Changed
 

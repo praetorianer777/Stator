@@ -501,13 +501,16 @@ Uses `GET /armature/issues/{issueKey}` from #28.
 
 | Operation | Needs | Answers |
 |---|---|---|
-| `POST /armature/webhook/{orgSlug}` | the signature | 204; 401 `bad_signature`; 404 `not_found`; 413 `too_large` |
+| `POST /armature/webhook/{orgSlug}` | the signature | 204; 401 `bad_signature`; 413 `too_large` |
 
 - **Why the slug is in the path.** The receiver has to find the secret before
   it can trust anything in the body, and the organization's slug is what the
   sign-in path already uses. The admin screen shows the whole address.
 - **Verification.** The body is read whole, up to `armature.WebhookMaxBytes`,
-  1 MiB. An organization with no connection or no secret is 404. The header
+  1 MiB; a longer one is 413 `too_large`. An organization that does not
+  exist, or has no connection or no secret, is 401 `bad_signature` like a
+  wrong signature, with the same sentence, so the address never tells which
+  organizations use Armature. The header
   `X-Armature-Signature-256` must be `sha256=` and the lower case hex
   HMAC-SHA256 of the raw body under the secret, compared in constant time, as
   Armature's `webhook.Sign` makes it; otherwise 401 `bad_signature`. Then the
@@ -534,6 +537,18 @@ Uses `GET /armature/issues/{issueKey}` from #28.
   in the organization: any change may change any query's rows.
 - Without Valkey there is nothing to clear; a delivery is still verified and
   answered 204.
+- **As built in #33.** `armature.Service.Webhook` reads the organization's
+  sealed secret by slug as the admin role, since no tenant is known before
+  the signature vouches for the body, and checks a stand-in secret when there
+  is none, so an unknown organization takes the same work as a known one.
+  `armature.Sign` and `armature.VerifySignature` are Armature's `webhook.Sign`
+  and `webhook.Verify`; `armature.WebhookClears` names what a topic clears.
+  Keys in a payload are read in any case, and one that is not a key is
+  skipped. A signed body that is not an envelope, and a topic that clears
+  nothing, are 204 and leave no mark; the event id is remembered only when
+  the delivery clears something, and never for a refused one, so a forgery
+  cannot make the genuine event look like a replay. The admin screen's
+  steps were built in #27.
 
 ## #34 Use my active Armature theme
 

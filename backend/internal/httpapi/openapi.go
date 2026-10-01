@@ -380,9 +380,9 @@ var operations = []operation{
 		responses: ok(env{"links": []armature.Link{}})},
 
 	// Webhooks (#33): Armature signs, so nobody signs in.
-	{method: "POST", path: "/armature/webhook/{orgSlug}", handler: "handleArmatureWebhook", tag: "armature", pending: true, public: true,
+	{method: "POST", path: "/armature/webhook/{orgSlug}", handler: "handleArmatureWebhook", tag: "armature", public: true,
 		summary: "Where Armature posts issue events, signed with the organization's webhook secret; clears the cached issues they name.",
-		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}}},
+		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}}},
 
 	// Following the Armature theme (#34).
 	{method: "GET", path: "/armature/theme", handler: "handleArmatureThemeFollow", tag: "armature", pending: true,
