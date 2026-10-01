@@ -282,12 +282,12 @@ describe("the toolbar", () => {
     await user.keyboard("{ArrowRight}");
     expect(within(bar).getByRole("button", { name: "Bold" })).toHaveFocus();
     await user.keyboard("{End}");
-    expect(within(bar).getByRole("button", { name: "Panel" })).toHaveFocus();
+    expect(within(bar).getByRole("button", { name: "Find and replace" })).toHaveFocus();
     await user.keyboard("{ArrowRight}");
     expect(first).toHaveFocus();
     await user.keyboard("{ArrowLeft}");
-    expect(within(bar).getByRole("button", { name: "Panel" })).toHaveFocus();
-    expect(stops()).toEqual([within(bar).getByRole("button", { name: "Panel" })]);
+    expect(within(bar).getByRole("button", { name: "Find and replace" })).toHaveFocus();
+    expect(stops()).toEqual([within(bar).getByRole("button", { name: "Find and replace" })]);
   });
 
   it("sets a link only to a safe address", async () => {

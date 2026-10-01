@@ -335,6 +335,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   `/pages/{pageID}/reactions` and `/comments/{commentID}/reactions`, and
   `Page` and `Comment` gain `reactions`. The database holds every reaction
   to its page's view rule and to its author's name (migration 00180).
+- Find and replace in the page editor. Ctrl or Cmd+F inside the editor, or
+  the toolbar's search button, opens a bar that highlights every match, says
+  how many there are, steps through them with Enter and Shift+Enter, and
+  matches case when asked. Replace changes the current match and moves on;
+  Replace all changes every match in one step that one undo takes back.
+  Words are found across bold, italic and other marks, never inside a chip
+  or a mention, and the replacement keeps the marks of the text it replaces.
+  Escape closes the bar and puts the caret on the last match; outside the
+  editor Ctrl or Cmd+F stays the browser's.
 
 ### Changed
 
