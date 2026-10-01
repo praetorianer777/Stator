@@ -267,3 +267,5 @@ export const ARMATURE_STATUS_CATEGORIES: readonly string[] = ["todo", "in_progre
 export const ARMATURE_CREATE_MAX_ITEMS = 50;
 /** Armature's longest summary, as armature.MaxSummaryLength; a longer one is cut in the dialog. */
 export const ARMATURE_SUMMARY_MAX_LENGTH = 255;
+/** How often a page asks again while a link to Armature waits for the worker. */
+export const ARMATURE_LINKS_POLL_MS = 2000;

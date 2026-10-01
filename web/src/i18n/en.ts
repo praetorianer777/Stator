@@ -145,6 +145,11 @@ export const en = {
       rejected: "Armature no longer accepts your token. Make a new one under Tokens in Armature and paste it here.",
       unreachable: "Armature did not answer the last check. Check again in a moment.",
     },
+    links: {
+      title: "Linked in Armature",
+      intro: "Each issue this page names lists the page in Armature, linked by whoever last changed the page.",
+      states: { synced: "Linked", pending: "Waiting for Armature", failed: "Not linked" } as Record<"synced" | "pending" | "failed", string>,
+    },
     chip: {
       connectShort: "Connect Armature",
       connectRest: " to see this issue",
