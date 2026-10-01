@@ -18,6 +18,7 @@ import type { SlashItem } from "./slashItems";
 import type { AttachmentIndex } from "./attachmentIndex";
 import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachments";
 import { ChildPages, TableOfContents } from "./blockNodes";
+import { Expand } from "./expand";
 import { Hint } from "./hint";
 import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, type IssueSource } from "./armatureIssue";
@@ -362,6 +363,7 @@ export function editorExtensions({
     HeaderCell,
     Cell,
     Panel,
+    Expand,
     HeadingAnchors,
     SlashMenu.configure({ suggestion: slash }),
     TableOfContents,

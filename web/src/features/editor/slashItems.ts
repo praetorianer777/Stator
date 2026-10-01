@@ -41,6 +41,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("panelSuccess", Icon.Panel, ["panel", "success", "tip"], (c) => c.setPanel("success")),
   item("panelWarning", Icon.Panel, ["panel", "warning", "caution"], (c) => c.setPanel("warning")),
   item("panelError", Icon.Panel, ["panel", "error", "danger"], (c) => c.setPanel("error")),
+  item("expand", Icon.Disclosure, ["expand", "collapse", "toggle", "details", "fold"], (c) => c.setExpand()),
   item("tableOfContents", Icon.Hash, ["toc", "contents", "headings", "outline"], (c) => c.insertTableOfContents()),
   item("childPages", Icon.Page, ["children", "pages", "subpages", "tree"], (c) => c.insertChildPages()),
   { ...item("armatureIssue", Icon.Task, ["armature", "issue", "ticket", "card"], (c) => c.pickArmatureIssue()), armature: true },

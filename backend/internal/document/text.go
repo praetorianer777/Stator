@@ -36,6 +36,12 @@ func writeBlocks(b *strings.Builder, blocks []Node, depth int) {
 			}
 			b.WriteString(strings.Join(cells, "\t"))
 			b.WriteByte('\n')
+		case "expand":
+			if title, _ := n.Attrs["title"].(string); title != "" {
+				b.WriteString(title)
+				b.WriteByte('\n')
+			}
+			writeBlocks(b, n.Content, depth+1)
 		case armature.NodeIssueBlock:
 			if key, _ := n.Attrs["key"].(string); key != "" {
 				b.WriteString(key)

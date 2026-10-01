@@ -40,6 +40,10 @@ const richDoc = `{"type":"doc","content":[
  {"type":"panel","attrs":{"kind":"warning"},"content":[
   {"type":"heading","attrs":{"level":2,"id":"careful"},"content":[{"type":"text","text":"Careful"}]},
   {"type":"paragraph","content":[{"type":"text","text":"Hot"}]}]},
+ {"type":"expand","attrs":{"title":"Rollback steps"},"content":[
+  {"type":"paragraph","content":[{"type":"text","text":"Revert the release"}]},
+  {"type":"expand","attrs":{"title":""},"content":[{"type":"paragraph","content":[{"type":"text","text":"Nested detail"}]}]}]},
+ {"type":"expand","content":[{"type":"paragraph"}]},
  {"type":"heading","attrs":{"level":3,"id":null},"content":[{"type":"text","text":"Plan"}]},
  {"type":"tableOfContents","attrs":{"maxLevel":2}},
  {"type":"childPages","attrs":{"scope":"subtree","depth":3,"sort":"updated"}},
@@ -92,6 +96,11 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"link class", para(`{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"/a","class":"evil"}}]}`), `class=`},
 		{"link target", para(`{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"/a","target":"_top"}}]}`), `target=`},
 		{"panel kind", `{"type":"doc","content":[{"type":"panel","attrs":{"kind":"danger"},"content":[{"type":"paragraph"}]}]}`, `kind="danger"`},
+		{"expand title too long", `{"type":"doc","content":[{"type":"expand","attrs":{"title":"` + strings.Repeat("a", MaxExpandTitleLength+1) + `"},"content":[{"type":"paragraph"}]}]}`, `title=`},
+		{"expand title not text", `{"type":"doc","content":[{"type":"expand","attrs":{"title":3},"content":[{"type":"paragraph"}]}]}`, `title=3`},
+		{"expand title null", `{"type":"doc","content":[{"type":"expand","attrs":{"title":null},"content":[{"type":"paragraph"}]}]}`, `title=null`},
+		{"expand stored open", `{"type":"doc","content":[{"type":"expand","attrs":{"title":"More","open":true},"content":[{"type":"paragraph"}]}]}`, `attribute "open"`},
+		{"expand inline", para(`{"type":"expand","attrs":{"title":"More"}}`), `puts a "expand"`},
 		{"cell background colour", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"background":"#ff0000"},"content":[{"type":"paragraph"}]}]}]}]}`, `background=`},
 		{"cell align", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"align":"justify;color:red"},"content":[{"type":"paragraph"}]}]}]}]}`, `align=`},
 		{"huge colspan", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":100000},"content":[{"type":"paragraph"}]}]}]}]}`, `colspan=`},
@@ -229,6 +238,9 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		"Ada",
 		"Careful",
 		"Hot",
+		"Rollback steps",
+		"Revert the release",
+		"Nested detail",
 		"Plan",
 	}, "\n")
 	if got := PlainText(root); got != want {

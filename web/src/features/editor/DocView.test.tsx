@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { DocView } from "./DocView";
+import { DocDiffView, DocView } from "./DocView";
 import type { Doc } from "./schema";
 
 const doc: Doc = {
@@ -57,6 +57,71 @@ const doc: Doc = {
     { type: "heading", attrs: { level: 2, id: 'x" onmouseover="alert(1)' }, content: [{ type: "text", text: "Bad anchor" }] },
   ],
 };
+
+const folded: Doc = {
+  type: "doc",
+  content: [
+    { type: "tableOfContents", attrs: { maxLevel: 3 } },
+    {
+      type: "expand",
+      attrs: { title: "Rollback steps" },
+      content: [
+        { type: "heading", attrs: { level: 2, id: "revert" }, content: [{ type: "text", text: "Revert" }] },
+        { type: "paragraph", content: [{ type: "text", text: "Undo the release" }] },
+        { type: "expand", attrs: { title: "" }, content: [{ type: "paragraph", content: [{ type: "text", text: "Deeper" }] }] },
+      ],
+    },
+  ],
+};
+
+describe("expand blocks in the reader's view", () => {
+  it("start closed behind a button that says so, and open and close by mouse and keyboard", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<DocView doc={folded} />);
+    const toggle = screen.getByRole("button", { name: "Rollback steps" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const body = document.getElementById(toggle.getAttribute("aria-controls")!)!;
+    expect(body).toHaveTextContent("Undo the release");
+    expect(container.querySelector("[data-expand]")).toHaveAttribute("data-expanded", "false");
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const inner = screen.getByRole("button", { name: "Details" });
+    expect(inner).toHaveAttribute("aria-expanded", "false");
+
+    inner.focus();
+    await user.keyboard("{Enter}");
+    expect(inner).toHaveAttribute("aria-expanded", "true");
+    await user.keyboard(" ");
+    expect(inner).toHaveAttribute("aria-expanded", "false");
+    toggle.focus();
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("open on the way to a heading inside them, from the table of contents and from the address", async () => {
+    const user = userEvent.setup();
+    const first = render(<DocView doc={folded} />);
+    await user.click(screen.getByRole("link", { name: "Revert" }));
+    expect(screen.getByRole("button", { name: "Rollback steps" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Details" })).toHaveAttribute("aria-expanded", "false");
+    first.unmount();
+
+    window.history.replaceState(null, "", "#revert");
+    try {
+      render(<DocView doc={folded} />);
+      expect(screen.getByRole("button", { name: "Rollback steps" })).toHaveAttribute("aria-expanded", "true");
+    } finally {
+      window.history.replaceState(null, "", "#");
+    }
+  });
+
+  it("are open in a comparison of versions, which shows everything", () => {
+    render(<DocDiffView blocks={[{ change: "modified", node: folded.content![1]! }]} />);
+    expect(screen.getByRole("button", { name: "Rollback steps" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Details" })).toHaveAttribute("aria-expanded", "true");
+  });
+});
 
 describe("DocView", () => {
   it("draws each node as the element that means it", () => {

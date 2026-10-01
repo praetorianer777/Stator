@@ -542,6 +542,70 @@
     --panel-edge: var(--color-danger);
     --panel-fill: var(--color-danger-subtle);
   }
+  /* An expand block: a framed section under a toggle. The chevron turns as
+   * well as the state being announced, so open and closed differ without
+   * colour, and a closed body leaves the page, the accessibility tree too. */
+  .doc-content .doc-expand {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+  }
+  .doc-content .doc-expand-toggle,
+  .doc-content .doc-expand-head {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .doc-content .doc-expand-toggle {
+    border-radius: var(--radius-control);
+    cursor: pointer;
+  }
+  .doc-content .doc-expand-toggle:hover {
+    background: var(--color-surface-raised);
+  }
+  .doc-content .doc-expand-toggle:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: -2px;
+  }
+  .doc-content .doc-expand-chevron {
+    flex-shrink: 0;
+    color: var(--color-ink-muted);
+  }
+  .doc-content .doc-expand[data-expanded="false"] .doc-expand-chevron {
+    transform: rotate(-90deg);
+  }
+  .doc-content .doc-expand-title {
+    flex: 1;
+    min-width: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    padding: 0.125rem 0.25rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .doc-content .doc-expand-title::placeholder {
+    font-weight: 400;
+    color: var(--color-ink-subtle);
+  }
+  .doc-content .doc-expand-title:focus {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 0;
+  }
+  .doc-content .doc-expand-body {
+    padding: 0 0.75rem 0.5rem 2.125rem;
+  }
+  .doc-content .doc-expand-body > * + *,
+  .doc-content .doc-expand-body > [data-node-view-content-react] > * + * {
+    margin-top: 0.5rem;
+  }
+  .doc-content .doc-expand[data-expanded="false"] > .doc-expand-body {
+    display: none;
+  }
   /* A table of contents and a list of child pages: generated lists in a
    * quiet frame, so they read as the page's furniture rather than its text. */
   .doc-content .doc-block {
@@ -793,5 +857,12 @@
   }
   main {
     overflow: visible !important;
+  }
+  /* Paper cannot be clicked open, so a printed expand block shows its all. */
+  .doc-content .doc-expand > .doc-expand-body {
+    display: block !important;
+  }
+  .doc-content .doc-expand .doc-expand-chevron {
+    display: none;
   }
 }

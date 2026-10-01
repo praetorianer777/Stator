@@ -317,6 +317,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   theme that fails the checks is refused with the reason.
   `GET`, `PUT` and `DELETE /armature/theme`, and `GET /themes/active`
   answers `source: "armature"` while following.
+- Expand blocks. "Expand" in the slash menu wraps the blocks under the caret
+  in a section with a title, typed in the block's own title box, from which
+  Enter carries on into the blocks inside; "Remove the expand, keep its
+  content" takes it away again. Readers see the title on a button that
+  opens and closes the section by mouse or keyboard and says whether it is
+  open; it starts closed on every visit, and opens by itself on the way to a
+  heading inside it. Printing, and so a PDF, shows every section open, as
+  does a comparison of versions. The page stores only the title and the
+  blocks, and search finds a page by both.
 - Status labels, dates and emoji in running text. A status is a coloured
   label with words of the author's own, drawn like an Armature issue's
   status in one of five theme colours; a date is a day picked with the

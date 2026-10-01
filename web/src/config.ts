@@ -112,6 +112,8 @@ export const TOC_DEFAULT_MAX_LEVEL = EDITOR_HEADING_LEVELS[EDITOR_HEADING_LEVELS
 export const CHILD_PAGES_MAX_DEPTH = 10;
 /** How many pages one child pages block lists at most, matching the API's MaxBelow. */
 export const CHILD_PAGES_LIMIT = 500;
+/** The longest title an expand block takes, matching the API's MaxExpandTitleLength. */
+export const EXPAND_TITLE_MAX_LENGTH = 200;
 
 /** The languages a code block offers, by highlighting grammar, and the name the picker shows. */
 export const CODE_LANGUAGES = [
