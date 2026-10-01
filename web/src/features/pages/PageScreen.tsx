@@ -21,6 +21,7 @@ import { PageReactions } from "@/features/reactions/Reactions";
 import { AccessDialog } from "@/features/permissions/AccessDialog";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
 import { PageStar } from "@/features/stars/StarButton";
+import { ShareDialog } from "@/features/sharing/ShareDialog";
 import { WatchMenu } from "@/features/watching/WatchMenu";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
@@ -46,7 +47,7 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
   return crumbs;
 }
 
-type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import";
+type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import" | "share";
 
 /** Says a page is narrowed to some people, and opens who and why. */
 function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
@@ -168,6 +169,11 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
           <>
             <PageStar page={page} space={space} onFailure={setStarFailed} />
             {!page.unpublished && <WatchMenu page={page} space={space} onFailure={setWatchFailed} />}
+            {!page.unpublished && (
+              <Button variant="secondary" icon={<Icon.Share />} onClick={() => setDialog("share")} data-action="share-page">
+                {t.share.button}
+              </Button>
+            )}
             <Button variant="secondary" onClick={history} data-action="page-history">
               {t.page.history}
             </Button>
@@ -242,6 +248,7 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         </KnownAttachmentsContext>
       </InlineComments>
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
+      {dialog === "share" && <ShareDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "access" && <AccessDialog pageId={page.id} pageTitle={page.title} onClose={() => setDialog(undefined)} />}
       {dialog === "export" && <ExportDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "import" && (

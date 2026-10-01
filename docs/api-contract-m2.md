@@ -290,6 +290,7 @@ as publish stores it.
   | Kind | Who | When |
   |---|---|---|
   | `mentioned` | each person newly mentioned | publish, comment, comment edit |
+  | `shared` | each person a share names, and the members of its groups who may view the page (#67) | a share |
   | `replied` | everybody who wrote in the thread | a reply |
   | `commented` | the page's watchers | a new thread or a reply |
   | `resolved` | everybody who wrote in the thread | resolved or reopened |

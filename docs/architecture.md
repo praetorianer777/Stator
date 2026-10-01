@@ -85,6 +85,7 @@ process, which is only right for a single api process. `/readyz` and
 | `reaction` | emoji reactions on pages and comments |
 | `label`, `watch`, `notify` | labels, watchers, in-app and email notifications |
 | `star`, `home` | starred pages and spaces, the home page's updates and edits |
+| `share` | sending a page to people and groups who may view it, with a note |
 | `keyset` | the cursor a list read newest first hands out for its next window |
 | `template` | page templates |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |

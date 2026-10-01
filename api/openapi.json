@@ -64,6 +64,9 @@
       "name": "search"
     },
     {
+      "name": "sharing"
+    },
+    {
       "name": "spaces"
     },
     {
@@ -4745,6 +4748,172 @@
         }
       }
     },
+    "/pages/{pageID}/share": {
+      "post": {
+        "operationId": "sharePage",
+        "summary": "Send a published page, with an optional note, to people and groups who may view it; refused with cannot_view, sending nothing, when it is closed to any of them, and with rate_limited past the hourly limit.",
+        "tags": [
+          "sharing"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "share": {
+                      "$ref": "#/components/schemas/Share"
+                    }
+                  },
+                  "required": [
+                    "share"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/share/recipients": {
+      "get": {
+        "operationId": "shareRecipients",
+        "summary": "Members and groups to share a page with, each saying whether, or how many of its members, may view it; only those are told.",
+        "tags": [
+          "sharing"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words the name, or a person's email, starts with.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groups": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RecipientGroup"
+                      }
+                    },
+                    "people": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Recipient"
+                      }
+                    }
+                  },
+                  "required": [
+                    "groups",
+                    "people"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/star": {
       "delete": {
         "operationId": "unstarPage",
@@ -5016,6 +5185,90 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/viewers": {
+      "get": {
+        "operationId": "listViewers",
+        "summary": "Who may view a page, by name, and whether that is every member of the organization.",
+        "tags": [
+          "sharing"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "everyone": {
+                      "type": "boolean"
+                    },
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "offset": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "viewers": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Person"
+                      }
+                    }
+                  },
+                  "required": [
+                    "everyone",
+                    "limit",
+                    "offset",
+                    "total",
+                    "viewers"
+                  ]
                 }
               }
             }
@@ -9700,6 +9953,7 @@
             "type": "string",
             "enum": [
               "mentioned",
+              "shared",
               "replied",
               "commented",
               "resolved",
@@ -10518,6 +10772,58 @@
           "visitedAt"
         ]
       },
+      "Recipient": {
+        "type": "object",
+        "properties": {
+          "canView": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "canView"
+        ]
+      },
+      "RecipientGroup": {
+        "type": "object",
+        "properties": {
+          "fromProvider": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "memberCount": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "viewers": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "memberCount",
+          "fromProvider",
+          "viewers"
+        ]
+      },
       "Ref": {
         "type": "object",
         "properties": {
@@ -10865,6 +11171,60 @@
           }
         }
       },
+      "Share": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string"
+          },
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "people": {
+            "type": "integer"
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "pageId",
+          "recipients",
+          "people",
+          "message",
+          "createdAt"
+        ]
+      },
+      "ShareInput": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            }
+          }
+        },
+        "required": [
+          "recipients"
+        ]
+      },
       "Space": {
         "type": "object",
         "properties": {
@@ -11193,10 +11553,14 @@
           },
           "resolved": {
             "type": "boolean"
+          },
+          "shared": {
+            "type": "boolean"
           }
         },
         "required": [
           "mentioned",
+          "shared",
           "replied",
           "commented",
           "resolved",

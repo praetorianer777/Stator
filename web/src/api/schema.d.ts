@@ -1099,6 +1099,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a published page, with an optional note, to people and groups who may view it; refused with cannot_view, sending nothing, when it is closed to any of them, and with rate_limited past the hourly limit. */
+        post: operations["sharePage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/share/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Members and groups to share a page with, each saying whether, or how many of its members, may view it; only those are told. */
+        get: operations["shareRecipients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/star": {
         parameters: {
             query?: never;
@@ -1162,6 +1196,23 @@ export interface paths {
         put?: never;
         /** Publish an older version's title and body again, as the next version. */
         post: operations["restoreVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/viewers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who may view a page, by name, and whether that is every member of the organization. */
+        get: operations["listViewers"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2386,7 +2437,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "mentioned" | "replied" | "commented" | "resolved" | "published" | "created";
+            kind: "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created";
             page: components["schemas"]["PageLink"];
             /** Format: date-time */
             readAt: string | null;
@@ -2606,6 +2657,21 @@ export interface components {
             /** Format: date-time */
             visitedAt: string;
         };
+        Recipient: {
+            canView: boolean;
+            email: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        RecipientGroup: {
+            fromProvider: boolean;
+            /** Format: uuid */
+            id: string;
+            memberCount: number;
+            name: string;
+            viewers: number;
+        };
         Ref: {
             home: boolean;
             /** Format: uuid */
@@ -2700,6 +2766,21 @@ export interface components {
             radiusControl?: number;
             radiusOverlay?: number;
         };
+        Share: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            message: string;
+            /** Format: uuid */
+            pageId: string;
+            people: number;
+            recipients: components["schemas"]["Subject"][];
+        };
+        ShareInput: {
+            message?: string;
+            recipients: components["schemas"]["SubjectRef"][];
+        };
         Space: {
             can: components["schemas"]["Can"];
             /** Format: date-time */
@@ -2787,6 +2868,7 @@ export interface components {
             published: boolean;
             replied: boolean;
             resolved: boolean;
+            shared: boolean;
         };
         Tag: {
             description?: string;
@@ -6092,6 +6174,109 @@ export interface operations {
             };
         };
     };
+    sharePage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        share: components["schemas"]["Share"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    shareRecipients: {
+        parameters: {
+            query?: {
+                /** @description Words the name, or a person's email, starts with. */
+                q?: string;
+                /** @description 1 to 50; 20 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        groups: components["schemas"]["RecipientGroup"][];
+                        people: components["schemas"]["Recipient"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     starPage: {
         parameters: {
             query?: never;
@@ -6259,6 +6444,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listViewers: {
+        parameters: {
+            query?: {
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        everyone: boolean;
+                        limit: number;
+                        offset: number;
+                        total: number;
+                        viewers: components["schemas"]["Person"][];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

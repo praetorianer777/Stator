@@ -23,6 +23,8 @@ type Kind string
 
 const (
 	KindMentioned Kind = "mentioned"
+	// KindShared is a page somebody sent the person, with their note.
+	KindShared Kind = "shared"
 	// KindReplied is a reply in a thread the person wrote in.
 	KindReplied Kind = "replied"
 	// KindCommented is a new thread on a watched page.
@@ -36,7 +38,7 @@ const (
 )
 
 // Kinds lists every Kind, in the order the preferences show them.
-var Kinds = []Kind{KindMentioned, KindReplied, KindCommented, KindResolved, KindPublished, KindCreated}
+var Kinds = []Kind{KindMentioned, KindShared, KindReplied, KindCommented, KindResolved, KindPublished, KindCreated}
 
 // Digest is when mail goes out: one per notification, or bundled.
 type Digest string
@@ -70,7 +72,8 @@ type Notification struct {
 	ThreadID  *uuid.UUID `json:"threadId"`
 	CommentID *uuid.UUID `json:"commentId"`
 	Version   *int       `json:"version"`
-	// Excerpt is plain text from the comment or the version's comment.
+	// Excerpt is plain text from the comment or the version's comment, or
+	// the note a share came with.
 	Excerpt   string     `json:"excerpt"`
 	CreatedAt time.Time  `json:"createdAt"`
 	ReadAt    *time.Time `json:"readAt"`
@@ -79,6 +82,7 @@ type Notification struct {
 // Switches turn each kind on or off for one channel.
 type Switches struct {
 	Mentioned bool `json:"mentioned"`
+	Shared    bool `json:"shared"`
 	Replied   bool `json:"replied"`
 	Commented bool `json:"commented"`
 	Resolved  bool `json:"resolved"`
