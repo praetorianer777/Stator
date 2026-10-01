@@ -3,6 +3,65 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A view is a person on a day, counted for every reader and named only to editors
+
+Page views (#97) answer how often a page is read and by how many people.
+Armature counts no views, so there was nothing to follow. A view is one
+person opening the page on one day, in UTC: a row of `page_view` per
+person, page and day, written with the visit the page already posts and
+never again that day, `INSERT ... ON CONFLICT DO NOTHING`, which leaves the
+row untouched. A count of every load would have cost a write per load and
+grown with reloads and open tabs, which say nothing about how much a page
+matters; one row per person and day costs at most one write per reader and
+day, and is what makes "unique readers" a count of rows. The visit kept for
+recent pages and the stale report used to rewrite its row on every load;
+it now leaves a row alone that is already the person's latest and from
+today, so a reload writes nothing at all (`TestAReloadWritesNothing`
+watches the rows' versions). Opening a page from the stale report still
+posts no visit, and so counts no view.
+
+Everybody who may view a page reads its counts: views and readers in all,
+and over the last 30 days. They say how many, never who, and a page one
+may not view answers 404 as everything about it does. Who read it is for
+the people who may change it, its editors and the space's administrators,
+as a page's restrictions are: they are the authors the issue asks for, and
+a name list is a different thing to hand every reader. An archived page
+still lists its readers, since listing changes nothing. Each person
+chooses in their profile whether their name appears there
+(`show_in_readers`, on by default, for every organization they are in);
+hidden, they are counted and the list says how many chose not to be named.
+Listing by default keeps the list useful to the author, the choice is a
+switch away, and the names are bounded twice: to the editors and to the
+retention.
+
+The rows naming people are kept for `STATOR_RETAIN_PAGE_VIEWS`, 90 days by
+default, at least 30 so the recent counts always have their whole period,
+0 to keep them. The worker prunes once a day, as for the audit log, as
+`stator_admin` through `page_view_prune`, which refuses a younger cutoff
+whatever it is handed and adds what it takes to `page_view_tally`, one
+anonymous number per page, so a page's total survives the names. Somebody
+who leaves the organization leaves their rows without a name
+(`ON DELETE SET NULL`), still counted as views. All-time readers are the
+members with a visit to the page, which has no retention but names nobody
+to anybody else.
+
+The database holds all of it. `stator_app` may only add its actor's own
+view, for today, of a page they may view, and read only their own rows;
+it may not change or delete one, nor touch the tally. The counts and the
+names are `page_view_stats`, `page_readers` and `page_readers_unnamed`,
+security definer functions like `home_updates` that keep to
+`current_org_id()`, judge `current_actor_id()` with `perm_page_viewable`
+and, for names, `perm_page_readers_listable` (edit without the archive
+rule), once per call rather than per row. A trigger keeps anybody but the
+person from changing their choice through `app_user`. On a page read 150
+people a day for 90 days the counts take about 30 milliseconds and a window
+of readers 5, from the indexes alone, which
+`TestPageViewCountsReadAnIndexNotTheTable` holds.
+
+The counts are a read tool for assistants, `get_page_views`; the names are
+not, so who read what stays with the editors in the page rather than in
+whatever an assistant passes on.
+
 ## 2026-10-01: Stale pages are read from publishes and visits, by the administrators of their spaces
 
 The stale content report (#99) lists published pages, out of the trash, that

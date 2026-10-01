@@ -469,6 +469,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
   only the reading tools, and nothing removes, shares, administers or
   touches another person's attention. The tokens page says how to connect a
   client, and `docs/mcp.md` lists the tools.
+- Page views (#97): the line under a page's title says how often it was
+  read, and opens its views in all and over the last 30 days, counting each
+  person once a day however often they open it
+  (`GET /pages/{id}/views`, the `get_page_views` tool). People who may edit
+  the page also see who read it within the retention, the latest first
+  (`GET /pages/{id}/readers`); anybody can hide their name from that list
+  in their profile (`showInReaders` on `PATCH /auth/me`) and is still
+  counted. The worker keeps who read what for `STATOR_RETAIN_PAGE_VIEWS`
+  (90 days; at least 30; 0 keeps them) and then keeps only the count.
+  Reloading a page writes nothing to the database, and recent pages no
+  longer write when the page opened is already the latest one of the day.
 
 ### Changed
 
