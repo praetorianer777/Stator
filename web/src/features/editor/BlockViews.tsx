@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { createContext, useContext, type MouseEvent, type ReactNode } from "react";
 import { usePagesBelow, type BelowPage } from "@/api/tree";
 import { Tag } from "@/components/ui";
@@ -18,7 +19,7 @@ export interface DocPage {
 
 export const DocPageContext = createContext<DocPage | null>(null);
 
-const changedOn = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+const changedOn = localDateFormat({ dateStyle: "medium" });
 
 /** A table of contents: nested links to the headings, or a sentence while there are none. */
 export function TocList({ entries, onFollow }: { entries: TocEntry[]; onFollow: (anchor: string, event: MouseEvent<HTMLAnchorElement>) => void }) {

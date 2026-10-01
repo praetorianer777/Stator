@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useArmatureAccount, useArmatureIssue, useArmatureIssues, type ArmatureAccount, type ArmatureIssue, type ArmatureIssues } from "@/api/armature";
 import { cx } from "@/components/ui";
@@ -211,7 +212,7 @@ function IssueLink({ issue, issueKey, links }: { issue: ArmatureIssue; issueKey:
   );
 }
 
-const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
 /** The issue's details beside its chip; it explains the chip and holds nothing to press. */
 function IssueCard({

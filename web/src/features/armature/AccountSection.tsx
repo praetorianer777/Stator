@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { useArmatureAccount, useCheckArmature, useConnectArmature, useDisconnectArmature, type ArmatureAccount } from "@/api/armature";
@@ -6,7 +7,7 @@ import { Icon } from "@/components/icons";
 import { ARMATURE_SECTION_ID, ARMATURE_TOKEN_PREFIX } from "@/config";
 import { t } from "@/i18n";
 
-const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
 /** The caller's own Armature account: paste a token, see whom it acts as, check it, disconnect. */
 export function AccountSection() {

@@ -39,6 +39,63 @@ publishes them, since the links between pages need the pages' ids and the
 pictures need the files' ids. A failure part way trashes what was made, and
 nobody else has seen any of it. `docs/markdown.md` lists how each node is
 written and what does not come back as it left.
+
+## 2026-10-01: The interface speaks German and English; the server stays English
+
+Every string the web client shows lives in `web/src/i18n`, and #113 adds a
+German catalogue held to the English one's type, so a key added in English and
+not in German fails `tsc`. The two are plain objects of strings and small
+functions, as before; a library would bring plural rules and message syntax
+two languages do not need, and a second way to write a string.
+
+The choice is the person's, stored on their account in the `locale` column
+that came with the first migration, as Armature keeps its language there and
+changes it with `PATCH /auth/me`. Armature's column defaults to English;
+Stator's is null until the person chooses, because the issue asks for the
+browser to decide until then, and every row the old default wrote was made
+null, since nothing had ever set one. A check constraint holds it to `en` and
+`de`. The browser remembers the choice too, so a reload paints in it before
+`/auth/me` answers; a browser that never saw it takes it from there.
+
+`t` is a live binding that switches with the language, and the router is
+drawn again under a key of the language, because strings are read while
+rendering: a module keeps no piece of `t` at its top level. Dates and numbers
+go through `web/src/lib/format.ts`, which looks the locale up on each call and
+keeps the browser's own variant of the language shown, so en-GB keeps its day
+before the month.
+
+German addresses the reader as Sie, the convention for software used at work;
+Armature has no German interface yet whose choice could be followed. Names of
+Armature's screens stay as Armature shows them. Quotes stay ASCII, as the
+house style asks, and the strings avoid needing them. Emoji are found by their
+English names, and the German search says so.
+
+What the server writes stays English for now: notification mails and digests,
+and the sentences of error answers the client shows as they come. Translating
+them means choosing the language per recipient in the worker and per request
+in every handler, which is its own change; the profile says so in German.
+
+## 2026-10-01: The push gate runs before a background push starts, not inside it
+
+Two agent pushes (#205, #212) looked as if they had skipped `./run-tests.sh`:
+the background push finished two seconds after it was reported as started.
+Their transcripts show it did not skip. A `PreToolUse` hook runs before the
+tool, and for a Bash call with `run_in_background` Claude Code waits for the
+hook before it starts the background task, so the whole gate (15m51s for
+#205, 9m37s for #212) passed while the call itself was pending, and the
+push that ran afterwards had nothing left to wait for. A push from a worktree
+here behaved the same, with the gate running in the worktree. This is how the
+harness orders hooks and background tasks, not something the guard can
+change, so the guard is left as it is and the time to look at is the delay
+before "Command running in background", or the `gate_secs` the guard logs.
+
+Every hook invocation now appends a line to `branch-guard.log` in the common
+git dir, so the next doubt is settled by reading it rather than by replaying.
+Worktree agents run with `CLAUDE_PROJECT_DIR` set to the main checkout, so
+the hook that guards them is the main checkout's working copy, not their
+own: a change to the guard protects agents only once the main checkout has
+it, and the log's `hook=` field says which copy ran.
+
 ## 2026-10-01: A reaction is a row per person and emoji, given where one may comment
 
 A reaction (#66) is one row naming its page, the comment when it is on one,

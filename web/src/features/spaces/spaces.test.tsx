@@ -142,9 +142,16 @@ describe("space settings", () => {
   });
 
   it("show a member the details without letting them change them", async () => {
-    stubApi({ "GET /spaces/DOCS": { status: 200, body: { space: aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: true } }) } } });
+    stubApi({
+      "GET /spaces/DOCS": {
+        status: 200,
+        body: { space: aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: true } }) },
+      },
+    });
     await renderAt("/s/DOCS/settings", { me: member });
-    expect(await screen.findByText("Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization."),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveAttribute("readonly");
     expect(screen.queryByRole("button", { name: "Save details" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete space" })).toBeNull();

@@ -5,6 +5,7 @@ export const en = {
     pickColour: (label: string) => `Pick ${label}`,
     unassigned: "Unassigned",
     close: "Close",
+    breadcrumb: "Breadcrumb",
   },
   nav: {
     everywhere: "Everywhere",
@@ -92,6 +93,17 @@ export const en = {
   profile: {
     title: "Your profile",
     account: "Account",
+    language: "Language",
+    languageIntro: "The language Stator speaks to you. Dates and numbers are written its way too.",
+    languageField: "Interface language",
+    languageBrowser: (name: string) => `Follow the browser (now ${name})`,
+    languageSaved: "Your language is saved.",
+    languageBoundary: "Messages from the server, such as emails and some error messages, are in English for now.",
+  },
+  /** Each language in its own words, so a reader finds theirs whatever is showing. */
+  languages: {
+    en: "English",
+    de: "Deutsch",
   },
   armature: {
     title: "Armature",

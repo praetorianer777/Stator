@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { useState } from "react";
 import type { Space } from "@/api/spaces";
 import { useEmptyTrash, usePurgePage, useRestorePage, useTrash } from "@/api/trash";
@@ -5,7 +6,7 @@ import { Button, EmptyState, ErrorBanner, Skeleton, Table, Td, Th } from "@/comp
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 
-const deletedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const deletedAt = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
 /** A space's trash: what was deleted, by whom and where it goes back; restoring for editors, purging for administrators. */
 export function TrashPanel({ space }: { space: Space }) {
@@ -16,7 +17,12 @@ export function TrashPanel({ space }: { space: Space }) {
   const empty = useEmptyTrash(space.key);
   const [notice, setNotice] = useState("");
   const failure = restore.error ?? purge.error ?? empty.error;
-  if (!space.can.deletePages) return <p className="text-sm text-ink-muted" data-space-trash={space.key}>{s.notTrasher}</p>;
+  if (!space.can.deletePages)
+    return (
+      <p className="text-sm text-ink-muted" data-space-trash={space.key}>
+        {s.notTrasher}
+      </p>
+    );
 
   return (
     <div className="space-y-4" data-space-trash={space.key}>

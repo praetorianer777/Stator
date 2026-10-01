@@ -7,7 +7,8 @@ import { MARKDOWN_FILE_PATTERN, MARKDOWN_IMPORT_MAX_BYTES, ZIP_FILE_PATTERN } fr
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 
-const SCOPES: { scope: ExportScope; label: string; hint: string }[] = [
+// A function, so the labels follow the language chosen after this module loaded.
+const scopes = (): { scope: ExportScope; label: string; hint: string }[] => [
   { scope: "markdown", label: t.markdown.exportMarkdown, hint: t.markdown.exportMarkdownHint },
   { scope: "page", label: t.markdown.exportPage, hint: t.markdown.exportPageHint },
   { scope: "subtree", label: t.markdown.exportSubtree, hint: t.markdown.exportSubtreeHint },
@@ -21,7 +22,7 @@ export function ExportDialog({ page, onClose }: { page: { id: string; title: str
     <Dialog title={t.markdown.exportTitle(page.title)} onClose={onClose} data-markdown-export="">
       <fieldset className="space-y-2">
         <legend className="mb-2 text-sm font-medium text-ink">{t.markdown.exportWhat}</legend>
-        {SCOPES.map((each) => (
+        {scopes().map((each) => (
           <label key={each.scope} className="flex items-start gap-2 text-sm text-ink">
             <input
               type="radio"
@@ -44,7 +45,14 @@ export function ExportDialog({ page, onClose }: { page: { id: string; title: str
         <Button type="button" variant="secondary" onClick={onClose}>
           {t.markdown.cancel}
         </Button>
-        <ButtonLink variant="primary" href={markdownExportHref(page.id, scope)} download onClick={onClose} icon={<Icon.Download />} data-action="download-markdown">
+        <ButtonLink
+          variant="primary"
+          href={markdownExportHref(page.id, scope)}
+          download
+          onClick={onClose}
+          icon={<Icon.Download />}
+          data-action="download-markdown"
+        >
           {t.markdown.download}
         </ButtonLink>
       </div>

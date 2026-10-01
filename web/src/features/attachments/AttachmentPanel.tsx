@@ -1,10 +1,11 @@
+import { localDateFormat } from "@/lib/format";
 import { useRef, useState, type DragEvent } from "react";
 import { attachmentUrl, canPreview, formatSize, useAttachments, useDeleteAttachment, useUploadAttachments } from "@/api/attachments";
 import { Button, ButtonLink, ErrorBanner, IconButton, SectionTitle, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 
-const uploadedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+const uploadedAt = localDateFormat({ dateStyle: "medium" });
 
 function hasFiles(event: DragEvent): boolean {
   return Array.from(event.dataTransfer.types).includes("Files");

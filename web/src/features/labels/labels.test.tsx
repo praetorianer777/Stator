@@ -131,7 +131,10 @@ describe("labels on a page", () => {
 
     await userEvent.type(input, "Team Wiki{Enter}");
     await waitFor(() => expect(added).toEqual(["release-notes", "team-wiki"]));
-    expect(sent.filter((each) => each.method === "POST" && each.path.endsWith("/labels")).map((each) => each.body)).toEqual([{ name: "release-notes" }, { name: "team-wiki" }]);
+    expect(sent.filter((each) => each.method === "POST" && each.path.endsWith("/labels")).map((each) => each.body)).toEqual([
+      { name: "release-notes" },
+      { name: "team-wiki" },
+    ]);
     expect(await screen.findByText("Added the label team-wiki.")).toBeInTheDocument();
   });
 

@@ -1,6 +1,6 @@
 import { Icon } from "@/components/icons";
 import { STATUS_LABEL_MAX_LENGTH } from "@/config";
-import { t } from "@/i18n";
+import { locale as activeLocale, t } from "@/i18n";
 import { STATUS_COLORS, type StatusColor } from "./schema";
 
 // Kept apart from the editor's nodes, so the read-only view draws a status
@@ -32,7 +32,7 @@ export function today(now: Date = new Date()): string {
 }
 
 /** A day in the reader's locale. It is read in UTC so it is the same day wherever the reader is. */
-export function formatDay(day: string, locale?: string): string {
+export function formatDay(day: string, locale: string = activeLocale()): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${day}${MIDNIGHT_UTC}`));
 }
 

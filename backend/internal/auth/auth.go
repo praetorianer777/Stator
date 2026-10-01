@@ -24,6 +24,9 @@ type Principal struct {
 	Email     string
 	Name      string
 	AvatarURL string
+	// Locale is the language the person chose for the interface; empty
+	// means the browser's.
+	Locale Locale
 	// OrgName is Org's display name, empty when Org is nil.
 	OrgName string
 	// Role is the caller's standing in Org, empty when Org is nil.

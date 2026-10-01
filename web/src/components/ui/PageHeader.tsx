@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { createContext, useContext, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "./cx";
@@ -19,7 +20,7 @@ export interface Crumb {
 export function Breadcrumbs({ crumbs, className }: { crumbs: Crumb[]; className?: string }) {
   if (crumbs.length === 0) return null;
   return (
-    <nav aria-label="Breadcrumb" className={cx("text-sm text-ink-muted", className)}>
+    <nav aria-label={t.common.breadcrumb} className={cx("text-sm text-ink-muted", className)}>
       <ol className="flex flex-wrap items-center gap-1.5">
         {crumbs.map((crumb, index) => (
           <li key={index} className="flex items-center gap-1.5">
@@ -74,4 +75,3 @@ export function PageHeader({
   );
   return target ? createPortal(header, target) : header;
 }
-

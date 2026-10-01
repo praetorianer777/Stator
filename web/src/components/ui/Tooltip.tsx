@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { TOOLTIP_DELAY_MS } from "@/config";
 import { useAnchored } from "./overlay";
@@ -13,6 +13,7 @@ export function Tooltip({ text, children, side = "bottom" }: { text: string; chi
   const anchorRef = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
   const place = useAnchored(shown, anchorRef, tipRef, { side });
+  useEffect(() => () => window.clearTimeout(timer.current), []);
   function show() {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setShown(true), TOOLTIP_DELAY_MS);
@@ -22,11 +23,25 @@ export function Tooltip({ text, children, side = "bottom" }: { text: string; chi
     setShown(false);
   }
   return (
-    <span ref={anchorRef} className="relative inline-flex" onPointerEnter={show} onPointerLeave={hide} onFocus={show} onBlur={hide} aria-describedby={shown ? id : undefined}>
+    <span
+      ref={anchorRef}
+      className="relative inline-flex"
+      onPointerEnter={show}
+      onPointerLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+      aria-describedby={shown ? id : undefined}
+    >
       {children}
       {shown &&
         createPortal(
-          <span ref={tipRef} role="tooltip" id={id} style={place} className="fixed z-40 rounded-control bg-primary px-2 py-1 text-xs whitespace-nowrap text-on-primary shadow-1">
+          <span
+            ref={tipRef}
+            role="tooltip"
+            id={id}
+            style={place}
+            className="fixed z-40 rounded-control bg-primary px-2 py-1 text-xs whitespace-nowrap text-on-primary shadow-1"
+          >
             {text}
           </span>,
           document.body,

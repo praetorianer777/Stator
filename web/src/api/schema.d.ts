@@ -280,7 +280,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Change the caller's own settings, such as the language the interface speaks to them. */
+        patch: operations["updateMe"];
         trace?: never;
     };
     "/auth/oidc/callback": {
@@ -2703,11 +2704,17 @@ export interface components {
             description?: string;
             name?: string;
         };
+        UpdateMeRequest: {
+            /** @enum {string} */
+            locale?: "" | "en" | "de";
+        };
         User: {
             avatarUrl?: string;
             email: string;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            locale: "" | "en" | "de";
             name: string;
         };
         Version: {
@@ -3587,6 +3594,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

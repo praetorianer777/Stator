@@ -7,11 +7,12 @@ import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
 
-// Dates are shown in the reader's own format; a German browser proves it is
-// not the author's, nor a fixed one.
-const LOCALE = "de-DE";
+// Dates are shown in the reader's own format; a British browser proves it is
+// not the author's, nor a fixed one. A German one would turn the whole
+// interface German, which language.spec.ts covers.
+const LOCALE = "en-GB";
 const DAY = "2026-11-02";
-const DAY_SHOWN = "02.11.2026";
+const DAY_SHOWN = "2 Nov 2026";
 
 const editorBox = (page: Page) => page.locator("#page-body");
 const readView = (page: Page) => page.locator("[data-doc]");

@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { usePage, type Page } from "@/api/pages";
@@ -25,7 +26,7 @@ import { NewPageDialog } from "./NewPageDialog";
 import { PageLink } from "./PageLink";
 import { PlaceDialog } from "./PlaceDialog";
 
-const updatedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+const updatedAt = localDateFormat({ dateStyle: "medium" });
 
 /** The trail above a page's title: the directory, its space by name, then every page above it. */
 export function pageCrumbs(space: Space, page: Page): Crumb[] {
@@ -233,7 +234,9 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
       </InlineComments>
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "export" && <ExportDialog page={page} onClose={() => setDialog(undefined)} />}
-      {dialog === "import" && <ImportDialog parent={page.home ? { id: page.id, title: space.name } : page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
+      {dialog === "import" && (
+        <ImportDialog parent={page.home ? { id: page.id, title: space.name } : page} spaceKey={space.key} onClose={() => setDialog(undefined)} />
+      )}
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
       {(dialog === "move" || dialog === "copy") && (
         <PlaceDialog

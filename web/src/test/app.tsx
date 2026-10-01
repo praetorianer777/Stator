@@ -1,14 +1,15 @@
 import { render, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
+import { createMemoryHistory } from "@tanstack/react-router";
 import { vi } from "vitest";
 import { meQueryKey, type Me } from "@/api/auth";
+import { LocalizedRouter } from "@/features/shell/LocalizedRouter";
 import { createQueryClient } from "@/lib/session";
 import { buildRouter, sendToLogin } from "@/routes";
 
 /** The person every shell test is signed in as unless it says otherwise: an administrator. */
 export const signedIn: Me = {
-  user: { id: "u-ada", email: "ada@stator.test", name: "Ada Lovelace" },
+  user: { id: "u-ada", email: "ada@stator.test", name: "Ada Lovelace", locale: "" },
   organization: { id: "o-demo", slug: "demo", name: "Demo", role: "admin" },
   organizations: [{ orgId: "o-demo", orgSlug: "demo", orgName: "Demo", role: "admin" }],
 };
@@ -23,7 +24,7 @@ export async function renderAt(path: string, { me = signedIn }: { me?: Me | null
   const router = buildRouter(queryClient, createMemoryHistory({ initialEntries: [path] }));
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <LocalizedRouter router={router} />
     </QueryClientProvider>,
   );
   await waitFor(() => expect(document.querySelector("[data-top-bar], [data-login]")).not.toBeNull());
