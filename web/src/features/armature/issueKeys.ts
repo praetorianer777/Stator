@@ -4,6 +4,8 @@ import type { DocNode } from "@/features/editor/schema";
 /** The inline chip and the block that name an Armature issue by its key. */
 export const ARMATURE_ISSUE_NODE = "armatureIssue";
 export const ARMATURE_ISSUE_BLOCK_NODE = "armatureIssueBlock";
+/** The table of the issues a query finds; it names no key of its own. */
+export const ARMATURE_ISSUE_LIST_NODE = "armatureIssueList";
 
 /** An issue key as Stator stores it, the shape Armature's keys have; the server's allowlist holds the same. */
 export const ISSUE_KEY_PATTERN = /^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,17}$/;

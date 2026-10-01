@@ -5,11 +5,12 @@ import { safeHref, type DocNode } from "@/features/editor/schema";
 // The server's allowlist, generated from its Go table by make
 // document-allowlist; the Go side refuses a stale copy.
 export interface Attr {
-  kind: "string" | "integer" | "boolean" | "integers" | "null";
+  kind: "string" | "integer" | "boolean" | "integers" | "strings" | "null";
   nullable?: boolean;
   enum?: string[];
   min?: number;
   max?: number;
+  minLength?: number;
   maxLength?: number;
   pattern?: string;
   url?: boolean;
@@ -38,6 +39,14 @@ export function attrProblem(rule: Attr, value: unknown): string | null {
       return integer(value) ? null : "is out of range";
     case "integers":
       return Array.isArray(value) && value.length <= (rule.maxLength ?? 0) && value.every(integer) ? null : "is not a list of widths";
+    case "strings":
+      return Array.isArray(value) &&
+        value.length >= (rule.minLength ?? 0) &&
+        value.length <= (rule.maxLength ?? 0) &&
+        new Set(value).size === value.length &&
+        value.every((v) => typeof v === "string" && (rule.enum ?? []).includes(v))
+        ? null
+        : "is not a list of allowed values";
     case "string": {
       if (typeof value !== "string") return "is not a string";
       if (rule.maxLength && [...value].length > rule.maxLength) return "is too long";

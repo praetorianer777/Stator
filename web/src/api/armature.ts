@@ -1,4 +1,5 @@
-import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { ARMATURE_LIST_PAGE_SIZE } from "@/config";
 import { api } from "./client";
 import type { components } from "./schema";
 
@@ -104,11 +105,12 @@ export interface ArmatureIssues {
 const issuesQueryKey = ["armature", "issues"] as const;
 const issueQueryKey = ["armature", "issue"] as const;
 const projectsQueryKey = ["armature", "projects"] as const;
+const searchQueryKey = ["armature", "search"] as const;
 
 // What a page shows of Armature depends on whose token asks, so a new or
 // forgotten token asks again.
 function forgetIssues(queryClient: QueryClient) {
-  for (const queryKey of [issuesQueryKey, issueQueryKey, projectsQueryKey]) void queryClient.invalidateQueries({ queryKey });
+  for (const queryKey of [issuesQueryKey, issueQueryKey, projectsQueryKey, searchQueryKey]) void queryClient.invalidateQueries({ queryKey });
 }
 
 /** One lookup per batch of keys; a status other than ok in any batch is the answer's. */
@@ -148,5 +150,36 @@ export function useArmatureProjects(enabled: boolean) {
     queryKey: projectsQueryKey,
     enabled,
     queryFn: async () => (await api.GET("/armature/projects")).data!,
+  });
+}
+
+/** One page of the issues a query matches, as the caller may see them; a query Armature cannot read is an ApiError bad_query. */
+export type ArmatureSearchPage = Awaited<ReturnType<typeof searchPage>>;
+
+async function searchPage(query: string, limit: number, offset: number) {
+  return (await api.GET("/armature/search", { params: { query: { q: query, limit, offset } } })).data!;
+}
+
+/** The rows of an issue list, a page at a time up to its limit. */
+export function useArmatureSearch(query: string, limit: number, enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: [...searchQueryKey, query, limit],
+    enabled: enabled && query.trim() !== "",
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => searchPage(query, Math.min(ARMATURE_LIST_PAGE_SIZE, limit - pageParam), pageParam),
+    getNextPageParam: (last, pages) => {
+      if (last.status !== "ok") return undefined;
+      const loaded = pages.reduce((n, page) => n + page.issues.length, 0);
+      return last.issues.length > 0 && loaded < Math.min(last.total, limit) ? loaded : undefined;
+    },
+  });
+}
+
+/** Whether Armature can read a query, and how many issues it matches for the caller. */
+export function useArmatureQueryCheck(query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...searchQueryKey, "check", query],
+    enabled,
+    queryFn: () => searchPage(query, 1, 0),
   });
 }

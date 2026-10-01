@@ -744,6 +744,7 @@
           {
             "name": "offset",
             "in": "query",
+            "description": "How many matches to skip; 0 when absent.",
             "schema": {
               "type": "integer"
             }

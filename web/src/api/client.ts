@@ -13,6 +13,8 @@ export interface ApiErrorBody {
   code: string;
   message: string;
   fields?: Record<string, string>;
+  /** The 1-based character a query went wrong at, with bad_query. */
+  position?: number;
   requestId?: string;
 }
 
@@ -20,6 +22,7 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly fields: Record<string, string>;
+  readonly position?: number;
   readonly requestId?: string;
 
   constructor(status: number, body: ApiErrorBody) {
@@ -28,6 +31,7 @@ export class ApiError extends Error {
     this.status = status;
     this.code = body.code;
     this.fields = body.fields ?? {};
+    this.position = body.position;
     this.requestId = body.requestId;
   }
 

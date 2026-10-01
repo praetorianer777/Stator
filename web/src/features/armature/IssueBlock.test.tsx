@@ -165,7 +165,7 @@ describe("inserting an issue block from the slash menu", () => {
     const user = userEvent.setup();
     const { box, last } = editorWith(source);
     await user.click(box);
-    await user.type(box, "/armature");
+    await user.type(box, "/ticket");
     const list = await screen.findByRole("listbox", { name: "Insert a block" });
     await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(1));
     await user.keyboard("{Enter}");
@@ -194,7 +194,7 @@ describe("inserting an issue block from the slash menu", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(last()?.content?.some((node) => node.type === "armatureIssueBlock" && node.attrs?.key === "CP-4")).toBe(true);
-    expect(JSON.stringify(last())).not.toContain("/armature");
+    expect(JSON.stringify(last())).not.toContain("/ticket");
     expect(JSON.stringify(last())).not.toContain("Rotate the signing keys");
     expect(box.querySelector('[data-armature-issue-block="CP-4"]')).not.toBeNull();
   });
@@ -213,7 +213,7 @@ describe("inserting an issue block from the slash menu", () => {
     const user = userEvent.setup();
     const { box } = editorWith(source);
     await user.click(box);
-    await user.type(box, "/armature");
+    await user.type(box, "/ticket");
     await screen.findByRole("listbox", { name: "Insert a block" });
     await user.keyboard("{Enter}");
     const dialog = await screen.findByRole("dialog", { name: "Insert an Armature issue" });

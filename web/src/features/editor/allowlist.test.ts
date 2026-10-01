@@ -77,6 +77,11 @@ describe("the web editor against the server's allowlist", () => {
       ])
       .insertArmatureIssueBlock("cp-4")
       .run();
+    // A second chain: an inserted atom is selected, and the next insert would replace it.
+    e.chain()
+      .focus("end")
+      .insertArmatureIssueList({ query: "statusCategory != done", columns: ["summary", "due"], limit: 100 })
+      .run();
     docs.push(e.getJSON() as DocNode);
 
     for (const doc of docs) expect(problems(doc)).toEqual([]);
@@ -98,6 +103,7 @@ describe("the web editor against the server's allowlist", () => {
       '"type":"attachment"',
       '"type":"hint"',
       '"type":"armatureIssueBlock"',
+      '"columns":["summary","due"]',
     ]) {
       expect(all).toContain(needle);
     }

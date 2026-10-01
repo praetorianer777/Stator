@@ -22,6 +22,7 @@ import { Hint } from "./hint";
 import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
+import { ArmatureIssueList } from "./armatureIssueList";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -294,10 +295,12 @@ export interface ExtensionOptions {
   armature?: IssueSource;
   /** Opens the picker the slash menu's Armature issue asks which issue with. */
   pickIssue?: () => void;
+  /** Opens the settings dialog the slash menu's Armature issue list starts with. */
+  pickIssueList?: () => void;
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
-export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments, armature, pickIssue }: ExtensionOptions = {}): AnyExtension[] {
+export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments, armature, pickIssue, pickIssueList }: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
       underline: false,
@@ -350,5 +353,6 @@ export function editorExtensions({ variant = "page", placeholder, mention, slash
     InlineComment,
     ArmatureIssue.configure({ source: armature }),
     ArmatureIssueBlock.configure({ pick: pickIssue }),
+    ArmatureIssueList.configure({ pick: pickIssueList }),
   ];
 }

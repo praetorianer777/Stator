@@ -263,6 +263,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   changed and a link to Armature, as each reader may see it. The page stores
   only the key. Without a token or access the block shows the key and the
   hint, as a chip does; a comparison of versions names the issue in words.
+- An Armature issue list block. "Armature issue list" in the slash menu asks
+  for an NQL query, which Armature checks as it is typed, the columns and the
+  most rows, and inserts a table of the issues the query finds, as each
+  reader may see them. Rows sort by a click on a column head, arrive 20 at a
+  time with "Show more", and the table says how many there are and opens the
+  query in Armature. A query Armature cannot read says why and at which
+  character, with the place marked for those who may edit the page. The page
+  stores only the settings. `GET /armature/search` answers a page of rows per
+  viewer, cached for a minute, and 422 `bad_query` with its position.
 
 ### Changed
 

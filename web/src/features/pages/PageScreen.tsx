@@ -217,7 +217,7 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         }
       >
         <KnownAttachmentsContext value={attachmentIds}>
-          <DocPageContext value={{ id: page.id, spaceKey: space.key }}>
+          <DocPageContext value={{ id: page.id, spaceKey: space.key, onEdit: page.can.edit ? edit : undefined }}>
             <DocView doc={page.body} />
           </DocPageContext>
         </KnownAttachmentsContext>

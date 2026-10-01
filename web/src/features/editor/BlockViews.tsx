@@ -12,6 +12,8 @@ import type { TocEntry } from "./toc";
 export interface DocPage {
   id: string;
   spaceKey: string;
+  /** Opens the page to edit, for a reader who may; a block that needs fixing offers it. */
+  onEdit?: () => void;
 }
 
 export const DocPageContext = createContext<DocPage | null>(null);
