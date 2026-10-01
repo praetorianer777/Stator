@@ -150,6 +150,11 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	if data := once(audit.ActionPageExported, &annID, notes); !strings.Contains(data, `"scope": "markdown"`) {
 		t.Errorf("the Markdown export's record reads %s", data)
 	}
+	want(t, owner.post(t, pagePath(notes, "/share"), map[string]any{"recipients": []any{user(annID)}, "message": "A private word for ann."}),
+		http.StatusCreated, "share Notes with ann")
+	if data := once(audit.ActionPageShared, me, notes); !strings.Contains(data, "Ann Audit") || strings.Contains(data, "private word") {
+		t.Errorf("the share's record reads %s", data)
+	}
 
 	base := armatureURL(t)
 	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": base, "orgSlug": slug, "webhookSecret": webhookSecret}), http.StatusOK, "connect Armature")

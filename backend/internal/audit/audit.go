@@ -65,6 +65,8 @@ const (
 	ActionWebhookDeleted       = "webhook.deleted"
 	ActionWebhookSecretRotated = "webhook.secret_rotated"
 	ActionWebhookDisabled      = "webhook.disabled"
+	// ActionPageShared is a page sent to people with a note; the note is not kept.
+	ActionPageShared = "page.shared"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -81,6 +83,7 @@ var Actions = []string{
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
 	ActionPageArchived, ActionPageUnarchived, ActionSpaceArchived, ActionSpaceUnarchived,
 	ActionWebhookCreated, ActionWebhookUpdated, ActionWebhookDeleted, ActionWebhookSecretRotated, ActionWebhookDisabled,
+	ActionPageShared,
 }
 
 // Redacted stands in the record for a value that looked like a credential.
