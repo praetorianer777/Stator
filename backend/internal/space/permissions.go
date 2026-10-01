@@ -9,6 +9,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 )
 
@@ -138,6 +139,11 @@ func (s *Service) SetPermissions(ctx context.Context, actor perm.Actor, key stri
 				  AND NULLIF(w.group_id, '')::uuid IS NOT DISTINCT FROM g.group_id)`,
 			sp.ID, perms, types, users, groups); err != nil {
 			return err
+		}
+		// Whether everyone may view the space decides how its pages are titled
+		// on the Armature issues they name.
+		if _, err := tx.Exec(ctx, `SELECT armature_links_emit_space($1, false, $2)`, sp.ID, events.TraceParent(ctx)); err != nil {
+			return fmt.Errorf("sync the space's Armature links: %w", err)
 		}
 		// The answer is the table as written: somebody who just gave up
 		// administering the space may no longer read it back.

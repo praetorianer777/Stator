@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { ARMATURE_LIST_PAGE_SIZE } from "@/config";
+import { ARMATURE_LINKS_POLL_MS, ARMATURE_LIST_PAGE_SIZE } from "@/config";
 import { ApiError, api } from "./client";
 import type { components } from "./schema";
 
@@ -210,5 +210,18 @@ export function useArmatureQueryCheck(query: string, enabled: boolean) {
     queryKey: [...searchQueryKey, "check", query],
     enabled,
     queryFn: () => searchPage(query, 1, 0),
+  });
+}
+
+/** Whether the page's remote link reached one issue it names in Armature. */
+export type ArmatureLink = Wire["Link"];
+
+/** The links of a published version of a page, asked again while any waits for the worker. */
+export function useArmatureLinks(pageId: string, version: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ["armature", "links", pageId, version],
+    enabled,
+    queryFn: async (): Promise<ArmatureLink[]> => (await api.GET("/pages/{pageID}/armature-links", { params: { path: { pageID: pageId } } })).data!.links,
+    refetchInterval: (query) => (query.state.data?.some((link) => link.state === "pending") ? ARMATURE_LINKS_POLL_MS : false),
   });
 }

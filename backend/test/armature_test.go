@@ -5,6 +5,7 @@ package test
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -34,7 +35,16 @@ const (
 	armatureAppURL   = "http://stator.test"
 )
 
-var testSecretKey = bytes.Repeat([]byte{7}, secret.KeySize)
+// testSecretKey is the stack's STATOR_SECRET_KEY, so the stack's own worker
+// opens the tokens the suite stores, as it does when syncing page links.
+func testSecretKey(t *testing.T) []byte {
+	t.Helper()
+	key, err := base64.StdEncoding.DecodeString(os.Getenv("STATOR_TEST_SECRET_KEY"))
+	if err != nil || len(key) != secret.KeySize {
+		t.Fatal("STATOR_TEST_SECRET_KEY is not the stack's key; run the suite with make test-integration against the running stack")
+	}
+	return key
+}
 
 func armatureURL(t *testing.T) string {
 	t.Helper()
@@ -58,7 +68,7 @@ func (h *harness) valkey(t *testing.T) *redis.Client {
 // armature is the service as cmd/api builds it, over the stack's stub.
 func (h *harness) armature(t *testing.T) *armature.Service {
 	t.Helper()
-	box, err := secret.New(testSecretKey)
+	box, err := secret.New(testSecretKey(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,7 +291,7 @@ func TestACheckFindsARevokedToken(t *testing.T) {
 		t.Fatalf("the viewer is %v %s %v", v, status, err)
 	}
 
-	box, _ := secret.New(testSecretKey)
+	box, _ := secret.New(testSecretKey(t))
 	bound := append(append([]byte("armature.token:"), home.org[:]...), home.user[:]...)
 	revoked, _ := box.Seal([]byte("armature_pat_revoked"), bound)
 	if _, err := h.super.Exec(owner.ctx, `UPDATE armature_token SET token = $2 WHERE user_id = $1`, home.user, revoked); err != nil {

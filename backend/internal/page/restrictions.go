@@ -159,6 +159,10 @@ func (s *Service) SetRestrictions(ctx context.Context, actor perm.Actor, id uuid
 		if perm.LocksOut(sp.Can.Administer, after) {
 			return ErrLocksOut
 		}
+		// Whether a page is restricted decides how it is titled on an issue.
+		if err := syncLinksBelow(ctx, tx, []uuid.UUID{id}, true); err != nil {
+			return err
+		}
 		if err := record(ctx, tx, actor, audit.ActionPageRestrictionsSet, id, map[string]any{
 			"space": sp.Key, "title": p.Title, "view": perm.SubjectLog(view), "edit": perm.SubjectLog(edit)}); err != nil {
 			return err

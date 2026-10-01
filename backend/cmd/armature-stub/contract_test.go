@@ -276,6 +276,19 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	c.expect("DELETE", "/issues/CP-1/remote-links/"+put["id"].(string), alice, nil, 204)
 	c.expect("DELETE", "/issues/CP-1/remote-links/"+put["id"].(string), alice, nil, 404)
 
+	// A link as link sync sends it (#32), refused where the person may only
+	// read, and an Armature that does not answer for a while.
+	sent := armature.RemoteLinkRequest{URL: armature.PageURL("https://stator.example", "ENG", uuid.New()), Title: armature.RestrictedLinkTitle, Source: armature.LinkSource}
+	linked := c.expect("POST", "/issues/CP-2/remote-links", alice, sent, 201)["remoteLink"].(map[string]any)
+	c.expect("PUT", stubPrefix+"/acme/people/alice/read-only-projects", "", map[string]any{"projects": []string{"CP"}}, 204)
+	c.expect("POST", "/issues/CP-2/remote-links", alice, sent, 403)
+	c.expect("DELETE", "/issues/CP-2/remote-links/"+linked["id"].(string), alice, nil, 403)
+	c.expect("PUT", stubPrefix+"/acme/people/alice/read-only-projects", "", map[string]any{"projects": []string{}}, 204)
+	c.expect("PUT", stubPrefix+"/acme/remote-links/outage", "", map[string]any{"status": 503, "count": 1}, 204)
+	c.expect("DELETE", "/issues/CP-2/remote-links/"+linked["id"].(string), alice, nil, 503)
+	c.expect("DELETE", "/issues/CP-2/remote-links/"+linked["id"].(string), alice, nil, 204)
+	c.expect("PUT", stubPrefix+"/acme/remote-links/outage", "", map[string]any{"status": 404, "count": 1}, 422)
+
 	if got := c.expect("GET", "/themes/active", alice, nil, 200); got["theme"] != nil {
 		t.Errorf("nobody follows a theme before the stub is told: %v", got)
 	}

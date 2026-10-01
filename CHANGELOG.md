@@ -284,6 +284,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
   linking back to the page. `POST /armature/issues` files up to 50 issues in
   order and stops at the first refusal; `GET /armature/issue-types` lists the
   types a new issue may take.
+- Pages in Armature. Every issue a published page names as a chip or an
+  issue block lists the page in Armature, by a remote link the worker puts on
+  it as the person whose change it was, with their own token. Publishing,
+  renaming, moving, restricting, trashing, restoring and purging keep the
+  links in line: a key taken out loses its link, a trashed or purged page
+  loses them all, and a restored page gets them back. A page not every
+  member may view is titled "A restricted page in Stator" on its issues. An
+  Armature that does not answer is asked again through the outbox; a refusal
+  marks the key failed with a sentence saying why, and the next change to the
+  page tries it again. The page shows "Linked in Armature" with each key's
+  state, and `GET /pages/{id}/armature-links` answers it. The compose worker
+  now gets `STATOR_SECRET_KEY`, which it needs to open the members' tokens.
 
 ### Changed
 

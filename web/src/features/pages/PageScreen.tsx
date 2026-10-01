@@ -6,6 +6,7 @@ import { useVisit } from "@/api/search";
 import { useTrashPage } from "@/api/trash";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { ArmatureLinks } from "@/features/armature/ArmatureLinks";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSection";
 import { InlineComments } from "@/features/comments/InlineComments";
@@ -211,6 +212,7 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         below={
           <>
             <PageLabels page={page} />
+            <ArmatureLinks page={page} />
             <AttachmentPanel pageId={page.id} editable={page.can.edit} />
             <CommentsSection page={page} thread={thread} />
           </>

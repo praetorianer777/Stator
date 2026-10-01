@@ -32,6 +32,9 @@ ADMIN_DB_PASSWORD  ?= stator_admin
 S3_ACCESS_KEY      ?= stator
 S3_SECRET_KEY      ?= stator-dev-secret
 VALKEY_PASSWORD    ?= stator_valkey
+# Seals stored secrets. The integration suite seals the Armature tokens it
+# stores with it too, so the stack's worker opens them to sync page links.
+STATOR_SECRET_KEY  ?= c3RhdG9yLWRldmVsb3BtZW50LW9ubHktc2VjcmV0LWs=
 # Opens the api's test endpoints, which make and remove the browser suite's
 # organizations; the suite reads it from the stack's env file.
 STATOR_TEST_ENDPOINTS_TOKEN ?= stator-dev-test-endpoints-token
@@ -43,7 +46,7 @@ STACK_TEST_BUCKET := stator-test
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
 export WEB_PORT API_PORT KEYCLOAK_PORT MAILPIT_PORT POSTGRES_PORT POSTGRES_REPLICA_PORT VALKEY_PORT S3_PORT ARMATURE_STUB_PORT
-export POSTGRES_PASSWORD APP_DB_PASSWORD ADMIN_DB_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY VALKEY_PASSWORD STATOR_TEST_ENDPOINTS_TOKEN
+export POSTGRES_PASSWORD APP_DB_PASSWORD ADMIN_DB_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY VALKEY_PASSWORD STATOR_SECRET_KEY STATOR_TEST_ENDPOINTS_TOKEN
 
 # What the stack publishes, for the browser suite and for people: a shell can
 # source it, and so can a Playwright config.
@@ -71,6 +74,8 @@ DOCKER_GO_STACK = $(call go_run,--network $(STACK_NET) \
 	-e STATOR_TEST_MAILPIT_URL=http://mailpit:8025 \
 	-e STATOR_TEST_ARMATURE_URL=http://localhost:$(ARMATURE_STUB_PORT) \
 	-e STATOR_TEST_ARMATURE_STUB_URL=http://armature-stub:8080 \
+	-e STATOR_TEST_SECRET_KEY='$(STATOR_SECRET_KEY)' \
+	-e STATOR_TEST_APP_URL=http://localhost:$(WEB_PORT) \
 	$(1))
 
 .PHONY: stack-env

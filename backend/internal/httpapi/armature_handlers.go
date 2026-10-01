@@ -297,3 +297,30 @@ func refusalSentence(refusal *APIError) string {
 	}
 	return strings.Join(sentences, " ")
 }
+
+// Pages in Armature (#32): which issues the page's published version names,
+// and whether each carries the page's remote link yet.
+func (s *Server) handleListArmatureLinks(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	found, _, err := s.Pages.Get(r.Context(), actorFrom(r), id)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	links := []armature.Link{}
+	if !found.Unpublished {
+		if links, err = s.Armature.PageLinks(r.Context(), found.ID, found.Body); err != nil {
+			respondError(w, r, err)
+			return
+		}
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"links": links})
+}

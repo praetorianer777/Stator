@@ -22,10 +22,11 @@ const (
 	TopicCommentEdited  = "comment.edited"
 	TopicThreadResolved = "thread.resolved"
 	TopicThreadReopened = "thread.reopened"
+	TopicArmatureLinks  = "armature.links"
 )
 
 // Topics lists every topic the product emits.
-var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened}
+var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks}
 
 // Event is one committed domain event.
 type Event struct {
@@ -83,6 +84,13 @@ type ThreadResolved struct {
 	ActorID  uuid.UUID `json:"actorId"`
 }
 
+// ArmatureLinks asks the worker to bring a page's remote links in Armature in
+// line with what the page names now, as the person whose change it was.
+type ArmatureLinks struct {
+	PageID  uuid.UUID `json:"pageId"`
+	ActorID uuid.UUID `json:"actorId"`
+}
+
 // Emit writes an event in the caller's transaction, the one that makes the
 // change. The payload's actorId must be the person the transaction acts for.
 func Emit(ctx context.Context, tx db.DBTX, topic string, payload any) error {
@@ -93,13 +101,15 @@ func Emit(ctx context.Context, tx db.DBTX, topic string, payload any) error {
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO outbox_event (org_id, topic, payload, trace_parent)
 		VALUES (current_org_id(), $1, $2, NULLIF($3, ''))`,
-		topic, body, traceParent(ctx)); err != nil {
+		topic, body, TraceParent(ctx)); err != nil {
 		return fmt.Errorf("emit %s: %w", topic, err)
 	}
 	return nil
 }
 
-func traceParent(ctx context.Context) string {
+// TraceParent is the W3C traceparent of ctx, empty when none is sampled, for an
+// event written in SQL rather than through Emit.
+func TraceParent(ctx context.Context) string {
 	carrier := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, carrier)
 	return carrier["traceparent"]

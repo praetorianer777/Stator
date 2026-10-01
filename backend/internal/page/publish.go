@@ -73,6 +73,9 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 	}); err != nil {
 		return nil, err
 	}
+	if err := syncLinksOf(ctx, tx, actor, p.ID); err != nil {
+		return nil, err
+	}
 	return versionEntry(ctx, tx, p.ID, number)
 }
 

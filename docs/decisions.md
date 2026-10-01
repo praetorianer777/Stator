@@ -3,6 +3,48 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: Page links in Armature follow every change, as whoever made it
+
+A page's remote links in Armature are synced by the worker from an
+`armature.links` event `{pageId, actorId}`, written in the transaction of any
+change that can change them: every publish (a copy's too, since a copy is a
+page of its own), a move to another space, a change of restrictions or of the
+space's permissions, trashing, restoring, purging, emptying the trash and
+deleting the space. The event carries no keys; the worker reads what the page
+names when it runs, so a late event is never stale and a second one does
+nothing. It runs as the event's actor with their own token, so Armature
+records who linked the page, and a page can only appear on issues its author
+may edit. A service token would have linked every issue any member names and
+hidden who did it.
+
+Changes that reach pages below the one named, which the actor may not all
+see, go through `armature_links_emit` in the database, which writes the
+events itself rather than answering which pages they are. Only pages that
+name an issue or carry links get one, and none while the organization has no
+connection.
+
+`armature_remote_link` records, per page and key, the link's id in Armature,
+the url and title sent, and the state. It has no foreign key to the page, so
+the sync after a purge still finds what to take off. A link is put again
+only when it is not synced as wanted, and Armature retitles the link with the
+same url, so sending twice is harmless. An Armature that does not answer, a
+429 or a 5xx fails the event, which the outbox tries again; what was done
+before is kept. A refusal another try would meet again (no token, a rejected
+or read-only token, 403, 404) marks the key failed with a sentence and lets
+the event finish, so one bad key never holds the others; the next change to
+the page, by anybody, tries it again.
+
+A page is titled "A restricted page in Stator" unless nothing above it
+carries a view list and its space lets everyone view it. A space opened to a
+group that happens to hold every member counts as closed, which errs towards
+telling Armature less.
+
+The worker now routes events by topic (`events.Mux`), so a link sync that
+fails is retried without telling anybody about the publish twice. The
+integration suite seals tokens with the stack's own `STATOR_SECRET_KEY` and
+syncs with the stack's `STATOR_APP_URL`, because the stack's worker drains the
+same outbox beside the suite's and has to reach the same result.
+
 ## 2026-10-01: Issues from a selection are filed one by one, from a toolbar row
 
 Armature has no batch create, so `POST /armature/issues` files the items in
