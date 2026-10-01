@@ -3,6 +3,60 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: A share tells only who may already read, and refuses whole rather than in part
+
+Sharing a page (#67) sends it with a note to people and groups. It never
+grants anything: the page's restrictions and the space's permissions decide
+who may read, and a share that let somebody in would be a second way to
+change them that nobody administering the space could see. So the dialog
+says who can already view the page, the picker marks whoever may not, and a
+share naming such a person is refused with a sentence naming them, saying
+what to do (remove them, or ask an administrator of the space or somebody
+who may change the restrictions), and sending nothing to anybody. Sending to
+the rest would have left the sharer to notice who was missing; a refusal is
+noticed. The person refused is told nothing, so a share leaks nothing about a
+page to somebody who may not read it. Asking for access on their behalf was
+not built: the issue does not ask for it, and there is no request flow yet
+for it to join.
+
+A group is different: it names people the sharer usually cannot list, and
+one member without access should not stop the rest hearing of the page. A
+group tells those of its members who may view the page, the picker says how
+many that is, and only a group none of whose members may view it is refused
+like a person.
+
+A share is a row, `page_share`, with the people it tells in
+`page_share_recipient`, rather than a list inside the outbox event as
+mentions are. The row is what the brake counts, what the worker reads whom
+to tell from, and what the restrictive policies hold to the rules: the app
+role may make a share only as the actor, of a published page out of the
+trash they may view, and name only members other than themselves who may
+view it; nobody reads anybody else's shares, and nobody changes or deletes
+one. An outbox event about a share must name one the actor made in the same
+transaction (its `created_at` is the transaction's `now()`), so a forged
+event cannot send an old share again. The worker writes each row acting for
+its recipient as for every kind, so access lost between the share and its
+delivery tells nobody.
+
+One person shares at most `share.MaxPerHour`, 30, pages an hour in an
+organization. The service counts the last hour to say when to try again; a
+trigger holds the same limit under an advisory lock per sharer, so two
+shares at once cannot both slip under it, and `page_share_per_hour()` names
+the number in SQL, which a test holds to the Go constant. Valkey would have
+been the obvious place for a rate limit, but it is optional here, and the
+rows are already where the shares are.
+
+The note is at most 200 characters, `notify.MaxExcerptLength`, so the
+notification carries it whole and the mail needs no field of its own. The
+kind is `shared`, second in `notify.Kinds` after `mentioned`, since a share
+too is addressed to one person; it has its own switches, on by default.
+
+Each share is written to the audit log as `page.shared`, in its own
+transaction, with the page, the people and groups named and how many were
+told. The note is not recorded: it is a message to its readers, which the
+administrators reading the log have no claim to, and it may hold anything.
+A refused share records nothing, since nothing happened.
+
 ## 2026-10-01: A verification is a dated row beside the page, read as expired, and told by the worker
 
 An owner (#68) and a verification are rows of their own, `page_owner` and

@@ -1233,6 +1233,40 @@ export const de: Messages = {
       "Wenn Sie das speichern, sperren Sie sich selbst aus der Seite aus. Fügen Sie sich oder eine Ihrer Gruppen beiden Listen hinzu, oder bitten Sie einen Administrator des Bereichs um die Änderung.",
     saved: "Einschränkungen gespeichert.",
   },
+  share: {
+    button: "Teilen",
+    title: (page: string) => `${page} teilen`,
+    intro:
+      "Senden Sie diese Seite an Personen und Gruppen, auf Wunsch mit einer Notiz. Sie erfahren es in der App und per E-Mail. Teilen gibt niemandem Zugriff: Benachrichtigt wird nur, wer die Seite schon ansehen darf.",
+    pickerLabel: "Senden an",
+    pickedLabel: "Empfänger",
+    nobodyYet: "Noch niemand ausgewählt.",
+    full: (n: number) => `Eine Freigabe nennt höchstens ${n} Personen und Gruppen. Teilen Sie für weitere noch einmal.`,
+    cannotView: "Darf diese Seite nicht ansehen",
+    groupClosed: "Niemand darin darf diese Seite ansehen",
+    groupViewers: (viewers: number, members: number) =>
+      viewers === members
+        ? members === 1
+          ? "1 Mitglied, das diese Seite ansehen darf"
+          : `${members} Mitglieder, die diese Seite alle ansehen dürfen`
+        : `${viewers} von ${members} Mitgliedern dürfen diese Seite ansehen; nur sie werden benachrichtigt`,
+    closedNote:
+      "Teilen gibt keinen Zugriff. Entfernen Sie die markierten Personen und Gruppen, oder bitten Sie einen Administrator des Bereichs oder jemanden, der die Einschränkungen der Seite ändern darf, ihnen zuerst Zugriff zu geben.",
+    messageLabel: "Notiz (optional)",
+    messageHint: (max: number) => `Bis zu ${max} Zeichen, gesendet mit dem Link zur Seite.`,
+    viewersTitle: "Wer diese Seite ansehen darf",
+    viewersEveryone: "Alle in der Organisation dürfen diese Seite ansehen.",
+    viewersCount: (n: number) => (n === 1 ? "1 Person darf diese Seite ansehen:" : `${n} Personen dürfen diese Seite ansehen:`),
+    viewersRestricted: (n: number) =>
+      n === 1 ? "Diese Seite ist eingeschränkt. 1 Person darf sie ansehen:" : `Diese Seite ist eingeschränkt. ${n} Personen dürfen sie ansehen:`,
+    viewersMore: (n: number) => `und ${n} weitere`,
+    refusedClosed:
+      "Es wurde nichts geteilt, weil die Seite für jemanden, den Sie ausgewählt haben, nicht zugänglich ist. Entfernen Sie die markierten Personen und Gruppen, oder bitten Sie einen Administrator des Bereichs oder jemanden, der die Einschränkungen der Seite ändern darf, ihnen zuerst Zugriff zu geben.",
+    cancel: "Abbrechen",
+    send: "Teilen",
+    sent: (n: number) => (n === 1 ? "Mit 1 Person geteilt." : `Mit ${n} Personen geteilt.`),
+    done: "Fertig",
+  },
   star: {
     starPage: (title: string) => `${title} mit Stern markieren`,
     starSpace: (name: string) => `Bereich ${name} mit Stern markieren`,
@@ -1366,6 +1400,8 @@ export const de: Messages = {
       switch (kind) {
         case "mentioned":
           return inComment ? `${who} hat Sie in einem Kommentar zu ${title} erwähnt` : `${who} hat Sie auf ${title} erwähnt`;
+        case "shared":
+          return `${who} hat ${title} mit Ihnen geteilt`;
         case "replied":
           return `${who} hat in einer Diskussion zu ${title} geantwortet`;
         case "commented":
@@ -1390,13 +1426,14 @@ export const de: Messages = {
     email: "Per E-Mail",
     kinds: {
       mentioned: "Jemand erwähnt Sie",
+      shared: "Jemand teilt eine Seite mit Ihnen",
       replied: "Jemand antwortet in einer Diskussion, in der Sie geschrieben haben",
       commented: "Jemand kommentiert eine Seite, die Sie beobachten",
       resolved: "Eine Diskussion, in der Sie geschrieben haben, wird als erledigt markiert oder wieder geöffnet",
       published: "Eine Seite, die Sie beobachten, wird mit Benachrichtigung veröffentlicht",
       created: "Unter einer Seite oder einem Bereich, die Sie beobachten, wird erstmals eine Seite veröffentlicht",
       expired: "Die Bestätigung einer Seite, die Ihnen gehört, läuft ab",
-    } as Record<"mentioned" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
+    } as Record<"mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
     inAppFor: (kind: string) => `In der App: ${kind}`,
     emailFor: (kind: string) => `Per E-Mail: ${kind}`,
     digest: "Wann E-Mails verschickt werden",
@@ -1554,6 +1591,7 @@ export const de: Messages = {
       "armature.connection_saved": "Armature verbunden",
       "armature.connection_removed": "Armature getrennt",
       "page.exported": "Seite exportiert",
+      "page.shared": "Seite geteilt",
       "audit.exported": "Audit-Log exportiert",
       "page.owner_set": "Verantwortliche Person benannt",
       "page.owner_removed": "Verantwortliche Person entfernt",

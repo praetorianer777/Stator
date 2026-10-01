@@ -95,6 +95,7 @@ func NewFanOut(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog
 	f.planners[events.TopicThreadResolved] = planThreadResolved
 	f.planners[events.TopicThreadReopened] = planThreadResolved
 	f.planners[events.TopicVerificationLapsed] = planVerificationLapsed
+	f.planners[events.TopicPageShared] = planShared
 	return f
 }
 
