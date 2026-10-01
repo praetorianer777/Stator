@@ -227,10 +227,12 @@ export const COMMENT_HIGHLIGHT_MS = 2500;
 /** How often a new passage is marked afresh after somebody changed the page meanwhile, before giving up. */
 export const INLINE_ANCHOR_RETRIES = 2;
 /**
- * The emoji the reaction picker offers, each named in t.reactions.names. The API takes any one
- * emoji, so a fuller picker can replace this list without a change on the server.
+ * The emoji the reaction picker offers first, each named in t.reactions.names; any other comes
+ * from the reaction search, and the API takes any one emoji.
  */
 export const REACTION_CHOICES = ["👍", "❤️", "🎉", "😄", "😮", "👀", "🚀", "✅"] as const;
+/** How many emoji the reaction search shows at once, one screen of the grid. */
+export const REACTION_SEARCH_LIMIT = 32;
 
 /** The key that, with Ctrl or Cmd and Alt, comments on the selected text; a KeyboardEvent code, since Alt changes the key on a Mac. */
 export const INLINE_COMMENT_KEY_CODE = "KeyM";

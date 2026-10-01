@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useMe } from "@/api/auth";
 import type { Comment } from "@/api/comments";
 import type { Page } from "@/api/pages";
@@ -7,6 +7,7 @@ import { ErrorBanner, IconButton, Menu, Tooltip, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { REACTION_CHOICES } from "@/config";
 import { t } from "@/i18n";
+import { ReactionSearch } from "./ReactionSearch";
 
 /** Who put an emoji on, as the tooltip says it: the caller first, as you. */
 export function whoReacted(reaction: Reaction, me: string | undefined): string {
@@ -37,6 +38,7 @@ export function ReactionBar({
   className?: string;
 }) {
   const me = useMe().data?.user.id;
+  const [searching, setSearching] = useState(false);
   if (reactions.length === 0 && !canReact) return null;
   const used = new Set(reactions.filter((r) => r.mine).map((r) => r.emoji));
   return (
@@ -57,7 +59,13 @@ export function ReactionBar({
                 disabled: used.has(emoji),
                 onSelect: () => onChange({ emoji, on: true }),
                 attrs: { "data-reaction-choice": emoji },
-              }))}
+              })).concat({
+                icon: <Icon.Search />,
+                label: t.reactions.more,
+                disabled: false,
+                onSelect: () => setSearching(true),
+                attrs: { "data-action": "more-reactions" },
+              })}
               trigger={(props) => (
                 <IconButton
                   icon={<Icon.React />}
@@ -77,6 +85,7 @@ export function ReactionBar({
         )}
       </ul>
       {error && <ErrorBanner>{error}</ErrorBanner>}
+      {searching && <ReactionSearch onPick={(emoji) => onChange({ emoji, on: true })} onClose={() => setSearching(false)} />}
     </div>
   );
 }
