@@ -17,6 +17,8 @@ import type { UploadFile } from "./attachments";
 import type { IssueSource } from "./armatureIssue";
 import { IssuePicker } from "@/features/armature/IssuePicker";
 import { IssueListDialog } from "@/features/armature/IssueListDialog";
+import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
+import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
 import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
 
 /** What a form may do to the editor from outside: put words in, or empty it. */
@@ -90,6 +92,7 @@ export function Editor({
   armatureRef.current = armature;
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
+  const [filing, setFiling] = useState<SelectionPlan | null>(null);
 
   const slash = useSuggestion<SlashItem>((item) => item);
   const mention = useSuggestion<Mentionable, MentionNodeAttrs>((person) => ({ id: person.id, label: person.name }));
@@ -192,7 +195,14 @@ export function Editor({
 
   return (
     <div className="rounded-control border border-border bg-surface" data-editor-frame>
-      {editor && <EditorToolbar editor={editor} onCopyHeadingLink={copy} variant={variant} />}
+      {editor && (
+        <EditorToolbar
+          editor={editor}
+          onCopyHeadingLink={copy}
+          variant={variant}
+          onCreateIssues={armature?.canCreate?.() ? () => setFiling(planSelection(editor.state)) : undefined}
+        />
+      )}
       <EditorContent editor={editor} />
       {slash.open && (
         <SlashMenu id={slashId} items={slash.open.items} active={slash.active} rect={slash.open.rect} onHover={slash.setActive} onPick={slash.open.pick} />
@@ -225,6 +235,21 @@ export function Editor({
           onSave={(settings) => {
             setMakingList(false);
             editor.chain().focus().insertArmatureIssueList(settings).run();
+          }}
+        />
+      )}
+      {filing && editor && (
+        <CreateIssuesDialog
+          plan={filing}
+          pageId={armature?.pageId?.() ?? ""}
+          onClose={() => {
+            setFiling(null);
+            editor.commands.focus();
+          }}
+          onCreated={(keys) => {
+            // The dialog holds the page still; a document that changed anyway
+            // keeps its text, since the places no longer fit it.
+            if (editor.state.doc.eq(filing.doc)) editor.view.dispatch(placeChips(editor.state.tr, filing, keys));
           }}
         />
       )}

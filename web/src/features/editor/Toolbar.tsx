@@ -9,6 +9,7 @@ import type { EditorVariant } from "./extensions";
 import { RovingToolbar } from "./RovingToolbar";
 import { AttachButton, ImageTools } from "./AttachmentTools";
 import { CELL_BACKGROUNDS, HEADING_LEVELS, PANEL_KINDS, safeHref, type PanelKind } from "./schema";
+import { planSelection } from "./issueSelection";
 
 /** The block controls a comment's toolbar keeps: those of the comment allowlist. */
 const COMMENT_BLOCKS = ["bullet-list", "ordered-list", "quote", "code-block"];
@@ -25,10 +26,13 @@ export function EditorToolbar({
   editor,
   onCopyHeadingLink,
   variant = "page",
+  onCreateIssues,
 }: {
   editor: Editor;
   onCopyHeadingLink: (anchor: string) => void;
   variant?: EditorVariant;
+  /** Turns the selection into Armature issues; without it the action is not offered. */
+  onCreateIssues?: () => void;
 }) {
   const state = useEditorState({
     editor,
@@ -53,6 +57,7 @@ export function EditorToolbar({
       // A comment's editor has no tables, and so neither command.
       canMerge: variant === "page" && e.can().mergeCells(),
       canSplit: variant === "page" && e.can().splitCell(),
+      issueItems: onCreateIssues ? (planSelection(e.state)?.items.length ?? 0) : 0,
     }),
   });
   const [linking, setLinking] = useState(false);
@@ -260,6 +265,21 @@ export function EditorToolbar({
             ))}
           </SelectInput>
           <ToolButton label={t.editor.removePanel} action="remove-panel" run={() => chain().unsetPanel().run()} />
+        </RovingToolbar>
+      )}
+      {onCreateIssues && state.issueItems > 0 && (
+        <RovingToolbar label={t.armature.create.tools} data-editor-tools="selection">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            icon={<Icon.Task />}
+            onMouseDown={keepSelection}
+            onClick={onCreateIssues}
+            data-editor-action="create-issues"
+          >
+            {t.armature.create.action(state.issueItems)}
+          </Button>
         </RovingToolbar>
       )}
       <ImageTools editor={editor} />

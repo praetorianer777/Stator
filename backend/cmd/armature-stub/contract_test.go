@@ -12,6 +12,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
+	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 )
 
@@ -236,6 +239,24 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	c.expect("POST", "/issues", reader, map[string]any{"projectKey": "CP", "summary": "Not allowed"}, 403)
 	c.expect("POST", "/issues", alice, map[string]any{"projectKey": "SEC", "summary": "Not visible"}, 404)
 	c.expect("POST", "/issues", alice, map[string]any{"projectKey": "CP", "summary": " "}, 422)
+
+	// The body Stator files an issue from a page with, as #31 sends it.
+	page := armature.CreateRequest{ProjectKey: "CP", Summary: "Renew the TLS certificate",
+		Description: armature.Description("Review notes", armature.PageURL("https://stator.example", "ENG", uuid.New()))}
+	filed := c.expect("POST", "/issues", alice, page, 201)["issue"].(map[string]any)
+	kept := c.expect("GET", stubPrefix+"/acme/issues/"+filed["key"].(string), "", nil, 200)["issue"].(map[string]any)
+	if desc, _ := json.Marshal(kept["description"]); !bytes.Contains(desc, []byte(`"href":"https://stator.example/s/ENG/p/`)) {
+		t.Errorf("the stub keeps the description %s", desc)
+	}
+	c.expect("PUT", stubPrefix+"/acme/people/alice/read-only-projects", "", map[string]any{"projects": []string{"CP"}}, 204)
+	c.expect("POST", "/issues", alice, page, 403)
+	if perms := c.expect("GET", "/access/me", alice, nil, 200)["permissions"].(map[string]any)["projects"].(map[string]any)["CP"]; len(perms.([]any)) != 1 {
+		t.Errorf("alice may still write CP: %v", perms)
+	}
+	c.expect("PUT", stubPrefix+"/acme/people/alice/read-only-projects", "", map[string]any{"projects": []string{}}, 204)
+	c.expect("PUT", stubPrefix+"/acme/refused-summary", "", map[string]any{"summary": page.Summary}, 204)
+	c.expect("POST", "/issues", alice, page, 422)
+	c.expect("PUT", stubPrefix+"/acme/refused-summary", "", map[string]any{"summary": ""}, 204)
 
 	link := map[string]any{"url": "https://stator.example/s/ENG/p/1", "title": "Runbook", "source": "Stator"}
 	put := c.expect("POST", "/issues/CP-1/remote-links", alice, link, 201)["remoteLink"].(map[string]any)

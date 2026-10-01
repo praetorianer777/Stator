@@ -378,6 +378,35 @@ Uses `GET /armature/issues/{issueKey}` from #28.
   issue gets its link to the page when the page is published (#32).
 - **Retrying.** A create that timed out may have reached Armature; the client
   says so and does not retry by itself.
+- **As built in #31.** `GET /armature/issue-types` reads the same `meta`
+  entry as the projects (`Service.IssueTypes`). `POST /armature/issues`
+  checks the page first (404 for one the caller may not view, 403 without
+  edit), then the input (`armature.CheckCreate`: `projectKey`, and 1 to 50
+  `items` whose summaries `armature.Summary` makes one line of at most 255
+  characters, each a 422 before Armature is asked), then files with
+  `Service.CreateIssues`. Each issue made is put in the viewer's cache, so its
+  chip draws at once. A refusal of a later item answers `failed.message` with
+  Armature's sentences on its fields when it gave some, rather than its
+  general "Some fields need attention". `armature.Description` and
+  `armature.PageURL` build the description; the page's address is
+  `PageURL(STATOR_APP_URL, spaceKey, pageId)`, which #32 can use for its
+  remote links. On the web the action is a "Selection" row of the editor's
+  toolbar, as the table and code tools are, rather than a floating menu: it
+  shows "Create Armature issue" or "Create 3 Armature issues" while the
+  selection makes any, and only when the organization has a connection and
+  the author stored a token (`IssueSource.canCreate`); a rejected token still
+  offers it, and the dialog says why it fails. `features/editor/issueSelection.ts`
+  splits the selection (`planSelection`) and puts the chips in
+  (`placeChips`), in one transaction that closes the history group, so one
+  undo takes them all back. A list item that only holds the selected ones in
+  its nested list is not an item itself; a row's chip follows the cell that
+  named it, which is the first cell with text. The stub gained
+  `GET /_stub/{tenant}/issues/{key}` (the issue with the description it was
+  filed with), `PUT /_stub/{tenant}/people/{person}/read-only-projects`
+  (`projects` the person sees but may not file in; Armature answers 403
+  `forbidden` and `/access/me` drops `issue.write` for them) and
+  `PUT /_stub/{tenant}/refused-summary` (`summary` every create refuses with
+  422 on `summary`, empty for none).
 
 ## #32 Show pages that mention an issue in Armature
 

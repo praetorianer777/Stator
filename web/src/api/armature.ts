@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ARMATURE_LIST_PAGE_SIZE } from "@/config";
-import { api } from "./client";
+import { ApiError, api } from "./client";
 import type { components } from "./schema";
 
 type Wire = components["schemas"];
@@ -106,11 +106,13 @@ const issuesQueryKey = ["armature", "issues"] as const;
 const issueQueryKey = ["armature", "issue"] as const;
 const projectsQueryKey = ["armature", "projects"] as const;
 const searchQueryKey = ["armature", "search"] as const;
+const issueTypesQueryKey = ["armature", "issueTypes"] as const;
 
 // What a page shows of Armature depends on whose token asks, so a new or
 // forgotten token asks again.
 function forgetIssues(queryClient: QueryClient) {
-  for (const queryKey of [issuesQueryKey, issueQueryKey, projectsQueryKey, searchQueryKey]) void queryClient.invalidateQueries({ queryKey });
+  for (const queryKey of [issuesQueryKey, issueQueryKey, projectsQueryKey, searchQueryKey, issueTypesQueryKey])
+    void queryClient.invalidateQueries({ queryKey });
 }
 
 /** One lookup per batch of keys; a status other than ok in any batch is the answer's. */
@@ -171,6 +173,33 @@ export function useArmatureSearch(query: string, limit: number, enabled: boolean
       if (last.status !== "ok") return undefined;
       const loaded = pages.reduce((n, page) => n + page.issues.length, 0);
       return last.issues.length > 0 && loaded < Math.min(last.total, limit) ? loaded : undefined;
+    },
+  });
+}
+
+/** The issue types a new issue may take, sub-tasks left out. */
+export function useArmatureIssueTypes(enabled: boolean) {
+  return useQuery({
+    queryKey: issueTypesQueryKey,
+    enabled,
+    queryFn: async () => (await api.GET("/armature/issue-types")).data!,
+  });
+}
+
+export type ArmatureCreateInput = Wire["CreateIssuesInput"];
+/** The issues one create made, in order, and the item Armature refused, after which none was tried. */
+export interface ArmatureCreated {
+  issues: ArmatureIssue[];
+  failed: Wire["CreateFailure"] | null;
+}
+
+// Never retried: a create that timed out may have reached Armature.
+export function useCreateArmatureIssues() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: ArmatureCreateInput): Promise<ArmatureCreated> => (await api.POST("/armature/issues", { body })).data!,
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === "armature_rejected") void queryClient.invalidateQueries({ queryKey: armatureAccountQueryKey });
     },
   });
 }

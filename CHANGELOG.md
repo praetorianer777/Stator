@@ -272,6 +272,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
   character, with the place marked for those who may edit the page. The page
   stores only the settings. `GET /armature/search` answers a page of rows per
   viewer, cached for a minute, and 422 `bad_query` with its position.
+- Armature issues from selected text. Selecting text in the page editor
+  offers "Create Armature issue" in the toolbar: one issue for text inside a
+  paragraph, heading or cell, one per list or task item, and one per table
+  row, named by its first cell with text. The dialog asks for the project,
+  offering only those the author may file in, and the issue type, shows every
+  summary to change or leave out, and then what was created and which item
+  Armature refused and why. Selected text becomes the new issue's chip; list
+  items and rows keep their text and the chip follows it, and one undo takes
+  the whole edit back. Each issue is filed as the author, with a description
+  linking back to the page. `POST /armature/issues` files up to 50 issues in
+  order and stops at the first refusal; `GET /armature/issue-types` lists the
+  types a new issue may take.
 
 ### Changed
 

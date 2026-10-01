@@ -68,7 +68,7 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
   const [titleError, setTitleError] = useState("");
   const files = useEditorAttachments(page.id);
   const mentionSource = useMentionSource(page.id);
-  const armature = useIssueSource();
+  const armature = useIssueSource(page.id);
   const issueKeys = useMemo(() => issueKeysOf(body), [body]);
   const [dialog, setDialog] = useState(false);
   const [conflict, setConflict] = useState<{ latest: number; options: PublishOptions } | null>(null);
