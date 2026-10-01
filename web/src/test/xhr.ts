@@ -5,6 +5,8 @@ export interface SentUpload {
   method: string;
   url: string;
   file: File;
+  /** Everything the form carried, for a request that sends several files. */
+  form: FormData;
   /** Reports that this much of the body has gone. */
   progress: (loaded: number, total: number) => void;
   respond: (status: number, body?: unknown) => void;
@@ -43,6 +45,7 @@ export function stubUploads(): SentUpload[] {
         method: this.method,
         url: this.url,
         file: body.get("file") as File,
+        form: body,
         progress: (loaded, total) => this.upload.onprogress?.({ lengthComputable: true, loaded, total } as ProgressEvent),
         respond: (status, answer) => {
           this.status = status;
