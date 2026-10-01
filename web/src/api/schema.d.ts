@@ -353,6 +353,24 @@ export interface paths {
         patch: operations["editComment"];
         trace?: never;
     };
+    "/comments/{commentID}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put the caller's emoji on a comment that is not deleted; again is no change. Needs the right to comment. */
+        post: operations["reactToComment"];
+        /** Take the caller's emoji off a comment, if it is there. */
+        delete: operations["unreactComment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comments/{commentID}/reopen": {
         parameters: {
             query?: never;
@@ -936,6 +954,24 @@ export interface paths {
         /** Publish the caller's draft as the next version; refused with publish_conflict when somebody published since the draft began. */
         post: operations["publishPage"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put the caller's emoji on a page; again is no change. Needs the right to comment; refused with unpublished before the first publish. */
+        post: operations["reactToPage"];
+        /** Take the caller's emoji off a page, if it is there. */
+        delete: operations["unreactPage"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1757,6 +1793,7 @@ export interface components {
             editedAt: string | null;
             /** Format: uuid */
             id: string;
+            reactions: components["schemas"]["Reaction"][];
             /** Format: uuid */
             threadId: string;
         };
@@ -2199,6 +2236,7 @@ export interface components {
             labels: string[];
             /** Format: uuid */
             parentId: string | null;
+            reactions: components["schemas"]["Reaction"][];
             restricted: components["schemas"]["Restricted"];
             /** Format: uuid */
             spaceId: string;
@@ -2316,6 +2354,20 @@ export interface components {
         PublishInput: {
             comment?: string;
             notifyWatchers?: boolean;
+        };
+        Reaction: {
+            count: number;
+            emoji: string;
+            mine: boolean;
+            people: components["schemas"]["Reactor"][];
+        };
+        ReactionInput: {
+            emoji: string;
+        };
+        Reactor: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         ReadinessResponse: {
             routing: components["schemas"]["Stats"];
@@ -3671,6 +3723,79 @@ export interface operations {
                 content: {
                     "application/json": {
                         comment: components["schemas"]["Comment"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reactToComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReactionInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reactions: components["schemas"]["Reaction"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unreactComment: {
+        parameters: {
+            query?: {
+                /** @description The emoji to take off, as it was put on. */
+                emoji?: string;
+            };
+            header?: never;
+            path: {
+                commentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reactions: components["schemas"]["Reaction"][];
                     };
                 };
             };
@@ -5234,6 +5359,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reactToPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReactionInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reactions: components["schemas"]["Reaction"][];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unreactPage: {
+        parameters: {
+            query?: {
+                /** @description The emoji to take off, as it was put on. */
+                emoji?: string;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reactions: components["schemas"]["Reaction"][];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

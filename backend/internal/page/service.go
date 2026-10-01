@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 )
@@ -90,6 +91,9 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 		return nil, nil, err
 	}
 	if p.Watching, err = watch.PageWatching(ctx, tx, actor.UserID, id); err != nil {
+		return nil, nil, err
+	}
+	if p.Reactions, err = reaction.OnPage(ctx, tx, actor.UserID, id); err != nil {
 		return nil, nil, err
 	}
 	var draft DraftRef

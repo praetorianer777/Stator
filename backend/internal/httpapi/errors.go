@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -154,6 +155,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &commentField) {
 		return ErrValidation(map[string]string{commentField.Field: sentence(commentField.Message)})
 	}
+	var reactionField *reaction.FieldError
+	if errors.As(err, &reactionField) {
+		return ErrValidation(map[string]string{reactionField.Field: sentence(reactionField.Message)})
+	}
 	var armatureField *armature.FieldError
 	if errors.As(err, &armatureField) {
 		return ErrValidation(map[string]string{armatureField.Field: armatureField.Message})
@@ -229,13 +234,18 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
 	case errors.Is(err, space.ErrNotFound):
 		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
-	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound):
+	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound), errors.Is(err, reaction.ErrPageNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
-	case errors.Is(err, comment.ErrNotFound):
+	case errors.Is(err, comment.ErrNotFound), errors.Is(err, reaction.ErrCommentNotFound):
 		return ErrNotFound("That comment was not found. It may have been deleted, or its page moved; reload the page.")
 	case errors.Is(err, comment.ErrUnpublished):
 		return &APIError{Status: http.StatusConflict, Code: "unpublished",
 			Message: "This page has not been published yet, so nobody else can read a comment on it. Publish the page first, then comment."}
+	case errors.Is(err, reaction.ErrUnpublished):
+		return &APIError{Status: http.StatusConflict, Code: "unpublished",
+			Message: "This page has not been published yet, so nobody else can see a reaction to it. Publish the page first, then react."}
+	case errors.Is(err, reaction.ErrMayNotReact):
+		return ErrForbidden("You may not react in this space. Ask an administrator of the space for access.")
 	case errors.Is(err, comment.ErrAnchorConflict):
 		return &APIError{Status: http.StatusConflict, Code: "anchor_conflict",
 			Message: "The page changed after you selected the passage. Read the page again and select the passage once more."}

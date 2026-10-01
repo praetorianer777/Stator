@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/seed"
@@ -156,6 +157,7 @@ func run() error {
 		Search:          search.NewService(cluster),
 		Labels:          label.NewService(cluster, pages),
 		Comments:        comment.NewService(cluster),
+		Reactions:       reaction.NewService(cluster),
 		Watches:         watch.NewService(cluster),
 		Notifications:   notify.NewService(cluster),
 		Armature:        armatures,

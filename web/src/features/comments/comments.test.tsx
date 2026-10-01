@@ -34,6 +34,7 @@ function aComment(over: Partial<Comment> = {}): Comment {
     deleted: false,
     createdAt: "2026-09-29T08:00:00Z",
     editedAt: null,
+    reactions: [],
     can: { edit: false, delete: false },
     ...over,
   };
