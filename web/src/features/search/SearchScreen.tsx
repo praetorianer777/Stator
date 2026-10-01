@@ -9,6 +9,7 @@ import { Icon } from "@/components/icons";
 import { SEARCH_PAGE_SIZE, SEARCH_QUERY_MAX_LENGTH } from "@/config";
 import { LabelCombobox } from "@/features/labels/LabelCombobox";
 import { LabelLink } from "@/features/labels/PageLabels";
+import { VerifiedMark } from "@/features/stewardship/VerificationBadge";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 import { Highlight } from "./Highlight";
@@ -166,6 +167,7 @@ function HitRow({ hit }: { hit: Hit }) {
         <PageLink spaceKey={hit.page.spaceKey} id={hit.page.id} title={hit.page.title} className="font-medium text-accent hover:underline">
           <Highlight segments={title} />
         </PageLink>
+        {hit.type === "page" && hit.verified && <VerifiedMark />}
         {hit.type !== "page" && <Tag>{t.search.typeTag[hit.type]}</Tag>}
         {hit.labels.map((label) => (
           <LabelLink key={label} name={label} />

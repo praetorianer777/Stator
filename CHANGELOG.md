@@ -407,6 +407,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
   secret changed but never a secret, and cannot be changed or deleted by the
   app. The worker keeps entries for `STATOR_RETAIN_AUDIT` (a year;
   `retention.audit` in the chart) and prunes older ones daily.
+- Page owners and verified pages (#68). Whoever may edit a published page
+  names its owner, a member who may view it, and verifies the page for 30,
+  90, 180 or 365 days (`PUT` and `DELETE` on `/pages/{id}/owner` and
+  `/pages/{id}/verification`, at most 730 days through the API). The page's
+  header shows the owner and a Verified badge, or Verification expired once
+  the term ran out, which opens who verified it, when, and whether the page
+  changed since; search and the home page's updates mark verified pages.
+  The worker looks for lapses every `STATOR_VERIFICATION_CHECK_INTERVAL`
+  (10 minutes; `verification.checkInterval` in the chart) and reminds the
+  owner, or whoever verified the page when the owner may no longer view it,
+  with a new notification kind, `expired`. Owner changes and verifications
+  are written to the audit log. Editing a verified page keeps its
+  verification; the badge's details say which version was checked.
 
 ### Changed
 

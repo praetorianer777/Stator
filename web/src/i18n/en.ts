@@ -1283,6 +1283,36 @@ export const en = {
     next: "Next",
     range: (from: number, to: number, total: number) => `${from} to ${to} of ${total}`,
   },
+  stewardship: {
+    verified: "Verified",
+    expired: "Verification expired",
+    badgeVerified: (until: string) => `Verified until ${until}. Show the owner and the verification.`,
+    badgeExpired: (until: string) => `Verification expired on ${until}. Show the owner and the verification.`,
+    owner: (name: string) => `Owner: ${name}`,
+    ownerNoAccess: "no longer has access",
+    menu: "Owner and verification",
+    title: (page: string) => `Owner and verification of ${page}`,
+    ownerTitle: "Owner",
+    ownerIntro: "The person who answers for this page. They are reminded when its verification runs out.",
+    noOwner: "Nobody owns this page yet.",
+    ownerLostAccess: (name: string) => `${name} can no longer view this page and is not reminded. Choose somebody who can.`,
+    pickOwner: "Choose the owner",
+    removeOwner: "Remove the owner",
+    verificationTitle: "Verification",
+    verificationIntro:
+      "Verify the page once you have checked it is right. The verification runs out after the term you choose, and the owner is reminded to check the page again.",
+    notVerified: "Nobody has verified this page.",
+    verifiedBy: (who: string, when: string, until: string) => `Verified by ${who} on ${when}, valid until ${until}.`,
+    expiredBy: (who: string, when: string, until: string) => `Verified by ${who} on ${when}; the verification ran out on ${until}.`,
+    changedSince: (version: number, current: number) => `The check was of version ${version}; the page is at version ${current} now.`,
+    somebody: "somebody",
+    term: "Valid for",
+    days: (n: number) => `${n} days`,
+    verify: "Verify",
+    verifyAgain: "Verify again",
+    unverify: "Remove the verification",
+    readOnly: "Only people who may edit this page can change its owner or verify it.",
+  },
   notifications: {
     bell: "Notifications",
     bellUnread: (n: number) => (n === 1 ? "Notifications, 1 unread" : `Notifications, ${n} unread`),
@@ -1307,6 +1337,8 @@ export const en = {
           return version ? `${who} published version ${version} of ${title}` : `${who} published ${title}`;
         case "created":
           return `${who} created ${title}`;
+        case "expired":
+          return `The verification of ${title} has run out. Check the page and verify it again.`;
         default:
           return `${who} changed ${title}`;
       }
@@ -1324,7 +1356,8 @@ export const en = {
       resolved: "A thread you wrote in is resolved or reopened",
       published: "A page you watch is published with a notice",
       created: "A page is first published below a page or space you watch",
-    } as Record<"mentioned" | "replied" | "commented" | "resolved" | "published" | "created", string>,
+      expired: "The verification of a page you own runs out",
+    } as Record<"mentioned" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
     inAppFor: (kind: string) => `In the app: ${kind}`,
     emailFor: (kind: string) => `By email: ${kind}`,
     digest: "When emails go out",
@@ -1483,6 +1516,10 @@ export const en = {
       "armature.connection_removed": "Armature disconnected",
       "page.exported": "Page exported",
       "audit.exported": "Audit log exported",
+      "page.owner_set": "Page owner named",
+      "page.owner_removed": "Page owner removed",
+      "page.verified": "Page verified",
+      "page.unverified": "Page verification removed",
     } satisfies Record<AuditAction, string>,
     targetTypes: {
       user: "Person",

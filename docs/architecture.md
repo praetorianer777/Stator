@@ -79,7 +79,7 @@ process, which is only right for a single api process. `/readyz` and
 | `perm` | global, space and page permissions |
 | `space` | spaces, space settings |
 | `document` | page document allowlist and validation, plain text for search, headings for the table of contents |
-| `page` | page tree (parent plus rank), move, copy, trash, drafts, published versions, diff, restore, restrictions |
+| `page` | page tree (parent plus rank), move, copy, trash, drafts, published versions, diff, restore, restrictions, owners and verification, and the worker's watch on verifications that run out |
 | `version` | which build is running |
 | `comment` | page comments, inline comments anchored by mark id |
 | `reaction` | emoji reactions on pages and comments |

@@ -48,6 +48,11 @@ const (
 	// Exports: what left the wiki as a file, and the record itself.
 	ActionPageExported  = "page.exported"
 	ActionAuditExported = "audit.exported"
+	// Stewardship: who answers for a page, and whether it was checked.
+	ActionPageOwnerSet     = "page.owner_set"
+	ActionPageOwnerRemoved = "page.owner_removed"
+	ActionPageVerified     = "page.verified"
+	ActionPageUnverified   = "page.unverified"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -61,6 +66,7 @@ var Actions = []string{
 	ActionCommentDeleted, ActionThemeDefaultSet,
 	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved,
 	ActionPageExported, ActionAuditExported,
+	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

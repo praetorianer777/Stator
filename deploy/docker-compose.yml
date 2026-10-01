@@ -302,6 +302,8 @@ services:
       # Every notification mail lands in Mailpit, as in Armature.
       STATOR_SMTP_ADDR: mailpit:1025
       STATOR_MAIL_FROM: Stator <no-reply@stator.test>
+      # A verification made to run out in a test is told within seconds.
+      STATOR_VERIFICATION_CHECK_INTERVAL: 10s
     healthcheck:
       # The worker serves nothing but its metrics, so they are its sign of life.
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/metrics"]

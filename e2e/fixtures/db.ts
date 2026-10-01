@@ -96,3 +96,25 @@ export async function throwawayPerson(testInfo: TestInfo, label: string): Promis
       }),
   };
 }
+
+/**
+ * Makes a page's verification run out a minute ago. The database stamps every
+ * verification with the moment it is made, so its triggers are held off.
+ */
+export async function lapseVerification(pageId: string): Promise<void> {
+  await withDatabase(async (db) => {
+    await db.query("BEGIN");
+    try {
+      await db.query("SET LOCAL session_replication_role = replica");
+      const { rowCount } = await db.query(
+        "UPDATE page_verification SET verified_at = now() - interval '31 days', expires_at = now() - interval '1 minute' WHERE page_id = $1",
+        [pageId],
+      );
+      if (rowCount !== 1) throw new Error(`The page ${pageId} has no verification to make run out.`);
+      await db.query("COMMIT");
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    }
+  });
+}

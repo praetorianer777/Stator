@@ -236,3 +236,37 @@ describe("code highlighting contrast", () => {
     });
   });
 });
+
+// Read from the rules that paint the verification badge, so a state added
+// there is judged without anyone remembering to list it here.
+const BADGE_TEXT = css.match(/\.verification-badge \{[^}]*\bcolor: var\(--color-([a-z0-9-]+)\)/)![1]!;
+const BADGE_STATES = Object.fromEntries(
+  [
+    ...css.matchAll(
+      /\[data-verification-badge="([a-z]+)"\] \{\s*--verification-fill: var\(--color-([a-z0-9-]+)\);\s*--verification-glyph: var\(--color-([a-z0-9-]+)\);/g,
+    ),
+  ].map((m) => [m[1]!, { fill: m[2]!, glyph: m[3]! }]),
+);
+
+describe("verification badge contrast", () => {
+  it("reads both states, the ink the words are in and each glyph's colour", () => {
+    expect(BADGE_TEXT).toBe("ink");
+    expect(Object.keys(BADGE_STATES).sort()).toEqual(["expired", "verified"]);
+    for (const { palette } of cases()) {
+      for (const { fill, glyph } of Object.values(BADGE_STATES)) {
+        expect(palette[fill], fill).toMatch(/^#[0-9a-f]{6}$/);
+        expect(palette[glyph], glyph).toMatch(/^#[0-9a-f]{6}$/);
+      }
+    }
+  });
+
+  // A badge sits in a page's header and in lists, never on a repainted rail.
+  describe.each(cases().filter((c) => c.surfaces === SURFACE_TOKENS))("$name", ({ palette }) => {
+    it.each(Object.entries(BADGE_STATES))("the %s badge", (_state, { fill, glyph }) => {
+      const words = contrast(palette[BADGE_TEXT]!, palette[fill]!);
+      expect(words, `${BADGE_TEXT} ${palette[BADGE_TEXT]} on ${fill} ${palette[fill]} is ${words.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_TEXT);
+      const mark = contrast(palette[glyph]!, palette[fill]!);
+      expect(mark, `${glyph} ${palette[glyph]} on ${fill} ${palette[fill]} is ${mark.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_LARGE_TEXT_OR_ICON);
+    });
+  });
+});

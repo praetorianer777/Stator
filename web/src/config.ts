@@ -311,3 +311,8 @@ export const MARKDOWN_IMPORT_MAX_BYTES = 100 * 1024 * 1024;
 export const MARKDOWN_FILE_PATTERN = /\.(md|markdown)$/i;
 /** An archive the API unpacks before it reads the pages in it. */
 export const ZIP_FILE_PATTERN = /\.zip$/i;
+
+/** The terms a page's verification is offered for, in days; the API allows 1 to 730. */
+export const VERIFY_TERM_DAYS = [30, 90, 180, 365] as const;
+/** The term offered first, as the API's own default. */
+export const VERIFY_DEFAULT_DAYS = 90;

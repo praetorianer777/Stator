@@ -150,6 +150,11 @@ attachments:
   # must allow at least this much; an nginx Ingress reads proxy-body-size.
   uploadLimit: 50MB
 
+verification:
+  # How often the worker looks for page verifications that ran out, to tell
+  # each page's owner. A second or more, such as 10m.
+  checkInterval: 10m
+
 mail:
   # The SMTP relay the worker sends notifications through, as host:port.
   # Blank turns mail off: notifications are then shown in the app only.

@@ -1097,6 +1097,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/owner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Name the person who answers for a page, a member who may view it; needs edit of the published page. */
+        put: operations["setPageOwner"];
+        post?: never;
+        /** Leave a page without an owner, also when it had none; needs edit. */
+        delete: operations["removePageOwner"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/publish": {
         parameters: {
             query?: never;
@@ -1163,6 +1181,24 @@ export interface paths {
         post?: never;
         /** Take the caller's star off a page, also when there was none. */
         delete: operations["unstarPage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Say the page is right as it stands, for days days (90 when left out, at most 730); replaces any verification before. The owner is told when it runs out. */
+        put: operations["verifyPage"];
+        post?: never;
+        /** Take a page's verification away, also when it had none; needs edit. */
+        delete: operations["unverifyPage"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1994,7 +2030,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported";
+            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -2010,7 +2046,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported")[];
+            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -2284,6 +2320,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             updatedByName: string;
+            verified: boolean;
         };
         Icon: {
             /** Format: uuid */
@@ -2465,7 +2502,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "mentioned" | "replied" | "commented" | "resolved" | "published" | "created";
+            kind: "mentioned" | "replied" | "commented" | "resolved" | "published" | "created" | "expired";
             page: components["schemas"]["PageLink"];
             /** Format: date-time */
             readAt: string | null;
@@ -2509,6 +2546,16 @@ export interface components {
             parentId: string | null;
             title: string;
         };
+        Owner: {
+            canView: boolean;
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        OwnerInput: {
+            /** Format: uuid */
+            userId: string;
+        };
         Page: {
             ancestors: components["schemas"]["Ref"][];
             /** @description A JSON value. */
@@ -2523,6 +2570,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             labels: string[];
+            owner: components["schemas"]["Owner"] | null;
             /** Format: uuid */
             parentId: string | null;
             reactions: components["schemas"]["Reaction"][];
@@ -2536,6 +2584,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             updatedByName: string;
+            verification: components["schemas"]["Verification"] | null;
             version: number;
             watching: components["schemas"]["Watching"];
         };
@@ -2597,6 +2646,7 @@ export interface components {
             spaceKey: string;
             spaceName: string;
             title: string;
+            verified: boolean;
             version: number;
         };
         PageUpdateInput: {
@@ -2862,6 +2912,7 @@ export interface components {
         Switches: {
             commented: boolean;
             created: boolean;
+            expired: boolean;
             mentioned: boolean;
             published: boolean;
             replied: boolean;
@@ -2967,6 +3018,21 @@ export interface components {
             /** @enum {string} */
             locale: "" | "en" | "de";
             name: string;
+        };
+        Verification: {
+            /** Format: date-time */
+            expiresAt: string;
+            /** @enum {string} */
+            status: "verified" | "expired";
+            /** Format: date-time */
+            verifiedAt: string;
+            /** Format: uuid */
+            verifiedById: string | null;
+            verifiedByName: string;
+            version: number;
+        };
+        VerifyInput: {
+            days?: number;
         };
         Version: {
             /** Format: uuid */
@@ -3773,7 +3839,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -3822,7 +3888,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -6103,6 +6169,81 @@ export interface operations {
             };
         };
     };
+    setPageOwner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        owner: components["schemas"]["Owner"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removePageOwner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     publishPage: {
         parameters: {
             query?: never;
@@ -6332,6 +6473,81 @@ export interface operations {
         };
     };
     unstarPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    verifyPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        verification: components["schemas"]["Verification"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unverifyPage: {
         parameters: {
             query?: never;
             header?: never;

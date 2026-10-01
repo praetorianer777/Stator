@@ -295,6 +295,7 @@ as publish stores it.
   | `resolved` | everybody who wrote in the thread | resolved or reopened |
   | `published` | the page's watchers | version 2 on, with `notifyWatchers` |
   | `created` | subtree watchers above, page watchers of the page right above, and the space's | version 1, with `notifyWatchers` |
+  | `expired` | the page's owner, or whoever verified it when the owner may not view it (#68) | the worker notices a verification ran out |
 
   A person gets at most one notification per event, the first kind of the
   table that applies to them, so a watcher mentioned in a comment is told
@@ -350,3 +351,37 @@ as publish stores it.
   reads another's rows or a row about a page they may not view.
 - Notifications go with their page when it is purged and with their comment
   when it is deleted, and are hidden while the page is in the trash.
+
+## #68 Owners and verification
+
+Added after M2, in migration 00250; the types live in `internal/page`.
+
+| Operation | Needs | Answers |
+|---|---|---|
+| `PUT /pages/{pageID}/owner` | edit, published page | `{owner}`; 422 on `userId` for somebody who is not a member or may not view the page |
+| `DELETE /pages/{pageID}/owner` | edit, published page | 204, also when there was none |
+| `PUT /pages/{pageID}/verification` | edit, published page | `{verification}`; `days` 1 to 730, 90 when left out, else 422 on `days` |
+| `DELETE /pages/{pageID}/verification` | edit, published page | 204, also when there was none |
+
+Changed: `Page` gains `owner` (`id`, `name`, `canView`) and `verification`
+(`status` `verified` or `expired`, `verifiedById`, `verifiedByName`,
+`verifiedAt`, `expiresAt`, `version`), each null when unset; `Hit` and
+`PageUpdate` gain `verified`. An unpublished page answers 409 to all four.
+
+- **Status** is read from the date on every read: `expired` from the moment
+  `expiresAt` passes, whatever the worker has done.
+- **Lapses.** The worker looks every `STATOR_VERIFICATION_CHECK_INTERVAL`
+  (10 minutes) for verifications that ran out and were not told yet, marks
+  each and writes `page.verification_lapsed`, which tells the owner with the
+  kind `expired`, no actor, the page and the version that was checked.
+  Verifying again starts a new term and a new reminder.
+- **An owner who loses access** is kept, with `canView` false; the reminder
+  goes to whoever verified the page instead. One who leaves the organization
+  leaves the page without an owner.
+- **Edits** keep the verification; `version` says which version was checked.
+- **Audit.** `page.owner_set`, `page.owner_removed`, `page.verified` and
+  `page.unverified`, each on the page.
+- **The database** lets `stator_app` read both rows with the page, write
+  them only as somebody who may edit the published page, in their own name,
+  name only an owner who may view the page, and never set when or at which
+  version a page was verified, nor the worker's notice of a lapse.

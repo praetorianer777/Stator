@@ -146,3 +146,25 @@ func TestAMailSaysWhatHappenedAndWhere(t *testing.T) {
 		t.Errorf("the bundle is %q:\n%s", b.Subject, b.Body)
 	}
 }
+
+// A lapse has nobody acting, so its mail names the page and what to do, and
+// the kind ranks last: an owner who is also mentioned hears the mention.
+func TestALapseSaysWhatToDo(t *testing.T) {
+	if got := Sentence(KindExpired, "", "Runbook", false); got != `The verification of "Runbook" has run out; check the page and verify it again` {
+		t.Errorf("a lapse reads %q", got)
+	}
+	owner := uuid.New()
+	if got := Pick(uuid.Nil, []Tell{{UserID: owner, Kind: KindExpired}, {UserID: owner, Kind: KindMentioned}}); len(got) != 1 || got[0].Kind != KindMentioned {
+		t.Errorf("an owner told twice hears %v", got)
+	}
+	if got := Pick(uuid.Nil, []Tell{{UserID: owner, Kind: KindExpired}}); len(got) != 1 || got[0].UserID != owner {
+		t.Errorf("a lapse without an actor tells %v", got)
+	}
+	s, err := switchesFrom([]byte(`{"expired": false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.On(KindExpired) || !s.On(KindPublished) {
+		t.Errorf("turning lapses off reads as %+v", s)
+	}
+}

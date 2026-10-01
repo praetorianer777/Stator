@@ -35,7 +35,7 @@ function aNotification(over: Partial<Notification> = {}): Notification {
   };
 }
 
-const allOn = { mentioned: true, replied: true, commented: true, resolved: true, published: true, created: true };
+const allOn = { mentioned: true, replied: true, commented: true, resolved: true, published: true, created: true, expired: true };
 const defaults: Preferences = { inApp: { ...allOn }, email: { ...allOn }, digest: "off", autoWatch: true };
 
 function stubShell(more: Record<string, Answer | ((request: Request) => Answer | Promise<Answer>)> = {}) {

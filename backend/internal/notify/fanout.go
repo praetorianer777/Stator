@@ -94,6 +94,7 @@ func NewFanOut(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog
 	f.planners[events.TopicCommentEdited] = planCommentEdited
 	f.planners[events.TopicThreadResolved] = planThreadResolved
 	f.planners[events.TopicThreadReopened] = planThreadResolved
+	f.planners[events.TopicVerificationLapsed] = planVerificationLapsed
 	return f
 }
 
@@ -173,6 +174,41 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 	}
 	for _, id := range watchers {
 		plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: kind})
+	}
+	return plan, nil
+}
+
+// planVerificationLapsed tells the page's owner, or whoever verified it when
+// it has no owner who may still view it, so a lapse reaches somebody who can
+// act. A verification renewed since tells nobody.
+func planVerificationLapsed(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) {
+	var in events.VerificationLapsed
+	if err := json.Unmarshal(e.Payload, &in); err != nil {
+		return nil, nil
+	}
+	var (
+		owner, verifier *uuid.UUID
+		ownerViews      bool
+		version         int
+	)
+	err := tx.QueryRow(ctx, `
+		SELECT o.user_id, COALESCE(perm_page_viewable(v.page_id, o.user_id), false), v.verified_by, v.version
+		FROM page_verification v
+		LEFT JOIN page_owner o ON o.org_id = v.org_id AND o.page_id = v.page_id
+		WHERE v.org_id = current_org_id() AND v.page_id = $1 AND v.expires_at <= now() AND v.expires_at = $2`,
+		in.PageID, in.ExpiresAt).Scan(&owner, &ownerViews, &verifier, &version)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	plan := &Plan{Subject: Subject{PageID: in.PageID, Version: &version}}
+	switch {
+	case owner != nil && ownerViews:
+		plan.Tells = []Tell{{UserID: *owner, Kind: KindExpired}}
+	case verifier != nil:
+		plan.Tells = []Tell{{UserID: *verifier, Kind: KindExpired}}
 	}
 	return plan, nil
 }

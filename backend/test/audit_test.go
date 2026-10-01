@@ -206,6 +206,19 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 		t.Errorf("the log's export does not note its filter: %s", data)
 	}
 
+	want(t, owner.put(t, pagePath(notes, "/owner"), map[string]any{"userId": annID}), http.StatusOK, "ann owns Notes")
+	if data := once(audit.ActionPageOwnerSet, me, notes); !strings.Contains(data, "Ann Audit") {
+		t.Errorf("the owner's record does not name her: %s", data)
+	}
+	want(t, owner.delete(t, pagePath(notes, "/owner")), http.StatusNoContent, "Notes has no owner")
+	once(audit.ActionPageOwnerRemoved, me, notes)
+	want(t, ann.put(t, pagePath(notes, "/verification"), map[string]any{"days": 30}), http.StatusOK, "ann verifies Notes")
+	if data := once(audit.ActionPageVerified, &annID, notes); !strings.Contains(data, `"days": 30`) {
+		t.Errorf("the verification's record reads %s", data)
+	}
+	want(t, ann.delete(t, pagePath(notes, "/verification")), http.StatusNoContent, "ann takes it back")
+	once(audit.ActionPageUnverified, &annID, notes)
+
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)
 
