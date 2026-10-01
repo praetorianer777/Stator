@@ -22,6 +22,26 @@ cwd="${cwd:-$project}"
 git_common_dir() { (cd "$1" 2>/dev/null && realpath -m "$(git rev-parse --git-common-dir 2>/dev/null)"); }
 project_git_dir="$(git_common_dir "$project")"
 
+# Pushes have come back without the gate (#213), so every invocation leaves a
+# line saying which copy of the hook ran, where, and what it decided. A command
+# can carry secrets, so of its text only the git subcommands are recorded.
+LOG="${project_git_dir:-$(git_common_dir "$cwd")}"
+LOG="${LOG:+$LOG/branch-guard.log}"
+decision=allow reason="" subs=() gate_log="" gate_pid=""
+log_line() {
+  [[ -n "$LOG" && -d "${LOG%/*}" ]] || return 0
+  local IFS=,
+  printf '%s\thook=%s\tproject_dir=%s\tcwd=%s\ttool=%s\tbg=%s\tagent=%s\tdecision=%s%s\tgit=%s%s\n' \
+    "$(date -Is)" "$(realpath -m "${BASH_SOURCE[0]}")" "${CLAUDE_PROJECT_DIR:-}" "$cwd" "$tool" \
+    "$(jq -r '.tool_input.run_in_background // false' <<< "$input")" \
+    "$(jq -r '.agent_id // .agent_type // "-"' <<< "$input")" \
+    "$decision" "${reason:+ ($reason)}" "${subs[*]:--}" "$gate_log" \
+    >> "$LOG" 2>/dev/null || true
+}
+trap log_line EXIT
+# A hook killed at its timeout must still leave its line.
+trap 'decision=killed; [[ -n "$gate_pid" ]] && kill "$gate_pid" 2>/dev/null; exit 143' TERM INT HUP
+
 checkout_for() {
   local dir="$1" top common
   top="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || return 1
@@ -31,6 +51,7 @@ checkout_for() {
 }
 
 decide() {
+  decision="$1"
   jq -n --arg d "$1" --arg r "$2" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: $d, permissionDecisionReason: $r}}'
   exit 0
 }
@@ -139,11 +160,24 @@ strip_redirections() {
 }
 
 run_tests() {
-  local repo="$1" log
+  local repo="$1" log start rc
   log="$(mktemp)"
+  start=$SECONDS
+  # A gate killed at the hook's timeout writes no closing line, so its start
+  # gets a line of its own.
+  gate_log=$'\t'"gate=$repo"
+  decision=gating log_line
   # run-tests.sh gives each checkout its own stack, so gates running in
   # parallel worktrees do not collide (#95).
-  if ! (cd "$repo" && ./run-tests.sh) > "$log" 2>&1; then
+  # Waiting on a background job, unlike a foreground one, lets the TERM trap
+  # fire while the gate is still running.
+  (cd "$repo" && exec ./run-tests.sh) > "$log" 2>&1 &
+  gate_pid=$!
+  wait "$gate_pid"
+  rc=$?
+  gate_pid=""
+  gate_log+=$'\t'"gate_secs=$((SECONDS - start))"$'\t'"gate_rc=$rc"
+  if (( rc != 0 )); then
     local tail_out
     tail_out="$(tail -n 60 "$log")"
     rm -f "$log"
@@ -156,17 +190,17 @@ $tail_out"
 case "$tool" in
   Edit|Write|NotebookEdit)
     path="$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' <<< "$input")"
-    [[ -n "$path" ]] || exit 0
+    [[ -n "$path" ]] || { reason="no path"; exit 0; }
     path="$(realpath -m "$path")"
     # Files outside this repo (scratchpad, memory) are not project work.
-    repo="$(checkout_for "$(dirname "$path")")" || exit 0
+    repo="$(checkout_for "$(dirname "$path")")" || { reason="outside repo"; exit 0; }
     branch="$(current_branch "$repo")"
     valid "$branch" || deny "Refusing to edit $path on branch '$branch'. $HINT"
     ;;
 
   Bash)
     cmd="$(jq -r '.tool_input.command // empty' <<< "$input")"
-    [[ -n "$cmd" ]] || exit 0
+    [[ -n "$cmd" ]] || { reason="no command"; exit 0; }
     # A cd earlier in the command decides where later segments run (#207),
     # so a cwd outside this repo no longer settles the matter on its own.
     dir="$cwd" prev="" lost="" stack=() gates=()
@@ -226,6 +260,7 @@ case "$tool" in
         ((i++))
       done
       sub="${t[i]:-}"
+      [[ "$sub" =~ ^[a-z][a-z-]*$ ]] && subs+=("$sub")
       strip_redirections "${t[@]:i+1}"
       if [[ -z "$target" ]]; then
         case "$sub" in
