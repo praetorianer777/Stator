@@ -20,6 +20,7 @@ import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRout
 import { spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
 import { searchRoute } from "./search";
+import { staleRoute } from "./stale";
 import { ssoRoute } from "./sso";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
@@ -45,6 +46,7 @@ const routeTree = rootRoute.addChildren([
     orgPermissionsRoute,
     armatureSettingsRoute,
     auditRoute,
+    staleRoute,
     devEditorRoute,
   ]),
 ]);

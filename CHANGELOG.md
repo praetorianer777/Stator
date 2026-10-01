@@ -447,6 +447,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
   shows archived spaces when asked (`GET /spaces?archived=true`). The access
   inspector names the archive as what refuses a change, and archiving and
   unarchiving are written to the audit log.
+- A stale content report (#99), under Stale pages in the account menu for
+  organization administrators and in a space's settings for its
+  administrators: published pages nobody published again or opened for at
+  least 180 days, or a period of 30 to 730 days, the longest untouched first,
+  with when each was last published and opened, its owner and its
+  verification. It narrows by space, owner and verification, leaves archived
+  pages out unless asked (`archived=true`), and pages by cursor
+  (`GET /stale-pages`). Chosen rows are archived in bulk from the report,
+  each through the page's own archive. Each reader sees the spaces they
+  administer, and only pages they may view; opening a page from the report
+  to review it does not count as a view.
 - An MCP server at `POST /api/v1/mcp` (#106), so an assistant can search,
   read and write pages as the person whose token it holds. Its tools are
   rows of the route table marked with a name and a sentence, as in

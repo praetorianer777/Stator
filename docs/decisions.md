@@ -3,6 +3,63 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: Stale pages are read from publishes and visits, by the administrators of their spaces
+
+The stale content report (#99) lists published pages, out of the trash, that
+nobody published again or opened for a period: 180 days unless the reader
+names another, from 1 to 3650 through the API, 30 to 730 in the interface.
+A page's last publish is `published_at` (#38), which only a new version
+moves, so a rank change or a move does not freshen it. Its last view is the
+latest `page_visit` of anybody, the row the recent pages already keep per
+person; nothing new is tracked. Pages are ordered by the later of the two,
+oldest first, and walked by keyset on that and the id, so a page published
+or opened between two windows leaves the report rather than shifting it.
+
+Who reads it is who looks after the space: its administrators for their
+spaces, and the organization's administrators, who administer every space,
+for all of them. A space administrator already passes every view list in
+their space and decides its permissions and its trash, so the report tells
+them nothing they could not find; a member who administers nothing is
+refused with whom to ask, and the account menu offers the report only to
+organization administrators, a space's settings to its administrators.
+Each row is still judged by `perm_page_viewable`, which keeps out a page
+below somebody else's unpublished page. Reading the report changes nothing
+and leaves no audit entry, as reading the audit log does not.
+
+Visits are each person's own under row level security, so the report is a
+SQL function, `stale_pages`, run as the schema's owner like `home_updates`:
+it keeps to `current_org_id()`, to the spaces `current_actor_id()`
+administers, and answers when a page was last opened, never by whom. The
+cheap conditions and the sort run first, over the spaces' published pages
+with one probe of `page_visit_latest_idx` each for the last view, and the
+view rule runs above the sort on as many rows as the window needs; on 4000
+stale pages a window of 26 judges 26 and takes about 70 milliseconds, which
+`TestStaleReportReadsAWindowNotTheWholeOrganization` holds.
+
+Opening a page from the report to review it does not count as a view. The
+link carries `from=stale` and the page then posts no visit, or working
+through the report would empty it of every page the reviewer looked at
+without deciding anything.
+
+The report is also a read tool for assistants, `list_stale_pages`, as the
+audit log is one for administrators: it runs as the token's person through
+the same route, so an assistant helping a space administrator tidy up gets
+the same rows, and a member's assistant the same refusal.
+
+Stale pages are what archiving (#37) is for, so the report archives them in
+bulk: the reader picks rows and the client calls the page's own
+`PUT /pages/{id}/archive` for each, one after another, rather than through
+an endpoint of the report's. Each call is then checked, audited and
+refused exactly as from the page menu, a page already taken with one above
+it is no change, and a refusal part way says how many went before it. Every
+reader of the report administers the space, which is who archives, so each
+row says only whether archiving can take it (`archivable`: not a home page,
+which stands for its space, nor a page archived already) without asking the
+rule again per row. Archived pages and pages of archived spaces leave the
+report, as they leave the tree and search, and come back marked with
+`archived=true`. Telling owners about their stale pages is left for later;
+the verification reminder already tells them when a check runs out.
+
 ## 2026-10-01: MCP is the route table, dispatched in process as the caller
 
 An assistant reaches Stator over the Model Context Protocol (#106) the way

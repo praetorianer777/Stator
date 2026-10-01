@@ -1,5 +1,5 @@
 // Package keyset writes the opaque cursor a client sends back for the next
-// window, so a list newest first neither skips nor repeats rows as they arrive.
+// window, so a list ordered by time neither skips nor repeats rows as they arrive.
 package keyset
 
 import (
@@ -14,7 +14,8 @@ import (
 // ErrBadCursor is a cursor this package did not write.
 var ErrBadCursor = errors.New("bad cursor")
 
-// Cursor is a row's place in an order by time, then id, both descending.
+// Cursor is a row's place in an order by time, then id: descending for the
+// lists newest first, ascending for the stale report.
 type Cursor struct {
 	At time.Time
 	ID uuid.UUID

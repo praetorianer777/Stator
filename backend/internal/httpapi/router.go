@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/watch"
@@ -74,6 +75,8 @@ type Server struct {
 	// home page's lists of updates and edits.
 	Stars *star.Service
 	Home  *home.Service
+	// Stale reads the stale content report for administrators.
+	Stale *stale.Service
 	// Shares sends pages to people who may read them, with a note.
 	Shares *share.Service
 	// Perms answers the permission screens and the use check in front of
@@ -331,6 +334,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/stars", s.handleListStars)
 			r.Get("/home/updates", s.handleHomeUpdates)
 			r.Get("/home/edited", s.handleHomeEdited)
+			r.Get("/stale-pages", s.handleListStalePages)
 			r.Put("/pages/{pageID}/owner", s.handleSetPageOwner)
 			r.Delete("/pages/{pageID}/owner", s.handleRemovePageOwner)
 			r.Put("/pages/{pageID}/verification", s.handleVerifyPage)

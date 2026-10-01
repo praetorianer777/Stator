@@ -40,6 +40,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
@@ -170,6 +171,7 @@ func run() error {
 		Stars:           star.NewService(cluster),
 		Shares:          share.NewService(cluster),
 		Home:            home.NewService(cluster),
+		Stale:           stale.NewService(cluster),
 		Armature:        armatures,
 		Audit:           audit.NewService(cluster),
 		AuditRetention:  cfg.RetainAudit,
