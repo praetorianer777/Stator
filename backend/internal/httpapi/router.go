@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
+	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/theme"
@@ -73,6 +74,8 @@ type Server struct {
 	// home page's lists of updates and edits.
 	Stars *star.Service
 	Home  *home.Service
+	// Shares sends pages to people who may read them, with a note.
+	Shares *share.Service
 	// Perms answers the permission screens and the use check in front of
 	// every route; nil lets everybody who is a member through.
 	Perms *perm.Service
@@ -312,6 +315,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/pages/{pageID}/watch", s.handleUnwatchPage)
 			r.Get("/pages/{pageID}/watchers", s.handleListWatchers)
 			r.Get("/pages/{pageID}/mentionable", s.handleListMentionable)
+			r.Post("/pages/{pageID}/share", s.handleSharePage)
+			r.Get("/pages/{pageID}/share/recipients", s.handleShareRecipients)
+			r.Get("/pages/{pageID}/viewers", s.handleListViewers)
 			r.Put("/spaces/{spaceKey}/watch", s.handleWatchSpace)
 			r.Delete("/spaces/{spaceKey}/watch", s.handleUnwatchSpace)
 			r.Get("/watches", s.handleListWatches)

@@ -160,8 +160,20 @@ export function useInspectAccess(pageId: string, userId: string | undefined) {
   });
 }
 
+/** What a picker finds for a text; a share's picker also says whether each may view its page. */
+export interface SubjectSearchResult {
+  people: Array<Person & { canView?: boolean }>;
+  groups: Array<Group & { viewers?: number }>;
+  error: Error | null;
+  /** The lists answer q itself, not a previous text kept up while q is asked. */
+  current: boolean;
+}
+
+/** A hook that finds people and groups for a picker. */
+export type SubjectSearch = (q: string, enabled: boolean, withGroups?: boolean) => SubjectSearchResult;
+
 /** People and groups whose name, or a person's email, starts with q, for a picker; asked only while it is open. */
-export function useSubjectSearch(q: string, enabled: boolean, withGroups = true) {
+export function useSubjectSearch(q: string, enabled: boolean, withGroups = true): SubjectSearchResult {
   const query = { q: q || undefined, limit: PICKER_LIMIT };
   const people = useQuery({
     queryKey: ["people", query],
