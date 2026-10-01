@@ -37,18 +37,19 @@ func TestACommentRefusesWhatOnlyAPageMayHold(t *testing.T) {
 		return `{"type":"doc","content":[{"type":"paragraph","content":[` + inner + `]}]}`
 	}
 	for name, body := range map[string]string{
-		"a table":          `{"type":"doc","content":[{"type":"table","content":[]}]}`,
-		"a panel":          `{"type":"doc","content":[{"type":"panel","attrs":{"kind":"info"},"content":[{"type":"paragraph"}]}]}`,
-		"an image":         `{"type":"doc","content":[{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}]}`,
-		"a task list":      `{"type":"doc","content":[{"type":"taskList","content":[]}]}`,
-		"a rule":           `{"type":"doc","content":[{"type":"horizontalRule"}]}`,
-		"a contents block": `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":2}}]}`,
-		"a child pages":    `{"type":"doc","content":[{"type":"childPages","attrs":{"scope":"children","depth":null,"sort":"tree"}}]}`,
-		"a file":           para(`{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":"a.pdf"}}`),
-		"a hint":           para(`{"type":"text","text":"Say more","marks":[{"type":"hint"}]}`),
-		"an anchor mark":   para(`{"type":"text","text":"here","marks":[{"type":"inlineComment","attrs":{"threadId":"x"}}]}`),
-		"not a document":   `{"type":"paragraph"}`,
-		"broken JSON":      `{"type":"doc"`,
+		"a table":           `{"type":"doc","content":[{"type":"table","content":[]}]}`,
+		"a panel":           `{"type":"doc","content":[{"type":"panel","attrs":{"kind":"info"},"content":[{"type":"paragraph"}]}]}`,
+		"an image":          `{"type":"doc","content":[{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}]}`,
+		"a task list":       `{"type":"doc","content":[{"type":"taskList","content":[]}]}`,
+		"a rule":            `{"type":"doc","content":[{"type":"horizontalRule"}]}`,
+		"a contents block":  `{"type":"doc","content":[{"type":"tableOfContents","attrs":{"maxLevel":2}}]}`,
+		"a child pages":     `{"type":"doc","content":[{"type":"childPages","attrs":{"scope":"children","depth":null,"sort":"tree"}}]}`,
+		"a file":            para(`{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":"a.pdf"}}`),
+		"an Armature issue": para(`{"type":"armatureIssue","attrs":{"key":"CP-12"}}`),
+		"a hint":            para(`{"type":"text","text":"Say more","marks":[{"type":"hint"}]}`),
+		"an anchor mark":    para(`{"type":"text","text":"here","marks":[{"type":"inlineComment","attrs":{"threadId":"x"}}]}`),
+		"not a document":    `{"type":"paragraph"}`,
+		"broken JSON":       `{"type":"doc"`,
 	} {
 		_, err := ParseComment(json.RawMessage(body))
 		var bad *InvalidError

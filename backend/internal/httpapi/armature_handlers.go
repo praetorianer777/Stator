@@ -1,7 +1,11 @@
 package httpapi
 
 import (
+	"fmt"
 	"net/http"
+	"slices"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 )
@@ -116,4 +120,83 @@ func (s *Server) handleDisconnectArmatureAccount(w http.ResponseWriter, r *http.
 		return
 	}
 	respondNoContent(w)
+}
+
+// Smart links (#28): issues by key as the caller may see them in Armature. A
+// read that cannot ask Armature answers 200 with the status saying why.
+
+func (s *Server) handleLookupArmatureIssues(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	keys, err := lookupKeys(r.URL.Query()["key"])
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	status, issues, err := s.Armature.Lookup(r.Context(), keys)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if issues == nil {
+		issues = []armature.IssueResult{}
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "issues": issues})
+}
+
+// lookupKeys is the distinct keys asked for, upper case, in their order.
+func lookupKeys(raw []string) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, ErrValidation(map[string]string{"key": fmt.Sprintf("Name 1 to %d issue keys, such as CP-12.", armature.MaxLookupKeys)})
+	}
+	keys := make([]string, 0, len(raw))
+	for _, k := range raw {
+		key, ok := armature.NormalizeKey(k)
+		if !ok {
+			return nil, ErrValidation(map[string]string{"key": fmt.Sprintf("%q is not an Armature issue key. Write the project key, a hyphen and the number, such as CP-12.", k)})
+		}
+		if !slices.Contains(keys, key) {
+			keys = append(keys, key)
+		}
+	}
+	if len(keys) > armature.MaxLookupKeys {
+		return nil, ErrValidation(map[string]string{"key": fmt.Sprintf("Ask for at most %d issue keys at once, and for the rest in another request.", armature.MaxLookupKeys)})
+	}
+	return keys, nil
+}
+
+func (s *Server) handleGetArmatureIssue(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	key, ok := armature.NormalizeKey(chi.URLParam(r, "issueKey"))
+	if !ok {
+		respondError(w, r, ErrValidation(map[string]string{"issueKey": "That is not an Armature issue key. Write the project key, a hyphen and the number, such as CP-12."}))
+		return
+	}
+	status, issue, err := s.Armature.Issue(r.Context(), key)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "issue": issue})
+}
+
+func (s *Server) handleListArmatureProjects(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	status, projects, err := s.Armature.Projects(r.Context())
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if projects == nil {
+		projects = []armature.Project{}
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "projects": projects})
 }

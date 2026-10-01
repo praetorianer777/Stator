@@ -1,5 +1,14 @@
 {
   "nodes": {
+    "armatureIssue": {
+      "attrs": {
+        "key": {
+          "kind": "string",
+          "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,17}$"
+        }
+      },
+      "inline": true
+    },
     "attachment": {
       "attrs": {
         "attachmentId": {
@@ -112,7 +121,8 @@
         "text",
         "hardBreak",
         "mention",
-        "attachment"
+        "attachment",
+        "armatureIssue"
       ],
       "allowsMarks": true
     },
@@ -230,7 +240,8 @@
         "text",
         "hardBreak",
         "mention",
-        "attachment"
+        "attachment",
+        "armatureIssue"
       ],
       "allowsMarks": true
     },
