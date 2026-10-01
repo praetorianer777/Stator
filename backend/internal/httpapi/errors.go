@@ -289,6 +289,8 @@ func toAPIError(err error) *APIError {
 		return ErrConflict("Administering the organization follows the owner and admin roles. Change somebody's role under Users instead.")
 	case errors.Is(err, perm.ErrUnknownPermission):
 		return ErrNotFound("There is no such global permission. Choose use, createSpace or administer.")
+	case errors.Is(err, page.ErrNotStewardable):
+		return ErrConflict("Publish the page before you name its owner or verify it.")
 	case errors.Is(err, page.ErrLocksOut):
 		return ErrConflict("These restrictions would leave you unable to view or edit the page. Add yourself, or a group you are in, to both lists.")
 	case errors.Is(err, page.ErrNotInTrash):

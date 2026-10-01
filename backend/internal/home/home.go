@@ -40,6 +40,8 @@ type PageUpdate struct {
 	AuthorName string `json:"authorName"`
 	// Comment is what the author said about the version, often nothing.
 	Comment string `json:"comment"`
+	// Verified says the page carries a verification that still holds.
+	Verified bool `json:"verified"`
 }
 
 // EditedPage is a page the caller published a version of, holds a draft of, or

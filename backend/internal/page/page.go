@@ -82,11 +82,16 @@ type Page struct {
 	// Starred says the caller keeps the page among their stars.
 	Starred bool `json:"starred"`
 	// Reactions are the emoji on the page itself.
-	Reactions     []reaction.Reaction `json:"reactions"`
-	CreatedByName string              `json:"createdByName"`
-	CreatedAt     time.Time           `json:"createdAt"`
-	UpdatedByName string              `json:"updatedByName"`
-	UpdatedAt     time.Time           `json:"updatedAt"`
+	Reactions []reaction.Reaction `json:"reactions"`
+	// Owner is who answers for the page, null when nobody does.
+	Owner *Owner `json:"owner"`
+	// Verification is the last check that the page is right, null when
+	// nobody verified it.
+	Verification  *Verification `json:"verification"`
+	CreatedByName string        `json:"createdByName"`
+	CreatedAt     time.Time     `json:"createdAt"`
+	UpdatedByName string        `json:"updatedByName"`
+	UpdatedAt     time.Time     `json:"updatedAt"`
 
 	access perm.PageAccess
 }

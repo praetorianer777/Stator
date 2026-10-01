@@ -30,10 +30,6 @@ CREATE TABLE page_share_recipient (
 CREATE INDEX page_share_sharer_idx ON page_share (org_id, sharer_id, created_at DESC);
 CREATE INDEX page_share_page_idx ON page_share (org_id, page_id);
 
-ALTER TABLE notification DROP CONSTRAINT notification_kind_check;
-ALTER TABLE notification ADD CONSTRAINT notification_kind_check
-    CHECK (kind IN ('mentioned', 'shared', 'replied', 'commented', 'resolved', 'published', 'created'));
-
 -- +goose StatementBegin
 -- How many pages one person may share in an hour, in one organization.
 -- share.MaxPerHour is the same number, and a test holds the two together.
@@ -143,7 +139,3 @@ DROP FUNCTION IF EXISTS outbox_share_is_fresh(jsonb);
 DROP FUNCTION IF EXISTS page_share_recipient_allowed(uuid, uuid);
 DROP FUNCTION IF EXISTS page_shareable(uuid, uuid);
 DROP FUNCTION IF EXISTS page_share_per_hour();
-DELETE FROM notification WHERE kind = 'shared';
-ALTER TABLE notification DROP CONSTRAINT notification_kind_check;
-ALTER TABLE notification ADD CONSTRAINT notification_kind_check
-    CHECK (kind IN ('mentioned', 'replied', 'commented', 'resolved', 'published', 'created'));

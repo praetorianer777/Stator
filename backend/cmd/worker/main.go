@@ -1,6 +1,7 @@
 // Command worker runs everything that happens outside a request: the outbox
 // with the notifications it fans out and the page links it syncs to Armature,
-// the notifications' digests, the file reaper, and the audit log's retention.
+// the notifications' digests, the file reaper, the audit log's retention, and
+// the watch on page verifications that run out.
 package main
 
 import (
@@ -22,6 +23,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
+	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/version"
 )
@@ -112,6 +114,7 @@ func run() error {
 		armature.Options{AppURL: cfg.AppBaseURL, Allow: allow, Development: cfg.Env == config.EnvDevelopment, Log: log})
 	handlers := events.NewMux(fanOut).Route(events.TopicArmatureLinks, armature.NewLinkSync(armatures, log))
 	go events.NewWorker(cluster, handlers, log).Run(ctx)
+	go page.NewLapseWatch(cluster, log, cfg.VerificationCheck).Run(ctx)
 	if mailer != nil {
 		go notify.NewDigester(cluster, mailer, cfg.AppBaseURL, log).Run(ctx)
 	}

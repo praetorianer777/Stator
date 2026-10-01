@@ -48,6 +48,11 @@ const (
 	// Exports: what left the wiki as a file, and the record itself.
 	ActionPageExported  = "page.exported"
 	ActionAuditExported = "audit.exported"
+	// Stewardship: who answers for a page, and whether it was checked.
+	ActionPageOwnerSet     = "page.owner_set"
+	ActionPageOwnerRemoved = "page.owner_removed"
+	ActionPageVerified     = "page.verified"
+	ActionPageUnverified   = "page.unverified"
 	// ActionPageShared is a page sent to people with a note; the note is not kept.
 	ActionPageShared = "page.shared"
 )
@@ -62,7 +67,9 @@ var Actions = []string{
 	ActionOrgPermissionSet, ActionSpacePermissionsSet, ActionPageRestrictionsSet,
 	ActionCommentDeleted, ActionThemeDefaultSet,
 	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved,
-	ActionPageExported, ActionAuditExported, ActionPageShared,
+	ActionPageExported, ActionAuditExported,
+	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
+	ActionPageShared,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

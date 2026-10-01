@@ -35,10 +35,12 @@ const (
 	KindPublished Kind = "published"
 	// KindCreated is a page first published under a watched page or space.
 	KindCreated Kind = "created"
+	// KindExpired is a verification of a page the person owns that ran out.
+	KindExpired Kind = "expired"
 )
 
 // Kinds lists every Kind, in the order the preferences show them.
-var Kinds = []Kind{KindMentioned, KindShared, KindReplied, KindCommented, KindResolved, KindPublished, KindCreated}
+var Kinds = []Kind{KindMentioned, KindShared, KindReplied, KindCommented, KindResolved, KindPublished, KindCreated, KindExpired}
 
 // Digest is when mail goes out: one per notification, or bundled.
 type Digest string
@@ -88,6 +90,7 @@ type Switches struct {
 	Resolved  bool `json:"resolved"`
 	Published bool `json:"published"`
 	Created   bool `json:"created"`
+	Expired   bool `json:"expired"`
 }
 
 // Preferences say how a person hears.

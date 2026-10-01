@@ -14,7 +14,7 @@ export type Switches = Wire["Switches"];
 export type Digest = Wire["Preferences"]["digest"];
 
 /** Every kind, in the order the preferences list them, as the API's notify.Kinds. */
-export const NOTIFICATION_KINDS: NotificationKind[] = ["mentioned", "shared", "replied", "commented", "resolved", "published", "created"];
+export const NOTIFICATION_KINDS: NotificationKind[] = ["mentioned", "shared", "replied", "commented", "resolved", "published", "created", "expired"];
 export const DIGESTS: Digest[] = ["off", "hourly", "daily"];
 
 export const notificationsQueryKey = ["notifications"] as const;

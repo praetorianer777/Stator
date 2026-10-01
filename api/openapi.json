@@ -85,6 +85,9 @@
       "name": "trash"
     },
     {
+      "name": "verification"
+    },
+    {
       "name": "watching"
     }
   ],
@@ -1142,6 +1145,10 @@
                 "armature.connection_removed",
                 "page.exported",
                 "audit.exported",
+                "page.owner_set",
+                "page.owner_removed",
+                "page.verified",
+                "page.unverified",
                 "page.shared"
               ]
             }
@@ -1286,6 +1293,10 @@
                 "armature.connection_removed",
                 "page.exported",
                 "audit.exported",
+                "page.owner_set",
+                "page.owner_removed",
+                "page.verified",
+                "page.unverified",
                 "page.shared"
               ]
             }
@@ -4741,6 +4752,109 @@
         }
       }
     },
+    "/pages/{pageID}/owner": {
+      "delete": {
+        "operationId": "removePageOwner",
+        "summary": "Leave a page without an owner, also when it had none; needs edit.",
+        "tags": [
+          "verification"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setPageOwner",
+        "summary": "Name the person who answers for a page, a member who may view it; needs edit of the published page.",
+        "tags": [
+          "verification"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "owner": {
+                      "$ref": "#/components/schemas/Owner"
+                    }
+                  },
+                  "required": [
+                    "owner"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/publish": {
       "post": {
         "operationId": "publishPage",
@@ -5275,6 +5389,109 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/verification": {
+      "delete": {
+        "operationId": "unverifyPage",
+        "summary": "Take a page's verification away, also when it had none; needs edit.",
+        "tags": [
+          "verification"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "verifyPage",
+        "summary": "Say the page is right as it stands, for days days (90 when left out, at most 730); replaces any verification before. The owner is told when it runs out.",
+        "tags": [
+          "verification"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "verification": {
+                      "$ref": "#/components/schemas/Verification"
+                    }
+                  },
+                  "required": [
+                    "verification"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -8680,6 +8897,10 @@
               "armature.connection_removed",
               "page.exported",
               "audit.exported",
+              "page.owner_set",
+              "page.owner_removed",
+              "page.verified",
+              "page.unverified",
               "page.shared"
             ]
           },
@@ -8762,6 +8983,10 @@
                 "armature.connection_removed",
                 "page.exported",
                 "audit.exported",
+                "page.owner_set",
+                "page.owner_removed",
+                "page.verified",
+                "page.unverified",
                 "page.shared"
               ]
             }
@@ -9737,6 +9962,9 @@
           },
           "updatedByName": {
             "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -9747,6 +9975,7 @@
           "title",
           "snippet",
           "labels",
+          "verified",
           "updatedAt",
           "updatedByName"
         ]
@@ -10421,7 +10650,8 @@
               "commented",
               "resolved",
               "published",
-              "created"
+              "created",
+              "expired"
             ]
           },
           "page": {
@@ -10602,6 +10832,38 @@
           "depth"
         ]
       },
+      "Owner": {
+        "type": "object",
+        "properties": {
+          "canView": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "canView"
+        ]
+      },
+      "OwnerInput": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
       "Page": {
         "type": "object",
         "properties": {
@@ -10650,6 +10912,16 @@
               "type": "string"
             }
           },
+          "owner": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Owner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "parentId": {
             "type": [
               "string",
@@ -10689,6 +10961,16 @@
           "updatedByName": {
             "type": "string"
           },
+          "verification": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Verification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "version": {
             "type": "integer"
           },
@@ -10715,6 +10997,8 @@
           "watching",
           "starred",
           "reactions",
+          "owner",
+          "verification",
           "createdByName",
           "createdAt",
           "updatedByName",
@@ -10906,6 +11190,9 @@
           "title": {
             "type": "string"
           },
+          "verified": {
+            "type": "boolean"
+          },
           "version": {
             "type": "integer"
           }
@@ -10918,7 +11205,8 @@
           "version",
           "publishedAt",
           "authorName",
-          "comment"
+          "comment",
+          "verified"
         ]
       },
       "PageUpdateInput": {
@@ -12005,6 +12293,9 @@
           "created": {
             "type": "boolean"
           },
+          "expired": {
+            "type": "boolean"
+          },
           "mentioned": {
             "type": "boolean"
           },
@@ -12028,7 +12319,8 @@
           "commented",
           "resolved",
           "published",
-          "created"
+          "created",
+          "expired"
         ]
       },
       "Tag": {
@@ -12392,6 +12684,55 @@
           "name",
           "locale"
         ]
+      },
+      "Verification": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "expired"
+            ]
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verifiedById": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "verifiedByName": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "verifiedById",
+          "verifiedByName",
+          "verifiedAt",
+          "expiresAt",
+          "version"
+        ]
+      },
+      "VerifyInput": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer"
+          }
+        }
       },
       "Version": {
         "type": "object",

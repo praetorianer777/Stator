@@ -22,6 +22,8 @@ import { AccessDialog } from "@/features/permissions/AccessDialog";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
 import { PageStar } from "@/features/stars/StarButton";
 import { ShareDialog } from "@/features/sharing/ShareDialog";
+import { StewardshipDialog } from "@/features/stewardship/StewardshipDialog";
+import { VerificationBadge } from "@/features/stewardship/VerificationBadge";
 import { WatchMenu } from "@/features/watching/WatchMenu";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
@@ -47,7 +49,7 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
   return crumbs;
 }
 
-type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import" | "share";
+type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import" | "stewardship" | "share";
 
 /** Says a page is narrowed to some people, and opens who and why. */
 function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
@@ -126,6 +128,9 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
   if (page.can.restrict) {
     actions.push({ label: t.restrictions.menu, icon: <Icon.Lock />, onSelect: () => setDialog("restrictions"), attrs: { "data-action": "page-restrictions" } });
   }
+  if (page.can.edit && !page.unpublished) {
+    actions.push({ label: t.stewardship.menu, icon: <Icon.Seal />, onSelect: () => setDialog("stewardship"), attrs: { "data-action": "page-stewardship" } });
+  }
   if (space.can.administer) {
     actions.push({ label: t.access.menu, icon: <Icon.Key />, onSelect: () => setDialog("access"), attrs: { "data-action": "inspect-access" } });
   }
@@ -161,6 +166,13 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         meta={
           <span className="flex flex-wrap items-center gap-2">
             {t.page.updated(page.updatedByName, updatedAt.format(new Date(page.updatedAt)))}
+            {page.verification && <VerificationBadge verification={page.verification} onOpen={() => setDialog("stewardship")} />}
+            {page.owner && (
+              <span data-page-owner={page.owner.name}>
+                {t.stewardship.owner(page.owner.name)}
+                {!page.owner.canView && page.can.edit && <span className="text-danger"> ({t.stewardship.ownerNoAccess})</span>}
+              </span>
+            )}
             {(page.restricted.view || page.restricted.edit) && <RestrictedBadge page={page} onOpen={() => setDialog("restrictions")} />}
             {page.comments.page > 0 && <CommentCount count={page.comments.page} />}
           </span>
@@ -248,6 +260,7 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         </KnownAttachmentsContext>
       </InlineComments>
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
+      {dialog === "stewardship" && <StewardshipDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "share" && <ShareDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "access" && <AccessDialog pageId={page.id} pageTitle={page.title} onClose={() => setDialog(undefined)} />}
       {dialog === "export" && <ExportDialog page={page} onClose={() => setDialog(undefined)} />}

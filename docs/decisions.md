@@ -57,6 +57,51 @@ told. The note is not recorded: it is a message to its readers, which the
 administrators reading the log have no claim to, and it may hold anything.
 A refused share records nothing, since nothing happened.
 
+## 2026-10-01: A verification is a dated row beside the page, read as expired, and told by the worker
+
+An owner (#68) and a verification are rows of their own, `page_owner` and
+`page_verification`, rather than columns of `page`. `page_write_guard` and
+the stamp of `published_at` read any change of a page row as an edit or a
+move, so a verification there would have needed exceptions in both, and a
+page's `updated_at` would have moved for something that changes no word.
+Both go with their page when it is purged and stay with it in the trash; a
+copy takes neither, since nobody checked the copy.
+
+Who may change them is who may edit the page, on a published page out of the
+trash: an unpublished page has one reader, so there is nobody to answer to.
+Space and organization administrators pass edit lists already and need no
+rule of their own. The database holds `stator_app` to the same through
+`page_stewardable`, writes in the actor's own name only, an owner who may
+view the page (`perm_page_viewable` of the owner), and a term of at most 730
+days. When and at which version a page was verified are stamped by a trigger,
+so a check cannot be backdated or claim a version nobody read, and only the
+worker may write `lapse_noticed_at`.
+
+An owner who later loses access is kept rather than removed: a restriction
+that passes should not silently drop who answers for the page. The page says
+so to its editors (`owner.canView`), and the reminder goes to whoever
+verified the page instead. An owner who leaves the organization goes with
+their membership. One owner, a person, as Armature's component lead is one
+person: a group would answer for nothing in particular.
+
+Whether a verification holds is read from its date (`expires_at > now()`)
+wherever a page is read, so a badge is never stale between two looks of the
+worker. The worker's part, `page.LapseWatch`, is what nothing in a request
+would notice: every `STATOR_VERIFICATION_CHECK_INTERVAL` it finds lapses
+nobody was told of across organizations as the admin role, as Armature's SLA
+watch finds breaches, and in each organization marks the lapse and writes
+`page.verification_lapsed` to the outbox in one transaction, so a second
+worker or a second look finds nothing. The fan-out tells the owner with the
+new kind `expired`, and the row is written acting for them, so the policy on
+`notification` refuses it when they may not view the page. A renewed
+verification clears the mark, and so does verifying again after a lapse.
+
+Editing a verified page keeps the verification. It is a statement about a
+time, with its own end, and dropping it on every typo fix would teach people
+to ignore it; the details say which version was checked, and that the page
+moved on since. Search and the home page's updates mark verified pages;
+neither filters by it yet.
+
 ## 2026-10-01: The audit log is written with its act, read by administrators, and pruned only by the worker
 
 The audit log (#107) keeps Armature's shape: one `audit_log` row per act,

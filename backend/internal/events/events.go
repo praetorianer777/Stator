@@ -23,11 +23,13 @@ const (
 	TopicThreadResolved = "thread.resolved"
 	TopicThreadReopened = "thread.reopened"
 	TopicArmatureLinks  = "armature.links"
-	TopicPageShared     = "page.shared"
+	// TopicVerificationLapsed is written by the worker, not by a request.
+	TopicVerificationLapsed = "page.verification_lapsed"
+	TopicPageShared         = "page.shared"
 )
 
 // Topics lists every topic the product emits.
-var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicPageShared}
+var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageShared}
 
 // Event is one committed domain event.
 type Event struct {
@@ -98,6 +100,13 @@ type PageShared struct {
 type ArmatureLinks struct {
 	PageID  uuid.UUID `json:"pageId"`
 	ActorID uuid.UUID `json:"actorId"`
+}
+
+// VerificationLapsed is a page whose verification ran out, noticed by the
+// worker; it has no actor.
+type VerificationLapsed struct {
+	PageID    uuid.UUID `json:"pageId"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }
 
 // Emit writes an event in the caller's transaction, the one that makes the

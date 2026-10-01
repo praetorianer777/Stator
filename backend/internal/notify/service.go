@@ -37,6 +37,8 @@ func (s Switches) On(kind Kind) bool {
 		return s.Resolved
 	case KindPublished:
 		return s.Published
+	case KindExpired:
+		return s.Expired
 	case KindCreated:
 		return s.Created
 	}
@@ -44,7 +46,7 @@ func (s Switches) On(kind Kind) bool {
 }
 
 // allOn is every switch on, what nobody has said otherwise means.
-var allOn = Switches{Mentioned: true, Shared: true, Replied: true, Commented: true, Resolved: true, Published: true, Created: true}
+var allOn = Switches{Mentioned: true, Shared: true, Replied: true, Commented: true, Resolved: true, Published: true, Created: true, Expired: true}
 
 // DefaultPreferences is what having saved nothing means.
 func DefaultPreferences() Preferences {
@@ -64,6 +66,7 @@ func switchesFrom(raw []byte) (Switches, error) {
 	return Switches{
 		Mentioned: on(KindMentioned), Shared: on(KindShared), Replied: on(KindReplied), Commented: on(KindCommented),
 		Resolved: on(KindResolved), Published: on(KindPublished), Created: on(KindCreated),
+		Expired: on(KindExpired),
 	}, nil
 }
 

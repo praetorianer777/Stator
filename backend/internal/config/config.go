@@ -42,6 +42,9 @@ const (
 	// audit.MinRetention, which a test holds the two to.
 	DefaultRetainAudit = 365 * 24 * time.Hour
 	MinRetainAudit     = 24 * time.Hour
+	// DefaultVerificationCheck is page.DefaultLapseInterval, which a test
+	// holds the two to.
+	DefaultVerificationCheck = 10 * time.Minute
 	// DefaultUploadLimit is attachment.DefaultMaxSize, which a test holds
 	// the two to; this package cannot import that one.
 	DefaultUploadLimit int64 = 50 << 20
@@ -81,6 +84,9 @@ type Config struct {
 	// RetainAudit is how long the worker keeps an audit entry; zero keeps
 	// every one forever.
 	RetainAudit time.Duration
+	// VerificationCheck is how often the worker looks for page verifications
+	// that ran out, to tell their owners.
+	VerificationCheck time.Duration
 
 	// SecretKey encrypts secrets stored in the database, such as an identity
 	// provider's client secret. Nil in development when it is not set.
@@ -281,7 +287,8 @@ func Load() (Config, error) {
 			Enabled: l.boolean("STATOR_TEST_ENDPOINTS", false),
 			Token:   l.str("STATOR_TEST_ENDPOINTS_TOKEN", ""),
 		},
-		RetainAudit: l.duration("STATOR_RETAIN_AUDIT", DefaultRetainAudit),
+		RetainAudit:       l.duration("STATOR_RETAIN_AUDIT", DefaultRetainAudit),
+		VerificationCheck: l.duration("STATOR_VERIFICATION_CHECK_INTERVAL", DefaultVerificationCheck),
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
 	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
@@ -352,6 +359,9 @@ func Load() (Config, error) {
 	}
 	if c.RetainAudit != 0 && c.RetainAudit < MinRetainAudit {
 		l.problem(fmt.Sprintf("STATOR_RETAIN_AUDIT is %s, but the audit log keeps every entry for at least %.0fh; set it to that or longer, such as 8760h, or to 0 to keep the log forever.", c.RetainAudit, MinRetainAudit.Hours()))
+	}
+	if c.VerificationCheck < time.Second {
+		l.problem(fmt.Sprintf("STATOR_VERIFICATION_CHECK_INTERVAL is %s; set it to a second or more, such as 10m.", c.VerificationCheck))
 	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		l.problem("STATOR_OTEL_SAMPLE_RATIO must be between 0 and 1.")

@@ -1356,6 +1356,36 @@ export const de: Messages = {
     next: "Weiter",
     range: (from: number, to: number, total: number) => `${from} bis ${to} von ${total}`,
   },
+  stewardship: {
+    verified: "Bestätigt",
+    expired: "Bestätigung abgelaufen",
+    badgeVerified: (until: string) => `Bestätigt bis ${until}. Verantwortliche Person und Bestätigung anzeigen.`,
+    badgeExpired: (until: string) => `Bestätigung abgelaufen am ${until}. Verantwortliche Person und Bestätigung anzeigen.`,
+    owner: (name: string) => `Verantwortlich: ${name}`,
+    ownerNoAccess: "hat keinen Zugriff mehr",
+    menu: "Verantwortung und Bestätigung",
+    title: (page: string) => `Verantwortung und Bestätigung von ${page}`,
+    ownerTitle: "Verantwortliche Person",
+    ownerIntro: "Die Person, die für diese Seite einsteht. Sie wird erinnert, wenn die Bestätigung abläuft.",
+    noOwner: "Für diese Seite ist noch niemand verantwortlich.",
+    ownerLostAccess: (name: string) => `${name} kann diese Seite nicht mehr sehen und wird nicht erinnert. Wählen Sie jemanden, der sie sehen kann.`,
+    pickOwner: "Verantwortliche Person wählen",
+    removeOwner: "Verantwortliche Person entfernen",
+    verificationTitle: "Bestätigung",
+    verificationIntro:
+      "Bestätigen Sie die Seite, sobald Sie geprüft haben, dass sie stimmt. Die Bestätigung läuft nach der gewählten Dauer ab, und die verantwortliche Person wird erinnert, die Seite erneut zu prüfen.",
+    notVerified: "Niemand hat diese Seite bestätigt.",
+    verifiedBy: (who: string, when: string, until: string) => `Bestätigt von ${who} am ${when}, gültig bis ${until}.`,
+    expiredBy: (who: string, when: string, until: string) => `Bestätigt von ${who} am ${when}; die Bestätigung ist am ${until} abgelaufen.`,
+    changedSince: (version: number, current: number) => `Geprüft wurde Version ${version}; die Seite ist jetzt bei Version ${current}.`,
+    somebody: "jemandem",
+    term: "Gültig für",
+    days: (n: number) => `${n} Tage`,
+    verify: "Bestätigen",
+    verifyAgain: "Erneut bestätigen",
+    unverify: "Bestätigung entfernen",
+    readOnly: "Nur wer diese Seite bearbeiten darf, kann die verantwortliche Person ändern oder die Seite bestätigen.",
+  },
   notifications: {
     bell: "Benachrichtigungen",
     bellUnread: (n: number) => (n === 1 ? "Benachrichtigungen, 1 ungelesen" : `Benachrichtigungen, ${n} ungelesen`),
@@ -1382,6 +1412,8 @@ export const de: Messages = {
           return version ? `${who} hat Version ${version} von ${title} veröffentlicht` : `${who} hat ${title} veröffentlicht`;
         case "created":
           return `${who} hat ${title} angelegt`;
+        case "expired":
+          return `Die Bestätigung von ${title} ist abgelaufen. Prüfen Sie die Seite und bestätigen Sie sie erneut.`;
         default:
           return `${who} hat ${title} geändert`;
       }
@@ -1400,7 +1432,8 @@ export const de: Messages = {
       resolved: "Eine Diskussion, in der Sie geschrieben haben, wird als erledigt markiert oder wieder geöffnet",
       published: "Eine Seite, die Sie beobachten, wird mit Benachrichtigung veröffentlicht",
       created: "Unter einer Seite oder einem Bereich, die Sie beobachten, wird erstmals eine Seite veröffentlicht",
-    } as Record<"mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created", string>,
+      expired: "Die Bestätigung einer Seite, die Ihnen gehört, läuft ab",
+    } as Record<"mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
     inAppFor: (kind: string) => `In der App: ${kind}`,
     emailFor: (kind: string) => `Per E-Mail: ${kind}`,
     digest: "Wann E-Mails verschickt werden",
@@ -1560,6 +1593,10 @@ export const de: Messages = {
       "page.exported": "Seite exportiert",
       "page.shared": "Seite geteilt",
       "audit.exported": "Audit-Log exportiert",
+      "page.owner_set": "Verantwortliche Person benannt",
+      "page.owner_removed": "Verantwortliche Person entfernt",
+      "page.verified": "Seite bestätigt",
+      "page.unverified": "Bestätigung der Seite entfernt",
     },
     targetTypes: {
       user: "Person",

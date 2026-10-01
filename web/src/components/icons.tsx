@@ -134,6 +134,10 @@ export const Icon = {
   Calendar: makeIcon("calendar", ["M2.5 4h11v9.5h-11z", "M2.5 7h11", "M5.5 2.5V5", "M10.5 2.5V5"]),
   Star: makeIcon("star", ["M8 2.2 9.8 6l4 .5-3 2.8.8 4L8 11.3l-3.6 2 .8-4-3-2.8 4-.5Z"]),
   Smile: makeIcon("smile", ["M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12Z", "M5.5 9.5a3 3 0 0 0 5 0", "M6 6.5h.01", "M10 6.5h.01"]),
+  Seal: makeIcon("seal", [
+    "M8 1.8 9.6 3l2 .1.6 1.9 1.6 1.2-.6 1.8.6 1.8-1.6 1.2-.6 1.9-2 .1L8 14.2 6.4 13l-2-.1-.6-1.9-1.6-1.2.6-1.8-.6-1.8L3.8 5l.6-1.9 2-.1Z",
+    "m5.8 8 1.5 1.5 2.9-3",
+  ]),
 } as const;
 
 export type IconName = keyof typeof Icon;

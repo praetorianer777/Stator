@@ -27,6 +27,7 @@ func clean(t *testing.T) {
 		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
 		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
 		"STATOR_RETAIN_AUDIT",
+		"STATOR_VERIFICATION_CHECK_INTERVAL",
 	} {
 		t.Setenv(key, "")
 	}
@@ -197,6 +198,31 @@ func TestDurationsAreParsed(t *testing.T) {
 	}
 	if c.RequestTimeout != 45*time.Second || c.DB.MaxReplicaLag != 250*time.Millisecond {
 		t.Fatalf("durations = %s, %s", c.RequestTimeout, c.DB.MaxReplicaLag)
+	}
+}
+
+// The watch on verifications runs every ten minutes unless told otherwise,
+// and an interval too short to be meant is refused with what to set.
+func TestTheVerificationCheckIsAnInterval(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.VerificationCheck != DefaultVerificationCheck {
+		t.Errorf("the verification check runs every %s, want %s", c.VerificationCheck, DefaultVerificationCheck)
+	}
+	t.Setenv("STATOR_VERIFICATION_CHECK_INTERVAL", "30s")
+	if c, err = Load(); err != nil || c.VerificationCheck != 30*time.Second {
+		t.Errorf("30s read as %s, %v", c.VerificationCheck, err)
+	}
+	for _, bad := range []string{"0s", "500ms", "-1m"} {
+		t.Setenv("STATOR_VERIFICATION_CHECK_INTERVAL", bad)
+		_, err := Load()
+		var cfgErr *Error
+		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_VERIFICATION_CHECK_INTERVAL") {
+			t.Errorf("%s was not refused by name: %v", bad, err)
+		}
 	}
 }
 

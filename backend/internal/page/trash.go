@@ -232,7 +232,7 @@ func (s *Service) EmptyTrash(ctx context.Context, actor perm.Actor, spaceKey str
 	})
 }
 
-// record notes an administrator deleting pages for good in the audit log.
+// record notes an act on a page, or on a space's trash, in the audit log.
 func record(ctx context.Context, tx db.DBTX, actor perm.Actor, action string, target uuid.UUID, data map[string]any) error {
 	org, err := tenant.MustFromContext(ctx)
 	if err != nil {
