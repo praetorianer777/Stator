@@ -36,6 +36,8 @@ type Attr struct {
 	MaxLength int      `json:"maxLength,omitempty"`
 	Pattern   string   `json:"pattern,omitempty"`
 	URL       bool     `json:"url,omitempty"`
+	// Date makes a string a calendar day that exists, written YYYY-MM-DD.
+	Date bool `json:"date,omitempty"`
 }
 
 // NodeSpec is one node type: its attributes, the types it may contain (none
@@ -95,7 +97,19 @@ const (
 	MaxChildPagesDepth = 10
 	// MaxExpandTitleLength bounds an expand block's title, one line on its toggle.
 	MaxExpandTitleLength = 200
+	// MaxStatusLength keeps a status label short enough to sit in a line of text.
+	MaxStatusLength = 40
 )
+
+// NodeStatus and NodeDate are the inline status label and the inline date.
+const (
+	NodeStatus = "status"
+	NodeDate   = "date"
+)
+
+// DatePattern is a day as a date node stores it; the validator also checks
+// that the day exists.
+const DatePattern = `^[0-9]{4}-[0-9]{2}-[0-9]{2}$`
 
 // AnchorMark names the mark an inline thread's passage carries in a page body.
 const AnchorMark = "inlineComment"
@@ -109,7 +123,7 @@ const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+
 
 var (
 	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
-	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue}
+	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
 		"rowspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -124,6 +138,7 @@ var (
 var (
 	PanelKinds      = []string{"info", "note", "success", "warning", "error"}
 	CellBackgrounds = []string{"neutral", "accent", "success", "warning", "danger"}
+	StatusColors    = []string{"neutral", "accent", "success", "warning", "danger"}
 )
 
 // ChildPagesScopes and ChildPagesSorts are what a child pages block lists and
@@ -228,6 +243,20 @@ var Allowed = Allowlist{
 				"columns": {Kind: KindStrings, Enum: issueColumns(), MinLength: 1, MaxLength: armature.MaxColumns},
 				"limit":   {Kind: KindInteger, Min: 1, Max: armature.MaxListLimit},
 			},
+		},
+		// The colour names a theme role, so a custom theme recolours it.
+		NodeStatus: {
+			Inline: true,
+			Attrs: map[string]Attr{
+				"label": {Kind: KindString, MaxLength: MaxStatusLength, Pattern: `\S`},
+				"color": {Kind: KindString, Enum: StatusColors},
+			},
+		},
+		// A day rather than an instant, so every reader sees the same day,
+		// in their own locale's words, wherever they are.
+		NodeDate: {
+			Inline: true,
+			Attrs:  map[string]Attr{"date": {Kind: KindString, Pattern: DatePattern, Date: true}},
 		},
 		"attachment": {
 			Inline: true,

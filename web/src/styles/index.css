@@ -766,6 +766,72 @@
   }
 }
 
+/* A status is drawn as Armature draws an issue's status: the words in ink,
+ * upper case, on a tint of the theme role its colour names, so the words
+ * read in every theme and carry the meaning without the colour. A date is a
+ * quiet chip, like a file's. */
+@layer components {
+  .doc-status {
+    display: inline-block;
+    border-radius: 0.25rem;
+    background: var(--status-fill);
+    padding: 0 0.25rem;
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    vertical-align: 0.125em;
+    color: var(--color-ink);
+  }
+  [data-status-label="neutral"] {
+    --status-fill: var(--color-status-todo-subtle);
+  }
+  [data-status-label="accent"] {
+    --status-fill: var(--color-accent-subtle);
+  }
+  [data-status-label="success"] {
+    --status-fill: var(--color-success-subtle);
+  }
+  [data-status-label="warning"] {
+    --status-fill: var(--color-warning-subtle);
+  }
+  [data-status-label="danger"] {
+    --status-fill: var(--color-danger-subtle);
+  }
+  .doc-status-swatch {
+    display: inline-block;
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.25rem;
+    background: var(--status-fill);
+  }
+  .doc-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: var(--radius-control);
+    background: var(--color-surface-sunken);
+    padding: 0 0.375rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--color-ink);
+  }
+  .doc-date svg {
+    flex: none;
+    color: var(--color-ink-muted);
+  }
+  .doc-inline-value {
+    cursor: pointer;
+  }
+  .ProseMirror-selectednode :is(.doc-status, .doc-date) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+}
+
 /* Where the page leaves room beside it, a passage's thread opens in a panel at
    the side, and the page moves over for it; elsewhere the panel sits in the
    page's flow, right below its text. */

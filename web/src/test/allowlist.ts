@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { safeHref, type DocNode } from "@/features/editor/schema";
+import { isoDay } from "@/features/editor/InlineValueViews";
 
 // The server's allowlist, generated from its Go table by make
 // document-allowlist; the Go side refuses a stale copy.
@@ -14,6 +15,7 @@ export interface Attr {
   maxLength?: number;
   pattern?: string;
   url?: boolean;
+  date?: boolean;
 }
 export interface NodeSpec {
   attrs?: Record<string, Attr>;
@@ -53,6 +55,7 @@ export function attrProblem(rule: Attr, value: unknown): string | null {
       if (rule.enum && !rule.enum.includes(value)) return "is not one of the allowed values";
       if (rule.pattern && !new RegExp(rule.pattern, "u").test(value)) return "does not match its pattern";
       if (rule.url && safeHref(value) === null) return "is not a safe address";
+      if (rule.date && isoDay(value) === null) return "is not a day that exists";
       return null;
     }
   }

@@ -129,6 +129,8 @@ export const Icon = {
   Initiative: makeIcon("initiative", ["M4 14V2.5", "M4 3h8.5l-2 3 2 3H4"]),
   Task: makeIcon("task", ["M3 3h10v10H3Z", "m5.5 8 2 2 3.5-4"]),
   Subtask: makeIcon("subtask", ["M4 2.5v6a2 2 0 0 0 2 2h7", "m10.5 8 2.5 2.5-2.5 2.5"]),
+  Calendar: makeIcon("calendar", ["M2.5 4h11v9.5h-11z", "M2.5 7h11", "M5.5 2.5V5", "M10.5 2.5V5"]),
+  Smile: makeIcon("smile", ["M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12Z", "M5.5 9.5a3 3 0 0 0 5 0", "M6 6.5h.01", "M10 6.5h.01"]),
 } as const;
 
 export type IconName = keyof typeof Icon;

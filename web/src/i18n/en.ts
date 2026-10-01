@@ -985,6 +985,9 @@ export const en = {
       childPages: { label: "Child pages", description: "Links to the pages below this one." },
       armatureIssue: { label: "Armature issue", description: "One issue with its status, assignee and due date, as each reader may see it." },
       armatureIssueList: { label: "Armature issue list", description: "A table of the issues a query finds, as each reader may see them." },
+      status: { label: "Status", description: "A coloured label with words of your own, in the line of text." },
+      date: { label: "Date", description: "A day, shown in each reader's own date format." },
+      emoji: { label: "Emoji", description: "Pick an emoji by name. Typing a colon does the same." },
     },
     toc: {
       label: "Table of contents",
@@ -1011,6 +1014,29 @@ export const en = {
       unpublished: "Unpublished",
       summary: (scope: string, depth: string | null, sort: string) =>
         `Child pages: ${scope.toLowerCase()}${depth ? `, ${depth.toLowerCase()}` : ""}, ${sort.charAt(0).toLowerCase()}${sort.slice(1)}`,
+    },
+  },
+  inlineValues: {
+    status: {
+      prefix: "Status",
+      defaultLabel: "To do",
+      dialog: "Status",
+      field: "Words",
+      hint: (max: number) => `Up to ${max} characters, such as In review or Blocked.`,
+      empty: "Write a word or two for the status, or press Escape to keep it as it was.",
+      colour: "Colour",
+      colours: { neutral: "Grey", accent: "Blue", success: "Green", warning: "Yellow", danger: "Red" } as Record<string, string>,
+      preview: "Looks like",
+    },
+    date: {
+      dialog: "Date",
+      field: "Day",
+      empty: "Pick a day, or press Escape to keep the date as it was.",
+    },
+    save: "Save",
+    emoji: {
+      list: "Emoji",
+      empty: "No emoji by that name. Keep typing, or press Escape.",
     },
   },
   devEditor: {

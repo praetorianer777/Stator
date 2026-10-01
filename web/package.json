@@ -30,6 +30,7 @@
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
     "@tiptap/suggestion": "^3.31.3",
+    "gemoji": "^8.1.0",
     "lowlight": "^3.3.0",
     "openapi-fetch": "^0.17.0",
     "react": "^19.0.0",
