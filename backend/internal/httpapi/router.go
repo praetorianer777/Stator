@@ -107,6 +107,9 @@ type Server struct {
 	CheckOrigin bool
 	// RequestTimeout bounds each handler; zero means the configured default.
 	RequestTimeout time.Duration
+
+	// handler is the router Routes built, which MCP tool calls run through.
+	handler http.Handler
 }
 
 // Routes builds the HTTP surface. The order matters: an id first so every later
@@ -332,6 +335,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/notifications/read", s.handleMarkRead)
 			r.Get("/notification-preferences", s.handleNotificationPreferences)
 			r.Put("/notification-preferences", s.handleSaveNotificationPreferences)
+			r.Post("/mcp", s.handleMCP)
 			mountPending(r, false)
 		})
 	})
@@ -346,6 +350,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			Message: "That method is not allowed here.",
 		})
 	})
+	s.handler = r
 	return r
 }
 

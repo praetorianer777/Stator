@@ -59,6 +59,9 @@ export const TOKEN_EXPIRY_DAYS = [7, 30, 90, 365] as const;
 export const TOKEN_DEFAULT_EXPIRY_DAYS = 30;
 /** The longest token name, matching the API's limit. */
 export const TOKEN_NAME_MAX_LENGTH = 100;
+/** Where an assistant reaches the MCP endpoint, and the name its client settings give Stator. */
+export const MCP_PATH = `${API_BASE}/mcp`;
+export const MCP_SERVER_NAME = "stator";
 /** Milliseconds in a day, for a token's expiry. */
 export const DAY_MS = 24 * 60 * 60 * 1000;
 

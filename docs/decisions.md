@@ -3,6 +3,52 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: MCP is the route table, dispatched in process as the caller
+
+An assistant reaches Stator over the Model Context Protocol (#106) the way
+it reaches Armature: a tool is a row of the operation table marked with a
+name and a sentence, its input schema is that row reflected by the builder
+that writes `api/openapi.json`, and a tool call is the HTTP call it stands
+for, built in the api process and run through the router's whole chain as
+the caller. Authentication, the read-only rule, the use check, the handlers
+and the row level security apply to it without knowing it exists, so a tool
+answers what the API answers that person and is refused with the same
+sentence. A second set of handlers for tools would have been a second place
+to get a permission wrong. The protocol is spoken with the standard library
+over one stateless endpoint, `POST /api/v1/mcp`, which the integration
+suite holds to the document like any other.
+
+Callers bring a personal access token as a bearer, as in Armature; there is
+no OAuth flow, since Armature has none and a token is already a person in
+one organization that the tokens page makes and revokes. The issue asks
+that a read-only token expose only read tools, which Armature does not do:
+`tools/list` leaves out every writing tool for such a token, and a writing
+tool called anyway is refused with the read-only sentence before its call is
+made. The endpoint itself is exempt from the read-only middleware, since
+it carries reads too; the calls it carries pass through that middleware
+again.
+
+Which operations are tools follows Armature's rule, reads and safe writes:
+reading spaces, pages, versions, search, labels, comments, people,
+notifications and, for administrators, the audit log; and writing pages,
+labels and comments. Nothing that deletes, administers, changes who may do
+what, reaches other people's attention (shares, reactions, watches, stars),
+vouches for a page (owners, verification), or reorganizes the tree is a
+tool; a person does those where they can see what they are doing. Armature
+issues are left to Armature's own endpoint. Every operation of the table is
+either a tool or declined with a reason in `mcp_test.go`, and a route added
+without a decision fails the unit tests, so the choice is never made by
+forgetting.
+
+Pages are offered as Markdown besides their documents, through the
+converter the page menu uses: Armature has no Markdown to follow, but a
+model reads and writes Markdown far better than an editor's document. A
+multipart operation can be a tool when its row names the file it sends:
+the tool takes the text as `content` and sends it as that one file, so
+`replace_page_markdown` and `import_markdown` are the Markdown operations
+the page menu calls, not new ones. Nothing in the compose stack, the nginx
+configuration or the chart changes, since the endpoint lives under `/api`.
+
 ## 2026-10-01: A share tells only who may already read, and refuses whole rather than in part
 
 Sharing a page (#67) sends it with a note to people and groups. It never

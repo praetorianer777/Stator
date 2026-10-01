@@ -112,6 +112,11 @@ Adapted from Armature:
 - backend/cmd/armature-stub: the signature of internal/webhook (Sign) and
   the envelope and headers Armature posts; api/armature/openapi.json is
   Armature's own document, unchanged
+- backend/internal/httpapi/mcp.go, mcp_tools.go and mcp_test.go, and
+  backend/internal/openapi/standalone.go: the MCP endpoint, its tool
+  catalogue drawn from the route table and its tests, from
+  internal/httpapi/mcp.go, mcp_tools.go and internal/openapi/standalone.go,
+  with tools for read-only tokens filtered and multipart tools added
 - backend/internal/comment/service.go: the edit and delete rules of
   internal/issue/comments.go, where only the author rewrites a comment and an
   administrator may remove anybody's; Stator deletes softly and threads them
