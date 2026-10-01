@@ -162,7 +162,12 @@ export function ThemeEditor({ theme }: { theme?: Theme }) {
         />
       )}
 
-      <Tabs<TabID> label={t.themes.editor.tabs} value={tab} onChange={setTab} tabs={tabs().map((each) => ({ ...each, attrs: { "data-theme-tab": each.value } }))} />
+      <Tabs<TabID>
+        label={t.themes.editor.tabs}
+        value={tab}
+        onChange={setTab}
+        tabs={tabs().map((each) => ({ ...each, attrs: { "data-theme-tab": each.value } }))}
+      />
 
       {tab === "colours" && <ColoursTab spec={spec} patch={patch} />}
       {tab === "type" && <TypeTab spec={spec} patch={patch} assets={assets} />}
@@ -188,7 +193,13 @@ function StartFrom({ chosen, onChoose }: { chosen: string; onChoose: (example: T
     <Card className="p-4" data-theme-start>
       <SectionTitle className="mb-3">{t.themes.editor.startFrom}</SectionTitle>
       <div role="radiogroup" aria-label={t.themes.editor.startFrom} className="grid gap-3 sm:grid-cols-3">
-        <OptionCard title={t.themes.editor.blank} description={t.themes.editor.blankBody} checked={chosen === "blank"} onSelect={() => onChoose(null)} data-theme-example="blank" />
+        <OptionCard
+          title={t.themes.editor.blank}
+          description={t.themes.editor.blankBody}
+          checked={chosen === "blank"}
+          onSelect={() => onChoose(null)}
+          data-theme-example="blank"
+        />
         {examples.map((example) => (
           <OptionCard
             key={example.key}
@@ -228,7 +239,9 @@ function ColoursTab({ spec, patch }: { spec: ThemeSpec; patch: Patch }) {
             { value: "dark", label: t.themes.editor.dark, attrs: { "data-theme-mode": "dark" } },
           ]}
         />
-        <span className="text-sm text-ink-muted">{overridden === 0 ? t.themes.editor.nothingChanged : t.themes.editor.changed(overridden, TOKEN_NAMES.length)}</span>
+        <span className="text-sm text-ink-muted">
+          {overridden === 0 ? t.themes.editor.nothingChanged : t.themes.editor.changed(overridden, TOKEN_NAMES.length)}
+        </span>
       </div>
       {TOKEN_GROUPS.map((group) => (
         <Card key={group.id} className="p-4">
