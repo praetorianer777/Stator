@@ -17,7 +17,7 @@ func TestSpaceAndPageRoutesNeedAnOrganization(t *testing.T) {
 	h := s.Routes(nil)
 	someID := uuid.NewString()
 	for _, op := range operations {
-		if op.tag != "spaces" && op.tag != "pages" && op.tag != "trash" {
+		if op.tag != "spaces" && op.tag != "pages" && op.tag != "trash" && op.tag != "archive" {
 			continue
 		}
 		path := APIPrefix + strings.NewReplacer("{spaceKey}", "DOCS", "{pageID}", someID).Replace(op.path)

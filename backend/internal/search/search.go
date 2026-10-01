@@ -63,7 +63,9 @@ type Hit struct {
 	Snippet []Segment `json:"snippet"`
 	Labels  []string  `json:"labels"`
 	// Verified says the page carries a verification that still holds.
-	Verified      bool      `json:"verified"`
+	Verified bool `json:"verified"`
+	// Archived says the page, or its whole space, is archived.
+	Archived      bool      `json:"archived"`
 	UpdatedAt     time.Time `json:"updatedAt"`
 	UpdatedByName string    `json:"updatedByName"`
 }

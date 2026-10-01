@@ -213,8 +213,8 @@ describe("a page's restrictions", () => {
   });
   const inherited: Restrictions = { view: [], edit: [], inherited: [{ page: plans, view: [eng], edit: [] }] };
   const tree: Record<string, TreeNode[]> = {
-    home: [{ id: ids.plans, parentId: home.id, title: "Plans", hasChildren: true, unpublished: false, restricted: true }],
-    [ids.plans]: [{ id: ids.secret, parentId: ids.plans, title: "Secret", hasChildren: false, unpublished: false, restricted: true }],
+    home: [{ id: ids.plans, parentId: home.id, title: "Plans", hasChildren: true, unpublished: false, restricted: true, archived: false }],
+    [ids.plans]: [{ id: ids.secret, parentId: ids.plans, title: "Secret", hasChildren: false, unpublished: false, restricted: true, archived: false }],
   };
   const stubPage = (page = secret, more: Record<string, Answer | ((request: Request) => Answer)> = {}) =>
     stubApi({
@@ -290,7 +290,7 @@ describe("a page's restrictions", () => {
   });
 
   it("are shown but not changeable to a reader who cannot edit the page", async () => {
-    const readOnly = aPage({ ...secret, can: { edit: false, delete: false, restrict: false, comment: true } });
+    const readOnly = aPage({ ...secret, can: { edit: false, delete: false, restrict: false, comment: true, archive: false } });
     stubPage(readOnly);
     await renderAt(`/s/DOCS/p/${ids.secret}/secret`, { me: member });
     await screen.findByRole("button", { name: /^Restricted/ });
@@ -315,7 +315,7 @@ describe("what a page offers", () => {
     });
 
   it("follows page.can rather than the space", async () => {
-    stub({ edit: true, delete: false, restrict: true, comment: true });
+    stub({ edit: true, delete: false, restrict: true, comment: true, archive: false });
     await renderAt(`/s/DOCS/p/${ids.plans}/plans`);
     expect(await screen.findByRole("button", { name: "Edit" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Page actions" }));
@@ -324,7 +324,7 @@ describe("what a page offers", () => {
   });
 
   it("sends somebody who may not edit away from the editor with a sentence", async () => {
-    stub({ edit: false, delete: false, restrict: false, comment: false });
+    stub({ edit: false, delete: false, restrict: false, comment: false, archive: false });
     await renderAt(`/s/DOCS/p/${ids.plans}/plans/edit`);
     // The editor route arrives in a chunk of its own, which a busy machine loads slowly.
     expect(await screen.findByText(/You can read this page but not edit it\./, undefined, EDITOR_CHUNK_WAIT)).toBeInTheDocument();

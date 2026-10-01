@@ -24,29 +24,31 @@ func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
 type target struct {
 	page    uuid.UUID
 	comment *uuid.UUID
+	// archived says whether the page is, which refuses a reaction for that.
+	archived perm.Archived
 }
 
 // viewable loads the page the actor may view, out of the trash, and says
 // whether they may react to it.
-func viewable(ctx context.Context, tx db.DBTX, actor perm.Actor, pageID uuid.UUID) (published, may bool, err error) {
+func viewable(ctx context.Context, tx db.DBTX, actor perm.Actor, pageID uuid.UUID) (published, may bool, archived perm.Archived, err error) {
 	var version int
 	err = tx.QueryRow(ctx, `
 		SELECT p.version FROM page p
 		WHERE p.id = $1 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 2), pageID, actor.UserID).Scan(&version)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, false, ErrPageNotFound
+		return false, false, perm.NotArchived, ErrPageNotFound
 	}
 	if err != nil {
-		return false, false, err
+		return false, false, perm.NotArchived, err
 	}
 	access, _, err := perm.ForPage(ctx, tx, actor, pageID)
 	if err != nil {
-		return false, false, err
+		return false, false, perm.NotArchived, err
 	}
 	if !access.View {
-		return false, false, ErrPageNotFound
+		return false, false, perm.NotArchived, ErrPageNotFound
 	}
-	return version > 0, access.Comment, nil
+	return version > 0, access.Comment, access.Archived, nil
 }
 
 // onComment finds a comment the actor may see, on a page out of the trash; a
@@ -63,11 +65,11 @@ func onComment(ctx context.Context, tx db.DBTX, actor perm.Actor, commentID uuid
 	if err != nil {
 		return target{}, false, false, err
 	}
-	published, may, err := viewable(ctx, tx, actor, pageID)
+	published, may, archived, err := viewable(ctx, tx, actor, pageID)
 	if errors.Is(err, ErrPageNotFound) {
 		return target{}, false, false, ErrCommentNotFound
 	}
-	return target{page: pageID, comment: &commentID}, published, may, err
+	return target{page: pageID, comment: &commentID, archived: archived}, published, may, err
 }
 
 func (s *Service) add(ctx context.Context, actor perm.Actor, emoji string, locate func(context.Context, db.DBTX) (target, bool, bool, error)) ([]Reaction, db.LSN, error) {
@@ -83,6 +85,9 @@ func (s *Service) add(ctx context.Context, actor perm.Actor, emoji string, locat
 		}
 		if !published {
 			return ErrUnpublished
+		}
+		if !may && on.archived != perm.NotArchived {
+			return perm.Refuse(perm.AddComments, on.archived)
 		}
 		if !may {
 			return ErrMayNotReact
@@ -135,8 +140,8 @@ func (s *Service) remove(ctx context.Context, actor perm.Actor, emoji string, lo
 
 func pageTarget(actor perm.Actor, pageID uuid.UUID) func(context.Context, db.DBTX) (target, bool, bool, error) {
 	return func(ctx context.Context, tx db.DBTX) (target, bool, bool, error) {
-		published, may, err := viewable(ctx, tx, actor, pageID)
-		return target{page: pageID}, published, may, err
+		published, may, archived, err := viewable(ctx, tx, actor, pageID)
+		return target{page: pageID, archived: archived}, published, may, err
 	}
 }
 

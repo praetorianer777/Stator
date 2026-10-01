@@ -20,7 +20,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
-	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
@@ -161,18 +160,6 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &reactionField) {
 		return ErrValidation(map[string]string{reactionField.Field: sentence(reactionField.Message)})
 	}
-	var shareField *share.FieldError
-	if errors.As(err, &shareField) {
-		return ErrValidation(map[string]string{shareField.Field: shareField.Message})
-	}
-	var closed *share.CannotViewError
-	if errors.As(err, &closed) {
-		return &APIError{Status: http.StatusConflict, Code: "cannot_view", Message: closed.Error()}
-	}
-	var braked *share.RateLimitedError
-	if errors.As(err, &braked) {
-		return &APIError{Status: http.StatusTooManyRequests, Code: "rate_limited", Message: braked.Error()}
-	}
 	var armatureField *armature.FieldError
 	if errors.As(err, &armatureField) {
 		return ErrValidation(map[string]string{armatureField.Field: armatureField.Message})
@@ -183,8 +170,15 @@ func toAPIError(err error) *APIError {
 			Fields: armatureRefused.Fields, Position: armatureRefused.Position, cause: err}
 	}
 	var denied *perm.DeniedError
+	if errors.As(err, &denied) && denied.Archived != perm.NotArchived {
+		return &APIError{Status: http.StatusConflict, Code: "archived", Message: denied.Error()}
+	}
 	if errors.As(err, &denied) {
 		return ErrForbidden(denied.Error())
+	}
+	var archivedWith *page.ArchivedWithError
+	if errors.As(err, &archivedWith) {
+		return &APIError{Status: http.StatusConflict, Code: "archived", Message: sentence(archivedWith.Error())}
 	}
 	var badUpload *mdio.InvalidError
 	if errors.As(err, &badUpload) {
@@ -259,8 +253,7 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
 	case errors.Is(err, space.ErrNotFound):
 		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
-	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound), errors.Is(err, reaction.ErrPageNotFound),
-		errors.Is(err, share.ErrPageNotFound):
+	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound), errors.Is(err, reaction.ErrPageNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
 	case errors.Is(err, comment.ErrNotFound), errors.Is(err, reaction.ErrCommentNotFound):
 		return ErrNotFound("That comment was not found. It may have been deleted, or its page moved; reload the page.")
@@ -270,9 +263,6 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, reaction.ErrUnpublished):
 		return &APIError{Status: http.StatusConflict, Code: "unpublished",
 			Message: "This page has not been published yet, so nobody else can see a reaction to it. Publish the page first, then react."}
-	case errors.Is(err, share.ErrUnpublished):
-		return &APIError{Status: http.StatusConflict, Code: "unpublished",
-			Message: "This page has not been published yet, so nobody else can read it. Publish the page first, then share it."}
 	case errors.Is(err, reaction.ErrMayNotReact):
 		return ErrForbidden("You may not react in this space. Ask an administrator of the space for access.")
 	case errors.Is(err, comment.ErrAnchorConflict):
@@ -295,6 +285,8 @@ func toAPIError(err error) *APIError {
 		return ErrConflict("These restrictions would leave you unable to view or edit the page. Add yourself, or a group you are in, to both lists.")
 	case errors.Is(err, page.ErrNotInTrash):
 		return ErrNotFound("That page is not in this space's trash. Reload the trash; somebody may have restored or deleted it.")
+	case errors.Is(err, page.ErrHomeNotArchived), errors.Is(err, page.ErrParentArchived):
+		return &APIError{Status: http.StatusConflict, Code: "archived", Message: sentence(err.Error())}
 	case errors.Is(err, page.ErrHomeNotTrashed), errors.Is(err, page.ErrCycle), errors.Is(err, page.ErrHomeFixed), errors.Is(err, page.ErrNotASibling):
 		return ErrConflict(sentence(err.Error()))
 	case errors.Is(err, page.ErrStale):

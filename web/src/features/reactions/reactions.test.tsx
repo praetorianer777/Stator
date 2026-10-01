@@ -71,7 +71,7 @@ function stubPage({
     home: false,
     parentId: home.id,
     ancestors: [{ id: home.id, title: "Handbook", home: true }],
-    can: { edit: comment, delete: comment, restrict: comment, comment },
+    can: { edit: comment, delete: comment, restrict: comment, comment, archive: false },
     comments: { page: threads.length, inline: 0, detached: 0 },
     reactions,
   });

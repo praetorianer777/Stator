@@ -259,7 +259,7 @@ func (s *Service) Import(ctx context.Context, actor perm.Actor, parentID uuid.UU
 		return nil, 0, err
 	}
 	if !parent.Can.Edit {
-		return nil, 0, &perm.DeniedError{Action: perm.EditPages}
+		return nil, 0, parent.Refusal(perm.EditPages)
 	}
 	if err := s.checkFiles(u, roots); err != nil {
 		return nil, 0, err
@@ -398,7 +398,7 @@ func (s *Service) Replace(ctx context.Context, actor perm.Actor, id uuid.UUID, v
 		return nil, 0, err
 	}
 	if !current.Can.Edit {
-		return nil, 0, &perm.DeniedError{Action: perm.EditPages}
+		return nil, 0, current.Refusal(perm.EditPages)
 	}
 	if current.Version != version {
 		return nil, 0, page.ErrStale

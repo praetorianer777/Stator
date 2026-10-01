@@ -290,7 +290,6 @@ as publish stores it.
   | Kind | Who | When |
   |---|---|---|
   | `mentioned` | each person newly mentioned | publish, comment, comment edit |
-  | `shared` | each person a share names, and the members of its groups who may view the page (#67) | a share |
   | `replied` | everybody who wrote in the thread | a reply |
   | `commented` | the page's watchers | a new thread or a reply |
   | `resolved` | everybody who wrote in the thread | resolved or reopened |
@@ -386,3 +385,49 @@ Changed: `Page` gains `owner` (`id`, `name`, `canView`) and `verification`
   them only as somebody who may edit the published page, in their own name,
   name only an owner who may view the page, and never set when or at which
   version a page was verified, nor the worker's notice of a lapse.
+
+## #37 Archive
+
+Added after M2, in migration 00260; the types live in `internal/page` and
+`internal/space`.
+
+| Operation | Needs | Answers |
+|---|---|---|
+| `PUT /pages/{pageID}/archive` | administer of the space | `{page}`; archiving it again is no change; 409 `archived` for the home page or a page of an archived space |
+| `DELETE /pages/{pageID}/archive` | administer of the space | `{page}`; one that is not archived is no change; 409 `archived` for a page archived with one above it, or under a page still archived |
+| `GET /spaces/{spaceKey}/archived-pages` | view of the space | `{items}`: each archived page the caller may view, the latest first, with `pages` archived with it and `parentTitle` |
+| `PUT /spaces/{spaceKey}/archive` | administer of the space | `{space}`; archiving it again is no change |
+| `DELETE /spaces/{spaceKey}/archive` | administer of the space | `{space}`; one that is not archived is no change |
+
+Changed: `Page` gains `archived` (`page`, the page archived, this one or one
+above it, or null when only the space is; `space`; `archivedAt`;
+`archivedByName`), null when it is not archived, and `can.archive`. `Space`
+gains `archivedAt` and `archivedByName`; in an archived space `can` offers
+no `editPages`, `addComments` or `deletePages`. `TreeNode` and `Hit` gain
+`archived`. `GET /spaces` and `GET /search` take `archived=true` to include
+what is archived; anything but true or false is 422.
+
+- **An item.** Archiving marks the page and every page below it that is in
+  the tree and not archived already, as one item named by the page archived.
+  A page archived earlier below it stays an item of its own; unarchiving
+  clears one item, and only from its top.
+- **Read only.** Every change of an archived page, or of any page of an
+  archived space, is refused with 409 `archived` and a sentence that says to
+  unarchive first: edits, drafts, publishing, moves in and out, new pages
+  below, copies into it, comments, reactions, labels, files, restrictions,
+  owners and verification, and the trash. A copy out of it is a live page.
+  Deleting a page above an archived one takes it to the trash with its marks,
+  and a restore brings it back archived; a page restored from the trash goes
+  under the home page when the page it was under is archived.
+- **Left out.** The tree (except under an archived page), the outline, child
+  pages blocks (except under an archived page), search unless asked, quick
+  search, and the home page's updates and edits. Stars, recent pages and
+  links keep working.
+- **Audit.** `page.archived` and `page.unarchived` on the page, with the
+  number of pages; `space.archived` and `space.unarchived` on the space.
+- **The database** refuses `stator_app` every change of an archived page
+  through the rules its policies call (`perm_page_holds`,
+  `perm_page_commentable`), lets the archive marks be written only by
+  `page_archive` and `page_unarchive`, which check that the actor administers
+  the space, keeps archived pages where they are even for an administrator's
+  `page_place`, and stamps when and by whom a space was archived.

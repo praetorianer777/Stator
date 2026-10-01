@@ -270,3 +270,30 @@ describe("verification badge contrast", () => {
     });
   });
 });
+
+// Read from the rules that paint the archive mark and banner, so a change of
+// tint there is judged without anyone remembering to list it here.
+const ARCHIVE_FILL = css.match(/\.archive-mark \{[^}]*\bbackground: var\(--color-([a-z0-9-]+)\)/)![1]!;
+const ARCHIVE_TEXT = css.match(/\.archive-mark \{[^}]*\bcolor: var\(--color-([a-z0-9-]+)\)/)![1]!;
+const ARCHIVE_GLYPH = css.match(/\.archive-mark svg \{[^}]*\bcolor: var\(--color-([a-z0-9-]+)\)/)![1]!;
+
+describe("archive mark contrast", () => {
+  it("reads the tint, the ink of the words and the glyph's colour from every palette", () => {
+    expect(ARCHIVE_TEXT).toBe("ink");
+    for (const { palette } of cases()) {
+      for (const token of [ARCHIVE_FILL, ARCHIVE_TEXT, ARCHIVE_GLYPH]) {
+        expect(palette[token], token).toMatch(/^#[0-9a-f]{6}$/);
+      }
+    }
+  });
+
+  // The mark sits in page headers, lists and a page's banner, never on a repainted rail.
+  describe.each(cases().filter((c) => c.surfaces === SURFACE_TOKENS))("$name", ({ palette }) => {
+    it("keeps its words and its glyph readable on the tint", () => {
+      const words = contrast(palette[ARCHIVE_TEXT]!, palette[ARCHIVE_FILL]!);
+      expect(words, `${ARCHIVE_TEXT} on ${ARCHIVE_FILL} ${palette[ARCHIVE_FILL]} is ${words.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_TEXT);
+      const mark = contrast(palette[ARCHIVE_GLYPH]!, palette[ARCHIVE_FILL]!);
+      expect(mark, `${ARCHIVE_GLYPH} on ${ARCHIVE_FILL} ${palette[ARCHIVE_FILL]} is ${mark.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_LARGE_TEXT_OR_ICON);
+    });
+  });
+});

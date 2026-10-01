@@ -24,7 +24,7 @@ function stubPage({ edit = true }: { edit?: boolean } = {}) {
     home: false,
     parentId: home.id,
     ancestors: [{ id: home.id, title: "Handbook", home: true }],
-    can: { edit, delete: edit, restrict: edit, comment: true },
+    can: { edit, delete: edit, restrict: edit, comment: true, archive: false },
   });
   const space = aSpace({ can: { ...aSpace().can, editPages: edit } });
   return stubApi({

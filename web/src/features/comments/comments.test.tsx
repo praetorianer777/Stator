@@ -93,7 +93,7 @@ function stubPage({
     version: unpublished ? 0 : 1,
     unpublished,
     ancestors: [{ id: home.id, title: "Handbook", home: true }],
-    can: { edit: comment, delete: comment, restrict: comment, comment },
+    can: { edit: comment, delete: comment, restrict: comment, comment, archive: false },
     comments: { page: count, inline: 0, detached: 0 },
   });
   const space = aSpace();

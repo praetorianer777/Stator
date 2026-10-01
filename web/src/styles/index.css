@@ -898,3 +898,15 @@
     --verification-glyph: var(--color-ink);
   }
 }
+
+/* Whatever is archived, as a mark in a list or a banner on a page: words in
+ * ink on a quiet tint that claims no state of work, the glyph a step softer. */
+@layer components {
+  .archive-mark {
+    background: var(--color-status-todo-subtle);
+    color: var(--color-ink);
+  }
+  .archive-mark svg {
+    color: var(--color-ink-muted);
+  }
+}

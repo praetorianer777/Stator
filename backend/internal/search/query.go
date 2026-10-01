@@ -40,6 +40,9 @@ type Query struct {
 	Before *time.Time
 	// ByUpdate orders by the latest change rather than by relevance.
 	ByUpdate bool
+	// Archived finds archived pages and pages of archived spaces too, which a
+	// search leaves out unless asked.
+	Archived bool
 	Limit    int
 	Offset   int
 }
@@ -85,6 +88,13 @@ func ParseQuery(v url.Values) (Query, error) {
 	}
 	if q.Before, err = day(v.Get("updatedBefore"), "updatedBefore"); err != nil {
 		return q, err
+	}
+	switch v.Get("archived") {
+	case "", "false":
+	case "true":
+		q.Archived = true
+	default:
+		return q, &FieldError{"archived", "Say true to find archived pages too, or false."}
 	}
 	switch sort := v.Get("sort"); sort {
 	case "", "relevance":
