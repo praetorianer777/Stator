@@ -17,6 +17,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
@@ -168,6 +169,8 @@ func run() error {
 		Stars:           star.NewService(cluster),
 		Home:            home.NewService(cluster),
 		Armature:        armatures,
+		Audit:           audit.NewService(cluster),
+		AuditRetention:  cfg.RetainAudit,
 		CookieName:      cfg.Auth.SessionCookie,
 		Secure:          cfg.Auth.SecureCookies,
 		AppBaseURL:      cfg.AppBaseURL,

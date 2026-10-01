@@ -3,6 +3,51 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: The audit log is written with its act, read by administrators, and pruned only by the worker
+
+The audit log (#107) keeps Armature's shape: one `audit_log` row per act,
+naming the actor, the action, the kind and id of the target, a little data
+and the caller's address, read back newest first with filters and exported
+as CSV. Armature copies most of its entries off the event stream; Stator
+writes each one with `audit.Write` inside the transaction of the act, as it
+already did for members, tokens, spaces and permissions, so a change that
+rolls back leaves no entry and one that commits always has one. Stator has
+no stream to copy from, and an outbox entry would only say the same thing a
+moment later, or not at all if the worker were down.
+
+What is recorded: membership and single sign-on (let in, turned away,
+removed, joined or moved by a group, the provider's settings, group
+mappings), personal access tokens, spaces, the three kinds of permission,
+deletions for good (purges, an emptied trash, a moderator's delete of a
+comment), the organization's default theme, the Armature connection, and
+exports. Page edits are not, for the reason labels are not: the page's own
+history holds them. An export changes nothing, so its entry has a
+transaction of its own, written before the file is sent; an export the log
+cannot record is refused, so none leaves unrecorded. Exporting the log is
+itself an entry.
+
+Only ids, names and whether a secret changed go into an entry. `audit.Scrub`
+replaces any text under a key named like a credential, other than set, kept
+or removed, and any text that starts as a Stator or Armature token does, with
+`[redacted]`, so a slip in a caller leaves the record clean rather than
+failing the act.
+
+The database holds the rest. A restrictive policy lets `stator_app` read the
+log only for an actor who is an owner or admin, the same test `requireAdmin`
+makes, and another lets it write only entries naming the transaction's own
+actor or nobody. Neither runtime role may update or delete an entry.
+Retention is `STATOR_RETAIN_AUDIT` (a year by default, as Armature keeps
+its log; 0 keeps everything; less than a day is refused), and the worker
+enforces it once a day as `stator_admin` through `audit_log_prune`, a
+security definer function only that role may call, which works inside one
+organization and refuses a cutoff younger than a day whatever it is handed.
+
+The list walks `(created_at, id)` by keyset (#38), so new entries arriving
+between two pages neither repeat nor skip one; each filter has an index that
+ends in that order. Days in a filter are the reader's own: the client sends
+the instants their midnight falls on, and the API also takes a bare date as
+that day in UTC.
+
 ## 2026-10-01: A star is a row of one's own, and the home lists walk an index a window at a time
 
 A star (#38) is a row naming its person and either a page or a space, as

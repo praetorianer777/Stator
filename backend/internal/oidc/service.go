@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/oauth2"
 
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -107,7 +108,21 @@ func (s *Service) Save(ctx context.Context, in Provider) (*Provider, db.LSN, err
 			    create_groups = EXCLUDED.create_groups,
 			    enabled = EXCLUDED.enabled`,
 			org.ID, in.Issuer, in.ClientID, sealed, in.GroupsClaim, in.Scopes, in.CreateGroups, in.Enabled)
-		return err
+		if err != nil {
+			return err
+		}
+		secretChange := "kept"
+		if sealed != nil {
+			secretChange = "set"
+		}
+		actor, _ := db.UserFrom(ctx)
+		return audit.Write(ctx, tx, org.ID, audit.Entry{
+			Action: audit.ActionSSOProviderSaved, TargetType: "oidc_provider", Actor: actor,
+			Data: map[string]any{
+				"issuer": in.Issuer, "clientId": in.ClientID, "clientSecret": secretChange, "groupsClaim": in.GroupsClaim,
+				"scopes": in.Scopes, "createGroups": in.CreateGroups, "enabled": in.Enabled,
+			},
+		})
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("save the identity provider: %w", err)

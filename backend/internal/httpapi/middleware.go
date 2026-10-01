@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/observability"
@@ -162,6 +163,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			ctx := context.WithValue(r.Context(), ctxPrincipal, principal)
 			if principal.InOrg() {
 				ctx = db.WithUser(tenant.WithOrg(ctx, *principal.Org), principal.UserID)
+				ctx = audit.WithIP(ctx, clientIP(r))
 			}
 			r = r.WithContext(ctx)
 		case errors.Is(err, auth.ErrInvalidToken):

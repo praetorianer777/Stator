@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { administers, useJoinRequests, useLogout, useMe } from "@/api/auth";
 import { Avatar, Button, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { AUDIT_PATH } from "@/config";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { useCanAdministerOrg } from "@/features/permissions/access";
 import { t } from "@/i18n";
@@ -86,6 +87,12 @@ export function TopBar({
       icon: <Icon.Link />,
       onSelect: () => navigate({ to: "/settings/armature" }),
       attrs: { "data-action": "armature-settings" },
+    });
+    items.push({
+      label: t.account.audit,
+      icon: <Icon.Shield />,
+      onSelect: () => navigate({ to: AUDIT_PATH }),
+      attrs: { "data-action": "audit-log" },
     });
   }
   items.push({
