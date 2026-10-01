@@ -284,6 +284,15 @@ export const WEBHOOK_URL_MAX_LENGTH = 2000;
 export const WEBHOOK_DELIVERIES_PAGE_SIZE = 50;
 /** The header each delivery's signature travels in, for the receiver to check. */
 export const WEBHOOK_SIGNATURE_HEADER = "X-Stator-Signature-256";
+/** Where administrators read which pages nobody opened or published for a while. */
+export const STALE_PATH = "/settings/stale";
+/** Pages the stale report shows per page, within the API's 100. */
+export const STALE_PAGE_SIZE = 25;
+/** The periods the stale report offers, in days; it starts at the API's own default. */
+export const STALE_AGE_DAYS = [30, 90, 180, 365, 730] as const;
+export const STALE_DEFAULT_DAYS = 180;
+/** What a link from the stale report carries, so reviewing a page is not a view that takes it off the report. */
+export const STALE_REVIEW_FROM = "stale";
 /** How every Armature personal access token and webhook secret starts, as Armature makes them. */
 export const ARMATURE_TOKEN_PREFIX = "armature_pat_";
 export const ARMATURE_WEBHOOK_SECRET_PREFIX = "armature_whs_";

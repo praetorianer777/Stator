@@ -1690,6 +1690,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stale-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Published pages nobody published or opened within the period, in the spaces the caller administers, archived ones only when asked for, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization. */
+        get: operations["listStalePages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/stars": {
         parameters: {
             query?: never;
@@ -3164,6 +3181,27 @@ export interface components {
                 [key: string]: string;
             };
             shape: components["schemas"]["Shape"];
+        };
+        StalePage: {
+            /** Format: date-time */
+            activeAt: string;
+            archivable: boolean;
+            archived: boolean;
+            /** Format: uuid */
+            id: string;
+            owner: components["schemas"]["Owner"] | null;
+            /** Format: date-time */
+            publishedAt: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+            /** @enum {string} */
+            verification: "verified" | "expired" | "none";
+            /** Format: date-time */
+            verificationExpiresAt: string | null;
+            version: number;
+            /** Format: date-time */
+            viewedAt: string | null;
         };
         Star: {
             /** @enum {string} */
@@ -8264,6 +8302,53 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listStalePages: {
+        parameters: {
+            query?: {
+                /** @description A space key; every space the caller administers when absent. */
+                space?: string;
+                /** @description The id of the person who answers for the pages, or none for pages without an owner. */
+                owner?: string;
+                /** @description Where the pages stand on being checked; any when absent. */
+                verification?: "verified" | "expired" | "none";
+                /** @description true to list archived pages too; false when absent. */
+                archived?: boolean;
+                /** @description Days since a page was last published or opened, 1 to 3650; 180 when absent. */
+                olderThan?: number;
+                /** @description 1 to 100; 25 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        next: string | null;
+                        pages: components["schemas"]["StalePage"][];
+                    };
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

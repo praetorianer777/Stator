@@ -118,3 +118,26 @@ export async function lapseVerification(pageId: string): Promise<void> {
     }
   });
 }
+
+/**
+ * Says a page was last published days ago and nobody opened it since. The
+ * database stamps every publish with the moment it happens, so its triggers are held off.
+ */
+export async function ageQuietly(pageId: string, days: number): Promise<void> {
+  await withDatabase(async (db) => {
+    await db.query("BEGIN");
+    try {
+      await db.query("SET LOCAL session_replication_role = replica");
+      const { rowCount } = await db.query("UPDATE page SET published_at = now() - make_interval(days => $2) WHERE id = $1 AND published_at IS NOT NULL", [
+        pageId,
+        days,
+      ]);
+      if (rowCount !== 1) throw new Error(`The page ${pageId} is not published, so it cannot be made old.`);
+      await db.query("DELETE FROM page_visit WHERE page_id = $1", [pageId]);
+      await db.query("COMMIT");
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    }
+  });
+}

@@ -41,6 +41,9 @@ const (
 	ArchivePages Action = "page.archive"
 	// ArchiveSpace archives the whole space and unarchives it.
 	ArchiveSpace Action = "space.archive"
+	// ReviewStale reads which pages of the space nobody opened or published
+	// for a while.
+	ReviewStale Action = "space.review"
 )
 
 // Actor is who asks: a person and their standing in the organization the
@@ -96,6 +99,8 @@ func (e *DeniedError) Error() string {
 		return "Only an administrator of this space can archive pages and unarchive them. Ask one of them."
 	case ArchiveSpace:
 		return "Only an administrator of this space can archive it and unarchive it. Ask one of them."
+	case ReviewStale:
+		return "Only administrators of a space, or of the organization, can read which of its pages went stale. Ask one of them to check the space."
 	}
 	return "You do not have permission to do that. Ask an administrator of the organization."
 }

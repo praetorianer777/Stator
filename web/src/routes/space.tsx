@@ -1,6 +1,7 @@
 import { Outlet, createRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { pageQuery } from "@/api/pages";
 import { spaceQuery } from "@/api/spaces";
+import { STALE_REVIEW_FROM } from "@/config";
 import { PageScreen } from "@/features/pages/PageScreen";
 import { SpaceSettings, type SettingsTab } from "@/features/spaces/SpaceSettings";
 import { pageSlug } from "@/lib/slug";
@@ -20,13 +21,17 @@ export const spaceRoute = createRoute({
   component: Outlet,
 });
 
-/** A thread to bring into view below the page, as a notification links to it. */
+/** A thread to bring into view below the page, as a notification links to it, and whether the stale report sent the reader. */
 interface PageAddress {
   thread?: string;
+  from?: typeof STALE_REVIEW_FROM;
 }
 
 function pageAddress(search: Record<string, unknown>): PageAddress {
-  return typeof search.thread === "string" && search.thread !== "" ? { thread: search.thread } : {};
+  const out: PageAddress = {};
+  if (typeof search.thread === "string" && search.thread !== "") out.thread = search.thread;
+  if (search.from === STALE_REVIEW_FROM) out.from = STALE_REVIEW_FROM;
+  return out;
 }
 
 /** The space's own address shows its home page. */
@@ -41,8 +46,8 @@ export const spaceHomeRoute = createRoute({
   },
   component: function SpaceHome() {
     const space = spaceHomeRoute.useLoaderData();
-    const { thread } = spaceHomeRoute.useSearch();
-    return <PageScreen pageId={space.homePageId} thread={thread} />;
+    const { thread, from } = spaceHomeRoute.useSearch();
+    return <PageScreen pageId={space.homePageId} thread={thread} reviewing={from === STALE_REVIEW_FROM} />;
   },
 });
 
@@ -62,8 +67,8 @@ export const pageRoute = createRoute({
   },
   component: function PageRoute() {
     const { pageId } = pageRoute.useParams();
-    const { thread } = pageRoute.useSearch();
-    return <PageScreen pageId={pageId} thread={thread} />;
+    const { thread, from } = pageRoute.useSearch();
+    return <PageScreen pageId={pageId} thread={thread} reviewing={from === STALE_REVIEW_FROM} />;
   },
 });
 

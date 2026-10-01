@@ -80,6 +80,7 @@ less.
 | `list_recent_updates` | `GET /home/updates` | yes |
 | `list_notifications` | `GET /notifications` | yes |
 | `list_audit_log` | `GET /audit` (administrators) | yes |
+| `list_stale_pages` | `GET /stale-pages` (administrators of a space) | yes |
 | `create_page` | `POST /pages` | no |
 | `update_page` | `PATCH /pages/{pageID}` | no |
 | `replace_page_markdown` | `PUT /pages/{pageID}/markdown` | no |

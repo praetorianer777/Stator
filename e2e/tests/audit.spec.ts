@@ -37,9 +37,16 @@ const MAX_TABS = 300;
 
 /** Presses Tab until the control has focus, as a person working the page by keyboard would. */
 async function tabTo(page: Page, control: Locator): Promise<void> {
-  for (let i = 0; i < MAX_TABS; i++) {
-    if (await control.evaluate((el) => el === document.activeElement)) return;
-    await page.keyboard.press("Tab");
+  // Asked through a locator, each of the hundred checks queried the whole page
+  // again, and under load the walk alone outlasted the test's time.
+  const target = await control.elementHandle();
+  try {
+    for (let i = 0; i < MAX_TABS; i++) {
+      if (await target.evaluate((el) => el === document.activeElement)) return;
+      await page.keyboard.press("Tab");
+    }
+  } finally {
+    await target.dispose();
   }
   await expect(control).toBeFocused();
 }

@@ -3,6 +3,7 @@ import type { DeliveryState, WebhookTopic } from "@/api/webhooks";
 
 /** The events a webhook may name besides everything. */
 type WebhookEventTopic = Exclude<WebhookTopic, "*">;
+import type { StaleVerification } from "@/api/stale";
 
 /** The English strings, and the shape every other language has to fill. */
 export const en = {
@@ -96,6 +97,7 @@ export const en = {
     armature: "Armature",
     audit: "Audit log",
     webhooks: "Webhooks",
+    stale: "Stale pages",
     signOut: "Sign out",
   },
   profile: {
@@ -909,6 +911,7 @@ export const en = {
     permissions: "Permissions",
     trash: "Trash",
     archive: "Archive",
+    stale: "Stale pages",
     save: "Save details",
     saved: "Saved.",
     notAdmin: "Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization.",
@@ -1715,6 +1718,50 @@ export const en = {
     redeliver: "Send again",
     redeliverLabel: (event: string, when: string) => `Send again: ${event}, ${when}`,
     sentAgain: (state: string) => `Sent again: ${state}.`,
+  },
+  stale: {
+    title: "Stale pages",
+    intro: (days: number) =>
+      `Published pages nobody has published again or opened for at least ${days} days, the longest untouched first. Check each one, then bring it up to date, verify it, or move it to the trash.`,
+    notAdmin: "Only administrators of a space, or of the organization, read which pages went stale. Ask one of them to check your space.",
+    filters: "Filter the stale pages",
+    space: "Space",
+    everySpace: "Every space you administer",
+    age: "Untouched for",
+    ageDays: (days: number) => `At least ${days} days`,
+    owner: "Owner",
+    anyOwner: "Anyone or nobody",
+    noOwner: "Nobody",
+    verification: "Verification",
+    anyVerification: "Any",
+    verifications: { verified: "Verified", expired: "Expired", none: "Not verified" } satisfies Record<StaleVerification, string>,
+    includeArchived: "Include archived pages",
+    clearFilters: "Clear filters",
+    filterByOwner: (name: string) => `Show only pages ${name} owns`,
+    selectAll: "Select every page shown",
+    select: (title: string) => `Select ${title}`,
+    archiveSelected: (n: number) => (n === 0 ? "Archive selected pages" : n === 1 ? "Archive 1 page" : `Archive ${n} pages`),
+    confirmArchive: (n: number) =>
+      `Archive ${n === 1 ? "this page" : `these ${n} pages`} and every page below them? They stay readable and keep their addresses, but nobody can change them until an administrator of the space unarchives them.`,
+    archivedCount: (n: number) => (n === 1 ? "Archived 1 page." : `Archived ${n} pages.`),
+    archiveStopped: (done: number, reason: string) => `Archived ${done} of the pages, then stopped: ${reason}`,
+    columnPage: "Page",
+    columnPublished: "Last published",
+    columnViewed: "Last opened",
+    columnOwner: "Owner",
+    columnVerification: "Verification",
+    neverViewed: "Never",
+    ownerNoAccess: "no longer has access",
+    until: (day: string) => `until ${day}`,
+    since: (day: string) => `since ${day}`,
+    empty: "No stale pages",
+    emptyBody: "Every page here was published or opened within the period.",
+    emptyFiltered: "Nothing matches. Choose a shorter period or clear a filter.",
+    emptyLast: "That was the last page.",
+    pages: "Pages of the report",
+    previous: "Previous",
+    next: "Next",
+    page: (n: number) => `Page ${n}`,
   },
   api: {
     unexpected: (status: number) => `The server answered with status ${status}. Try again in a moment.`,
