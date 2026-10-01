@@ -75,8 +75,71 @@ syncs_with_upstream() {
 }
 is_branch() { git -C "$repo" show-ref --verify --quiet "refs/heads/$1"; }
 
+# Stands in for quoted text whose value only the shell knows.
+QUOTED=$'\x1f'
+UNRESOLVABLE_RE='[$`*?[{]'
+
+# Prints where cd $2 from $1 lands, or fails when only the shell could tell.
+# A failed cd leaves the shell where it was, so with $3 set $2 must exist.
+resolve_dir() {
+  local base="$1" arg="$2" must_exist="${3:-}"
+  [[ "$arg" == *"$QUOTED"* || "$arg" =~ $UNRESOLVABLE_RE ]] && return 1
+  case "$arg" in
+    "~"|"~/"*) arg="$HOME${arg:1}" ;;
+    "~"*) return 1 ;;
+    /*) ;;
+    *) [[ -n "$base" ]] || return 1; arg="$base/$arg" ;;
+  esac
+  arg="$(realpath -m "$arg")"
+  [[ -z "$must_exist" || -d "$arg" ]] || return 1
+  printf '%s' "$arg"
+}
+
+# Moves $dir the way cd, pushd or popd would; an empty $dir means lost track.
+follow_cd() {
+  local verb="$1" to=""
+  shift
+  while [[ "${1:-}" =~ ^-[LPe@n]+$ ]]; do shift; done
+  [[ "${1:-}" == -- ]] && shift
+  case "$verb" in
+    popd)
+      if (( $# == 0 && ${#stack[@]} )); then to="${stack[-1]}"; unset 'stack[-1]'; fi
+      ;;
+    *)
+      if (( $# == 0 )); then
+        [[ "$verb" == cd ]] && to="$HOME"
+      elif [[ "$verb" == cd && "$1" == - ]]; then
+        to="$prev"
+      elif [[ ! "$1" =~ ^[+-][0-9]+$ ]]; then
+        to="$(resolve_dir "$dir" "$1" 1)"
+      fi
+      [[ "$verb" == pushd ]] && stack+=("$dir")
+      ;;
+  esac
+  prev="$dir"
+  dir="$to"
+}
+
+# Redirections are not arguments of the command: "git merge --ff-only
+# origin/main 2>&1" used to look like a merge with two targets, and every
+# rule that inspects the argument list was reading them (#76).
+strip_redirections() {
+  local a skip_operand=0
+  args=()
+  for a in "$@"; do
+    if (( skip_operand )); then skip_operand=0; continue; fi
+    case "$a" in
+      [0-9]*'>'*|'>'*|'<'*)
+        [[ "$a" =~ (\>|\<)$ ]] && skip_operand=1
+        continue
+        ;;
+    esac
+    args+=("$a")
+  done
+}
+
 run_tests() {
-  local log
+  local repo="$1" log
   log="$(mktemp)"
   # run-tests.sh gives each checkout its own stack, so gates running in
   # parallel worktrees do not collide (#95).
@@ -104,19 +167,22 @@ case "$tool" in
   Bash)
     cmd="$(jq -r '.tool_input.command // empty' <<< "$input")"
     [[ -n "$cmd" ]] || exit 0
-    repo="$(checkout_for "$cwd")" || exit 0
-    branch="$(current_branch "$repo")"
+    # A cd earlier in the command decides where later segments run (#207),
+    # so a cwd outside this repo no longer settles the matter on its own.
+    dir="$cwd" prev="" lost="" stack=() gates=()
+    if repo="$(checkout_for "$cwd")"; then branch="$(current_branch "$repo")"; else repo="" branch=""; fi
 
     # Heredoc bodies and quoted strings are data (commit messages, issue
-    # bodies), not commands; blank them before splitting into segments.
+    # bodies), not commands; blank them before splitting into segments. A
+    # quoted plain word such as a path keeps its value so cd can follow it.
     segments="$(perl -0pe '
       s/(<<-?\s*([\x27"]?)(\w+)\2[^\n]*\n).*?^\s*\3[ \t]*$/$1/gms;
-      s/"(?:[^"\\]|\\.)*"/Q/gs;
-      s/\x27[^\x27]*\x27/Q/gs;
+      sub plain { my $s = shift; $s =~ m{\A[\w.\/\@%+=:,-]+\z} ? $s : "\x1f" }
+      s{"((?:[^"\\]|\\.)*)"}{plain($1)}gse;
+      s{\x27([^\x27]*)\x27}{plain($1)}gse;
       s/\s*(?:&&|\|\||;|\||\n)\s*/\n/g;
     ' <<< "$cmd")"
 
-    pushing=0
     # Walk the segments in order so "git switch -c fix/1-x && git commit"
     # is judged against the branch the commit will actually land on.
     while IFS= read -r seg; do
@@ -131,19 +197,44 @@ case "$tool" in
       t=("${t[@]:k}")
       (( ${#t[@]} )) || continue
 
-      if [[ "${t[0]}" == "gh" ]]; then
-        [[ "${t[1]:-} ${t[2]:-}" == "pr merge" ]] && ask "Merging a PR is the user's decision."
-        continue
-      fi
-      [[ "${t[0]}" == "git" ]] || continue
+      case "${t[0]}" in
+        cd|pushd|popd)
+          strip_redirections "${t[@]:1}"
+          follow_cd "${t[0]}" "${args[@]}"
+          [[ -n "$dir" ]] || lost="${t[*]}"
+          continue
+          ;;
+        gh)
+          # Outside this repo a merge is none of our business, but a cd the
+          # guard lost track of may have led back into it.
+          if [[ "${t[1]:-} ${t[2]:-}" == "pr merge" ]] && { [[ -z "$dir" ]] || checkout_for "$dir" >/dev/null; }; then
+            ask "Merging a PR is the user's decision."
+          fi
+          continue
+          ;;
+        git) ;;
+        *) continue ;;
+      esac
 
-      target="$cwd"
+      target="$dir"
       i=1
       while [[ "${t[i]:-}" == -* ]]; do
-        [[ "${t[i]}" == -C ]] && target="$(cd "$cwd" 2>/dev/null && realpath -m "${t[i+1]:-.}")"
+        if [[ "${t[i]}" == -C ]]; then
+          target="$(resolve_dir "$target" "${t[i+1]:-.}")" || lost="git -C ${t[i+1]:-}"
+        fi
         [[ "${t[i]}" == -C || "${t[i]}" == -c ]] && ((i++))
         ((i++))
       done
+      sub="${t[i]:-}"
+      strip_redirections "${t[@]:i+1}"
+      if [[ -z "$target" ]]; then
+        case "$sub" in
+          add|mv|rm|restore|apply|commit|merge|rebase|cherry-pick|revert|reset|am|push)
+            deny "Refusing 'git $sub' after '${lost//$QUOTED/\"...\"}': the guard cannot tell which checkout that leads to. Run git from the checkout itself without cd, or name it with git -C <absolute path>."
+            ;;
+        esac
+        continue
+      fi
       # -C into another checkout is judged by that checkout's branch. Worktrees
       # live under .claude/worktrees inside the repo directory, so the path
       # alone does not say which checkout it belongs to — ask git.
@@ -152,22 +243,6 @@ case "$tool" in
         repo="$target_repo"
         branch="$(current_branch "$repo")"
       fi
-      sub="${t[i]:-}"
-      # Redirections are not arguments of the command: "git merge --ff-only
-      # origin/main 2>&1" used to look like a merge with two targets, and every
-      # rule that inspects the argument list was reading them (#76).
-      args=()
-      skip_operand=0
-      for a in "${t[@]:i+1}"; do
-        if (( skip_operand )); then skip_operand=0; continue; fi
-        case "$a" in
-          [0-9]*'>'*|'>'*|'<'*)
-            [[ "$a" =~ (\>|\<)$ ]] && skip_operand=1
-            continue
-            ;;
-        esac
-        args+=("$a")
-      done
 
       case "$sub" in
         checkout|switch)
@@ -214,12 +289,12 @@ case "$tool" in
               && deny "Pushing to main is not allowed; push the issue branch and open a PR instead."
           done
           valid "$branch" || deny "Refusing to push from branch '$branch'. $HINT"
-          pushing=1
+          [[ " ${gates[*]} " == *" $repo "* ]] || gates+=("$repo")
           ;;
       esac
     done <<< "$segments"
 
-    (( pushing )) && run_tests
+    for g in "${gates[@]}"; do run_tests "$g"; done
     ;;
 esac
 exit 0

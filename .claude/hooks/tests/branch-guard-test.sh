@@ -186,6 +186,53 @@ check allow Bash "$G -C $WT add -A" "$W2/r"
 git -C "$WT" switch -q main 2>/dev/null || git -C "$WT" checkout -q --detach
 check deny  Bash "$G -C $WT $C -m x" "$W2/r"
 
+echo "== cd and pushd decide which checkout later segments act on (#207)"
+git -C "$WT" switch -q fix/99-agent-work
+# Allowing the push only shows the main checkout's failing script did not run;
+# the marker shows the worktree's gate ran at all.
+GATE="$W2/gate-ran"
+OTHER_DIR="$W2/not-a-repo"; mkdir -p "$OTHER_DIR"
+printf '#!/bin/sh\npwd > "%s"\n' "$GATE" > "$WT/run-tests.sh"
+gate() { # expected-dir label
+  if [[ "$(cat "$GATE" 2>/dev/null)" == "$1" ]]; then echo "ok    gate ran in ${1##*/}  $2"
+  else echo "FAIL  gate did not run in ${1##*/}  $2"; fail=1; fi
+  rm -f "$GATE"
+}
+check allow Bash "cd $WT && $G push -u origin HEAD" "$W2/r"
+gate "$WT" "cd worktree && push"
+check allow Bash "cd $WT; $G $C -m x" "$W2/r"
+check allow Bash "cd .claude/worktrees/agent-x && $G push" "$W2/r"
+gate "$WT" "relative cd && push"
+check allow Bash "cd \"$WT\" && $G push" "$W2/r"
+gate "$WT" "quoted cd && push"
+check allow Bash "cd $WT && cd .claude && cd .. && $G push" "$W2/r"
+gate "$WT" "cd sub && cd .. && push"
+check allow Bash "cd .claude && cd .. && $G push" "$WT"
+gate "$WT" "cd sub && cd .. && push, from the worktree"
+check deny  Bash "cd ../../.. && $G $C -m x" "$WT"
+check allow Bash "pushd $WT >/dev/null && $G push" "$W2/r"
+gate "$WT" "pushd && push"
+check deny  Bash "pushd $WT && popd && $G $C -m x" "$W2/r"
+check deny  Bash "cd $WT && cd - && $G $C -m x" "$W2/r"
+check deny  Bash "cd $W2/r && $G $C -m x" "$WT"
+check allow Bash "cd $WT && $G push" "$OTHER_DIR"
+gate "$WT" "cd into the repo from outside && push"
+check deny  Bash "cd $W2/r && $G $C -m x" "$OTHER_DIR"
+check allow Bash "cd /tmp && $G $C -m x" "$W2/r"
+check deny  Bash "cd $W2/does-not-exist; $G $C -m x" "$W2/r"
+check deny  Bash "cd \"\$X\" && $G push" "$WT"
+check deny  Bash "cd \$X && $G $C -m x" "$WT"
+check deny  Bash "cd ~nobody && $G push" "$WT"
+check deny  Bash "cd \$($G rev-parse --show-toplevel) && $G push" "$WT"
+check allow Bash "cd \"\$X\" && $G status" "$WT"
+check allow Bash "cd \"\$X\" && $G -C $WT push" "$W2/r"
+gate "$WT" "lost cd, then git -C && push"
+check deny  Bash "$G -C \"\$X\" $C -m x" "$WT"
+[[ -e "$GATE" ]] && { echo "FAIL  a refused push ran the gate"; fail=1; }
+git -C "$WT" switch -q main 2>/dev/null || git -C "$WT" checkout -q --detach
+check deny  Bash "cd $WT && $G push" "$W2/r"
+git -C "$WT" switch -q fix/99-agent-work
+
 echo "== unrelated repo is none of our business"
 OTHER="$W2/other"; mkdir -p "$OTHER" && git -C "$OTHER" init -q && git -C "$OTHER" commit -q --allow-empty -m init
 check allow Write "$OTHER/file.txt" "$OTHER"
