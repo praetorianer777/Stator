@@ -494,3 +494,6 @@ and the versioning [Semantic Versioning](https://semver.org/).
   picked picture goes up first and then shows as an image with alternative
   text and a width to choose, and any other file as a chip that downloads
   it. A file deleted from the page shows as missing where the page used it.
+- Enter in a people or group picker no longer picks a match left over from
+  the text before: while the answer to what was typed is still on its way,
+  Enter waits for it, and screen readers hear that the picker is looking.
