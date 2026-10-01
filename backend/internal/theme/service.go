@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -466,15 +467,21 @@ func (s *Service) SetDefault(ctx context.Context, reader uuid.UUID, id *uuid.UUI
 			}
 			return fmt.Errorf("set the default theme: %w", err)
 		}
-		if id == nil {
-			return nil
-		}
-		t, err := readOne(ctx, tx, reader, *id, ` WHERE t.id = $2 AND`+listed)
+		org, err := tenant.MustFromContext(ctx)
 		if err != nil {
 			return err
 		}
-		out = t
-		return nil
+		entry := audit.Entry{Action: audit.ActionThemeDefaultSet, TargetType: "theme", TargetID: id, Actor: reader,
+			Data: map[string]any{"builtIn": true}}
+		if id != nil {
+			t, err := readOne(ctx, tx, reader, *id, ` WHERE t.id = $2 AND`+listed)
+			if err != nil {
+				return err
+			}
+			out = t
+			entry.Data = map[string]any{"name": t.Name}
+		}
+		return audit.Write(ctx, tx, org.ID, entry)
 	})
 	return out, lsn, err
 }

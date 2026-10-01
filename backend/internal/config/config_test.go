@@ -26,6 +26,7 @@ func clean(t *testing.T) {
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
 		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
 		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
+		"STATOR_RETAIN_AUDIT",
 	} {
 		t.Setenv(key, "")
 	}
@@ -395,6 +396,29 @@ func TestMailNeedsARelayAndASender(t *testing.T) {
 	t.Setenv("STATOR_MAIL_FROM", "Stator <wiki@example.com>")
 	if cfg, err = Load(); err != nil || cfg.Mail.SMTPAddr != "mailpit:1025" {
 		t.Errorf("mail through mailpit is %+v, %v", cfg.Mail, err)
+	}
+}
+
+func TestTheAuditLogIsKeptAYearAndNeverLessThanADay(t *testing.T) {
+	clean(t)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RetainAudit != DefaultRetainAudit {
+		t.Errorf("the audit log is kept %s by default, want %s", cfg.RetainAudit, DefaultRetainAudit)
+	}
+	for value, want := range map[string]time.Duration{"0": 0, "24h": 24 * time.Hour, "2160h": 2160 * time.Hour} {
+		t.Setenv("STATOR_RETAIN_AUDIT", value)
+		if cfg, err := Load(); err != nil || cfg.RetainAudit != want {
+			t.Errorf("STATOR_RETAIN_AUDIT=%s reads as %s, %v", value, cfg.RetainAudit, err)
+		}
+	}
+	for _, value := range []string{"23h", "-1h", "a while"} {
+		t.Setenv("STATOR_RETAIN_AUDIT", value)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_RETAIN_AUDIT") {
+			t.Errorf("STATOR_RETAIN_AUDIT=%s is let through: %v", value, err)
+		}
 	}
 }
 

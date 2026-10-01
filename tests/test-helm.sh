@@ -96,6 +96,9 @@ check "the Valkey URL reaches every workload" "$(env_value "${RENDERED}" STATOR_
 check "the upload limit is set, and can be changed" \
     "$(grep -c 'STATOR_UPLOAD_LIMIT: "50MB"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set attachments.uploadLimit=2GB 2>&1 | grep -c 'STATOR_UPLOAD_LIMIT: "2GB"')" \
     "1 1"
+check "the audit log is kept a year, and that can be changed" \
+    "$(grep -c 'STATOR_RETAIN_AUDIT: "8760h"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set retention.audit=2160h 2>&1 | grep -c 'STATOR_RETAIN_AUDIT: "2160h"')" \
+    "1 1"
 check "mail is off until a relay is named, then goes from the sender set" \
     "$(grep -c 'STATOR_SMTP_ADDR' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set mail.smtpAddr=smtp.example:25 --set 'mail.from=Wiki <wiki@example.com>' 2>&1 | grep -E 'STATOR_(SMTP_ADDR|MAIL_FROM)' | tr -d ' ' | paste -sd ' ')" \
     '0 STATOR_SMTP_ADDR:"smtp.example:25" STATOR_MAIL_FROM:"Wiki<wiki@example.com>"'

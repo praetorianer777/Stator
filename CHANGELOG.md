@@ -397,6 +397,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   one watches. Every list leaves out what the reader may no longer view, is
   read a window at a time by cursor (`GET /stars`, `/home/updates`,
   `/home/edited`), and pages and spaces answer `starred`.
+- An audit log for administrators (#107), under Audit log in the account
+  menu: who changed members, single sign-on, tokens, spaces, permissions,
+  the default theme and the Armature connection, what was deleted for good,
+  and which pages and logs were exported, newest first. It narrows by
+  action, person, target and days, pages by cursor (`GET /audit`,
+  `/audit/facets`) and exports as CSV (`GET /audit/export`). Each entry is
+  written in the transaction of its act, records ids, names and whether a
+  secret changed but never a secret, and cannot be changed or deleted by the
+  app. The worker keeps entries for `STATOR_RETAIN_AUDIT` (a year;
+  `retention.audit` in the chart) and prunes older ones daily.
 
 ### Changed
 

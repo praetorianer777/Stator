@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
@@ -89,6 +90,7 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 		OIDC:            a.sso,
 		OIDCCallbackURL: base + httpapi.APIPrefix + "/auth/oidc/callback",
 		Log:             discard(),
+		Audit:           audit.NewService(h.cluster),
 		CookieName:      h.cfg.Auth.SessionCookie,
 		AppBaseURL:      "http://" + appHost,
 	}).Routes(nil))
