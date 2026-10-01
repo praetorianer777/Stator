@@ -55,7 +55,7 @@ const (
 	// The headers a delivery carries, named as Armature names its own.
 	SignatureHeader = "X-Stator-Signature-256"
 	EventHeader     = "X-Stator-Event"
-	DeliveryHeader  = "X-Stator-WebhookDelivery"
+	DeliveryHeader  = "X-Stator-Delivery"
 	userAgent       = "Stator-Webhook"
 )
 
@@ -109,7 +109,7 @@ type Webhook struct {
 	DisabledReason *string `json:"disabledReason"`
 	// Failures counts the attempts that failed since the last delivered.
 	Failures int `json:"failures"`
-	// WebhookOwner is null once the administrator who saved it left; nothing but a
+	// Owner is null once the administrator who saved it left; nothing but a
 	// ping is sent until somebody saves it again.
 	WebhookOwner *WebhookOwner `json:"owner"`
 	CreatedAt    time.Time     `json:"createdAt"`

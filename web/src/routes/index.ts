@@ -24,6 +24,7 @@ import { ssoRoute } from "./sso";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
 import { tokensRoute } from "./tokens";
+import { webhooksRoute } from "./webhooks";
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -45,6 +46,7 @@ const routeTree = rootRoute.addChildren([
     orgPermissionsRoute,
     armatureSettingsRoute,
     auditRoute,
+    webhooksRoute,
     devEditorRoute,
   ]),
 ]);
