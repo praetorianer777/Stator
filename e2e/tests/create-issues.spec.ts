@@ -110,22 +110,22 @@ test.describe("creating Armature issues from a selection", {
     return createSpace(api, key, uniqueName(testInfo, "Reviews"));
   }
 
-  for (const scheme of SCHEMES) {
-    test(`alice files a sentence, a list and table rows as issues, and each gets its chip, in ${scheme}`, async ({
-      page,
-      api,
-      freshOrg,
-      request,
-    }, testInfo) => {
-      await startInScheme(page, scheme);
-      const space = await freshSpace(api, testInfo);
-      const target = await createPage(api, space.homePageId, uniqueName(testInfo, "Review notes"), actionItems);
-      await openPage(page, space.key, target);
-      await page.locator('[data-action="edit-page"]').click();
-      const box = page.locator("#page-body");
-      const dialog = page.locator("[data-create-issues-dialog]");
+  // A test per kind of selection rather than one for all three: the
+  // whole-page accessibility scans are most of each flow's time, and together
+  // they ran up against the test timeout on a busy runner.
+  async function openInEditor(page: Page, api: StatorApi, testInfo: TestInfo, scheme: ColourScheme) {
+    await startInScheme(page, scheme);
+    const space = await freshSpace(api, testInfo);
+    const target = await createPage(api, space.homePageId, uniqueName(testInfo, "Review notes"), actionItems);
+    await openPage(page, space.key, target);
+    await page.locator('[data-action="edit-page"]').click();
+    return { space, target, box: page.locator("#page-body"), dialog: page.locator("[data-create-issues-dialog]") };
+  }
 
-      // Selected text becomes one issue, and its chip takes the text's place.
+  for (const scheme of SCHEMES) {
+    test(`alice files a sentence as an issue, and its chip takes the text's place, in ${scheme}`, async ({ page, api }, testInfo) => {
+      const { box, dialog } = await openInEditor(page, api, testInfo, scheme);
+
       await selectLine(box, "Renew the TLS certificate");
       await expect(createButton(page)).toHaveText("Create Armature issue");
       await createButton(page).click();
@@ -152,8 +152,21 @@ test.describe("creating Armature issues from a selection", {
       await page.keyboard.press("ControlOrMeta+Shift+z");
       await expect(chip(box, "CP-6")).toBeVisible();
 
-      // Three list items are three issues; Armature refuses the second, so
-      // the third is not tried, and each chip follows its item's text.
+      await publishFromEditor(page);
+      const doc = page.locator("[data-doc]");
+      await expect(chip(doc, "CP-6")).toBeVisible();
+      await expect(chip(doc, "CP-6")).toContainText("Renew the TLS certificate");
+    });
+
+    test(`alice files list items as issues until Armature refuses one, and each chip follows its item, in ${scheme}`, async ({
+      page,
+      api,
+      freshOrg,
+      request,
+    }, testInfo) => {
+      const { box, dialog } = await openInEditor(page, api, testInfo, scheme);
+
+      // Armature refuses the second, so the third is not tried.
       await stub(request, "PUT", `${freshOrg.slug}/refused-summary`, {
         summary: "Update the status page",
       });
@@ -167,20 +180,28 @@ test.describe("creating Armature issues from a selection", {
       await expect(dialog.getByRole("textbox", { name: /Summary of issue/ })).toHaveCount(3);
       await dialog.locator('[data-action="create-issues"]').click();
       await expect(dialog.locator("[data-result]")).toHaveCount(3);
-      await expect(dialog.locator('[data-result="created"]')).toHaveText(["CP-7 Write the migration guide"]);
+      await expect(dialog.locator('[data-result="created"]')).toHaveText(["CP-6 Write the migration guide"]);
       await expect(dialog.locator('[data-result="failed"]')).toContainText("Update the status page");
       await expect(dialog.locator('[data-result="failed"]')).toContainText("Armature refuses this summary.");
       await expect(dialog.locator('[data-result="skipped"]')).toContainText("Tell the support team");
       await expectAccessible(page);
       await dialog.locator('[data-action="close-created"]').click();
-      await expect(box.locator("li p", { has: chip(page, "CP-7") })).toContainText("Write the migration guide");
+      await expect(box.locator("li p", { has: chip(page, "CP-6") })).toContainText("Write the migration guide");
       await expect(box.locator("li p", { hasText: "Update the status page" }).locator("[data-armature-issue]")).toHaveCount(0);
-      await stub(request, "PUT", `${freshOrg.slug}/refused-summary`, {
-        summary: "",
-      });
 
-      // Table rows are one issue each, named by their first cell with text;
-      // the header row is left out.
+      await publishFromEditor(page);
+      await expect(chip(page.locator("[data-doc]"), "CP-6")).toBeVisible();
+    });
+
+    test(`alice files table rows as issues, and Armature links each back to the page, in ${scheme}`, async ({
+      page,
+      api,
+      freshOrg,
+      request,
+    }, testInfo) => {
+      const { space, target, box, dialog } = await openInEditor(page, api, testInfo, scheme);
+
+      // Each row is named by its first cell with text; the header row is left out.
       await box.locator("td", { hasText: "Archive the old logs" }).click();
       await box.locator("td", { hasText: "Rotate the backup keys" }).click({ modifiers: ["Shift"] });
       await expect(createButton(page)).toHaveText("Create 2 Armature issues");
@@ -188,19 +209,18 @@ test.describe("creating Armature issues from a selection", {
       await expect(dialog.getByRole("textbox", { name: "Summary of issue 1" })).toHaveValue("Archive the old logs");
       await expect(dialog.getByRole("textbox", { name: "Summary of issue 2" })).toHaveValue("Rotate the backup keys");
       await dialog.locator('[data-action="create-issues"]').click();
-      await expect(dialog.locator('[data-result="created"]')).toHaveText(["CP-8 Archive the old logs", "CP-9 Rotate the backup keys"]);
+      await expect(dialog.locator('[data-result="created"]')).toHaveText(["CP-6 Archive the old logs", "CP-7 Rotate the backup keys"]);
       await dialog.locator('[data-action="close-created"]').click();
-      await expect(box.locator("td", { has: chip(page, "CP-8") })).toContainText("Archive the old logs");
-      await expect(box.locator("td", { has: chip(page, "CP-9") })).toContainText("Rotate the backup keys");
+      await expect(box.locator("td", { has: chip(page, "CP-6") })).toContainText("Archive the old logs");
+      await expect(box.locator("td", { has: chip(page, "CP-7") })).toContainText("Rotate the backup keys");
 
       await publishFromEditor(page);
       const doc = page.locator("[data-doc]");
-      for (const key of ["CP-6", "CP-7", "CP-8", "CP-9"]) await expect(chip(doc, key)).toBeVisible();
-      await expect(chip(doc, "CP-6")).toContainText("Renew the TLS certificate");
+      for (const key of ["CP-6", "CP-7"]) await expect(chip(doc, key)).toBeVisible();
       await expectAccessible(page);
 
       // Armature holds them as filed by alice's Armature self, each linking back to the page.
-      const filed = (await stub(request, "GET", `${freshOrg.slug}/issues/CP-9`)) as { issue: { reporter: { name: string }; description: unknown } };
+      const filed = (await stub(request, "GET", `${freshOrg.slug}/issues/CP-7`)) as { issue: { reporter: { name: string }; description: unknown } };
       expect(filed.issue.reporter.name).toBe("Admin");
       expect(JSON.stringify(filed.issue.description)).toContain(`${WEB_URL}/s/${space.key}/p/${target.id}`);
       expect(JSON.stringify(filed.issue.description)).toContain(target.title);
