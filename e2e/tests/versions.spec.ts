@@ -96,6 +96,39 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     await expect(async () => expect((await bob.GET("/pages/{pageID}", params)).response.status).toBe(200)).toPass();
   });
 
+  test("the editor's tools and a heading's link do not open Publish", async ({ page, api, context }, testInfo) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    const space = await freshSpace(api, testInfo, "Tools");
+    const notes = await createPage(api, space.homePageId, "Notes", doc("First words."));
+    await page.goto(`/s/${space.key}/p/${notes.id}/notes/edit`);
+    const box = page.locator("#page-body");
+    const editorAction = (name: string) => page.locator(`[data-editor-action="${name}"]`);
+    const publishDialog = page.locator("[data-publish-dialog]");
+
+    await caretTo(box, "end");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/h2");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Release plan");
+    await editorAction("copy-heading-link").click();
+    await expect(page.locator("[data-copy-status]").first()).toHaveText("Link copied");
+
+    await page.keyboard.press("End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/table");
+    await page.keyboard.press("Enter");
+    await editorAction("row-below").click();
+    await expect(box.locator("tr")).toHaveCount(4);
+    await editorAction("delete-table").click();
+    await expect(box.locator("table")).toHaveCount(0);
+
+    await editorAction("text-style").click();
+    await page.keyboard.press("Escape");
+    await expect(publishDialog).toHaveCount(0);
+    await expect(page).toHaveURL(/\/edit$/);
+    await expect(draftStatus(page)).toHaveAttribute("data-draft-status", "saved");
+  });
+
   test("a publish over somebody else's is refused until the draft is kept", async ({ page, api, pageAs }, testInfo) => {
     test.slow();
     const space = await freshSpace(api, testInfo, "Conflict");
