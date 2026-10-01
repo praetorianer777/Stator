@@ -22,6 +22,7 @@ POSTGRES_PORT         := $(call stack_port,4)
 POSTGRES_REPLICA_PORT := $(call stack_port,5)
 VALKEY_PORT           := $(call stack_port,6)
 S3_PORT               := $(call stack_port,7)
+ARMATURE_STUB_PORT    := $(call stack_port,8)
 
 # Credentials for the throwaway development stack; override in the environment
 # for anything else. The compose file carries the same defaults.
@@ -41,7 +42,7 @@ STACK_TEST_BUCKET := stator-test
 
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
-export WEB_PORT API_PORT KEYCLOAK_PORT MAILPIT_PORT POSTGRES_PORT POSTGRES_REPLICA_PORT VALKEY_PORT S3_PORT
+export WEB_PORT API_PORT KEYCLOAK_PORT MAILPIT_PORT POSTGRES_PORT POSTGRES_REPLICA_PORT VALKEY_PORT S3_PORT ARMATURE_STUB_PORT
 export POSTGRES_PASSWORD APP_DB_PASSWORD ADMIN_DB_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY VALKEY_PASSWORD STATOR_TEST_ENDPOINTS_TOKEN
 
 # What the stack publishes, for the browser suite and for people: a shell can
@@ -68,6 +69,8 @@ DOCKER_GO_STACK = $(call go_run,--network $(STACK_NET) \
 	-e STATOR_TEST_KEYCLOAK_URL=http://keycloak:8080 \
 	-e STATOR_SMTP_ADDR=mailpit:1025 \
 	-e STATOR_TEST_MAILPIT_URL=http://mailpit:8025 \
+	-e STATOR_TEST_ARMATURE_URL=http://localhost:$(ARMATURE_STUB_PORT) \
+	-e STATOR_TEST_ARMATURE_STUB_URL=http://armature-stub:8080 \
 	$(1))
 
 .PHONY: stack-env
@@ -84,6 +87,8 @@ stack-env:
 		'POSTGRES_REPLICA_PORT=$(POSTGRES_REPLICA_PORT)' \
 		'VALKEY_PORT=$(VALKEY_PORT)' \
 		'S3_PORT=$(S3_PORT)' \
+		'ARMATURE_STUB_PORT=$(ARMATURE_STUB_PORT)' \
+		'STATOR_ARMATURE_URL=http://localhost:$(ARMATURE_STUB_PORT)' \
 		'STATOR_WEB_URL=http://localhost:$(WEB_PORT)' \
 		'STATOR_KEYCLOAK_URL=http://localhost:$(KEYCLOAK_PORT)' \
 		'STATOR_MAILPIT_URL=http://localhost:$(MAILPIT_PORT)' \
@@ -98,6 +103,7 @@ up: stack-env ## Build and start the whole stack in the background, and say wher
 	@echo "API        http://localhost:$(API_PORT)"
 	@echo "Keycloak   http://localhost:$(KEYCLOAK_PORT) (admin / admin; realm stator-dev)"
 	@echo "Mailpit    http://localhost:$(MAILPIT_PORT)"
+	@echo "Armature   http://localhost:$(ARMATURE_STUB_PORT) (the stub; tokens are armature_pat_<org slug>_<person>)"
 	@echo "Postgres   127.0.0.1:$(POSTGRES_PORT) (replica $(POSTGRES_REPLICA_PORT))"
 	@echo "Ports and project name are in $(STACK_ENV_FILE)."
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
@@ -153,6 +154,15 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &commentField) {
 		return ErrValidation(map[string]string{commentField.Field: sentence(commentField.Message)})
 	}
+	var armatureField *armature.FieldError
+	if errors.As(err, &armatureField) {
+		return ErrValidation(map[string]string{armatureField.Field: armatureField.Message})
+	}
+	var armatureRefused *armature.RefusedError
+	if errors.As(err, &armatureRefused) {
+		return &APIError{Status: armatureRefused.Status, Code: armatureRefused.Code, Message: sentence(armatureRefused.Message),
+			Fields: armatureRefused.Fields, Position: armatureRefused.Position, cause: err}
+	}
 	var denied *perm.DeniedError
 	if errors.As(err, &denied) {
 		return ErrForbidden(denied.Error())
@@ -199,6 +209,18 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, oidc.ErrNotConfigured):
 		return &APIError{Status: http.StatusNotFound, Code: "sso_not_configured",
 			Message: "That organization does not sign in through an identity provider. Check its name, or sign in with a password."}
+	case errors.Is(err, armature.ErrNotConfigured):
+		return &APIError{Status: http.StatusConflict, Code: "armature_not_configured",
+			Message: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature."}
+	case errors.Is(err, armature.ErrNotConnected):
+		return &APIError{Status: http.StatusConflict, Code: "armature_not_connected",
+			Message: "You have not connected your Armature account. Paste an Armature token under Profile, Armature, then try again."}
+	case errors.Is(err, armature.ErrRejected):
+		return &APIError{Status: http.StatusConflict, Code: "armature_rejected",
+			Message: "Armature no longer accepts your token. Make a new one under Tokens in Armature and paste it under Profile, Armature."}
+	case errors.Is(err, armature.ErrUnreachable):
+		return &APIError{Status: http.StatusBadGateway, Code: "armature_unreachable",
+			Message: "Armature did not answer. Try again in a moment, and tell an administrator if it keeps happening.", cause: err}
 	case errors.Is(err, tenant.ErrNoTenant):
 		return &APIError{Status: http.StatusBadRequest, Code: "no_organization", Message: "Select an organization first."}
 	case errors.Is(err, objectstore.ErrUnavailable):

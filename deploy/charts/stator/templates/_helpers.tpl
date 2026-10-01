@@ -200,6 +200,16 @@ STATOR_OTEL_SAMPLE_RATIO: {{ $.Values.telemetry.otel.sampleRatio | quote }}
 {{- with .Values.network.corsOrigins }}
 STATOR_CORS_ORIGINS: {{ join "," . | quote }}
 {{- end }}
+{{- with .Values.network.outboundAllow }}
+STATOR_OUTBOUND_ALLOW: {{ join "," . | quote }}
+{{- end }}
+{{- with .Values.armature.backchannel }}
+{{- $pairs := list }}
+{{- range $public, $reachable := . }}
+{{- $pairs = append $pairs (printf "%s=%s" $public $reachable) }}
+{{- end }}
+STATOR_ARMATURE_BACKCHANNEL: {{ join "," $pairs | quote }}
+{{- end }}
 STATOR_SESSION_COOKIE: {{ .Values.auth.sessionCookie | quote }}
 STATOR_SECURE_COOKIES: {{ .Values.auth.secureCookies | quote }}
 

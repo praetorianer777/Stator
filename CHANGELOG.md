@@ -225,6 +225,24 @@ and the versioning [Semantic Versioning](https://semver.org/).
   the notification quotes the block or the comment that names them. A
   mention holds a member's id, and the database refuses an event that
   mentions anybody the organization does not hold.
+- Connecting Armature. An administrator enters the address people open
+  Armature at, the Armature organization and the webhook secret under
+  Settings, Armature, which also shows the webhook address and topics to
+  enter in Armature. Each member pastes an Armature personal access token
+  under their profile, now open from the account menu, and sees whom it acts
+  as; Armature is asked before it is kept, and a refusal says what to do.
+  Tokens and the secret are sealed with `STATOR_SECRET_KEY` and never shown
+  again. A new address or organization forgets every stored token, which the
+  database enforces too, and each member reads and changes only their own.
+- Every outbound call passes an SSRF guard adapted from Armature's, which
+  refuses addresses inside the network unless `STATOR_OUTBOUND_ALLOW` names
+  them; `STATOR_ARMATURE_BACKCHANNEL` reaches an Armature at another address
+  than the one people open. The chart takes both as `network.outboundAllow`
+  and `armature.backchannel`, empty by default.
+- `armature-stub`, a stand-in for the part of Armature's API Stator calls,
+  in the compose stack on its own port. A unit test holds it to Armature's
+  `api/openapi.json`, vendored under `api/armature` by
+  `make armature-openapi REF=...`.
 
 ### Changed
 

@@ -230,3 +230,12 @@ export const INLINE_COMMENT_SHORTCUT = "Control+Alt+M";
 export const INLINE_COMMENT_BUTTON_GAP_PX = 6;
 /** The most characters of a passage a thread shows; the server keeps up to 500. */
 export const INLINE_QUOTE_SHOWN_LENGTH = 200;
+
+/** Where a person connects their Armature account, and the section's anchor there; the connect hints of issue chips link to it. */
+export const PROFILE_PATH = "/settings/profile";
+export const ARMATURE_SECTION_ID = "armature";
+/** Where an administrator connects the organization's Armature. */
+export const ARMATURE_SETTINGS_PATH = "/settings/armature";
+/** How every Armature personal access token and webhook secret starts, as Armature makes them. */
+export const ARMATURE_TOKEN_PREFIX = "armature_pat_";
+export const ARMATURE_WEBHOOK_SECRET_PREFIX = "armature_whs_";

@@ -73,6 +73,7 @@ type Config struct {
 	// TestEndpoints serves the throwaway organizations of the browser suite.
 	TestEndpoints TestEndpoints
 	Mail          Mail
+	Armature      Armature
 
 	// SecretKey encrypts secrets stored in the database, such as an identity
 	// provider's client secret. Nil in development when it is not set.
@@ -122,6 +123,17 @@ type Auth struct {
 	// OIDCBackchannel maps a provider's public origin to the one this process
 	// reaches it at, for a stack where the two differ.
 	OIDCBackchannel map[string]string
+}
+
+// Armature is how this process reaches the Armature instances organizations
+// connect, and whatever else outside it an address names.
+type Armature struct {
+	// OutboundAllow lists the host names and CIDRs inside the network that
+	// the SSRF guard lets through, as STATOR_OUTBOUND_ALLOW names them.
+	OutboundAllow string
+	// Backchannel maps an Armature's public origin to the one this process
+	// reaches it at, for a stack where the two differ.
+	Backchannel map[string]string
 }
 
 // Bootstrap is what cmd/seed sets up in the demo organization: a first local
@@ -265,6 +277,8 @@ func Load() (Config, error) {
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
 	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
+	c.Armature.OutboundAllow = l.str("STATOR_OUTBOUND_ALLOW", "")
+	c.Armature.Backchannel = l.rewrites("STATOR_ARMATURE_BACKCHANNEL")
 	c.SecretKey = l.secretKey("STATOR_SECRET_KEY", c.Env)
 
 	if c.DB.PrimaryURL == "" {
