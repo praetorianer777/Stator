@@ -3,6 +3,33 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: The access inspector asks the database, and only administrators ask
+
+Explaining why somebody may or may not open a page (#81) could have been a
+second copy of the rules in Go, laid out as steps. A copy drifts: the day a
+policy changes and the copy does not, the inspector tells an administrator
+the wrong reason with full confidence. So every verdict, and whether each
+step is met, is what the SQL functions behind the policies answer for that
+person (`perm_page_viewable`, `perm_page_editable`, `perm_page_deletable`,
+`perm_page_commentable`, `perm_space_holds`, `perm_page_lists`), and the
+grants and list entries named beside a step are matched with the same
+`perm_subject_matches`. Go only orders them. The integration suite acts as
+each person straight through SQL and holds the inspector to what the
+database lets them do.
+
+Only administrators of the page's space, or of the organization, may
+inspect, themselves included. The answer lays out the space's permission
+table and the global grants, which are theirs to see and nobody else's; a
+member who wonders why they cannot edit is told by the refusal itself whom
+to ask. The global grants are hidden from space administrators by their
+policy, so `perm_global_grant_sources` (migration 00200) names the use grants
+that reach a person to anybody who administers a space, the organization,
+or is that person.
+
+The home page reports the right to move it to the trash as the rules give
+it, although a check keeps every home page out of the trash; the page never
+offers it.
+
 ## 2026-10-01: Markdown is converted on the server, and what it cannot say is a marked element
 
 Import and export run in the API rather than in the browser. A script with a

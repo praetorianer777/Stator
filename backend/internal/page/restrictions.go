@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
@@ -171,6 +172,29 @@ func (s *Service) SetRestrictions(ctx context.Context, actor perm.Actor, id uuid
 		return err
 	})
 	return out, lsn, err
+}
+
+// InspectAccess explains what a person may do to a page and why. Only an
+// administrator of its space may ask, and only about a page they can view.
+func (s *Service) InspectAccess(ctx context.Context, actor perm.Actor, id, person uuid.UUID) (*perm.AccessReport, error) {
+	var out *perm.AccessReport
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var space uuid.UUID
+		err := tx.QueryRow(ctx, `SELECT p.space_id FROM page p WHERE p.id = $1 AND`+live+` AND `+perm.ViewablePage("p", 2),
+			id, actor.UserID).Scan(&space)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if err := perm.Check(ctx, tx, actor, perm.InspectAccess, space); err != nil {
+			return err
+		}
+		out, err = perm.Inspect(ctx, tx, person, id)
+		return err
+	})
+	return out, err
 }
 
 func idText(id *uuid.UUID) string {

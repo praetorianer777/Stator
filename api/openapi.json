@@ -2898,6 +2898,65 @@
         }
       }
     },
+    "/pages/{pageID}/access/{userID}": {
+      "get": {
+        "operationId": "inspectPageAccess",
+        "summary": "What a person may do to a page and which grant or restriction decides each right, as the database answers it. For the space's administrators.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access": {
+                      "$ref": "#/components/schemas/AccessReport"
+                    }
+                  },
+                  "required": [
+                    "access"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/armature-links": {
       "get": {
         "operationId": "listArmatureLinks",
@@ -7322,6 +7381,158 @@
           "lastUsedAt",
           "expiresAt",
           "createdAt"
+        ]
+      },
+      "AccessPage": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "home"
+        ]
+      },
+      "AccessReport": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "rights": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessRight"
+            }
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member"
+            ]
+          },
+          "roleSource": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "oidc"
+            ]
+          }
+        },
+        "required": [
+          "person",
+          "role",
+          "roleSource",
+          "rights"
+        ]
+      },
+      "AccessRight": {
+        "type": "object",
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "right": {
+            "type": "string",
+            "enum": [
+              "view",
+              "edit",
+              "delete",
+              "comment"
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessStep"
+            }
+          }
+        },
+        "required": [
+          "right",
+          "allowed",
+          "steps"
+        ]
+      },
+      "AccessStep": {
+        "type": "object",
+        "properties": {
+          "bypassed": {
+            "type": "boolean"
+          },
+          "grants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceGrant"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "orgAdmin",
+              "use",
+              "space",
+              "unpublished",
+              "list",
+              "view",
+              "published"
+            ]
+          },
+          "list": {
+            "type": "string",
+            "enum": [
+              "view",
+              "edit"
+            ]
+          },
+          "listed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/AccessPage"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "view",
+              "addPages",
+              "addComments",
+              "delete",
+              "administer"
+            ]
+          },
+          "via": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "passed",
+          "bypassed",
+          "via",
+          "grants",
+          "listed"
         ]
       },
       "Account": {

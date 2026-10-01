@@ -21,6 +21,10 @@ export type SpacePermission = SpaceGrant["permissions"][number];
 export type Restrictions = Wire["Restrictions"];
 export type InheritedRestriction = Wire["InheritedRestriction"];
 export type Person = Wire["Person"];
+/** What one person may do to one page, and the steps behind each right, as the database answers it. */
+export type AccessReport = Wire["AccessReport"];
+export type AccessRight = AccessReport["rights"][number];
+export type AccessStep = Wire["AccessStep"];
 export type Group = Wire["Group"];
 
 /** The organization's permissions in the order the settings list them. */
@@ -142,8 +146,22 @@ export function useSetPageRestrictions(pageId: string) {
   });
 }
 
+export function inspectAccessQueryKey(pageId: string, userId: string) {
+  return ["page-access", pageId, userId] as const;
+}
+
+/** Why a person may or may not view, edit, trash and comment on a page; for administrators of its space. */
+export function useInspectAccess(pageId: string, userId: string | undefined) {
+  return useQuery({
+    queryKey: inspectAccessQueryKey(pageId, userId ?? ""),
+    queryFn: async (): Promise<AccessReport> =>
+      (await api.GET("/pages/{pageID}/access/{userID}", { params: { path: { pageID: pageId, userID: userId ?? "" } } })).data!.access,
+    enabled: Boolean(userId),
+  });
+}
+
 /** People and groups whose name, or a person's email, starts with q, for a picker; asked only while it is open. */
-export function useSubjectSearch(q: string, enabled: boolean) {
+export function useSubjectSearch(q: string, enabled: boolean, withGroups = true) {
   const query = { q: q || undefined, limit: PICKER_LIMIT };
   const people = useQuery({
     queryKey: ["people", query],
@@ -154,8 +172,13 @@ export function useSubjectSearch(q: string, enabled: boolean) {
   const groups = useQuery({
     queryKey: ["groups", query],
     queryFn: async (): Promise<Group[]> => (await api.GET("/groups", { params: { query } })).data!.groups,
-    enabled,
+    enabled: enabled && withGroups,
     placeholderData: keepPreviousData,
   });
-  return { people: people.data ?? [], groups: groups.data ?? [], error: people.error ?? groups.error, isFetching: people.isFetching || groups.isFetching };
+  return {
+    people: people.data ?? [],
+    groups: withGroups ? (groups.data ?? []) : [],
+    error: people.error ?? groups.error,
+    isFetching: people.isFetching || groups.isFetching,
+  };
 }
