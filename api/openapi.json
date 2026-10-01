@@ -55,6 +55,9 @@
       "name": "permissions"
     },
     {
+      "name": "reactions"
+    },
+    {
       "name": "search"
     },
     {
@@ -1448,6 +1451,128 @@
                   },
                   "required": [
                     "comment"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comments/{commentID}/reactions": {
+      "delete": {
+        "operationId": "unreactComment",
+        "summary": "Take the caller's emoji off a comment, if it is there.",
+        "tags": [
+          "reactions"
+        ],
+        "parameters": [
+          {
+            "name": "commentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "emoji",
+            "in": "query",
+            "description": "The emoji to take off, as it was put on.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reactions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Reaction"
+                      }
+                    }
+                  },
+                  "required": [
+                    "reactions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "reactToComment",
+        "summary": "Put the caller's emoji on a comment that is not deleted; again is no change. Needs the right to comment.",
+        "tags": [
+          "reactions"
+        ],
+        "parameters": [
+          {
+            "name": "commentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reactions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Reaction"
+                      }
+                    }
+                  },
+                  "required": [
+                    "reactions"
                   ]
                 }
               }
@@ -4095,6 +4220,138 @@
                   "required": [
                     "page",
                     "version"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/reactions": {
+      "delete": {
+        "operationId": "unreactPage",
+        "summary": "Take the caller's emoji off a page, if it is there.",
+        "tags": [
+          "reactions"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "emoji",
+            "in": "query",
+            "description": "The emoji to take off, as it was put on.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reactions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Reaction"
+                      }
+                    }
+                  },
+                  "required": [
+                    "reactions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "reactToPage",
+        "summary": "Put the caller's emoji on a page; again is no change. Needs the right to comment; refused with unpublished before the first publish.",
+        "tags": [
+          "reactions"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reactions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Reaction"
+                      }
+                    }
+                  },
+                  "required": [
+                    "reactions"
                   ]
                 }
               }
@@ -7357,6 +7614,12 @@
             "type": "string",
             "format": "uuid"
           },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reaction"
+            }
+          },
           "threadId": {
             "type": "string",
             "format": "uuid"
@@ -7371,6 +7634,7 @@
           "deleted",
           "createdAt",
           "editedAt",
+          "reactions",
           "can"
         ]
       },
@@ -9029,6 +9293,12 @@
             ],
             "format": "uuid"
           },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reaction"
+            }
+          },
           "restricted": {
             "$ref": "#/components/schemas/Restricted"
           },
@@ -9076,6 +9346,7 @@
           "labels",
           "comments",
           "watching",
+          "reactions",
           "createdByName",
           "createdAt",
           "updatedByName",
@@ -9450,6 +9721,59 @@
             "type": "boolean"
           }
         }
+      },
+      "Reaction": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "emoji": {
+            "type": "string"
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reactor"
+            }
+          }
+        },
+        "required": [
+          "emoji",
+          "count",
+          "mine",
+          "people"
+        ]
+      },
+      "ReactionInput": {
+        "type": "object",
+        "properties": {
+          "emoji": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "emoji"
+        ]
+      },
+      "Reactor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
       },
       "ReadinessResponse": {
         "type": "object",

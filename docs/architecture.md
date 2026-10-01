@@ -82,6 +82,7 @@ process, which is only right for a single api process. `/readyz` and
 | `page` | page tree (parent plus rank), move, copy, trash, drafts, published versions, diff, restore, restrictions |
 | `version` | which build is running |
 | `comment` | page comments, inline comments anchored by mark id |
+| `reaction` | emoji reactions on pages and comments |
 | `label`, `watch`, `notify` | labels, watchers, in-app and email notifications |
 | `template` | page templates |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |

@@ -168,6 +168,7 @@ describe("the notification bell", () => {
                   deleted: false,
                   createdAt: "2026-09-30T08:00:00Z",
                   editedAt: null,
+                  reactions: [],
                   can: { edit: true, delete: true },
                 },
               ],
