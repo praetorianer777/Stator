@@ -484,6 +484,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A page read from a replica that was replaying a change no longer mixes two
+  moments, such as a new owner and verification beside permissions from
+  before its restriction, which could offer a reader actions they may not
+  take. Every read now sees one snapshot from start to end.
+
 - Following the Armature theme no longer drops back to the built-in theme
   when the page is reloaded while Stator copies a changed theme: the copy is
   finished even after the request is gone, and only a finished copy is shown.

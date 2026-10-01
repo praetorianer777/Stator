@@ -51,6 +51,10 @@ func (c *Cluster) committedLSN(ctx context.Context, pool *pgxpool.Pool) (LSN, er
 	return ParseLSN(text)
 }
 
+// readOnly keeps one snapshot for a whole read: with one per statement, a replica
+// replaying in between answers with a page newer than its own permissions.
+var readOnly = pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}
+
 // Read runs fn in a read-only transaction on a healthy, caught-up replica when
 // there is one, otherwise on the primary.
 func (c *Cluster) Read(ctx context.Context, fn func(context.Context, DBTX) error) error {
@@ -59,7 +63,7 @@ func (c *Cluster) Read(ctx context.Context, fn func(context.Context, DBTX) error
 		defer conn.Release()
 		on = conn
 	}
-	return c.inTx(ctx, on, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+	return c.inTx(ctx, on, readOnly, func(ctx context.Context, tx pgx.Tx) error {
 		return fn(ctx, tx)
 	})
 }
@@ -131,7 +135,7 @@ func (c *Cluster) WriteAdmin(ctx context.Context, fn func(context.Context, DBTX)
 // ReadAdmin is WriteAdmin read-only. It reads the primary: its callers are
 // authentication paths, where a stale answer is worse than a dearer one.
 func (c *Cluster) ReadAdmin(ctx context.Context, fn func(context.Context, DBTX) error) error {
-	return c.inTx(WithSystem(ctx), c.admin, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+	return c.inTx(WithSystem(ctx), c.admin, readOnly, func(ctx context.Context, tx pgx.Tx) error {
 		return fn(ctx, tx)
 	})
 }
