@@ -349,6 +349,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
   highlighting borrows, those that fell short are darker in the light
   palettes, with the hue kept.
   A unit test and a browser check in several languages hold it there.
+- The editor's table, panel and heading tools no longer submit the page's
+  form and open Publish: buttons are plain buttons unless they say they
+  submit, and a lint rule refuses a `<button>` without a type.
 - Spaces: a key that is part of every address (`/s/{key}`), a name, a
   description and a home page, the root of the space's pages. A directory
   at `/spaces` lists them; administrators create, rename, describe and

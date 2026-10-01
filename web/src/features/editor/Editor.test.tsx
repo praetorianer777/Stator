@@ -291,6 +291,38 @@ describe("the toolbar", () => {
   });
 });
 
+describe("inside the page's form", () => {
+  it("lets the toolbar and the heading link be used without submitting it", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const submitted = vi.fn((event: SubmitEvent) => event.preventDefault());
+    render(
+      <form onSubmit={(event) => submitted(event.nativeEvent as SubmitEvent)}>
+        <Editor id="page-body" value={null} onChange={onChange} />
+      </form>,
+    );
+    const box = document.getElementById("page-body")!;
+    const last = () => onChange.mock.calls.at(-1)?.[0] as Doc | undefined;
+
+    await slash(user, box, "table");
+    await user.keyboard("{Enter}");
+    const tools = await screen.findByRole("toolbar", { name: "Table" });
+    await user.click(within(tools).getByRole("button", { name: "Add a row below" }));
+    expect(find(last(), "tableRow")).toHaveLength(4);
+    await user.click(within(tools).getByRole("button", { name: "Delete the table" }));
+
+    await slash(user, box, "h2");
+    await user.keyboard("{Enter}");
+    await user.keyboard("Release plan");
+    await user.click(await screen.findByRole("button", { name: "Copy link to heading" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Link copied");
+    await user.click(within(screen.getByRole("toolbar", { name: "Formatting" })).getByRole("button", { name: "Bold" }));
+    expect(screen.getByRole("button", { name: "Bold" })).toHaveAttribute("aria-pressed", "true");
+
+    expect(submitted).not.toHaveBeenCalled();
+  });
+});
+
 // jsdom draws nothing, so what is checked is which option is asked into view.
 describe("the lists under the caret", () => {
   const scrolled = vi.fn();
