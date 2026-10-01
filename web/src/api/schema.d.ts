@@ -1185,6 +1185,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/readers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who read a page within the retention, the latest first, leaving out who chose not to be named; next is the cursor for the window after, null at the end. For people who may edit the page. */
+        get: operations["pageReaders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/restrictions": {
         parameters: {
             query?: never;
@@ -1341,6 +1358,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How often a page was read, each person counted once a day, and by how many people, in all and over the last days; never by whom. For anybody who may view the page. */
+        get: operations["pageViews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/visit": {
         parameters: {
             query?: never;
@@ -1350,7 +1384,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Note that the caller opened a page, for their recent pages. */
+        /** Note that the caller opened a page, for their recent pages, and count the view once a day. */
         post: operations["visitPage"];
         delete?: never;
         options?: never;
@@ -2879,6 +2913,21 @@ export interface components {
             id: string;
             name: string;
         };
+        Reader: {
+            avatarUrl?: string;
+            days: number;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date-time */
+            viewedAt: string;
+        };
+        Readers: {
+            next: string | null;
+            readers: components["schemas"]["Reader"][];
+            retentionDays: number;
+            unnamed: number;
+        };
         ReadinessResponse: {
             routing: components["schemas"]["Stats"];
             status: string;
@@ -3237,6 +3286,7 @@ export interface components {
         UpdateMeRequest: {
             /** @enum {string} */
             locale?: "" | "en" | "de";
+            showInReaders?: boolean;
         };
         User: {
             avatarUrl?: string;
@@ -3246,6 +3296,7 @@ export interface components {
             /** @enum {string} */
             locale: "" | "en" | "de";
             name: string;
+            showInReaders: boolean;
         };
         Verification: {
             /** Format: date-time */
@@ -3285,6 +3336,14 @@ export interface components {
             number: number;
             restoredFrom: number | null;
             title: string;
+        };
+        ViewCounts: {
+            canListReaders: boolean;
+            days: number;
+            readers: number;
+            recentReaders: number;
+            recentViews: number;
+            views: number;
         };
         Watch: {
             /** Format: date-time */
@@ -6707,6 +6766,42 @@ export interface operations {
             };
         };
     };
+    pageReaders: {
+        parameters: {
+            query?: {
+                /** @description 1 to 100; 25 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readers"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getPageRestrictions: {
         parameters: {
             query?: never;
@@ -7163,6 +7258,37 @@ export interface operations {
                         total: number;
                         viewers: components["schemas"]["Person"][];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    pageViews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViewCounts"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

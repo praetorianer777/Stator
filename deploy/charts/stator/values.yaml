@@ -163,8 +163,11 @@ mail:
 
 # How long each kind of row is kept, as in Armature's chart. The worker prunes
 # the audit log once a day; 0 keeps every entry, and less than 24h is refused.
+# Page views name who read which page on which day for pageViews, then only
+# their count is kept; 0 keeps the names, and less than 720h is refused.
 retention:
   audit: 8760h
+  pageViews: 2160h
 
 auth:
   sessionCookie: stator_session
