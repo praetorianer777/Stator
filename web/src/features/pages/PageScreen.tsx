@@ -18,6 +18,7 @@ import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocView } from "@/features/editor/DocView";
 import { PageLabels } from "@/features/labels/PageLabels";
 import { PageReactions } from "@/features/reactions/Reactions";
+import { AccessDialog } from "@/features/permissions/AccessDialog";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
 import { PageStar } from "@/features/stars/StarButton";
 import { WatchMenu } from "@/features/watching/WatchMenu";
@@ -45,7 +46,7 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
   return crumbs;
 }
 
-type Dialog = "new" | "move" | "copy" | "restrictions" | "export" | "import";
+type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import";
 
 /** Says a page is narrowed to some people, and opens who and why. */
 function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
@@ -123,6 +124,9 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
   }
   if (page.can.restrict) {
     actions.push({ label: t.restrictions.menu, icon: <Icon.Lock />, onSelect: () => setDialog("restrictions"), attrs: { "data-action": "page-restrictions" } });
+  }
+  if (space.can.administer) {
+    actions.push({ label: t.access.menu, icon: <Icon.Key />, onSelect: () => setDialog("access"), attrs: { "data-action": "inspect-access" } });
   }
   if (!page.home && page.can.delete) {
     actions.push({
@@ -238,6 +242,7 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         </KnownAttachmentsContext>
       </InlineComments>
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
+      {dialog === "access" && <AccessDialog pageId={page.id} pageTitle={page.title} onClose={() => setDialog(undefined)} />}
       {dialog === "export" && <ExportDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "import" && (
         <ImportDialog parent={page.home ? { id: page.id, title: space.name } : page} spaceKey={space.key} onClose={() => setDialog(undefined)} />

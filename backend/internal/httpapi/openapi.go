@@ -255,6 +255,8 @@ var operations = []operation{
 		responses: ok(env{"restrictions": page.Restrictions{}})},
 	{method: "PUT", path: "/pages/{pageID}/restrictions", handler: "handleSetPageRestrictions", tag: "permissions", summary: "Replace a page's own view and edit restrictions; the pages below it inherit them.",
 		request: page.RestrictionsInput{}, responses: ok(env{"restrictions": page.Restrictions{}})},
+	{method: "GET", path: "/pages/{pageID}/access/{userID}", handler: "handleInspectPageAccess", tag: "permissions", summary: "What a person may do to a page and which grant or restriction decides each right, as the database answers it. For the space's administrators.",
+		responses: ok(env{"access": perm.AccessReport{}})},
 	{method: "GET", path: "/people", handler: "handleListPeople", tag: "permissions", summary: "Members of the organization, to pick whom to grant something.",
 		query: pickerQuery, responses: ok(env{"people": []perm.Person{}})},
 	{method: "GET", path: "/groups", handler: "handleListGroups", tag: "permissions", summary: "Groups of the organization, to pick whom to grant something.",
@@ -515,6 +517,9 @@ func Spec() *openapi.Document {
 	b.Enums[reflect.TypeOf(perm.SubjectType(""))] = enumStrings(perm.SubjectTypes)
 	b.Enums[reflect.TypeOf(perm.GlobalPermission(""))] = enumStrings(perm.GlobalPermissions)
 	b.Enums[reflect.TypeOf(perm.SpacePermission(""))] = enumStrings(perm.SpacePermissions)
+	b.Enums[reflect.TypeOf(perm.Right(""))] = enumStrings(perm.Rights)
+	b.Enums[reflect.TypeOf(perm.StepKind(""))] = enumStrings(perm.StepKinds)
+	b.Enums[reflect.TypeOf(perm.ListKind(""))] = enumStrings(perm.ListKinds)
 	b.Enums[reflect.TypeOf(page.DiffChange(""))] = enumStrings(page.DiffChanges)
 	b.Enums[reflect.TypeOf(search.HitType(""))] = enumStrings(search.HitTypes)
 	b.Enums[reflect.TypeOf(comment.Kind(""))] = enumStrings(comment.Kinds)

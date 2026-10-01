@@ -126,6 +126,25 @@ func (s *Server) handleSetPageRestrictions(w http.ResponseWriter, r *http.Reques
 	respondJSON(w, r, http.StatusOK, map[string]any{"restrictions": restrictions})
 }
 
+func (s *Server) handleInspectPageAccess(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	person, apiErr := pathUUID(r, "userID", "person")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	report, err := s.Pages.InspectAccess(r.Context(), actorFrom(r), id, person)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"access": report})
+}
+
 func (s *Server) handleListPeople(w http.ResponseWriter, r *http.Request) {
 	limit, _, apiErr := window(r, perm.DefaultPickerLimit, perm.MaxPickerLimit)
 	if apiErr != nil {

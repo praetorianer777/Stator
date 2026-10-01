@@ -1238,6 +1238,45 @@ export const de: Messages = {
     columnStar: "Stern",
     failed: "Der Stern konnte nicht geändert werden. Versuchen Sie es gleich noch einmal.",
   },
+  access: {
+    menu: "Zugriff prüfen",
+    title: (page: string) => `Wer was auf ${page} darf`,
+    intro: "Wählen Sie eine Person, um zu sehen, was sie auf dieser Seite darf und welche Berechtigung oder Einschränkung jede Antwort entscheidet.",
+    pickerLabel: "Zu prüfende Person",
+    pickerPlaceholder: "Namen oder E-Mail-Adresse eingeben",
+    pickerOptions: "Personen",
+    loading: "Wird geprüft",
+    heading: (name: string) => `Was ${name} darf`,
+    rights: { view: "Ansehen", edit: "Bearbeiten", delete: "In den Papierkorb verschieben", comment: "Kommentieren" },
+    allowed: "Erlaubt",
+    denied: "Nicht erlaubt",
+    passed: "Erfüllt",
+    failed: "Nicht erfüllt",
+    decides: "Das entscheidet",
+    grantedTo: "Gewährt an",
+    namedAs: "Genannt als",
+    listNames: "Die Liste nennt",
+    nobody: "Niemanden",
+    orgAdmin: (owner: boolean) =>
+      owner
+        ? "Besitzt die Organisation und hat damit jede Berechtigung in jedem Bereich und passiert jede Liste."
+        : "Administriert die Organisation und hat damit jede Berechtigung in jedem Bereich und passiert jede Liste.",
+    fromProvider: "Diese Rolle kommt aus den Gruppen des Identitätsanbieters.",
+    useYes: "Darf Stator in dieser Organisation nutzen.",
+    useNo: "Darf Stator in dieser Organisation nicht nutzen. Ein Administrator der Organisation kann das unter Berechtigungen gewähren.",
+    spaceYes: (permission: string) => `Hat in diesem Bereich die Berechtigung ${permission}.`,
+    spaceNo: (permission: string) =>
+      `Hat in diesem Bereich die Berechtigung ${permission} nicht. Gewähren Sie sie der Person oder einer ihrer Gruppen in den Berechtigungen des Bereichs.`,
+    unpublished: (title: string) => `${title} ist noch nicht veröffentlicht, daher sehen nur die Autorin oder der Autor sie und die Seiten darunter.`,
+    listYes: (kind: "view" | "edit", title: string) => `Steht auf der ${kind === "view" ? "Ansehen" : "Bearbeiten"}-Liste von ${title}.`,
+    listBypassed: (kind: "view" | "edit", title: string) =>
+      `Steht nicht auf der ${kind === "view" ? "Ansehen" : "Bearbeiten"}-Liste von ${title}, aber Administratoren des Bereichs passieren jede Liste.`,
+    listNo: (kind: "view" | "edit", title: string) =>
+      `Steht nicht auf der ${kind === "view" ? "Ansehen" : "Bearbeiten"}-Liste von ${title}. Fügen Sie die Person oder eine ihrer Gruppen in den Einschränkungen dieser Seite hinzu.`,
+    viewYes: "Darf die Seite ansehen.",
+    viewNo: "Darf die Seite nicht ansehen und daher auch sonst nichts mit ihr tun.",
+    publishedNo: "Die Seite ist noch nicht veröffentlicht. Kommentare sind möglich, sobald sie es ist.",
+  },
   watch: {
     button: "Beobachten",
     watching: "Beobachtet",
