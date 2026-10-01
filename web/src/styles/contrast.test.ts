@@ -55,7 +55,9 @@ const CODE_BACKGROUND = css.match(/\.doc-content pre \{[^}]*background: var\(--c
 // Read from the rules that paint highlighted code, so a token a new rule
 // hands to code is judged without anyone remembering to list it here.
 const HIGHLIGHT_TOKENS = [
-  ...new Set([...css.matchAll(/[^{}]*\.hljs-[^{}]*\{([^{}]*)\}/g)].flatMap((m) => [...m[1]!.matchAll(/\bcolor: var\(--color-([a-z0-9-]+)\)/g)].map((c) => c[1]!))),
+  ...new Set(
+    [...css.matchAll(/[^{}]*\.hljs-[^{}]*\{([^{}]*)\}/g)].flatMap((m) => [...m[1]!.matchAll(/\bcolor: var\(--color-([a-z0-9-]+)\)/g)].map((c) => c[1]!)),
+  ),
 ];
 
 interface Example {
@@ -185,6 +187,35 @@ describe("coloured text and labels on fills", () => {
     it.each(pairs)("$text on $background", ({ text, background }) => {
       const ratio = contrast(palette[text]!, palette[background]!);
       expect(ratio, `${text} ${palette[text]} on ${background} ${palette[background]} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_TEXT);
+    });
+  });
+});
+
+// Read from the rules that paint a status label, so a colour added there is
+// judged without anyone remembering to list it here.
+const STATUS_TEXT = css.match(/\.doc-status \{[^}]*\bcolor: var\(--color-([a-z0-9-]+)\)/)![1]!;
+const STATUS_FILLS = Object.fromEntries(
+  [...css.matchAll(/\[data-status-label="([a-z]+)"\] \{\s*--status-fill: var\(--color-([a-z0-9-]+)\);/g)].map((m) => [m[1]!, m[2]!]),
+);
+
+describe("status label contrast", () => {
+  it("reads every colour a status can have, and the ink it is written in", () => {
+    expect(STATUS_TEXT).toBe("ink");
+    const allowlist = JSON.parse(readFileSync(join(__dirname, "..", "..", "..", "api", "document-allowlist.json"), "utf8")) as {
+      nodes: Record<string, { attrs?: Record<string, { enum?: string[] }> }>;
+    };
+    expect(Object.keys(STATUS_FILLS).sort()).toEqual([...(allowlist.nodes.status?.attrs?.color?.enum ?? [])].sort());
+    for (const { palette } of cases()) {
+      for (const token of [STATUS_TEXT, ...Object.values(STATUS_FILLS)]) expect(palette[token], token).toMatch(/^#[0-9a-f]{6}$/);
+    }
+  });
+
+  // A status sits in a page, so a theme rule that repaints only another part
+  // of the screen, such as a dark rail, never paints behind one.
+  describe.each(cases().filter((c) => c.surfaces === SURFACE_TOKENS))("$name", ({ palette }) => {
+    it.each(Object.entries(STATUS_FILLS))(`${STATUS_TEXT} on the %s status, %s`, (_colour, fill) => {
+      const ratio = contrast(palette[STATUS_TEXT]!, palette[fill]!);
+      expect(ratio, `${STATUS_TEXT} ${palette[STATUS_TEXT]} on ${fill} ${palette[fill]} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_TEXT);
     });
   });
 });

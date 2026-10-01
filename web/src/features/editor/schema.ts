@@ -9,6 +9,8 @@ export const CELL_BACKGROUNDS = ["neutral", "accent", "success", "warning", "dan
 export const HEADING_LEVELS = EDITOR_HEADING_LEVELS;
 export const CHILD_PAGES_SCOPES = ["children", "subtree"] as const;
 export const CHILD_PAGES_SORTS = ["tree", "title", "updated"] as const;
+/** A status label's colours, by the theme role each one is drawn in. */
+export const STATUS_COLORS = ["neutral", "accent", "success", "warning", "danger"] as const;
 
 /** The mark an inline thread's passage carries in a page body. */
 export const INLINE_COMMENT_MARK = "inlineComment";
@@ -17,6 +19,7 @@ export type PanelKind = (typeof PANEL_KINDS)[number];
 export type CellBackground = (typeof CELL_BACKGROUNDS)[number];
 export type ChildPagesScope = (typeof CHILD_PAGES_SCOPES)[number];
 export type ChildPagesSort = (typeof CHILD_PAGES_SORTS)[number];
+export type StatusColor = (typeof STATUS_COLORS)[number];
 
 export interface DocMark {
   type: string;
@@ -91,6 +94,8 @@ export function textOf(node: DocNode): string {
   if (node.type === "hardBreak") return "\n";
   if (node.type === "attachment") return String(node.attrs?.fileName ?? "");
   if (node.type === "armatureIssue" || node.type === "armatureIssueBlock") return String(node.attrs?.key ?? "");
+  if (node.type === "status") return String(node.attrs?.label ?? "");
+  if (node.type === "date") return String(node.attrs?.date ?? "");
   return (node.content ?? []).map(textOf).join("");
 }
 

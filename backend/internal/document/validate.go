@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -258,6 +259,11 @@ func attrValid(rule Attr, value any) bool {
 		}
 		if rule.URL && !SafeHref(s) {
 			return false
+		}
+		if rule.Date {
+			if _, err := time.Parse(time.DateOnly, s); err != nil {
+				return false
+			}
 		}
 		return true
 	}

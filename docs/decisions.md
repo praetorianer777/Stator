@@ -38,6 +38,31 @@ reacted is both its tooltip and its description, so a screen reader hears it
 on focus. Somebody who may not react can still focus the buttons, which are
 `aria-disabled` rather than disabled, to learn who reacted.
 
+## 2026-10-01: A status is words on a theme tint, a date is a day, an emoji is text
+
+A `status` node stores its words and one of five colours by theme role
+(`neutral`, `accent`, `success`, `warning`, `danger`), never a colour value,
+so a custom theme recolours it as it does panels and cell backgrounds. It is
+drawn as Armature draws an issue's status: the words in `ink`, upper case, on
+the role's subtle tint, which holds AA contrast in every built-in theme
+without a text colour per role. Since the words are the author's, they carry
+the meaning and the colour only groups.
+
+A `date` node stores a day as `YYYY-MM-DD`, not an instant, and the reader's
+browser formats it in their locale, read in UTC, so a day is the same day for
+everybody wherever they are. The server refuses a day that does not exist.
+The picker is the browser's own date field in a dialog, which is keyboard
+operable and speaks the reader's format without a calendar of our own.
+
+Both are found by search: the database's plain text reads a status by its
+words and a date by its `YYYY-MM-DD`, as `document.PlainText` does. Neither
+may go in a comment, which holds text and its structure only.
+
+An emoji is a character of the text, not a node: it reads, copies, searches
+and diffs like any other, and needs nothing on the server. The names a colon
+finds it by come from gemoji, bundled with the client under the MIT License
+and loaded with the first colon, so no emoji is ever fetched from elsewhere.
+
 ## 2026-10-01: An expand block stores its title, never whether it is open
 
 An expand block is one node, `expand`, with a `title` attribute of up to 200

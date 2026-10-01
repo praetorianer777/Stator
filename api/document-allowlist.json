@@ -125,6 +125,16 @@
         "text"
       ]
     },
+    "date": {
+      "attrs": {
+        "date": {
+          "kind": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "date": true
+        }
+      },
+      "inline": true
+    },
     "doc": {
       "content": [
         "paragraph",
@@ -193,7 +203,9 @@
         "hardBreak",
         "mention",
         "attachment",
-        "armatureIssue"
+        "armatureIssue",
+        "status",
+        "date"
       ],
       "allowsMarks": true
     },
@@ -318,9 +330,31 @@
         "hardBreak",
         "mention",
         "attachment",
-        "armatureIssue"
+        "armatureIssue",
+        "status",
+        "date"
       ],
       "allowsMarks": true
+    },
+    "status": {
+      "attrs": {
+        "color": {
+          "kind": "string",
+          "enum": [
+            "neutral",
+            "accent",
+            "success",
+            "warning",
+            "danger"
+          ]
+        },
+        "label": {
+          "kind": "string",
+          "maxLength": 40,
+          "pattern": "\\S"
+        }
+      },
+      "inline": true
     },
     "table": {
       "content": [

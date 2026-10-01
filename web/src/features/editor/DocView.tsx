@@ -13,6 +13,7 @@ import { ExpandView, revealInExpands } from "./ExpandView";
 import { languageLabel, lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
 import { Passage, usePassages, type BlockPath } from "./passages";
+import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel } from "./InlineValueViews";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
@@ -360,6 +361,14 @@ function inlineNode(node: DocNode): ReactNode {
             node.marks?.filter((mark) => mark.type !== "link"),
           )
         : null;
+    }
+    case STATUS_NODE: {
+      const label = statusLabel(node.attrs?.label);
+      return label ? marked(<StatusLabel label={label} color={statusColor(node.attrs?.color)} />, node.marks) : null;
+    }
+    case DATE_NODE: {
+      const day = isoDay(node.attrs?.date);
+      return day ? marked(<DateChip day={day} />, node.marks) : null;
     }
     default:
       return textOf(node);

@@ -24,6 +24,8 @@ import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
+import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
+import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 import { FindReplace } from "./findReplace";
 
 declare module "@tiptap/core" {
@@ -299,6 +301,10 @@ export interface ExtensionOptions {
   pickIssue?: () => void;
   /** Opens the settings dialog the slash menu's Armature issue list starts with. */
   pickIssueList?: () => void;
+  /** Opens the dialog that changes a status or a date. */
+  editInlineValue?: (target: InlineValueTarget) => void;
+  /** Draws the emoji a colon offers; without it a colon offers none. */
+  emoji?: Partial<EmojiOptions["suggestion"]>;
   /** Opens the find bar with the selected words; without it Ctrl or Cmd+F is the browser's. */
   find?: (seed: string) => void;
 }
@@ -315,6 +321,8 @@ export function editorExtensions({
   armature,
   pickIssue,
   pickIssueList,
+  editInlineValue,
+  emoji,
   find,
 }: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
@@ -335,6 +343,7 @@ export function editorExtensions({
       HTMLAttributes: { "data-mention": "" },
       suggestion: { char: "@", items: () => [], ...mention },
     }),
+    ...(emoji ? [EmojiSuggestion.configure({ suggestion: emoji })] : []),
     Extension.create({
       name: "submitOnModEnter",
       addKeyboardShortcuts() {
@@ -371,6 +380,8 @@ export function editorExtensions({
     ArmatureIssue.configure({ source: armature }),
     ArmatureIssueBlock.configure({ pick: pickIssue }),
     ArmatureIssueList.configure({ pick: pickIssueList }),
+    Status.configure({ edit: editInlineValue }),
+    DateNode.configure({ edit: editInlineValue }),
     FindReplace.configure({ open: find }),
   ];
 }

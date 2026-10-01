@@ -5,7 +5,7 @@ import { expectAccessible, startInScheme } from "../fixtures/shell";
 // The editor on its development page, which pages will replace. Every state
 // the checklist reaches is also checked with axe, contrast included.
 const EDITOR_PATH = "/dev/editor";
-const SLASH_ITEM_COUNT = 19;
+const SLASH_ITEM_COUNT = 22;
 const TABLE_SIZE = 3;
 // Enough paragraphs that the stored document outgrows its box.
 const STORED_LINES = 12;
@@ -338,11 +338,13 @@ test.describe("the editor on a touch screen", { tag: "@mobile" }, () => {
     await expect(box(page)).toBeFocused();
     await expectAccessible(page);
 
-    const error = menu.locator('[data-slash-item="panelError"]');
-    await expect.poll(() => shownWithin(menu, error)).toBe(true);
-    await error.tap();
+    // The last block, scrolled to, opens the emoji list, whose first emoji a tap puts in.
+    await options.last().tap();
     await expect(page.locator("[data-slash-menu]")).toHaveCount(0);
-    await expect(box(page).locator('[data-panel="error"]')).toBeVisible();
+    const emoji = page.getByRole("listbox", { name: "Emoji" }).getByRole("option");
+    await expect(emoji.first()).toContainText(":+1:");
+    await emoji.first().tap();
+    await expect(box(page)).toHaveText("👍");
     await expect(box(page)).toBeFocused();
   });
 

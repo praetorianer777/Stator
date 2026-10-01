@@ -79,6 +79,10 @@ describe("the slash menu's blocks", () => {
       armatureIssue: (d) => JSON.stringify(find(d, "armatureIssueBlock")[0]?.attrs) === JSON.stringify({ key: "CP-4" }),
       armatureIssueList: (d) =>
         JSON.stringify(find(d, "armatureIssueList")[0]?.attrs) === JSON.stringify({ query: "project = CP", columns: ["key", "due"], limit: 5 }),
+      // The dialog that opens on a new status or date is answered below.
+      status: (d) => JSON.stringify(find(d, "status")[0]?.attrs) === JSON.stringify({ label: "Blocked", color: "danger" }),
+      date: (d) => JSON.stringify(find(d, "date")[0]?.attrs) === JSON.stringify({ date: "2026-11-02" }),
+      emoji: (d) => find(d, "text")[0]?.text === ":",
     };
     expect(SLASH_ITEMS.map((item) => item.key).sort()).toEqual(Object.keys(expected).sort());
     for (const item of SLASH_ITEMS) {
@@ -86,6 +90,13 @@ describe("the slash menu's blocks", () => {
       const e = await make(undefined, {
         pickIssue: () => setTimeout(() => editor?.commands.insertArmatureIssueBlock("cp-4")),
         pickIssueList: () => setTimeout(() => editor?.commands.insertArmatureIssueList({ query: "project = CP", columns: ["key", "due"], limit: 5 })),
+        editInlineValue: (target) =>
+          setTimeout(() =>
+            editor?.commands.command(({ tr }) => {
+              tr.setNodeMarkup(target.pos, undefined, target.kind === "status" ? { label: "Blocked", color: "danger" } : { date: "2026-11-02" });
+              return true;
+            }),
+          ),
       });
       item.run(e.chain().focus());
       await new Promise((resolve) => setTimeout(resolve));

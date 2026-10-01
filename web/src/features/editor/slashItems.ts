@@ -46,6 +46,10 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("childPages", Icon.Page, ["children", "pages", "subpages", "tree"], (c) => c.insertChildPages()),
   { ...item("armatureIssue", Icon.Task, ["armature", "issue", "ticket", "card"], (c) => c.pickArmatureIssue()), armature: true },
   { ...item("armatureIssueList", Icon.Table, ["armature", "issues", "query", "nql", "list"], (c) => c.pickArmatureIssueList()), armature: true },
+  item("status", Icon.Label, ["status", "state", "badge", "label", "tag"], (c) => c.insertStatus()),
+  item("date", Icon.Calendar, ["date", "day", "today", "deadline", "when"], (c) => c.insertDate()),
+  // The colon opens the emoji list as if typed, so there is one picker to learn.
+  item("emoji", Icon.Smile, ["emoji", "smiley", "reaction"], (c) => c.insertContent(":")),
 ];
 
 /** The blocks this editor offers: the Armature ones only where there is an Armature. */
