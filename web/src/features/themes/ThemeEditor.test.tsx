@@ -80,13 +80,13 @@ describe("the theme editor", () => {
 
   it("changes a colour of one palette, and previews it on the page when asked", async () => {
     await renderAt("/settings/themes/new");
-    // Pasted rather than typed: every keystroke redraws all 43 colour fields,
+    // Pasted rather than typed: every keystroke redraws all 44 colour fields,
     // and on a busy machine the keystrokes alone outlasted the test's time.
     await userEvent.click(await screen.findByLabelText("Theme name"));
     await userEvent.paste("Magenta");
     await userEvent.click(screen.getByLabelText("Links, the current item"));
     await userEvent.paste("#ff0066");
-    expect(screen.getByText("1 of 43 colours changed.")).toBeInTheDocument();
+    expect(screen.getByText("1 of 44 colours changed.")).toBeInTheDocument();
 
     // The preview waits for the draft to settle; the clock is moved past that
     // rather than waited out.

@@ -16,7 +16,7 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   { id: "text", tokens: ["ink", "ink-muted", "ink-subtle", "ink-disabled"] },
   { id: "actions", tokens: ["primary", "primary-hover", "on-primary"] },
   { id: "accent", tokens: ["accent", "accent-hover", "accent-subtle", "on-accent", "focus", "selection"] },
-  { id: "feedback", tokens: ["danger", "danger-hover", "danger-subtle", "success", "success-subtle", "warning", "warning-subtle", "epic"] },
+  { id: "feedback", tokens: ["danger", "danger-hover", "danger-subtle", "on-danger", "success", "success-subtle", "warning", "warning-subtle", "epic"] },
   {
     id: "statuses",
     tokens: ["status-todo", "status-progress", "status-done", "status-todo-subtle", "status-progress-subtle", "status-done-subtle"],

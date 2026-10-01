@@ -3,6 +3,18 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: A danger button writes its label in `on-danger`
+
+The danger red does two jobs: it colours error text and destructive menu
+items on the surfaces, and it fills the danger button. In the dark palettes
+it has to be light to read as text on dark surfaces, and white on a light
+red reaches only about 3:1. So the label gets a token of its own,
+`on-danger`, as the accent and the primary action already have: white in
+the light palettes, a near black of the same hue in the dark ones. A theme
+that leaves it out gets the built-in value for its mode, which suits the
+deep reds of a light palette and the light reds of a dark one. Darkening
+the dark red instead would have failed the error text it also draws.
+
 ## 2026-10-01: A followed Armature theme is kept as the person's hidden copy
 
 Following stores the theme Armature shows a person as a theme of theirs,
