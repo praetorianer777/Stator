@@ -3,6 +3,31 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: Issues from a selection are filed one by one, from a toolbar row
+
+Armature has no batch create, so `POST /armature/issues` files the items in
+order with Armature's own `POST /issues`, as the caller with their token, and
+stops at the first refusal: a refusal of the project, the type or the rights
+would meet every later item the same way, and stopping leaves the author one
+place to look. The answer is 201 with the issues made and the refused item,
+so the page gets the chips of what exists in Armature; a refusal of the first
+item is the answer itself, since nothing was made. Nothing is retried,
+because a create that timed out may have reached Armature, and a second one
+would file the issue twice.
+
+The action sits in a "Selection" row of the editor's toolbar, beside the
+table, code and heading rows, rather than in a menu floating over the
+selection. The editor has no floating menu yet, the row is reached with the
+same keys as the other tools, and it does not cover the text being read.
+
+All chips go in with one transaction that closes the history group, so one
+undo takes back the whole edit and not a chip at a time. Selected text is
+replaced by its chip, which says the same thing with the issue's live
+status; list items and table rows keep their text, which often says more
+than the summary, and the chip follows it. A row is named by its first cell
+with text and its chip follows that cell's text, so a row whose first cell is
+empty still gets a chip where the words are.
+
 ## 2026-10-01: An issue list stores its query, and each reader asks for their own rows
 
 `armatureIssueList` keeps the query, the columns and the most rows, never

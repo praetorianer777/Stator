@@ -2,12 +2,15 @@ package httpapi
 
 import (
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
+	"github.com/praetorianer777/stator/backend/internal/perm"
 )
 
 // Connecting Armature (#27): the organization's instance for its
@@ -224,4 +227,73 @@ func (s *Server) handleSearchArmatureIssues(w http.ResponseWriter, r *http.Reque
 	respondJSON(w, r, http.StatusOK, map[string]any{
 		"status": status, "issues": found.Issues, "total": found.Total, "limit": found.Limit, "offset": found.Offset, "url": found.URL,
 	})
+}
+
+func (s *Server) handleListArmatureIssueTypes(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	status, types, err := s.Armature.IssueTypes(r.Context())
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if types == nil {
+		types = []armature.IssueType{}
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "issueTypes": types})
+}
+
+// Creating issues (#31): one Armature issue per item of a selection on a page
+// the caller may edit, filed as the caller, stopping at the first refusal.
+
+func (s *Server) handleCreateArmatureIssues(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	var req armature.CreateIssuesInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	found, sp, err := s.Pages.Get(r.Context(), actorFrom(r), req.PageID)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if !found.Can.Edit {
+		respondError(w, r, &perm.DeniedError{Action: perm.EditPages})
+		return
+	}
+	if err := armature.CheckCreate(&req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	made, at, err := s.Armature.CreateIssues(r.Context(), req, armature.PageLink{ID: found.ID, SpaceKey: sp.Key, Title: found.Title})
+	var failed *armature.CreateFailure
+	if err != nil {
+		if at == 0 {
+			respondError(w, r, err)
+			return
+		}
+		refusal := toAPIError(err)
+		failed = &armature.CreateFailure{Index: at, Code: refusal.Code, Message: refusalSentence(refusal)}
+		loggerFrom(r.Context()).Info("Armature refused an issue of a selection", "index", at, "code", refusal.Code, "error", err)
+	}
+	respondJSON(w, r, http.StatusCreated, map[string]any{"issues": made, "failed": failed})
+}
+
+// refusalSentence is what to tell the author about one item: Armature's
+// sentences on its fields say more than its general "Some fields need attention".
+func refusalSentence(refusal *APIError) string {
+	if len(refusal.Fields) == 0 {
+		return refusal.Message
+	}
+	sentences := make([]string, 0, len(refusal.Fields))
+	for _, field := range slices.Sorted(maps.Keys(refusal.Fields)) {
+		sentences = append(sentences, sentence(refusal.Fields[field]))
+	}
+	return strings.Join(sentences, " ")
 }

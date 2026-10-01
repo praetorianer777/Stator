@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"sort"
 	"strconv"
 	"strings"
@@ -46,7 +47,11 @@ type person struct {
 	// Theme is the key of the example theme Armature shows them, or "".
 	Theme        string
 	ThemeChanged time.Time
+	// Reads are the projects they see but may not file issues in.
+	Reads map[string]bool
 }
+
+func (p *person) writes(pr *project) bool { return p.sees(pr) && !p.Reads[pr.Key] }
 
 type project struct {
 	ID   uuid.UUID
@@ -73,19 +78,21 @@ type status struct {
 }
 
 type issue struct {
-	ID        uuid.UUID
-	Key       string
-	Project   *project
-	Number    int
-	Type      *issueType
-	Summary   string
-	Status    *status
-	Priority  string
-	Assignee  *person
-	Reporter  *person
-	DueDate   *time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID       uuid.UUID
+	Key      string
+	Project  *project
+	Number   int
+	Type     *issueType
+	Summary  string
+	Status   *status
+	Priority string
+	Assignee *person
+	Reporter *person
+	DueDate  *time.Time
+	// Description is the rich text it was filed with, kept as sent.
+	Description json.RawMessage
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type remoteLink struct {
@@ -112,6 +119,9 @@ type tenant struct {
 	moved map[string]string
 	next  map[string]int
 	links []*remoteLink
+	// refused is a summary every create refuses, so a test can make
+	// Armature refuse one item of several.
+	refused string
 }
 
 type world struct {

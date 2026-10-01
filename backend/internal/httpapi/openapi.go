@@ -367,10 +367,10 @@ var operations = []operation{
 	{method: "GET", path: "/armature/projects", handler: "handleListArmatureProjects", tag: "armature",
 		summary:   "The Armature projects the caller may see, and whether they may file issues in each.",
 		responses: ok(env{"status": armature.Status(""), "projects": []armature.Project{}})},
-	{method: "GET", path: "/armature/issue-types", handler: "handleListArmatureIssueTypes", tag: "armature", pending: true,
+	{method: "GET", path: "/armature/issue-types", handler: "handleListArmatureIssueTypes", tag: "armature",
 		summary:   "The issue types a new issue may take, subtasks left out.",
 		responses: ok(env{"status": armature.Status(""), "issueTypes": []armature.IssueType{}})},
-	{method: "POST", path: "/armature/issues", handler: "handleCreateArmatureIssues", tag: "armature", pending: true,
+	{method: "POST", path: "/armature/issues", handler: "handleCreateArmatureIssues", tag: "armature",
 		summary: "File one Armature issue per item of a selection, in order, stopping at the first Armature refuses.",
 		request: armature.CreateIssuesInput{}, responses: map[int]any{201: env{"issues": []armature.Issue{}, "failed": (*armature.CreateFailure)(nil)}, 409: errorEnvelope{}, 502: errorEnvelope{}}},
 

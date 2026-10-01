@@ -263,3 +263,7 @@ export const ARMATURE_QUERY_CHECK_DEBOUNCE_MS = 400;
 /** Armature's priorities, lowest first, and its status categories in workflow order, for sorting rows. */
 export const ARMATURE_PRIORITIES: readonly string[] = ["lowest", "low", "medium", "high", "highest"];
 export const ARMATURE_STATUS_CATEGORIES: readonly string[] = ["todo", "in_progress", "done"];
+/** The most issues one create files from a selection, as armature.MaxCreateItems. */
+export const ARMATURE_CREATE_MAX_ITEMS = 50;
+/** Armature's longest summary, as armature.MaxSummaryLength; a longer one is cut in the dialog. */
+export const ARMATURE_SUMMARY_MAX_LENGTH = 255;

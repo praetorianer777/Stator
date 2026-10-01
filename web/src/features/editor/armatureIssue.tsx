@@ -11,6 +11,10 @@ export interface IssueSource {
   baseUrl: () => string | null;
   /** Whether the author may see a project in Armature, so a typed key in it becomes a chip. */
   knowsProject: (projectKey: string) => boolean;
+  /** Whether the author may turn a selection into issues: a connection and their own token. */
+  canCreate?: () => boolean;
+  /** The page whose selection becomes issues, which their descriptions link back to. */
+  pageId?: () => string | null;
 }
 
 export interface ArmatureIssueOptions {

@@ -93,6 +93,9 @@ func (s *stub) handler() http.Handler {
 	mux.HandleFunc("POST "+stubPrefix+"/{tenant}/issues/{issueKey}/move", s.control((*stub).moveIssue))
 	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/people/{person}/theme", s.control((*stub).setTheme))
 	mux.HandleFunc("GET "+stubPrefix+"/{tenant}/remote-links", s.control((*stub).allLinks))
+	mux.HandleFunc("GET "+stubPrefix+"/{tenant}/issues/{issueKey}", s.control((*stub).heldIssue))
+	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/people/{person}/read-only-projects", s.control((*stub).setReads))
+	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/refused-summary", s.control((*stub).setRefused))
 	// Unlocked while it posts, so a receiver that calls back finds the stub free.
 	mux.HandleFunc("POST "+stubPrefix+"/{tenant}/webhooks", func(w http.ResponseWriter, r *http.Request) {
 		s.world.mu.Lock()
@@ -229,6 +232,9 @@ func (s *stub) access(c *call) {
 	for _, pr := range c.tenant.projects {
 		if c.person.sees(pr) {
 			projects[pr.Key] = issuePermissions
+			if !c.person.writes(pr) {
+				projects[pr.Key] = []string{"issue.read"}
+			}
 			keys = append(keys, pr.Key)
 			grants = append(grants, map[string]string{"projectKey": pr.Key, "role": "developer"})
 		}
@@ -373,9 +379,17 @@ func (s *stub) createIssue(c *call) {
 		refuse(c.w, http.StatusNotFound, "not_found", "That project was not found.")
 		return
 	}
+	if !c.person.writes(pr) {
+		refuse(c.w, http.StatusForbidden, "forbidden", "You may not file issues in this project.")
+		return
+	}
 	summary := strings.TrimSpace(req.Summary)
 	if summary == "" || utf8.RuneCountInString(summary) > maxSummary {
 		refuseField(c.w, "summary", "Give the issue a summary of 1 to 255 characters.")
+		return
+	}
+	if c.tenant.refused != "" && summary == c.tenant.refused {
+		refuseField(c.w, "summary", "Armature refuses this summary.")
 		return
 	}
 	kind := c.tenant.typeNamed("Task")
@@ -386,6 +400,7 @@ func (s *stub) createIssue(c *call) {
 		}
 	}
 	is := c.tenant.add(pr, kind, summary, c.person, time.Now().UTC())
+	is.Description = req.Description
 	respond(c.w, http.StatusCreated, map[string]any{"issue": issueView(is)})
 }
 
@@ -579,6 +594,47 @@ func (s *stub) setTheme(c *call) {
 	}
 	p := c.tenant.person(c.r.PathValue("person"))
 	p.Theme, p.ThemeChanged = req.Theme, time.Now().UTC()
+	c.w.WriteHeader(http.StatusNoContent)
+}
+
+// heldIssue is an issue as the stub holds it, with the description it was
+// filed with, whoever may see it.
+func (s *stub) heldIssue(c *call) {
+	is := c.tenant.lookup(c.tenant.person(adminName), c.r.PathValue("issueKey"))
+	if is == nil {
+		refuse(c.w, http.StatusNotFound, "not_found", "That issue was not found.")
+		return
+	}
+	v := issueView(is)
+	v["description"] = is.Description
+	respond(c.w, http.StatusOK, map[string]any{"issue": v})
+}
+
+func (s *stub) setReads(c *call) {
+	var req struct {
+		// Projects are the keys of the projects the person may only read.
+		Projects []string `json:"projects"`
+	}
+	if !decode(c, &req) {
+		return
+	}
+	p := c.tenant.person(c.r.PathValue("person"))
+	p.Reads = map[string]bool{}
+	for _, key := range req.Projects {
+		p.Reads[key] = true
+	}
+	c.w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *stub) setRefused(c *call) {
+	var req struct {
+		// Summary is refused by every create from now on; empty refuses none.
+		Summary string `json:"summary"`
+	}
+	if !decode(c, &req) {
+		return
+	}
+	c.tenant.refused = req.Summary
 	c.w.WriteHeader(http.StatusNoContent)
 }
 
