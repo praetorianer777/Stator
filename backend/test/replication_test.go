@@ -243,6 +243,46 @@ func waitFor(t *testing.T, what string, ok func() bool) {
 	}
 }
 
+// A page is read in many statements, and the replica replaying a write between
+// two of them once served a page with an owner newer than its permissions.
+func TestAReadSeesOneMomentThroughout(t *testing.T) {
+	h := newHarness(t)
+	needReplica(t, h)
+	c := h.openCluster(t, 0, neverHealth)
+	m := h.makeMember(t, "snapshot")
+
+	before := c.Stats()
+	err := c.Read(m.ctx, func(ctx context.Context, tx db.DBTX) error {
+		count := func() int {
+			var n int
+			if err := tx.QueryRow(ctx, `SELECT count(*) FROM theme WHERE name = 'mid-read'`).Scan(&n); err != nil {
+				t.Fatalf("count: %v", err)
+			}
+			return n
+		}
+		if got := count(); got != 0 {
+			t.Fatalf("the read began with %d rows, want 0", got)
+		}
+		lsn := addTheme(t, c, m, "mid-read")
+		if !h.waitForReplica(t, lsn, replicaCaughtWait) {
+			t.Fatal("the replica did not replay the write made halfway through the read")
+		}
+		if got := count(); got != 0 {
+			t.Errorf("the read saw %d rows written after it began, want 0", got)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if c.Stats().ReadsToReplica-before.ReadsToReplica != 1 {
+		t.Error("the read did not go to the replica, where replay can land between its statements")
+	}
+	if got := countThemes(t, c, m.ctx, "mid-read"); got != 1 {
+		t.Errorf("a read after it saw %d rows, want 1", got)
+	}
+}
+
 // Through the API, as a browser: every write is seen by the read right after
 // it, which with replay paused only a pinned read can manage.
 func TestTheAPIReadsItsOwnWrites(t *testing.T) {
