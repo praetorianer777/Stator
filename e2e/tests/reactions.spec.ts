@@ -48,6 +48,14 @@ test.describe("reactions", { tag: ["@auth"] }, () => {
     await page.locator('[data-reaction-choice="👍"]').click();
     await expect(commentBar.locator('[data-reaction="👍"]')).toHaveAttribute("aria-pressed", "true");
 
+    await pageBar(page).locator('[data-action="add-reaction"]').click();
+    await page.locator('[data-action="more-reactions"]').click();
+    const search = page.locator("[data-reaction-search]");
+    await search.locator("[data-reaction-search-input]").fill("taco");
+    await search.locator('[data-reaction-search-option="🌮"]').click();
+    await expect(search).toHaveCount(0);
+    await expect(toggle(page, "🌮")).toHaveAttribute("aria-pressed", "true");
+
     const bob = await pageAs("bob");
     await expect(async () => {
       await openPage(bob, space.key, plan);

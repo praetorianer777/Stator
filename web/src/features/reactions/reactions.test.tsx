@@ -160,7 +160,7 @@ describe("reactions on a page", () => {
     await userEvent.keyboard("{Enter}");
     const menu = await screen.findByRole("menu", { name: "Pick a reaction" });
     const items = within(menu).getAllByRole("menuitem");
-    expect(items).toHaveLength(REACTION_CHOICES.length);
+    expect(items).toHaveLength(REACTION_CHOICES.length + 1);
     expect(within(menu).getByRole("menuitem", { name: "🎉 Celebrate" })).toHaveAttribute("aria-disabled", "true");
     expect(await axeViolations()).toEqual([]);
     await waitFor(() => expect(items[0]).toHaveFocus());
@@ -170,6 +170,34 @@ describe("reactions on a page", () => {
     expect(posted.emoji).toBe(REACTION_CHOICES[1]);
     await waitFor(() => expect(within(bar).getByRole("button", { name: `${REACTION_CHOICES[1]} 1 reaction` })).toHaveAttribute("aria-pressed", "true"));
     expect(add).toHaveFocus();
+  });
+
+  it("finds any other emoji by name, and Enter takes the first one found", async () => {
+    const sent = stubPage({
+      more: {
+        [`POST /pages/${pageId}/reactions`]: {
+          status: 200,
+          body: { reactions: [aReaction({ emoji: "🌮", mine: true, people: [{ id: me.id, name: me.name }] })] },
+        },
+      },
+    });
+    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await userEvent.click(within(await pageBar()).getByRole("button", { name: "Add a reaction" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "More emoji" }));
+    const dialog = await screen.findByRole("dialog", { name: "React with any emoji" });
+    const box = within(dialog).getByRole("searchbox", { name: "Find an emoji by name" });
+    await waitFor(() => expect(box).toHaveFocus());
+    await userEvent.type(box, "taco");
+    expect(await within(dialog).findByRole("button", { name: "taco" })).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(sent.some((each) => each.method === "POST" && each.path === `/pages/${pageId}/reactions`)).toBe(true));
+    expect((sent.find((each) => each.method === "POST" && each.path === `/pages/${pageId}/reactions`)!.body as { emoji: string }).emoji).toBe("🌮");
+    await userEvent.click(within(await pageBar()).getByRole("button", { name: "Add a reaction" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "More emoji" }));
+    await userEvent.type(await screen.findByRole("searchbox"), "zzzz");
+    expect(await screen.findByText("No emoji by that name. Try another word.")).toHaveAttribute("role", "status");
   });
 
   it("shows a refusal as the sentence the server wrote", async () => {

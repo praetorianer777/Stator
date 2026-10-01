@@ -33,6 +33,12 @@ first, which is what the tooltip says: the caller first as "You", then the
 names, then how many more. The names travel with the page and the comment
 lists, so hovering asks nothing of the server.
 
+The picker offers eight common emoji in a menu and, under "More emoji", a
+search of the same bundled list the editor's colon uses (#43), found by the
+same ranking. The list and its matching moved to `web/src/lib/emoji.ts`, away
+from the editor's extension, so searching for a reaction loads the list but
+never the editor. Every emoji of that list passes `reaction.Clean`.
+
 In the web client each emoji is a toggle button with `aria-pressed`, and who
 reacted is both its tooltip and its description, so a screen reader hears it
 on focus. Somebody who may not react can still focus the buttons, which are

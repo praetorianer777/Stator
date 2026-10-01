@@ -327,7 +327,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
   does a comparison of versions. The page stores only the title and the
   blocks, and search finds a page by both.
 - Reactions (#66). Below a published page and below each comment, members
-  who may comment put an emoji on from a picker and take theirs back with
+  who may comment put an emoji on from a picker of common ones, or any
+  other found by name in the editor's emoji list, and take theirs back with
   one click or key; each emoji shows its count, whether it is yours, and,
   on hover or focus, who reacted, you first, the first ten by name and the
   rest counted. Readers without the right to comment see the same and add

@@ -3,7 +3,7 @@ import { useMe } from "@/api/auth";
 import type { Comment } from "@/api/comments";
 import type { Page } from "@/api/pages";
 import { useCommentReaction, usePageReaction, type Reaction, type ReactionChange } from "@/api/reactions";
-import { ErrorBanner, IconButton, Menu, Tooltip, cx } from "@/components/ui";
+import { ErrorBanner, IconButton, Menu, Tooltip, cx, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { REACTION_CHOICES } from "@/config";
 import { t } from "@/i18n";
@@ -41,6 +41,14 @@ export function ReactionBar({
   const [searching, setSearching] = useState(false);
   if (reactions.length === 0 && !canReact) return null;
   const used = new Set(reactions.filter((r) => r.mine).map((r) => r.emoji));
+  const items: MenuItem[] = REACTION_CHOICES.map((emoji) => ({
+    icon: <span className="text-base">{emoji}</span>,
+    label: t.reactions.names[emoji] ?? emoji,
+    disabled: used.has(emoji),
+    onSelect: () => onChange({ emoji, on: true }),
+    attrs: { "data-reaction-choice": emoji },
+  }));
+  items.push({ icon: <Icon.Search />, label: t.reactions.more, onSelect: () => setSearching(true), attrs: { "data-action": "more-reactions" } });
   return (
     <div className={className}>
       <ul aria-label={label} className="flex flex-wrap items-center gap-1.5" data-reactions="">
@@ -53,19 +61,7 @@ export function ReactionBar({
           <li>
             <Menu
               label={t.reactions.picker}
-              items={REACTION_CHOICES.map((emoji) => ({
-                icon: <span className="text-base">{emoji}</span>,
-                label: t.reactions.names[emoji] ?? emoji,
-                disabled: used.has(emoji),
-                onSelect: () => onChange({ emoji, on: true }),
-                attrs: { "data-reaction-choice": emoji },
-              })).concat({
-                icon: <Icon.Search />,
-                label: t.reactions.more,
-                disabled: false,
-                onSelect: () => setSearching(true),
-                attrs: { "data-action": "more-reactions" },
-              })}
+              items={items}
               trigger={(props) => (
                 <IconButton
                   icon={<Icon.React />}
