@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, ty
 import { ARMATURE_LINKS_POLL_MS, ARMATURE_LIST_PAGE_SIZE } from "@/config";
 import { ApiError, api } from "./client";
 import type { components } from "./schema";
+import { armatureThemeQueryKey, themesQueryKey } from "./themes";
 
 type Wire = components["schemas"];
 
@@ -200,6 +201,55 @@ export function useCreateArmatureIssues() {
     mutationFn: async (body: ArmatureCreateInput): Promise<ArmatureCreated> => (await api.POST("/armature/issues", { body })).data!,
     onError: (error) => {
       if (error instanceof ApiError && error.code === "armature_rejected") void queryClient.invalidateQueries({ queryKey: armatureAccountQueryKey });
+    },
+  });
+}
+
+/** Whether the caller follows their Armature theme, whether Armature answered, and why it cannot be used. */
+export type ArmatureThemeFollow = Wire["ThemeFollow"];
+
+export { armatureThemeQueryKey };
+
+// Following changes the theme the page shows, which the loader reads from
+// the active theme; the list of themes says which one is in use.
+function themeChanged(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: themesQueryKey });
+}
+
+/** Asks Armature now, so a theme changed there shows when the settings open. */
+export function useArmatureThemeFollow(enabled: boolean) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: armatureThemeQueryKey,
+    enabled,
+    queryFn: async (): Promise<ArmatureThemeFollow> => {
+      const follow = (await api.GET("/armature/theme")).data!.follow;
+      if (follow.following) themeChanged(queryClient);
+      return follow;
+    },
+  });
+}
+
+export function useFollowArmatureTheme() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<ArmatureThemeFollow> => (await api.PUT("/armature/theme")).data!.follow,
+    onSuccess: (follow) => {
+      queryClient.setQueryData(armatureThemeQueryKey, follow);
+      themeChanged(queryClient);
+    },
+  });
+}
+
+export function useUnfollowArmatureTheme() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await api.DELETE("/armature/theme");
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: armatureThemeQueryKey });
+      themeChanged(queryClient);
     },
   });
 }

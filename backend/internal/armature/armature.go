@@ -277,6 +277,8 @@ type Link struct {
 type ThemeFollow struct {
 	Following bool   `json:"following"`
 	Status    Status `json:"status"`
+	// Error says why Armature's theme, though it answered, cannot be used.
+	Error *string `json:"error"`
 }
 
 // WebhookEnvelope is what Armature posts, signed over the raw body.

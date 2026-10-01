@@ -907,6 +907,26 @@
               }
             }
           },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
             "content": {
@@ -5617,7 +5637,7 @@
     "/themes/active": {
       "get": {
         "operationId": "activeTheme",
-        "summary": "The theme the caller sees: chosen, the organization's default, or null for the built-in one.",
+        "summary": "The theme the caller sees: chosen, followed from Armature, the organization's default, or null for the built-in one.",
         "tags": [
           "themes"
         ],
@@ -9922,6 +9942,12 @@
       "ThemeFollow": {
         "type": "object",
         "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "following": {
             "type": "boolean"
           },
@@ -9938,7 +9964,8 @@
         },
         "required": [
           "following",
-          "status"
+          "status",
+          "error"
         ]
       },
       "Thread": {

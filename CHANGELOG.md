@@ -305,6 +305,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
   An event id is acted on once in 24 hours, other topics are acknowledged and
   ignored, a body over 1 MiB is 413, and an unknown organization, one without
   a secret and a wrong signature all answer the same 401 `bad_signature`.
+- Following the Armature theme. "Follow my Armature theme" on the themes
+  page, offered to whoever stored an Armature token, shows the theme they use
+  in Armature in place of a Stator one. Stator downloads it with their token,
+  checks it as an imported theme, and keeps it as their own hidden copy,
+  downloaded again only when Armature answers another theme or a later
+  change; opening the theme settings asks Armature at once, and a page load
+  within five minutes. Choosing any theme ends following. When Armature does
+  not answer within 2 seconds, or the token is refused, the page shows what
+  it would without following, and the settings say why in a sentence; a
+  theme that fails the checks is refused with the reason.
+  `GET`, `PUT` and `DELETE /armature/theme`, and `GET /themes/active`
+  answers `source: "armature"` while following.
 
 ### Changed
 

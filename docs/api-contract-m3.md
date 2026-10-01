@@ -102,7 +102,7 @@ it, never reads an answer given to the old one.
 | `issue:{KEY}`, a hash, field `{tokenRowID}` | `{at, issue}`, the issue or null | `IssueCacheTTL`, 60 seconds |
 | `search`, a hash, field `{tokenRowID}:{sha256 of q, limit, offset}` | `{at, result}` | `SearchCacheTTL`, 60 seconds |
 | `meta:{tokenRowID}` | projects with `canCreate`, and issue types | `MetaCacheTTL`, 5 minutes |
-| `theme:{tokenRowID}` | the id and `updatedAt` of the Armature theme, or null | `ThemeCacheTTL`, 5 minutes |
+| `theme:{tokenRowID}` | the id and `updatedAt` of the Armature theme, or null, and why it failed the checks (#34) | `ThemeCacheTTL`, 5 minutes |
 | `event:{eventID}` | that a webhook event was acted on | `WebhookReplayWindow`, 24 hours |
 
 - Each write sets the hash's expiry to the TTL again, and a reader treats a
@@ -587,6 +587,39 @@ while the caller follows Armature and Armature answered.
   without following (the organization's default, else the built-in theme),
   and `GET /armature/theme` says why in `status`. Following stays on, and the
   next load tries again.
+- **As built in #34.** Migration 00173 adds `follow_armature` to
+  `user_theme` and `armature_theme_id` and `armature_updated_at` to `theme`.
+  A follower's row names no theme (`user_theme_follow_alone`), a mirror is
+  never shared (`theme_mirror_private`) and never chosen (the trigger
+  `user_theme_not_mirror`), and a mirror may carry the name of a theme the
+  person made. `theme.Service` gains `Following`, `Follow`, `Unfollow`,
+  `Mirror` and `SaveMirror`; `Choose` ends following and forgets the mirror,
+  and `Active` treats a follower as somebody who chose nothing, which is the
+  fallback. A mirror is left out of `GET /themes` and is 404 to read, edit,
+  share, export, delete or choose; its files are served to its owner. The
+  `theme` cache entry holds `{theme, invalid}`: Armature's `{id, updatedAt}`
+  or null, and the sentence saying why that theme failed the checks, so a
+  broken theme is not downloaded on every page. `GET` and `PUT
+  /armature/theme` ask Armature now rather than the cache, so opening the
+  theme settings picks up a change made in Armature; `GET /themes/active`
+  reads the cache and asks only on a miss. One `ThemeTimeout` budget covers
+  both calls to Armature, the active theme and the export; saving the mirror
+  is not cut short by it. `PUT /armature/theme` is 409
+  `armature_not_configured`, `armature_not_connected` or `armature_rejected`
+  without a usable token, and 422 `armature_theme_invalid` with a sentence
+  when Armature's theme fails the checks, in which case nothing is followed;
+  an Armature that does not answer still starts following, with `status`
+  saying so. `follow.error` carries the sentence for a follower whose theme
+  later fails, and the page falls back. The file is read up to
+  `theme.MaxPackageBytes` with `Caller.GetWithin`. On the web, the themes
+  page shows "Follow my Armature theme" as a switch to whoever stored a
+  token, with a sentence for each state; the ThemeLoader applies a mirror
+  like any theme, so the copy this browser saw last is painted before the
+  server answers. The stub gained `broken` on
+  `PUT /_stub/{tenant}/people/{person}/theme`, which exports the theme with
+  colours no theme may hold, and
+  `PUT /_stub/{tenant}/people/{person}/theme-delay` (`ms`), which holds back
+  that person's `GET /themes/active`.
 
 ## The armature-stub
 

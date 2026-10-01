@@ -57,6 +57,8 @@ describe("the themes page", () => {
     expect(activeThemeMeta(theme({}), "chosen", undefined)).toBe("You are using Magenta.");
     expect(activeThemeMeta(theme({}), "organization", undefined)).toBe("You are using Magenta, the organization's default.");
     expect(activeThemeMeta(null, "", theme({ name: "House" }))).toBe("You are using the built-in theme, over the organization's default House.");
+    expect(activeThemeMeta(theme({ name: "Deep-Tech" }), "armature", theme({ name: "House" }))).toBe("You are using Deep-Tech, your theme in Armature.");
+    expect(activeThemeMeta(null, "armature", theme({ name: "House" }))).toBe("You are using the built-in theme, as you do in Armature.");
   });
 
   it("lists what is shared, offers import, and is reached from the account menu", async () => {

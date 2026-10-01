@@ -1365,7 +1365,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The theme the caller sees: chosen, the organization's default, or null for the built-in one. */
+        /** The theme the caller sees: chosen, followed from Armature, the organization's default, or null for the built-in one. */
         get: operations["activeTheme"];
         /** Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one. */
         put: operations["chooseTheme"];
@@ -2535,6 +2535,7 @@ export interface components {
             updatedAt: string;
         };
         ThemeFollow: {
+            error: string | null;
             following: boolean;
             /** @enum {string} */
             status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
@@ -3226,6 +3227,24 @@ export interface operations {
                     "application/json": {
                         follow: components["schemas"]["ThemeFollow"];
                     };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

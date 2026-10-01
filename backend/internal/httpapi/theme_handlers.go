@@ -68,6 +68,9 @@ func (s *Server) handleCreateTheme(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleActiveTheme(w http.ResponseWriter, r *http.Request) {
+	if s.armatureActiveTheme(w, r) {
+		return
+	}
 	active, source, err := s.Themes.Active(r.Context(), userFrom(r))
 	if err != nil {
 		respondError(w, r, err)
