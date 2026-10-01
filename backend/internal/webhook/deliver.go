@@ -126,7 +126,7 @@ func (s *Service) SendDue(ctx context.Context) (int, error) {
 			if ctx.Err() != nil {
 				return tried, nil
 			}
-			if _, err := s.attempt(tenant.WithOrg(ctx, tenant.Org{ID: d.orgID}), d.id); err != nil {
+			if _, _, err := s.attempt(tenant.WithOrg(ctx, tenant.Org{ID: d.orgID}), d.id); err != nil {
 				s.opts.Log.Warn("a webhook attempt could not be recorded", "delivery", d.id, "error", err)
 			}
 		}
@@ -170,8 +170,8 @@ func (s *Service) Test(ctx context.Context, id uuid.UUID) (*WebhookDelivery, db.
 	if err != nil {
 		return nil, 0, err
 	}
-	sent, err := s.attempt(system, made)
-	return sent, lsn, err
+	sent, recorded, err := s.attempt(system, made)
+	return sent, max(lsn, recorded), err
 }
 
 // Redeliver tries a logged delivery's event again, now, as the next attempt.
@@ -210,8 +210,8 @@ func (s *Service) Redeliver(ctx context.Context, webhookID, deliveryID uuid.UUID
 	if err != nil {
 		return nil, 0, err
 	}
-	sent, err := s.attempt(system, made)
-	return sent, lsn, err
+	sent, recorded, err := s.attempt(system, made)
+	return sent, max(lsn, recorded), err
 }
 
 // visible says whether the caller may see the endpoint, through the policies.
@@ -257,10 +257,10 @@ type outcome struct {
 
 // attempt posts one logged delivery and records how it went: delivered,
 // withheld, cancelled, or failed with the next attempt due later.
-func (s *Service) attempt(ctx context.Context, id uuid.UUID) (*WebhookDelivery, error) {
+func (s *Service) attempt(ctx context.Context, id uuid.UUID) (*WebhookDelivery, db.LSN, error) {
 	org, err := tenant.MustFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	ctx = asSystem(ctx, org.ID)
 	var c claimed
@@ -274,13 +274,14 @@ func (s *Service) attempt(ctx context.Context, id uuid.UUID) (*WebhookDelivery, 
 				&c.event, &c.occurred, &c.attempt, &c.state)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
+		return nil, 0, ErrNotFound
 	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if c.state != StatePending {
-		return s.read(ctx, id)
+		done, err := s.read(ctx, id)
+		return done, 0, err
 	}
 	return s.record(ctx, id, c, s.send(ctx, id, c))
 }
@@ -334,9 +335,9 @@ func why(err error) string {
 
 // record writes how an attempt went, schedules the next after a failure,
 // and turns the endpoint off once it has failed for DisableAfter.
-func (s *Service) record(ctx context.Context, id uuid.UUID, c claimed, o outcome) (*WebhookDelivery, error) {
+func (s *Service) record(ctx context.Context, id uuid.UUID, c claimed, o outcome) (*WebhookDelivery, db.LSN, error) {
 	var out *WebhookDelivery
-	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if _, err := tx.Exec(ctx, `
 			UPDATE webhook_delivery
 			SET state = $2, status = $3, error = $4, next_attempt_at = NULL, attempted_at = now(),
@@ -368,7 +369,7 @@ func (s *Service) record(ctx context.Context, id uuid.UUID, c claimed, o outcome
 		out, err = scanDelivery(tx.QueryRow(ctx, selectDeliveries+` WHERE id = $1`, id))
 		return err
 	})
-	return out, err
+	return out, lsn, err
 }
 
 // NextWait is how long after a failed attempt the next one is due.
