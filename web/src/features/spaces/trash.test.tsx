@@ -75,7 +75,10 @@ describe("the trash", () => {
 
   it("offers a member restoring but not purging", async () => {
     stubApi({
-      "GET /spaces/DOCS": { status: 200, body: { space: aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: true } }) } },
+      "GET /spaces/DOCS": {
+        status: 200,
+        body: { space: aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: true } }) },
+      },
       "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
       "GET /spaces/DOCS/trash": { status: 200, body: { items: [gone] } },
     });

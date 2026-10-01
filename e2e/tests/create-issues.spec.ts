@@ -193,12 +193,7 @@ test.describe("creating Armature issues from a selection", {
       await expect(chip(page.locator("[data-doc]"), "CP-6")).toBeVisible();
     });
 
-    test(`alice files table rows as issues, and Armature links each back to the page, in ${scheme}`, async ({
-      page,
-      api,
-      freshOrg,
-      request,
-    }, testInfo) => {
+    test(`alice files table rows as issues, and Armature links each back to the page, in ${scheme}`, async ({ page, api, freshOrg, request }, testInfo) => {
       const { space, target, box, dialog } = await openInEditor(page, api, testInfo, scheme);
 
       // Each row is named by its first cell with text; the header row is left out.
