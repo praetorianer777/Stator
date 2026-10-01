@@ -23,6 +23,8 @@ import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
+import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
+import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -297,10 +299,27 @@ export interface ExtensionOptions {
   pickIssue?: () => void;
   /** Opens the settings dialog the slash menu's Armature issue list starts with. */
   pickIssueList?: () => void;
+  /** Opens the dialog that changes a status or a date. */
+  editInlineValue?: (target: InlineValueTarget) => void;
+  /** Draws the emoji a colon offers; without it a colon offers none. */
+  emoji?: Partial<EmojiOptions["suggestion"]>;
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
-export function editorExtensions({ variant = "page", placeholder, mention, slash, submit, upload, attachments, armature, pickIssue, pickIssueList }: ExtensionOptions = {}): AnyExtension[] {
+export function editorExtensions({
+  variant = "page",
+  placeholder,
+  mention,
+  slash,
+  submit,
+  upload,
+  attachments,
+  armature,
+  pickIssue,
+  pickIssueList,
+  editInlineValue,
+  emoji,
+}: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
       underline: false,
@@ -319,6 +338,7 @@ export function editorExtensions({ variant = "page", placeholder, mention, slash
       HTMLAttributes: { "data-mention": "" },
       suggestion: { char: "@", items: () => [], ...mention },
     }),
+    ...(emoji ? [EmojiSuggestion.configure({ suggestion: emoji })] : []),
     Extension.create({
       name: "submitOnModEnter",
       addKeyboardShortcuts() {
@@ -354,5 +374,7 @@ export function editorExtensions({ variant = "page", placeholder, mention, slash
     ArmatureIssue.configure({ source: armature }),
     ArmatureIssueBlock.configure({ pick: pickIssue }),
     ArmatureIssueList.configure({ pick: pickIssueList }),
+    Status.configure({ edit: editInlineValue }),
+    DateNode.configure({ edit: editInlineValue }),
   ];
 }

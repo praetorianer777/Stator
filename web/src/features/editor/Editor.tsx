@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import type { JSONContent } from "@tiptap/core";
+import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { MentionNodeAttrs } from "@tiptap/extension-mention";
 import { EDITOR_LINE_HEIGHT_PX, EDITOR_MIN_ROWS, MENTION_MAX_SUGGESTIONS, MENTION_SEARCH_DEBOUNCE_MS } from "@/config";
 import { t } from "@/i18n";
@@ -20,6 +20,26 @@ import { IssueListDialog } from "@/features/armature/IssueListDialog";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
 import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
+import type { InlineValueTarget } from "./inlineValues";
+import { DateDialog, StatusDialog } from "./InlineValueDialogs";
+import type { Emoji } from "./emoji";
+import { EmojiList } from "./EmojiList";
+
+// The dialog held the page still, but a node that is no longer where it was
+// opened is left as it is rather than changing whatever is there now.
+function changeInlineValue(editor: TiptapEditor, target: InlineValueTarget, attrs: InlineValueTarget["attrs"]) {
+  const node = editor.state.doc.nodeAt(target.pos);
+  if (node?.type.name !== target.kind) return;
+  editor
+    .chain()
+    .focus()
+    .command(({ tr }) => {
+      tr.setNodeMarkup(target.pos, undefined, { ...node.attrs, ...attrs });
+      return true;
+    })
+    .setTextSelection(target.pos + node.nodeSize)
+    .run();
+}
 
 /** What a form may do to the editor from outside: put words in, or empty it. */
 export interface EditorHandle {
@@ -93,6 +113,9 @@ export function Editor({
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
+  const [editingValue, setEditingValue] = useState<InlineValueTarget | null>(null);
+  const emojiId = useId();
+  const emoji = useSuggestion<Emoji>((item) => item);
 
   const slash = useSuggestion<SlashItem>((item) => item);
   const mention = useSuggestion<Mentionable, MentionNodeAttrs>((person) => ({ id: person.id, label: person.name }));
@@ -108,6 +131,8 @@ export function Editor({
       armature,
       pickIssue: () => setPickingIssue(true),
       pickIssueList: () => setMakingList(true),
+      editInlineValue: setEditingValue,
+      emoji: { render: emoji.renderer },
       slash: { items: ({ query }) => filterSlashItems(query, slashItemsFor(Boolean(armatureRef.current?.baseUrl()))), render: slash.renderer },
       mention: {
         items: ({ query }) => mentionMatches(searchesRef.current ? foundRef.current : peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
@@ -156,14 +181,18 @@ export function Editor({
 
   // The list under the caret belongs to the editable element, which keeps
   // focus; these attributes tell a screen reader which option is current.
-  const controls = slash.open ? slashId : mention.open && mention.open.items.length > 0 ? mentionId : null;
+  const controls = slash.open ? slashId : mention.open && mention.open.items.length > 0 ? mentionId : emoji.open && emoji.open.rect ? emojiId : null;
   const activeOption = !controls
     ? null
     : controls === slashId
       ? slash.open?.items.length
         ? `${slashId}-${slash.active}`
         : null
-      : `${mentionId}-${mention.active}`;
+      : controls === emojiId
+        ? emoji.open?.items.length
+          ? `${emojiId}-${emoji.active}`
+          : null
+        : `${mentionId}-${mention.active}`;
   useEffect(() => {
     // Between an unmount and the next mount, as when a Suspense boundary hides
     // and shows the editor again, TipTap throws on any access to the view.
@@ -217,7 +246,30 @@ export function Editor({
           onPick={mention.open.pick}
         />
       )}
+      {emoji.open && (
+        <EmojiList id={emojiId} items={emoji.open.items} active={emoji.active} rect={emoji.open.rect} onHover={emoji.setActive} onPick={emoji.open.pick} />
+      )}
       {status}
+      {editingValue?.kind === "status" && editor && (
+        <StatusDialog
+          initial={editingValue.attrs}
+          onClose={() => setEditingValue(null)}
+          onSave={(attrs) => {
+            setEditingValue(null);
+            changeInlineValue(editor, editingValue, attrs);
+          }}
+        />
+      )}
+      {editingValue?.kind === "date" && editor && (
+        <DateDialog
+          initial={editingValue.attrs.date}
+          onClose={() => setEditingValue(null)}
+          onSave={(date) => {
+            setEditingValue(null);
+            changeInlineValue(editor, editingValue, { date });
+          }}
+        />
+      )}
       {pickingIssue && editor && (
         <IssuePicker
           onClose={() => setPickingIssue(false)}

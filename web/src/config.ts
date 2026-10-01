@@ -269,3 +269,10 @@ export const ARMATURE_CREATE_MAX_ITEMS = 50;
 export const ARMATURE_SUMMARY_MAX_LENGTH = 255;
 /** How often a page asks again while a link to Armature waits for the worker. */
 export const ARMATURE_LINKS_POLL_MS = 2000;
+
+/** The longest status label, matching the API's MaxStatusLength. */
+export const STATUS_LABEL_MAX_LENGTH = 40;
+/** How many emoji a colon offers at once. */
+export const EMOJI_MAX_SUGGESTIONS = 8;
+/** What a colon offers before a letter is typed, by shortcode, most used first. */
+export const EMOJI_COMMON: readonly string[] = ["+1", "white_check_mark", "x", "warning", "tada", "rocket", "eyes", "heart"];

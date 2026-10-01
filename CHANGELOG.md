@@ -317,6 +317,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
   theme that fails the checks is refused with the reason.
   `GET`, `PUT` and `DELETE /armature/theme`, and `GET /themes/active`
   answers `source: "armature"` while following.
+- Status labels, dates and emoji in running text. A status is a coloured
+  label with words of the author's own, drawn like an Armature issue's
+  status in one of five theme colours; a date is a day picked with the
+  browser's date field, stored as `YYYY-MM-DD` and shown in each reader's
+  own format. Both go in from the slash menu, open their dialog on a click
+  or on Enter once the arrow keys select them, and are found by search
+  through their words and their day. Typing a colon at the start of a word,
+  in a page or a comment, offers emoji by name from a list bundled with the
+  client; the one picked goes in as text. The server refuses a status
+  without words or longer than 40 characters, a colour of its own, and a
+  day that does not exist.
 
 ### Changed
 
