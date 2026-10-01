@@ -47,6 +47,11 @@ export function armatureURL(): string {
   return setting("STATOR_ARMATURE_URL");
 }
 
+/** The api as the armature-stub reaches it on the stack's network, where its webhooks go. */
+export function apiFromStubURL(): string {
+  return process.env.STATOR_API_FROM_STUB_URL ?? "http://api:8080";
+}
+
 /** The stack's database as its superuser, for arranging what no endpoint makes; read when first needed. */
 export function superuserURL(): string {
   return setting("STATOR_TEST_SUPERUSER_URL");

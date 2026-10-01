@@ -3,6 +3,27 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: The webhook receiver tells nobody which organizations exist
+
+`POST /armature/webhook/{orgSlug}` needs no sign-in, so anybody can post to
+it with any slug. An organization that does not exist, one that has not
+connected Armature or saved no secret, a wrong signature and a body naming
+another Armature organization are all one answer, 401 `bad_signature`, with
+the same sentence; when there is no secret the signature is still worked
+out against a stand-in, so the time taken does not tell them apart either.
+The contract first answered an organization without a secret 404, which
+would have listed the organizations that use Armature to whoever asked.
+
+The secret is read as the admin role by the organization's slug, as the
+sign-in paths are, because no tenant is known until the signature vouches
+for the body. Replays are refused by the event id Armature keeps across
+retries, remembered in Valkey for 24 hours with `SET NX`, rather than by
+`occurredAt`, which a genuine redelivery can carry hours old. A refused
+delivery leaves no mark, so a forged copy of an event cannot make the
+genuine one look like a replay. Topics the receiver does not act on are
+204 and leave no mark either, so subscribing to more topics than needed
+costs nothing but the request.
+
 ## 2026-10-01: Page links in Armature follow every change, as whoever made it
 
 A page's remote links in Armature are synced by the worker from an
