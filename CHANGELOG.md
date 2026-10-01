@@ -429,6 +429,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - Saving an edited comment puts focus back on its Edit button every time,
   not only when the save's answer and the next frame came in the right order.
 
+- Opening a reply or a new comment puts the caret in its editor every time.
+  When the editor's code was still loading, the focus could go to the editor
+  before it was on the page, and the keyboard was left on nothing.
+
 - Subtle text (hints, timestamps, placeholders) meets WCAG AA: 4.5:1 or more
   on every surface in both palettes, and in the Deep-Tech and Constellation
   themes, with the hue kept. A unit test checks every text colour against
