@@ -365,6 +365,30 @@ and the versioning [Semantic Versioning](https://semver.org/).
   or a mention, and the replacement keeps the marks of the text it replaces.
   Escape closes the bar and puts the caret on the last match; outside the
   editor Ctrl or Cmd+F stays the browser's.
+- Checking somebody's access to a page (#81). An administrator of the space,
+  or of the organization, picks a person under the page's Check access and
+  sees whether they may view, edit, move to the trash and comment, each with
+  the conditions behind it: their standing in the organization, the use and
+  space grants that reach them, unpublished pages above, and every view or
+  edit list on the page and the pages above it with whom it names. The one
+  that decides a no is marked. The answers are the database's own, from the
+  functions its policies call, through `GET /pages/{pageID}/access/{userID}`;
+  migration 00200 lets an administrator of a space read which use grants
+  reach the person.
+- Markdown import and export. A page exports as one Markdown file, or as a
+  `.zip` with its files and, if asked, every page below it the reader may
+  view, each in a folder named after the page above it. Markdown files, a
+  folder of them or a `.zip` import as pages under any page the importer may
+  edit: each file is a page, each folder a page whose `index.md` or
+  `README.md` is its content, the pictures and files they show become the
+  page's files, and links between the files become links between the pages.
+  The leading level 1 heading is the title. `PUT /pages/{id}/markdown`
+  publishes one file as a page's next version. The conversion runs on the
+  server, so a script with a token gets what the page menu gets; raw HTML
+  never reaches a page, and `docs/markdown.md` says how each block is
+  written, including the panels, expand blocks, statuses, dates, mentions
+  and Armature issues Markdown has no syntax for. One import takes up to
+  100 MB, 1000 files and 200 pages, and one Markdown file up to 1 MB.
 
 ### Changed
 

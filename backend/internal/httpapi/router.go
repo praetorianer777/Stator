@@ -16,6 +16,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
@@ -70,6 +71,8 @@ type Server struct {
 	Perms *perm.Service
 	// Attachments keeps the files on pages; nil answers that storage is off.
 	Attachments *attachment.Service
+	// Markdown imports and exports pages; nil makes one of Pages and Attachments.
+	Markdown *mdio.Service
 	// Armature keeps the organization's connection and the members' tokens;
 	// nil answers that Armature is out of reach.
 	Armature *armature.Service
@@ -243,6 +246,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/pages/{pageID}/move", s.handleMovePage)
 			r.Post("/pages/{pageID}/copy", s.handleCopyPage)
 			r.Get("/pages/{pageID}/below", s.handleListPagesBelow)
+			r.Get("/pages/{pageID}/export", s.handleExportPage)
+			r.Get("/pages/{pageID}/markdown", s.handleGetPageMarkdown)
+			r.Put("/pages/{pageID}/markdown", s.handleReplacePageMarkdown)
+			r.Post("/pages/{pageID}/import", s.handleImportMarkdown)
 			r.Get("/templates", s.handleListTemplates)
 			r.Get("/templates/{templateKey}", s.handleGetTemplate)
 			r.Get("/pages/{pageID}/labels", s.handleListPageLabels)
@@ -264,6 +271,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/compare", s.handleCompareVersions)
 			r.Get("/pages/{pageID}/restrictions", s.handleGetPageRestrictions)
 			r.Put("/pages/{pageID}/restrictions", s.handleSetPageRestrictions)
+			r.Get("/pages/{pageID}/access/{userID}", s.handleInspectPageAccess)
 			r.Post("/pages/{pageID}/visit", s.handleVisitPage)
 			r.Get("/pages/{pageID}/comments", s.handleListComments)
 			r.Post("/pages/{pageID}/comments", s.handleStartThread)

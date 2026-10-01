@@ -3,6 +3,70 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: The access inspector asks the database, and only administrators ask
+
+Explaining why somebody may or may not open a page (#81) could have been a
+second copy of the rules in Go, laid out as steps. A copy drifts: the day a
+policy changes and the copy does not, the inspector tells an administrator
+the wrong reason with full confidence. So every verdict, and whether each
+step is met, is what the SQL functions behind the policies answer for that
+person (`perm_page_viewable`, `perm_page_editable`, `perm_page_deletable`,
+`perm_page_commentable`, `perm_space_holds`, `perm_page_lists`), and the
+grants and list entries named beside a step are matched with the same
+`perm_subject_matches`. Go only orders them. The integration suite acts as
+each person straight through SQL and holds the inspector to what the
+database lets them do.
+
+Only administrators of the page's space, or of the organization, may
+inspect, themselves included. The answer lays out the space's permission
+table and the global grants, which are theirs to see and nobody else's; a
+member who wonders why they cannot edit is told by the refusal itself whom
+to ask. The global grants are hidden from space administrators by their
+policy, so `perm_global_grant_sources` (migration 00200) names the use grants
+that reach a person to anybody who administers a space, the organization,
+or is that person.
+
+The home page reports the right to move it to the trash as the rules give
+it, although a check keeps every home page out of the trash; the page never
+offers it.
+
+## 2026-10-01: Markdown is converted on the server, and what it cannot say is a marked element
+
+Import and export run in the API rather than in the browser. A script with a
+personal access token then gets the same pages as the page menu, every page
+an import makes passes the one allowlist the editor's saves pass, an export
+reads the files and the pages below with the caller's own permissions in one
+place, and the archive is written and read where the files are. The editor's
+Markdown paste stays in the browser: it is typing, not moving pages.
+
+Markdown is read by goldmark, MIT licensed and kept up, with the GitHub
+extensions for tables, task lists and strikethrough, and written by our own
+serializer, since a document has to come back as the same document and no
+library writes this allowlist. Armature has no Markdown handling to follow.
+
+What Markdown has a syntax for uses it, so an export reads well in a
+repository: panels as GitHub's alert quotes, expand blocks as `details`, task
+lists as check boxes. What it has none for (a mention, a status, a date, an
+Armature issue, a table of contents, child pages) is a `span` or a `div`
+marked `data-stator`, whose text is what the reader would see. Any renderer
+shows the words, and an import reads the exact form back into its node,
+checked by the allowlist like anything else. An HTML comment would have
+hidden the words, and a fenced block of JSON would have read as noise; both
+would have needed the attachment ids rewritten as well.
+
+Raw HTML never reaches a page. The tokenizer reads only the forms above and
+`img` and `br`; an unknown block is shown as its source in a code block, and
+an unknown inline tag is dropped with its words kept, so a README full of
+badges and `kbd` still reads. Parsing is bounded before it starts: by file
+size, by how deep one line nests, and by how many brackets the long lines
+hold, the inputs that cost the parser time with the square of their size.
+
+An import makes every page unpublished, attaches its files, and only then
+publishes them, since the links between pages need the pages' ids and the
+pictures need the files' ids. A failure part way trashes what was made, and
+nobody else has seen any of it. `docs/markdown.md` lists how each node is
+written and what does not come back as it left.
+
 ## 2026-10-01: The outbox worker leases events instead of holding their locks
 
 A push gate (#217) hung for ten minutes in a test's cleanup, `DELETE FROM

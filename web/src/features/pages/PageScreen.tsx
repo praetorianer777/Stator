@@ -11,12 +11,14 @@ import { ArmatureLinks } from "@/features/armature/ArmatureLinks";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSection";
 import { InlineComments } from "@/features/comments/InlineComments";
+import { ExportDialog, ImportDialog } from "@/features/markdown/MarkdownDialogs";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocView } from "@/features/editor/DocView";
 import { PageLabels } from "@/features/labels/PageLabels";
 import { PageReactions } from "@/features/reactions/Reactions";
+import { AccessDialog } from "@/features/permissions/AccessDialog";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
 import { WatchMenu } from "@/features/watching/WatchMenu";
 import { t } from "@/i18n";
@@ -43,7 +45,7 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
   return crumbs;
 }
 
-type Dialog = "new" | "move" | "copy" | "restrictions";
+type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import";
 
 /** Says a page is narrowed to some people, and opens who and why. */
 function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
@@ -113,8 +115,15 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
   const actions: MenuItem[] = [];
   if (!page.home && page.can.edit) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
   if (space.can.editPages) actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
+  actions.push({ label: t.markdown.exportMenu, icon: <Icon.Download />, onSelect: () => setDialog("export"), attrs: { "data-action": "export-markdown" } });
+  if (page.can.edit) {
+    actions.push({ label: t.markdown.importMenu, icon: <Icon.Upload />, onSelect: () => setDialog("import"), attrs: { "data-action": "import-markdown" } });
+  }
   if (page.can.restrict) {
     actions.push({ label: t.restrictions.menu, icon: <Icon.Lock />, onSelect: () => setDialog("restrictions"), attrs: { "data-action": "page-restrictions" } });
+  }
+  if (space.can.administer) {
+    actions.push({ label: t.access.menu, icon: <Icon.Key />, onSelect: () => setDialog("access"), attrs: { "data-action": "inspect-access" } });
   }
   if (!page.home && page.can.delete) {
     actions.push({
@@ -228,6 +237,11 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         </KnownAttachmentsContext>
       </InlineComments>
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
+      {dialog === "access" && <AccessDialog pageId={page.id} pageTitle={page.title} onClose={() => setDialog(undefined)} />}
+      {dialog === "export" && <ExportDialog page={page} onClose={() => setDialog(undefined)} />}
+      {dialog === "import" && (
+        <ImportDialog parent={page.home ? { id: page.id, title: space.name } : page} spaceKey={space.key} onClose={() => setDialog(undefined)} />
+      )}
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
       {(dialog === "move" || dialog === "copy") && (
         <PlaceDialog

@@ -28,6 +28,7 @@ export function SubjectPicker({
   onPick,
   exclude = [],
   allowEveryone = false,
+  peopleOnly = false,
   disabled,
 }: {
   label: string;
@@ -35,6 +36,8 @@ export function SubjectPicker({
   /** Subjects already chosen, by subjectKey, which are not offered again. */
   exclude?: string[];
   allowEveryone?: boolean;
+  /** Offers people alone, for questions about one person such as what they may do. */
+  peopleOnly?: boolean;
   disabled?: boolean;
 }) {
   const id = useId();
@@ -43,7 +46,7 @@ export function SubjectPicker({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const q = useDebounced(text.trim(), PICKER_DEBOUNCE_MS);
-  const found = useSubjectSearch(q, open);
+  const found = useSubjectSearch(q, open, !peopleOnly);
 
   const options: Option[] = [];
   if (allowEveryone && t.permissions.everyone.toLowerCase().startsWith(q.toLowerCase())) {
@@ -98,7 +101,7 @@ export function SubjectPicker({
           aria-autocomplete="list"
           aria-activedescendant={expanded && shown[current] ? `${listId}-${current}` : undefined}
           autoComplete="off"
-          placeholder={t.permissions.pickerPlaceholder}
+          placeholder={peopleOnly ? t.access.pickerPlaceholder : t.permissions.pickerPlaceholder}
           value={text}
           disabled={disabled}
           onChange={(event) => {
@@ -113,7 +116,7 @@ export function SubjectPicker({
         <div
           id={listId}
           role="listbox"
-          aria-label={t.permissions.pickerOptions}
+          aria-label={peopleOnly ? t.access.pickerOptions : t.permissions.pickerOptions}
           hidden={!expanded || shown.length === 0}
           className="absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
           data-subject-options

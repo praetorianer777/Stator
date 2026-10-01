@@ -734,6 +734,23 @@ export interface paths {
         patch: operations["updatePage"];
         trace?: never;
     };
+    "/pages/{pageID}/access/{userID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a person may do to a page and which grant or restriction decides each right, as the database answers it. For the space's administrators. */
+        get: operations["inspectPageAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/armature-links": {
         parameters: {
             query?: never;
@@ -857,6 +874,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page as a .zip of Markdown with its files, and with subtree the pages below it the caller may view, in folders. */
+        get: operations["exportPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make pages under a page from Markdown files and their folders, sent as parts named file with their paths, or as a .zip; each folder of Markdown is a page too. */
+        post: operations["importMarkdown"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/inline-comments": {
         parameters: {
             query?: never;
@@ -904,6 +955,24 @@ export interface paths {
         post?: never;
         /** Take a label off a page; one it does not carry is no change. */
         delete: operations["removePageLabel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/markdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page as one Markdown file, its files named where its export puts them. */
+        get: operations["getPageMarkdown"];
+        /** Publish one Markdown file, sent with the files it shows as parts named file, as the next version of a page; its one leading level 1 heading becomes the title. */
+        put: operations["replacePageMarkdown"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1698,6 +1767,40 @@ export interface components {
             scopes: "read"[];
             secret?: string;
         };
+        AccessPage: {
+            home: boolean;
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        AccessReport: {
+            person: components["schemas"]["Person"];
+            rights: components["schemas"]["AccessRight"][];
+            /** @enum {string} */
+            role: "owner" | "admin" | "member";
+            /** @enum {string} */
+            roleSource: "manual" | "oidc";
+        };
+        AccessRight: {
+            allowed: boolean;
+            /** @enum {string} */
+            right: "view" | "edit" | "delete" | "comment";
+            steps: components["schemas"]["AccessStep"][];
+        };
+        AccessStep: {
+            bypassed: boolean;
+            grants: components["schemas"]["SpaceGrant"][];
+            /** @enum {string} */
+            kind: "orgAdmin" | "use" | "space" | "unpublished" | "list" | "view" | "published";
+            /** @enum {string} */
+            list?: "view" | "edit";
+            listed: components["schemas"]["Subject"][];
+            page?: components["schemas"]["AccessPage"];
+            passed: boolean;
+            /** @enum {string} */
+            permission?: "view" | "addPages" | "addComments" | "delete" | "administer";
+            via: components["schemas"]["Subject"][];
+        };
         Account: {
             baseUrl: string | null;
             /** Format: date-time */
@@ -2009,6 +2112,14 @@ export interface components {
             /** Format: uuid */
             assetId?: string;
             paths?: string[];
+        };
+        Imported: {
+            depth: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parentId: string;
+            title: string;
         };
         Info: {
             description?: string;
@@ -4740,6 +4851,40 @@ export interface operations {
             };
         };
     };
+    inspectPageAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        access: components["schemas"]["AccessReport"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listArmatureLinks: {
         parameters: {
             query?: never;
@@ -5152,6 +5297,90 @@ export interface operations {
             };
         };
     };
+    exportPage: {
+        parameters: {
+            query?: {
+                /** @description true to take the pages below it too; false when absent. */
+                subtree?: boolean;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importMarkdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["Imported"][];
+                        warnings: string[];
+                    };
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     startInlineThread: {
         parameters: {
             query?: never;
@@ -5287,6 +5516,99 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getPageMarkdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    replacePageMarkdown: {
+        parameters: {
+            query?: {
+                /** @description The version the Markdown replaces; a newer one refuses it with conflict. */
+                version?: number;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                        warnings: string[];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

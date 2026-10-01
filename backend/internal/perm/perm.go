@@ -35,6 +35,8 @@ const (
 	AddComments Action = "page.comment"
 	// PurgeTrash deletes trashed pages for good.
 	PurgeTrash Action = "trash.purge"
+	// InspectAccess shows what somebody may do to a page of the space, and why.
+	InspectAccess Action = "space.inspect"
 )
 
 // Actor is who asks: a person and their standing in the organization the
@@ -74,6 +76,8 @@ func (e *DeniedError) Error() string {
 		return "You may not move pages of this space to the trash or back. Ask an administrator of the space for access."
 	case AddComments:
 		return "You may not comment in this space. Ask an administrator of the space for access."
+	case InspectAccess:
+		return "Only an administrator of this space can check what somebody may do here. Ask one of them to check it for you."
 	}
 	return "You do not have permission to do that. Ask an administrator of the organization."
 }
