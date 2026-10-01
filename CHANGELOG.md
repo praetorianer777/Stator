@@ -243,6 +243,20 @@ and the versioning [Semantic Versioning](https://semver.org/).
   in the compose stack on its own port. A unit test holds it to Armature's
   `api/openapi.json`, vendored under `api/armature` by
   `make armature-openapi REF=...`.
+- Smart links to Armature issues. Typing an issue key followed by a space or
+  a sign turns it into a chip when its project is one the author sees in
+  Armature, so `UTF-8` stays text; pasting an issue's address of the
+  connected Armature always does, and undo turns a chip back into its text.
+  A page stores only the key. Each reader sees the type, summary and status
+  of the issues they may see, with a card on hover or focus, the key and a
+  link to connect their account without a token, and "Not available" for an
+  issue that is not theirs to see. A view asks for all its keys in one
+  lookup, which Stator answers from a per-person cache and one search in
+  Armature, following moved issues by their old keys. Chips show in the
+  editor, the page, a comparison of versions and search, which finds a page
+  by the keys it names. `GET /armature/issues`, `GET /armature/issues/{key}`
+  and `GET /armature/projects` answer a `status` instead of failing when
+  Armature cannot be asked.
 
 ### Changed
 

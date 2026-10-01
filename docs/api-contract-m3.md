@@ -239,6 +239,21 @@ it, never reads an answer given to the old one.
 - **Plain text** of a chip is its key, in Go (`document`) and in SQL
   (migration 00163), so search finds pages by the issues they name, and a
   comparison of versions shows the key.
+- **As built in #28.** Keys are read in any case and answered upper case; a
+  key asked twice is answered once, in the order first asked. A status other
+  than `ok` comes with `issues: []`, never with what the cache holds. The
+  fetches after the search run `armature.LookupParallel`, 8, at a time, and a
+  404 or 403 from Armature is a null. A chip of a moved issue shows the
+  issue's key now and links to it, and the page keeps the key it was named
+  by. `GET /armature/projects` is built here, since typing needs it; its
+  `meta` entry holds the issue types too, fetched with the projects, for
+  #31. The way to connect is a link in the chip, "Connect Armature", to
+  `/settings/profile#armature`; the hover card holds nothing to press. In
+  the editor a chip is drawn the same but is not a link. Service methods:
+  `Lookup`, `Issue`, `Projects`; `armature.NormalizeKey` and
+  `armature.IssueURL`; on the web, `features/armature/issueKeys.ts` and
+  `IssueChip.tsx`'s `ArmatureIssuesProvider`, which an issue block (#29) can
+  draw from too.
 
 ## #29 Armature issue block
 

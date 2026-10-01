@@ -3,6 +3,32 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: An issue chip is its key, and each view asks Armature once
+
+An `armatureIssue` node holds the key and nothing else. A summary in the body
+would be readable by everybody who may read the page, whether or not
+Armature lets them see the issue, and it would go stale. Each view collects
+the keys it names and asks `GET /armature/issues` once per 50, sorted so the
+same keys make the same request; the server answers from the person's cache
+and asks Armature for the rest with one NQL search and then, eight at a time,
+`GET /issues/{key}` for each key the search missed, which is how an issue
+moved to another project is found by its old key. A chip of a moved issue
+shows the key it has now and keeps the one the author wrote. Keys asked twice
+are answered once. A lookup that cannot ask Armature answers its status and
+no issues, not the part the cache holds, so a page never shows some chips
+as Armature answered and others as if it had.
+
+Typing a key makes a chip only in a project the author sees, which needs
+`GET /armature/projects` from #31; #28 builds it. The `meta` entry holds the
+projects and the issue types together, fetched together, so the create
+dialog of #31 finds both in one entry.
+
+The hover card explains and holds nothing to press, so it is a tooltip that
+focus opens as well as the pointer. The way to connect an account is a link
+inside the chip itself rather than a button in the card. In the editor a
+chip is not a link: a click there selects it, as it selects any other atom.
+A comparison of versions draws chips live, as the reader sees them now.
+
 ## 2026-10-01: The database forgets Armature tokens when the address moves, and each member reaches only their own
 
 An administrator who could point the connection at a host of their choosing
