@@ -135,7 +135,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() {
-			_, _ = h.super.Exec(context.Background(), `INSERT INTO global_grant (org_id, permission, subject_type) VALUES ($1, 'use', 'everyone')`, home.org)
+			h.cleanupExec(t, h.super, `INSERT INTO global_grant (org_id, permission, subject_type) VALUES ($1, 'use', 'everyone')`, home.org)
 		})
 		actAs(t, conn, home.org, annID)
 		for _, table := range []string{"space", "page"} {

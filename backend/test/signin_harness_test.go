@@ -105,7 +105,7 @@ func (h *harness) makeOrg(t *testing.T, slug string) tenant.Org {
 	if err := h.super.QueryRow(context.Background(), `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, full, slug).Scan(&org.ID); err != nil {
 		t.Fatalf("create org %s: %v", full, err)
 	}
-	t.Cleanup(func() { _, _ = h.super.Exec(context.Background(), `DELETE FROM org WHERE id = $1`, org.ID) })
+	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM org WHERE id = $1`, org.ID) })
 	return org
 }
 
@@ -113,7 +113,7 @@ func (h *harness) makeOrg(t *testing.T, slug string) tenant.Org {
 // so a run against a kept stack starts from nothing.
 func (h *harness) forgetPerson(t *testing.T, email string) {
 	t.Helper()
-	clean := func() { _, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE email = $1`, email) }
+	clean := func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, email) }
 	clean()
 	t.Cleanup(clean)
 }

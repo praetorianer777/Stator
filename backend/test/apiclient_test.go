@@ -316,7 +316,7 @@ func (h *harness) addPerson(t *testing.T, org uuid.UUID, role string) uuid.UUID 
 	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, org, id, role); err != nil {
 		t.Fatalf("make the %s a member: %v", role, err)
 	}
-	t.Cleanup(func() { _, _ = h.super.Exec(context.Background(), `DELETE FROM app_user WHERE id = $1`, id) })
+	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, id) })
 	h.settle(t)
 	return id
 }
