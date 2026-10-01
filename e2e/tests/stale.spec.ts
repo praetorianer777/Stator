@@ -115,6 +115,12 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     const bob = must(await bobApi.GET("/auth/me")).user;
     const { space } = await quietSpace(api, testInfo, bob.id);
 
+    // A replica that has not seen the new space yet would answer 404 for it,
+    // so the space is named only once bob may read it.
+    expect((await bobApi.GET("/stale-pages")).response.status).toBe(403);
+    await expect(async () => {
+      expect((await bobApi.GET("/spaces/{spaceKey}", { params: { path: { spaceKey: space.key } } })).response.status).toBe(200);
+    }).toPass();
     const refused = await bobApi.GET("/stale-pages", { params: { query: { space: space.key } } });
     expect(refused.response.status).toBe(403);
 
