@@ -16,7 +16,12 @@ export function TrashPanel({ space }: { space: Space }) {
   const empty = useEmptyTrash(space.key);
   const [notice, setNotice] = useState("");
   const failure = restore.error ?? purge.error ?? empty.error;
-  if (!space.can.deletePages) return <p className="text-sm text-ink-muted" data-space-trash={space.key}>{s.notTrasher}</p>;
+  if (!space.can.deletePages)
+    return (
+      <p className="text-sm text-ink-muted" data-space-trash={space.key}>
+        {s.notTrasher}
+      </p>
+    );
 
   return (
     <div className="space-y-4" data-space-trash={space.key}>

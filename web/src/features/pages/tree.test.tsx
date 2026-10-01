@@ -16,7 +16,14 @@ const isChange = (r: { method: string; path: string }) => r.method === "POST" &&
 const space = aSpace();
 const home = aPage();
 const ids = { one: "0195f000-0000-7000-8000-0000000000a1", two: "0195f000-0000-7000-8000-0000000000a2", oneA: "0195f000-0000-7000-8000-0000000000b1" };
-const node = (id: string, parentId: string, title: string, hasChildren = false): TreeNode => ({ id, parentId, title, hasChildren, unpublished: false, restricted: false });
+const node = (id: string, parentId: string, title: string, hasChildren = false): TreeNode => ({
+  id,
+  parentId,
+  title,
+  hasChildren,
+  unpublished: false,
+  restricted: false,
+});
 const levels: Record<string, TreeNode[]> = {
   home: [node(ids.one, home.id, "One", true), node(ids.two, home.id, "Two")],
   [ids.one]: [node(ids.oneA, ids.one, "One A")],

@@ -90,62 +90,65 @@ export function SubjectPicker({
       </label>
       {/* The list floats over what follows, so opening and closing it never moves a button under the pointer. */}
       <div className="relative">
-      <Input
-        id={id}
-        role="combobox"
-        aria-expanded={expanded && shown.length > 0}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        aria-activedescendant={expanded && shown[current] ? `${listId}-${current}` : undefined}
-        autoComplete="off"
-        placeholder={t.permissions.pickerPlaceholder}
-        value={text}
-        disabled={disabled}
-        onChange={(event) => {
-          setText(event.target.value);
-          setOpen(true);
-          setActive(0);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onKeyDown={onKeyDown}
-      />
-      <div
-        id={listId}
-        role="listbox"
-        aria-label={t.permissions.pickerOptions}
-        hidden={!expanded || shown.length === 0}
-        className="absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
-        data-subject-options
-      >
-        {shown.map((option, i) => (
-          <div
-            key={subjectKey(option.subject)}
-            id={`${listId}-${i}`}
-            role="option"
-            aria-selected={i === current}
-            tabIndex={-1}
-            // The press would take focus from the box and close the list before the click lands.
-            onMouseDown={(event) => {
-              event.preventDefault();
-              pick(option);
-            }}
-            onMouseEnter={() => setActive(i)}
-            className={cx(
-              "flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-sm",
-              i === current ? "bg-surface-raised text-ink" : "text-ink-muted",
-            )}
-            data-subject-option={option.subject.name}
-          >
-            <SubjectGlyph type={option.subject.type} />
-            <span className="font-medium text-ink">{option.subject.name}</span>
-            <span className="min-w-0 truncate text-xs text-ink-subtle">{option.detail}</span>
-          </div>
-        ))}
-      </div>
-      <p role="status" className="absolute inset-x-0 top-full z-30 mt-1 rounded-overlay border border-border bg-surface-overlay px-2 py-1.5 text-sm text-ink-subtle shadow-2 empty:hidden">
-        {expanded && shown.length === 0 ? (found.isFetching ? t.permissions.pickerLoading : t.permissions.pickerEmpty) : ""}
-      </p>
+        <Input
+          id={id}
+          role="combobox"
+          aria-expanded={expanded && shown.length > 0}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={expanded && shown[current] ? `${listId}-${current}` : undefined}
+          autoComplete="off"
+          placeholder={t.permissions.pickerPlaceholder}
+          value={text}
+          disabled={disabled}
+          onChange={(event) => {
+            setText(event.target.value);
+            setOpen(true);
+            setActive(0);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+          onKeyDown={onKeyDown}
+        />
+        <div
+          id={listId}
+          role="listbox"
+          aria-label={t.permissions.pickerOptions}
+          hidden={!expanded || shown.length === 0}
+          className="absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
+          data-subject-options
+        >
+          {shown.map((option, i) => (
+            <div
+              key={subjectKey(option.subject)}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === current}
+              tabIndex={-1}
+              // The press would take focus from the box and close the list before the click lands.
+              onMouseDown={(event) => {
+                event.preventDefault();
+                pick(option);
+              }}
+              onMouseEnter={() => setActive(i)}
+              className={cx(
+                "flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-sm",
+                i === current ? "bg-surface-raised text-ink" : "text-ink-muted",
+              )}
+              data-subject-option={option.subject.name}
+            >
+              <SubjectGlyph type={option.subject.type} />
+              <span className="font-medium text-ink">{option.subject.name}</span>
+              <span className="min-w-0 truncate text-xs text-ink-subtle">{option.detail}</span>
+            </div>
+          ))}
+        </div>
+        <p
+          role="status"
+          className="absolute inset-x-0 top-full z-30 mt-1 rounded-overlay border border-border bg-surface-overlay px-2 py-1.5 text-sm text-ink-subtle shadow-2 empty:hidden"
+        >
+          {expanded && shown.length === 0 ? (found.isFetching ? t.permissions.pickerLoading : t.permissions.pickerEmpty) : ""}
+        </p>
       </div>
       {found.error && <ErrorBanner>{found.error.message}</ErrorBanner>}
     </div>

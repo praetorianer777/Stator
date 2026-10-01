@@ -30,8 +30,7 @@ const gone = "0195f000-0000-7000-8000-00000000e0b1";
 const settled = "0195f000-0000-7000-8000-00000000e0c1";
 
 const anchor = (threadId: string) => ({ type: "inlineComment", attrs: { threadId } });
-const text = (value: string, ...marks: DocMark[]): DocNode =>
-  marks.length ? { type: "text", text: value, marks } : { type: "text", text: value };
+const text = (value: string, ...marks: DocMark[]): DocNode => (marks.length ? { type: "text", text: value, marks } : { type: "text", text: value });
 const para = (...content: DocNode[]): DocNode => ({ type: "paragraph", content });
 const doc = (...content: DocNode[]): Doc => ({ type: "doc", content });
 const say = (value: string): Doc => doc(para(text(value)));
@@ -47,7 +46,13 @@ function marksIn(node: DocNode, out: Record<string, string> = {}): Record<string
 
 describe("a passage in a page's body", () => {
   const body = doc(
-    para(text("We ship "), text("on Friday", { type: "bold" }), text(" with "), { type: "mention", attrs: { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01", label: "Ada" } }, text(" after review.")),
+    para(
+      text("We ship "),
+      text("on Friday", { type: "bold" }),
+      text(" with "),
+      { type: "mention", attrs: { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01", label: "Ada" } },
+      text(" after review."),
+    ),
     { type: "bulletList", content: [{ type: "listItem", content: [para(text("Friday again, twice Friday."))] }] },
   );
 
