@@ -56,9 +56,8 @@ interface Row {
 }
 
 /**
- * Files the items of a selection as Armature issues: asks for the project and
- * the type, shows each summary to change or leave out, then what was made
- * and what Armature refused.
+ * Files a selection's items as Armature issues: the project, the type and each summary,
+ * then what was made and what Armature refused.
  */
 export function CreateIssuesDialog({
   plan,

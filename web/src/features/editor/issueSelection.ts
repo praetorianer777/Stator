@@ -125,9 +125,8 @@ function rowsOfCells(selection: CellSelection, doc: PMNode): SelectionItem[] {
 }
 
 /**
- * What the selection becomes: selected text inside one paragraph, heading
- * or cell is one issue; over list items, one per item; over table rows, one
- * per row. Null when it makes none.
+ * One issue for text in a paragraph, heading or cell; one per list item or table row;
+ * null when the selection makes none.
  */
 export function planSelection(state: EditorState): SelectionPlan | null {
   const { selection, doc } = state;
@@ -166,9 +165,8 @@ export function planSelection(state: EditorState): SelectionPlan | null {
 }
 
 /**
- * Puts the chip of each issue made into the document, in one transaction so
- * one undo takes them all back: keys holds each item's new key, or null for
- * an item that was not made.
+ * Puts each new issue's chip in, in one transaction so one undo takes all back;
+ * keys holds each item's new key, or null for one not made.
  */
 export function placeChips(tr: Transaction, chosen: SelectionPlan, keys: readonly (string | null)[]): Transaction {
   const chip = tr.doc.type.schema.nodes[ARMATURE_ISSUE_NODE];
