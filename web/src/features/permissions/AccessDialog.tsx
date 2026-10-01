@@ -36,6 +36,8 @@ export function stepSentence(step: AccessStep, report: Pick<AccessReport, "role"
       return t.access.publishedNo;
     case "home":
       return t.access.homeNo;
+    case "archived":
+      return step.page ? t.access.archivedPage(step.page.title) : t.access.archivedSpace;
   }
 }
 

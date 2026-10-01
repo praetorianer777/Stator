@@ -17,7 +17,7 @@ func MentionablePeople(ctx context.Context, tx db.DBTX, pageID uuid.UUID, q stri
 		FROM org_member m JOIN app_user u ON u.id = m.user_id
 		WHERE m.org_id = current_org_id() AND perm_global_holds(u.id, 'use')
 		  AND (u.name ILIKE $2 OR u.name ILIKE '% ' || $2 OR u.email::text ILIKE $2)
-		ORDER BY lower(u.name), u.email LIMIT $3`, pageID, LikePrefix(q), PickerLimit(limit))
+		ORDER BY lower(u.name), u.email LIMIT $3`, pageID, likePrefix(q), PickerLimit(limit))
 	if err != nil {
 		return nil, err
 	}

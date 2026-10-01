@@ -699,6 +699,7 @@ export const de: Messages = {
     home: "Startseite des Bereichs",
     settings: "Bereichseinstellungen",
     trash: "Papierkorb",
+    archive: "Archiv",
     navigation: (name: string) => `Bereich ${name}`,
   },
   page: {
@@ -710,6 +711,8 @@ export const de: Messages = {
     emptyTitle: "Eine Seite braucht einen Titel.",
     cannotEdit:
       "Sie können diese Seite lesen, aber nicht bearbeiten. Bitten Sie einen Administrator des Bereichs oder jemanden auf der Bearbeitungsliste der Seite, es Ihnen zu erlauben.",
+    cannotEditArchived:
+      "Diese Seite ist archiviert, daher kann niemand sie bearbeiten. Bitten Sie einen Administrator des Bereichs, sie zuerst aus dem Archiv zu holen.",
     newPage: "Neue Seite",
     newPageUnder: (title: string) => `Neue Seite unter ${title}`,
     create: "Seite anlegen",
@@ -928,6 +931,7 @@ export const de: Messages = {
     details: "Angaben",
     permissions: "Berechtigungen",
     trash: "Papierkorb",
+    archive: "Archiv",
     save: "Angaben speichern",
     saved: "Gespeichert.",
     notAdmin: "Nur ein Administrator dieses Bereichs kann seine Angaben ändern. Fragen Sie einen von ihnen oder einen Administrator der Organisation.",
@@ -958,6 +962,45 @@ export const de: Messages = {
     notTrasher:
       "Nur wer in diesem Bereich Seiten löschen darf, sieht seinen Papierkorb. Fragen Sie einen Administrator des Bereichs, wenn Sie eine Seite zurück brauchen.",
     notPurger: "Nur ein Administrator dieses Bereichs kann Seiten endgültig löschen.",
+  },
+  archive: {
+    tag: "Archiviert",
+    menuArchive: "Archivieren",
+    menuUnarchive: "Aus dem Archiv holen",
+    confirmArchive: (title: string) =>
+      `${title} und alle Seiten darunter archivieren? Sie bleiben lesbar und behalten ihre Adressen, aber niemand kann sie ändern, bis ein Administrator des Bereichs sie aus dem Archiv holt.`,
+    bannerPage: "Diese Seite ist archiviert. Sie können sie lesen und verlinken, aber niemand kann sie ändern.",
+    bannerSpace: "Dieser ganze Bereich ist archiviert. Sie können seine Seiten lesen und verlinken, aber niemand kann sie ändern.",
+    bannerWith: (title: string) => `Sie wurde zusammen mit ${title} darüber archiviert.`,
+    by: (who: string, when: string) => (who ? `Archiviert von ${who} am ${when}.` : `Archiviert am ${when}.`),
+    unarchive: "Aus dem Archiv holen",
+    goTo: (title: string) => `Zu ${title}`,
+    spaceSettings: "Bereichseinstellungen öffnen",
+    intro:
+      "Archivierte Seiten warten hier mit den Seiten, die mit ihnen archiviert wurden. Sie bleiben lesbar und behalten ihre Adressen, erscheinen aber nicht mehr im Seitenbaum, in der Suche und auf der Startseite, und niemand kann sie ändern, bis sie aus dem Archiv geholt werden.",
+    empty: "In diesem Bereich ist nichts archiviert.",
+    columnPage: "Seite",
+    columnArchived: "Archiviert",
+    columnUnder: "Liegt unter",
+    pages: (n: number) => (n === 1 ? "1 Seite" : `${n} Seiten`),
+    archivedAt: (who: string, when: string) => (who ? `${when} von ${who}` : when),
+    unarchiveItem: (title: string) => `${title} aus dem Archiv holen`,
+    archived: (title: string) => `${title} wurde archiviert.`,
+    unarchived: (title: string) => `${title} wurde aus dem Archiv geholt.`,
+    spaceTitle: "Diesen Bereich archivieren",
+    spaceBody:
+      "Ein archivierter Bereich bleibt mit all seinen Adressen lesbar, erscheint aber nicht mehr in der Liste der Bereiche, in der Suche und auf der Startseite, und niemand kann seine Seiten ändern, bis er aus dem Archiv geholt wird.",
+    spaceArchivedBody: (who: string, when: string) =>
+      who
+        ? `${who} hat diesen Bereich am ${when} archiviert. Sie können seine Seiten lesen, aber niemand kann sie ändern.`
+        : `Dieser Bereich wurde am ${when} archiviert. Sie können seine Seiten lesen, aber niemand kann sie ändern.`,
+    spaceArchive: "Bereich archivieren",
+    spaceUnarchive: "Bereich aus dem Archiv holen",
+    confirmArchiveSpace: (name: string) =>
+      `${name} archivieren? Seine Seiten bleiben lesbar, aber niemand kann sie ändern, bis ein Administrator des Bereichs ihn aus dem Archiv holt.`,
+    spaceUnarchived: "Der Bereich wurde aus dem Archiv geholt.",
+    showArchived: "Archivierte Bereiche zeigen",
+    searchFilter: "Archivierte Seiten einbeziehen",
   },
   notFound: {
     title: "Seite nicht gefunden",
@@ -1241,40 +1284,6 @@ export const de: Messages = {
       "Wenn Sie das speichern, sperren Sie sich selbst aus der Seite aus. Fügen Sie sich oder eine Ihrer Gruppen beiden Listen hinzu, oder bitten Sie einen Administrator des Bereichs um die Änderung.",
     saved: "Einschränkungen gespeichert.",
   },
-  share: {
-    button: "Teilen",
-    title: (page: string) => `${page} teilen`,
-    intro:
-      "Senden Sie diese Seite an Personen und Gruppen, auf Wunsch mit einer Notiz. Sie erfahren es in der App und per E-Mail. Teilen gibt niemandem Zugriff: Benachrichtigt wird nur, wer die Seite schon ansehen darf.",
-    pickerLabel: "Senden an",
-    pickedLabel: "Empfänger",
-    nobodyYet: "Noch niemand ausgewählt.",
-    full: (n: number) => `Eine Freigabe nennt höchstens ${n} Personen und Gruppen. Teilen Sie für weitere noch einmal.`,
-    cannotView: "Darf diese Seite nicht ansehen",
-    groupClosed: "Niemand darin darf diese Seite ansehen",
-    groupViewers: (viewers: number, members: number) =>
-      viewers === members
-        ? members === 1
-          ? "1 Mitglied, das diese Seite ansehen darf"
-          : `${members} Mitglieder, die diese Seite alle ansehen dürfen`
-        : `${viewers} von ${members} Mitgliedern dürfen diese Seite ansehen; nur sie werden benachrichtigt`,
-    closedNote:
-      "Teilen gibt keinen Zugriff. Entfernen Sie die markierten Personen und Gruppen, oder bitten Sie einen Administrator des Bereichs oder jemanden, der die Einschränkungen der Seite ändern darf, ihnen zuerst Zugriff zu geben.",
-    messageLabel: "Notiz (optional)",
-    messageHint: (max: number) => `Bis zu ${max} Zeichen, gesendet mit dem Link zur Seite.`,
-    viewersTitle: "Wer diese Seite ansehen darf",
-    viewersEveryone: "Alle in der Organisation dürfen diese Seite ansehen.",
-    viewersCount: (n: number) => (n === 1 ? "1 Person darf diese Seite ansehen:" : `${n} Personen dürfen diese Seite ansehen:`),
-    viewersRestricted: (n: number) =>
-      n === 1 ? "Diese Seite ist eingeschränkt. 1 Person darf sie ansehen:" : `Diese Seite ist eingeschränkt. ${n} Personen dürfen sie ansehen:`,
-    viewersMore: (n: number) => `und ${n} weitere`,
-    refusedClosed:
-      "Es wurde nichts geteilt, weil die Seite für jemanden, den Sie ausgewählt haben, nicht zugänglich ist. Entfernen Sie die markierten Personen und Gruppen, oder bitten Sie einen Administrator des Bereichs oder jemanden, der die Einschränkungen der Seite ändern darf, ihnen zuerst Zugriff zu geben.",
-    cancel: "Abbrechen",
-    send: "Teilen",
-    sent: (n: number) => (n === 1 ? "Mit 1 Person geteilt." : `Mit ${n} Personen geteilt.`),
-    done: "Fertig",
-  },
   star: {
     starPage: (title: string) => `${title} mit Stern markieren`,
     starSpace: (name: string) => `Bereich ${name} mit Stern markieren`,
@@ -1321,6 +1330,10 @@ export const de: Messages = {
     publishedNo: "Die Seite ist noch nicht veröffentlicht. Kommentare sind möglich, sobald sie es ist.",
     homeNo:
       "Die Startseite eines Bereichs kann nicht in den Papierkorb verschoben werden. Um sie zu entfernen, löschen Sie den ganzen Bereich in seinen Einstellungen.",
+    archivedPage: (title: string) =>
+      `${title} ist mit allen Seiten darunter archiviert, daher ändert niemand sie. Ein Administrator des Bereichs kann ${title} zuerst aus dem Archiv holen.`,
+    archivedSpace:
+      "Der ganze Bereich ist archiviert, daher ändert niemand seine Seiten. Ein Administrator des Bereichs kann den Bereich zuerst in seinen Einstellungen aus dem Archiv holen.",
   },
   watch: {
     button: "Beobachten",
@@ -1408,8 +1421,6 @@ export const de: Messages = {
       switch (kind) {
         case "mentioned":
           return inComment ? `${who} hat Sie in einem Kommentar zu ${title} erwähnt` : `${who} hat Sie auf ${title} erwähnt`;
-        case "shared":
-          return `${who} hat ${title} mit Ihnen geteilt`;
         case "replied":
           return `${who} hat in einer Diskussion zu ${title} geantwortet`;
         case "commented":
@@ -1434,14 +1445,13 @@ export const de: Messages = {
     email: "Per E-Mail",
     kinds: {
       mentioned: "Jemand erwähnt Sie",
-      shared: "Jemand teilt eine Seite mit Ihnen",
       replied: "Jemand antwortet in einer Diskussion, in der Sie geschrieben haben",
       commented: "Jemand kommentiert eine Seite, die Sie beobachten",
       resolved: "Eine Diskussion, in der Sie geschrieben haben, wird als erledigt markiert oder wieder geöffnet",
       published: "Eine Seite, die Sie beobachten, wird mit Benachrichtigung veröffentlicht",
       created: "Unter einer Seite oder einem Bereich, die Sie beobachten, wird erstmals eine Seite veröffentlicht",
       expired: "Die Bestätigung einer Seite, die Ihnen gehört, läuft ab",
-    } as Record<"mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
+    } as Record<"mentioned" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
     inAppFor: (kind: string) => `In der App: ${kind}`,
     emailFor: (kind: string) => `Per E-Mail: ${kind}`,
     digest: "Wann E-Mails verschickt werden",
@@ -1599,12 +1609,15 @@ export const de: Messages = {
       "armature.connection_saved": "Armature verbunden",
       "armature.connection_removed": "Armature getrennt",
       "page.exported": "Seite exportiert",
-      "page.shared": "Seite geteilt",
       "audit.exported": "Audit-Log exportiert",
       "page.owner_set": "Verantwortliche Person benannt",
       "page.owner_removed": "Verantwortliche Person entfernt",
       "page.verified": "Seite bestätigt",
       "page.unverified": "Bestätigung der Seite entfernt",
+      "page.archived": "Seite archiviert",
+      "page.unarchived": "Seite aus dem Archiv geholt",
+      "space.archived": "Bereich archiviert",
+      "space.unarchived": "Bereich aus dem Archiv geholt",
     },
     targetTypes: {
       user: "Person",

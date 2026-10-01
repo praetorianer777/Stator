@@ -24,7 +24,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
-	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/template"
@@ -154,7 +153,9 @@ var operations = []operation{
 	{method: "GET", path: "/themes/{themeID}/assets/{assetID}", handler: "handleThemeAsset", tag: "themes", summary: "The bytes of a theme's file, as a download.", binary: true, responses: ok(nil)},
 	{method: "DELETE", path: "/themes/{themeID}/assets/{assetID}", handler: "handleDeleteThemeAsset", tag: "themes", summary: "Take a file off a theme it no longer uses.", responses: none()},
 
-	{method: "GET", path: "/spaces", handler: "handleListSpaces", tool: "list_spaces", toolHelp: "The spaces the caller may see, with the keys other tools take.", tag: "spaces", summary: "Every space the caller may see, by name.", responses: ok(env{"spaces": []space.Space{}})},
+	{method: "GET", path: "/spaces", handler: "handleListSpaces", tool: "list_spaces", toolHelp: "The spaces the caller may see, with the keys other tools take; archived true lists archived ones too.", tag: "spaces", summary: "Every space the caller may see, by name; archived ones only when asked for.",
+		query:     []param{{name: "archived", schema: &openapi.Schema{Type: "boolean"}, description: "true to list archived spaces too; false when absent."}},
+		responses: ok(env{"spaces": []space.Space{}})},
 	{method: "POST", path: "/spaces", handler: "handleCreateSpace", tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
@@ -163,6 +164,17 @@ var operations = []operation{
 	{method: "GET", path: "/spaces/{spaceKey}/pages", handler: "handleListPages", tool: "list_child_pages", toolHelp: "The pages directly under a parent page, in order; without parent, those under the space's home page.", tag: "pages", summary: "The pages directly under a parent, by default under the space's home page, in order.",
 		query: []param{{name: "parent", description: "The page whose children to list.", schema: &openapi.Schema{Type: "string", Format: "uuid"}}}, responses: ok(env{"pages": []page.TreeNode{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/outline", handler: "handleSpaceOutline", tool: "get_space_outline", toolHelp: "Every page of a space in reading order with its depth, to find a page or where a new one goes.", tag: "pages", summary: "Every page of a space in reading order, with its depth, for choosing where a page goes.", responses: ok(env{"pages": []page.OutlineEntry{}})},
+	// Archive (#37).
+	{method: "PUT", path: "/spaces/{spaceKey}/archive", handler: "handleArchiveSpace", tag: "archive", summary: "Archive a space: it stays readable, leaves the space list, search and the home page, and none of its pages changes. For the space's administrators; archiving it again is no change.",
+		responses: ok(env{"space": space.Space{}})},
+	{method: "DELETE", path: "/spaces/{spaceKey}/archive", handler: "handleUnarchiveSpace", tag: "archive", summary: "Unarchive a space; one that is not archived is no change. For the space's administrators.",
+		responses: ok(env{"space": space.Space{}})},
+	{method: "GET", path: "/spaces/{spaceKey}/archived-pages", handler: "handleListArchivedPages", tool: "list_archived_pages", toolHelp: "The pages archived in a space that the caller may view; they stay readable with get_page and get_page_markdown.", tag: "archive", summary: "The space's archive: each archived page the caller may view, with the pages archived with it counted, the latest first.",
+		responses: ok(env{"items": []page.ArchiveItem{}})},
+	{method: "PUT", path: "/pages/{pageID}/archive", handler: "handleArchivePage", tag: "archive", summary: "Archive a page with every page below it: they stay readable, leave the tree, search and the home page, and none of them changes. For the space's administrators; archiving it again is no change.",
+		responses: ok(env{"page": page.Page{}})},
+	{method: "DELETE", path: "/pages/{pageID}/archive", handler: "handleUnarchivePage", tag: "archive", summary: "Unarchive a page and the pages archived with it; refused for a page archived with one above it. For the space's administrators.",
+		responses: ok(env{"page": page.Page{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/trash", handler: "handleListTrash", tag: "trash", summary: "The space's trash, the latest first.", responses: ok(env{"items": []page.TrashItem{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash", handler: "handleEmptyTrash", tag: "trash", summary: "Delete everything in the space's trash for good. For administrators.", responses: none()},
 	{method: "POST", path: "/spaces/{spaceKey}/trash/{pageID}/restore", handler: "handleRestorePage", tag: "trash", summary: "Put a trashed page back where it was, or under the home page when that is gone.", responses: ok(env{"page": page.Page{}})},
@@ -345,17 +357,6 @@ var operations = []operation{
 	{method: "GET", path: "/pages/{pageID}/mentionable", handler: "handleListMentionable", tag: "mentions",
 		summary: "Members to mention on a page, each saying whether they may view it once published; only those are told.",
 		query:   pickerQuery, responses: ok(env{"people": []perm.Mentionable{}})},
-
-	// Sharing (#67).
-	{method: "POST", path: "/pages/{pageID}/share", handler: "handleSharePage", tag: "sharing",
-		summary: "Send a published page, with an optional note, to people and groups who may view it; refused with cannot_view, sending nothing, when it is closed to any of them, and with rate_limited past the hourly limit.",
-		request: share.Input{}, responses: map[int]any{201: env{"share": share.Share{}}, 409: errorEnvelope{}, 422: errorEnvelope{}, 429: errorEnvelope{}}},
-	{method: "GET", path: "/pages/{pageID}/share/recipients", handler: "handleShareRecipients", tag: "sharing",
-		summary: "Members and groups to share a page with, each saying whether, or how many of its members, may view it; only those are told.",
-		query:   pickerQuery, responses: ok(env{"people": []share.Recipient{}, "groups": []share.RecipientGroup{}})},
-	{method: "GET", path: "/pages/{pageID}/viewers", handler: "handleListViewers", tag: "sharing",
-		summary: "Who may view a page, by name, and whether that is every member of the organization.",
-		query:   pageQuery, responses: ok(env{"viewers": []perm.Person{}, "total": 0, "everyone": false, "limit": 0, "offset": 0})},
 
 	// Watching (#25).
 	{method: "PUT", path: "/pages/{pageID}/watch", handler: "handleWatchPage", tag: "watching",

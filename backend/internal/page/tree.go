@@ -47,6 +47,9 @@ type TreeNode struct {
 	ParentID    uuid.UUID `json:"parentId"`
 	Title       string    `json:"title"`
 	HasChildren bool      `json:"hasChildren"`
+	// Archived marks a page listed under an archived parent; elsewhere the
+	// tree leaves archived pages out.
+	Archived bool `json:"archived"`
 	// Unpublished marks a page only its creator sees; Restricted, one whose
 	// view is narrowed here or above.
 	Unpublished bool `json:"unpublished"`
@@ -236,25 +239,28 @@ func (s *Service) Children(ctx context.Context, actor perm.Actor, spaceKey strin
 		if parent != nil {
 			under = *parent
 		}
-		var found bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page p WHERE p.id = $1 AND p.space_id = $2 AND`+live+` AND `+perm.ViewablePage("p", 3)+`)`,
-			under, sp.ID, actor.UserID).Scan(&found); err != nil {
+		var archived *bool
+		if err := tx.QueryRow(ctx, `SELECT (SELECT p.archived_at IS NOT NULL FROM page p WHERE p.id = $1 AND p.space_id = $2 AND`+live+` AND `+perm.ViewablePage("p", 3)+`)`,
+			under, sp.ID, actor.UserID).Scan(&archived); err != nil {
 			return err
 		}
-		if !found {
+		if archived == nil {
 			return ErrNotFound
 		}
 		above, _, err := perm.ForPage(ctx, tx, actor, under)
 		if err != nil {
 			return err
 		}
+		// Under an archived page everything is archived, so it shows its own.
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.parent_id, p.title,
-			       EXISTS (SELECT 1 FROM page c WHERE c.parent_id = p.id AND`+liveChild+` AND `+perm.ViewablePage("c", 2)+`),
+			       EXISTS (SELECT 1 FROM page c WHERE c.parent_id = p.id AND`+liveChild+` AND (c.archived_at IS NULL OR $4)
+			               AND `+perm.ViewablePage("c", 2)+`),
+			       p.archived_at IS NOT NULL,
 			       p.version = 0,
 			       $3 OR EXISTS (SELECT 1 FROM page_restriction r WHERE r.page_id = p.id AND r.kind = 'view')
-			FROM page p WHERE p.parent_id = $1 AND`+live+` AND `+perm.ViewablePage("p", 2)+`
-			ORDER BY p.rank, p.id`, under, actor.UserID, above.ViewRestricted)
+			FROM page p WHERE p.parent_id = $1 AND`+live+` AND (p.archived_at IS NULL OR $4) AND `+perm.ViewablePage("p", 2)+`
+			ORDER BY p.rank, p.id`, under, actor.UserID, above.ViewRestricted, *archived)
 		if err != nil {
 			return err
 		}
@@ -269,7 +275,8 @@ func (s *Service) Children(ctx context.Context, actor perm.Actor, spaceKey strin
 // liveChild is live for the alias c.
 const liveChild = ` c.trashed_at IS NULL`
 
-// Outline is every page of a space in reading order, with its depth.
+// Outline is every page of a space in reading order, with its depth; an
+// archived page takes no pages, so it is left out with what is below it.
 func (s *Service) Outline(ctx context.Context, actor perm.Actor, spaceKey string) ([]OutlineEntry, error) {
 	var out []OutlineEntry
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -287,7 +294,7 @@ func (s *Service) Outline(ctx context.Context, actor perm.Actor, spaceKey string
 				UNION ALL
 				SELECT p.id, p.parent_id, p.title, t.depth + 1, (t.path || p.rank || chr(2) || p.id::text || chr(1)) COLLATE "C"
 				FROM page p JOIN tree t ON p.parent_id = t.id
-				WHERE`+live+` AND `+perm.ViewablePage("p", 2)+`
+				WHERE`+live+` AND p.archived_at IS NULL AND `+perm.ViewablePage("p", 2)+`
 			)
 			SELECT id, parent_id, title, depth FROM tree ORDER BY path`, sp.HomePageID, actor.UserID)
 		if err != nil {

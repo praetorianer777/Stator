@@ -64,7 +64,7 @@ func editable(ctx context.Context, tx db.DBTX, actor perm.Actor, pageID uuid.UUI
 		return err
 	}
 	if !p.Can.Edit {
-		return &perm.DeniedError{Action: perm.EditPages}
+		return p.Refusal(perm.EditPages)
 	}
 	return nil
 }

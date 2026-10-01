@@ -76,6 +76,7 @@ export const Icon = {
   More: makeIcon("more", ["M3.5 8h.01", "M8 8h.01", "M12.5 8h.01"]),
   Edit: makeIcon("edit", ["m10.5 2.5 3 3-8 8h-3v-3z", "m9 4 3 3"]),
   Trash: makeIcon("trash", ["M2.5 4.5h11", "M5.5 4.5V3h5v1.5", "M4 4.5 4.7 13h6.6l.7-8.5", "M7 7.5v3.5", "M9 7.5v3.5"]),
+  Archive: makeIcon("archive", ["M2 3h12v3H2z", "M3 6v7h10V6", "M6.5 8.5h3"]),
   Upload: makeIcon("upload", ["M8 10.5V3", "m4.5 6.5 3.5-3.5 3.5 3.5", "M2.5 13.5h11"]),
   Download: makeIcon("download", ["M8 3v7.5", "m4.5 7 3.5 3.5L11.5 7", "M2.5 13.5h11"]),
   Paperclip: makeIcon("paperclip", ["M13 7.5 8.2 12.3a3 3 0 0 1-4.3-4.2l5.4-5.4a2 2 0 0 1 2.8 2.8L6.7 10.9a1 1 0 0 1-1.4-1.4L10 4.8"]),

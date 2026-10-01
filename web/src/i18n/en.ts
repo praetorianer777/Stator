@@ -677,6 +677,7 @@ export const en = {
     home: "Space home",
     settings: "Space settings",
     trash: "Trash",
+    archive: "Archive",
     navigation: (name: string) => `Space ${name}`,
   },
   page: {
@@ -687,6 +688,7 @@ export const en = {
     editing: (title: string) => `Editing ${title}`,
     emptyTitle: "A page needs a title.",
     cannotEdit: "You can read this page but not edit it. Ask an administrator of the space, or somebody on the page's edit list, to let you.",
+    cannotEditArchived: "This page is archived, so nobody can edit it. Ask an administrator of the space to unarchive it first.",
     newPage: "New page",
     newPageUnder: (title: string) => `New page under ${title}`,
     create: "Create page",
@@ -901,6 +903,7 @@ export const en = {
     details: "Details",
     permissions: "Permissions",
     trash: "Trash",
+    archive: "Archive",
     save: "Save details",
     saved: "Saved.",
     notAdmin: "Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization.",
@@ -930,6 +933,45 @@ export const en = {
     underHome: "Under the home page, where it was is gone",
     notTrasher: "Only people who may delete pages in this space can see its trash. Ask an administrator of the space if you need a page back.",
     notPurger: "Only an administrator of this space can delete pages for good.",
+  },
+  archive: {
+    tag: "Archived",
+    menuArchive: "Archive",
+    menuUnarchive: "Unarchive",
+    confirmArchive: (title: string) =>
+      `Archive ${title} and every page below it? They stay readable and keep their addresses, but nobody can change them until an administrator of the space unarchives them.`,
+    bannerPage: "This page is archived. It can be read and linked, but nobody can change it.",
+    bannerSpace: "This whole space is archived. Its pages can be read and linked, but nobody can change them.",
+    bannerWith: (title: string) => `It was archived together with ${title} above it.`,
+    by: (who: string, when: string) => (who ? `Archived by ${who} on ${when}.` : `Archived on ${when}.`),
+    unarchive: "Unarchive",
+    goTo: (title: string) => `Go to ${title}`,
+    spaceSettings: "Open the space settings",
+    intro:
+      "Archived pages wait here with the pages archived with them. They stay readable and keep their addresses, but leave the page tree, search and the home page, and nobody can change them until they are unarchived.",
+    empty: "Nothing is archived in this space.",
+    columnPage: "Page",
+    columnArchived: "Archived",
+    columnUnder: "Under",
+    pages: (n: number) => (n === 1 ? "1 page" : `${n} pages`),
+    archivedAt: (who: string, when: string) => (who ? `${when} by ${who}` : when),
+    unarchiveItem: (title: string) => `Unarchive ${title}`,
+    archived: (title: string) => `Archived ${title}.`,
+    unarchived: (title: string) => `Unarchived ${title}.`,
+    spaceTitle: "Archive this space",
+    spaceBody:
+      "An archived space stays readable with every address it has, but leaves the list of spaces, search and the home page, and nobody can change its pages until it is unarchived.",
+    spaceArchivedBody: (who: string, when: string) =>
+      who
+        ? `${who} archived this space on ${when}. Its pages can be read, but nobody can change them.`
+        : `This space was archived on ${when}. Its pages can be read, but nobody can change them.`,
+    spaceArchive: "Archive space",
+    spaceUnarchive: "Unarchive space",
+    confirmArchiveSpace: (name: string) =>
+      `Archive ${name}? Its pages stay readable, but nobody can change them until an administrator of the space unarchives it.`,
+    spaceUnarchived: "The space is unarchived.",
+    showArchived: "Show archived spaces",
+    searchFilter: "Include archived pages",
   },
   notFound: {
     title: "Page not found",
@@ -1206,39 +1248,6 @@ export const en = {
       "Saving this would shut you out of the page. Add yourself, or a group you are in, to both lists, or ask an administrator of the space to make the change.",
     saved: "Restrictions saved.",
   },
-  share: {
-    button: "Share",
-    title: (page: string) => `Share ${page}`,
-    intro:
-      "Send this page to people and groups, with a note if you like. They are told in the app and by email. Sharing gives nobody access: only people who may already view the page are told.",
-    pickerLabel: "Send to",
-    pickedLabel: "Sending to",
-    nobodyYet: "Nobody picked yet.",
-    full: (n: number) => `One share names at most ${n} people and groups. Share again for more.`,
-    cannotView: "Cannot view this page",
-    groupClosed: "Nobody in it can view this page",
-    groupViewers: (viewers: number, members: number) =>
-      viewers === members
-        ? members === 1
-          ? "1 member, who can view this page"
-          : `${members} members, who can all view this page`
-        : `${viewers} of ${members} members can view this page; only they are told`,
-    closedNote:
-      "Sharing does not give access. Remove the people and groups marked, or ask an administrator of the space, or somebody who may change the page's restrictions, to let them in first.",
-    messageLabel: "Note (optional)",
-    messageHint: (max: number) => `Up to ${max} characters, sent with the link to the page.`,
-    viewersTitle: "Who can view this page",
-    viewersEveryone: "Everyone in the organization can view this page.",
-    viewersCount: (n: number) => (n === 1 ? "1 person can view this page:" : `${n} people can view this page:`),
-    viewersRestricted: (n: number) => (n === 1 ? "This page is restricted. 1 person can view it:" : `This page is restricted. ${n} people can view it:`),
-    viewersMore: (n: number) => `and ${n} more`,
-    refusedClosed:
-      "Nothing was shared, because the page is closed to somebody you picked. Remove the people and groups marked, or ask an administrator of the space, or somebody who may change the page's restrictions, to let them in first.",
-    cancel: "Cancel",
-    send: "Share",
-    sent: (n: number) => (n === 1 ? "Shared with 1 person." : `Shared with ${n} people.`),
-    done: "Done",
-  },
   star: {
     starPage: (title: string) => `Star ${title}`,
     starSpace: (name: string) => `Star the space ${name}`,
@@ -1282,6 +1291,9 @@ export const en = {
     viewNo: "May not view the page, so may do nothing else with it.",
     publishedNo: "The page is not published yet. Comments open once it is.",
     homeNo: "A space's home page cannot be moved to the trash. To remove it, delete the whole space in its settings.",
+    archivedPage: (title: string) =>
+      `${title} is archived with every page below it, so nobody changes them. An administrator of the space can unarchive ${title} first.`,
+    archivedSpace: "The whole space is archived, so nobody changes its pages. An administrator of the space can unarchive the space in its settings first.",
   },
   watch: {
     button: "Watch",
@@ -1367,8 +1379,6 @@ export const en = {
       switch (kind) {
         case "mentioned":
           return inComment ? `${who} mentioned you in a comment on ${title}` : `${who} mentioned you on ${title}`;
-        case "shared":
-          return `${who} shared ${title} with you`;
         case "replied":
           return `${who} replied in a thread on ${title}`;
         case "commented":
@@ -1393,14 +1403,13 @@ export const en = {
     email: "By email",
     kinds: {
       mentioned: "Somebody mentions you",
-      shared: "Somebody shares a page with you",
       replied: "Somebody replies in a thread you wrote in",
       commented: "Somebody comments on a page you watch",
       resolved: "A thread you wrote in is resolved or reopened",
       published: "A page you watch is published with a notice",
       created: "A page is first published below a page or space you watch",
       expired: "The verification of a page you own runs out",
-    } as Record<"mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
+    } as Record<"mentioned" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
     inAppFor: (kind: string) => `In the app: ${kind}`,
     emailFor: (kind: string) => `By email: ${kind}`,
     digest: "When emails go out",
@@ -1558,12 +1567,15 @@ export const en = {
       "armature.connection_saved": "Armature connected",
       "armature.connection_removed": "Armature disconnected",
       "page.exported": "Page exported",
-      "page.shared": "Page shared",
       "audit.exported": "Audit log exported",
       "page.owner_set": "Page owner named",
       "page.owner_removed": "Page owner removed",
       "page.verified": "Page verified",
       "page.unverified": "Page verification removed",
+      "page.archived": "Page archived",
+      "page.unarchived": "Page unarchived",
+      "space.archived": "Space archived",
+      "space.unarchived": "Space unarchived",
     } satisfies Record<AuditAction, string>,
     targetTypes: {
       user: "Person",

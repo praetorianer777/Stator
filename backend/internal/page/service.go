@@ -73,6 +73,7 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	}
 	p.access = access
 	p.Can = access.Can()
+	p.Can.Archive = p.Can.Archive && !p.Home
 	p.Restricted = Restricted{View: access.ViewRestricted, Edit: access.EditRestricted}
 	if p.Ancestors, err = ancestors(ctx, tx, id); err != nil {
 		return nil, nil, err
@@ -100,6 +101,9 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 		return nil, nil, err
 	}
 	if p.Verification, err = verificationOf(ctx, tx, id); err != nil {
+		return nil, nil, err
+	}
+	if p.Archived, err = archiveOf(ctx, tx, id); err != nil {
 		return nil, nil, err
 	}
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM star WHERE user_id = $1 AND page_id = $2)`, actor.UserID, id).Scan(&p.Starred); err != nil {
@@ -131,9 +135,15 @@ func (p *Page) must(action perm.Action) error {
 		allowed = p.access.View
 	}
 	if !allowed {
-		return &perm.DeniedError{Action: action}
+		return p.Refusal(action)
 	}
 	return nil
+}
+
+// Refusal is why the caller may not take an action on the page: its being
+// archived when it is, a missing permission otherwise.
+func (p *Page) Refusal(action perm.Action) error {
+	return perm.Refuse(action, p.access.Archived)
 }
 
 // Get is one page with the space it is in.

@@ -1,12 +1,14 @@
 import { localDateFormat } from "@/lib/format";
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useArchivePage } from "@/api/archive";
 import { usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useVisit } from "@/api/search";
 import { useTrashPage } from "@/api/trash";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { ArchiveBanner, ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { ArmatureLinks } from "@/features/armature/ArmatureLinks";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSection";
@@ -21,7 +23,6 @@ import { PageReactions } from "@/features/reactions/Reactions";
 import { AccessDialog } from "@/features/permissions/AccessDialog";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
 import { PageStar } from "@/features/stars/StarButton";
-import { ShareDialog } from "@/features/sharing/ShareDialog";
 import { StewardshipDialog } from "@/features/stewardship/StewardshipDialog";
 import { VerificationBadge } from "@/features/stewardship/VerificationBadge";
 import { WatchMenu } from "@/features/watching/WatchMenu";
@@ -49,7 +50,7 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
   return crumbs;
 }
 
-type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import" | "stewardship" | "share";
+type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import" | "stewardship";
 
 /** Says a page is narrowed to some people, and opens who and why. */
 function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
@@ -106,6 +107,7 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
   }
   useVisit(data?.page.id);
   const trash = useTrashPage(data?.space.key ?? "");
+  const archive = useArchivePage();
   const attachmentIds = usePageAttachmentIds(pageId);
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (isLoading || !data) return <Skeleton />;
@@ -134,6 +136,16 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
   if (space.can.administer) {
     actions.push({ label: t.access.menu, icon: <Icon.Key />, onSelect: () => setDialog("access"), attrs: { "data-action": "inspect-access" } });
   }
+  if (page.can.archive && !page.archived) {
+    actions.push({
+      label: t.archive.menuArchive,
+      icon: <Icon.Archive />,
+      onSelect: () => {
+        if (window.confirm(t.archive.confirmArchive(page.title))) archive.mutate({ id: page.id, archived: true });
+      },
+      attrs: { "data-action": "archive-page" },
+    });
+  }
   if (!page.home && page.can.delete) {
     actions.push({
       label: t.page.moveToTrash,
@@ -161,6 +173,12 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
           <>
             <span data-page-title>{page.title}</span>
             {page.unpublished && <Tag data-unpublished="">{t.page.unpublished}</Tag>}
+            {page.archived && (
+              <>
+                {" "}
+                <ArchivedMark />
+              </>
+            )}
           </>
         }
         meta={
@@ -181,11 +199,6 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
           <>
             <PageStar page={page} space={space} onFailure={setStarFailed} />
             {!page.unpublished && <WatchMenu page={page} space={space} onFailure={setWatchFailed} />}
-            {!page.unpublished && (
-              <Button variant="secondary" icon={<Icon.Share />} onClick={() => setDialog("share")} data-action="share-page">
-                {t.share.button}
-              </Button>
-            )}
             <Button variant="secondary" onClick={history} data-action="page-history">
               {t.page.history}
             </Button>
@@ -222,6 +235,8 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
         }
       />
       {trash.error && <ErrorBanner>{trash.error.message}</ErrorBanner>}
+      {archive.error && <ErrorBanner>{archive.error.message}</ErrorBanner>}
+      <ArchiveBanner page={page} space={space} />
       {watchFailed && <ErrorBanner>{t.watch.failed}</ErrorBanner>}
       {starFailed && <ErrorBanner>{t.star.failed}</ErrorBanner>}
       {page.unpublished && (
@@ -261,7 +276,6 @@ export function PageScreen({ pageId, thread }: { pageId: string; thread?: string
       </InlineComments>
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "stewardship" && <StewardshipDialog page={page} onClose={() => setDialog(undefined)} />}
-      {dialog === "share" && <ShareDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "access" && <AccessDialog pageId={page.id} pageTitle={page.title} onClose={() => setDialog(undefined)} />}
       {dialog === "export" && <ExportDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "import" && (

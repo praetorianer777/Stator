@@ -95,7 +95,7 @@ func (p *onPage) canComment() error {
 		return ErrUnpublished
 	}
 	if !p.access.Comment {
-		return &perm.DeniedError{Action: perm.AddComments}
+		return perm.Refuse(perm.AddComments, p.access.Archived)
 	}
 	return nil
 }

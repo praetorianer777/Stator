@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useId, useState, type KeyboardEvent } from "react";
-import { subjectKey, useSubjectSearch, type Subject, type SubjectSearch } from "@/api/permissions";
+import { subjectKey, useSubjectSearch, type Subject } from "@/api/permissions";
 import { Icon } from "@/components/icons";
 import { ErrorBanner, Input, cx } from "@/components/ui";
 import { PICKER_DEBOUNCE_MS } from "@/config";
@@ -8,8 +8,6 @@ import { t } from "@/i18n";
 interface Option {
   subject: Subject;
   detail: string;
-  /** Said beside an option that would not reach the person, as a share to somebody who may not view the page. */
-  warning?: string;
 }
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -32,19 +30,15 @@ export function SubjectPicker({
   allowEveryone = false,
   peopleOnly = false,
   disabled,
-  useSearch = useSubjectSearch,
 }: {
   label: string;
-  /** Hands back the chosen subject, with the words its option showed beside it. */
-  onPick: (subject: Subject, shown: { detail: string; warning?: string }) => void;
+  onPick: (subject: Subject) => void;
   /** Subjects already chosen, by subjectKey, which are not offered again. */
   exclude?: string[];
   allowEveryone?: boolean;
   /** Offers people alone, for questions about one person such as what they may do. */
   peopleOnly?: boolean;
   disabled?: boolean;
-  /** Where the options come from; a share's picker asks its page, which says who may view it. */
-  useSearch?: SubjectSearch;
 }) {
   const id = useId();
   const listId = `${id}-options`;
@@ -54,7 +48,7 @@ export function SubjectPicker({
   // Enter pressed while the list still answers an earlier text picks once the answer to this one is in.
   const [enterPending, setEnterPending] = useState(false);
   const q = useDebounced(text.trim(), PICKER_DEBOUNCE_MS);
-  const found = useSearch(q, open, !peopleOnly);
+  const found = useSubjectSearch(q, open, !peopleOnly);
   const fresh = q === text.trim() && found.current;
   const loading = !fresh && !found.error;
 
@@ -62,25 +56,14 @@ export function SubjectPicker({
   if (allowEveryone && t.permissions.everyone.toLowerCase().startsWith(q.toLowerCase())) {
     options.push({ subject: { type: "everyone", id: null, name: t.permissions.everyone }, detail: t.permissions.everyoneDetail });
   }
-  for (const group of found.groups) {
-    options.push({
-      subject: { type: "group", id: group.id, name: group.name },
-      detail: group.viewers === undefined ? t.permissions.members(group.memberCount) : t.share.groupViewers(group.viewers, group.memberCount),
-      warning: group.viewers === 0 ? t.share.groupClosed : undefined,
-    });
-  }
-  for (const person of found.people) {
-    options.push({
-      subject: { type: "user", id: person.id, name: person.name || person.email },
-      detail: person.email,
-      warning: person.canView === false ? t.share.cannotView : undefined,
-    });
-  }
+  for (const group of found.groups)
+    options.push({ subject: { type: "group", id: group.id, name: group.name }, detail: t.permissions.members(group.memberCount) });
+  for (const person of found.people) options.push({ subject: { type: "user", id: person.id, name: person.name || person.email }, detail: person.email });
   const shown = options.filter((option) => !exclude.includes(subjectKey(option.subject)));
   const current = Math.min(active, Math.max(shown.length - 1, 0));
 
   function pick(option: Option) {
-    onPick(option.subject, { detail: option.detail, warning: option.warning });
+    onPick(option.subject);
     setOpen(false);
     setText("");
     setActive(0);
@@ -179,12 +162,10 @@ export function SubjectPicker({
                 i === current ? "bg-surface-raised text-ink" : "text-ink-muted",
               )}
               data-subject-option={option.subject.name}
-              data-option-closed={option.warning ? "" : undefined}
             >
               <SubjectGlyph type={option.subject.type} />
               <span className="font-medium text-ink">{option.subject.name}</span>
               <span className="min-w-0 truncate text-xs text-ink-subtle">{option.detail}</span>
-              {option.warning && <span className="ml-auto shrink-0 text-xs text-danger">{option.warning}</span>}
             </div>
           ))}
         </div>

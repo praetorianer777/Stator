@@ -397,19 +397,6 @@ and the versioning [Semantic Versioning](https://semver.org/).
   one watches. Every list leaves out what the reader may no longer view, is
   read a window at a time by cursor (`GET /stars`, `/home/updates`,
   `/home/edited`), and pages and spaces answer `starred`.
-- Sharing a page (#67). The page header's Share sends a published page to
-  people and groups with an optional note of up to 200 characters
-  (`POST /pages/{id}/share`); they are told in the app and by mail as a new
-  notification kind, `shared`, with its own switches in the preferences.
-  The dialog says who can already view the page (`GET /pages/{id}/viewers`)
-  and its picker marks whoever may not (`GET /pages/{id}/share/recipients`).
-  Sharing gives nobody access: a share naming a person, or a group none of
-  whose members may view the page, is refused with `cannot_view` and sends
-  nothing, a group tells only its members who may view it, and the worker
-  checks each recipient again as it writes their row. One person shares at
-  most 30 pages an hour in an organization (`rate_limited`), a limit the
-  database keeps as well. Each share is recorded in the audit log as
-  `page.shared`, naming whom it was sent to but never its note.
 - An audit log for administrators (#107), under Audit log in the account
   menu: who changed members, single sign-on, tokens, spaces, permissions,
   the default theme and the Armature connection, what was deleted for good,
@@ -433,6 +420,20 @@ and the versioning [Semantic Versioning](https://semver.org/).
   with a new notification kind, `expired`. Owner changes and verifications
   are written to the audit log. Editing a verified page keeps its
   verification; the badge's details say which version was checked.
+- Archived pages and spaces (#37). An administrator of a space archives a
+  page with every page below it from the page menu, or the whole space from
+  its settings (`PUT` and `DELETE` on `/pages/{id}/archive` and
+  `/spaces/{key}/archive`). Archived content stays readable and keeps its
+  addresses, with a banner that says how and since when, but leaves the page
+  tree, search, quick search and the home page's lists, and nothing in it
+  changes until it is unarchived: no edit, move, comment, reaction, label,
+  file or restriction, which the database refuses too, with a refusal that
+  says to unarchive first. Each space has an Archive tab listing its
+  archived pages (`GET /spaces/{key}/archived-pages`), the search has an
+  Include archived pages filter (`archived=true`), and the list of spaces
+  shows archived spaces when asked (`GET /spaces?archived=true`). The access
+  inspector names the archive as what refuses a change, and archiving and
+  unarchiving are written to the audit log.
 - An MCP server at `POST /api/v1/mcp` (#106), so an assistant can search,
   read and write pages as the person whose token it holds. Its tools are
   rows of the route table marked with a name and a sentence, as in
@@ -465,10 +466,6 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 - Saving an edited comment puts focus back on its Edit button every time,
   not only when the save's answer and the next frame came in the right order.
-
-- Opening a reply or a new comment puts the caret in its editor every time.
-  When the editor's code was still loading, the focus could go to the editor
-  before it was on the page, and the keyboard was left on nothing.
 
 - Subtle text (hints, timestamps, placeholders) meets WCAG AA: 4.5:1 or more
   on every surface in both palettes, and in the Deep-Tech and Constellation

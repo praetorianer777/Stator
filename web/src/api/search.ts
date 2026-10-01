@@ -29,6 +29,8 @@ export interface SearchRequest {
   updatedAfter?: string;
   updatedBefore?: string;
   sort?: SearchSort;
+  /** Finds archived pages, and pages of archived spaces, too. */
+  archived?: boolean;
   offset: number;
 }
 
@@ -53,6 +55,7 @@ export function useSearch(request: SearchRequest) {
               updatedAfter: request.updatedAfter,
               updatedBefore: request.updatedBefore,
               sort: request.sort,
+              archived: request.archived || undefined,
               limit: SEARCH_PAGE_SIZE,
               offset: request.offset || undefined,
             },

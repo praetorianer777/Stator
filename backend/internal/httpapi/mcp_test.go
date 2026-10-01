@@ -21,7 +21,7 @@ import (
 const (
 	whyEdge       = "a probe, the document itself (a resource instead), the endpoint itself or a sign-in step"
 	whySelf       = "the caller's own session, settings, tokens, themes or Armature account, changed by a person at the keyboard"
-	whyAdmin      = "administration or who may do what: the provider, members, tokens, permissions, restrictions, spaces themselves"
+	whyAdmin      = "administration or who may do what: the provider, members, tokens, permissions, restrictions, spaces themselves, archiving"
 	whyRemoves    = "deletes or takes something away; no tool removes anything, as in Armature"
 	whyBrowser    = "furniture of the browser client: typeahead, badges, pickers, visits and drafts"
 	whyFiles      = "moves files rather than words; get_page_markdown and replace_page_markdown carry a page's words"
@@ -92,7 +92,6 @@ var notTools = map[string]string{
 	"PUT /pages/{pageID}/restrictions":                      whyAdmin,
 	"GET /pages/{pageID}/access/{userID}":                   whyAdmin,
 	"GET /groups":                                           whyAdmin,
-	"GET /pages/{pageID}/viewers":                           whyAdmin,
 	"POST /spaces":                                          whyAdmin,
 	"PATCH /spaces/{spaceKey}":                              whyAdmin,
 	"GET /audit/facets":                                     whyAdmin,
@@ -100,6 +99,10 @@ var notTools = map[string]string{
 	"GET /armature/connection":                              whyAdmin,
 	"PUT /armature/connection":                              whyAdmin,
 	"DELETE /armature/connection":                           whyAdmin,
+	"PUT /spaces/{spaceKey}/archive":                        whyAdmin,
+	"DELETE /spaces/{spaceKey}/archive":                     whyAdmin,
+	"PUT /pages/{pageID}/archive":                           whyAdmin,
+	"DELETE /pages/{pageID}/archive":                        whyAdmin,
 	"DELETE /spaces/{spaceKey}":                             whyRemoves,
 	"DELETE /spaces/{spaceKey}/trash":                       whyRemoves,
 	"DELETE /spaces/{spaceKey}/trash/{pageID}":              whyRemoves,
@@ -113,7 +116,6 @@ var notTools = map[string]string{
 	"GET /notifications/unread-count":                       whyBrowser,
 	"POST /notifications/read":                              whyBrowser,
 	"GET /pages/{pageID}/mentionable":                       whyBrowser,
-	"GET /pages/{pageID}/share/recipients":                  whyBrowser,
 	"GET /home/edited":                                      whyBrowser,
 	"GET /stars":                                            whyBrowser,
 	"GET /watches":                                          whyBrowser,
@@ -131,7 +133,6 @@ var notTools = map[string]string{
 	"GET /armature/issue-types":                             whyArmature,
 	"POST /armature/issues":                                 whyArmature,
 	"GET /pages/{pageID}/armature-links":                    whyArmature,
-	"POST /pages/{pageID}/share":                            whyAttention,
 	"POST /pages/{pageID}/reactions":                        whyAttention,
 	"DELETE /pages/{pageID}/reactions":                      whyAttention,
 	"POST /comments/{commentID}/reactions":                  whyAttention,

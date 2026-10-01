@@ -27,7 +27,9 @@ import { PublishDialog } from "./PublishDialog";
 export function PageEditor({ pageId }: { pageId: string }) {
   const page = usePage(pageId);
   const draft = useDraft(pageId);
-  if (page.data && !page.data.page.can.edit) return <ErrorBanner>{t.page.cannotEdit}</ErrorBanner>;
+  if (page.data && !page.data.page.can.edit) {
+    return <ErrorBanner>{page.data.page.archived ? t.page.cannotEditArchived : t.page.cannotEdit}</ErrorBanner>;
+  }
   const error = page.error ?? draft.error;
   if (error)
     return (

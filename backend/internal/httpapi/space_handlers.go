@@ -34,7 +34,12 @@ func actorFrom(r *http.Request) perm.Actor { return perm.ActorOf(PrincipalFrom(r
 func spaceKey(r *http.Request) string { return chi.URLParam(r, "spaceKey") }
 
 func (s *Server) handleListSpaces(w http.ResponseWriter, r *http.Request) {
-	spaces, err := s.Spaces.List(r.Context(), actorFrom(r))
+	archived, apiErr := flagParam(r, "archived")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	spaces, err := s.Spaces.List(r.Context(), actorFrom(r), archived)
 	if err != nil {
 		respondError(w, r, err)
 		return
