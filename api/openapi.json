@@ -7487,7 +7487,8 @@
               "unpublished",
               "list",
               "view",
-              "published"
+              "published",
+              "home"
             ]
           },
           "list": {

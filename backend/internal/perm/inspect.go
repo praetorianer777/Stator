@@ -49,10 +49,12 @@ const (
 	StepView StepKind = "view"
 	// StepPublished is the page being published, which comments wait for.
 	StepPublished StepKind = "published"
+	// StepHome is the page being a space's home page, which never goes to the trash.
+	StepHome StepKind = "home"
 )
 
 // StepKinds lists every StepKind, for the API document.
-var StepKinds = []StepKind{StepOrgAdmin, StepUse, StepSpace, StepUnpublished, StepList, StepView, StepPublished}
+var StepKinds = []StepKind{StepOrgAdmin, StepUse, StepSpace, StepUnpublished, StepList, StepView, StepPublished, StepHome}
 
 // ListKind is which of a page's two lists a restriction is on.
 type ListKind string
@@ -136,6 +138,8 @@ type InspectFacts struct {
 	// Chain is the page and every page above it, the home page first.
 	Chain     []InspectLink
 	Published bool
+	// Trashable is page_trashable, false for a space's home page.
+	Trashable bool
 	// Verdict is the database's own answer for each right.
 	Verdict map[Right]bool
 }
@@ -159,6 +163,9 @@ func Explain(f InspectFacts) []AccessRight {
 		needs SpacePermission
 	}{{RightEdit, SpaceAddPages}, {RightDelete, SpaceDelete}} {
 		a := AccessRight{Right: r.right, Allowed: f.Verdict[r.right], Steps: []AccessStep{viewed}}
+		if r.right == RightDelete && !f.Trashable {
+			a.Steps = append(a.Steps, step(AccessStep{Kind: StepHome}))
+		}
 		a.Steps = append(a.Steps, f.standing(r.needs, false)...)
 		a.Steps = append(a.Steps, f.lists(ListEdit)...)
 		out = append(out, a)
@@ -300,15 +307,16 @@ func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (Insp
 		SELECT perm_is_admin($1), perm_global_holds($1, 'use'),
 		       perm_space_holds($1, $3, 'view'), perm_space_holds($1, $3, 'addPages'), perm_space_holds($1, $3, 'addComments'),
 		       perm_space_holds($1, $3, 'delete'), perm_space_holds($1, $3, 'administer'),
-		       perm_page_viewable($2, $1), perm_page_editable($2, $1), perm_page_deletable($2, $1), perm_page_commentable($2, $1)`,
-		person, page, space).Scan(&f.OrgAdmin, &f.Use, &held[0], &held[1], &held[2], &held[3], &held[4], &view, &edit, &del, &comment)
+		       perm_page_viewable($2, $1), perm_page_editable($2, $1), perm_page_deletable($2, $1), perm_page_commentable($2, $1),
+		       COALESCE((SELECT page_trashable(parent_id) FROM page WHERE id = $2), false)`,
+		person, page, space).Scan(&f.OrgAdmin, &f.Use, &held[0], &held[1], &held[2], &held[3], &held[4], &view, &edit, &del, &comment, &f.Trashable)
 	if err != nil {
 		return f, fmt.Errorf("ask the database: %w", err)
 	}
 	for i, p := range SpacePermissions {
 		f.Space[p] = held[i]
 	}
-	f.Verdict = map[Right]bool{RightView: view, RightEdit: edit, RightDelete: del, RightComment: comment}
+	f.Verdict = map[Right]bool{RightView: view, RightEdit: edit, RightDelete: del && f.Trashable, RightComment: comment}
 
 	if rows, err = tx.Query(ctx, `SELECT `+SubjectColumns+` FROM perm_global_grant_sources($1, 'use') g`+SubjectJoins+`
 		ORDER BY `+SubjectOrder, person); err != nil {

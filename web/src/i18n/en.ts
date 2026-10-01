@@ -1212,6 +1212,7 @@ export const en = {
     viewYes: "May view the page.",
     viewNo: "May not view the page, so may do nothing else with it.",
     publishedNo: "The page is not published yet. Comments open once it is.",
+    homeNo: "A space's home page cannot be moved to the trash. To remove it, delete the whole space in its settings.",
   },
   watch: {
     button: "Watch",

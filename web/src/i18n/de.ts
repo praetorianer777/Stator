@@ -1249,6 +1249,8 @@ export const de: Messages = {
     viewYes: "Darf die Seite ansehen.",
     viewNo: "Darf die Seite nicht ansehen und daher auch sonst nichts mit ihr tun.",
     publishedNo: "Die Seite ist noch nicht veröffentlicht. Kommentare sind möglich, sobald sie es ist.",
+    homeNo:
+      "Die Startseite eines Bereichs kann nicht in den Papierkorb verschoben werden. Um sie zu entfernen, löschen Sie den ganzen Bereich in seinen Einstellungen.",
   },
   watch: {
     button: "Beobachten",

@@ -476,3 +476,6 @@ and the versioning [Semantic Versioning](https://semver.org/).
   picked picture goes up first and then shows as an image with alternative
   text and a width to choose, and any other file as a chip that downloads
   it. A file deleted from the page shows as missing where the page used it.
+- The access inspector no longer says a person may move a space's home page
+  to the trash. It answers from the same database rule that keeps the home
+  page out of the trash, and names it as the reason.
