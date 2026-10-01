@@ -36,6 +36,13 @@ func (s *Server) handleExportPage(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
+	scope := mdio.ScopePage
+	if subtree {
+		scope = mdio.ScopeSubtree
+	}
+	if !s.noteExport(w, r, export.Audit(scope)) {
+		return
+	}
 	download(w, "application/zip", export.Name()+".zip")
 	w.WriteHeader(http.StatusOK)
 	// The status is sent, so a failure part way leaves an archive without
@@ -59,6 +66,9 @@ func (s *Server) handleGetPageMarkdown(w http.ResponseWriter, r *http.Request) {
 	md, err := export.Single()
 	if err != nil {
 		respondError(w, r, err)
+		return
+	}
+	if !s.noteExport(w, r, export.Audit(mdio.ScopeMarkdown)) {
 		return
 	}
 	download(w, "text/markdown; charset=utf-8", export.Name()+".md")

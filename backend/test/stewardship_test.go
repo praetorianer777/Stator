@@ -203,6 +203,21 @@ func TestOwnersAndVerificationOverTheAPI(t *testing.T) {
 			org.org, audit.ActionPageOwnerSet, benID, annID.String()); n != 2 {
 			t.Errorf("%d entries say ben named ann", n)
 		}
+		facets := obj(t, want(t, admin.get(t, "/api/v1/audit/facets"), http.StatusOK, "the log's facets"), "facets")
+		for _, action := range []string{audit.ActionPageOwnerSet, audit.ActionPageOwnerRemoved, audit.ActionPageVerified, audit.ActionPageUnverified} {
+			var offered []string
+			for _, each := range facets["actions"].([]any) {
+				offered = append(offered, each.(string))
+			}
+			if !has(offered, action) {
+				t.Errorf("the facets do not offer %s: %v", action, facets["actions"])
+			}
+			entries := list(t, want(t, admin.get(t, "/api/v1/audit?action="+action+"&target="+runbook), http.StatusOK, "the log of "+action), "entries")
+			if len(entries) == 0 || entries[0].(map[string]any)["targetType"] != "page" {
+				t.Errorf("the log lists %v for %s", entries, action)
+			}
+		}
+		want(t, ben.get(t, "/api/v1/audit?action="+audit.ActionPageVerified), http.StatusForbidden, "ben reads the log")
 	})
 }
 

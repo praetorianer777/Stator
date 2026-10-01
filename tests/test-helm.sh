@@ -96,6 +96,9 @@ check "the Valkey URL reaches every workload" "$(env_value "${RENDERED}" STATOR_
 check "the upload limit is set, and can be changed" \
     "$(grep -c 'STATOR_UPLOAD_LIMIT: "50MB"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set attachments.uploadLimit=2GB 2>&1 | grep -c 'STATOR_UPLOAD_LIMIT: "2GB"')" \
     "1 1"
+check "the audit log is kept a year, and that can be changed" \
+    "$(grep -c 'STATOR_RETAIN_AUDIT: "8760h"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set retention.audit=2160h 2>&1 | grep -c 'STATOR_RETAIN_AUDIT: "2160h"')" \
+    "1 1"
 check "verifications are checked every ten minutes, and that can be changed" \
     "$(grep -c 'STATOR_VERIFICATION_CHECK_INTERVAL: "10m"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set verification.checkInterval=1h 2>&1 | grep -c 'STATOR_VERIFICATION_CHECK_INTERVAL: "1h"')" \
     "1 1"

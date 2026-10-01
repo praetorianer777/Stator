@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/attachment"
+	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/markdown"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -52,6 +53,23 @@ type Export struct {
 
 // Name is what the archive is called: the page's slug.
 func (e *Export) Name() string { return e.pages[0].slug }
+
+// Scopes of an export as its audit entry names them: one Markdown file, a
+// page with its files, or a page with the pages below it.
+const (
+	ScopeMarkdown = "markdown"
+	ScopePage     = "page"
+	ScopeSubtree  = "subtree"
+)
+
+// Audit is the export's entry in the audit log.
+func (e *Export) Audit(scope string) audit.Entry {
+	root := e.pages[0].page
+	return audit.Entry{
+		Action: audit.ActionPageExported, TargetType: "page", TargetID: &root.ID, Actor: e.actor.UserID,
+		Data: map[string]any{"title": root.Title, "space": root.SpaceKey, "scope": scope, "pages": len(e.pages)},
+	}
+}
 
 // Export reads a page, and the pages below it when subtree is set, as the
 // caller may view them, with the files on each.

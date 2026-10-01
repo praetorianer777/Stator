@@ -82,6 +82,10 @@ func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, a.org.String()); err != nil {
 		t.Fatal(err)
 	}
+	// Acting for A's owner, since only an administrator reads the audit log.
+	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, db.UserVar, a.user.String()); err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run("scoped to one tenant only its own rows show", func(t *testing.T) {
 		for _, table := range tenantTables {

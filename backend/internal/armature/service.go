@@ -26,8 +26,8 @@ const WebhookPath = "/api/v1/armature/webhook/"
 
 // Audit actions of the connection.
 const (
-	ActionConnectionSaved   = "armature.connection_saved"
-	ActionConnectionRemoved = "armature.connection_removed"
+	ActionConnectionSaved   = audit.ActionArmatureConnectionSaved
+	ActionConnectionRemoved = audit.ActionArmatureConnectionRemoved
 )
 
 var (

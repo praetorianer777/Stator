@@ -94,6 +94,7 @@ process, which is only right for a single api process. `/readyz` and
 | `theme` | custom themes in the `armature-theme/1` format |
 | `armature` | Armature client: issues, queries, issue creation, link sync |
 | `events` | transactional outbox, drained by the worker |
+| `audit` | the organization's audit log: entries written with their act, read and exported by administrators, pruned by the worker |
 | `mail` | plain text mail over an SMTP relay, as in Armature |
 | `netguard` | SSRF guard for every outbound request |
 

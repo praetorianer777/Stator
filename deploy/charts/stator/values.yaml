@@ -161,6 +161,11 @@ mail:
   smtpAddr: ""
   from: Stator <no-reply@stator.example.com>
 
+# How long each kind of row is kept, as in Armature's chart. The worker prunes
+# the audit log once a day; 0 keeps every entry, and less than 24h is refused.
+retention:
+  audit: 8760h
+
 auth:
   sessionCookie: stator_session
   # Must be true unless env is development, on the worker too: it shares the
