@@ -49,6 +49,7 @@ export const Icon = {
   Space: makeIcon("space", ["M2.5 3.5h4A1.5 1.5 0 0 1 8 5v8a1.5 1.5 0 0 0-1.5-1.5h-4z", "M13.5 3.5h-4A1.5 1.5 0 0 0 8 5v8a1.5 1.5 0 0 1 1.5-1.5h4z"]),
   User: makeIcon("user", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),
   ChevronDown: makeIcon("chevron-down", ["m4 6 4 4 4-4"]),
+  Disclosure: makeIcon("disclosure", ["m2.5 3.5 2.5 2.5-2.5 2.5", "M7.5 6h6", "M5 11h8.5"]),
   Sun: makeIcon("sun", [
     "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
     "M8 1.5v1.5",

@@ -72,6 +72,7 @@ describe("the slash menu's blocks", () => {
       panelSuccess: (d) => find(d, "panel")[0]?.attrs?.kind === "success",
       panelWarning: (d) => find(d, "panel")[0]?.attrs?.kind === "warning",
       panelError: (d) => find(d, "panel")[0]?.attrs?.kind === "error",
+      expand: (d) => d.content?.[0]?.type === "expand" && d.content[0].attrs?.title === "" && d.content[0].content?.[0]?.type === "paragraph",
       tableOfContents: (d) => d.content?.[0]?.type === "tableOfContents" && d.content[0].attrs?.maxLevel === 3,
       childPages: (d) => JSON.stringify(find(d, "childPages")[0]?.attrs) === JSON.stringify({ scope: "children", depth: null, sort: "tree" }),
       // The picker asks which issue; this one answers lower case, as a person might type it.
@@ -180,6 +181,45 @@ describe("panels", () => {
     e.chain().unsetPanel().run();
     expect(find(e.getJSON() as DocNode, "panel")).toHaveLength(0);
     expect(find(e.getJSON() as DocNode, "text").map((n) => n.text)).toEqual(["hello"]);
+  });
+});
+
+describe("expand blocks", () => {
+  it("wrap the blocks under the caret, store their title and come off again", async () => {
+    const e = await make();
+    e.chain().insertContent("hidden detail").setExpand().run();
+    expect(e.storage.expand.focusTitle).toBe(true);
+    const [block] = find(e.getJSON() as DocNode, "expand");
+    expect(block?.attrs).toEqual({ title: "" });
+    expect(find(block!, "text").map((n) => n.text)).toEqual(["hidden detail"]);
+    e.chain().unsetExpand().run();
+    expect(find(e.getJSON() as DocNode, "expand")).toHaveLength(0);
+    expect(find(e.getJSON() as DocNode, "text").map((n) => n.text)).toEqual(["hidden detail"]);
+  });
+
+  it("is read back from what the editor copies, title and blocks alike", async () => {
+    const e = await make({
+      type: "doc",
+      content: [{ type: "expand", attrs: { title: "Steps <b>" }, content: [{ type: "paragraph", content: [{ type: "text", text: "inside" }] }] }],
+    });
+    const html = e.getHTML();
+    e.destroy();
+    expect(html).toContain("data-title=");
+    const again = await make();
+    again.commands.setContent(html);
+    const [block] = find(again.getJSON() as DocNode, "expand");
+    expect(block?.attrs).toEqual({ title: "Steps <b>" });
+    expect(find(block!, "text").map((n) => n.text)).toEqual(["inside"]);
+  });
+
+  it("is read back from the reader's view, its toggle left out", async () => {
+    const e = await make();
+    e.commands.setContent(
+      '<div data-expand data-title="Read view" data-expanded="false"><button data-expand-toggle>Read view</button><div data-expand-body><p>body</p></div></div>',
+    );
+    const [block] = find(e.getJSON() as DocNode, "expand");
+    expect(block?.attrs).toEqual({ title: "Read view" });
+    expect(find(block!, "text").map((n) => n.text)).toEqual(["body"]);
   });
 });
 

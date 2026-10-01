@@ -239,6 +239,25 @@ describe("panels", () => {
   });
 });
 
+describe("expand blocks", () => {
+  it("insert from the slash menu with the caret in the title, which Enter leaves for the blocks inside", async () => {
+    const { user, box, last } = setup();
+    await slash(user, box, "expand");
+    await user.keyboard("{Enter}");
+    const title = await screen.findByRole("textbox", { name: "Expand title" });
+    await waitFor(() => expect(title).toHaveFocus());
+    await user.keyboard("Rollback steps{Enter}");
+    expect(find(last(), "expand")[0]?.attrs?.title).toBe("Rollback steps");
+    await waitFor(() => expect(box).toHaveFocus());
+    await user.keyboard("Revert the release");
+    const [block] = find(last(), "expand");
+    expect(find(block, "text").map((n) => n.text)).toEqual(["Revert the release"]);
+    await user.click(await screen.findByRole("button", { name: "Remove the expand, keep its content" }));
+    expect(find(last(), "expand")).toHaveLength(0);
+    expect(box).toHaveTextContent("Revert the release");
+  });
+});
+
 describe("heading anchors", () => {
   it("are saved with the heading and copied as a link", async () => {
     const { user, box, last } = setup();

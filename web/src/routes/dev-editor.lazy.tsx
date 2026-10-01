@@ -35,6 +35,11 @@ const sample: Doc = {
       attrs: { kind: "info" },
       content: [{ type: "paragraph", content: [{ type: "text", text: "Panels take their colours from the theme." }] }],
     },
+    {
+      type: "expand",
+      attrs: { title: "How a custom theme reaches them" },
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Every colour is a theme role, so a custom theme recolours them." }] }],
+    },
     { type: "codeBlock", attrs: { language: "go" }, content: [{ type: "text", text: 'fmt.Println("hello")' }] },
     ...highlighted.map(([language, text]) => ({ type: "codeBlock", attrs: { language }, content: [{ type: "text", text }] })),
   ],
