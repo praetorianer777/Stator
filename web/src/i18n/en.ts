@@ -1248,6 +1248,39 @@ export const en = {
       "Saving this would shut you out of the page. Add yourself, or a group you are in, to both lists, or ask an administrator of the space to make the change.",
     saved: "Restrictions saved.",
   },
+  share: {
+    button: "Share",
+    title: (page: string) => `Share ${page}`,
+    intro:
+      "Send this page to people and groups, with a note if you like. They are told in the app and by email. Sharing gives nobody access: only people who may already view the page are told.",
+    pickerLabel: "Send to",
+    pickedLabel: "Sending to",
+    nobodyYet: "Nobody picked yet.",
+    full: (n: number) => `One share names at most ${n} people and groups. Share again for more.`,
+    cannotView: "Cannot view this page",
+    groupClosed: "Nobody in it can view this page",
+    groupViewers: (viewers: number, members: number) =>
+      viewers === members
+        ? members === 1
+          ? "1 member, who can view this page"
+          : `${members} members, who can all view this page`
+        : `${viewers} of ${members} members can view this page; only they are told`,
+    closedNote:
+      "Sharing does not give access. Remove the people and groups marked, or ask an administrator of the space, or somebody who may change the page's restrictions, to let them in first.",
+    messageLabel: "Note (optional)",
+    messageHint: (max: number) => `Up to ${max} characters, sent with the link to the page.`,
+    viewersTitle: "Who can view this page",
+    viewersEveryone: "Everyone in the organization can view this page.",
+    viewersCount: (n: number) => (n === 1 ? "1 person can view this page:" : `${n} people can view this page:`),
+    viewersRestricted: (n: number) => (n === 1 ? "This page is restricted. 1 person can view it:" : `This page is restricted. ${n} people can view it:`),
+    viewersMore: (n: number) => `and ${n} more`,
+    refusedClosed:
+      "Nothing was shared, because the page is closed to somebody you picked. Remove the people and groups marked, or ask an administrator of the space, or somebody who may change the page's restrictions, to let them in first.",
+    cancel: "Cancel",
+    send: "Share",
+    sent: (n: number) => (n === 1 ? "Shared with 1 person." : `Shared with ${n} people.`),
+    done: "Done",
+  },
   star: {
     starPage: (title: string) => `Star ${title}`,
     starSpace: (name: string) => `Star the space ${name}`,
@@ -1379,6 +1412,8 @@ export const en = {
       switch (kind) {
         case "mentioned":
           return inComment ? `${who} mentioned you in a comment on ${title}` : `${who} mentioned you on ${title}`;
+        case "shared":
+          return `${who} shared ${title} with you`;
         case "replied":
           return `${who} replied in a thread on ${title}`;
         case "commented":
@@ -1403,13 +1438,14 @@ export const en = {
     email: "By email",
     kinds: {
       mentioned: "Somebody mentions you",
+      shared: "Somebody shares a page with you",
       replied: "Somebody replies in a thread you wrote in",
       commented: "Somebody comments on a page you watch",
       resolved: "A thread you wrote in is resolved or reopened",
       published: "A page you watch is published with a notice",
       created: "A page is first published below a page or space you watch",
       expired: "The verification of a page you own runs out",
-    } as Record<"mentioned" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
+    } as Record<"mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
     inAppFor: (kind: string) => `In the app: ${kind}`,
     emailFor: (kind: string) => `By email: ${kind}`,
     digest: "When emails go out",
@@ -1567,6 +1603,7 @@ export const en = {
       "armature.connection_saved": "Armature connected",
       "armature.connection_removed": "Armature disconnected",
       "page.exported": "Page exported",
+      "page.shared": "Page shared",
       "audit.exported": "Audit log exported",
       "page.owner_set": "Page owner named",
       "page.owner_removed": "Page owner removed",

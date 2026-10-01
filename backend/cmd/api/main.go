@@ -38,6 +38,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/seed"
+	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
@@ -167,6 +168,7 @@ func run() error {
 		Watches:         watch.NewService(cluster),
 		Notifications:   notify.NewService(cluster),
 		Stars:           star.NewService(cluster),
+		Shares:          share.NewService(cluster),
 		Home:            home.NewService(cluster),
 		Armature:        armatures,
 		Audit:           audit.NewService(cluster),

@@ -25,10 +25,11 @@ const (
 	TopicArmatureLinks  = "armature.links"
 	// TopicVerificationLapsed is written by the worker, not by a request.
 	TopicVerificationLapsed = "page.verification_lapsed"
+	TopicPageShared         = "page.shared"
 )
 
 // Topics lists every topic the product emits.
-var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed}
+var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageShared}
 
 // Event is one committed domain event.
 type Event struct {
@@ -84,6 +85,14 @@ type ThreadResolved struct {
 	ThreadID uuid.UUID `json:"threadId"`
 	PageID   uuid.UUID `json:"pageId"`
 	ActorID  uuid.UUID `json:"actorId"`
+}
+
+// PageShared is a page somebody sent people with a note; the share's row
+// holds whom it tells and what it says.
+type PageShared struct {
+	ShareID uuid.UUID `json:"shareId"`
+	PageID  uuid.UUID `json:"pageId"`
+	ActorID uuid.UUID `json:"actorId"`
 }
 
 // ArmatureLinks asks the worker to bring a page's remote links in Armature in
