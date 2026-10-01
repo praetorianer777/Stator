@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { COPY_FEEDBACK_MS } from "@/config";
 import { Editor, type EditorHandle } from "./Editor";
 import type { Doc, DocNode, Mentionable, MentionSource } from "./schema";
 import { slashItemsFor } from "./slashItems";
@@ -265,9 +266,19 @@ describe("heading anchors", () => {
     await user.keyboard("{Enter}");
     await user.keyboard("Release plan");
     expect(find(last(), "heading")[0]?.attrs).toMatchObject({ level: 2, id: "release-plan" });
-    await user.click(await screen.findByRole("button", { name: "Copy link to heading" }));
-    expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}${window.location.pathname}#release-plan`);
-    expect(await screen.findByRole("status")).toHaveTextContent("Link copied");
+    const copy = await screen.findByRole("button", { name: "Copy link to heading" });
+    // The status clears itself on a timer, which a busy machine outruns before
+    // the assertion reads it; held, the clock moves only when the test says.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.click(copy);
+      await vi.waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Link copied"));
+      expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}${window.location.pathname}#release-plan`);
+      act(() => vi.advanceTimersByTime(COPY_FEEDBACK_MS));
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
