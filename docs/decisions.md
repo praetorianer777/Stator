@@ -3,6 +3,43 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: Markdown is converted on the server, and what it cannot say is a marked element
+
+Import and export run in the API rather than in the browser. A script with a
+personal access token then gets the same pages as the page menu, every page
+an import makes passes the one allowlist the editor's saves pass, an export
+reads the files and the pages below with the caller's own permissions in one
+place, and the archive is written and read where the files are. The editor's
+Markdown paste stays in the browser: it is typing, not moving pages.
+
+Markdown is read by goldmark, MIT licensed and kept up, with the GitHub
+extensions for tables, task lists and strikethrough, and written by our own
+serializer, since a document has to come back as the same document and no
+library writes this allowlist. Armature has no Markdown handling to follow.
+
+What Markdown has a syntax for uses it, so an export reads well in a
+repository: panels as GitHub's alert quotes, expand blocks as `details`, task
+lists as check boxes. What it has none for (a mention, a status, a date, an
+Armature issue, a table of contents, child pages) is a `span` or a `div`
+marked `data-stator`, whose text is what the reader would see. Any renderer
+shows the words, and an import reads the exact form back into its node,
+checked by the allowlist like anything else. An HTML comment would have
+hidden the words, and a fenced block of JSON would have read as noise; both
+would have needed the attachment ids rewritten as well.
+
+Raw HTML never reaches a page. The tokenizer reads only the forms above and
+`img` and `br`; an unknown block is shown as its source in a code block, and
+an unknown inline tag is dropped with its words kept, so a README full of
+badges and `kbd` still reads. Parsing is bounded before it starts: by file
+size, by how deep one line nests, and by how many brackets the long lines
+hold, the inputs that cost the parser time with the square of their size.
+
+An import makes every page unpublished, attaches its files, and only then
+publishes them, since the links between pages need the pages' ids and the
+pictures need the files' ids. A failure part way trashes what was made, and
+nobody else has seen any of it. `docs/markdown.md` lists how each node is
+written and what does not come back as it left.
+
 ## 2026-10-01: A status is words on a theme tint, a date is a day, an emoji is text
 
 A `status` node stores its words and one of five colours by theme role

@@ -86,6 +86,8 @@ process, which is only right for a single api process. `/readyz` and
 | `template` | page templates |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
 | `attachment` | uploads to S3-compatible storage |
+| `markdown` | a document as Markdown and Markdown as a document, held to the allowlist |
+| `mdio` | Markdown import and export of pages, subtrees and their files, through the page and file services |
 | `theme` | custom themes in the `armature-theme/1` format |
 | `armature` | Armature client: issues, queries, issue creation, link sync |
 | `events` | transactional outbox, drained by the worker |
