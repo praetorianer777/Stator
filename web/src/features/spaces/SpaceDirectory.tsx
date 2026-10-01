@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useSpaces } from "@/api/spaces";
 import { useCanCreateSpace } from "@/features/permissions/access";
+import { SpaceStar } from "@/features/stars/StarButton";
 import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
@@ -31,6 +32,9 @@ export function SpaceDirectory() {
               <Th>{t.spaces.columnName}</Th>
               <Th>{t.spaces.columnKey}</Th>
               <Th>{t.spaces.columnDescription}</Th>
+              <Th className="w-10">
+                <span className="sr-only">{t.star.columnStar}</span>
+              </Th>
             </tr>
           </thead>
           <tbody>
@@ -46,6 +50,9 @@ export function SpaceDirectory() {
                 </Td>
                 <Td>
                   <span className="text-ink-muted">{space.description}</span>
+                </Td>
+                <Td className="text-right">
+                  <SpaceStar space={space} size="sm" />
                 </Td>
               </tr>
             ))}

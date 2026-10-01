@@ -457,6 +457,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/home/edited": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pages the caller published, holds a draft of, or made and never published, that they may still view, the latest first. */
+        get: operations["homeEdited"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/home/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pages others published that the caller may view, each once, the latest first; with scope watched only those the caller's watches cover. */
+        get: operations["homeUpdates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/labels": {
         parameters: {
             query?: never;
@@ -1065,6 +1099,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/star": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Star a page to keep it on the caller's home page; starring it again is no change. */
+        put: operations["starPage"];
+        post?: never;
+        /** Take the caller's star off a page, also when there was none. */
+        delete: operations["unstarPage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/versions": {
         parameters: {
             query?: never;
@@ -1342,6 +1394,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/spaces/{spaceKey}/star": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Star a space to keep it on the caller's home page. */
+        put: operations["starSpace"];
+        post?: never;
+        /** Take the caller's star off a space; the stars on its pages stay. */
+        delete: operations["unstarSpace"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces/{spaceKey}/trash": {
         parameters: {
             query?: never;
@@ -1407,6 +1477,23 @@ export interface paths {
         post?: never;
         /** Stop watching a space; watches on its pages stay. */
         delete: operations["unwatchSpace"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's stars on what they may still view, the latest first; next is the cursor for the window after, null at the end. */
+        get: operations["listStars"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2045,6 +2132,17 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        EditedPage: {
+            draft: boolean;
+            /** Format: date-time */
+            editedAt: string;
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+            unpublished: boolean;
+        };
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
         };
@@ -2353,6 +2451,7 @@ export interface components {
             /** Format: uuid */
             spaceId: string;
             spaceKey: string;
+            starred: boolean;
             title: string;
             unpublished: boolean;
             /** Format: date-time */
@@ -2408,6 +2507,18 @@ export interface components {
             /** Format: uuid */
             id: string;
             title: string;
+        };
+        PageUpdate: {
+            authorName: string;
+            comment: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            publishedAt: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+            version: number;
         };
         PageUpdateInput: {
             /** @description A JSON value. */
@@ -2600,6 +2711,7 @@ export interface components {
             id: string;
             key: string;
             name: string;
+            starred: boolean;
             /** Format: date-time */
             updatedAt: string;
             watching: boolean;
@@ -2631,6 +2743,15 @@ export interface components {
                 [key: string]: string;
             };
             shape: components["schemas"]["Shape"];
+        };
+        Star: {
+            /** @enum {string} */
+            kind: "page" | "space";
+            page: components["schemas"]["PageTitle"] | null;
+            spaceKey: string;
+            spaceName: string;
+            /** Format: date-time */
+            starredAt: string;
         };
         Stats: {
             lagFallbacks: number;
@@ -4144,6 +4265,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    homeEdited: {
+        parameters: {
+            query?: {
+                /** @description 1 to 50; 20 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        next: string | null;
+                        pages: components["schemas"]["EditedPage"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    homeUpdates: {
+        parameters: {
+            query?: {
+                /** @description all when absent. */
+                scope?: "all" | "watched";
+                /** @description 1 to 50; 20 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        next: string | null;
+                        updates: components["schemas"]["PageUpdate"][];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -5895,6 +6092,64 @@ export interface operations {
             };
         };
     };
+    starPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unstarPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listVersions: {
         parameters: {
             query?: {
@@ -6656,6 +6911,64 @@ export interface operations {
             };
         };
     };
+    starSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unstarSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listTrash: {
         parameters: {
             query?: never;
@@ -6828,6 +7141,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listStars: {
+        parameters: {
+            query?: {
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        next: string | null;
+                        stars: components["schemas"]["Star"][];
+                    };
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

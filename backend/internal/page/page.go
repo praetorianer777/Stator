@@ -79,6 +79,8 @@ type Page struct {
 	Comments comment.Counts `json:"comments"`
 	// Watching is how the caller follows the page.
 	Watching watch.Watching `json:"watching"`
+	// Starred says the caller keeps the page among their stars.
+	Starred bool `json:"starred"`
 	// Reactions are the emoji on the page itself.
 	Reactions     []reaction.Reaction `json:"reactions"`
 	CreatedByName string              `json:"createdByName"`
