@@ -125,7 +125,7 @@ var operations = []operation{
 	{method: "GET", path: "/themes", handler: "handleListThemes", tag: "themes", summary: "Themes the caller may use: theirs, then the shared ones.", responses: ok(env{"themes": []theme.Theme{}})},
 	{method: "POST", path: "/themes", handler: "handleCreateTheme", tag: "themes", summary: "Make a theme.", request: theme.Input{}, responses: created(env{"theme": theme.Theme{}})},
 	{method: "GET", path: "/themes/examples", handler: "handleThemeExamples", tag: "themes", summary: "The themes shipped with the product, to start a theme from.", responses: ok(env{"examples": []theme.Example{}})},
-	{method: "GET", path: "/themes/active", handler: "handleActiveTheme", tag: "themes", summary: "The theme the caller sees: chosen, the organization's default, or null for the built-in one.", responses: ok(env{"theme": (*theme.Theme)(nil), "source": ""})},
+	{method: "GET", path: "/themes/active", handler: "handleActiveTheme", tag: "themes", summary: "The theme the caller sees: chosen, followed from Armature, the organization's default, or null for the built-in one.", responses: ok(env{"theme": (*theme.Theme)(nil), "source": ""})},
 	{method: "PUT", path: "/themes/active", handler: "handleChooseTheme", tag: "themes", summary: "Use a theme; null returns to the organization's default, null with builtIn keeps the built-in one.", request: chooseThemeRequest{}, responses: ok(env{"theme": (*theme.Theme)(nil)})},
 	{method: "PUT", path: "/themes/default", handler: "handleSetDefaultTheme", tag: "themes", summary: "Name the shared theme everybody sees until they choose, or null for the built-in one.", request: defaultThemeRequest{}, responses: ok(env{"theme": (*theme.Theme)(nil)})},
 	{method: "POST", path: "/themes/import", handler: "handleImportTheme", tag: "themes", summary: "Make a theme of the caller's own from an exported theme file, sent as a multipart part named file.", multipart: true, responses: created(env{"theme": theme.Theme{}})},
@@ -385,13 +385,13 @@ var operations = []operation{
 		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}}},
 
 	// Following the Armature theme (#34).
-	{method: "GET", path: "/armature/theme", handler: "handleArmatureThemeFollow", tag: "armature", pending: true,
+	{method: "GET", path: "/armature/theme", handler: "handleArmatureThemeFollow", tag: "armature",
 		summary:   "Whether the caller follows their active Armature theme, and whether Armature answered.",
 		responses: ok(env{"follow": armature.ThemeFollow{}})},
-	{method: "PUT", path: "/armature/theme", handler: "handleFollowArmatureTheme", tag: "armature", pending: true,
+	{method: "PUT", path: "/armature/theme", handler: "handleFollowArmatureTheme", tag: "armature",
 		summary:   "Follow the caller's active Armature theme instead of a Stator one; GET /themes/active then answers it.",
-		responses: ok(env{"follow": armature.ThemeFollow{}})},
-	{method: "DELETE", path: "/armature/theme", handler: "handleUnfollowArmatureTheme", tag: "armature", pending: true,
+		responses: map[int]any{200: env{"follow": armature.ThemeFollow{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/armature/theme", handler: "handleUnfollowArmatureTheme", tag: "armature",
 		summary:   "Stop following the Armature theme and return to the organization's default.",
 		responses: none()},
 }

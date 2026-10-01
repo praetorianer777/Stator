@@ -47,6 +47,10 @@ type person struct {
 	// Theme is the key of the example theme Armature shows them, or "".
 	Theme        string
 	ThemeChanged time.Time
+	// ThemeBroken exports their theme with a colour no theme may hold.
+	ThemeBroken bool
+	// ThemeDelay holds back the answer to GET /themes/active.
+	ThemeDelay time.Duration
 	// Reads are the projects they see but may not file issues in.
 	Reads map[string]bool
 }

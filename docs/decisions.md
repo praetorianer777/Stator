@@ -3,6 +3,30 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: A followed Armature theme is kept as the person's hidden copy
+
+Following stores the theme Armature shows a person as a theme of theirs,
+marked as the copy of Armature's by its id and `updatedAt`, rather than
+pointing the browser at Armature. Its files are then served by Stator, the
+browser never needs a session in Armature, the copy is checked with the
+same code as an imported theme, and it is downloaded again only when
+Armature answers another id or a later time. The copy is left out of the
+themes list and cannot be edited, shared, exported or chosen, and the
+database says so too: a check keeps it private and a trigger keeps it out
+of `user_theme`. Following is a mark on the person's `user_theme` row that
+names no theme, so choosing a theme ends it by the same constraint.
+
+Which theme Armature shows is cached per token row for five minutes, as the
+contract says, because Armature announces no theme change by webhook. The
+theme settings ask Armature at once instead, so a person who just changed
+their theme there sees it by opening the settings. One 2 second budget
+covers both calls to Armature on a page load, the active theme and the
+download, and an answer that misses it falls back to what the person would
+see without following; the copy is never written halfway, since saving it
+is not bound by that budget. A theme that fails the checks is remembered
+with its reason in the cache entry, so a broken theme is not downloaded on
+every page, and following one is refused with that reason.
+
 ## 2026-10-01: The webhook receiver tells nobody which organizations exist
 
 `POST /armature/webhook/{orgSlug}` needs no sign-in, so anybody can post to

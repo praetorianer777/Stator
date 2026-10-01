@@ -145,6 +145,12 @@ func (a *Caller) Get(ctx context.Context, path string, query url.Values, out any
 	return a.client.do(ctx, http.MethodGet, target, a.token, nil, out)
 }
 
+// GetWithin is Get for an answer that may be larger than MaxResponseBytes,
+// such as a theme file, up to limit.
+func (a *Caller) GetWithin(ctx context.Context, path string, limit int64, out any) error {
+	return a.client.doWithin(ctx, http.MethodGet, a.baseURL+APIPath+path, a.token, nil, out, limit)
+}
+
 // Send calls method on path, relative to /api/v1, with body as JSON, into
 // out; a nil out ignores the answer.
 func (a *Caller) Send(ctx context.Context, method, path string, body, out any) error {
@@ -180,6 +186,10 @@ func (a *Caller) Me(ctx context.Context) (*Me, error) {
 }
 
 func (c *Client) do(ctx context.Context, method, target, token string, body, out any) error {
+	return c.doWithin(ctx, method, target, token, body, out, MaxResponseBytes)
+}
+
+func (c *Client) doWithin(ctx context.Context, method, target, token string, body, out any, limit int64) error {
 	var reader io.Reader
 	if body != nil {
 		encoded, err := json.Marshal(body)
@@ -204,12 +214,12 @@ func (c *Client) do(ctx context.Context, method, target, token string, body, out
 		return fmt.Errorf("%w: %w", ErrUnreachable, err)
 	}
 	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBytes+1))
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
 		return fmt.Errorf("%w: read the answer: %w", ErrUnreachable, err)
 	}
-	if len(raw) > MaxResponseBytes {
-		return fmt.Errorf("%w: the answer is larger than %d bytes", ErrUnreachable, MaxResponseBytes)
+	if int64(len(raw)) > limit {
+		return fmt.Errorf("%w: the answer is larger than %d bytes", ErrUnreachable, limit)
 	}
 
 	switch {

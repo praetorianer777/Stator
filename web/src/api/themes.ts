@@ -24,8 +24,8 @@ export interface ThemeInput {
   spec?: ThemeSpec;
 }
 
-/** Where the theme the reader sees came from: their choice, the organization's default, or nothing. */
-export type ThemeSource = "chosen" | "organization" | "";
+/** Where the theme the reader sees came from: their choice, Armature, the organization's default, or nothing. */
+export type ThemeSource = "chosen" | "organization" | "armature" | "";
 
 // The server leaves out a backdrop rather than sending null, and takes either;
 // the compiler's null is dropped on the way out so the wire type holds.
@@ -41,6 +41,8 @@ function fromWire<T extends { spec: Wire["Spec"] }>(value: T): Omit<T, "spec"> &
 export const themesQueryKey = ["themes"] as const;
 export const activeThemeQueryKey = ["themes", "active"] as const;
 export const themeExamplesQueryKey = ["themes", "examples"] as const;
+/** Whether the reader follows their Armature theme; kept here so choosing a theme can forget it. */
+export const armatureThemeQueryKey = ["armature", "theme"] as const;
 
 export function useThemes() {
   return useQuery({
@@ -118,10 +120,18 @@ export type ThemeChoice = string | null | { builtIn: true };
 
 /** Uses a theme, returns to the organization's default with null, or keeps the built-in one over it. */
 export function useChooseTheme() {
-  return useThemeMutation(async (choice: ThemeChoice) => {
-    const body = choice !== null && typeof choice === "object" ? { themeId: null, builtIn: true } : { themeId: choice };
-    const { data } = await api.PUT("/themes/active", { body });
-    return { theme: data?.theme ? fromWire(data.theme) : null };
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (choice: ThemeChoice) => {
+      const body = choice !== null && typeof choice === "object" ? { themeId: null, builtIn: true } : { themeId: choice };
+      const { data } = await api.PUT("/themes/active", { body });
+      return { theme: data?.theme ? fromWire(data.theme) : null };
+    },
+    // Any choice ends following the Armature theme.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: themesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: armatureThemeQueryKey });
+    },
   });
 }
 

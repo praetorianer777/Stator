@@ -14,6 +14,7 @@ import {
 import { useViewer } from "@/api/viewer";
 import { Button, EmptyState, ErrorBanner, IconButton, Menu, PageHeader, Segmented, Table, Tag, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { FollowArmatureTheme } from "@/features/armature/FollowArmatureTheme";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
 
@@ -29,6 +30,7 @@ export function inThemeView(theme: Theme, view: View, me: string | undefined): b
 
 /** What the page says about the theme the reader sees. */
 export function activeThemeMeta(seen: Theme | null, source: string, orgDefault: Theme | undefined): string {
+  if (source === "armature") return seen ? t.themes.usingArmature(seen.name) : t.themes.usingArmatureBuiltIn;
   if (seen && source === "organization") return t.themes.usingDefault(seen.name);
   if (seen) return t.themes.using(seen.name);
   if (orgDefault) return t.themes.usingBuiltInOverDefault(orgDefault.name);
@@ -110,6 +112,7 @@ function ThemesPage() {
           </>
         }
       />
+      <FollowArmatureTheme />
       <div className="mb-4">
         <Segmented<View>
           label={t.themes.show}

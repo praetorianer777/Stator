@@ -42,6 +42,22 @@ type Theme struct {
 	Default   bool      `json:"default"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	// Mirror is set on a person's copy of the theme Armature shows them.
+	Mirror *MirrorOf `json:"-"`
+}
+
+// MirrorOf names the Armature theme a mirror copies, as Armature last
+// answered it; another id or a later time downloads it again.
+type MirrorOf struct {
+	ID        uuid.UUID `json:"id"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// Same says whether the mirror still copies what Armature answers.
+func (m *MirrorOf) Same(other *MirrorOf) bool {
+	// Postgres keeps microseconds, and Armature's answer may carry more.
+	return m != nil && other != nil && m.ID == other.ID &&
+		m.UpdatedAt.Truncate(time.Microsecond).Equal(other.UpdatedAt.Truncate(time.Microsecond))
 }
 
 // Asset is one uploaded file of a theme.
@@ -76,24 +92,34 @@ const selectThemes = `
 SELECT t.id, t.owner_id, COALESCE(u.name, ''), t.name, t.shared, t.spec, t.created_at, t.updated_at,
        (SELECT count(*) FROM user_theme ut WHERE ut.theme_id = t.id),
        EXISTS (SELECT 1 FROM user_theme ut WHERE ut.theme_id = t.id AND ut.user_id = $1),
-       EXISTS (SELECT 1 FROM org o WHERE o.id = t.org_id AND o.default_theme_id = t.id)
+       EXISTS (SELECT 1 FROM org o WHERE o.id = t.org_id AND o.default_theme_id = t.id),
+       t.armature_theme_id, t.armature_updated_at
 FROM theme t
 LEFT JOIN app_user u ON u.id = t.owner_id`
 
 // visible is what a reader may see: their own themes and the shared ones.
 const visible = ` (t.owner_id = $1 OR t.shared)`
 
+// listed is what a reader may pick, edit, share or export: a mirror is only
+// ever applied, and its files served to its owner.
+const listed = visible + ` AND t.armature_theme_id IS NULL`
+
 func scan(row pgx.Row) (*Theme, error) {
 	var (
-		t   Theme
-		raw []byte
+		t        Theme
+		raw      []byte
+		mirrorID *uuid.UUID
+		mirrorAt *time.Time
 	)
-	err := row.Scan(&t.ID, &t.OwnerID, &t.OwnerName, &t.Name, &t.Shared, &raw, &t.CreatedAt, &t.UpdatedAt, &t.InUse, &t.Active, &t.Default)
+	err := row.Scan(&t.ID, &t.OwnerID, &t.OwnerName, &t.Name, &t.Shared, &raw, &t.CreatedAt, &t.UpdatedAt, &t.InUse, &t.Active, &t.Default, &mirrorID, &mirrorAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
+	}
+	if mirrorID != nil && mirrorAt != nil {
+		t.Mirror = &MirrorOf{ID: *mirrorID, UpdatedAt: *mirrorAt}
 	}
 	if err := json.Unmarshal(raw, &t.Spec); err != nil {
 		return nil, fmt.Errorf("read theme %s: %w", t.ID, err)
@@ -146,7 +172,7 @@ func assetSet(t *Theme) map[uuid.UUID]bool {
 func (s *Service) List(ctx context.Context, reader uuid.UUID) ([]Theme, error) {
 	out := []Theme{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectThemes+` WHERE`+visible+` ORDER BY (t.owner_id <> $1), lower(t.name)`, reader)
+		rows, err := tx.Query(ctx, selectThemes+` WHERE`+listed+` ORDER BY (t.owner_id <> $1), lower(t.name)`, reader)
 		if err != nil {
 			return err
 		}
@@ -186,7 +212,7 @@ func (s *Service) Get(ctx context.Context, id, reader uuid.UUID) (*Theme, error)
 	var out *Theme
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		out, err = readOne(ctx, tx, reader, id, ` WHERE t.id = $2 AND`+visible)
+		out, err = readOne(ctx, tx, reader, id, ` WHERE t.id = $2 AND`+listed)
 		return err
 	})
 	return out, err
@@ -214,15 +240,21 @@ const (
 var ErrDefaultNotShared = errors.New("the organization's default has to be a shared theme")
 
 // Active is the reader's chosen theme, else the organization's default, else nil
-// for the built-in one; a row naming no theme keeps the built-in over the default.
+// for the built-in one; following Armature counts as no choice here.
 func (s *Service) Active(ctx context.Context, reader uuid.UUID) (*Theme, Source, error) {
 	var (
 		out    *Theme
 		source Source
 	)
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var chosen *uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT theme_id FROM user_theme WHERE user_id = $1`, reader).Scan(&chosen)
+		var (
+			chosen  *uuid.UUID
+			follows bool
+		)
+		err := tx.QueryRow(ctx, `SELECT theme_id, follow_armature FROM user_theme WHERE user_id = $1`, reader).Scan(&chosen, &follows)
+		if err == nil && follows {
+			err = pgx.ErrNoRows
+		}
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
 			var fallback *uuid.UUID
@@ -251,29 +283,157 @@ func (s *Service) Active(ctx context.Context, reader uuid.UUID) (*Theme, Source,
 	return out, source, err
 }
 
-// Choose makes a theme the reader's own. Nil returns them to whatever the
-// organization shows; nil with builtIn keeps the built-in theme over it.
+// Choose makes a theme the reader's own, which ends following Armature. Nil
+// returns them to the organization's; nil with builtIn keeps the built-in one.
 func (s *Service) Choose(ctx context.Context, reader uuid.UUID, id *uuid.UUID, builtIn bool) (*Theme, db.LSN, error) {
-	var out *Theme
+	var (
+		out  *Theme
+		keys []string
+	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		if keys, err = dropMirrors(ctx, tx, reader, nil); err != nil {
+			return err
+		}
 		if id == nil && !builtIn {
 			_, err := tx.Exec(ctx, `DELETE FROM user_theme WHERE user_id = $1`, reader)
 			return err
 		}
 		if id != nil {
-			t, err := readOne(ctx, tx, reader, *id, ` WHERE t.id = $2 AND`+visible)
+			t, err := readOne(ctx, tx, reader, *id, ` WHERE t.id = $2 AND`+listed)
 			if err != nil {
 				return err
 			}
 			t.Active = true
 			out = t
 		}
-		_, err := tx.Exec(ctx, `
-			INSERT INTO user_theme (org_id, user_id, theme_id) VALUES (current_org_id(), $1, $2)
-			ON CONFLICT (org_id, user_id) DO UPDATE SET theme_id = EXCLUDED.theme_id`, reader, id)
+		_, err = tx.Exec(ctx, `
+			INSERT INTO user_theme (org_id, user_id, theme_id, follow_armature) VALUES (current_org_id(), $1, $2, false)
+			ON CONFLICT (org_id, user_id) DO UPDATE SET theme_id = EXCLUDED.theme_id, follow_armature = false`, reader, id)
 		return err
 	})
+	if err == nil {
+		s.dropObjects(ctx, keys)
+	}
 	return out, lsn, err
+}
+
+// Following says whether the reader follows their Armature theme.
+func (s *Service) Following(ctx context.Context, reader uuid.UUID) (bool, error) {
+	var follows bool
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		err := tx.QueryRow(ctx, `SELECT follow_armature FROM user_theme WHERE user_id = $1`, reader).Scan(&follows)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	})
+	return follows, err
+}
+
+// Follow makes the theme Armature shows the reader their choice, in place of
+// any theme they chose; the mirror arrives with SaveMirror.
+func (s *Service) Follow(ctx context.Context, reader uuid.UUID) (db.LSN, error) {
+	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO user_theme (org_id, user_id, theme_id, follow_armature) VALUES (current_org_id(), $1, NULL, true)
+			ON CONFLICT (org_id, user_id) DO UPDATE SET theme_id = NULL, follow_armature = true`, reader)
+		return err
+	})
+}
+
+// Unfollow returns a follower to the organization's default and forgets
+// their mirror; somebody who does not follow keeps their choice.
+func (s *Service) Unfollow(ctx context.Context, reader uuid.UUID) (db.LSN, error) {
+	var keys []string
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		if keys, err = dropMirrors(ctx, tx, reader, nil); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `DELETE FROM user_theme WHERE user_id = $1 AND follow_armature`, reader)
+		return err
+	})
+	if err == nil {
+		s.dropObjects(ctx, keys)
+	}
+	return lsn, err
+}
+
+// Mirror is the reader's copy of their Armature theme, or nil.
+func (s *Service) Mirror(ctx context.Context, reader uuid.UUID) (*Theme, error) {
+	var out *Theme
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		t, err := scan(tx.QueryRow(ctx, selectThemes+`
+			WHERE t.owner_id = $1 AND t.armature_theme_id IS NOT NULL ORDER BY t.created_at DESC LIMIT 1`, reader))
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		out = t
+		return withAssets(ctx, tx, []*Theme{t})
+	})
+	return out, err
+}
+
+// SaveMirror keeps pkg as the reader's copy of the Armature theme of, checked
+// as an import is, and forgets the copy it replaces.
+func (s *Service) SaveMirror(ctx context.Context, reader uuid.UUID, of MirrorOf, pkg *Package) (*Theme, db.LSN, error) {
+	made, lsn, err := s.importPackage(withMirroring(ctx), reader, pkg, &of)
+	if err != nil {
+		return nil, lsn, err
+	}
+	var keys []string
+	lsn, err = s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		keys, err = dropMirrors(ctx, tx, reader, &made.ID)
+		return err
+	})
+	if err != nil {
+		return nil, lsn, err
+	}
+	s.dropObjects(ctx, keys)
+	return made, lsn, nil
+}
+
+// dropMirrors removes the owner's mirrors but keep, and answers the object
+// keys of their files, to remove once the rows are gone.
+func dropMirrors(ctx context.Context, tx db.DBTX, owner uuid.UUID, keep *uuid.UUID) ([]string, error) {
+	rows, err := tx.Query(ctx, `
+		DELETE FROM theme_asset a USING theme t
+		WHERE a.theme_id = t.id AND t.owner_id = $1 AND t.armature_theme_id IS NOT NULL AND t.id IS DISTINCT FROM $2
+		RETURNING a.theme_id, a.id`, owner, keep)
+	if err != nil {
+		return nil, err
+	}
+	var keys []string
+	for rows.Next() {
+		var themeID, assetID uuid.UUID
+		if err := rows.Scan(&themeID, &assetID); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		keys = append(keys, objectKey(ctx, themeID, assetID))
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	_, err = tx.Exec(ctx, `DELETE FROM theme WHERE owner_id = $1 AND armature_theme_id IS NOT NULL AND id IS DISTINCT FROM $2`, owner, keep)
+	return keys, err
+}
+
+type mirroringKey struct{}
+
+// withMirroring lets the import write a mirror, which no request may edit.
+func withMirroring(ctx context.Context) context.Context {
+	return context.WithValue(ctx, mirroringKey{}, true)
+}
+
+func mirroring(ctx context.Context) bool {
+	v, _ := ctx.Value(mirroringKey{}).(bool)
+	return v
 }
 
 // SetDefault names the shared theme the organization shows to whoever has not
@@ -290,7 +450,7 @@ func (s *Service) SetDefault(ctx context.Context, reader uuid.UUID, id *uuid.UUI
 		if id == nil {
 			return nil
 		}
-		t, err := readOne(ctx, tx, reader, *id, ` WHERE t.id = $2 AND`+visible)
+		t, err := readOne(ctx, tx, reader, *id, ` WHERE t.id = $2 AND`+listed)
 		if err != nil {
 			return err
 		}
@@ -326,6 +486,14 @@ func cleanName(name *string) (string, error) {
 // Create saves a theme for the owner. Files come later, so the spec cannot
 // name any yet.
 func (s *Service) Create(ctx context.Context, owner uuid.UUID, in Input) (*Theme, db.LSN, error) {
+	return s.create(ctx, owner, in, nil)
+}
+
+func (s *Service) create(ctx context.Context, owner uuid.UUID, in Input, mirror *MirrorOf) (*Theme, db.LSN, error) {
+	var mirrorID, mirrorAt any
+	if mirror != nil {
+		mirrorID, mirrorAt = mirror.ID, mirror.UpdatedAt
+	}
 	name, err := cleanName(in.Name)
 	if err != nil {
 		return nil, 0, err
@@ -346,8 +514,8 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, in Input) (*Theme
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `
-			INSERT INTO theme (org_id, owner_id, name, shared, spec)
-			VALUES (current_org_id(), $1, $2, $3, $4) RETURNING id`, owner, name, shared, encoded).Scan(&id)
+			INSERT INTO theme (org_id, owner_id, name, shared, spec, armature_theme_id, armature_updated_at)
+			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6) RETURNING id`, owner, name, shared, encoded, mirrorID, mirrorAt).Scan(&id)
 		if isUnique(err) {
 			return fmt.Errorf("%w: %s", ErrDuplicateName, name)
 		}
@@ -368,6 +536,8 @@ func lockOwned(ctx context.Context, tx db.DBTX, id, actor uuid.UUID, administers
 		return nil, err
 	}
 	switch {
+	case current.Mirror != nil && !mirroring(ctx):
+		return nil, ErrNotFound
 	case current.OwnerID == actor:
 		return current, nil
 	case !current.Shared:

@@ -92,6 +92,7 @@ func (s *stub) handler() http.Handler {
 	mux.HandleFunc("PATCH "+stubPrefix+"/{tenant}/issues/{issueKey}", s.control((*stub).changeIssue))
 	mux.HandleFunc("POST "+stubPrefix+"/{tenant}/issues/{issueKey}/move", s.control((*stub).moveIssue))
 	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/people/{person}/theme", s.control((*stub).setTheme))
+	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/people/{person}/theme-delay", s.control((*stub).setThemeDelay))
 	mux.HandleFunc("GET "+stubPrefix+"/{tenant}/remote-links", s.control((*stub).allLinks))
 	mux.HandleFunc("GET "+stubPrefix+"/{tenant}/issues/{issueKey}", s.control((*stub).heldIssue))
 	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/people/{person}/read-only-projects", s.control((*stub).setReads))
@@ -121,6 +122,15 @@ func (s *stub) serve(rt route) http.HandlerFunc {
 		c := &call{w: w, r: r}
 		if !rt.Public {
 			token, found := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if rt.Path == "/themes/active" {
+				if delay := s.themeDelay(strings.TrimSpace(token)); delay > 0 {
+					select {
+					case <-time.After(delay):
+					case <-r.Context().Done():
+						return
+					}
+				}
+			}
 			s.world.mu.Lock()
 			defer s.world.mu.Unlock()
 			t, p, ok := s.world.caller(strings.TrimSpace(token))
@@ -530,7 +540,15 @@ func (s *stub) exportTheme(c *call) {
 		refuse(c.w, http.StatusNotFound, "not_found", "That theme was not found.")
 		return
 	}
-	pkg := theme.Package{Format: theme.PackageFormat, Name: e.Name, Spec: e.Spec, Assets: []theme.PackagedAsset{}}
+	spec := e.Spec
+	if c.person.ThemeBroken {
+		light := map[string]string{}
+		for name := range spec.Colors.Light {
+			light[name] = "not a colour"
+		}
+		spec.Colors.Light = light
+	}
+	pkg := theme.Package{Format: theme.PackageFormat, Name: e.Name, Spec: spec, Assets: []theme.PackagedAsset{}}
 	c.w.Header().Set("Content-Disposition", `attachment; filename="`+e.Key+`.armature-theme.json"`)
 	respond(c.w, http.StatusOK, pkg)
 }
@@ -600,6 +618,9 @@ func (s *stub) setTheme(c *call) {
 	var req struct {
 		// Theme is the key of an example theme, or empty for Armature's built-in one.
 		Theme string `json:"theme"`
+		// Broken exports it with colours no theme may hold, as a theme from a
+		// later Armature might.
+		Broken bool `json:"broken"`
 	}
 	if !decode(c, &req) {
 		return
@@ -609,8 +630,35 @@ func (s *stub) setTheme(c *call) {
 		return
 	}
 	p := c.tenant.person(c.r.PathValue("person"))
-	p.Theme, p.ThemeChanged = req.Theme, time.Now().UTC()
+	p.Theme, p.ThemeBroken, p.ThemeChanged = req.Theme, req.Broken, time.Now().UTC()
 	c.w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *stub) setThemeDelay(c *call) {
+	var req struct {
+		// MS holds back every answer to the person's GET /themes/active.
+		MS int `json:"ms"`
+	}
+	if !decode(c, &req) {
+		return
+	}
+	if req.MS < 0 || time.Duration(req.MS)*time.Millisecond > webhookTimeout {
+		refuseField(c.w, "ms", "Give a delay of 0 to 10000 milliseconds.")
+		return
+	}
+	c.tenant.person(c.r.PathValue("person")).ThemeDelay = time.Duration(req.MS) * time.Millisecond
+	c.w.WriteHeader(http.StatusNoContent)
+}
+
+// themeDelay is how long the caller's GET /themes/active is held back. It is
+// waited out without the world's lock, so nothing else is held up meanwhile.
+func (s *stub) themeDelay(token string) time.Duration {
+	s.world.mu.Lock()
+	defer s.world.mu.Unlock()
+	if _, p, ok := s.world.caller(token); ok {
+		return p.ThemeDelay
+	}
+	return 0
 }
 
 // heldIssue is an issue as the stub holds it, with the description it was
