@@ -323,9 +323,15 @@ describe("creating Armature issues from a selection", () => {
   });
 
   it("names Armature's sentence on a field rather than its general one", () => {
-    const refused = new ApiError(422, { code: "validation_failed", message: "Some fields need attention.", fields: { summary: "Armature refuses this summary." } });
+    const refused = new ApiError(422, {
+      code: "validation_failed",
+      message: "Some fields need attention.",
+      fields: { summary: "Armature refuses this summary." },
+    });
     expect(refusalText(refused)).toBe("Armature refuses this summary.");
-    expect(refusalText(new ApiError(403, { code: "forbidden", message: "You may not file issues in this project." }))).toBe("You may not file issues in this project.");
+    expect(refusalText(new ApiError(403, { code: "forbidden", message: "You may not file issues in this project." }))).toBe(
+      "You may not file issues in this project.",
+    );
     expect(refusalText(null)).toBeNull();
   });
 

@@ -37,7 +37,10 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={cx("max-h-[85vh] w-full overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-4 shadow-2", wide ? "max-w-2xl" : "max-w-md")}
+        className={cx(
+          "max-h-[85vh] w-full overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-4 shadow-2",
+          wide ? "max-w-2xl" : "max-w-md",
+        )}
       >
         <div className="mb-3 flex items-center gap-2">
           <h2 id={titleId} className="min-w-0 flex-1 truncate text-base font-semibold text-ink">

@@ -22,12 +22,7 @@ export function SpaceDirectory() {
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
       {spaces && spaces.length === 0 && (
-        <EmptyState
-          icon={<Icon.Space />}
-          title={t.spaces.emptyTitle}
-          description={mayCreate ? t.spaces.emptyBody : t.spaces.emptyBodyMember}
-          action={create}
-        />
+        <EmptyState icon={<Icon.Space />} title={t.spaces.emptyTitle} description={mayCreate ? t.spaces.emptyBody : t.spaces.emptyBodyMember} action={create} />
       )}
       {spaces && spaces.length > 0 && (
         <Table>
