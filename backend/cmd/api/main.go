@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
@@ -140,6 +141,7 @@ func run() error {
 	armatures := armature.NewService(cluster, box,
 		armature.NewClient(netguard.ParseAllow(cfg.Armature.OutboundAllow), cfg.Armature.Backchannel), cache,
 		armature.Options{AppURL: cfg.AppBaseURL, Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Development: cfg.Env == config.EnvDevelopment, Log: log})
+	files := attachment.NewService(cluster, store, pages).WithMaxSize(cfg.UploadLimit).WithLogger(log)
 	server := &httpapi.Server{
 		DB:              cluster,
 		Fresh:           fresh,
@@ -152,7 +154,8 @@ func run() error {
 		Themes:          theme.NewService(cluster, store),
 		Spaces:          space.NewService(cluster),
 		Pages:           pages,
-		Attachments:     attachment.NewService(cluster, store, pages).WithMaxSize(cfg.UploadLimit).WithLogger(log),
+		Attachments:     files,
+		Markdown:        mdio.NewService(pages, files),
 		Perms:           perm.NewService(cluster),
 		Search:          search.NewService(cluster),
 		Labels:          label.NewService(cluster, pages),
