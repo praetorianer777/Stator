@@ -365,6 +365,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   or a mention, and the replacement keeps the marks of the text it replaces.
   Escape closes the bar and puts the caret on the last match; outside the
   editor Ctrl or Cmd+F stays the browser's.
+- Checking somebody's access to a page (#81). An administrator of the space,
+  or of the organization, picks a person under the page's Check access and
+  sees whether they may view, edit, move to the trash and comment, each with
+  the conditions behind it: their standing in the organization, the use and
+  space grants that reach them, unpublished pages above, and every view or
+  edit list on the page and the pages above it with whom it names. The one
+  that decides a no is marked. The answers are the database's own, from the
+  functions its policies call, through `GET /pages/{pageID}/access/{userID}`;
+  migration 00200 lets an administrator of a space read which use grants
+  reach the person.
 
 ### Changed
 
