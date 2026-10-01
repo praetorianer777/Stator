@@ -12,6 +12,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
@@ -167,6 +168,15 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &denied) {
 		return ErrForbidden(denied.Error())
 	}
+	var badUpload *mdio.InvalidError
+	if errors.As(err, &badUpload) {
+		msg := sentence(badUpload.Message)
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: msg, Fields: map[string]string{"file": msg}}
+	}
+	var bigUpload *mdio.TooLargeError
+	if errors.As(err, &bigUpload) {
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(bigUpload.Error())}
+	}
 	var badDoc *document.InvalidError
 	if errors.As(err, &badDoc) {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(badDoc.Message)}
@@ -280,6 +290,11 @@ func toAPIError(err error) *APIError {
 		return ErrConflict("Somebody published this page after you opened its history. Reload the history and restore again.")
 	case errors.Is(err, page.ErrRestoreLatest):
 		return ErrConflict("That is already the latest version of the page. Pick an older version to restore.")
+	case errors.Is(err, mdio.ErrNoMarkdown):
+		msg := sentence(err.Error())
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: msg, Fields: map[string]string{"file": msg}}
+	case errors.Is(err, mdio.ErrTooManyBelow):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
 	case errors.Is(err, theme.ErrNotFound):
 		return ErrNotFound("That theme was not found. It may have been deleted or taken private.")
 	case errors.Is(err, theme.ErrAssetNotFound):

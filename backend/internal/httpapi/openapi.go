@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
@@ -162,6 +163,17 @@ var operations = []operation{
 			{name: "depth", schema: intParam, description: "For subtree, how many levels down, 1 to 10; every level when absent."},
 			{name: "sort", schema: &openapi.Schema{Type: "string", Enum: document.ChildPagesSorts}, description: "How siblings are ordered: tree, the default, title, or updated, the latest change first."},
 		}, responses: ok(env{"pages": []page.BelowPage{}, "truncated": false})},
+
+	// Markdown import and export (#90); docs/markdown.md says how each block is written.
+	{method: "GET", path: "/pages/{pageID}/export", handler: "handleExportPage", tag: "markdown", summary: "A page as a .zip of Markdown with its files, and with subtree the pages below it the caller may view, in folders.", binary: true,
+		query: []param{{name: "subtree", schema: &openapi.Schema{Type: "boolean"}, description: "true to take the pages below it too; false when absent."}}, responses: ok(nil)},
+	{method: "GET", path: "/pages/{pageID}/markdown", handler: "handleGetPageMarkdown", tag: "markdown", summary: "A page as one Markdown file, its files named where its export puts them.", binary: true,
+		responses: ok(nil)},
+	{method: "PUT", path: "/pages/{pageID}/markdown", handler: "handleReplacePageMarkdown", tag: "markdown", summary: "Publish one Markdown file, sent with the files it shows as parts named file, as the next version of a page; its one leading level 1 heading becomes the title.", multipart: true,
+		query:     []param{{name: "version", schema: intParam, description: "The version the Markdown replaces; a newer one refuses it with conflict."}},
+		responses: map[int]any{200: env{"page": page.Page{}, "warnings": []string{}}, 409: errorEnvelope{}, 413: errorEnvelope{}}},
+	{method: "POST", path: "/pages/{pageID}/import", handler: "handleImportMarkdown", tag: "markdown", summary: "Make pages under a page from Markdown files and their folders, sent as parts named file with their paths, or as a .zip; each folder of Markdown is a page too.", multipart: true,
+		responses: map[int]any{201: env{"pages": []mdio.Imported{}, "warnings": []string{}}, 413: errorEnvelope{}}},
 
 	// Templates (#15).
 	{method: "GET", path: "/templates", handler: "handleListTemplates", tag: "templates", summary: "The documents a new page can start from, in the order to offer them; send one's body and title with POST /pages.",
