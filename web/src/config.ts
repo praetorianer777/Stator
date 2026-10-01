@@ -194,6 +194,11 @@ export const QUICK_SEARCH_DEBOUNCE_MS = 150;
 /** How many pages quick search and the recent pages list offer at once, within the API's limit of 20. */
 export const QUICK_SEARCH_LIMIT = 8;
 export const RECENT_PAGES_LIMIT = 8;
+
+/** How many items each of the home page's lists reads at a time, within the API's limits of 100 and 50. */
+export const HOME_STARS_PAGE_SIZE = 10;
+export const HOME_UPDATES_PAGE_SIZE = 20;
+export const HOME_EDITED_PAGE_SIZE = 8;
 /** How many hits one page of search results shows, within the API's limit of 100. */
 export const SEARCH_PAGE_SIZE = 20;
 /** The longest query, matching the API's limit. */

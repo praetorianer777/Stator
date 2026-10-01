@@ -3,6 +3,46 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-01: A star is a row of one's own, and the home lists walk an index a window at a time
+
+A star (#38) is a row naming its person and either a page or a space, as
+Armature keeps its starred filters: `PUT` and `DELETE` on the thing's own
+`/star`, no body, and `starred` on the page and the space. Like a watch it is
+only ever one's own and only on what one may view; restrictive policies hold
+`stator_app` to both, and the app role may not update a star at all, only put
+it on or take it off. A star on a page that became restricted, or went to the
+trash, is kept and read by nobody until the page opens again, so a passing
+restriction does not lose it. A home page's header star stands for its space.
+
+The home page has four lists: stars, the pages one viewed last (the visits
+search already kept), the pages one edited (a version, a draft, or a page
+made and never published), and the updates others published, everywhere one
+may read or, with `scope=watched`, what one's page, subtree and space watches
+cover. Updates are one row per page, its latest version, because a page
+saved twenty times in a morning is one thing to read, and they leave out the
+reader's own, which the edited list already holds.
+
+The lists that grow without bound are read by keyset, `(time, id)` from an
+opaque cursor, newest first, so a window neither skips nor repeats a row when
+somebody publishes between two reads; offsets would. Ordering by
+`page.updated_at` would have floated a page up for every move, rank change
+and trash mark, so a page now carries `published_at`, stamped by a trigger
+when its version changes and by nothing else, which also keeps the app role
+from moving a page up the feed. `page_published_idx` serves the walk.
+
+Updates and edits are SQL functions, `home_updates` and `home_edited`,
+rather than queries the service runs as `stator_app`. Row level security
+puts its policy ahead of every condition of a query, so `perm_page_viewable`
+ran on each row the index scan met, hidden spaces included: on an
+organization of 6000 pages, 2000 of them in a space the reader may not view,
+a window of 21 took 3.2 seconds. The functions run as the schema's owner,
+filter the organization themselves, and decide the order: the spaces the
+reader may view and what they watch first, the view rule only then, in a
+`CASE`, since the planner had also turned a plain `IN` into a join after the
+rule. The same window takes 60 milliseconds, the rule runs once per row
+returned, and `TestUpdatesReadAWindowNotTheWholeOrganization` holds both:
+it counts the rule's calls and reads the plan with `auto_explain`.
+
 ## 2026-10-01: Markdown is converted on the server, and what it cannot say is a marked element
 
 Import and export run in the API rather than in the browser. A script with a

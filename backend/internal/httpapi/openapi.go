@@ -13,6 +13,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -23,6 +24,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/watch"
@@ -337,6 +339,30 @@ var operations = []operation{
 		summary: "The caller's own watches on what they may still view, the latest first.",
 		query:   pageQuery, responses: ok(env{"watches": []watch.Watch{}, "total": 0, "limit": 0, "offset": 0})},
 
+	// Stars and the home page (#38).
+	{method: "PUT", path: "/pages/{pageID}/star", handler: "handleStarPage", tag: "home",
+		summary:   "Star a page to keep it on the caller's home page; starring it again is no change.",
+		responses: none()},
+	{method: "DELETE", path: "/pages/{pageID}/star", handler: "handleUnstarPage", tag: "home",
+		summary:   "Take the caller's star off a page, also when there was none.",
+		responses: none()},
+	{method: "PUT", path: "/spaces/{spaceKey}/star", handler: "handleStarSpace", tag: "home",
+		summary:   "Star a space to keep it on the caller's home page.",
+		responses: none()},
+	{method: "DELETE", path: "/spaces/{spaceKey}/star", handler: "handleUnstarSpace", tag: "home",
+		summary:   "Take the caller's star off a space; the stars on its pages stay.",
+		responses: none()},
+	{method: "GET", path: "/stars", handler: "handleListStars", tag: "home",
+		summary: "The caller's stars on what they may still view, the latest first; next is the cursor for the window after, null at the end.",
+		query:   keysetQuery(100), responses: ok(env{"stars": []star.Star{}, "next": (*string)(nil)})},
+	{method: "GET", path: "/home/updates", handler: "handleHomeUpdates", tag: "home",
+		summary:   "Pages others published that the caller may view, each once, the latest first; with scope watched only those the caller's watches cover.",
+		query:     append([]param{{name: "scope", schema: &openapi.Schema{Type: "string", Enum: enumStrings(home.Scopes)}, description: "all when absent."}}, keysetQuery(50)...),
+		responses: ok(env{"updates": []home.PageUpdate{}, "next": (*string)(nil)})},
+	{method: "GET", path: "/home/edited", handler: "handleHomeEdited", tag: "home",
+		summary: "Pages the caller published, holds a draft of, or made and never published, that they may still view, the latest first.",
+		query:   keysetQuery(50), responses: ok(env{"pages": []home.EditedPage{}, "next": (*string)(nil)})},
+
 	// Notifications (#26), as Armature serves them.
 	{method: "GET", path: "/notifications", handler: "handleListNotifications", tag: "notifications",
 		summary:   "What the caller was told about pages they may still view, the latest first.",
@@ -450,6 +476,15 @@ var (
 	}
 )
 
+// keysetQuery is a window of a list read newest first: how many, and where
+// the window before it ended.
+func keysetQuery(max int) []param {
+	return []param{
+		{name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(max) + "; 20 when absent."},
+		{name: "cursor", description: "The next of the window before; the first window when absent."},
+	}
+}
+
 // isErrorEnvelope marks a refusal a client has to tell apart, listed with its
 // status next to the successes.
 func isErrorEnvelope(body any) bool {
@@ -485,6 +520,7 @@ func Spec() *openapi.Document {
 	b.Enums[reflect.TypeOf(comment.Kind(""))] = enumStrings(comment.Kinds)
 	b.Enums[reflect.TypeOf(comment.AnchorState(""))] = enumStrings(comment.AnchorStates)
 	b.Enums[reflect.TypeOf(watch.Kind(""))] = enumStrings(watch.Kinds)
+	b.Enums[reflect.TypeOf(star.Kind(""))] = enumStrings(star.Kinds)
 	b.Enums[reflect.TypeOf(notify.Kind(""))] = enumStrings(notify.Kinds)
 	b.Enums[reflect.TypeOf(notify.Digest(""))] = enumStrings(notify.Digests)
 	b.Enums[reflect.TypeOf(armature.Status(""))] = enumStrings(armature.Statuses)

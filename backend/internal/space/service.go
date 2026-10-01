@@ -28,7 +28,8 @@ func NewService(cluster *db.Cluster) *Service {
 
 const selectSpaces = `
 SELECT s.id, s.key, s.name, s.description, s.home_page_id, s.created_at, s.updated_at,
-       EXISTS (SELECT 1 FROM watch w WHERE w.space_id = s.id AND w.user_id = current_actor_id())
+       EXISTS (SELECT 1 FROM watch w WHERE w.space_id = s.id AND w.user_id = current_actor_id()),
+       EXISTS (SELECT 1 FROM star st WHERE st.space_id = s.id AND st.user_id = current_actor_id())
 FROM space s`
 
 func scan(row pgx.Row) (*Space, error) {
@@ -36,7 +37,7 @@ func scan(row pgx.Row) (*Space, error) {
 		s    Space
 		home *uuid.UUID
 	)
-	err := row.Scan(&s.ID, &s.Key, &s.Name, &s.Description, &home, &s.CreatedAt, &s.UpdatedAt, &s.Watching)
+	err := row.Scan(&s.ID, &s.Key, &s.Name, &s.Description, &home, &s.CreatedAt, &s.UpdatedAt, &s.Watching, &s.Starred)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}

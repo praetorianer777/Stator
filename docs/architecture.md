@@ -84,6 +84,8 @@ process, which is only right for a single api process. `/readyz` and
 | `comment` | page comments, inline comments anchored by mark id |
 | `reaction` | emoji reactions on pages and comments |
 | `label`, `watch`, `notify` | labels, watchers, in-app and email notifications |
+| `star`, `home` | starred pages and spaces, the home page's updates and edits |
+| `keyset` | the cursor a list read newest first hands out for its next window |
 | `template` | page templates |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
 | `attachment` | uploads to S3-compatible storage |

@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -25,6 +26,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 )
@@ -66,6 +68,10 @@ type Server struct {
 	// they were told and how they want to hear.
 	Watches       *watch.Service
 	Notifications *notify.Service
+	// Stars keeps each person's starred pages and spaces; Home reads the
+	// home page's lists of updates and edits.
+	Stars *star.Service
+	Home  *home.Service
 	// Perms answers the permission screens and the use check in front of
 	// every route; nil lets everybody who is a member through.
 	Perms *perm.Service
@@ -295,6 +301,13 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/spaces/{spaceKey}/watch", s.handleWatchSpace)
 			r.Delete("/spaces/{spaceKey}/watch", s.handleUnwatchSpace)
 			r.Get("/watches", s.handleListWatches)
+			r.Put("/pages/{pageID}/star", s.handleStarPage)
+			r.Delete("/pages/{pageID}/star", s.handleUnstarPage)
+			r.Put("/spaces/{spaceKey}/star", s.handleStarSpace)
+			r.Delete("/spaces/{spaceKey}/star", s.handleUnstarSpace)
+			r.Get("/stars", s.handleListStars)
+			r.Get("/home/updates", s.handleHomeUpdates)
+			r.Get("/home/edited", s.handleHomeEdited)
 			r.Get("/notifications", s.handleListNotifications)
 			r.Get("/notifications/unread-count", s.handleUnreadCount)
 			r.Post("/notifications/read", s.handleMarkRead)
