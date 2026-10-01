@@ -1,7 +1,7 @@
 import { render, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory } from "@tanstack/react-router";
-import { vi } from "vitest";
+import { onTestFinished, vi } from "vitest";
 import { meQueryKey, type Me } from "@/api/auth";
 import { LocalizedRouter } from "@/features/shell/LocalizedRouter";
 import { createQueryClient } from "@/lib/session";
@@ -31,7 +31,27 @@ export async function renderAt(path: string, { me = signedIn }: { me?: Me | null
     </QueryClientProvider>,
   );
   await waitFor(() => expect(document.querySelector("[data-top-bar], [data-login]")).not.toBeNull());
+  // A navigation still loading at the end of a test settles, or fires the
+  // router's pending timer, after jsdom has gone, and fails a later file.
+  onTestFinished(() => {
+    if (router.state.status !== "idle") {
+      throw new Error(`The test ended while the router was still loading ${router.state.location.pathname}. Await arrival(router, path) before it ends.`);
+    }
+  });
   return router;
+}
+
+/** Resolves once the router has finished loading `pathname`, lazy chunks and loaders included. */
+export function arrival(router: ReturnType<typeof buildRouter>, pathname: string) {
+  return new Promise<void>((resolve) => {
+    const arrived = () => router.state.status === "idle" && router.state.resolvedLocation?.pathname === pathname;
+    if (arrived()) return resolve();
+    const stop = router.subscribe("onResolved", () => {
+      if (!arrived()) return;
+      stop();
+      resolve();
+    });
+  });
 }
 
 /** One stubbed API answer: a status and a JSON body, for a method and a path under /api/v1. */
