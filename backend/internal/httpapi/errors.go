@@ -191,6 +191,8 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, auth.ErrSessionStaysHome):
 		return &APIError{Status: http.StatusForbidden, Code: "session_stays_home",
 			Message: "Your sign-in does not reach that organization. Sign in there through its own sign-in page."}
+	case errors.Is(err, auth.ErrBadLocale):
+		return ErrValidation(map[string]string{"locale": "Choose English, German, or the language of your browser."})
 	case errors.Is(err, auth.ErrNoSuchRequest):
 		return ErrNotFound("That person is not waiting to be let in. Reload the list; somebody may have answered already.")
 	case errors.Is(err, auth.ErrNoSuchMember):

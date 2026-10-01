@@ -1185,6 +1185,55 @@
             }
           }
         }
+      },
+      "patch": {
+        "operationId": "updateMe",
+        "summary": "Change the caller's own settings, such as the language the interface speaks to them.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/auth/oidc/callback": {
@@ -10473,6 +10522,19 @@
           }
         }
       },
+      "UpdateMeRequest": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "enum": [
+              "",
+              "en",
+              "de"
+            ]
+          }
+        }
+      },
       "User": {
         "type": "object",
         "properties": {
@@ -10486,6 +10548,14 @@
             "type": "string",
             "format": "uuid"
           },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "",
+              "en",
+              "de"
+            ]
+          },
           "name": {
             "type": "string"
           }
@@ -10493,7 +10563,8 @@
         "required": [
           "id",
           "email",
-          "name"
+          "name",
+          "locale"
         ]
       },
       "Version": {

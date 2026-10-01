@@ -16,6 +16,9 @@ export default defineConfig({
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
     baseURL: WEB_URL,
+    // The interface follows the browser's language, and the specs read its
+    // English words; a spec about another language says so itself.
+    locale: "en-US",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

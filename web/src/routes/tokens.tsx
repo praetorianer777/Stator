@@ -1,3 +1,4 @@
+import { localDateFormat } from "@/lib/format";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createRoute } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
@@ -13,7 +14,7 @@ import { appRoute } from "./app";
 
 export const tokensRoute = createRoute({ getParentRoute: () => appRoute, path: "/settings/tokens", component: TokensPage });
 
-const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
 /** When a token made now for that many days stops working; 0 is never. */
 export function expiryFrom(days: number, now: Date = new Date()): string | undefined {

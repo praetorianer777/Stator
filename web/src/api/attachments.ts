@@ -1,3 +1,4 @@
+import { formatNumber } from "@/lib/format";
 import { useCallback, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, KILOBYTE } from "@/config";
@@ -50,7 +51,7 @@ export function formatSize(bytes: number): string {
     value /= KILOBYTE;
     unit += 1;
   }
-  const shown = unit === 0 ? String(value) : value < 10 ? value.toFixed(1) : String(Math.round(value));
+  const shown = unit === 0 || value >= 10 ? formatNumber(Math.round(value)) : formatNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   return `${shown} ${SIZE_UNITS[unit]}`;
 }
 

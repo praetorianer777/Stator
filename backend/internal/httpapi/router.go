@@ -132,6 +132,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Use(requireAuth)
 			r.Post("/auth/logout", s.handleLogout)
 			r.Get("/auth/me", s.handleMe)
+			r.Patch("/auth/me", s.handleUpdateMe)
 			r.Post("/auth/switch-org", s.handleSwitchOrg)
 		})
 
