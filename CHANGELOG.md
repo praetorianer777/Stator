@@ -484,6 +484,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Generating the OpenAPI document fails, naming both Go types, when two
+  types from different packages would be documented under one schema name,
+  rather than picking a name by the order the routes happen to be read in.
+  `Builder.Names` names one of them apart; the existing pairs keep the names
+  they had.
+
 - A page read from a replica that was replaying a change no longer mixes two
   moments, such as a new owner and verification beside permissions from
   before its restriction, which could offer a reader actions they may not
