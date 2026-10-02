@@ -77,7 +77,7 @@ func (s *Server) me(r *http.Request, p *auth.Principal) (*meResponse, error) {
 		return nil, err
 	}
 	out := &meResponse{
-		User:          auth.User{ID: p.UserID, Email: p.Email, Name: p.Name, AvatarURL: p.AvatarURL, Locale: p.Locale},
+		User:          auth.User{ID: p.UserID, Email: p.Email, Name: p.Name, AvatarURL: p.AvatarURL, Locale: p.Locale, ShowInReaders: p.ShowInReaders},
 		Organizations: organizations,
 	}
 	if p.InOrg() {
@@ -158,6 +158,9 @@ func (s *Server) handleMeAs(w http.ResponseWriter, r *http.Request, p *auth.Prin
 type updateMeRequest struct {
 	// Locale is the interface language, "en" or "de"; empty follows the browser.
 	Locale *auth.Locale `json:"locale,omitempty"`
+	// ShowInReaders says whether editors of the pages the caller reads see
+	// their name among its readers.
+	ShowInReaders *bool `json:"showInReaders,omitempty"`
 }
 
 func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
@@ -175,6 +178,15 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.Locale = *req.Locale
+	}
+	if req.ShowInReaders != nil {
+		lsn, err := s.Accounts.SetShowInReaders(r.Context(), p.UserID, *req.ShowInReaders)
+		noteWrite(r.Context(), lsn)
+		if err != nil {
+			respondError(w, r, err)
+			return
+		}
+		p.ShowInReaders = *req.ShowInReaders
 	}
 	s.handleMeAs(w, r, &p)
 }

@@ -9,7 +9,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const member: Me = {
   ...signedIn,
-  user: { id: "u-bob", email: "bob@stator.test", name: "Bob Builder", avatarUrl: "https://pictures.test/bob.png", locale: "" },
+  user: { id: "u-bob", email: "bob@stator.test", name: "Bob Builder", avatarUrl: "https://pictures.test/bob.png", locale: "", showInReaders: true },
   organization: { ...signedIn.organization!, role: "member" },
 };
 

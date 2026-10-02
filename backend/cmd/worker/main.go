@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
@@ -124,6 +125,7 @@ func run() error {
 		go notify.NewDigester(cluster, mailer, cfg.AppBaseURL, log).Run(ctx)
 	}
 	go audit.NewRetention(cluster, cfg.RetainAudit, log).Run(ctx)
+	go pageview.NewRetention(cluster, cfg.RetainPageViews, log).Run(ctx)
 
 	build := version.Current()
 	log.Info("worker started", "env", cfg.Env, "version", build.Version, "commit", build.Commit)

@@ -14,6 +14,7 @@ import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSection";
 import { InlineComments } from "@/features/comments/InlineComments";
 import { ExportDialog, ImportDialog } from "@/features/markdown/MarkdownDialogs";
+import { PageViewsButton, PageViewsDialog } from "@/features/pageviews/PageViews";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocPageContext } from "@/features/editor/BlockViews";
@@ -51,7 +52,7 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
   return crumbs;
 }
 
-type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import" | "stewardship" | "share";
+type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import" | "stewardship" | "share" | "views";
 
 /** Says a page is narrowed to some people, and opens who and why. */
 function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
@@ -196,6 +197,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
             )}
             {(page.restricted.view || page.restricted.edit) && <RestrictedBadge page={page} onOpen={() => setDialog("restrictions")} />}
             {page.comments.page > 0 && <CommentCount count={page.comments.page} />}
+            {!page.unpublished && <PageViewsButton pageId={page.id} onOpen={() => setDialog("views")} />}
           </span>
         }
         actions={
@@ -285,6 +287,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "stewardship" && <StewardshipDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "share" && <ShareDialog page={page} onClose={() => setDialog(undefined)} />}
+      {dialog === "views" && <PageViewsDialog pageId={page.id} onClose={() => setDialog(undefined)} />}
       {dialog === "access" && <AccessDialog pageId={page.id} pageTitle={page.title} onClose={() => setDialog(undefined)} />}
       {dialog === "export" && <ExportDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "import" && (

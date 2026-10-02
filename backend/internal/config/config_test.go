@@ -26,7 +26,7 @@ func clean(t *testing.T) {
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
 		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
 		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
-		"STATOR_RETAIN_AUDIT",
+		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
 		"STATOR_VERIFICATION_CHECK_INTERVAL",
 	} {
 		t.Setenv(key, "")
@@ -444,6 +444,29 @@ func TestTheAuditLogIsKeptAYearAndNeverLessThanADay(t *testing.T) {
 		t.Setenv("STATOR_RETAIN_AUDIT", value)
 		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_RETAIN_AUDIT") {
 			t.Errorf("STATOR_RETAIN_AUDIT=%s is let through: %v", value, err)
+		}
+	}
+}
+
+func TestPageViewsAreKeptASeasonAndNeverLessThanTheirRecentPeriod(t *testing.T) {
+	clean(t)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RetainPageViews != DefaultRetainPageViews {
+		t.Errorf("page views are kept %s by default, want %s", cfg.RetainPageViews, DefaultRetainPageViews)
+	}
+	for value, want := range map[string]time.Duration{"0": 0, "720h": 720 * time.Hour, "8760h": 8760 * time.Hour} {
+		t.Setenv("STATOR_RETAIN_PAGE_VIEWS", value)
+		if cfg, err := Load(); err != nil || cfg.RetainPageViews != want {
+			t.Errorf("STATOR_RETAIN_PAGE_VIEWS=%s reads as %s, %v", value, cfg.RetainPageViews, err)
+		}
+	}
+	for _, value := range []string{"719h", "24h", "-1h", "a while"} {
+		t.Setenv("STATOR_RETAIN_PAGE_VIEWS", value)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_RETAIN_PAGE_VIEWS") {
+			t.Errorf("STATOR_RETAIN_PAGE_VIEWS=%s is let through: %v", value, err)
 		}
 	}
 }

@@ -387,6 +387,32 @@ Changed: `Page` gains `owner` (`id`, `name`, `canView`) and `verification`
   name only an owner who may view the page, and never set when or at which
   version a page was verified, nor the worker's notice of a lapse.
 
+## #97 Page views
+
+Added after M2, in migration 00300; the types live in `internal/pageview`.
+
+| Operation | Needs | Answers |
+|---|---|---|
+| `POST /pages/{pageID}/visit` | view | 204; counts the view once a day besides noting the visit |
+| `GET /pages/{pageID}/views` | view | `ViewCounts`: `views` and `readers` in all, `recentViews` and `recentReaders` over the last `days` (30), `canListReaders` |
+| `GET /pages/{pageID}/readers` | edit, without the archive rule | `{readers, unnamed, retentionDays, next}`: each reader within the retention, the latest first, with `viewedAt` and `days`; `limit` 1 to 100, 25 when absent, and `cursor`; 403 to a reader who may not edit |
+
+Changed: `User` gains `showInReaders`, and `PATCH /auth/me` takes it.
+
+- **A view** is one person opening the page on one day in UTC; opening it
+  again that day changes nothing. A page in the trash or not viewable is
+  404 for both reads.
+- **Names** are left out for whoever turned `showInReaders` off; `unnamed`
+  counts them. Somebody who left the organization is counted in `views`,
+  not in `readers`.
+- **Retention.** The worker moves views older than
+  `STATOR_RETAIN_PAGE_VIEWS` (90 days, at least 30, 0 keeps them) into the
+  page's anonymous tally once a day; `views` includes the tally.
+- **The database** lets `stator_app` add only its actor's own view, today,
+  of a page they may view, and read only their own; the counts and the
+  names come from `page_view_stats`, `page_readers` and
+  `page_readers_unnamed`, which judge the actor themselves.
+
 ## #37 Archive
 
 Added after M2, in migration 00260; the types live in `internal/page` and
