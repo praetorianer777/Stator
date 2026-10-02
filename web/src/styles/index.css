@@ -902,6 +902,110 @@
   .doc-math-edit {
     cursor: pointer;
   }
+  /* A link card: the page's site, title and summary in a quiet frame, the
+   * whole card one link, so it reads as a pointer away from the page. */
+  .doc-link-card {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .doc-link-card-body {
+    display: grid;
+    gap: 0.125rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    padding: 0.625rem 0.875rem;
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+  a.doc-link-card-body:hover {
+    border-color: var(--color-border-strong);
+  }
+  a.doc-link-card-body:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+  .doc-link-card-site {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+  .doc-link-card-title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .doc-link-card-description {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .doc-link-card-url {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* A player keeps its shape as the page narrows: a video's wide frame, a
+   * design's squarer one. */
+  .doc-link-embed iframe {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-surface-sunken);
+  }
+  .doc-link-embed[data-link-embed="design"] iframe {
+    aspect-ratio: 4 / 3;
+  }
+  .doc-link-card-edit {
+    display: grid;
+    gap: 0.375rem;
+  }
+  .doc-link-card-views {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--text-xs);
+  }
+  .doc-link-card-views button {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    padding: 0.125rem 0.5rem;
+    color: var(--color-ink);
+    background: var(--color-surface);
+    cursor: pointer;
+  }
+  .doc-link-card-views button[aria-pressed="true"] {
+    background: var(--color-accent-subtle);
+    border-color: var(--color-accent);
+  }
+  .doc-link-card-views button:disabled {
+    color: var(--color-ink-muted);
+    cursor: not-allowed;
+  }
+  .doc-link-card-views button:focus-visible,
+  .doc-link-card-open:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+  .doc-link-card-open {
+    margin-left: auto;
+    color: var(--color-accent);
+  }
+  .ProseMirror-selectednode.doc-link-card-edit,
+  .ProseMirror-selectednode > .doc-link-card-edit {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
   /* A diagram draws at its own size up to the page's width, and scrolls
    * sideways rather than shrinking its words past reading on a narrow screen. */
   .doc-content .doc-diagram {

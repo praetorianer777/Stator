@@ -379,6 +379,10 @@ export const DIAGRAM_SOURCE_ROWS = 6;
 export const DIAGRAM_DEFAULT_SOURCE = "flowchart LR\n  idea[Idea] --> draft[Draft] --> published[Published]";
 /** The name a downloaded diagram is saved under. */
 export const DIAGRAM_FILE_NAME = "diagram.svg";
+/** How long a link's card is shown before it is asked for again; the server keeps it an hour. */
+export const LINK_PREVIEW_STALE_MS = 5 * 60_000;
+/** The views a link card offers, in the order its toolbar lists them. */
+export const LINK_CARD_VIEWS = ["inline", "card", "embed"] as const;
 /** How many emoji a colon offers at once. */
 export const EMOJI_MAX_SUGGESTIONS = 8;
 /** What a colon offers before a letter is typed, by shortcode, most used first. */

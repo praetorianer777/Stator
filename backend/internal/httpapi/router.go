@@ -34,6 +34,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
@@ -86,6 +87,7 @@ type Server struct {
 	// Shortcuts keeps the links pinned above each space's page tree.
 	Shortcuts *shortcut.Service
 	Hub       *hub.Service
+	Unfurl    *unfurl.Service
 	// PageViews reads how often pages were read and by whom;
 	// PageViewRetention is how long the worker keeps named views, zero forever.
 	PageViews         *pageview.Service
@@ -365,6 +367,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/stars", s.handleListStars)
 			r.Get("/home/updates", s.handleHomeUpdates)
 			r.Get("/org/hub", s.handleGetHub)
+			r.Get("/link-preview", s.handleLinkPreview)
 			r.Get("/home/edited", s.handleHomeEdited)
 			r.Get("/stale-pages", s.handleListStalePages)
 			r.Put("/pages/{pageID}/owner", s.handleSetPageOwner)

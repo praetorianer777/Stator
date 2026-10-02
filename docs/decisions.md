@@ -3,6 +3,44 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A link card keeps its address, and the server reads the page for each reader
+
+A link card is one block, `linkCard`, holding an http or https `url` and a
+`view` of `card` or `embed`. What the linked page says, its title, summary
+and site, is not stored: it would be readable by anybody who reads the page
+whatever the site later says, and would go stale, as an Armature issue's
+summary would. The inline view is no node of its own: it is an ordinary link
+whose text is the page's title, so it reads, exports and searches as any
+link does.
+
+`GET /link-preview` reads the page on the server, not in the reader's
+browser, so a reader's address and cookies never reach the site and the
+browser's policy stays `connect-src 'self'`. The read goes through the same
+outbound guard as webhooks and Armature, `STATOR_OUTBOUND_ALLOW` included,
+so a member cannot make the server read Valkey, Postgres or a cloud metadata
+address. It takes only text/html, reads at most 512 KB looking for the head,
+gives up after 5 seconds and three redirects, and sends no credentials.
+Answers are kept in Valkey for an hour, an unreadable page for five
+minutes, shared by every organization: what a public page says about itself
+is the same for all of them. A page that cannot be read still gets a card,
+named by its host. No picture from the page is shown: it would load from the
+site in the reader's browser, which the policy refuses and the reader did
+not ask for.
+
+Embeds are an allowlist in code, not a setting: YouTube through its privacy
+enhanced player, Vimeo's player and Figma's embed page, each worked out from
+the address alone, without reading the site. The Content-Security-Policy's
+`frame-src` names exactly their origins, a unit test holds the compose and
+chart policies to the list, and the frame is sandboxed to scripts, its own
+origin, popups and presentation. A card whose site has no player shows as a
+card whatever its view says.
+
+An address pasted alone on an empty line becomes a card, and the site's
+player when it has one, without an undo step of its own for the change of
+view; pasted among words it stays a link. The compose stack lets the guard
+read the web container, so the browser suite has a page inside the network
+to preview; the chart allows nothing inside the network, as before.
+
 ## 2026-10-02: A diagram is stored as its Mermaid text and drawn in the reader's browser
 
 A diagram is one block, `diagram`, holding its Mermaid text in `source`, up

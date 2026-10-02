@@ -79,6 +79,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "linkCard",
         "image",
         "tableOfContents",
         "childPages",
@@ -154,6 +155,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "linkCard",
         "image",
         "tableOfContents",
         "childPages",
@@ -226,6 +228,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "linkCard",
         "image",
         "tableOfContents",
         "childPages",
@@ -256,6 +259,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "linkCard",
         "image",
         "tableOfContents",
         "childPages",
@@ -312,6 +316,23 @@
         }
       }
     },
+    "linkCard": {
+      "attrs": {
+        "url": {
+          "kind": "string",
+          "maxLength": 2048,
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+          "url": true
+        },
+        "view": {
+          "kind": "string",
+          "enum": [
+            "card",
+            "embed"
+          ]
+        }
+      }
+    },
     "listItem": {
       "content": [
         "paragraph",
@@ -329,6 +350,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "linkCard",
         "image",
         "tableOfContents",
         "childPages",
@@ -427,6 +449,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "linkCard",
         "image",
         "tableOfContents",
         "childPages",
@@ -527,6 +550,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "linkCard",
         "image",
         "tableOfContents",
         "childPages",
@@ -589,6 +613,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "linkCard",
         "image",
         "tableOfContents",
         "childPages",
@@ -633,6 +658,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "linkCard",
         "image",
         "tableOfContents",
         "childPages",

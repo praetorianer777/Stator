@@ -225,6 +225,7 @@ func TestExportReadsAsMarkdown(t *testing.T) {
 		`{"type":"image","attrs":{"attachmentId":"`+fileID+`","alt":"A chart","width":null}}`,
 		`{"type":"expand","attrs":{"title":"More"},"content":[`+para(txt("inside"))+`]}`,
 		para(`{"type":"status","attrs":{"label":"DONE","color":"success"}}`),
+		`{"type":"linkCard","attrs":{"url":"https://example.test/a?b=<c>","view":"embed"}}`,
 		para(txt("Energy "), `{"type":"mathInline","attrs":{"latex":"E =\n mc^2 \\$ $"}}`),
 		`{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[`+para(`{"type":"mathInline","attrs":{"latex":"\\|x\\| = |y|"}}`)+`]}]}]}`,
 	)
@@ -232,6 +233,7 @@ func TestExportReadsAsMarkdown(t *testing.T) {
 	for _, want := range []string{
 		`Energy $E = mc^2 \$ \$$`,
 		`| $\\|x\\| = \|y\|$ |`,
+		"\n\n<https://example.test/a?b=%3Cc%3E>\n\n",
 		"# Plan\n\n## Intro\n",
 		"> [!WARNING]\n> Careful\n",
 		"- [x] done\n",

@@ -24,6 +24,7 @@ import { placeChips, planSelection, type SelectionPlan } from "./issueSelection"
 import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
 import type { InlineValueTarget } from "./inlineValues";
 import { DateDialog, MathDialog, StatusDialog } from "./InlineValueDialogs";
+import { LinkCardDialog } from "./LinkCardDialog";
 import type { Emoji } from "./emoji";
 import { EmojiList } from "./EmojiList";
 
@@ -115,6 +116,7 @@ export function Editor({
   armatureRef.current = armature;
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
+  const [pickingLink, setPickingLink] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
   const [editingValue, setEditingValue] = useState<InlineValueTarget | null>(null);
   const emojiId = useId();
@@ -138,6 +140,7 @@ export function Editor({
       armature,
       pickIssue: () => setPickingIssue(true),
       pickIssueList: () => setMakingList(true),
+      pickLinkCard: () => setPickingLink(true),
       editInlineValue: setEditingValue,
       emoji: { render: emoji.renderer },
       find: openFind,
@@ -305,6 +308,15 @@ export function Editor({
           onInsert={(key) => {
             setPickingIssue(false);
             editor.chain().focus().insertArmatureIssueBlock(key).run();
+          }}
+        />
+      )}
+      {pickingLink && editor && (
+        <LinkCardDialog
+          onClose={() => setPickingLink(false)}
+          onInsert={(url) => {
+            setPickingLink(false);
+            editor.chain().focus().insertLinkCard(url).run();
           }}
         />
       )}

@@ -41,10 +41,12 @@ x-auth-env: &auth-env
 # Armature, as the stub stands in for it. An administrator connects
 # http://localhost:${ARMATURE_STUB_PORT}, the address a browser opens; the api
 # and the worker reach it on the stack's network. The guard lets the stub's
-# host through here only; the chart allows nothing inside the network. For a
+# host through here, and the web container's, the one page inside the network
+# the browser suite's link previews can read; the chart allows nothing inside
+# the network. For a
 # real Armature on the host, see docs/api-contract-m3.md.
 x-armature-env: &armature-env
-  STATOR_OUTBOUND_ALLOW: armature-stub
+  STATOR_OUTBOUND_ALLOW: armature-stub,web
   STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080
 
 # Who an organization of the stack is made with: the realm's people, let in

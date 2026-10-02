@@ -47,6 +47,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
@@ -176,6 +177,7 @@ func run() error {
 		Shares:            share.NewService(cluster),
 		Shortcuts:         shortcut.NewService(cluster),
 		Hub:               hub.NewService(cluster),
+		Unfurl:            unfurlService(cfg, valkey, log),
 		Home:              home.NewService(cluster),
 		Stale:             stale.NewService(cluster),
 		PageViews:         pageview.NewService(cluster),
@@ -260,6 +262,16 @@ func telemetryConfig(cfg config.Config, service string) observability.Config {
 		OTLPEndpoint: cfg.Telemetry.OTLPEndpoint,
 		SampleRatio:  cfg.Telemetry.SampleRatio,
 	}
+}
+
+// unfurlService reads link previews through the outbound guard, keeping them
+// in Valkey when there is one.
+func unfurlService(cfg config.Config, valkey *redis.Client, log *slog.Logger) *unfurl.Service {
+	client := netguard.Client(unfurl.FetchTimeout, netguard.ParseAllow(cfg.Armature.OutboundAllow))
+	if valkey == nil {
+		return unfurl.NewService(client, nil, log)
+	}
+	return unfurl.NewService(client, valkey, log)
 }
 
 // openValkey connects to STATOR_VALKEY_URL, or returns nil when it is blank.

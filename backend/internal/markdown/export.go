@@ -118,6 +118,10 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 	// reads as its source everywhere else.
 	case document.NodeDiagram:
 		return codeFence(stringAttr(n, "source"), diagramLanguage), true
+	// A card's words are read for each reader, so its address stands alone
+	// on its line, where Markdown readers that draw cards draw one.
+	case document.NodeLinkCard:
+		return "<" + strings.NewReplacer("<", "%3C", ">", "%3E").Replace(stringAttr(n, "url")) + ">", true
 	case "blockquote":
 		return quote(r.blocks(n.Content, depth+1)), true
 	case "panel":

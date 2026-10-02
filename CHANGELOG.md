@@ -570,6 +570,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   never markup, links or pictures. Search finds a page by its diagrams'
   text, and a Markdown export writes a `mermaid` fence, which an import
   reads back as a diagram.
+- Link previews and embeds (#47). An address pasted alone on an empty line
+  becomes a card with the linked page's title, summary and site, and the
+  page's player when it is a YouTube or Vimeo video or a Figma file; "Link
+  preview" in the slash menu asks for one. A card's toolbar shows it inline,
+  as a link titled as its page, as a card, or embedded. The server reads
+  what a page says about itself through the outbound guard
+  (`STATOR_OUTBOUND_ALLOW`), from its head alone, and keeps it an hour in
+  Valkey (`GET /link-preview`); a page keeps only the address and the view.
+  Players load in a sandbox from the origins the Content-Security-Policy's
+  new `frame-src` names.
 
 ### Changed
 

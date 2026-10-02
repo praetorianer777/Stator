@@ -18,6 +18,7 @@ import { Passage, usePassages, type BlockPath } from "./passages";
 import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel } from "./InlineValueViews";
 import { MATH_BLOCK_NODE, MATH_INLINE_NODE, MathFormula, mathSource } from "./MathViews";
 import { DIAGRAM_NODE, DiagramFigure, diagramSource } from "./DiagramViews";
+import { LINK_CARD_NODE, LinkCard, linkCardView, webAddress } from "./LinkCardViews";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
@@ -246,6 +247,10 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
           </p>
         </div>
       );
+    }
+    case LINK_CARD_NODE: {
+      const url = webAddress(node.attrs?.url);
+      return url ? <LinkCard url={url} view={linkCardView(node.attrs?.view)} /> : null;
     }
     case DIAGRAM_NODE: {
       const source = diagramSource(node.attrs?.source);

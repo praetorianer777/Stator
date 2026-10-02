@@ -140,6 +140,13 @@ const (
 	NodeMathBlock  = "mathBlock"
 )
 
+// NodeLinkCard is a link shown as a card with what its page says about
+// itself, or as the player of an allowlisted site.
+const NodeLinkCard = "linkCard"
+
+// LinkCardViews are how a link card shows its page.
+var LinkCardViews = []string{"card", "embed"}
+
 // NodeDiagram is a diagram written as Mermaid text, drawn by each reader's
 // browser.
 const NodeDiagram = "diagram"
@@ -159,7 +166,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -309,6 +316,12 @@ var Allowed = Allowlist{
 		NodeMathInline: {Inline: true, Attrs: mathAttrs},
 		NodeMathBlock:  {Attrs: mathAttrs},
 		// Only the text, for the same reason: the drawing is made from it.
+		// Only the address and the view: what the page says is read for each
+		// reader, so it is never stale in the body.
+		NodeLinkCard: {Attrs: map[string]Attr{
+			"url":  {Kind: KindString, MaxLength: MaxHrefLength, URL: true, Pattern: `^[Hh][Tt][Tt][Pp][Ss]?://`},
+			"view": {Kind: KindString, Enum: LinkCardViews},
+		}},
 		NodeDiagram: {Attrs: map[string]Attr{"source": {Kind: KindString, MaxLength: MaxDiagramLength, Pattern: `\S`}}},
 		"attachment": {
 			Inline: true,
