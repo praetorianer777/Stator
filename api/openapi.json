@@ -2587,6 +2587,56 @@
         }
       }
     },
+    "/link-preview": {
+      "get": {
+        "operationId": "linkPreview",
+        "summary": "What a web page says about itself, its title, summary and site, for a link's card, and the player it embeds in when its site is allowlisted. Read through the outbound guard and kept an hour.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "description": "The full address of the web page, http or https.",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preview": {
+                      "$ref": "#/components/schemas/LinkPreview"
+                    }
+                  },
+                  "required": [
+                    "preview"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/mcp": {
       "post": {
         "operationId": "mcp",
@@ -12023,6 +12073,67 @@
           "state",
           "error",
           "syncedAt"
+        ]
+      },
+      "LinkEmbed": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "video",
+              "design"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "src": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "kind",
+          "src"
+        ]
+      },
+      "LinkPreview": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "embed": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LinkEmbed"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fetched": {
+            "type": "boolean"
+          },
+          "siteName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "title",
+          "description",
+          "siteName",
+          "fetched",
+          "embed"
         ]
       },
       "LoginRequest": {

@@ -33,6 +33,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
@@ -302,6 +303,9 @@ var operations = []operation{
 		responses: ok(env{"permissions": []perm.GlobalGrant{}})},
 	{method: "PUT", path: "/org/permissions/{permission}", handler: "handleSetGlobalPermission", orgWide: true, tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.",
 		request: perm.GlobalGrantInput{}, responses: ok(env{"permission": perm.GlobalGrant{}})},
+	{method: "GET", path: "/link-preview", handler: "handleLinkPreview", tag: "pages", summary: "What a web page says about itself, its title, summary and site, for a link's card, and the player it embeds in when its site is allowlisted. Read through the outbound guard and kept an hour.",
+		query:     []param{{name: "url", schema: &openapi.Schema{Type: "string", Format: "uri"}, description: "The full address of the web page, http or https."}},
+		responses: ok(env{"preview": unfurl.LinkPreview{}})},
 	{method: "GET", path: "/org/hub", handler: "handleGetHub", tool: "get_hub", toolHelp: "The organization's hub page, if there is one the caller may read, and whether everybody lands on it.", tag: "hub", summary: "The organization's hub page as the caller may see it, and whether everybody lands on it.", responses: ok(env{"hub": hub.Hub{}})},
 	{method: "PUT", path: "/org/hub", handler: "handleSetHub", orgWide: true, tag: "hub", summary: "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.", request: hub.HubInput{}, responses: ok(env{"hub": hub.Hub{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
@@ -665,6 +669,7 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(reaction.Input{})] = "ReactionInput"
 	b.Names[reflect.TypeOf(share.Input{})] = "ShareInput"
 	b.Names[reflect.TypeOf(watch.Input{})] = "WatchInput"
+	b.FieldOverrides["LinkEmbed.kind"] = &openapi.Schema{Type: "string", Enum: unfurl.EmbedKinds}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
 	b.FieldOverrides["APIToken.scopes"] = scopes

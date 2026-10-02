@@ -29,6 +29,7 @@ import { ArmatureIssueList } from "./armatureIssueList";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
 import { MathBlock, MathInline } from "./math";
 import { Diagram } from "./diagram";
+import { LinkCardNode } from "./linkCard";
 import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 import { FindReplace } from "./findReplace";
 
@@ -305,6 +306,8 @@ export interface ExtensionOptions {
   pickIssue?: () => void;
   /** Opens the settings dialog the slash menu's Armature issue list starts with. */
   pickIssueList?: () => void;
+  /** Opens the dialog the slash menu's link preview asks for an address with. */
+  pickLinkCard?: () => void;
   /** Opens the dialog that changes a status, a date or a formula. */
   editInlineValue?: (target: InlineValueTarget) => void;
   /** Draws the emoji a colon offers; without it a colon offers none. */
@@ -325,6 +328,7 @@ export function editorExtensions({
   armature,
   pickIssue,
   pickIssueList,
+  pickLinkCard,
   editInlineValue,
   emoji,
   find,
@@ -392,6 +396,7 @@ export function editorExtensions({
     MathInline.configure({ edit: editInlineValue }),
     MathBlock.configure({ edit: editInlineValue }),
     Diagram,
+    LinkCardNode.configure({ pick: pickLinkCard }),
     FindReplace.configure({ open: find }),
   ];
 }

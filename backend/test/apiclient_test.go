@@ -32,6 +32,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -46,6 +47,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
@@ -79,7 +81,9 @@ func (a *apiServer) handOver(t *testing.T, c *client, method string) {
 	}
 }
 
-func newAPIServer(t *testing.T, h *harness) *apiServer {
+// newAPIServer starts the api in this process; tweaks change its server
+// before it starts, as a test that needs another guard or service does.
+func newAPIServer(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *apiServer {
 	t.Helper()
 	if os.Getenv("STATOR_S3_ENDPOINT") == "" {
 		t.Fatal("STATOR_S3_ENDPOINT is not set; run the suite with make test-integration against the running stack")
@@ -105,10 +109,27 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),
 		Audit: audit.NewService(h.cluster), AuditRetention: config.DefaultRetainAudit, Webhooks: h.webhooks(t),
 		PageViews: pageview.NewService(h.cluster), PageViewRetention: config.DefaultRetainPageViews,
+		Unfurl: h.unfurl(t, netguard.ParseAllow(armatureStubHost)),
+	}
+	for _, tweak := range tweaks {
+		tweak(server)
 	}
 	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))
 	t.Cleanup(a.srv.Close)
 	return a
+}
+
+// unfurl reads link previews through a guard that lets allow through, kept
+// in the running Valkey under a prefix of the suite's own.
+func (h *harness) unfurl(t *testing.T, allow netguard.Allow) *unfurl.Service {
+	t.Helper()
+	opts, err := redis.ParseURL(h.cfg.Valkey.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := redis.NewClient(opts)
+	t.Cleanup(func() { _ = client.Close() })
+	return unfurl.NewService(netguard.Client(unfurl.FetchTimeout, allow), client, discard())
 }
 
 // freshness is the read-your-writes store the running api uses, under a

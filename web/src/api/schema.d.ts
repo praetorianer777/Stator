@@ -576,6 +576,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/link-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a web page says about itself, its title, summary and site, for a link's card, and the player it embeds in when its site is allowlisted. Read through the outbound guard and kept an hour. */
+        get: operations["linkPreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mcp": {
         parameters: {
             query?: never;
@@ -2851,6 +2868,20 @@ export interface components {
             state: "synced" | "pending" | "failed";
             /** Format: date-time */
             syncedAt: string | null;
+        };
+        LinkEmbed: {
+            /** @enum {string} */
+            kind: "video" | "design";
+            provider: string;
+            src: string;
+        };
+        LinkPreview: {
+            description: string;
+            embed: components["schemas"]["LinkEmbed"] | null;
+            fetched: boolean;
+            siteName: string;
+            title: string;
+            url: string;
         };
         LoginRequest: {
             email: string;
@@ -5299,6 +5330,40 @@ export interface operations {
                         offset: number;
                         pages: components["schemas"]["LabeledPage"][];
                         total: number;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    linkPreview: {
+        parameters: {
+            query?: {
+                /** @description The full address of the web page, http or https. */
+                url?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        preview: components["schemas"]["LinkPreview"];
                     };
                 };
             };

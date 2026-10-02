@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
@@ -187,6 +188,9 @@ func toAPIError(err error) *APIError {
 	var shareField *share.FieldError
 	if errors.As(err, &shareField) {
 		return ErrValidation(map[string]string{shareField.Field: shareField.Message})
+	}
+	if errors.Is(err, unfurl.ErrBadURL) {
+		return ErrValidation(map[string]string{"url": "Give the full address of a web page, starting with https:// or http://."})
 	}
 	var hubField *hub.FieldError
 	if errors.As(err, &hubField) {

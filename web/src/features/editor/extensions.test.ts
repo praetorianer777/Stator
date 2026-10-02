@@ -88,6 +88,8 @@ describe("the slash menu's blocks", () => {
       date: (d) => JSON.stringify(find(d, "date")[0]?.attrs) === JSON.stringify({ date: "2026-11-02" }),
       emoji: (d) => find(d, "text")[0]?.text === ":",
       diagram: (d) => find(d, "diagram")[0]?.attrs?.source === DIAGRAM_DEFAULT_SOURCE,
+      // The dialog asks for the address; this one answers as a person would.
+      linkCard: (d) => JSON.stringify(find(d, "linkCard")[0]?.attrs) === JSON.stringify({ url: "https://example.test/post", view: "card" }),
       mathBlock: (d) => find(d, "mathBlock")[0]?.attrs?.latex === "\\sqrt{2}",
       mathInline: (d) => find(d, "paragraph")[0]?.content?.[0]?.type === "mathInline" && find(d, "mathInline")[0]?.attrs?.latex === "\\sqrt{2}",
     };
@@ -96,6 +98,7 @@ describe("the slash menu's blocks", () => {
       // The pickers answer later, as a dialog does, never inside the slash command.
       const e = await make(undefined, {
         pickIssue: () => setTimeout(() => editor?.commands.insertArmatureIssueBlock("cp-4")),
+        pickLinkCard: () => setTimeout(() => editor?.commands.insertLinkCard("https://example.test/post")),
         pickIssueList: () => setTimeout(() => editor?.commands.insertArmatureIssueList({ query: "project = CP", columns: ["key", "due"], limit: 5 })),
         editInlineValue: (target) =>
           setTimeout(() =>
