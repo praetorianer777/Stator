@@ -505,6 +505,20 @@ and the versioning [Semantic Versioning](https://semver.org/).
   changing, rotating and deleting a webhook is written to the audit log.
   Moving a published page to another parent or space and deleting one now
   write `page.moved` and `page.deleted` to the outbox.
+- Tasks (#56): a checklist item is a task, assigned to the first person it
+  @mentions and due on the first date in it. Publishing gives every item a
+  `taskId` and reads the tasks from the stored page, so the document stays
+  the only record; a task can only be assigned to a member who may view the
+  page, and the publish says so otherwise. My tasks, in the sidebar and on
+  the home page, lists the caller's open tasks soonest due first and their
+  done ones, from every page they may still read (`GET /tasks`, the
+  `list_my_tasks` tool). A box ticks off on the page, or in the list, for
+  whoever may edit the page, which publishes it as the next version
+  (`PATCH /pages/{id}/tasks/{taskId}`, the `set_task_done` tool). An
+  assignment tells the assignee once, and the worker reminds them on the
+  due day, in UTC, every `STATOR_TASK_DUE_CHECK_INTERVAL` (10 minutes;
+  `tasks.dueCheckInterval` in the chart); both are new kinds in the
+  notification settings. A page shows when a task is overdue or due today.
 
 ### Changed
 
