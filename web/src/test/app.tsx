@@ -9,7 +9,7 @@ import { buildRouter, sendToLogin } from "@/routes";
 
 /** The person every shell test is signed in as unless it says otherwise: an administrator. */
 export const signedIn: Me = {
-  user: { id: "u-ada", email: "ada@stator.test", name: "Ada Lovelace", locale: "" },
+  user: { id: "u-ada", email: "ada@stator.test", name: "Ada Lovelace", locale: "", showInReaders: true },
   organization: { id: "o-demo", slug: "demo", name: "Demo", role: "admin" },
   organizations: [{ orgId: "o-demo", orgSlug: "demo", orgName: "Demo", role: "admin" }],
 };

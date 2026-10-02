@@ -72,6 +72,9 @@ type User struct {
 	// Locale is the interface language the person chose, "en" or "de"; empty
 	// means the browser's.
 	Locale Locale `json:"locale"`
+	// ShowInReaders says editors of the pages the person reads see their
+	// name among its readers; they are counted either way.
+	ShowInReaders bool `json:"showInReaders"`
 }
 
 // CurrentOrg is the organization a session is acting in, with the caller's

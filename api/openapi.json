@@ -97,6 +97,9 @@
       "name": "verification"
     },
     {
+      "name": "views"
+    },
+    {
       "name": "watching"
     },
     {
@@ -5233,6 +5236,64 @@
         }
       }
     },
+    "/pages/{pageID}/readers": {
+      "get": {
+        "operationId": "pageReaders",
+        "summary": "Who read a page within the retention, the latest first, leaving out who chose not to be named; next is the cursor for the window after, null at the end. For people who may edit the page.",
+        "tags": [
+          "views"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 25 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The next of the window before; the first window when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readers"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/restrictions": {
       "get": {
         "operationId": "getPageRestrictions",
@@ -5982,10 +6043,52 @@
         }
       }
     },
+    "/pages/{pageID}/views": {
+      "get": {
+        "operationId": "pageViews",
+        "summary": "How often a page was read, each person counted once a day, and by how many people, in all and over the last days; never by whom. For anybody who may view the page.",
+        "tags": [
+          "views"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewCounts"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/visit": {
       "post": {
         "operationId": "visitPage",
-        "summary": "Note that the caller opened a page, for their recent pages.",
+        "summary": "Note that the caller opened a page, for their recent pages, and count the view once a day.",
         "tags": [
           "search"
         ],
@@ -12448,6 +12551,63 @@
           "name"
         ]
       },
+      "Reader": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "viewedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "viewedAt",
+          "days"
+        ]
+      },
+      "Readers": {
+        "type": "object",
+        "properties": {
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reader"
+            }
+          },
+          "retentionDays": {
+            "type": "integer"
+          },
+          "unnamed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "readers",
+          "unnamed",
+          "retentionDays",
+          "next"
+        ]
+      },
       "ReadinessResponse": {
         "type": "object",
         "properties": {
@@ -13763,6 +13923,9 @@
               "en",
               "de"
             ]
+          },
+          "showInReaders": {
+            "type": "boolean"
           }
         }
       },
@@ -13789,13 +13952,17 @@
           },
           "name": {
             "type": "string"
+          },
+          "showInReaders": {
+            "type": "boolean"
           }
         },
         "required": [
           "id",
           "email",
           "name",
-          "locale"
+          "locale",
+          "showInReaders"
         ]
       },
       "Verification": {
@@ -13935,6 +14102,37 @@
           "authorName",
           "createdAt",
           "restoredFrom"
+        ]
+      },
+      "ViewCounts": {
+        "type": "object",
+        "properties": {
+          "canListReaders": {
+            "type": "boolean"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "readers": {
+            "type": "integer"
+          },
+          "recentReaders": {
+            "type": "integer"
+          },
+          "recentViews": {
+            "type": "integer"
+          },
+          "views": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "views",
+          "readers",
+          "recentViews",
+          "recentReaders",
+          "days",
+          "canListReaders"
         ]
       },
       "Watch": {

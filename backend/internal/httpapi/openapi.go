@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
@@ -246,8 +247,16 @@ var operations = []operation{
 		}, responses: ok(env{"pages": []search.PageHit{}})},
 	{method: "GET", path: "/recent-pages", handler: "handleRecentPages", tag: "search", summary: "The pages the caller visited last, the latest first.",
 		query: []param{{name: "limit", schema: intParam, description: "1 to 20; 10 when absent."}}, responses: ok(env{"pages": []search.RecentPage{}})},
-	{method: "POST", path: "/pages/{pageID}/visit", handler: "handleVisitPage", tag: "search", summary: "Note that the caller opened a page, for their recent pages.",
+	{method: "POST", path: "/pages/{pageID}/visit", handler: "handleVisitPage", tag: "search", summary: "Note that the caller opened a page, for their recent pages, and count the view once a day.",
 		responses: none()},
+
+	// Page views (#97).
+	{method: "GET", path: "/pages/{pageID}/views", handler: "handlePageViews", tool: "get_page_views", toolHelp: "How often a page was read: views (each person once a day) and distinct readers, in all and over the last days.", tag: "views",
+		summary:   "How often a page was read, each person counted once a day, and by how many people, in all and over the last days; never by whom. For anybody who may view the page.",
+		responses: ok(pageview.ViewCounts{})},
+	{method: "GET", path: "/pages/{pageID}/readers", handler: "handlePageReaders", tag: "views",
+		summary: "Who read a page within the retention, the latest first, leaving out who chose not to be named; next is the cursor for the window after, null at the end. For people who may edit the page.",
+		query:   keysetQueryOf(pageview.DefaultLimit, pageview.MaxLimit), responses: ok(pageview.Readers{})},
 
 	// Labels (#17).
 	{method: "GET", path: "/pages/{pageID}/labels", handler: "handleListPageLabels", tool: "list_page_labels", toolHelp: "The labels on a page.", tag: "labels", summary: "The labels on a page, by name.",
