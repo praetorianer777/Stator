@@ -3,6 +3,34 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A diagram is stored as its Mermaid text and drawn in the reader's browser
+
+A diagram is one block, `diagram`, holding its Mermaid text in `source`, up
+to 20000 characters. The text is what is versioned, compared, searched and
+exported, so it is all that is kept; the SVG is drawn from it wherever the
+page is shown. Drawing on the server would take a browser engine in the API
+for every save, and a stored drawing would be markup in the body that goes
+stale when Mermaid or the theme changes.
+
+The editor shows the text in a field with the drawing below it, drawn again
+once typing has paused for 300 ms; a text Mermaid cannot read keeps the last
+drawing's place with the reason and the text. The reader's view draws it
+the same way and offers the drawing as an SVG file to download, which is the
+export of the drawing; the Markdown export writes a `mermaid` fence, drawn
+by Markdown readers that draw them and read as text by the rest, and the
+import reads one back as a diagram.
+
+Mermaid runs in strict mode with labels drawn as SVG text: click handlers
+and scripts are dropped, and a tag in a label reads as its own words rather
+than becoming an element, since strict mode alone keeps an `<img>` that would
+fetch its source. It is capped at the text limit and 500 edges. It takes its
+colours from the theme's tokens when they are hex, and Mermaid's light or
+dark set otherwise. It is large, so it loads with the first diagram on a
+page rather than with the application.
+
+Search reads a diagram's text as lines of the page, in `document.PlainText`
+and in `page_plain_blocks` alike (migration 00380).
+
 ## 2026-10-02: A formula is stored as its TeX source and typeset by each reader's browser
 
 A formula is a node holding nothing but its LaTeX source: `mathInline` in

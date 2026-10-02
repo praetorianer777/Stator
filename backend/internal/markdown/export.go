@@ -114,6 +114,10 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 	// own line, and the import reads it back as one.
 	case document.NodeMathBlock:
 		return codeFence(stringAttr(n, "latex"), mathLanguage), true
+	// A mermaid fence is drawn as a diagram where Markdown draws them, and
+	// reads as its source everywhere else.
+	case document.NodeDiagram:
+		return codeFence(stringAttr(n, "source"), diagramLanguage), true
 	case "blockquote":
 		return quote(r.blocks(n.Content, depth+1)), true
 	case "panel":
@@ -595,8 +599,12 @@ func (r renderer) atom(n document.Node, ctx inlineCtx) string {
 	return ""
 }
 
-// mathLanguage is the fence language a formula on its own line is written with.
-const mathLanguage = "math"
+// mathLanguage and diagramLanguage are the fence languages a formula on its
+// own line and a diagram are written with.
+const (
+	mathLanguage    = "math"
+	diagramLanguage = "mermaid"
+)
 
 // inlineMath writes a formula between dollar signs, its source as it is: TeX
 // already writes a dollar inside a formula as \$, so a bare one is escaped

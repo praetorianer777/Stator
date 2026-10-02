@@ -420,6 +420,11 @@ func (c *converter) block(n ast.Node, depth int) ([]document.Node, error) {
 						return []document.Node{n}, nil
 					}
 				}
+				if lang == diagramLanguage {
+					if n, ok := diagram(c.lines(n)); ok {
+						return []document.Node{n}, nil
+					}
+				}
 				if languagePattern.MatchString(lang) && len(lang) <= maxLanguageLength {
 					language = lang
 				}
@@ -460,6 +465,16 @@ func mathBlock(code string) (document.Node, bool) {
 		return document.Node{}, false
 	}
 	return document.Node{Type: document.NodeMathBlock, Attrs: map[string]any{"latex": latex}}, true
+}
+
+// diagram reads a mermaid fence as a diagram; one too long or empty to be a
+// diagram stays a code block.
+func diagram(code string) (document.Node, bool) {
+	source := strings.TrimSuffix(code, "\n")
+	if strings.TrimSpace(source) == "" || utf8.RuneCountInString(source) > document.MaxDiagramLength {
+		return document.Node{}, false
+	}
+	return document.Node{Type: document.NodeDiagram, Attrs: map[string]any{"source": source}}, true
 }
 
 var alertLine = regexp.MustCompile(`^\s*\[!([A-Za-z]+)\]\s*$`)

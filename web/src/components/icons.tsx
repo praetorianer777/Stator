@@ -75,6 +75,8 @@ export const Icon = {
   Decision: makeIcon("decision", ["M8 14.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z", "m5.5 8 2 2 3-4"]),
   // A summation sign, the shape most people know a formula by.
   Sigma: makeIcon("sigma", ["M12.5 3.5v-1h-9L8 8l-4.5 5.5h9v-1"]),
+  // Two boxes and the arrow between them, as a flowchart draws them.
+  Diagram: makeIcon("diagram", ["M2 2.5h5v3.5H2z", "M9 10h5v3.5H9z", "M4.5 6v5.75H9"]),
   Plus: makeIcon("plus", ["M8 3v10", "M3 8h10"]),
   Users: makeIcon("users", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),
   Check: makeIcon("check", ["m3 8.5 3 3 7-7"]),

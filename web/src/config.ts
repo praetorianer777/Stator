@@ -367,6 +367,18 @@ export const MATH_MAX_SIZE = 20;
 export const MATH_DEFAULT_LATEX = "a^2 + b^2 = c^2";
 /** How many lines the formula dialog's source field shows. */
 export const MATH_SOURCE_ROWS = 5;
+/** The longest diagram source, matching the API's MaxDiagramLength. */
+export const DIAGRAM_MAX_LENGTH = 20000;
+/** The most arrows one diagram may draw, so a huge graph cannot hold the page while it lays out. */
+export const DIAGRAM_MAX_EDGES = 500;
+/** How long the preview waits after the last keystroke before drawing the diagram again. */
+export const DIAGRAM_PREVIEW_DELAY_MS = 300;
+/** How many lines the diagram's source field shows. */
+export const DIAGRAM_SOURCE_ROWS = 6;
+/** What a new diagram holds until its author writes their own: a sketch that shows the syntax. */
+export const DIAGRAM_DEFAULT_SOURCE = "flowchart LR\n  idea[Idea] --> draft[Draft] --> published[Published]";
+/** The name a downloaded diagram is saved under. */
+export const DIAGRAM_FILE_NAME = "diagram.svg";
 /** How many emoji a colon offers at once. */
 export const EMOJI_MAX_SUGGESTIONS = 8;
 /** What a colon offers before a letter is typed, by shortcode, most used first. */

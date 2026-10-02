@@ -28,6 +28,7 @@ import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
 import { MathBlock, MathInline } from "./math";
+import { Diagram } from "./diagram";
 import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 import { FindReplace } from "./findReplace";
 
@@ -390,6 +391,7 @@ export function editorExtensions({
     DateNode.configure({ edit: editInlineValue }),
     MathInline.configure({ edit: editInlineValue }),
     MathBlock.configure({ edit: editInlineValue }),
+    Diagram,
     FindReplace.configure({ open: find }),
   ];
 }

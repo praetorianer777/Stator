@@ -1165,6 +1165,13 @@ export const de: Messages = {
       decided: "Entschieden",
       undecided: "Offen",
     },
+    diagram: {
+      source: "Diagrammquelle in Mermaid",
+      drawing: "Diagramm",
+      unreadable: (reason: string) => `Dieses Diagramm kann nicht gezeichnet werden: ${reason} Stattdessen wird seine Quelle gezeigt.`,
+      empty: "Schreiben Sie das Diagramm in Mermaid, etwa flowchart LR gefolgt von A --> B.",
+      download: "Als SVG herunterladen",
+    },
     math: {
       edit: "Klicken Sie, um die Formel zu ändern",
       unreadable: "Diese Formel kann nicht gesetzt werden; ihre Quelle:",
@@ -1241,6 +1248,7 @@ export const de: Messages = {
       panelError: { label: "Fehler-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, das nicht passieren darf." },
       decision: { label: "Entscheidung", description: "Eine Entscheidung, getroffen oder offen, die das Entscheidungsprotokoll des Bereichs auflistet." },
       mathBlock: { label: "Formelblock", description: "Eine LaTeX-Formel in einer eigenen Zeile, zentriert." },
+      diagram: { label: "Diagramm", description: "Ein Ablauf-, Sequenz- oder anderes Diagramm als Mermaid-Text, beim Tippen gezeichnet." },
       expand: { label: "Aufklappbereich", description: "Ein Abschnitt mit Titel, den Lesende öffnen, wenn sie die Einzelheiten wollen." },
       columns2: { label: "Zwei Spalten", description: "Zwei Blöcke nebeneinander, auf schmalen Bildschirmen untereinander." },
       columns3: { label: "Drei Spalten", description: "Drei Blöcke nebeneinander, auf schmalen Bildschirmen untereinander." },

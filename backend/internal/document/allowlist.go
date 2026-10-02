@@ -113,6 +113,9 @@ const (
 	// MaxMathLength bounds a formula's TeX source, so one formula cannot keep
 	// every reader's browser typesetting.
 	MaxMathLength = 4000
+	// MaxDiagramLength bounds a diagram's source, room for a sketch of a whole
+	// system while one diagram cannot keep a reader's browser drawing.
+	MaxDiagramLength = 20000
 )
 
 // The states of a decision item.
@@ -137,6 +140,10 @@ const (
 	NodeMathBlock  = "mathBlock"
 )
 
+// NodeDiagram is a diagram written as Mermaid text, drawn by each reader's
+// browser.
+const NodeDiagram = "diagram"
+
 // DatePattern is a day as a date node stores it; the validator also checks
 // that the day exists.
 const DatePattern = `^[0-9]{4}-[0-9]{2}-[0-9]{2}$`
@@ -152,7 +159,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -301,6 +308,8 @@ var Allowed = Allowlist{
 		// never stored as markup a reader's browser would run.
 		NodeMathInline: {Inline: true, Attrs: mathAttrs},
 		NodeMathBlock:  {Attrs: mathAttrs},
+		// Only the text, for the same reason: the drawing is made from it.
+		NodeDiagram: {Attrs: map[string]Attr{"source": {Kind: KindString, MaxLength: MaxDiagramLength, Pattern: `\S`}}},
 		"attachment": {
 			Inline: true,
 			Attrs: map[string]Attr{

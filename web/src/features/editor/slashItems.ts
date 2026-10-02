@@ -42,6 +42,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("panelWarning", Icon.Panel, ["panel", "warning", "caution"], (c) => c.setPanel("warning")),
   item("panelError", Icon.Panel, ["panel", "error", "danger"], (c) => c.setPanel("error")),
   item("decision", Icon.Decision, ["decision", "decide", "agreed", "resolution", "outcome"], (c) => c.setDecision()),
+  item("diagram", Icon.Diagram, ["diagram", "mermaid", "flowchart", "chart", "sequence", "graph", "architecture"], (c) => c.insertDiagram()),
   item("mathBlock", Icon.Sigma, ["math", "formula", "equation", "latex", "tex", "katex"], (c) => c.insertMathBlock()),
   item("expand", Icon.Disclosure, ["expand", "collapse", "toggle", "details", "fold"], (c) => c.setExpand()),
   item("columns2", Icon.Columns, ["columns", "layout", "side by side", "two", "split"], (c) => c.setColumns(2)),

@@ -78,6 +78,7 @@
         "columns",
         "decision",
         "mathBlock",
+        "diagram",
         "image",
         "tableOfContents",
         "childPages",
@@ -152,6 +153,7 @@
         "columns",
         "decision",
         "mathBlock",
+        "diagram",
         "image",
         "tableOfContents",
         "childPages",
@@ -198,6 +200,15 @@
       ],
       "allowsMarks": true
     },
+    "diagram": {
+      "attrs": {
+        "source": {
+          "kind": "string",
+          "maxLength": 20000,
+          "pattern": "\\S"
+        }
+      }
+    },
     "doc": {
       "content": [
         "paragraph",
@@ -214,6 +225,7 @@
         "columns",
         "decision",
         "mathBlock",
+        "diagram",
         "image",
         "tableOfContents",
         "childPages",
@@ -243,6 +255,7 @@
         "columns",
         "decision",
         "mathBlock",
+        "diagram",
         "image",
         "tableOfContents",
         "childPages",
@@ -315,6 +328,7 @@
         "columns",
         "decision",
         "mathBlock",
+        "diagram",
         "image",
         "tableOfContents",
         "childPages",
@@ -412,6 +426,7 @@
         "columns",
         "decision",
         "mathBlock",
+        "diagram",
         "image",
         "tableOfContents",
         "childPages",
@@ -511,6 +526,7 @@
         "columns",
         "decision",
         "mathBlock",
+        "diagram",
         "image",
         "tableOfContents",
         "childPages",
@@ -572,6 +588,7 @@
         "columns",
         "decision",
         "mathBlock",
+        "diagram",
         "image",
         "tableOfContents",
         "childPages",
@@ -615,6 +632,7 @@
         "columns",
         "decision",
         "mathBlock",
+        "diagram",
         "image",
         "tableOfContents",
         "childPages",
