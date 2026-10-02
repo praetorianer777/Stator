@@ -96,6 +96,13 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 	case "paragraph":
 		out := r.inline(n.Content, ctxBlock)
 		return out, out != ""
+	// Markdown has no decision items, so one reads as a line that says its state.
+	case document.NodeDecision:
+		label := "Undecided:"
+		if stringAttr(n, "state") == document.DecisionDecided {
+			label = "Decided:"
+		}
+		return strings.TrimSpace("**" + label + "** " + r.inline(n.Content, ctxBlock)), true
 	case "heading":
 		level := intAttr(n, "level", 1)
 		return strings.Repeat("#", level+1) + " " + r.inline(n.Content, ctxHeading), true

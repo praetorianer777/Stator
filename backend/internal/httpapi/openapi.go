@@ -172,6 +172,9 @@ var operations = []operation{
 	{method: "GET", path: "/spaces/{spaceKey}/pages", handler: "handleListPages", tool: "list_child_pages", toolHelp: "The pages directly under a parent page, in order; without parent, those under the space's home page.", tag: "pages", summary: "The pages directly under a parent, by default under the space's home page, in order.",
 		query: []param{{name: "parent", description: "The page whose children to list.", schema: &openapi.Schema{Type: "string", Format: "uuid"}}}, responses: ok(env{"pages": []page.TreeNode{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/outline", handler: "handleSpaceOutline", tool: "get_space_outline", toolHelp: "Every page of a space in reading order with its depth, to find a page or where a new one goes.", tag: "pages", summary: "Every page of a space in reading order, with its depth, for choosing where a page goes.", responses: ok(env{"pages": []page.OutlineEntry{}})},
+	{method: "GET", path: "/spaces/{spaceKey}/decisions", handler: "handleListDecisions", tool: "list_decisions", toolHelp: "The decision items on a space's published pages, newest page first, each with its state and its page; state decided or undecided keeps one kind.", tag: "pages", summary: "The decision log of a space: every decision item on its published pages the caller may read, newest page first.",
+		query:     []param{{name: "state", schema: &openapi.Schema{Type: "string", Enum: []string{"decided", "undecided"}}, description: "decided or undecided to keep one state; both when absent."}},
+		responses: ok(page.DecisionLog{})},
 	// Archive (#37).
 	{method: "PUT", path: "/spaces/{spaceKey}/archive", handler: "handleArchiveSpace", tag: "archive", summary: "Archive a space: it stays readable, leaves the space list, search and the home page, and none of its pages changes. For the space's administrators; archiving it again is no change.",
 		responses: ok(env{"space": space.Space{}})},

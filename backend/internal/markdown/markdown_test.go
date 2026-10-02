@@ -242,9 +242,11 @@ func TestWhatMarkdownCannotCarryIsReadable(t *testing.T) {
 			`]}`,
 		para(txt("hinted", `{"type":"hint"}`), txt(" "), txt("discussed", `{"type":"inlineComment","attrs":{"threadId":"`+userID+`"}}`)),
 		`{"type":"image","attrs":{"attachmentId":"`+otherID+`","alt":"Somewhere else","width":null}}`,
+		`{"type":"decision","attrs":{"state":"decided"},"content":[`+txt("Ship on Fridays")+`]}`,
+		`{"type":"decision","attrs":{"state":"undecided"},"content":[`+txt("Which region")+`]}`,
 	)
 	md := Render("Plan", parseDoc(t, body), testLinks)
-	for _, want := range []string{"1. lettered", "| wide |  |", "| a<br>item | b |", "hinted discussed", "Somewhere else"} {
+	for _, want := range []string{"1. lettered", "| wide |  |", "| a<br>item | b |", "hinted discussed", "Somewhere else", "**Decided:** Ship on Fridays", "**Undecided:** Which region"} {
 		if !strings.Contains(md, want) {
 			t.Errorf("the export lacks %q:\n%s", want, md)
 		}

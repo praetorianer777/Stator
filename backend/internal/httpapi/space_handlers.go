@@ -158,6 +158,19 @@ func (s *Server) handleSpaceOutline(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"pages": pages})
 }
 
+func (s *Server) handleListDecisions(w http.ResponseWriter, r *http.Request) {
+	log, err := s.Pages.Decisions(r.Context(), actorFrom(r), spaceKey(r), r.URL.Query().Get("state"))
+	if errors.Is(err, page.ErrBadDecisionState) {
+		respondError(w, r, ErrValidation(map[string]string{"state": "Choose decided or undecided, or leave the state out for both."}))
+		return
+	}
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, log)
+}
+
 func (s *Server) handleListPagesBelow(w http.ResponseWriter, r *http.Request) {
 	id, apiErr := pathUUID(r, "pageID", "page")
 	if apiErr != nil {

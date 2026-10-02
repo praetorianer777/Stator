@@ -70,6 +70,7 @@ export const Icon = {
   Expand: makeIcon("expand", ["M2.5 3h11v10h-11z", "M6 3v10", "m9 6.5 1.5 1.5L9 9.5"]),
   Menu: makeIcon("menu", ["M2.5 4h11", "M2.5 8h11", "M2.5 12h11"]),
   X: makeIcon("x", ["m4 4 8 8", "m12 4-8 8"]),
+  Decision: makeIcon("decision", ["M8 14.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z", "m5.5 8 2 2 3-4"]),
   Plus: makeIcon("plus", ["M8 3v10", "M3 8h10"]),
   Users: makeIcon("users", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),
   Check: makeIcon("check", ["m3 8.5 3 3 7-7"]),

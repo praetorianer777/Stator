@@ -692,7 +692,19 @@ export const en = {
     cancel: "Cancel",
     notAdmin: "You may not create spaces here. Ask an administrator of your organization to make one for you, or to let you create spaces.",
   },
+  decisions: {
+    title: "Decisions",
+    filter: "Show",
+    all: "All",
+    decided: "Decided",
+    undecided: "Undecided",
+    empty: "No decisions here yet. Add one to a page with Decision in the slash menu.",
+    emptyFiltered: "No decisions in this state.",
+    onPage: (title: string, when: string) => `on ${title}, ${when}`,
+    truncated: "Only the most recent decisions are listed. Narrow the list by state.",
+  },
   space: {
+    decisions: "Decisions",
     home: "Space home",
     settings: "Space settings",
     trash: "Trash",
@@ -1092,6 +1104,10 @@ export const en = {
     panelTools: "Panel",
     panelKind: "Panel type",
     removePanel: "Remove the panel",
+    decision: {
+      decided: "Decided",
+      undecided: "Undecided",
+    },
     expandTools: "Expand",
     removeExpand: "Remove the expand, keep its content",
     expand: {
@@ -1149,6 +1165,7 @@ export const en = {
       panelSuccess: { label: "Success panel", description: "A highlighted box for a result or a tip." },
       panelWarning: { label: "Warning panel", description: "A highlighted box for something to be careful about." },
       panelError: { label: "Error panel", description: "A highlighted box for something that must not happen." },
+      decision: { label: "Decision", description: "A decision, decided or not, which the space's decision log lists." },
       expand: { label: "Expand", description: "A titled section readers open when they want the detail." },
       tableOfContents: { label: "Table of contents", description: "Links to the headings on this page, kept up to date." },
       childPages: { label: "Child pages", description: "Links to the pages below this one." },

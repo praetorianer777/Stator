@@ -3,6 +3,30 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A decision is a line of the page, and the log is read from published bodies
+
+A decision item is one node, `decision`, holding a line of text as a
+paragraph does and a `state` of `decided` or `undecided`. It is a block of
+the page rather than a record beside it, so it is written, versioned,
+restricted, searched and moved with the page it is on, and a decision can
+sit in a panel, an expand block or a table like any line. Its state is a
+label in words before the line, so it reads without colour, and in the
+editor that label is the button that changes it.
+
+A space's decision log, `GET /spaces/{key}/decisions`, is read from the
+published bodies of the space's pages the reader may view, out of the trash
+and the archive, newest page first and in reading order within a page; the
+database finds the pages with a JSON path, and the service quotes the
+lines. Nothing is kept beside the pages, so the log cannot drift from them:
+a decision changed in a draft reaches the log when it is published, and a
+restricted page keeps its decisions to those who may read it. It is cut at
+500 decisions, saying so, and filters by state.
+
+Search reads a decision as a line of the page's words, in
+`document.PlainText` and in `page_plain_blocks` alike (migration 00360).
+Markdown has no decision items, so an export writes one as a line that
+begins with its state in bold.
+
 ## 2026-10-02: A shortcut is a ranked row of the space, read through the page's own view rule
 
 Space shortcuts (#39) are links the administrators of a space pin above its

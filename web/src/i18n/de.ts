@@ -711,7 +711,19 @@ export const de: Messages = {
     notAdmin:
       "Sie dürfen hier keine Bereiche anlegen. Bitten Sie einen Administrator Ihrer Organisation, einen für Sie anzulegen oder Ihnen das Anlegen von Bereichen zu erlauben.",
   },
+  decisions: {
+    title: "Entscheidungen",
+    filter: "Anzeigen",
+    all: "Alle",
+    decided: "Entschieden",
+    undecided: "Offen",
+    empty: "Hier gibt es noch keine Entscheidungen. Fügen Sie einer Seite eine über Entscheidung im Schrägstrich-Menü hinzu.",
+    emptyFiltered: "Keine Entscheidungen in diesem Zustand.",
+    onPage: (title: string, when: string) => `auf ${title}, ${when}`,
+    truncated: "Nur die neuesten Entscheidungen sind aufgeführt. Grenzen Sie die Liste nach Zustand ein.",
+  },
   space: {
+    decisions: "Entscheidungen",
     home: "Startseite des Bereichs",
     settings: "Bereichseinstellungen",
     trash: "Papierkorb",
@@ -1118,6 +1130,10 @@ export const de: Messages = {
     panelTools: "Hinweisfeld",
     panelKind: "Art des Hinweisfelds",
     removePanel: "Hinweisfeld entfernen",
+    decision: {
+      decided: "Entschieden",
+      undecided: "Offen",
+    },
     expandTools: "Aufklappbereich",
     removeExpand: "Aufklappbereich entfernen, Inhalt behalten",
     expand: {
@@ -1175,6 +1191,7 @@ export const de: Messages = {
       panelSuccess: { label: "Erfolgs-Hinweisfeld", description: "Ein hervorgehobener Kasten für ein Ergebnis oder einen Tipp." },
       panelWarning: { label: "Warn-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, bei dem Vorsicht geboten ist." },
       panelError: { label: "Fehler-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, das nicht passieren darf." },
+      decision: { label: "Entscheidung", description: "Eine Entscheidung, getroffen oder offen, die das Entscheidungsprotokoll des Bereichs auflistet." },
       expand: { label: "Aufklappbereich", description: "Ein Abschnitt mit Titel, den Lesende öffnen, wenn sie die Einzelheiten wollen." },
       tableOfContents: { label: "Inhaltsverzeichnis", description: "Links zu den Überschriften dieser Seite, immer aktuell." },
       childPages: { label: "Unterseiten", description: "Links zu den Seiten unter dieser." },

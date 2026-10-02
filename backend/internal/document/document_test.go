@@ -44,6 +44,8 @@ const richDoc = `{"type":"doc","content":[
   {"type":"paragraph","content":[{"type":"text","text":"Revert the release"}]},
   {"type":"expand","attrs":{"title":""},"content":[{"type":"paragraph","content":[{"type":"text","text":"Nested detail"}]}]}]},
  {"type":"expand","content":[{"type":"paragraph"}]},
+ {"type":"decision","attrs":{"state":"decided"},"content":[{"type":"text","text":"Ship weekly","marks":[{"type":"bold"}]}]},
+ {"type":"decision","attrs":{"state":"undecided"}},
  {"type":"heading","attrs":{"level":3,"id":null},"content":[{"type":"text","text":"Plan"}]},
  {"type":"tableOfContents","attrs":{"maxLevel":2}},
  {"type":"childPages","attrs":{"scope":"subtree","depth":3,"sort":"updated"}},
@@ -100,6 +102,8 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"expand title not text", `{"type":"doc","content":[{"type":"expand","attrs":{"title":3},"content":[{"type":"paragraph"}]}]}`, `title=3`},
 		{"expand title null", `{"type":"doc","content":[{"type":"expand","attrs":{"title":null},"content":[{"type":"paragraph"}]}]}`, `title=null`},
 		{"expand stored open", `{"type":"doc","content":[{"type":"expand","attrs":{"title":"More","open":true},"content":[{"type":"paragraph"}]}]}`, `attribute "open"`},
+		{"decision state", `{"type":"doc","content":[{"type":"decision","attrs":{"state":"maybe"}}]}`, `state="maybe"`},
+		{"decision holding a block", `{"type":"doc","content":[{"type":"decision","attrs":{"state":"decided"},"content":[{"type":"paragraph"}]}]}`, `puts a "paragraph"`},
 		{"expand inline", para(`{"type":"expand","attrs":{"title":"More"}}`), `puts a "expand"`},
 		{"cell background colour", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"background":"#ff0000"},"content":[{"type":"paragraph"}]}]}]}]}`, `background=`},
 		{"cell align", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"align":"justify;color:red"},"content":[{"type":"paragraph"}]}]}]}]}`, `align=`},
@@ -241,6 +245,7 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		"Rollback steps",
 		"Revert the release",
 		"Nested detail",
+		"Ship weekly",
 		"Plan",
 	}, "\n")
 	if got := PlainText(root); got != want {
