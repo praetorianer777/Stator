@@ -638,6 +638,11 @@ func enumStrings[T ~string](values []T) []string {
 // by the document and the MCP tools so both describe a type alike.
 func specBuilder() *openapi.Builder {
 	b := openapi.NewBuilder()
+	b.Names[reflect.TypeOf(page.CreateInput{})] = "PageCreateInput"
+	b.Names[reflect.TypeOf(page.UpdateInput{})] = "PageUpdateInput"
+	b.Names[reflect.TypeOf(reaction.Input{})] = "ReactionInput"
+	b.Names[reflect.TypeOf(share.Input{})] = "ShareInput"
+	b.Names[reflect.TypeOf(watch.Input{})] = "WatchInput"
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
 	b.FieldOverrides["APIToken.scopes"] = scopes
