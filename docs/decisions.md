@@ -769,6 +769,35 @@ and diffs like any other, and needs nothing on the server. The names a colon
 finds it by come from gemoji, bundled with the client under the MIT License
 and loaded with the first colon, so no emoji is ever fetched from elsewhere.
 
+## 2026-10-02: Columns store a share of their row and stack on a narrow screen
+
+A column layout is a `columns` node holding two or three `column` nodes,
+each with any blocks a panel takes. The bound on how many is the
+allowlist's: a node spec now names the fewest and most children it takes,
+which the server and the web editor's check read alike, because one column
+is just the page and a fourth is too narrow to read beside the text. A
+column inside a column is allowed, since a table cell or a panel inside one
+is, but the editor does not make one: the room left would be too little.
+
+Each column stores its `width` as a share of the row, a whole percent from
+10 to 80. The shares are read as proportions, so a body written elsewhere
+whose shares do not add up still lays out, and a column with none stored
+takes an even share. Storing shares rather than pixels keeps a layout the
+same on every screen. The editor offers named layouts, even or with one
+column wider, rather than dragging a border: they work the same from the
+keyboard and on a touch screen, and they give readers the same few shapes
+across pages. A layout with fewer columns folds the blocks of the ones it
+drops into the last column it keeps, so changing the layout loses nothing.
+
+Under 48rem, the shell's own breakpoint, the columns stack in their
+reading order: side by side, each would be a few words wide. Markdown has
+no columns, so an export writes the blocks one column after another, as a
+phone shows them, and an import of that file brings them back as plain blocks.
+
+Search needs no change: `document.PlainText` and the database's
+`page_plain_blocks` already read the blocks inside any node they do not
+name, column by column.
+
 ## 2026-10-01: An expand block stores its title, never whether it is open
 
 An expand block is one node, `expand`, with a `title` attribute of up to 200
