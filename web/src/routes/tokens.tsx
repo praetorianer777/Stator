@@ -2,8 +2,9 @@ import { localDateFormat } from "@/lib/format";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createRoute } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
+import { useSpaces } from "@/api/spaces";
 import { useCreateToken, useRevokeToken, useTokens, type ApiToken } from "@/api/tokens";
-import { Button, Card, Checkbox, EmptyState, ErrorBanner, Field, PageHeader, Select, Table, Tag, Td, Th } from "@/components/ui";
+import { Button, Card, Checkbox, Chip, EmptyState, ErrorBanner, Field, PageHeader, Select, Table, Tag, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import {
   COPY_FEEDBACK_MS,
@@ -18,8 +19,8 @@ import {
 import { t } from "@/i18n";
 import { appRoute } from "./app";
 
-// Adapted from Armature's tokens page, without its per-project confinement,
-// which here waits for spaces (#111).
+// Adapted from Armature's tokens page; where Armature limits a token to
+// projects, this one limits it to spaces.
 
 export const tokensRoute = createRoute({ getParentRoute: () => appRoute, path: "/settings/tokens", component: TokensPage });
 
@@ -32,6 +33,12 @@ export function expiryFrom(days: number, now: Date = new Date()): string | undef
 
 function expired(token: ApiToken, now: Date): boolean {
   return token.expiresAt !== null && new Date(token.expiresAt) <= now;
+}
+
+/** What a token reaches, in a sentence. */
+export function reachOf(token: Pick<ApiToken, "allSpaces" | "spaces">): string {
+  if (token.allSpaces) return t.tokens.reachesAll;
+  return token.spaces.length > 0 ? t.tokens.reachesOnly(token.spaces.join(", ")) : t.tokens.reachesNone;
 }
 
 function TokensPage() {
@@ -94,6 +101,9 @@ function TokensPage() {
                     <span className="font-medium text-ink">{token.name}</span>
                     {token.scopes.includes(TOKEN_READ_SCOPE) && <Tag className="ml-2">{t.tokens.tagReadOnly}</Tag>}
                     {expired(token, now) && <Tag className="ml-2">{t.tokens.tagExpired}</Tag>}
+                    <p className="text-xs text-ink-muted" data-token-spaces={token.allSpaces ? "" : token.spaces.join(",")}>
+                      {reachOf(token)}
+                    </p>
                   </Td>
                   <Td className="text-ink-muted" data-token-last-used>
                     {token.lastUsedAt ? when.format(new Date(token.lastUsedAt)) : t.tokens.neverUsed}
@@ -153,15 +163,19 @@ function ConnectAssistant() {
         </pre>
       </figure>
       <p className="text-xs text-ink-muted">{t.tokens.mcpReadOnly}</p>
+      <p className="text-xs text-ink-muted">{t.tokens.mcpSpaces}</p>
     </section>
   );
 }
 
 function CreateTokenForm({ onCreated }: { onCreated: (token: ApiToken) => void }) {
   const create = useCreateToken();
+  const { data: choosable = [] } = useSpaces();
   const [name, setName] = useState("");
   const [readOnly, setReadOnly] = useState(false);
   const [days, setDays] = useState<number>(TOKEN_DEFAULT_EXPIRY_DAYS);
+  // No space picked means the token reaches every space its owner does.
+  const [spaces, setSpaces] = useState<string[]>([]);
   const [missing, setMissing] = useState(false);
   const fields = create.error instanceof ApiError ? create.error.fields : {};
   const formError = create.error && Object.keys(fields).length === 0 ? create.error.message : null;
@@ -173,12 +187,13 @@ function CreateTokenForm({ onCreated }: { onCreated: (token: ApiToken) => void }
       return;
     }
     create.mutate(
-      { name: name.trim(), scopes: readOnly ? [TOKEN_READ_SCOPE] : [], expiresAt: expiryFrom(days) },
+      { name: name.trim(), scopes: readOnly ? [TOKEN_READ_SCOPE] : [], ...(spaces.length > 0 ? { spaces } : {}), expiresAt: expiryFrom(days) },
       {
         onSuccess: (token) => {
           setName("");
           setReadOnly(false);
           setDays(TOKEN_DEFAULT_EXPIRY_DAYS);
+          setSpaces([]);
           onCreated(token);
         },
       },
@@ -225,6 +240,28 @@ function CreateTokenForm({ onCreated }: { onCreated: (token: ApiToken) => void }
           </div>
         </div>
         {fields.scopes && <ErrorBanner>{fields.scopes}</ErrorBanner>}
+        {choosable.length > 0 && (
+          <fieldset aria-describedby="tokens-spaces-hint" data-token-spaces-picker>
+            <legend className="text-sm font-medium text-ink">{t.tokens.spaces}</legend>
+            <p id="tokens-spaces-hint" className="mb-2 text-xs text-ink-muted">
+              {spaces.length === 0 ? t.tokens.spacesAll : t.tokens.spacesSome}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {choosable.map((space) => (
+                <Chip
+                  key={space.key}
+                  pressed={spaces.includes(space.key)}
+                  data-space={space.key}
+                  onClick={() => setSpaces((picked) => (picked.includes(space.key) ? picked.filter((k) => k !== space.key) : [...picked, space.key]))}
+                >
+                  {space.name}
+                  <span className="text-xs">{space.key}</span>
+                </Chip>
+              ))}
+            </div>
+          </fieldset>
+        )}
+        {fields.spaces && <ErrorBanner>{fields.spaces}</ErrorBanner>}
         <Button type="submit" icon={<Icon.Plus />} loading={create.isPending} data-action="create-token">
           {t.tokens.create}
         </Button>

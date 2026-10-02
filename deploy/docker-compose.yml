@@ -57,13 +57,12 @@ x-bootstrap-env: &bootstrap-env
   STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET: stator-dev-secret
   STATOR_BOOTSTRAP_MEMBERS: alice@stator.test=admin,bob@stator.test=member
 
-# Every Go service runs the same image, so the binaries are compiled once; the
-# builder answers the other services' identical builds from its cache.
+# Every Go service runs the same image, which migrate alone builds. Compose
+# runs each service's build at once, and the classic builder then tags one
+# name from all of them: two taggings racing failed the stack's start.
 x-backend: &backend
   image: ${COMPOSE_PROJECT_NAME:-stator}-backend
-  build:
-    context: ..
-    dockerfile: deploy/Dockerfile.backend
+  pull_policy: never
 
 services:
   postgres-primary:
@@ -220,6 +219,9 @@ services:
   # runtime roles' default privileges.
   migrate:
     <<: *backend
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
     command: ["/app/migrate", "up"]
     depends_on:
       postgres-primary:
@@ -315,12 +317,8 @@ services:
 
   # Stands in for Armature: the part of its API Stator calls, in its shapes,
   # held to Armature's document by a contract test. Never in the chart.
-  # It runs the image the api builds rather than building it a fifth time:
-  # the classic builder tags one image from every build at once, and a fifth
-  # tagging raced the others often enough to fail the stack's start.
   armature-stub:
-    image: ${COMPOSE_PROJECT_NAME:-stator}-backend
-    pull_policy: never
+    <<: *backend
     command: ["/app/armature-stub"]
     ports:
       - "127.0.0.1:${ARMATURE_STUB_PORT:-8190}:8080"

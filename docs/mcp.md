@@ -48,8 +48,11 @@ MCP code decides a permission.
 
 A read-only token is offered only the tools that read (`GET` routes), and a
 writing tool called anyway is refused with the read-only sentence before the
-call is made. A result longer than 64 KiB is cut and says how to ask for
-less.
+call is made. A token limited to spaces sees those spaces alone, as it does
+over HTTP, and is not offered the tools the route table marks `orgWide`,
+such as `list_audit_log`; one called anyway is refused with the
+`spaces_token` sentence. A result longer than 64 KiB is cut and says how to
+ask for less.
 
 ## Tools
 

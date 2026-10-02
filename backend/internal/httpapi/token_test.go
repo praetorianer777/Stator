@@ -20,13 +20,64 @@ func tokenServer(t *testing.T) *Server {
 	s := newServer(t)
 	org := &tenant.Org{ID: uuid.New(), Slug: "acme"}
 	user := uuid.New()
-	session, full, reader := uuid.New(), uuid.New(), uuid.New()
+	session, full, reader, limited := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	s.Auth = fakeAuth{
 		"session": {UserID: user, Org: org, Role: auth.RoleMember, SessionID: &session},
 		"full":    {UserID: user, Org: org, Role: auth.RoleMember, TokenID: &full},
 		"reader":  {UserID: user, Org: org, Role: auth.RoleMember, TokenID: &reader, Scopes: []string{auth.ScopeRead}},
+		// An owner's, so a refusal is the token's and never the person's.
+		"spaces": {UserID: user, Org: org, Role: auth.RoleOwner, TokenID: &limited, SpacesOnly: true, TokenSpaces: []uuid.UUID{uuid.New()}},
 	}
 	return s
+}
+
+// The table's orgWide marks and the router agree both ways: a token limited to
+// spaces is refused every marked operation and no other one.
+func TestATokenLimitedToSpacesIsRefusedTheWholeOrganization(t *testing.T) {
+	router := tokenServer(t).Routes(nil)
+	marked := 0
+	for _, route := range Catalog() {
+		if APIPrefix+route.Path == mcpPath || route.Public {
+			continue
+		}
+		path := APIPrefix + pathParamPattern.ReplaceAllString(route.Path, uuid.NewString())
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, withBearer(route.Method, path, "spaces", `{}`))
+		refused := rec.Code == http.StatusForbidden && strings.Contains(rec.Body.String(), `"spaces_token"`)
+		if route.OrgWide {
+			marked++
+		}
+		if refused != route.OrgWide {
+			t.Errorf("a token limited to spaces at %s %s = %d %s, orgWide %v", route.Method, route.Path, rec.Code, rec.Body.String(), route.OrgWide)
+		}
+	}
+	if marked == 0 {
+		t.Fatal("no operation is marked orgWide")
+	}
+	// The person behind it, signed in, gets past the same guard.
+	resp, body := serve(t, router, withBearer(http.MethodGet, APIPrefix+"/audit", "session", ""))
+	if resp.StatusCode == http.StatusForbidden && errorOf(t, body)["code"] == "spaces_token" {
+		t.Errorf("a session was refused as a limited token: %v", body)
+	}
+}
+
+func TestATokenLimitedToSpacesIsOfferedNoOrganizationTool(t *testing.T) {
+	all, limited := listTools(false, false), listTools(false, true)
+	if len(limited) == 0 || len(limited) >= len(all) {
+		t.Fatalf("%d tools for a limited token of %d", len(limited), len(all))
+	}
+	for _, tool := range limited {
+		if t2, _ := toolByName(tool["name"].(string)); t2.OrgWide {
+			t.Errorf("a limited token is offered %s", tool["name"])
+		}
+	}
+	router := tokenServer(t).Routes(nil)
+	_, decoded := serve(t, router, withBearer(http.MethodPost, mcpPath, "spaces",
+		`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_audit_log","arguments":{}}}`))
+	result, _ := decoded["result"].(map[string]any)
+	if result == nil || result["isError"] != true || !strings.Contains(result["content"].([]any)[0].(map[string]any)["text"].(string), "limited to some spaces") {
+		t.Errorf("a limited token's call of an organization tool: %v", decoded)
+	}
 }
 
 func withBearer(method, path, credential, body string) *http.Request {
@@ -93,7 +144,12 @@ func TestTokenErrorsAreSentences(t *testing.T) {
 			t.Errorf("%v = %d %q, want a 422 sentence on %s", err, apiErr.Status, msg, field)
 		}
 	}
-	for _, apiErr := range []*APIError{toAPIError(auth.ErrNoSuchToken), errReadOnlyToken, errSessionOnly} {
+	for err, field := range map[error]string{auth.ErrTokenSpaces: "spaces", auth.ErrNoSuchSpace: "spaces"} {
+		if msg := toAPIError(err).Fields[field]; !strings.HasSuffix(msg, ".") || strings.ToUpper(msg[:1]) != msg[:1] {
+			t.Errorf("%v = %q, want a sentence on %s", err, msg, field)
+		}
+	}
+	for _, apiErr := range []*APIError{toAPIError(auth.ErrNoSuchToken), errReadOnlyToken, errSessionOnly, errSpacesToken} {
 		if !strings.HasSuffix(apiErr.Message, ".") || apiErr.Status >= 500 {
 			t.Errorf("%q is not a sentence the caller can act on", apiErr.Message)
 		}

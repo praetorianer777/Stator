@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -135,6 +136,43 @@ func TestANewTokenIsValidatedBeforeItIsMade(t *testing.T) {
 	_ = s.validateNewToken(&in)
 	if in.Name != "deploy" || len(in.Scopes) != 1 {
 		t.Errorf("the name is trimmed and the scopes deduplicated: %+v", in)
+	}
+}
+
+func TestATokenNamesItsSpacesOnceEach(t *testing.T) {
+	s := &Service{now: time.Now}
+	in := NewAPIToken{Name: "deploy", Spaces: []string{" docs", "DOCS", "ops", " "}}
+	if err := s.validateNewToken(&in); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(in.Spaces, ",") != "DOCS,OPS" {
+		t.Errorf("the keys are %v, want DOCS and OPS once each", in.Spaces)
+	}
+	all := NewAPIToken{Name: "deploy"}
+	if err := s.validateNewToken(&all); err != nil || all.Spaces == nil || len(all.Spaces) != 0 {
+		t.Errorf("a token naming no space = %v %v, want an empty list", all.Spaces, err)
+	}
+	many := NewAPIToken{Name: "deploy"}
+	for i := range MaxTokenSpaces + 1 {
+		many.Spaces = append(many.Spaces, fmt.Sprintf("S%d", i))
+	}
+	if err := s.validateNewToken(&many); err != ErrTokenSpaces {
+		t.Errorf("%d spaces = %v, want %v", len(many.Spaces), err, ErrTokenSpaces)
+	}
+}
+
+func TestATokenLimitedToSpacesAdministersNoOrganization(t *testing.T) {
+	org := &tenant.Org{ID: uuid.New(), Slug: "acme"}
+	id := uuid.New()
+	limited := &Principal{Org: org, Role: RoleOwner, TokenID: &id, SpacesOnly: true}
+	if !limited.InSpacesOnly() || limited.CanAdminister() {
+		t.Error("an owner's token limited to spaces administers the organization")
+	}
+	if (&Principal{Org: org, Role: RoleOwner, TokenID: &id}).InSpacesOnly() {
+		t.Error("a token without spaces is limited")
+	}
+	if (&Principal{Org: org, Role: RoleOwner, SessionID: &id, SpacesOnly: true}).InSpacesOnly() {
+		t.Error("a session is limited to spaces")
 	}
 }
 
