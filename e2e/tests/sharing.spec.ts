@@ -173,10 +173,14 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
       await startInScheme(page, scheme);
       await openPage(page, space.key, plan);
       await shareButton(page).click();
-      await pick(page, "bob", BOB);
+      // Checked with the list open on bob, who may not view the page: the org
+      // holds nobody else to offer once he is picked.
+      await picker(page).fill("bob");
+      const option = dialog(page).getByRole("option", { name: new RegExp(`^${BOB}`) });
+      await expect(option).toContainText("Cannot view this page");
+      await expectAccessible(page);
+      await option.click();
       await expect(dialog(page).locator("[data-share-closed-note]")).toBeVisible();
-      await picker(page).fill("b");
-      await expect(dialog(page).getByRole("option").first()).toBeVisible();
       await expectAccessible(page);
     });
   }
