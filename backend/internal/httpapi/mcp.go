@@ -119,7 +119,8 @@ func (s *Server) dispatchMCP(r *http.Request, req rpcRequest) (any, *rpcError) {
 	case "ping":
 		return map[string]any{}, nil
 	case "tools/list":
-		return map[string]any{"tools": listTools(PrincipalFrom(r.Context()).ReadOnly())}, nil
+		p := PrincipalFrom(r.Context())
+		return map[string]any{"tools": listTools(p.ReadOnly(), p.InSpacesOnly())}, nil
 	case "tools/call":
 		var params toolCallParams
 		if err := json.Unmarshal(req.Params, &params); err != nil || params.Name == "" {
@@ -147,12 +148,13 @@ func (s *Server) dispatchMCP(r *http.Request, req rpcRequest) (any, *rpcError) {
 	return nil, &rpcError{Code: rpcMethodNotFound, Message: "There is no method " + req.Method + "."}
 }
 
-// listTools leaves the writing tools out for a token made to read, so an
-// assistant is never offered what it would only be refused.
-func listTools(readOnly bool) []map[string]any {
+// listTools leaves the writing tools out for a token made to read, and the
+// organization-wide ones for a token limited to spaces, so an assistant is
+// never offered what it would only be refused.
+func listTools(readOnly, spacesOnly bool) []map[string]any {
 	out := []map[string]any{}
 	for _, t := range toolCatalog() {
-		if readOnly && !t.ReadOnly {
+		if (readOnly && !t.ReadOnly) || (spacesOnly && t.OrgWide) {
 			continue
 		}
 		out = append(out, map[string]any{
@@ -174,6 +176,9 @@ func (s *Server) callTool(r *http.Request, params toolCallParams) (any, *rpcErro
 	}
 	if !tool.ReadOnly && PrincipalFrom(r.Context()).ReadOnly() {
 		return refusal(errReadOnlyToken.Message), nil
+	}
+	if tool.OrgWide && PrincipalFrom(r.Context()).InSpacesOnly() {
+		return refusal(errSpacesToken.Message), nil
 	}
 	inner, err := tool.request(r, params.Arguments)
 	if err != nil {

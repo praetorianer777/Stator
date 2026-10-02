@@ -71,6 +71,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   makes one and shows its secret once, and lists and revokes them with
   their last use; administrators list and revoke every token in the
   organization over the API. Making and revoking are kept in `audit_log`.
+- A personal access token can be limited to spaces: the Tokens page picks
+  them, and `spaces` on `POST /api/v1/tokens` names their keys. Such a token
+  reaches those spaces alone, even where its owner reaches more, and is
+  refused with `spaces_token` what concerns the whole organization, such as
+  making spaces, the audit log or tokens; an assistant holding it is not
+  offered those tools. The database holds it there too, through
+  `app.token_spaces`, so search, the home feed, the stale report, page views
+  and its own views and shares keep to its spaces. The list says what each token reaches, and `audit_log` names
+  the spaces a token was made for.
 - The integration suite checks every answer against `api/openapi.json`
   and fails when an operation was never answered successfully or never
   refused.

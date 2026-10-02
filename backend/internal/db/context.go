@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -16,16 +17,50 @@ type (
 // current_actor_id(): whom the transaction acts for, within its organization.
 const UserVar = "app.user_id"
 
+// TokenSpacesVar is the setting that limits the person to the spaces of the
+// token they act with, read by the permission functions; unset is no limit.
+const TokenSpacesVar = "app.token_spaces"
+
+// acting is whom the transactions act for and, for a token limited to some
+// spaces, which; one value so that naming another person drops the limit.
+type acting struct {
+	user       uuid.UUID
+	spacesOnly bool
+	spaces     []uuid.UUID
+}
+
 // WithUser names the person the transactions made with ctx act for, so row
 // level security holds them to that person's permissions.
 func WithUser(ctx context.Context, id uuid.UUID) context.Context {
-	return context.WithValue(ctx, userKey{}, id)
+	return context.WithValue(ctx, userKey{}, acting{user: id})
+}
+
+// WithUserInSpaces is WithUser for a token that reaches only the spaces named,
+// none when the list is empty.
+func WithUserInSpaces(ctx context.Context, id uuid.UUID, spaces []uuid.UUID) context.Context {
+	return context.WithValue(ctx, userKey{}, acting{user: id, spacesOnly: true, spaces: spaces})
 }
 
 // UserFrom is the person WithUser named, if any.
 func UserFrom(ctx context.Context) (uuid.UUID, bool) {
-	id, ok := ctx.Value(userKey{}).(uuid.UUID)
-	return id, ok && id != uuid.Nil
+	a, ok := ctx.Value(userKey{}).(acting)
+	return a.user, ok && a.user != uuid.Nil
+}
+
+// SpacesFrom is the spaces WithUserInSpaces limited the person to; ok is
+// false when nothing limits them.
+func SpacesFrom(ctx context.Context) (spaces []uuid.UUID, ok bool) {
+	a, _ := ctx.Value(userKey{}).(acting)
+	return a.spaces, a.spacesOnly
+}
+
+// spacesSetting spells the spaces as the Postgres array the setting holds.
+func spacesSetting(spaces []uuid.UUID) string {
+	parts := make([]string, len(spaces))
+	for i, s := range spaces {
+		parts[i] = s.String()
+	}
+	return "{" + strings.Join(parts, ",") + "}"
 }
 
 // pin describes a freshness requirement placed on reads made with a context.

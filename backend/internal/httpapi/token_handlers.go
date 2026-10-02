@@ -15,6 +15,9 @@ type createTokenRequest struct {
 	// Scopes is empty for a token that may do whatever its owner may, or
 	// ["read"] for one that may only read.
 	Scopes []string `json:"scopes,omitempty"`
+	// Spaces limits the token to the spaces with these keys, which the caller
+	// has to see; left out, it reaches every space its owner does.
+	Spaces []string `json:"spaces,omitempty"`
 	// ExpiresAt is when the token stops working; left out, it lasts until revoked.
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
 }
@@ -31,7 +34,7 @@ func (s *Server) handleCreateAPIToken(w http.ResponseWriter, r *http.Request) {
 	}
 	p := PrincipalFrom(r.Context())
 	token, lsn, err := s.Accounts.CreateAPIToken(r.Context(), p.Org.ID, p.UserID,
-		auth.NewAPIToken{Name: req.Name, Scopes: req.Scopes, ExpiresAt: req.ExpiresAt}, clientIP(r))
+		auth.NewAPIToken{Name: req.Name, Scopes: req.Scopes, Spaces: req.Spaces, ExpiresAt: req.ExpiresAt}, clientIP(r))
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)

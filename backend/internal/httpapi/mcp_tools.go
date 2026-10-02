@@ -19,10 +19,12 @@ type mcpTool struct {
 	Method      string
 	Path        string
 	ReadOnly    bool
-	Input       *openapi.Schema
-	pathParams  []string
-	query       []param
-	hasBody     bool
+	// OrgWide tools are left out for a token limited to spaces.
+	OrgWide    bool
+	Input      *openapi.Schema
+	pathParams []string
+	query      []param
+	hasBody    bool
 	// file is the name a multipart tool's content goes up under by default.
 	file string
 }
@@ -42,6 +44,7 @@ var toolCatalog = sync.OnceValue(func() []mcpTool {
 			Method:      op.method,
 			Path:        op.path,
 			ReadOnly:    op.method == http.MethodGet,
+			OrgWide:     op.orgWide,
 			Input:       toolInput(b, op),
 			pathParams:  pathParams(op.path),
 			query:       op.query,
