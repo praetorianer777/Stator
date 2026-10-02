@@ -48,6 +48,62 @@ about pages in its spaces, while a session keeps reading its own rows as
 before. The page view counts and readers ask `perm_page_viewable` and
 `perm_space_holds`, and follow the limit with no change.
 
+## 2026-10-02: A template's variables are filled by the server, and an empty one is a hint
+
+An organization's own templates (#63) are rows of `page_template` beside the
+built-ins, in the same shape and the same list, as the template decision of
+2026-09-30 left room for: keyed by id where a built-in has a name, for every
+space when `space_id` is null and for one space otherwise. The
+organization's are kept by its administrators and a space's by the space's,
+as Armature's custom fields belong to a project or to the whole tenant and
+are kept by those who administer either. Reading follows the space: a
+space's templates are listed with `?space=` for whoever may view it, the
+organization's for everybody who uses Stator. Making, changing and deleting
+one is audited.
+
+A variable is defined in the template, as Armature defines a custom field:
+a name, a label for the form, a kind and, for a choice, its options; a
+default, and whether it is required. The kinds are Armature's text, date and
+select, and a person, which a wiki needs where a tracker has an assignee.
+Number, checkbox and link were left out, as nothing a template asks for
+needed them yet. A date's default may be `today`, the day the page is made,
+which the form fills with the author's local day and the server, when none
+is sent, with the day in UTC. A person has no default: the template cannot
+know who will be there.
+
+The body marks where a value goes with an inline `templateVariable` node
+holding only the name, and the title with the name in braces, as `{date}`
+already was. A node rather than braces in text, because a node cannot be
+half typed, keeps the styles around it, and is allowed only where the
+template allowlist (`api/template-allowlist.json`, the page allowlist with
+the node added wherever inline content goes) puts it; a code block takes
+none. A body may name only variables the template defines.
+
+The page is made by `POST /pages` with `template` and `values` in place of a
+body, and the server fills it in the transaction that makes the page: words
+as text, a day as a date node, a person as a mention, each with the styles
+the blank had, then holds the result to the page allowlist. The client never
+sends a filled document, so nothing it could forge reaches a page. A value
+the variable does not take is refused on `values.<name>` in a sentence, as
+is a name the template lacks, a required value missing, and a person who is
+not a member who may view the space. A template of another space is no
+template there.
+
+An optional blank left empty becomes its label as hint text. The author
+sees what was left out while the page is a draft, and publishing strips it
+like any hint, so a reader never meets a placeholder. The database refuses
+the node itself in any page, draft or version (`document_has_variables`),
+so neither a client nor raw SQL can store an unfilled blank, and holds
+templates to the administrators of their scope, a token limited to spaces
+included, through the same permission functions as everything else.
+
+In the editor a blank is an atom drawn as its name in braces, put in by
+the variable's Insert button in the template form. In Markdown it is
+`<span data-stator="variable" data-name="customer">{customer}</span>`, read
+back as the node only into a template; a page keeps its words. The read
+tools list and get templates with their variables, and `create_page` takes
+a template and values; keeping templates is administration and no tool.
+
 ## 2026-10-02: A view is a person on a day, counted for every reader and named only to editors
 
 Page views (#97) answer how often a page is read and by how many people.

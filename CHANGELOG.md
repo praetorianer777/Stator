@@ -505,6 +505,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
   changing, rotating and deleting a webhook is written to the audit log.
   Moving a published page to another parent or space and deleting one now
   write `page.moved` and `page.deleted` to the outbox.
+- Templates of the organization's own, with variables. Administrators of
+  the organization keep templates every space offers, under Settings,
+  Templates; administrators of a space keep its own, under the space's
+  settings. A template defines variables (text, date, choice or person,
+  each with a label, a default and whether it is required) and puts their
+  blanks in its body and title. Making a page from it asks for the values in
+  a form, and the server fills them in: words, a date, a mention of a member
+  who may view the space. An optional blank left empty becomes a hint, which
+  publishing removes. `GET /templates?space=`, `POST /templates`,
+  `PUT /templates/{templateKey}` and `DELETE /templates/{templateKey}` keep
+  them, `POST /pages` takes `template` and `values`, and the database refuses
+  a blank in any page and holds templates to the administrators of their
+  scope. Variables travel through Markdown as a marked span.
 
 ### Changed
 
