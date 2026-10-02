@@ -1139,6 +1139,13 @@ export const en = {
       decided: "Decided",
       undecided: "Undecided",
     },
+    include: {
+      loading: "Loading the included page",
+      unavailable: "This included content is not available to you: you may not read its page, it is not published, or its excerpt was removed.",
+      fromPage: (title: string) => `Included from ${title}`,
+      fromExcerpt: (title: string, excerpt: string) => `Included from ${title}: ${excerpt}`,
+      notHere: "Change these words on the page they come from.",
+    },
     excerpt: {
       label: "Excerpt",
       defaultName: (n: number) => `Excerpt ${n}`,
@@ -1249,6 +1256,7 @@ export const en = {
       panelError: { label: "Error panel", description: "A highlighted box for something that must not happen." },
       decision: { label: "Decision", description: "A decision, decided or not, which the space's decision log lists." },
       mathBlock: { label: "Formula block", description: "A LaTeX formula on a line of its own, centred." },
+      include: { label: "Include", description: "Show another page, or one of its excerpts, here, kept up to date as that page changes." },
       excerpt: { label: "Excerpt", description: "Name the blocks under the caret, so other pages can include them." },
       linkCard: { label: "Link preview", description: "A link shown as a card with its page's title and summary, or as a video or design player." },
       diagram: { label: "Diagram", description: "A flowchart, sequence or other diagram written as Mermaid text, drawn as you type." },

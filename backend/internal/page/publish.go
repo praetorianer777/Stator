@@ -145,7 +145,7 @@ func (s *Service) SaveDraft(ctx context.Context, actor perm.Actor, id uuid.UUID,
 	if in.Body == nil {
 		return nil, 0, &FieldError{Field: "body", Message: "A draft needs its whole body. Send the document as the editor holds it."}
 	}
-	if err := document.Validate(in.Body); err != nil {
+	if err := document.ValidatePage(in.Body, id.String()); err != nil {
 		return nil, 0, err
 	}
 	var out *Draft

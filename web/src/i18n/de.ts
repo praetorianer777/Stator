@@ -1165,6 +1165,14 @@ export const de: Messages = {
       decided: "Entschieden",
       undecided: "Offen",
     },
+    include: {
+      loading: "Die eingebundene Seite wird geladen",
+      unavailable:
+        "Dieser eingebundene Inhalt ist für Sie nicht verfügbar: Sie dürfen seine Seite nicht lesen, sie ist nicht veröffentlicht, oder ihr Auszug wurde entfernt.",
+      fromPage: (title: string) => `Eingebunden aus ${title}`,
+      fromExcerpt: (title: string, excerpt: string) => `Eingebunden aus ${title}: ${excerpt}`,
+      notHere: "Ändern Sie diese Wörter auf der Seite, aus der sie stammen.",
+    },
     excerpt: {
       label: "Auszug",
       defaultName: (n: number) => `Auszug ${n}`,
@@ -1275,6 +1283,7 @@ export const de: Messages = {
       panelError: { label: "Fehler-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, das nicht passieren darf." },
       decision: { label: "Entscheidung", description: "Eine Entscheidung, getroffen oder offen, die das Entscheidungsprotokoll des Bereichs auflistet." },
       mathBlock: { label: "Formelblock", description: "Eine LaTeX-Formel in einer eigenen Zeile, zentriert." },
+      include: { label: "Einbinden", description: "Eine andere Seite oder einen ihrer Auszüge hier zeigen, aktuell, wie sich die Seite ändert." },
       excerpt: { label: "Auszug", description: "Benennen Sie die Blöcke unter dem Cursor, damit andere Seiten sie einbinden können." },
       linkCard: { label: "Linkvorschau", description: "Ein Link als Karte mit Titel und Zusammenfassung seiner Seite, oder als Video- oder Design-Player." },
       diagram: { label: "Diagramm", description: "Ein Ablauf-, Sequenz- oder anderes Diagramm als Mermaid-Text, beim Tippen gezeichnet." },

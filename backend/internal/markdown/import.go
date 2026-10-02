@@ -477,6 +477,8 @@ func diagram(code string) (document.Node, bool) {
 	return document.Node{Type: document.NodeDiagram, Attrs: map[string]any{"source": source}}, true
 }
 
+var uuidText = regexp.MustCompile(document.UUIDPattern)
+
 var alertLine = regexp.MustCompile(`^\s*\[!([A-Za-z]+)\]\s*$`)
 
 // blockquote reads a quote, or a panel when its first line is an alert.
@@ -716,6 +718,18 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 			level = document.MaxHeadingLevel
 		}
 		return document.Node{Type: "tableOfContents", Attrs: map[string]any{"maxLevel": level}}, true
+	case kindInclude:
+		if !uuidText.MatchString(attrs["data-page"]) {
+			return document.Node{}, false
+		}
+		n := document.Node{Type: document.NodeInclude, Attrs: map[string]any{"pageId": attrs["data-page"], "excerptId": nil}}
+		if excerpt, ok := attrs["data-excerpt"]; ok {
+			if !uuidText.MatchString(excerpt) {
+				return document.Node{}, false
+			}
+			n.Attrs["excerptId"] = excerpt
+		}
+		return n, true
 	case kindChildPages:
 		n := document.Node{Type: "childPages", Attrs: map[string]any{"scope": attrs["data-scope"], "sort": attrs["data-sort"], "depth": nil}}
 		if v, ok := attrs["data-depth"]; ok {

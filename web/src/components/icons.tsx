@@ -79,6 +79,8 @@ export const Icon = {
   Diagram: makeIcon("diagram", ["M2 2.5h5v3.5H2z", "M9 10h5v3.5H9z", "M4.5 6v5.75H9"]),
   // A block cut out between two marks, as a passage lifted from a page.
   Excerpt: makeIcon("excerpt", ["M2.5 3.5h2", "M11.5 3.5h2", "M2.5 12.5h2", "M11.5 12.5h2", "M5 6.5h6", "M5 9.5h4"]),
+  // A page with another page's lines brought into it.
+  Include: makeIcon("include", ["M3 2.5h7l3 3v8H3z", "M5.5 8h5", "M5.5 10.5h5", "m8 5.5 2.5 2.5L8 10.5"]),
   Plus: makeIcon("plus", ["M8 3v10", "M3 8h10"]),
   Users: makeIcon("users", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),
   Check: makeIcon("check", ["m3 8.5 3 3 7-7"]),

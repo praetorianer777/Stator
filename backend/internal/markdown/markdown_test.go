@@ -184,6 +184,10 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"childPages","attrs":{"scope":"subtree","depth":2,"sort":"title"}}`,
 			`{"type":"childPages","attrs":{"scope":"children","depth":null,"sort":"tree"}}`,
 		),
+		"includes": doc(
+			`{"type":"include","attrs":{"pageId":"`+otherID+`","excerptId":null}}`,
+			`{"type":"include","attrs":{"pageId":"`+otherID+`","excerptId":"`+fileID+`"}}`,
+		),
 		"formulas": doc(
 			`{"type":"mathBlock","attrs":{"latex":"\\sum_{i=1}^n i = \\frac{n(n+1)}{2}"}}`,
 			`{"type":"mathBlock","attrs":{"latex":"a\n`+"```"+`\nb"}}`,

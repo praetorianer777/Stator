@@ -5,7 +5,7 @@ import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { DocAttachment, DocImage } from "./AttachmentView";
-import { ChildPagesList, TocList, childPagesSummary, tocSummary } from "./BlockViews";
+import { ChildPagesList, DocPageContext, TocList, childPagesSummary, tocSummary } from "./BlockViews";
 import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
@@ -13,12 +13,14 @@ import { columnStyle } from "./columns";
 import { decisionState } from "./decision";
 import { ExpandView, revealInExpands } from "./ExpandView";
 import { languageLabel, lowlight } from "./languages";
-import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
+import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type Doc, type DocNode } from "./schema";
 import { Passage, usePassages, type BlockPath } from "./passages";
 import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel } from "./InlineValueViews";
 import { MATH_BLOCK_NODE, MATH_INLINE_NODE, MathFormula, mathSource } from "./MathViews";
 import { DIAGRAM_NODE, DiagramFigure, diagramSource } from "./DiagramViews";
 import { LINK_CARD_NODE, LinkCard, linkCardView, webAddress } from "./LinkCardViews";
+import { INCLUDE_NODE, IncludeBlock, IncludeChain, includeId } from "./IncludeViews";
+import { PassagesContext } from "./passages";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
@@ -42,6 +44,10 @@ export function DocView({
   /** False for a preview beside the page, whose headings must not take the page's anchors. */
   anchors?: boolean;
 }) {
+  // The page this is the body of starts the chain, so an include in it that
+  // leads back to it is caught.
+  const chain = useContext(IncludeChain);
+  const pageId = useContext(DocPageContext)?.id;
   const { copy, status } = useCopyHeadingLink();
   const headings = useMemo(() => headingsOfDoc(doc), [doc]);
   const keys = useMemo(() => issueKeysOf(doc), [doc]);
@@ -58,13 +64,25 @@ export function DocView({
   if (!doc) return null;
   return (
     <div ref={root} className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
-      <HeadingsContext value={headings}>
-        <WithIssues keys={keys}>
-          <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
-        </WithIssues>
-      </HeadingsContext>
+      <IncludeChain value={pageId && chain.length === 0 ? [pageId] : chain}>
+        <HeadingsContext value={headings}>
+          <WithIssues keys={keys}>
+            <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
+          </WithIssues>
+        </HeadingsContext>
+      </IncludeChain>
       {status}
     </div>
+  );
+}
+
+// An included document takes no anchors and no inline threads of the page
+// it is shown in: those belong to the page whose words they are.
+function drawIncluded(doc: Doc) {
+  return (
+    <PassagesContext value={null}>
+      <DocView doc={doc} anchors={false} />
+    </PassagesContext>
   );
 }
 
@@ -255,6 +273,10 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
           <Blocks nodes={node.content} copy={copy} path={path} />
         </div>
       );
+    case INCLUDE_NODE: {
+      const id = includeId(node.attrs?.pageId);
+      return id ? <IncludeBlock pageId={id} excerptId={includeId(node.attrs?.excerptId)} draw={drawIncluded} /> : null;
+    }
     case LINK_CARD_NODE: {
       const url = webAddress(node.attrs?.url);
       return url ? <LinkCard url={url} view={linkCardView(node.attrs?.view)} /> : null;

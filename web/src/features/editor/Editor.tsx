@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useContext, useEffect, useId, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { MentionNodeAttrs } from "@tiptap/extension-mention";
@@ -25,6 +25,8 @@ import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config"
 import type { InlineValueTarget } from "./inlineValues";
 import { DateDialog, MathDialog, StatusDialog } from "./InlineValueDialogs";
 import { LinkCardDialog } from "./LinkCardDialog";
+import { ExcerptPicker } from "@/features/pages/ExcerptPicker";
+import { DocPageContext } from "./BlockViews";
 import type { Emoji } from "./emoji";
 import { EmojiList } from "./EmojiList";
 
@@ -99,6 +101,8 @@ export function Editor({
   variant = "page",
   armature,
 }: EditorProps) {
+  // The page being edited, so an include starts in its space and never shows the page itself.
+  const page = useContext(DocPageContext);
   const slashId = useId();
   const mentionId = useId();
   const submitRef = useRef(onSubmit);
@@ -117,6 +121,7 @@ export function Editor({
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
   const [pickingLink, setPickingLink] = useState(false);
+  const [pickingInclude, setPickingInclude] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
   const [editingValue, setEditingValue] = useState<InlineValueTarget | null>(null);
   const emojiId = useId();
@@ -141,6 +146,8 @@ export function Editor({
       pickIssue: () => setPickingIssue(true),
       pickIssueList: () => setMakingList(true),
       pickLinkCard: () => setPickingLink(true),
+      pickInclude: () => setPickingInclude(true),
+      pageId: page?.id,
       editInlineValue: setEditingValue,
       emoji: { render: emoji.renderer },
       find: openFind,
@@ -308,6 +315,17 @@ export function Editor({
           onInsert={(key) => {
             setPickingIssue(false);
             editor.chain().focus().insertArmatureIssueBlock(key).run();
+          }}
+        />
+      )}
+      {pickingInclude && editor && (
+        <ExcerptPicker
+          initialSpaceKey={page?.spaceKey}
+          excludePageId={page?.id}
+          onClose={() => setPickingInclude(false)}
+          onPick={(choice) => {
+            setPickingInclude(false);
+            editor.chain().focus().insertInclude({ pageId: choice.pageId, excerptId: choice.excerptId }).run();
           }}
         />
       )}

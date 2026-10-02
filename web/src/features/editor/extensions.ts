@@ -31,6 +31,7 @@ import { MathBlock, MathInline } from "./math";
 import { Diagram } from "./diagram";
 import { LinkCardNode } from "./linkCard";
 import { Excerpt } from "./excerpt";
+import { Include } from "./include";
 import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 import { FindReplace } from "./findReplace";
 
@@ -309,6 +310,10 @@ export interface ExtensionOptions {
   pickIssueList?: () => void;
   /** Opens the dialog the slash menu's link preview asks for an address with. */
   pickLinkCard?: () => void;
+  /** Opens the picker the slash menu's include asks what to include with. */
+  pickInclude?: () => void;
+  /** The page being edited, which an include may not show. */
+  pageId?: string;
   /** Opens the dialog that changes a status, a date or a formula. */
   editInlineValue?: (target: InlineValueTarget) => void;
   /** Draws the emoji a colon offers; without it a colon offers none. */
@@ -330,6 +335,8 @@ export function editorExtensions({
   pickIssue,
   pickIssueList,
   pickLinkCard,
+  pickInclude,
+  pageId,
   editInlineValue,
   emoji,
   find,
@@ -399,6 +406,7 @@ export function editorExtensions({
     Diagram,
     LinkCardNode.configure({ pick: pickLinkCard }),
     Excerpt,
+    Include.configure({ pick: pickInclude, pageId }),
     FindReplace.configure({ open: find }),
   ];
 }
