@@ -811,14 +811,18 @@ database either way. A check that finds Armature unreachable records it and
 keeps the token, since an outage says nothing about the token; only a 401
 marks it rejected.
 
-## 2026-10-01: The armature-stub runs the image the api builds
+## 2026-10-01: One service builds the backend image, the others run it
 
 The stub is a Go binary in the backend image like every other service. The
 classic builder tags that one image from each service's build at once, and
 with a fifth service building it the tagging raced often enough to fail
-`make stack-up` with "already exists". The stub names the image with
-`pull_policy: never` instead of building it, and compose builds before it
-creates containers, so the image is there when the stub starts.
+`make stack-up` with "already exists". The stub named the image with
+`pull_policy: never` instead of building it, but the four that still built
+it kept racing (#247): of three stacks built side by side, two failed in
+the first round. Since then migrate alone has the `build` section, and
+every other Go service names the image with `pull_policy: never`. Compose
+builds before it creates containers, so the image is there when any of
+them starts.
 
 ## 2026-09-30: Deleting somebody else's comment is moderation, and takes space administer
 
