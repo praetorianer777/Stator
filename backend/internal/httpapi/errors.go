@@ -195,6 +195,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &full) {
 		return ErrConflict(full.Error())
 	}
+	var taken *space.PersonalTakenError
+	if errors.As(err, &taken) {
+		return ErrConflict(taken.Error())
+	}
 	var closed *share.CannotViewError
 	if errors.As(err, &closed) {
 		return &APIError{Status: http.StatusConflict, Code: "cannot_view", Message: closed.Error()}

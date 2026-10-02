@@ -75,6 +75,7 @@
         "table",
         "panel",
         "expand",
+        "columns",
         "image",
         "tableOfContents",
         "childPages",
@@ -125,6 +126,42 @@
         "text"
       ]
     },
+    "column": {
+      "attrs": {
+        "width": {
+          "kind": "integer",
+          "nullable": true,
+          "min": 10,
+          "max": 80
+        }
+      },
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel",
+        "expand",
+        "columns",
+        "image",
+        "tableOfContents",
+        "childPages",
+        "armatureIssueBlock",
+        "armatureIssueList"
+      ]
+    },
+    "columns": {
+      "content": [
+        "column"
+      ],
+      "minContent": 2,
+      "maxContent": 3
+    },
     "date": {
       "attrs": {
         "date": {
@@ -148,6 +185,7 @@
         "table",
         "panel",
         "expand",
+        "columns",
         "image",
         "tableOfContents",
         "childPages",
@@ -174,6 +212,7 @@
         "table",
         "panel",
         "expand",
+        "columns",
         "image",
         "tableOfContents",
         "childPages",
@@ -242,6 +281,7 @@
         "table",
         "panel",
         "expand",
+        "columns",
         "image",
         "tableOfContents",
         "childPages",
@@ -317,6 +357,7 @@
         "table",
         "panel",
         "expand",
+        "columns",
         "image",
         "tableOfContents",
         "childPages",
@@ -412,6 +453,7 @@
         "table",
         "panel",
         "expand",
+        "columns",
         "image",
         "tableOfContents",
         "childPages",
@@ -470,6 +512,7 @@
         "table",
         "panel",
         "expand",
+        "columns",
         "image",
         "tableOfContents",
         "childPages",
@@ -510,6 +553,7 @@
         "table",
         "panel",
         "expand",
+        "columns",
         "image",
         "tableOfContents",
         "childPages",

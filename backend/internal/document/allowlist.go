@@ -41,10 +41,13 @@ type Attr struct {
 }
 
 // NodeSpec is one node type: its attributes, the types it may contain (none
-// makes it a leaf), and whether it or its inline children take marks.
+// makes it a leaf), how many when that is bounded, and whether it or its
+// inline children take marks.
 type NodeSpec struct {
 	Attrs       map[string]Attr `json:"attrs,omitempty"`
 	Content     []string        `json:"content,omitempty"`
+	MinContent  int             `json:"minContent,omitempty"`
+	MaxContent  int             `json:"maxContent,omitempty"`
 	Inline      bool            `json:"inline,omitempty"`
 	AllowsMarks bool            `json:"allowsMarks,omitempty"`
 }
@@ -97,6 +100,14 @@ const (
 	MaxChildPagesDepth = 10
 	// MaxExpandTitleLength bounds an expand block's title, one line on its toggle.
 	MaxExpandTitleLength = 200
+	// MinColumns and MaxColumns bound a column layout: one column is a page,
+	// and a fourth is too narrow to read on most screens.
+	MinColumns = 2
+	MaxColumns = 3
+	// MinColumnShare and MaxColumnShare bound a column's share of its row, in
+	// percent, so that no column of three is squeezed to nothing.
+	MinColumnShare = 10
+	MaxColumnShare = 80
 	// MaxStatusLength keeps a status label short enough to sit in a line of text.
 	MaxStatusLength = 40
 )
@@ -122,7 +133,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -196,7 +207,11 @@ var Allowed = Allowlist{
 		"panel":          {Content: blockNodes, Attrs: map[string]Attr{"kind": {Kind: KindString, Enum: PanelKinds}}},
 		// Whether it is open is each reader's own, so only its title is stored;
 		// an empty title reads as a stock label.
-		"expand":    {Content: blockNodes, Attrs: map[string]Attr{"title": {Kind: KindString, MaxLength: MaxExpandTitleLength}}},
+		"expand": {Content: blockNodes, Attrs: map[string]Attr{"title": {Kind: KindString, MaxLength: MaxExpandTitleLength}}},
+		// A column's width is its share of the row; the shares need not add up,
+		// since they are read as proportions, and none set is an even split.
+		"columns":   {Content: []string{"column"}, MinContent: MinColumns, MaxContent: MaxColumns},
+		"column":    {Content: blockNodes, Attrs: map[string]Attr{"width": {Kind: KindInteger, Nullable: true, Min: MinColumnShare, Max: MaxColumnShare}}},
 		"text":      {Inline: true},
 		"hardBreak": {Inline: true},
 		"mention": {
@@ -293,8 +308,8 @@ var Allowed = Allowlist{
 const MaxCommentBytes = 64 << 10
 
 // CommentNodes and CommentMarks are what a comment may hold, by name: text
-// and its structure, never files, tables, panels, expand blocks, generated
-// blocks or hints.
+// and its structure, never files, tables, panels, expand blocks, columns,
+// generated blocks or hints.
 var (
 	CommentNodes = []string{"doc", "paragraph", "heading", "bulletList", "orderedList", "listItem", "blockquote", "codeBlock", "hardBreak", "text", "mention"}
 	CommentMarks = []string{"bold", "italic", "strike", "code", "link"}

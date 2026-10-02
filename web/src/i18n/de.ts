@@ -710,6 +710,13 @@ export const de: Messages = {
     cancel: "Abbrechen",
     notAdmin:
       "Sie dürfen hier keine Bereiche anlegen. Bitten Sie einen Administrator Ihrer Organisation, einen für Sie anzulegen oder Ihnen das Anlegen von Bereichen zu erlauben.",
+    personalTitle: "Persönliche Bereiche",
+    createPersonal: "Eigenen Bereich anlegen",
+    createPersonalTitle: "Ihr persönlicher Bereich",
+    personalIntro: "Ein eigener Bereich für Entwürfe und Notizen. Nur Sie sehen ihn, bis Sie ihn über seine Berechtigungen teilen.",
+    personalName: (name: string) => `Bereich von ${name}`,
+    columnOwner: "Eigentümer",
+    yours: "Sie",
   },
   space: {
     home: "Startseite des Bereichs",
@@ -1129,6 +1136,19 @@ export const de: Messages = {
     removePanel: "Hinweisfeld entfernen",
     expandTools: "Aufklappbereich",
     removeExpand: "Aufklappbereich entfernen, Inhalt behalten",
+    columnTools: "Spalten",
+    columnLayout: "Spaltenaufteilung",
+    removeColumns: "Spalten entfernen, Inhalt behalten",
+    columnLayouts: {
+      twoEven: "Zwei gleiche Spalten",
+      twoWideLeft: "Zwei Spalten, links breiter",
+      twoWideRight: "Zwei Spalten, rechts breiter",
+      threeEven: "Drei gleiche Spalten",
+      threeWideLeft: "Drei Spalten, links breiter",
+      threeWideMiddle: "Drei Spalten, Mitte breiter",
+      threeWideRight: "Drei Spalten, rechts breiter",
+      custom: "Andere Breiten",
+    },
     expand: {
       title: "Titel des Aufklappbereichs",
       titlePlaceholder: "Titel, den Lesende zum Öffnen anklicken",
@@ -1185,6 +1205,8 @@ export const de: Messages = {
       panelWarning: { label: "Warn-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, bei dem Vorsicht geboten ist." },
       panelError: { label: "Fehler-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, das nicht passieren darf." },
       expand: { label: "Aufklappbereich", description: "Ein Abschnitt mit Titel, den Lesende öffnen, wenn sie die Einzelheiten wollen." },
+      columns2: { label: "Zwei Spalten", description: "Zwei Blöcke nebeneinander, auf schmalen Bildschirmen untereinander." },
+      columns3: { label: "Drei Spalten", description: "Drei Blöcke nebeneinander, auf schmalen Bildschirmen untereinander." },
       tableOfContents: { label: "Inhaltsverzeichnis", description: "Links zu den Überschriften dieser Seite, immer aktuell." },
       childPages: { label: "Unterseiten", description: "Links zu den Seiten unter dieser." },
       armatureIssue: {

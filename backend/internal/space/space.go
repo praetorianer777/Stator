@@ -56,6 +56,14 @@ type Space struct {
 	Watching bool `json:"watching"`
 	// Starred says the caller keeps the space among their stars.
 	Starred bool `json:"starred"`
+	// Owner is who a personal space belongs to; null on every other space.
+	Owner *SpaceOwner `json:"owner"`
+}
+
+// SpaceOwner is the person a personal space belongs to.
+type SpaceOwner struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
 // CreateInput is a new space as the form sends it.
@@ -63,6 +71,21 @@ type CreateInput struct {
 	Key         string `json:"key"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
+	// Personal makes the caller's own space, which nobody else sees until
+	// they share it. Everybody may make one; other spaces take createSpace.
+	Personal bool `json:"personal,omitempty"`
+}
+
+// PersonalTakenError refuses a second personal space for the same person.
+type PersonalTakenError struct {
+	Key string
+}
+
+func (e *PersonalTakenError) Error() string {
+	if e.Key == "" {
+		return "You have a personal space already. Open it from the space directory, or delete it before making another."
+	}
+	return fmt.Sprintf("You have a personal space already, %s. Open it from the space directory, or delete it before making another.", e.Key)
 }
 
 // UpdateInput changes a space's details; nil leaves a field alone. The key

@@ -16,6 +16,7 @@ export function aSpace(over: Partial<Space> = {}): Space {
     can: { editPages: true, administer: true, delete: true, purgeTrash: true, addComments: true, deletePages: true },
     watching: false,
     starred: false,
+    owner: null,
     ...over,
   };
 }

@@ -1522,7 +1522,7 @@ export interface paths {
         /** Every space the caller may see, by name; archived ones only when asked for. */
         get: operations["listSpaces"];
         put?: never;
-        /** Make a space and its home page. For whoever may create spaces. */
+        /** Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see. */
         post: operations["createSpace"];
         delete?: never;
         options?: never;
@@ -2516,6 +2516,7 @@ export interface components {
             description?: string;
             key: string;
             name: string;
+            personal?: boolean;
         };
         CreateIssuesInput: {
             items: components["schemas"]["CreateItem"][];
@@ -3286,6 +3287,7 @@ export interface components {
             id: string;
             key: string;
             name: string;
+            owner: components["schemas"]["SpaceOwner"] | null;
             starred: boolean;
             /** Format: date-time */
             updatedAt: string;
@@ -3301,6 +3303,11 @@ export interface components {
         };
         SpaceGrantsInput: {
             grants: components["schemas"]["SpaceGrantInput"][];
+        };
+        SpaceOwner: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         Spec: {
             backdrop?: components["schemas"]["Backdrop"];
