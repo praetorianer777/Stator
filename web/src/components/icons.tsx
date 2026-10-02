@@ -99,6 +99,7 @@ export const Icon = {
   CodeBlock: makeIcon("code-block", ["M2.5 2.5h11v11h-11z", "M6 6.5 4.5 8 6 9.5", "M10 6.5 11.5 8 10 9.5"]),
   Divider: makeIcon("divider", ["M2.5 8h11", "M4.5 4.5h7", "M4.5 11.5h7"]),
   Table: makeIcon("table", ["M2.5 3h11v10h-11z", "M2.5 6.5h11", "M2.5 10h11", "M7 3v10"]),
+  Columns: makeIcon("columns", ["M2.5 3h4.5v10h-4.5z", "M9 3h4.5v10H9z"]),
   Panel: makeIcon("panel", ["M2.5 3h11v10h-11z", "M5 6h.01", "M7 6h4.5", "M5 9.5h6.5"]),
   Hash: makeIcon("hash", ["M6 2.5 4.5 13.5", "M11.5 2.5 10 13.5", "M3 6h10.5", "M2.5 10H13"]),
   Label: makeIcon("label", ["M2.5 2.5h5.3l5.7 5.7-5.3 5.3-5.7-5.7z", "M5.5 5.5h.01"]),
