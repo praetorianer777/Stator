@@ -38,7 +38,23 @@ var (
 	ErrRestoreStale = errors.New("somebody published this page after you opened its history")
 	// ErrRestoreLatest refuses restoring the version the page already is.
 	ErrRestoreLatest = errors.New("that is already the latest version of the page")
+	// ErrFolder refuses giving a folder anything a page holds: text, drafts,
+	// versions, comments and the rest.
+	ErrFolder = errors.New("a folder holds pages and folders, not content of its own; put it on a page inside the folder")
+	// ErrBadKind refuses a kind that is neither a page nor a folder.
+	ErrBadKind = errors.New("choose page or folder")
 )
+
+// Kind is what a row of a page tree is.
+type Kind string
+
+const (
+	KindPage   Kind = "page"
+	KindFolder Kind = "folder"
+)
+
+// Kinds is every kind, for the API's description.
+var Kinds = []Kind{KindPage, KindFolder}
 
 // FieldError is a refusal of one field of the request, which the client
 // shows next to it.
@@ -56,6 +72,9 @@ type Page struct {
 	SpaceKey string     `json:"spaceKey"`
 	ParentID *uuid.UUID `json:"parentId"`
 	Title    string     `json:"title"`
+	// Kind is page, or folder for a row that only holds others and has no
+	// body, versions, drafts or comments of its own.
+	Kind Kind `json:"kind"`
 	// Body is the document, ProseMirror JSON the allowlist accepts.
 	Body json.RawMessage `json:"body"`
 	// Version is the number of the published version the title and body

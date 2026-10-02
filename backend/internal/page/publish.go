@@ -157,6 +157,9 @@ func (s *Service) SaveDraft(ctx context.Context, actor perm.Actor, id uuid.UUID,
 		if err := p.must(perm.EditPages); err != nil {
 			return err
 		}
+		if p.Kind == KindFolder {
+			return ErrFolder
+		}
 		if in.BaseVersion < 0 || in.BaseVersion > p.Version {
 			return &FieldError{Field: "baseVersion", Message: fmt.Sprintf("The page is at version %d, so a draft cannot start from version %d. Reload the page and edit again.", p.Version, in.BaseVersion)}
 		}
@@ -203,6 +206,9 @@ func (s *Service) Publish(ctx context.Context, actor perm.Actor, id uuid.UUID, i
 		}
 		if err := p.must(perm.EditPages); err != nil {
 			return err
+		}
+		if p.Kind == KindFolder {
+			return ErrFolder
 		}
 		draft, err := draftOf(ctx, tx, actor, id, true)
 		if err != nil {
@@ -297,6 +303,9 @@ func (s *Service) RestoreVersion(ctx context.Context, actor perm.Actor, id uuid.
 		}
 		if err := p.must(perm.EditPages); err != nil {
 			return err
+		}
+		if p.Kind == KindFolder {
+			return ErrFolder
 		}
 		old, err := version(ctx, tx, id, number)
 		if err != nil {

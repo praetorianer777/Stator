@@ -40,6 +40,13 @@ const sample: Doc = {
       attrs: { title: "How a custom theme reaches them" },
       content: [{ type: "paragraph", content: [{ type: "text", text: "Every colour is a theme role, so a custom theme recolours them." }] }],
     },
+    {
+      type: "columns",
+      content: [
+        { type: "column", attrs: { width: 67 }, content: [{ type: "paragraph", content: [{ type: "text", text: "A wider column for the main text." }] }] },
+        { type: "column", attrs: { width: 33 }, content: [{ type: "paragraph", content: [{ type: "text", text: "A narrow one beside it." }] }] },
+      ],
+    },
     { type: "codeBlock", attrs: { language: "go" }, content: [{ type: "text", text: 'fmt.Println("hello")' }] },
     ...highlighted.map(([language, text]) => ({ type: "codeBlock", attrs: { language }, content: [{ type: "text", text }] })),
   ],

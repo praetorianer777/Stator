@@ -133,6 +133,11 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 		}
 		b.WriteString("</details>")
 		return b.String(), true
+	// Markdown has no columns, so they read one after another, as they do
+	// on a narrow screen.
+	case "columns", "column":
+		out := r.blocks(n.Content, depth+1)
+		return out, out != ""
 	case "bulletList", "orderedList", "taskList":
 		return r.list(n, depth), true
 	case "table":

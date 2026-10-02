@@ -71,6 +71,8 @@ func Decide(f Facts, action Action) bool {
 	switch action {
 	case CreateSpace:
 		return f.HoldsGlobal(CreateSpaces)
+	case CreatePersonalSpace:
+		return f.HoldsGlobal(UseStator)
 	case ViewSpace:
 		return f.HoldsSpace(SpaceView)
 	case EditPages:

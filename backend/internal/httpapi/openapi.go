@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/home"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -164,7 +165,7 @@ var operations = []operation{
 	{method: "GET", path: "/spaces", handler: "handleListSpaces", tool: "list_spaces", toolHelp: "The spaces the caller may see, with the keys other tools take; archived true lists archived ones too.", tag: "spaces", summary: "Every space the caller may see, by name; archived ones only when asked for.",
 		query:     []param{{name: "archived", schema: &openapi.Schema{Type: "boolean"}, description: "true to list archived spaces too; false when absent."}},
 		responses: ok(env{"spaces": []space.Space{}})},
-	{method: "POST", path: "/spaces", handler: "handleCreateSpace", orgWide: true, tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
+	{method: "POST", path: "/spaces", handler: "handleCreateSpace", orgWide: true, tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For the space's administrators.", responses: none()},
@@ -202,7 +203,7 @@ var operations = []operation{
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash", handler: "handleEmptyTrash", tag: "trash", summary: "Delete everything in the space's trash for good. For administrators.", responses: none()},
 	{method: "POST", path: "/spaces/{spaceKey}/trash/{pageID}/restore", handler: "handleRestorePage", tag: "trash", summary: "Put a trashed page back where it was, or under the home page when that is gone.", responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash/{pageID}", handler: "handlePurgePage", tag: "trash", summary: "Delete a trashed page and what went with it for good. For administrators.", responses: none()},
-	{method: "POST", path: "/pages", handler: "handleCreatePage", tool: "create_page", toolHelp: "Add a page under parentId; body is a document as get_page returns one, and publish true makes it visible to the space at once.", tag: "pages", summary: "Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
+	{method: "POST", path: "/pages", handler: "handleCreatePage", tool: "create_page", toolHelp: "Add a page under parentId; body is a document as get_page returns one, and publish true makes it visible to the space at once. kind folder makes a folder, which holds pages and has no body.", tag: "pages", summary: "Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
 	{method: "GET", path: "/pages/{pageID}", handler: "handleGetPage", tool: "get_page", toolHelp: "One page with its title, its body as a document, its version and its space.", tag: "pages", summary: "One page with its body, and the space it is in.", responses: ok(pageResponse{})},
 	{method: "PATCH", path: "/pages/{pageID}", handler: "handleUpdatePage", tool: "update_page", toolHelp: "Publish a new title or body document as the next version; version is the one the change was made from.", tag: "pages", summary: "Publish a new title or body as the next version, with no comment, over the version it was made from; drafts are left alone.", request: page.UpdateInput{}, responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/pages/{pageID}", handler: "handleTrashPage", tag: "pages", summary: "Move a page and every page below it to its space's trash.", responses: none()},
@@ -301,6 +302,8 @@ var operations = []operation{
 		responses: ok(env{"permissions": []perm.GlobalGrant{}})},
 	{method: "PUT", path: "/org/permissions/{permission}", handler: "handleSetGlobalPermission", orgWide: true, tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.",
 		request: perm.GlobalGrantInput{}, responses: ok(env{"permission": perm.GlobalGrant{}})},
+	{method: "GET", path: "/org/hub", handler: "handleGetHub", tool: "get_hub", toolHelp: "The organization's hub page, if there is one the caller may read, and whether everybody lands on it.", tag: "hub", summary: "The organization's hub page as the caller may see it, and whether everybody lands on it.", responses: ok(env{"hub": hub.Hub{}})},
+	{method: "PUT", path: "/org/hub", handler: "handleSetHub", orgWide: true, tag: "hub", summary: "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.", request: hub.HubInput{}, responses: ok(env{"hub": hub.Hub{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
 		responses: ok(env{"grants": []perm.SpaceGrant{}})},
 	{method: "PUT", path: "/spaces/{spaceKey}/permissions", handler: "handleSetSpacePermissions", tag: "permissions", summary: "Replace a space's whole permission table. For the space's administrators.",
@@ -668,6 +671,7 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["OrgAPIToken.scopes"] = scopes
 	b.FieldOverrides["CreateTokenRequest.scopes"] = scopes
 	b.Enums[reflect.TypeOf(auth.OrgRole(""))] = enumStrings(auth.OrgRoles)
+	b.Enums[reflect.TypeOf(page.Kind(""))] = enumStrings(page.Kinds)
 	b.Enums[reflect.TypeOf(auth.RoleSource(""))] = enumStrings(auth.RoleSources)
 	b.Enums[reflect.TypeOf(auth.Locale(""))] = enumStrings(auth.Locales)
 	b.Enums[reflect.TypeOf(perm.SubjectType(""))] = enumStrings(perm.SubjectTypes)

@@ -18,6 +18,7 @@ import type { SlashItem } from "./slashItems";
 import type { AttachmentIndex } from "./attachmentIndex";
 import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachments";
 import { ChildPages, TableOfContents } from "./blockNodes";
+import { Column, Columns } from "./columns";
 import { Decision } from "./decision";
 import { Expand } from "./expand";
 import { Hint } from "./hint";
@@ -369,6 +370,8 @@ export function editorExtensions({
     Cell,
     Panel,
     Expand,
+    Columns,
+    Column,
     Decision,
     HeadingAnchors,
     SlashMenu.configure({ suggestion: slash }),

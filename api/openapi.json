@@ -46,6 +46,9 @@
       "name": "home"
     },
     {
+      "name": "hub"
+    },
+    {
       "name": "labels"
     },
     {
@@ -1159,6 +1162,7 @@
                 "page.restrictions_set",
                 "comment.deleted",
                 "theme.default_set",
+                "org.hub_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -1319,6 +1323,7 @@
                 "page.restrictions_set",
                 "comment.deleted",
                 "theme.default_set",
+                "org.hub_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -3089,6 +3094,92 @@
         }
       }
     },
+    "/org/hub": {
+      "get": {
+        "operationId": "getHub",
+        "summary": "The organization's hub page as the caller may see it, and whether everybody lands on it.",
+        "tags": [
+          "hub"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hub": {
+                      "$ref": "#/components/schemas/Hub"
+                    }
+                  },
+                  "required": [
+                    "hub"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setHub",
+        "summary": "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.",
+        "tags": [
+          "hub"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HubInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hub": {
+                      "$ref": "#/components/schemas/Hub"
+                    }
+                  },
+                  "required": [
+                    "hub"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/org/permissions": {
       "get": {
         "operationId": "listGlobalPermissions",
@@ -3275,7 +3366,7 @@
     "/pages": {
       "post": {
         "operationId": "createPage",
-        "summary": "Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set.",
+        "summary": "Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once.",
         "tags": [
           "pages"
         ],
@@ -6735,7 +6826,7 @@
       },
       "post": {
         "operationId": "createSpace",
-        "summary": "Make a space and its home page. For whoever may create spaces.",
+        "summary": "Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see.",
         "tags": [
           "spaces"
         ],
@@ -10251,6 +10342,7 @@
               "page.restrictions_set",
               "comment.deleted",
               "theme.default_set",
+              "org.hub_set",
               "armature.connection_saved",
               "armature.connection_removed",
               "page.exported",
@@ -10349,6 +10441,7 @@
                 "page.restrictions_set",
                 "comment.deleted",
                 "theme.default_set",
+                "org.hub_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -10804,6 +10897,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "personal": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -11421,6 +11517,67 @@
           "archived",
           "updatedAt",
           "updatedByName"
+        ]
+      },
+      "Hub": {
+        "type": "object",
+        "properties": {
+          "landing": {
+            "type": "boolean"
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HubPage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "page",
+          "landing"
+        ]
+      },
+      "HubInput": {
+        "type": "object",
+        "properties": {
+          "landing": {
+            "type": "boolean"
+          },
+          "pageId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "pageId",
+          "landing"
+        ]
+      },
+      "HubPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey"
         ]
       },
       "Icon": {
@@ -12370,6 +12527,13 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
           "labels": {
             "type": "array",
             "items": {
@@ -12448,6 +12612,7 @@
           "spaceKey",
           "parentId",
           "title",
+          "kind",
           "body",
           "version",
           "home",
@@ -12510,6 +12675,13 @@
           },
           "body": {
             "description": "A JSON value."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
           },
           "parentId": {
             "type": "string",
@@ -13678,6 +13850,16 @@
           "name": {
             "type": "string"
           },
+          "owner": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SpaceOwner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "starred": {
             "type": "boolean"
           },
@@ -13701,7 +13883,8 @@
           "archivedByName",
           "can",
           "watching",
-          "starred"
+          "starred",
+          "owner"
         ]
       },
       "SpaceGrant": {
@@ -13766,6 +13949,22 @@
         },
         "required": [
           "grants"
+        ]
+      },
+      "SpaceOwner": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "Spec": {
@@ -14368,6 +14567,13 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
           "parentId": {
             "type": "string",
             "format": "uuid"
@@ -14389,7 +14595,8 @@
           "hasChildren",
           "archived",
           "unpublished",
-          "restricted"
+          "restricted",
+          "kind"
         ]
       },
       "UpdateInput": {

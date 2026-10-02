@@ -515,6 +515,39 @@ and the versioning [Semantic Versioning](https://semver.org/).
   password are taken, refused by the database as well as the API, and they
   open in a new tab with `rel="noopener noreferrer nofollow"`. Adding,
   moving and removing a shortcut is written to the audit log.
+- Column layouts (#42). "Two columns" and "Three columns" in the slash menu
+  put the blocks under the caret in the first of that many columns side by
+  side. The toolbar changes the layout, even or with one column wider, and
+  going from three columns to two folds the third into the second;
+  "Remove the columns, keep their content" puts the blocks back one after
+  another. Under 48rem the columns stack in reading order. The page stores
+  each column's share of the row, from 10 to 80 percent; the API refuses
+  fewer than two columns or more than three, and a comment holds none.
+  Search reads every column, and a Markdown export writes them one after
+  another.
+- Personal spaces (#35). Everybody may make one space of their own from the
+  space directory, named for them, for drafts and notes. Nobody else sees it
+  until its owner shares it from its permissions like any other space;
+  administrators of the organization reach it, as every space. The directory
+  lists personal spaces apart, with whose each is. The database holds to one
+  each, made only by and for its owner, and refuses handing it to somebody
+  else; members still need `createSpace` for any other space.
+- Folders in the page tree (#36). "New folder" in a page's menu, or on a
+  folder, adds a folder: a named group of pages and folders with no text of
+  its own, seen at once by everybody who may see where it is. Opening one
+  lists what it holds; it is renamed from its menu, and moved, copied,
+  restricted, archived and deleted as a page is, with what it holds. The
+  tree marks it with a folder icon. A folder takes no body, drafts,
+  versions, comments, reactions, labels, files, shares or stewardship, and
+  the database refuses them whichever request asks; `POST /pages` takes
+  `kind: "folder"`.
+- The organization's hub page (#40). Under Hub page in the account menu, an
+  administrator names one page of any space as the organization's hub,
+  which everybody who may read it finds under Hub in the navigation, and
+  may make it where everybody lands when they open Stator; their own home
+  is then at `/home`. `GET /org/hub` and `PUT /org/hub` (administrators
+  only, in the audit log). Only administrators change it, the database
+  included, and a hub page deleted for good stops being the hub.
 - Decision items (#44). "Decision" in the slash menu turns a line into a
   decision, undecided until its label is pressed to mark it decided; readers
   see the state in words before the line. Each space has a decision log,

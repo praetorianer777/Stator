@@ -83,6 +83,12 @@ export function TopBar({
       attrs: { "data-action": "org-permissions" },
     });
     items.push({
+      label: t.account.hub,
+      icon: <Icon.Flag />,
+      onSelect: () => navigate({ to: "/settings/hub" }),
+      attrs: { "data-action": "org-hub" },
+    });
+    items.push({
       label: t.account.armature,
       icon: <Icon.Link />,
       onSelect: () => navigate({ to: "/settings/armature" }),

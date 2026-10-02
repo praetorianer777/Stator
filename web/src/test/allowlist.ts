@@ -20,6 +20,8 @@ export interface Attr {
 export interface NodeSpec {
   attrs?: Record<string, Attr>;
   content?: string[];
+  minContent?: number;
+  maxContent?: number;
   inline?: boolean;
   allowsMarks?: boolean;
 }
@@ -68,6 +70,9 @@ export function problems(node: DocNode, parent: NodeSpec = { content: ["doc"] },
   const out: string[] = [];
   if (!parent.content?.includes(node.type)) out.push(`${path}: ${node.type} may not sit here`);
   if (node.type === "text" && !node.text) out.push(`${path}: text is empty`);
+  const count = node.content?.length ?? 0;
+  if ((spec.minContent && count < spec.minContent) || (spec.maxContent && count > spec.maxContent))
+    out.push(`${path}: holds ${count}, not ${spec.minContent} to ${spec.maxContent}`);
   for (const [name, value] of Object.entries(node.attrs ?? {})) {
     const rule = spec.attrs?.[name];
     if (!rule) out.push(`${path}: attribute ${name} is not allowed`);

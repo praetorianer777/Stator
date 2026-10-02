@@ -370,7 +370,16 @@ describe("the editor", () => {
 describe("an unpublished page", () => {
   it("is marked where it is read and in the tree", async () => {
     const fresh = aPage({ ...plans, unpublished: true, version: 0 });
-    const node: TreeNode = { id: PAGE_ID, parentId: home.id, title: "Plans", hasChildren: false, unpublished: true, restricted: false, archived: false };
+    const node: TreeNode = {
+      id: PAGE_ID,
+      parentId: home.id,
+      title: "Plans",
+      hasChildren: false,
+      unpublished: true,
+      restricted: false,
+      archived: false,
+      kind: "page",
+    };
     stubPage({ "GET /spaces/DOCS/pages": { status: 200, body: { pages: [node] } } }, { page: fresh });
     await renderAt(`/s/DOCS/p/${PAGE_ID}/plans`);
     expect(await screen.findByText("Only you can see this page until you publish it.")).toBeInTheDocument();

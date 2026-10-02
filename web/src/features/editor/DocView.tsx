@@ -9,6 +9,7 @@ import { ChildPagesList, TocList, childPagesSummary, tocSummary } from "./BlockV
 import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
+import { columnStyle } from "./columns";
 import { decisionState } from "./decision";
 import { ExpandView, revealInExpands } from "./ExpandView";
 import { languageLabel, lowlight } from "./languages";
@@ -222,6 +223,16 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
         <ExpandView title={node.attrs?.title} initiallyOpen={!copy}>
           <Blocks nodes={node.content} copy={copy} path={path} />
         </ExpandView>
+      );
+    case "columns":
+      return (
+        <div className="doc-columns" data-columns="">
+          {(node.content ?? []).map((column, c) => (
+            <div key={c} className="doc-column" data-column="" style={columnStyle(column.attrs?.width)}>
+              <Blocks nodes={column.content} copy={copy} path={[...path, c]} />
+            </div>
+          ))}
+        </div>
       );
     case "decision": {
       const state = decisionState(node.attrs?.state);

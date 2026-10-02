@@ -74,6 +74,8 @@ describe("the slash menu's blocks", () => {
       panelError: (d) => find(d, "panel")[0]?.attrs?.kind === "error",
       decision: (d) => d.content?.[0]?.type === "decision" && d.content[0].attrs?.state === "undecided",
       expand: (d) => d.content?.[0]?.type === "expand" && d.content[0].attrs?.title === "" && d.content[0].content?.[0]?.type === "paragraph",
+      columns2: (d) => JSON.stringify(find(d, "column").map((c) => c.attrs?.width)) === "[50,50]",
+      columns3: (d) => JSON.stringify(find(d, "column").map((c) => c.attrs?.width)) === "[33,34,33]",
       tableOfContents: (d) => d.content?.[0]?.type === "tableOfContents" && d.content[0].attrs?.maxLevel === 3,
       childPages: (d) => JSON.stringify(find(d, "childPages")[0]?.attrs) === JSON.stringify({ scope: "children", depth: null, sort: "tree" }),
       // The picker asks which issue; this one answers lower case, as a person might type it.
@@ -251,6 +253,82 @@ describe("expand blocks", () => {
     const [block] = find(e.getJSON() as DocNode, "expand");
     expect(block?.attrs).toEqual({ title: "Read view" });
     expect(find(block!, "text").map((n) => n.text)).toEqual(["body"]);
+  });
+});
+
+describe("columns", () => {
+  const texts = (doc: DocNode) => find(doc, "text").map((n) => n.text);
+  const widths = (doc: DocNode) => find(doc, "column").map((c) => c.attrs?.width);
+  const columnTexts = (doc: DocNode) => find(doc, "column").map((c) => find(c, "text").map((n) => n.text));
+  // The end of a column's one paragraph: two tokens in from where the column closes.
+  const endOfColumn = (e: Editor, index: number) => {
+    const at: number[] = [];
+    e.state.doc.descendants((node, pos) => void (node.type.name === "column" && at.push(pos + node.nodeSize - 2)));
+    return at[index] ?? -1;
+  };
+
+  it("take the blocks under the caret into the first column and put the caret there", async () => {
+    const e = await make();
+    e.chain().insertContent("left words").setColumns(2).insertContent(" and more").run();
+    const doc = e.getJSON() as DocNode;
+    expect(doc.content?.[0]?.type).toBe("columns");
+    expect(widths(doc)).toEqual([50, 50]);
+    expect(columnTexts(doc)).toEqual([["left words and more"], []]);
+    expect(e.view.dom.querySelectorAll(".doc-columns > .doc-column")).toHaveLength(2);
+    expect(e.view.dom.querySelector<HTMLElement>(".doc-column")?.style.getPropertyValue("--column-share")).toBe("50");
+  });
+
+  it("are not made inside a column", async () => {
+    const e = await make();
+    e.chain().insertContent("x").setColumns(3).run();
+    expect(e.can().setColumns(2)).toBe(false);
+    expect(find(e.getJSON() as DocNode, "columns")).toHaveLength(1);
+  });
+
+  it("change layout, adding a column or folding the last one into the one before", async () => {
+    const e = await make();
+    e.chain().insertContent("one").setColumns(3).run();
+    e.chain().setTextSelection(endOfColumn(e, 2)).insertContent("three").run();
+    expect(columnTexts(e.getJSON() as DocNode)).toEqual([["one"], [], ["three"]]);
+    e.chain().setColumnLayout("twoWideLeft").run();
+    expect(widths(e.getJSON() as DocNode)).toEqual([67, 33]);
+    expect(columnTexts(e.getJSON() as DocNode)).toEqual([["one"], ["three"]]);
+    e.chain().setColumnLayout("threeWideMiddle").run();
+    expect(widths(e.getJSON() as DocNode)).toEqual([25, 50, 25]);
+    expect(columnTexts(e.getJSON() as DocNode)).toEqual([["one"], ["three"], []]);
+  });
+
+  it("come off and leave their blocks in reading order, the caret where it was", async () => {
+    const e = await make();
+    e.chain().insertContent("first").setColumns(2).run();
+    e.chain().setTextSelection(endOfColumn(e, 1)).insertContent("second").run();
+    e.chain().unsetColumns().insertContent("!").run();
+    const doc = e.getJSON() as DocNode;
+    expect(find(doc, "columns")).toHaveLength(0);
+    expect(texts(doc)).toEqual(["first", "second!"]);
+  });
+
+  it("are read back from what the editor copies and from the reader's view", async () => {
+    const content: JSONContent = {
+      type: "doc",
+      content: [
+        {
+          type: "columns",
+          content: [
+            { type: "column", attrs: { width: 33 }, content: [{ type: "paragraph", content: [{ type: "text", text: "a" }] }] },
+            { type: "column", attrs: { width: 67 }, content: [{ type: "paragraph", content: [{ type: "text", text: "b" }] }] },
+          ],
+        },
+      ],
+    };
+    const e = await make(content);
+    const html = e.getHTML();
+    e.destroy();
+    const again = await make();
+    again.commands.setContent(html);
+    expect(again.getJSON().content?.[0]).toEqual(content.content?.[0]);
+    again.commands.setContent('<div data-columns><div data-column style="--column-share: 90"><p>x</p></div><div data-column><p>y</p></div></div>');
+    expect(widths(again.getJSON() as DocNode)).toEqual([null, null]);
   });
 });
 

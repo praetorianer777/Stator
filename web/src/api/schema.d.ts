@@ -732,6 +732,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/org/hub": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's hub page as the caller may see it, and whether everybody lands on it. */
+        get: operations["getHub"];
+        /** Choose the organization's hub page, or none, and whether everybody lands on it. For administrators. */
+        put: operations["setHub"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org/permissions": {
         parameters: {
             query?: never;
@@ -809,7 +827,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set. */
+        /** Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once. */
         post: operations["createPage"];
         delete?: never;
         options?: never;
@@ -1522,7 +1540,7 @@ export interface paths {
         /** Every space the caller may see, by name; archived ones only when asked for. */
         get: operations["listSpaces"];
         put?: never;
-        /** Make a space and its home page. For whoever may create spaces. */
+        /** Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see. */
         post: operations["createSpace"];
         delete?: never;
         options?: never;
@@ -2394,7 +2412,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
+            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -2410,7 +2428,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed")[];
+            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -2533,6 +2551,7 @@ export interface components {
             description?: string;
             key: string;
             name: string;
+            personal?: boolean;
         };
         CreateIssuesInput: {
             items: components["schemas"]["CreateItem"][];
@@ -2701,6 +2720,21 @@ export interface components {
             updatedAt: string;
             updatedByName: string;
             verified: boolean;
+        };
+        Hub: {
+            landing: boolean;
+            page: components["schemas"]["HubPage"] | null;
+        };
+        HubInput: {
+            landing: boolean;
+            /** Format: uuid */
+            pageId: string | null;
+        };
+        HubPage: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            title: string;
         };
         Icon: {
             /** Format: uuid */
@@ -2952,6 +2986,8 @@ export interface components {
             home: boolean;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder";
             labels: string[];
             owner: components["schemas"]["Owner"] | null;
             /** Format: uuid */
@@ -2985,6 +3021,8 @@ export interface components {
             beforeId?: string;
             /** @description A JSON value. */
             body?: unknown;
+            /** @enum {string} */
+            kind?: "page" | "folder";
             /** Format: uuid */
             parentId: string;
             publish?: boolean;
@@ -3313,6 +3351,7 @@ export interface components {
             id: string;
             key: string;
             name: string;
+            owner: components["schemas"]["SpaceOwner"] | null;
             starred: boolean;
             /** Format: date-time */
             updatedAt: string;
@@ -3328,6 +3367,11 @@ export interface components {
         };
         SpaceGrantsInput: {
             grants: components["schemas"]["SpaceGrantInput"][];
+        };
+        SpaceOwner: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         Spec: {
             backdrop?: components["schemas"]["Backdrop"];
@@ -3492,6 +3536,8 @@ export interface components {
             hasChildren: boolean;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder";
             /** Format: uuid */
             parentId: string;
             restricted: boolean;
@@ -4396,7 +4442,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -4445,7 +4491,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -5648,6 +5694,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Document"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hub: components["schemas"]["Hub"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HubInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hub: components["schemas"]["Hub"];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
