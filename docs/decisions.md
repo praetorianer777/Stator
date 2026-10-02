@@ -3,6 +3,33 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A personal space is an ordinary space with an owner, and starts closed
+
+A personal space is a row of `space` with `owner_id` set to the person it
+belongs to, not a kind of space of its own: pages, search, trash, archive and
+permissions work in it as in any other, and sharing it is the space's own
+permission table, which its owner administers. A partial unique index on
+`(org_id, owner_id)` keeps it to one each, so the directory and the button
+that offers one can trust there is at most one.
+
+Making a space takes `createSpace`, which members do not hold by default, but
+a personal space takes only `use`, with a token for the whole organization:
+everybody needs somewhere to draft before sharing, and it reaches nobody
+else until they share it. The insert policy says so, and requires the owner
+to be the person making it, so nobody makes one in somebody else's name. The
+grant trigger gives a personal space no `everyone` rows, only its owner's
+`administer`.
+
+The owner is fixed when the space is made; a trigger refuses any other
+owner, since a space handed over would be somebody's without their asking.
+When the owner's account goes, `owner_id` becomes null and what is left is an
+ordinary space that only administrators reach.
+
+Administrators of the organization still reach every personal space, as they
+reach every other space: they hold every permission so that no space is ever
+orphaned (2026-09-30), and a space nobody else can open is the one most at
+risk of that. Private means private from the other members.
+
 ## 2026-10-02: A shortcut is a ranked row of the space, read through the page's own view rule
 
 Space shortcuts (#39) are links the administrators of a space pin above its

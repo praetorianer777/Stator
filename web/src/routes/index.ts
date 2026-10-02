@@ -17,7 +17,7 @@ import { orgPermissionsRoute } from "./permissions";
 import { pageHistoryRoute } from "./page-history";
 import { profileRoute } from "./profile";
 import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
-import { spaceNewRoute, spacesRoute } from "./spaces";
+import { personalSpaceNewRoute, spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
 import { searchRoute } from "./search";
 import { staleRoute } from "./stale";
@@ -33,6 +33,7 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     spacesRoute,
     spaceNewRoute,
+    personalSpaceNewRoute,
     spaceRoute.addChildren([spaceHomeRoute, pageRoute, pageBareRoute, pageEditRoute, pageHistoryRoute, spaceSettingsRoute, spaceLabelRoute]),
     searchRoute,
     labelRoute,

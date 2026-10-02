@@ -54,6 +54,9 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"a member granted createSpace creates", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateSpace, true},
 		{"createSpace without use is nothing", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{CreateSpaces}}, CreateSpace, false},
 		{"admins create spaces", admin, CreateSpace, true},
+		{"every member creates a personal space", member(), CreatePersonalSpace, true},
+		{"a personal space takes use", Facts{Member: true, Role: auth.RoleMember}, CreatePersonalSpace, false},
+		{"a stranger creates no personal space", Facts{Global: []GlobalPermission{UseStator}}, CreatePersonalSpace, false},
 		{"an unknown action is refused", admin, Action("space.unknown"), false},
 	} {
 		if got := Decide(tt.facts, tt.action); got != tt.want {
@@ -151,7 +154,7 @@ func TestASaveMayNotLockItsSaverOut(t *testing.T) {
 }
 
 func TestRefusalsAreSentences(t *testing.T) {
-	for _, a := range []Action{CreateSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, Action("x")} {
+	for _, a := range []Action{CreateSpace, CreatePersonalSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, Action("x")} {
 		err := error(&DeniedError{Action: a})
 		if !errors.Is(err, ErrDenied) {
 			t.Errorf("the refusal of %s does not wrap ErrDenied", a)
