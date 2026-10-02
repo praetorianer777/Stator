@@ -223,7 +223,7 @@ function Item({ node, level }: { node: TreeNode; level: number }) {
   return (
     <div
       role="treeitem"
-      aria-label={node.unpublished ? t.tree.unpublished(node.title) : node.title}
+      aria-label={node.unpublished ? t.tree.unpublished(node.title) : node.kind === "folder" ? t.tree.folder(node.title) : node.title}
       aria-level={level}
       aria-expanded={node.hasChildren ? open : undefined}
       aria-selected={current}
@@ -265,6 +265,7 @@ function Item({ node, level }: { node: TreeNode; level: number }) {
         >
           {node.hasChildren && <Icon.ChevronDown className={cx("transition-transform", !open && "-rotate-90")} />}
         </span>
+        {node.kind === "folder" && <Icon.Folder className="shrink-0 text-ink-subtle" data-tree-folder="" />}
         <PageLink
           spaceKey={tree.space.key}
           id={node.id}

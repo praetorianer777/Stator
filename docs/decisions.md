@@ -3,6 +3,29 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A folder is a page of another kind, version 1 from the start
+
+A folder is a row of `page` with `kind = 'folder'`, not a table of its own:
+it has a parent, a rank, a place in the trash and the archive, restrictions
+that reach what is below it, and moves and copies with its subtree, all as
+the page tree already does them. What it lacks is everything a page holds:
+a CHECK keeps its body the empty document, and one trigger on each table of
+a page's content (versions, drafts, files, labels, threads, comments,
+reactions, shares, owners, verifications) refuses a row for a folder,
+whichever service writes it. The API answers that refusal as a 409 with the
+code `folder`. A row stays the kind it was made as, and a home page is
+never a folder, since a space opens on it.
+
+A folder is made at version 1 with no version row. A row at version 0 is
+its creator's alone until published, and so would be everything put in it,
+but a folder has nothing to publish. It has no history, so renaming it
+changes its title and nothing else. Its `published_at` stays empty, which
+keeps it out of the home page's feeds and the stale report; search finds
+pages by their published version, which a folder has none of.
+
+Opening a folder shows the pages and folders in it, the list a child pages
+block draws, and offers new pages, new folders, renaming, moving and the
+trash. It has no editor, history, comments or watching of its own.
 ## 2026-10-02: A personal space is an ordinary space with an owner, and starts closed
 
 A personal space is a row of `space` with `owner_id` set to the person it

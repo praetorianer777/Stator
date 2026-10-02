@@ -809,7 +809,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set. */
+        /** Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once. */
         post: operations["createPage"];
         delete?: never;
         options?: never;
@@ -2922,6 +2922,8 @@ export interface components {
             home: boolean;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder";
             labels: string[];
             owner: components["schemas"]["Owner"] | null;
             /** Format: uuid */
@@ -2955,6 +2957,8 @@ export interface components {
             beforeId?: string;
             /** @description A JSON value. */
             body?: unknown;
+            /** @enum {string} */
+            kind?: "page" | "folder";
             /** Format: uuid */
             parentId: string;
             publish?: boolean;
@@ -3468,6 +3472,8 @@ export interface components {
             hasChildren: boolean;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder";
             /** Format: uuid */
             parentId: string;
             restricted: boolean;

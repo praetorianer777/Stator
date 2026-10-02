@@ -1,6 +1,7 @@
 package page
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -55,6 +56,8 @@ type TreeNode struct {
 	// view is narrowed here or above.
 	Unpublished bool `json:"unpublished"`
 	Restricted  bool `json:"restricted"`
+	// Kind is page or folder.
+	Kind Kind `json:"kind"`
 }
 
 // OutlineEntry is one page of a whole space in reading order, for choosing
@@ -83,6 +86,9 @@ type CreateInput struct {
 	// Publish makes the page version 1 at once, seen by everybody who may see
 	// the space; otherwise it stays an unpublished page of its creator's.
 	Publish bool `json:"publish,omitempty"`
+	// Kind folder makes a folder, which takes no body and is seen at once by
+	// everybody who may see where it is; empty or page makes a page.
+	Kind Kind `json:"kind,omitempty"`
 }
 
 // MoveInput moves a page. Without its children they stay where the page was.
@@ -259,7 +265,8 @@ func (s *Service) Children(ctx context.Context, actor perm.Actor, spaceKey strin
 			               AND `+perm.ViewablePage("c", 2)+`),
 			       p.archived_at IS NOT NULL,
 			       p.version = 0,
-			       $3 OR EXISTS (SELECT 1 FROM page_restriction r WHERE r.page_id = p.id AND r.kind = 'view')
+			       $3 OR EXISTS (SELECT 1 FROM page_restriction r WHERE r.page_id = p.id AND r.kind = 'view'),
+			       p.kind
 			FROM page p WHERE p.parent_id = $1 AND`+live+` AND (p.archived_at IS NULL OR $4) AND `+perm.ViewablePage("p", 2)+`
 			ORDER BY p.rank, p.id`, under, actor.UserID, above.ViewRestricted, *archived)
 		if err != nil {
@@ -315,10 +322,23 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 	if err != nil {
 		return nil, 0, err
 	}
+	kind := cmp.Or(in.Kind, KindPage)
+	if kind != KindPage && kind != KindFolder {
+		return nil, 0, ErrBadKind
+	}
+	if kind == KindFolder && in.Body != nil {
+		return nil, 0, ErrFolder
+	}
 	if in.Body != nil {
 		if err := document.Validate(in.Body); err != nil {
 			return nil, 0, err
 		}
+	}
+	// A folder has nothing to publish, but it is version 1 from the start: an
+	// unpublished row is its creator's alone, and so would be all below it.
+	version := 0
+	if kind == KindFolder {
+		version = 1
 	}
 	var out *Page
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -334,15 +354,15 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		// the statement's own snapshot does not hold the row it writes.
 		id := uuid.Must(uuid.NewV7())
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, COALESCE($6::jsonb, '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb), $7, $7)`,
-			id, sp.ID, in.ParentID, r, title, nullJSON(in.Body), actor.UserID); err != nil {
+			INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by, kind, version)
+			VALUES ($1, current_org_id(), $2, $3, $4, $5, COALESCE($6::jsonb, '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb), $7, $7, $8, $9)`,
+			id, sp.ID, in.ParentID, r, title, nullJSON(in.Body), actor.UserID, kind, version); err != nil {
 			return fmt.Errorf("save the page: %w", err)
 		}
 		if err := watch.Auto(ctx, tx, actor.UserID, id); err != nil {
 			return fmt.Errorf("watch the page: %w", err)
 		}
-		if in.Publish {
+		if in.Publish && kind == KindPage {
 			made, _, err := load(ctx, tx, actor, id, true)
 			if err != nil {
 				return err
@@ -505,12 +525,12 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			), fresh AS MATERIALIZED (
 				SELECT id AS old_id, uuidv7() AS new_id, parent_id, depth FROM below
 			), made AS (
-				INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by)
+				INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by, kind)
 				SELECT f.new_id, p.org_id, $3,
 				       CASE WHEN f.depth = 0 THEN $4 ELSE up.new_id END,
 				       CASE WHEN f.depth = 0 THEN $5 ELSE p.rank END,
 				       CASE WHEN f.depth = 0 THEN COALESCE($6, p.title) ELSE p.title END,
-				       document_unanchored(p.body), $7, $7
+				       document_unanchored(p.body), $7, $7, p.kind
 				FROM fresh f JOIN page p ON p.id = f.old_id LEFT JOIN fresh up ON up.old_id = f.parent_id
 				ORDER BY f.depth
 			)
@@ -547,7 +567,8 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 				SELECT p.id FROM page p JOIN copied c ON p.parent_id = c.id
 			)
 			INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
-			SELECT p.org_id, p.id, 1, p.title, p.body, $2 FROM page p JOIN copied c ON c.id = p.id`, made, actor.UserID); err != nil {
+			SELECT p.org_id, p.id, 1, p.title, p.body, $2 FROM page p JOIN copied c ON c.id = p.id
+			WHERE p.kind = 'page'`, made, actor.UserID); err != nil {
 			return fmt.Errorf("publish the copy: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `

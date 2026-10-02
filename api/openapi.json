@@ -3275,7 +3275,7 @@
     "/pages": {
       "post": {
         "operationId": "createPage",
-        "summary": "Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set.",
+        "summary": "Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once.",
         "tags": [
           "pages"
         ],
@@ -12269,6 +12269,13 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
           "labels": {
             "type": "array",
             "items": {
@@ -12347,6 +12354,7 @@
           "spaceKey",
           "parentId",
           "title",
+          "kind",
           "body",
           "version",
           "home",
@@ -12409,6 +12417,13 @@
           },
           "body": {
             "description": "A JSON value."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
           },
           "parentId": {
             "type": "string",
@@ -14294,6 +14309,13 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
           "parentId": {
             "type": "string",
             "format": "uuid"
@@ -14315,7 +14337,8 @@
           "hasChildren",
           "archived",
           "unpublished",
-          "restricted"
+          "restricted",
+          "kind"
         ]
       },
       "UpdateInput": {

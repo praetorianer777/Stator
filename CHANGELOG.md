@@ -532,6 +532,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   lists personal spaces apart, with whose each is. The database holds to one
   each, made only by and for its owner, and refuses handing it to somebody
   else; members still need `createSpace` for any other space.
+- Folders in the page tree (#36). "New folder" in a page's menu, or on a
+  folder, adds a folder: a named group of pages and folders with no text of
+  its own, seen at once by everybody who may see where it is. Opening one
+  lists what it holds; it is renamed from its menu, and moved, copied,
+  restricted, archived and deleted as a page is, with what it holds. The
+  tree marks it with a folder icon. A folder takes no body, drafts,
+  versions, comments, reactions, labels, files, shares or stewardship, and
+  the database refuses them whichever request asks; `POST /pages` takes
+  `kind: "folder"`.
 
 ### Changed
 
