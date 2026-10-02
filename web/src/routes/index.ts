@@ -11,7 +11,8 @@ import { devEditorRoute } from "./dev-editor";
 import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
 import { notificationSettingsRoute, watchingRoute } from "./notifications";
-import { homeRoute } from "./pages";
+import { homeRoute, personalHomeRoute } from "./pages";
+import { hubSettingsRoute } from "./hub";
 import { pageEditRoute } from "./page-edit";
 import { orgPermissionsRoute } from "./permissions";
 import { pageHistoryRoute } from "./page-history";
@@ -31,6 +32,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   appRoute.addChildren([
     homeRoute,
+    personalHomeRoute,
     spacesRoute,
     spaceNewRoute,
     personalSpaceNewRoute,
@@ -46,6 +48,7 @@ const routeTree = rootRoute.addChildren([
     watchingRoute,
     ssoRoute,
     orgPermissionsRoute,
+    hubSettingsRoute,
     armatureSettingsRoute,
     auditRoute,
     webhooksRoute,

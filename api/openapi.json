@@ -46,6 +46,9 @@
       "name": "home"
     },
     {
+      "name": "hub"
+    },
+    {
       "name": "labels"
     },
     {
@@ -1159,6 +1162,7 @@
                 "page.restrictions_set",
                 "comment.deleted",
                 "theme.default_set",
+                "org.hub_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -1319,6 +1323,7 @@
                 "page.restrictions_set",
                 "comment.deleted",
                 "theme.default_set",
+                "org.hub_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -3072,6 +3077,92 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/hub": {
+      "get": {
+        "operationId": "getHub",
+        "summary": "The organization's hub page as the caller may see it, and whether everybody lands on it.",
+        "tags": [
+          "hub"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hub": {
+                      "$ref": "#/components/schemas/Hub"
+                    }
+                  },
+                  "required": [
+                    "hub"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setHub",
+        "summary": "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.",
+        "tags": [
+          "hub"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HubInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hub": {
+                      "$ref": "#/components/schemas/Hub"
+                    }
+                  },
+                  "required": [
+                    "hub"
+                  ]
                 }
               }
             }
@@ -10198,6 +10289,7 @@
               "page.restrictions_set",
               "comment.deleted",
               "theme.default_set",
+              "org.hub_set",
               "armature.connection_saved",
               "armature.connection_removed",
               "page.exported",
@@ -10296,6 +10388,7 @@
                 "page.restrictions_set",
                 "comment.deleted",
                 "theme.default_set",
+                "org.hub_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -11320,6 +11413,67 @@
           "archived",
           "updatedAt",
           "updatedByName"
+        ]
+      },
+      "Hub": {
+        "type": "object",
+        "properties": {
+          "landing": {
+            "type": "boolean"
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HubPage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "page",
+          "landing"
+        ]
+      },
+      "HubInput": {
+        "type": "object",
+        "properties": {
+          "landing": {
+            "type": "boolean"
+          },
+          "pageId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "pageId",
+          "landing"
+        ]
+      },
+      "HubPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey"
         ]
       },
       "Icon": {

@@ -30,6 +30,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
@@ -100,7 +101,7 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	server := &httpapi.Server{
 		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
-		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster),
+		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Hub: hub.NewService(h.cluster),
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),
 		Audit: audit.NewService(h.cluster), AuditRetention: config.DefaultRetainAudit, Webhooks: h.webhooks(t),
 		PageViews: pageview.NewService(h.cluster), PageViewRetention: config.DefaultRetainPageViews,

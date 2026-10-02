@@ -3,6 +3,26 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: The hub is a page an administrator points at, and landing on it is a redirect
+
+The organization's hub is not a document of its own but one of its pages,
+named by `org.hub_page_id`: a page is already written, published, restricted,
+watched and kept in history, and a hub that needed its own editor and its
+own rules would repeat all of that. Any page of any space may be the hub;
+the foreign key on `(id, hub_page_id)` to `page (org_id, id)` keeps it one of
+the organization's own, and a page deleted for good stops being it.
+
+Only administrators choose it, and the database holds to that: a trigger
+refuses a change of the hub or of landing by anybody else acting through
+the app's role. Everybody else reads it through `GET /org/hub`, which names
+the page only to whoever may view it, out of the trash and the archive. A
+hub the reader may not read is no hub for them: the navigation leaves it
+out and they land on their own home.
+
+`hub_landing` makes `/` a redirect to the hub, decided in the route before
+anything renders, so nobody sees their own home flash first. The reader's
+own home then lives at `/home`, where the navigation's Home leads; a check
+keeps landing off while there is no hub.
 ## 2026-10-02: A folder is a page of another kind, version 1 from the start
 
 A folder is a row of `page` with `kind = 'folder'`, not a table of its own:

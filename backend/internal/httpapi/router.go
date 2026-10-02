@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/home"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -84,6 +85,7 @@ type Server struct {
 	Shares *share.Service
 	// Shortcuts keeps the links pinned above each space's page tree.
 	Shortcuts *shortcut.Service
+	Hub       *hub.Service
 	// PageViews reads how often pages were read and by whom;
 	// PageViewRetention is how long the worker keeps named views, zero forever.
 	PageViews         *pageview.Service
@@ -187,6 +189,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/org/tokens/{tokenID}", s.handleRevokeOrgAPIToken)
 			r.Get("/org/permissions", s.handleListGlobalPermissions)
 			r.Put("/org/permissions/{permission}", s.handleSetGlobalPermission)
+			r.Put("/org/hub", s.handleSetHub)
 		})
 
 		// What the caller may do is theirs to read even without use, so the
@@ -360,6 +363,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/spaces/{spaceKey}/star", s.handleUnstarSpace)
 			r.Get("/stars", s.handleListStars)
 			r.Get("/home/updates", s.handleHomeUpdates)
+			r.Get("/org/hub", s.handleGetHub)
 			r.Get("/home/edited", s.handleHomeEdited)
 			r.Get("/stale-pages", s.handleListStalePages)
 			r.Put("/pages/{pageID}/owner", s.handleSetPageOwner)

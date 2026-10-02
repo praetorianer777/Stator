@@ -71,6 +71,7 @@ export const Icon = {
   Menu: makeIcon("menu", ["M2.5 4h11", "M2.5 8h11", "M2.5 12h11"]),
   X: makeIcon("x", ["m4 4 8 8", "m12 4-8 8"]),
   Folder: makeIcon("folder", ["M2 4.5A1 1 0 0 1 3 3.5h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"]),
+  Flag: makeIcon("flag", ["M3.5 14V2.5", "M3.5 3h8.5l-2 3 2 3H3.5"]),
   Plus: makeIcon("plus", ["M8 3v10", "M3 8h10"]),
   Users: makeIcon("users", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),
   Check: makeIcon("check", ["m3 8.5 3 3 7-7"]),

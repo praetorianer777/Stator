@@ -25,6 +25,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
@@ -174,6 +175,7 @@ func run() error {
 		Stars:             star.NewService(cluster),
 		Shares:            share.NewService(cluster),
 		Shortcuts:         shortcut.NewService(cluster),
+		Hub:               hub.NewService(cluster),
 		Home:              home.NewService(cluster),
 		Stale:             stale.NewService(cluster),
 		PageViews:         pageview.NewService(cluster),

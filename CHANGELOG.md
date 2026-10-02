@@ -541,6 +541,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   versions, comments, reactions, labels, files, shares or stewardship, and
   the database refuses them whichever request asks; `POST /pages` takes
   `kind: "folder"`.
+- The organization's hub page (#40). Under Hub page in the account menu, an
+  administrator names one page of any space as the organization's hub,
+  which everybody who may read it finds under Hub in the navigation, and
+  may make it where everybody lands when they open Stator; their own home
+  is then at `/home`. `GET /org/hub` and `PUT /org/hub` (administrators
+  only, in the audit log). Only administrators change it, the database
+  included, and a hub page deleted for good stops being the hub.
 
 ### Changed
 
