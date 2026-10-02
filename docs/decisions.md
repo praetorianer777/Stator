@@ -3,6 +3,71 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A webhook sends as the administrator who saved it, read when it is sent
+
+Outbound webhooks (#110) keep Armature's design: an endpoint is an address,
+the topics it takes (`*` for every one), a secret shown in the answer that
+made or rotated it and never again, and a log with one row per attempt.
+The body is Armature's envelope (`id`, `topic`, `orgId`, `occurredAt`,
+`payload`) and the signature its shape, `sha256=` and the hex HMAC of the
+raw body, in `X-Stator-Signature-256` beside `X-Stator-Event` and
+`X-Stator-Delivery`, so a receiver written for one product serves both. The
+envelope's id is the outbox event's, the same on every retry and
+redelivery, so a receiver can drop a repeat. An event is tried six times,
+after 1, 5 and 30 minutes, 2 and 12 hours, as Armature tries; a test ping
+or a redelivery is sent at once, even while the endpoint is off, and not
+retried, since somebody is watching it. Only administrators keep webhooks,
+as only Armature's tenant administrators do, and no operation is an MCP
+tool.
+
+Armature's payloads are its events as they happened, and every Armature
+endpoint belongs to an administrator who may read the whole tenant. A wiki
+page can be closed to its own space's administrators, and an administrator
+can stop being one, so an endpoint here names an owner: the administrator
+who saved it last, stamped by the database from the transaction's actor
+and never written by the app. Each attempt reads the payload as the owner
+through the ordinary row level security, so a page they may not view, or
+one gone, comes back as no row and the attempt is withheld: nothing is
+posted, nothing is retried, and the log says why. The outbox keeps only
+ids, which the delivery copies; the words are read when they are sent,
+never when the event was queued, so a page closed in between is not
+posted and a redelivery reads afresh. Of a move, the old place's space and
+parent are named only when the owner may view them. An owner who leaves the
+organization leaves the endpoint without one, which then posts only pings
+until somebody saves it again. Saving makes whoever saved it the owner
+rather than keeping the first, because an endpoint whose owner left or
+lost access would otherwise need a second operation to take it over.
+
+The secret is sealed with `STATOR_SECRET_KEY`, bound to its organization
+and endpoint, where Armature keeps it in clear. The app role may not select
+the sealed column, the owner, or the failure counts, and may not write the
+log at all; the worker, and a test or redelivery in the api, write the log
+and open the secret as the admin role, acting for nobody, so sending a
+test does not make the tester the owner. A restrictive policy holds the
+app role to administrators of the organization for both tables.
+
+Delivery follows the outbox's own pattern. The outbox handler queues one
+delivery per enabled, subscribed endpoint, idempotently by event and
+attempt, and runs before the notification fan-out, so a failed queue never
+tells anybody twice. A sender in the worker leases due deliveries with
+`SKIP LOCKED` before it posts, as the outbox worker leases events, so any
+number of workers send each attempt once. Every request goes through
+`netguard`, at every redirect, and an address that names the server's own
+network outright is refused when it is saved; a delivery's error says what
+happened in a sentence and never which host or port answered.
+
+Armature has no automatic turning off. Here an endpoint that has failed at
+least six attempts in a row, over at least a day, is turned off by the
+worker, its waiting attempts cancelled, and the audit log records it with
+nobody as the actor; turning it on clears the count. A day rather than a
+count alone, so a receiver down for an afternoon under a burst of events
+keeps its endpoint. Adding, changing, rotating and deleting an endpoint is
+audited with its name and host only, since a receiver's path often carries
+a token of its own. Attempts are kept 30 days, as Armature keeps them, and
+pruned by the sender. Moving a published page to another parent or space
+and moving one to the trash now write `page.moved` and `page.deleted`; a
+reorder among siblings, a page the author has not published and the pages
+that go with the one named write nothing.
 ## 2026-10-01: Stale pages are read from publishes and visits, by the administrators of their spaces
 
 The stale content report (#99) lists published pages, out of the trash, that

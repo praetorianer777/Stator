@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/watch"
+	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
 
 // The API described in terms of the code that serves it. Every route in Routes
@@ -460,6 +461,33 @@ var operations = []operation{
 		summary: "The log as a CSV file, newest first, narrowed like the list; the export is itself recorded. Refused with export_too_large past " + strconv.Itoa(audit.MaxExport) + " entries. For administrators.",
 		binary:  true, query: auditQuery, responses: map[int]any{200: nil, 422: errorEnvelope{}}},
 
+	// Webhooks (#110), as Armature's administrators keep theirs.
+	{method: "GET", path: "/webhooks", handler: "handleListWebhooks", tag: "webhooks",
+		summary:   "Where the organization's events are posted, by name, without their secrets. For administrators.",
+		responses: ok(env{"webhooks": []webhook.Webhook{}})},
+	{method: "POST", path: "/webhooks", handler: "handleCreateWebhook", tag: "webhooks",
+		summary: "Add a webhook; its secret is in this answer and never again. The caller becomes its owner, whose permissions every payload is read with. For administrators.",
+		request: webhook.WebhookInput{}, responses: map[int]any{201: env{"webhook": webhook.Webhook{}}, 422: errorEnvelope{}}},
+	{method: "PATCH", path: "/webhooks/{webhookID}", handler: "handleUpdateWebhook", tag: "webhooks",
+		summary: "Change a webhook's name, address, topics or whether it is on; the caller becomes its owner, and turning it on clears its failures. For administrators.",
+		request: webhook.WebhookInput{}, responses: map[int]any{200: env{"webhook": webhook.Webhook{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/webhooks/{webhookID}", handler: "handleDeleteWebhook", tag: "webhooks",
+		summary:   "Remove a webhook and its log. For administrators.",
+		responses: none()},
+	{method: "POST", path: "/webhooks/{webhookID}/rotate-secret", handler: "handleRotateWebhookSecret", tag: "webhooks",
+		summary:   "Issue a new secret, in this answer and never again; the old one stops at once. For administrators.",
+		responses: ok(env{"webhook": webhook.Webhook{}})},
+	{method: "POST", path: "/webhooks/{webhookID}/test", handler: "handleTestWebhook", tag: "webhooks",
+		summary:   "Post a ping now, even while the webhook is off, and answer the attempt as logged. For administrators.",
+		responses: ok(env{"delivery": webhook.WebhookDelivery{}})},
+	{method: "GET", path: "/webhooks/{webhookID}/deliveries", handler: "handleListWebhookDeliveries", tag: "webhooks",
+		summary:   "A webhook's log, one row per attempt, newest first; kept for " + strconv.Itoa(int(webhook.DeliveryRetention.Hours()/24)) + " days. For administrators.",
+		query:     []param{{name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(webhook.MaxDeliveries) + "; " + strconv.Itoa(webhook.DefaultDeliveries) + " when absent."}},
+		responses: map[int]any{200: env{"deliveries": []webhook.WebhookDelivery{}}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", handler: "handleRedeliverWebhook", tag: "webhooks",
+		summary:   "Send a logged delivery's event again, now, as its next attempt, with the payload read afresh as the owner. For administrators.",
+		responses: ok(env{"delivery": webhook.WebhookDelivery{}})},
+
 	{method: "GET", path: "/armature/account", handler: "handleGetArmatureAccount", tag: "armature",
 		summary:   "Whether the caller connected their Armature token, and whom it acts as.",
 		responses: ok(env{"account": armature.Account{}})},
@@ -633,6 +661,12 @@ func specBuilder() *openapi.Builder {
 	granted := &openapi.Schema{Type: "string", Enum: []string{string(auth.RoleAdmin), string(auth.RoleMember)}}
 	b.FieldOverrides["AuditEntry.action"] = &openapi.Schema{Type: "string", Enum: audit.Actions}
 	b.FieldOverrides["AuditFacets.actions"] = &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: audit.Actions}}
+	b.Enums[reflect.TypeOf(webhook.DeliveryState(""))] = enumStrings(webhook.States)
+	topics := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: webhook.Subscribable}}
+	b.FieldOverrides["Webhook.topics"] = topics
+	b.FieldOverrides["WebhookInput.topics"] = topics
+	b.FieldOverrides["Webhook.disabledReason"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: webhook.DisabledReasons}, {Type: "null"}}}
+	b.FieldOverrides["WebhookDelivery.topic"] = &openapi.Schema{Type: "string", Enum: append([]string{webhook.TopicPing}, webhook.Topics...)}
 	b.FieldOverrides["GroupRole.role"] = granted
 	b.FieldOverrides["SetGroupRoleRequest.role"] = granted
 	return b

@@ -2053,6 +2053,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the organization's events are posted, by name, without their secrets. For administrators. */
+        get: operations["listWebhooks"];
+        put?: never;
+        /** Add a webhook; its secret is in this answer and never again. The caller becomes its owner, whose permissions every payload is read with. For administrators. */
+        post: operations["createWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{webhookID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a webhook and its log. For administrators. */
+        delete: operations["deleteWebhook"];
+        options?: never;
+        head?: never;
+        /** Change a webhook's name, address, topics or whether it is on; the caller becomes its owner, and turning it on clears its failures. For administrators. */
+        patch: operations["updateWebhook"];
+        trace?: never;
+    };
+    "/webhooks/{webhookID}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A webhook's log, one row per attempt, newest first; kept for 30 days. For administrators. */
+        get: operations["listWebhookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a logged delivery's event again, now, as its next attempt, with the payload read afresh as the owner. For administrators. */
+        post: operations["redeliverWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{webhookID}/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue a new secret, in this answer and never again; the old one stops at once. For administrators. */
+        post: operations["rotateWebhookSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{webhookID}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post a ping now, even while the webhook is off, and answer the attempt as logged. For administrators. */
+        post: operations["testWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2185,7 +2289,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "page.shared";
+            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -2201,7 +2305,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "page.shared")[];
+            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -3312,6 +3416,46 @@ export interface components {
             page: boolean;
             subtree: boolean;
         };
+        Webhook: {
+            /** Format: date-time */
+            createdAt: string;
+            disabledReason: "failing" | null;
+            enabled: boolean;
+            failures: number;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            owner: components["schemas"]["WebhookOwner"] | null;
+            secret?: string;
+            topics: ("*" | "page.published" | "page.moved" | "page.deleted" | "comment.created")[];
+            /** Format: date-time */
+            updatedAt: string;
+            url: string;
+        };
+        WebhookDelivery: {
+            attempt: number;
+            /** Format: date-time */
+            attemptedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            deliveredAt: string | null;
+            error: string;
+            /** Format: uuid */
+            eventId: string;
+            /** Format: uuid */
+            id: string;
+            manual: boolean;
+            /** Format: date-time */
+            nextAttemptAt: string | null;
+            /** @enum {string} */
+            state: "pending" | "delivered" | "failed" | "withheld" | "cancelled";
+            status: number | null;
+            /** @enum {string} */
+            topic: "ping" | "page.published" | "page.moved" | "page.deleted" | "comment.created";
+            /** Format: uuid */
+            webhookId: string;
+        };
         WebhookEnvelope: {
             /** Format: uuid */
             id: string;
@@ -3322,6 +3466,17 @@ export interface components {
             /** @description A JSON value. */
             payload: unknown;
             topic: string;
+        };
+        WebhookInput: {
+            enabled?: boolean;
+            name: string;
+            topics: ("*" | "page.published" | "page.moved" | "page.deleted" | "comment.created")[];
+            url: string;
+        };
+        WebhookOwner: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
     };
     responses: never;
@@ -4067,7 +4222,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "page.shared";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -4116,7 +4271,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "page.shared";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -9052,6 +9207,301 @@ export interface operations {
                         offset: number;
                         total: number;
                         watches: components["schemas"]["Watch"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWebhooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhooks: components["schemas"]["Webhook"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhook: components["schemas"]["Webhook"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhookID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhookID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhook: components["schemas"]["Webhook"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWebhookDeliveries: {
+        parameters: {
+            query?: {
+                /** @description 1 to 200; 50 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                webhookID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        deliveries: components["schemas"]["WebhookDelivery"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    redeliverWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhookID: string;
+                deliveryID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        delivery: components["schemas"]["WebhookDelivery"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rotateWebhookSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhookID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        webhook: components["schemas"]["Webhook"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    testWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhookID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        delivery: components["schemas"]["WebhookDelivery"];
                     };
                 };
             };
