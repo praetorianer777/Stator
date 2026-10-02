@@ -588,6 +588,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   `GET /pages/{id}/excerpts` (the `list_page_excerpts` tool) lists a page's
   published excerpts by name with the start of their words, and a picker
   chooses a page and the whole of it or one excerpt, for the include block.
+- Include page and excerpt blocks (#53). "Include" in the slash menu opens
+  the picker, and the page then shows the other page's published words, or
+  one excerpt's, framed and named with a link to where they come from, kept
+  up to date as that page changes. Each reader sees what they may read: a
+  page kept from them, never published, or whose excerpt is gone is one
+  notice that says no more. A page cannot include itself, and an include
+  that leads back to a page on the way to it, or more than five deep, says
+  so instead (`GET /pages/{id}/included`). A Markdown export keeps what an
+  include points at, which an import reads back.
 
 ### Changed
 

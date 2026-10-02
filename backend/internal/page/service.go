@@ -172,7 +172,7 @@ func (s *Service) Update(ctx context.Context, actor perm.Actor, id uuid.UUID, in
 		}
 	}
 	if in.Body != nil {
-		if err := document.Validate(in.Body); err != nil {
+		if err := document.ValidatePage(in.Body, id.String()); err != nil {
 			return nil, 0, err
 		}
 	}

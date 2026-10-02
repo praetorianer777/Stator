@@ -1080,6 +1080,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/included": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What an include of a page shows the caller: its published body, or one excerpt's blocks. 404 for a page the caller may not read, never published, or without that excerpt; 409 for an include that leads back to a page in via or is nested too deep. */
+        get: operations["getIncluded"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/inline-comments": {
         parameters: {
             query?: never;
@@ -2786,6 +2803,22 @@ export interface components {
             id: string;
             /** Format: uuid */
             parentId: string;
+            title: string;
+        };
+        Included: {
+            /** @description A JSON value. */
+            body: unknown;
+            excerpt: components["schemas"]["IncludedExcerpt"] | null;
+            page: components["schemas"]["IncludedPage"];
+        };
+        IncludedExcerpt: {
+            id: string;
+            name: string;
+        };
+        IncludedPage: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
             title: string;
         };
         Info: {
@@ -6736,6 +6769,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getIncluded: {
+        parameters: {
+            query?: {
+                /** @description The excerpt to show; the whole page when absent. */
+                excerpt?: string;
+                /** @description The ids of the pages the include sits in, outermost first, separated by commas. */
+                via?: string;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        included: components["schemas"]["Included"];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

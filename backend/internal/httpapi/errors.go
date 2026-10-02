@@ -192,6 +192,12 @@ func toAPIError(err error) *APIError {
 	if errors.Is(err, unfurl.ErrBadURL) {
 		return ErrValidation(map[string]string{"url": "Give the full address of a web page, starting with https:// or http://."})
 	}
+	if errors.Is(err, page.ErrIncludeCycle) {
+		return &APIError{Status: http.StatusConflict, Code: "include_cycle", Message: sentence(err.Error()) + "."}
+	}
+	if errors.Is(err, page.ErrIncludeTooDeep) {
+		return &APIError{Status: http.StatusConflict, Code: "include_depth", Message: sentence(err.Error()) + "."}
+	}
 	var hubField *hub.FieldError
 	if errors.As(err, &hubField) {
 		return ErrValidation(map[string]string{hubField.Field: hubField.Message})

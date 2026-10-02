@@ -81,6 +81,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",
@@ -158,6 +159,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",
@@ -232,6 +234,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",
@@ -269,6 +272,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",
@@ -301,6 +305,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",
@@ -357,6 +362,19 @@
         }
       }
     },
+    "include": {
+      "attrs": {
+        "excerptId": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "pageId": {
+          "kind": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      }
+    },
     "linkCard": {
       "attrs": {
         "url": {
@@ -393,6 +411,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",
@@ -493,6 +512,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",
@@ -595,6 +615,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",
@@ -659,6 +680,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",
@@ -705,6 +727,7 @@
         "diagram",
         "linkCard",
         "excerpt",
+        "include",
         "image",
         "tableOfContents",
         "childPages",

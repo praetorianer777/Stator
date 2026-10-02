@@ -146,6 +146,10 @@ const (
 // stays when it is renamed, so an include keeps finding it.
 const NodeExcerpt = "excerpt"
 
+// NodeInclude shows another page, or one excerpt of it, as each reader may
+// read it; it holds only what it points at.
+const NodeInclude = "include"
+
 // NodeLinkCard is a link shown as a card with what its page says about
 // itself, or as the player of an allowlisted site.
 const NodeLinkCard = "linkCard"
@@ -172,7 +176,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -328,6 +332,12 @@ var Allowed = Allowlist{
 		NodeExcerpt: {Content: blockNodes, Attrs: map[string]Attr{
 			"id":   {Kind: KindString, Pattern: UUIDPattern},
 			"name": {Kind: KindString, MaxLength: MaxExcerptNameLength, Pattern: `\S`},
+		}},
+		// Ids only: the words are read for each reader when the page is shown,
+		// so the included page's restrictions and later versions hold.
+		NodeInclude: {Attrs: map[string]Attr{
+			"pageId":    {Kind: KindString, Pattern: UUIDPattern},
+			"excerptId": {Kind: KindString, Nullable: true, Pattern: UUIDPattern},
 		}},
 		NodeLinkCard: {Attrs: map[string]Attr{
 			"url":  {Kind: KindString, MaxLength: MaxHrefLength, URL: true, Pattern: `^[Hh][Tt][Tt][Pp][Ss]?://`},

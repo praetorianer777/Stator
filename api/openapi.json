@@ -4625,6 +4625,73 @@
         }
       }
     },
+    "/pages/{pageID}/included": {
+      "get": {
+        "operationId": "getIncluded",
+        "summary": "What an include of a page shows the caller: its published body, or one excerpt's blocks. 404 for a page the caller may not read, never published, or without that excerpt; 409 for an include that leads back to a page in via or is nested too deep.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "excerpt",
+            "in": "query",
+            "description": "The excerpt to show; the whole page when absent.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "via",
+            "in": "query",
+            "description": "The ids of the pages the include sits in, outermost first, separated by commas.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "included": {
+                      "$ref": "#/components/schemas/Included"
+                    }
+                  },
+                  "required": [
+                    "included"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/inline-comments": {
       "post": {
         "operationId": "startInlineThread",
@@ -11740,6 +11807,67 @@
           "parentId",
           "title",
           "depth"
+        ]
+      },
+      "Included": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "A JSON value."
+          },
+          "excerpt": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IncludedExcerpt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "page": {
+            "$ref": "#/components/schemas/IncludedPage"
+          }
+        },
+        "required": [
+          "page",
+          "excerpt",
+          "body"
+        ]
+      },
+      "IncludedExcerpt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "IncludedPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey"
         ]
       },
       "Info": {

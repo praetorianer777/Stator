@@ -3,6 +3,35 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: An include is read for each reader, and the chain it sits in catches cycles
+
+An include is one block, `include`, holding a `pageId` and, for one
+excerpt, an `excerptId`; never the words. The words are read when the page
+is shown, through `GET /pages/{id}/included`, as the reader: so the included
+page's restrictions hold for every page that includes it, and its next
+version reaches them all without anybody saving them. It shows the
+published body only, as the included page's own readers see it.
+
+Whatever keeps the words from a reader, a restriction, a page never
+published, a folder, an excerpt removed or a page deleted, answers the same
+404 and the same notice, so an include tells a reader nothing about a page
+they may not read, not even that it exists.
+
+Cycles are caught twice. Saving a page that includes itself, at any depth
+of its body, is refused, as a draft and as a version. A longer loop, A
+includes B includes A, cannot be refused on save without reading pages the
+author may not read, so it is caught as it is shown: each include asks with
+`via`, the chain of pages it sits in, starting from the page being read,
+and the server answers 409 for a page already on it, or for a chain five
+deep. The reader then sees the loop's notice once, in place of the page
+showing itself inside itself.
+
+Included words take no anchors and no inline threads of the page they are
+shown in: those belong to the page whose words they are. They are not in
+the including page's search text either, for the same reason; search finds
+them on their own page. The Markdown export writes what the include points
+at, which an import into the same organization reads back.
+
 ## 2026-10-02: An excerpt is a frame in the page, found by an id that outlives its name
 
 An excerpt is one block, `excerpt`, around the blocks it names, with an

@@ -42,6 +42,22 @@ func TestExcerptsAreListedInReadingOrder(t *testing.T) {
 	}
 }
 
+func TestAPageMayIncludeAnyPageButItself(t *testing.T) {
+	const self = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a90"
+	other := `{"type":"include","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a91","excerptId":null}}`
+	itself := `{"type":"include","attrs":{"pageId":"` + self + `","excerptId":"` + excerptA + `"}}`
+	if err := ValidatePage(json.RawMessage(`{"type":"doc","content":[`+other+`]}`), self); err != nil {
+		t.Errorf("an include of another page was refused: %v", err)
+	}
+	deep := `{"type":"doc","content":[{"type":"panel","attrs":{"kind":"info"},"content":[` + itself + `]}]}`
+	if err := ValidatePage(json.RawMessage(deep), self); err == nil || !strings.Contains(err.Error(), "includes itself") {
+		t.Errorf("a page including itself in a panel: %v", err)
+	}
+	if err := Validate(json.RawMessage(deep)); err != nil {
+		t.Errorf("without knowing the page, the body is fine: %v", err)
+	}
+}
+
 func TestExcerptsAreUniqueAndNeverNested(t *testing.T) {
 	cases := map[string]struct{ body, want string }{
 		"nested":      {excerptJSON(excerptA, "Outer", excerptJSON(excerptB, "Inner", line("x"))), "inside another"},

@@ -55,6 +55,40 @@ func excerptNodes(blocks []Node, depth int) []Node {
 	return out
 }
 
+// IncludesPage says whether a document includes the page with the id given,
+// itself or one of its excerpts, at any depth.
+func IncludesPage(root Node, pageID string) bool {
+	var walk func(blocks []Node, depth int) bool
+	walk = func(blocks []Node, depth int) bool {
+		if depth > MaxDepth {
+			return false
+		}
+		for _, n := range blocks {
+			if id, _ := n.Attrs["pageId"].(string); n.Type == NodeInclude && id == pageID {
+				return true
+			}
+			if walk(n.Content, depth+1) {
+				return true
+			}
+		}
+		return false
+	}
+	return walk(root.Content, 0)
+}
+
+// ValidatePage is Validate for the body of the page with the id given,
+// which may include any page but itself.
+func ValidatePage(body []byte, pageID string) error {
+	if err := Validate(body); err != nil {
+		return err
+	}
+	root, _ := Parse(body)
+	if IncludesPage(root, pageID) {
+		return invalid("This page includes itself, which would show it over and over; include another page, or one of this page's excerpts elsewhere.")
+	}
+	return nil
+}
+
 // checkExcerpts refuses an excerpt inside another, which an include could
 // not tell apart, and two that share an id or a name, which a picker could not.
 func checkExcerpts(root Node) error {

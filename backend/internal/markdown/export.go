@@ -174,6 +174,14 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 		}
 		attrs = append(attrs, [2]string{"data-sort", stringAttr(n, "sort")})
 		return div(kindChildPages, attrs, ""), true
+	// What an include shows is read for each reader, so the export keeps
+	// what it points at, which an import into the same organization finds.
+	case document.NodeInclude:
+		attrs := [][2]string{{"data-page", stringAttr(n, "pageId")}}
+		if excerpt := stringAttr(n, "excerptId"); excerpt != "" {
+			attrs = append(attrs, [2]string{"data-excerpt", excerpt})
+		}
+		return div(kindInclude, attrs, ""), true
 	}
 	return "", false
 }
