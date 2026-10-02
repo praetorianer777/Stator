@@ -9,9 +9,10 @@ import { t } from "@/i18n";
 import { SpacePermissions } from "@/features/permissions/SpacePermissions";
 import { ArchivePanel } from "@/features/archive/ArchivePanel";
 import { SpaceArchive } from "@/features/archive/SpaceArchive";
+import { ShortcutsPanel } from "@/features/shortcuts/ShortcutsPanel";
 import { TrashPanel } from "./TrashPanel";
 
-export type SettingsTab = "details" | "permissions" | "trash" | "archive";
+export type SettingsTab = "details" | "shortcuts" | "permissions" | "trash" | "archive";
 
 const SETTINGS_PANEL_ID = "space-settings-panel";
 
@@ -56,6 +57,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
             panelId={SETTINGS_PANEL_ID}
             tabs={[
               { value: "details", label: t.spaceSettings.details, attrs: { "data-settings-tab": "details" } },
+              { value: "shortcuts", label: t.spaceSettings.shortcuts, attrs: { "data-settings-tab": "shortcuts" } },
               { value: "permissions", label: t.spaceSettings.permissions, attrs: { "data-settings-tab": "permissions" } },
               { value: "trash", label: t.spaceSettings.trash, attrs: { "data-settings-tab": "trash" } },
               { value: "archive", label: t.spaceSettings.archive, attrs: { "data-settings-tab": "archive" } },
@@ -65,6 +67,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
       />
       <TabPanel id={SETTINGS_PANEL_ID} label={t.spaceSettings[tab]} className="space-y-6">
         {tab === "details" && <Details key={space.id} space={space} />}
+        {tab === "shortcuts" && <ShortcutsPanel space={space} />}
         {tab === "permissions" && <SpacePermissions space={space} />}
         {tab === "trash" && <TrashPanel space={space} />}
         {tab === "archive" && <ArchivePanel space={space} />}
