@@ -298,6 +298,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/spaces/{spaceKey}/trash/{pageID}", s.handlePurgePage)
 			r.Post("/pages", s.handleCreatePage)
 			r.Get("/pages/{pageID}", s.handleGetPage)
+			r.Get("/pages/{pageID}/excerpts", s.handleListExcerpts)
 			r.Patch("/pages/{pageID}", s.handleUpdatePage)
 			r.Delete("/pages/{pageID}", s.handleTrashPage)
 			r.Post("/pages/{pageID}/move", s.handleMovePage)

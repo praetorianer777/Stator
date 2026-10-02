@@ -42,6 +42,7 @@ func TestACommentRefusesWhatOnlyAPageMayHold(t *testing.T) {
 		"a decision":        `{"type":"doc","content":[{"type":"decision","attrs":{"state":"decided"}}]}`,
 		"a formula":         `{"type":"doc","content":[{"type":"mathBlock","attrs":{"latex":"x"}}]}`,
 		"a diagram":         `{"type":"doc","content":[{"type":"diagram","attrs":{"source":"graph TD"}}]}`,
+		"an excerpt":        `{"type":"doc","content":[{"type":"excerpt","attrs":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a70","name":"x"},"content":[{"type":"paragraph"}]}]}`,
 		"a link card":       `{"type":"doc","content":[{"type":"linkCard","attrs":{"url":"https://example.test","view":"card"}}]}`,
 		"an inline formula": `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mathInline","attrs":{"latex":"x"}}]}]}`,
 		"an expand block":   `{"type":"doc","content":[{"type":"expand","attrs":{"title":"More"},"content":[{"type":"paragraph"}]}]}`,

@@ -580,6 +580,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   Valkey (`GET /link-preview`); a page keeps only the address and the view.
   Players load in a sandbox from the origins the Content-Security-Policy's
   new `frame-src` names.
+- Excerpts (#48). "Excerpt" in the slash menu marks the blocks under the
+  caret as a named part of the page, framed for its author with its name in
+  a box to type over; readers see only the blocks. An excerpt keeps an id
+  that outlives a rename, and the editor gives a pasted copy an id and a
+  name of its own and takes the frame off one pasted inside another.
+  `GET /pages/{id}/excerpts` (the `list_page_excerpts` tool) lists a page's
+  published excerpts by name with the start of their words, and a picker
+  chooses a page and the whole of it or one excerpt, for the include block.
 
 ### Changed
 

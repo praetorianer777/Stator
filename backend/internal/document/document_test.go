@@ -57,6 +57,7 @@ const richDoc = `{"type":"doc","content":[
  {"type":"mathBlock","attrs":{"latex":"\\int_0^1 x\\,dx = \\frac{1}{2}"}},
  {"type":"diagram","attrs":{"source":"flowchart LR\n  A[Draft] --> B[Published]"}},
  {"type":"linkCard","attrs":{"url":"https://example.test/post","view":"card"}},
+ {"type":"excerpt","attrs":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a70","name":"Support hours"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Nine to five"}]}]},
  {"type":"linkCard","attrs":{"url":"HTTPS://youtu.be/dQw4w9WgXcQ","view":"embed"}},
  {"type":"heading","attrs":{"level":3,"id":null},"content":[{"type":"text","text":"Plan"}]},
  {"type":"tableOfContents","attrs":{"maxLevel":2}},
@@ -287,6 +288,7 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		`\int_0^1 x\,dx = \frac{1}{2}`,
 		"flowchart LR",
 		"  A[Draft] --> B[Published]",
+		"Nine to five",
 		"Plan",
 	}, "\n")
 	if got := PlainText(root); got != want {

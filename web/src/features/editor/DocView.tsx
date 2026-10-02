@@ -248,6 +248,13 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
         </div>
       );
     }
+    // An excerpt reads as the blocks it marks; its name is for pickers.
+    case "excerpt":
+      return (
+        <div className="doc-excerpt" data-excerpt={String(node.attrs?.id ?? "")}>
+          <Blocks nodes={node.content} copy={copy} path={path} />
+        </div>
+      );
     case LINK_CARD_NODE: {
       const url = webAddress(node.attrs?.url);
       return url ? <LinkCard url={url} view={linkCardView(node.attrs?.view)} /> : null;

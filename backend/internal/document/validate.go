@@ -78,7 +78,10 @@ func Validate(body json.RawMessage) error {
 
 // ValidateNode checks an already decoded document against the allowlist.
 func ValidateNode(root Node) error {
-	return validator{list: &Allowed, noun: "page", anchors: map[string]bool{}}.check(root)
+	if err := (validator{list: &Allowed, noun: "page", anchors: map[string]bool{}}).check(root); err != nil {
+		return err
+	}
+	return checkExcerpts(root)
 }
 
 // ParseComment decodes a comment's document and holds it to CommentAllowed,
