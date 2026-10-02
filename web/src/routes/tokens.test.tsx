@@ -5,7 +5,8 @@ import type { ApiToken } from "@/api/tokens";
 import { DAY_MS, MCP_PATH, TOKEN_DEFAULT_EXPIRY_DAYS } from "@/config";
 import { renderAt, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
-import { expiryFrom } from "./tokens";
+import { aSpace } from "@/test/spaces";
+import { expiryFrom, reachOf } from "./tokens";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -19,6 +20,8 @@ function token(over: Partial<ApiToken>): ApiToken {
     id: "0195f000-0000-7000-8000-0000000000a1",
     name: "deploy",
     scopes: [],
+    spaces: [],
+    allSpaces: true,
     lastUsedAt: null,
     expiresAt: null,
     createdAt: "2026-09-29T08:00:00Z",
@@ -170,6 +173,66 @@ describe("the tokens page", () => {
     expect(await screen.findByText("deploy was revoked.")).toBeInTheDocument();
     await waitFor(() => expect(row("deploy")).toBeNull());
     expect(sent.filter((r) => r.method === "DELETE").map((r) => r.path)).toEqual([`/tokens/${deploy.id}`]);
+  });
+
+  it("limits a new token to the spaces picked, and says so in the list", async () => {
+    let tokens: ApiToken[] = [];
+    const sent = stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [aSpace(), aSpace({ id: "0195f000-0000-7000-8000-00000000d0c6", key: "OPS", name: "Operations" })] } },
+      "GET /tokens": () => ({ status: 200, body: { tokens } }),
+      "POST /tokens": () => {
+        const made = token({ name: "pipeline", spaces: ["OPS"], allSpaces: false });
+        tokens = [made];
+        return { status: 201, body: { token: { ...made, secret: SECRET } } };
+      },
+    });
+    const user = userEvent.setup();
+    await renderAt("/settings/tokens");
+    const picker = await screen.findByRole("group", { name: "Spaces" });
+    expect(picker).toHaveAccessibleDescription(/Every space you can reach/);
+    const ops = within(picker).getByRole("button", { name: /Operations/ });
+    await user.click(ops);
+    expect(ops).toHaveAttribute("aria-pressed", "true");
+    expect(within(picker).getByRole("button", { name: /Handbook/ })).toHaveAttribute("aria-pressed", "false");
+    expect(picker).toHaveAccessibleDescription(/reaches only the spaces picked here/);
+
+    await user.type(screen.getByLabelText("Token name"), "pipeline");
+    await user.click(screen.getByRole("button", { name: "Create token" }));
+    await screen.findByLabelText("Your new token");
+    expect(sent.find((r) => r.method === "POST")?.body).toMatchObject({ name: "pipeline", scopes: [], spaces: ["OPS"] });
+    expect(ops).toHaveAttribute("aria-pressed", "false");
+    await waitFor(() => expect(row("pipeline")).not.toBeNull());
+    expect(row("pipeline")).toHaveTextContent("Only OPS");
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("says what each token reaches", () => {
+    expect(reachOf({ allSpaces: true, spaces: [] })).toBe("Every space you can reach");
+    expect(reachOf({ allSpaces: false, spaces: ["DOCS", "OPS"] })).toBe("Only DOCS, OPS");
+    expect(reachOf({ allSpaces: false, spaces: [] })).toBe("No space any more: every one it named was deleted.");
+  });
+
+  it("shows the server's word on the spaces it refused", async () => {
+    stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [aSpace()] } },
+      "GET /tokens": { status: 200, body: { tokens: [] } },
+      "POST /tokens": {
+        status: 422,
+        body: {
+          error: {
+            code: "validation_failed",
+            message: "Some fields need attention.",
+            fields: { spaces: "A token can only name spaces you can already see; check the keys." },
+          },
+        },
+      },
+    });
+    const user = userEvent.setup();
+    await renderAt("/settings/tokens");
+    await user.click(await screen.findByRole("button", { name: /Handbook/ }));
+    await user.type(screen.getByLabelText("Token name"), "deploy");
+    await user.click(screen.getByRole("button", { name: "Create token" }));
+    expect(await screen.findByText("A token can only name spaces you can already see; check the keys.")).toBeInTheDocument();
   });
 
   it("is reached from the account menu", async () => {

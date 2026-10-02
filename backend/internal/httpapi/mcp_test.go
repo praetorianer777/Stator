@@ -266,7 +266,7 @@ func TestAToolRequiresItsPathAndReadsWhenItGets(t *testing.T) {
 }
 
 func TestAReadOnlyTokenIsOfferedOnlyReadingTools(t *testing.T) {
-	all, reading := listTools(false), listTools(true)
+	all, reading := listTools(false, false), listTools(true, false)
 	if len(reading) == 0 || len(reading) >= len(all) {
 		t.Fatalf("%d tools for a read token of %d", len(reading), len(all))
 	}
@@ -438,8 +438,8 @@ func TestAReadTokenReadsThroughTheEndpointAndWritesNothing(t *testing.T) {
 		return result
 	}
 	listed := rpc("reader", `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)["tools"].([]any)
-	if len(listed) != len(listTools(true)) {
-		t.Errorf("a read token is offered %d tools, want %d", len(listed), len(listTools(true)))
+	if len(listed) != len(listTools(true, false)) {
+		t.Errorf("a read token is offered %d tools, want %d", len(listed), len(listTools(true, false)))
 	}
 	refused := rpc("reader", `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"update_page","arguments":{"pageID":"`+uuid.NewString()+`","version":1}}}`)
 	if refused["isError"] != true || !strings.Contains(refused["content"].([]any)[0].(map[string]any)["text"].(string), "can only read") {

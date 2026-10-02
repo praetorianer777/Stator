@@ -2239,6 +2239,7 @@ export interface components {
             requestId?: string;
         };
         APIToken: {
+            allSpaces: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2250,6 +2251,7 @@ export interface components {
             name: string;
             scopes: "read"[];
             secret?: string;
+            spaces: string[];
         };
         AccessPage: {
             home: boolean;
@@ -2513,6 +2515,7 @@ export interface components {
             expiresAt?: string;
             name: string;
             scopes?: "read"[];
+            spaces?: string[];
         };
         CurrentOrg: {
             /** Format: uuid */
@@ -2853,6 +2856,7 @@ export interface components {
             tags?: string[];
         };
         OrgAPIToken: {
+            allSpaces: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2865,6 +2869,7 @@ export interface components {
             owner: components["schemas"]["User"];
             scopes: "read"[];
             secret?: string;
+            spaces: string[];
         };
         OutlineEntry: {
             depth: number;

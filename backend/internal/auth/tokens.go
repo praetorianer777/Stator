@@ -23,12 +23,22 @@ import (
 // MaxTokenNameLength bounds a token's name, which is only a reminder.
 const MaxTokenNameLength = 100
 
+// MaxTokenSpaces bounds how many spaces one token names.
+const MaxTokenSpaces = 50
+
 // APIToken is a personal access token. The secret is only ever returned once,
 // by CreateAPIToken.
 type APIToken struct {
 	ID     uuid.UUID `json:"id"`
 	Name   string    `json:"name"`
 	Scopes []string  `json:"scopes"`
+	// Spaces are the keys of the spaces the token is limited to, as far as
+	// the reader may see them; empty for one that reaches every space its
+	// owner does, unless AllSpaces is false.
+	Spaces []string `json:"spaces"`
+	// AllSpaces is false for a token limited to Spaces, which then reaches
+	// nothing else, and nothing at all once every one of them is deleted.
+	AllSpaces bool `json:"allSpaces"`
 	// LastUsedAt is refreshed at most once a minute; null until first use.
 	LastUsedAt *time.Time `json:"lastUsedAt"`
 	// ExpiresAt is null for a token that lasts until it is revoked.
@@ -45,8 +55,10 @@ type OrgAPIToken struct {
 
 // NewAPIToken is what a person asks for when making a token.
 type NewAPIToken struct {
-	Name      string
-	Scopes    []string
+	Name   string
+	Scopes []string
+	// Spaces are space keys; none leaves the token every space its owner reaches.
+	Spaces    []string
 	ExpiresAt *time.Time
 }
 
@@ -60,6 +72,11 @@ var (
 	ErrTokenExpiry = errors.New("the expiry has to be in the future")
 	// ErrNoSuchToken is returned when the token named is not the caller's to revoke.
 	ErrNoSuchToken = errors.New("that token was not found")
+	// ErrTokenSpaces is returned for more spaces than a token names.
+	ErrTokenSpaces = errors.New("a token names at most 50 spaces; leave them all out for one that reaches every space you do")
+	// ErrNoSuchSpace is returned when a token names a space its maker cannot
+	// see: naming it would not widen the token, but it would read as if it had.
+	ErrNoSuchSpace = errors.New("a token can only name spaces you can already see; check the keys")
 )
 
 // ValidateScopes refuses any scope but read.
@@ -82,6 +99,16 @@ func (s *Service) validateNewToken(in *NewAPIToken) error {
 	}
 	// Never nil: the column is not null, and the answer lists no scopes as [].
 	in.Scopes = append([]string{}, slices.Compact(slices.Sorted(slices.Values(in.Scopes)))...)
+	keys := make([]string, 0, len(in.Spaces))
+	for _, k := range in.Spaces {
+		if k = strings.ToUpper(strings.TrimSpace(k)); k != "" {
+			keys = append(keys, k)
+		}
+	}
+	in.Spaces = append([]string{}, slices.Compact(slices.Sorted(slices.Values(keys)))...)
+	if len(in.Spaces) > MaxTokenSpaces {
+		return ErrTokenSpaces
+	}
 	if in.ExpiresAt != nil && !in.ExpiresAt.After(s.now()) {
 		return ErrTokenExpiry
 	}
@@ -98,18 +125,31 @@ func (s *Service) CreateAPIToken(ctx context.Context, orgID, userID uuid.UUID, i
 	if err != nil {
 		return nil, 0, err
 	}
-	tok := APIToken{Name: in.Name, Scopes: in.Scopes, ExpiresAt: in.ExpiresAt, Secret: secret}
+	tok := APIToken{Name: in.Name, Scopes: in.Scopes, Spaces: in.Spaces, AllSpaces: len(in.Spaces) == 0, ExpiresAt: in.ExpiresAt, Secret: secret}
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, spaces_only)
+			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6)
 			RETURNING id, created_at`,
-			userID, tok.Name, digest, tok.Scopes, tok.ExpiresAt,
+			userID, tok.Name, digest, tok.Scopes, tok.ExpiresAt, !tok.AllSpaces,
 		).Scan(&tok.ID, &tok.CreatedAt); err != nil {
 			return fmt.Errorf("create api token: %w", err)
 		}
+		if !tok.AllSpaces {
+			// The spaces are read under the maker's own permissions, so a key
+			// they cannot see inserts nothing and the count refuses it.
+			tag, err := tx.Exec(ctx, `
+				INSERT INTO api_token_space (org_id, token_id, space_id)
+				SELECT current_org_id(), $1, s.id FROM space s WHERE s.key = ANY ($2)`, tok.ID, tok.Spaces)
+			if err != nil {
+				return fmt.Errorf("limit the token to its spaces: %w", err)
+			}
+			if int(tag.RowsAffected()) != len(tok.Spaces) {
+				return ErrNoSuchSpace
+			}
+		}
 		return audit.Write(ctx, tx, orgID, audit.Entry{Action: audit.ActionTokenCreated, TargetType: "api_token", TargetID: &tok.ID, Actor: userID, IP: ip,
-			Data: map[string]any{"name": tok.Name, "scopes": tok.Scopes}})
+			Data: map[string]any{"name": tok.Name, "scopes": tok.Scopes, "spaces": tok.Spaces}})
 	})
 	if err != nil {
 		return nil, 0, err
@@ -117,11 +157,14 @@ func (s *Service) CreateAPIToken(ctx context.Context, orgID, userID uuid.UUID, i
 	return &tok, lsn, nil
 }
 
-const tokenColumns = `t.id, t.name, t.scopes, t.last_used_at, t.expires_at, t.created_at`
+// tokenColumns name a token's spaces through the reader's own permissions, so
+// a list never spells the key of a space its reader may not see.
+const tokenColumns = `t.id, t.name, t.scopes, t.last_used_at, t.expires_at, t.created_at, NOT t.spaces_only,
+	ARRAY(SELECT s.key FROM api_token_space ts JOIN space s ON s.id = ts.space_id WHERE ts.token_id = t.id ORDER BY s.key)`
 
 func scanToken(row pgx.Row, extra ...any) (APIToken, error) {
 	var t APIToken
-	err := row.Scan(append([]any{&t.ID, &t.Name, &t.Scopes, &t.LastUsedAt, &t.ExpiresAt, &t.CreatedAt}, extra...)...)
+	err := row.Scan(append([]any{&t.ID, &t.Name, &t.Scopes, &t.LastUsedAt, &t.ExpiresAt, &t.CreatedAt, &t.AllSpaces, &t.Spaces}, extra...)...)
 	return t, err
 }
 
@@ -202,7 +245,8 @@ func (s *Service) revoke(ctx context.Context, orgID uuid.UUID, owner *uuid.UUID,
 // apiTokenPrincipalSQL resolves a token to its owner in its organization. The
 // membership is joined, not left joined: a token outlives no membership.
 const apiTokenPrincipalSQL = `
-SELECT t.id, t.scopes, t.last_used_at,
+SELECT t.id, t.scopes, t.last_used_at, t.spaces_only,
+       ARRAY(SELECT ts.space_id FROM api_token_space ts WHERE ts.token_id = t.id ORDER BY ts.space_id),
        u.id, u.email::text, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.show_in_readers, u.is_active,
        o.id, o.slug, o.name, m.org_role
 FROM api_token t
@@ -227,7 +271,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, apiTokenPrincipalSQL, HashToken(secret)).Scan(
-			&tokenID, &p.Scopes, &lastUsed,
+			&tokenID, &p.Scopes, &lastUsed, &p.SpacesOnly, &p.TokenSpaces,
 			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.ShowInReaders, &active,
 			&org.id, &org.slug, &org.name, &p.Role,
 		)

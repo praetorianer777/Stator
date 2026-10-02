@@ -320,6 +320,12 @@ export const de: Messages = {
     nameMissing: "Geben Sie dem Token einen Namen, damit Sie später wissen, was es verwendet.",
     readOnly: "Nur lesen",
     readOnlyHint: "Es liest alles, was Sie lesen können, und ändert nichts.",
+    spaces: "Bereiche",
+    spacesAll: "Alle Bereiche, die Sie erreichen. Wählen Sie welche aus, um dieses Token auf sie zu beschränken.",
+    spacesSome: "Dieses Token erreicht nur die hier gewählten Bereiche, nie mehr als Sie, und nichts, was die ganze Organisation betrifft.",
+    reachesAll: "Alle Bereiche, die Sie erreichen",
+    reachesOnly: (keys: string) => `Nur ${keys}`,
+    reachesNone: "Kein Bereich mehr: Alle, die es nannte, wurden gelöscht.",
     expires: "Läuft ab",
     inDays: (days: number) => `In ${days} Tagen`,
     never: "Nie",
@@ -352,6 +358,8 @@ export const de: Messages = {
     mcpConfig: "Einstellungen für den Client",
     mcpReadOnly:
       "Mit einem Token, das nur liest, werden dem Assistenten nur die lesenden Werkzeuge angeboten: Er kann Seiten suchen und lesen, aber keine ändern.",
+    mcpSpaces:
+      "Mit einem Token, das auf Bereiche beschränkt ist, sieht der Assistent nur diese Bereiche, und die Werkzeuge für die ganze Organisation werden ihm nicht angeboten.",
     mcpTokenPlaceholder: "<Ihr Token>",
   },
   login: {

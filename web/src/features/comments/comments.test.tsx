@@ -10,6 +10,9 @@ import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 import { editorExtensions, fitSchema } from "@/features/editor/extensions";
 import type { Doc } from "@/features/editor/schema";
+// The composer loads this lazily, and on a busy machine the chunk took longer
+// than a test waits for the editor to appear; loaded here it is at hand.
+import "./CommentEditor";
 
 afterEach(() => {
   vi.unstubAllGlobals();

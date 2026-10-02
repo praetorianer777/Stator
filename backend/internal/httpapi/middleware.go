@@ -162,7 +162,12 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		case err == nil:
 			ctx := context.WithValue(r.Context(), ctxPrincipal, principal)
 			if principal.InOrg() {
-				ctx = db.WithUser(tenant.WithOrg(ctx, *principal.Org), principal.UserID)
+				ctx = tenant.WithOrg(ctx, *principal.Org)
+				if principal.InSpacesOnly() {
+					ctx = db.WithUserInSpaces(ctx, principal.UserID, principal.TokenSpaces)
+				} else {
+					ctx = db.WithUser(ctx, principal.UserID)
+				}
 				ctx = audit.WithIP(ctx, clientIP(r))
 			}
 			r = r.WithContext(ctx)
@@ -208,6 +213,18 @@ func requireSession(next http.Handler) http.Handler {
 	})
 }
 
+// requireWholeOrg refuses a token limited to spaces what concerns the whole
+// organization, which is outside every space it names.
+func requireWholeOrg(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if PrincipalFrom(r.Context()).InSpacesOnly() {
+			respondError(w, r, errSpacesToken)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // requireAuth rejects anonymous callers.
 func requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -239,13 +256,13 @@ func requireOrg(next http.Handler) http.Handler {
 // requireAdmin lets through only an owner or administrator of the organization
 // the caller is acting in.
 func requireAdmin(next http.Handler) http.Handler {
-	return requireOrg(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return requireOrg(requireWholeOrg(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !PrincipalFrom(r.Context()).CanAdminister() {
 			respondError(w, r, ErrForbidden("Only an administrator of this organization can do that. Ask one of them."))
 			return
 		}
 		next.ServeHTTP(w, r)
-	}))
+	})))
 }
 
 // credentialFrom prefers the Authorization header over the session cookie, so

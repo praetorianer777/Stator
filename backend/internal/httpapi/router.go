@@ -194,7 +194,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.With(requireOrg).Get("/access/me", s.handleMyAccess)
 
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg, s.requireUse)
+			r.Use(requireOrg, s.requireUse, requireWholeOrg)
 			r.Get("/tokens", s.handleListAPITokens)
 			// Making one is for a session only, so a leaked token cannot mint a
 			// longer lived one and outlive its own revocation.
@@ -270,7 +270,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/people", s.handleListPeople)
 			r.Get("/groups", s.handleListGroups)
 			r.Get("/spaces", s.handleListSpaces)
-			r.Post("/spaces", s.handleCreateSpace)
+			// A new space is outside every space a limited token names.
+			r.With(requireWholeOrg).Post("/spaces", s.handleCreateSpace)
 			r.Get("/spaces/{spaceKey}", s.handleGetSpace)
 			r.Patch("/spaces/{spaceKey}", s.handleUpdateSpace)
 			r.Delete("/spaces/{spaceKey}", s.handleDeleteSpace)

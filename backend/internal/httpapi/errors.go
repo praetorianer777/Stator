@@ -118,6 +118,8 @@ var (
 		Message: "This token can only read. Use a token without the read scope, or sign in, to make changes."}
 	errSessionOnly = &APIError{Status: http.StatusForbidden, Code: "session_only",
 		Message: "A token cannot do this. Sign in to Stator and do it there."}
+	errSpacesToken = &APIError{Status: http.StatusForbidden, Code: "spaces_token",
+		Message: "This token is limited to some spaces, and this concerns the whole organization. Use a token without that limit, or sign in."}
 )
 
 // toAPIError maps a domain error onto the wire shape. One place for it is what
@@ -247,6 +249,8 @@ func toAPIError(err error) *APIError {
 		return ErrValidation(map[string]string{"scopes": sentence(err.Error())})
 	case errors.Is(err, auth.ErrTokenExpiry):
 		return ErrValidation(map[string]string{"expiresAt": sentence(err.Error())})
+	case errors.Is(err, auth.ErrTokenSpaces), errors.Is(err, auth.ErrNoSuchSpace):
+		return ErrValidation(map[string]string{"spaces": sentence(err.Error())})
 	case errors.Is(err, auth.ErrNoSuchToken):
 		return ErrNotFound("That token was not found. It may have been revoked already; reload the list.")
 	case errors.Is(err, oidc.ErrNotConfigured):
