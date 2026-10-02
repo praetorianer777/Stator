@@ -238,10 +238,24 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)
 
+	_, hookAddress := hookBin(t)
+	hookID := idOf(t, want(t, owner.post(t, "/api/v1/webhooks", map[string]any{"name": "Audited", "url": hookAddress, "topics": []string{"*"}}), http.StatusCreated, "add a webhook"), "webhook")
+	if data := once(audit.ActionWebhookCreated, me, hookID); !strings.Contains(data, `"secret": "set"`) || strings.Contains(data, "/_hooks/") {
+		t.Errorf("the webhook's record reads %s", data)
+	}
+	want(t, owner.patch(t, "/api/v1/webhooks/"+hookID, map[string]any{"name": "Audited", "url": hookAddress, "topics": []string{"page.published"}}), http.StatusOK, "change the webhook")
+	once(audit.ActionWebhookUpdated, me, hookID)
+	want(t, owner.post(t, "/api/v1/webhooks/"+hookID+"/rotate-secret", nil), http.StatusOK, "rotate its secret")
+	once(audit.ActionWebhookSecretRotated, me, hookID)
+	want(t, owner.delete(t, "/api/v1/webhooks/"+hookID), http.StatusNoContent, "delete the webhook")
+	once(audit.ActionWebhookDeleted, me, hookID)
+
 	// What a sign-in does by itself is held to once by the group roles suite,
-	// which signs people in through the provider.
+	// which signs people in through the provider; the worker turning a failing
+	// webhook off, by the webhooks suite.
 	covered[audit.ActionMemberJoined] = true
 	covered[audit.ActionMemberRoleChanged] = true
+	covered[audit.ActionWebhookDisabled] = true
 	for _, action := range audit.Actions {
 		if !covered[action] {
 			t.Errorf("%s is never done here, so nothing holds it to one entry", action)

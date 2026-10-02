@@ -243,6 +243,22 @@ func (w *Worker) prune(ctx context.Context) {
 	}
 }
 
+// Chain hands each event to every handler in order and stops at the first
+// that fails, so put first the ones a second run leaves unchanged.
+type Chain []Handler
+
+func (c Chain) Handle(ctx context.Context, e Event) error {
+	for _, h := range c {
+		if h == nil {
+			continue
+		}
+		if err := h.Handle(ctx, e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Mux hands each event to the handler of its topic and any other to the
 // fallback, so a topic that fails is retried without running the others again.
 type Mux struct {

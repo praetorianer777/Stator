@@ -58,6 +58,13 @@ const (
 	ActionPageUnarchived  = "page.unarchived"
 	ActionSpaceArchived   = "space.archived"
 	ActionSpaceUnarchived = "space.unarchived"
+	// Webhooks: where the organization's events are posted. A webhook the
+	// worker turns off for failing is recorded with nobody as its actor.
+	ActionWebhookCreated       = "webhook.created"
+	ActionWebhookUpdated       = "webhook.updated"
+	ActionWebhookDeleted       = "webhook.deleted"
+	ActionWebhookSecretRotated = "webhook.secret_rotated"
+	ActionWebhookDisabled      = "webhook.disabled"
 	// ActionPageShared is a page sent to people with a note; the note is not kept.
 	ActionPageShared = "page.shared"
 )
@@ -75,6 +82,7 @@ var Actions = []string{
 	ActionPageExported, ActionAuditExported,
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
 	ActionPageArchived, ActionPageUnarchived, ActionSpaceArchived, ActionSpaceUnarchived,
+	ActionWebhookCreated, ActionWebhookUpdated, ActionWebhookDeleted, ActionWebhookSecretRotated, ActionWebhookDisabled,
 	ActionPageShared,
 }
 
@@ -83,7 +91,7 @@ const Redacted = "[redacted]"
 
 // SecretPrefixes start every credential Stator issues or stores, so a value
 // that starts with one never reaches the record whatever key it hides under.
-var SecretPrefixes = []string{"stator_pat_", "armature_pat_", "armature_whs_"}
+var SecretPrefixes = []string{"stator_pat_", "stator_whs_", "armature_pat_", "armature_whs_"}
 
 // secretWords mark a key whose value would be a credential if it were text.
 var secretWords = []string{"secret", "password", "token", "credential"}

@@ -469,6 +469,22 @@ and the versioning [Semantic Versioning](https://semver.org/).
   only the reading tools, and nothing removes, shares, administers or
   touches another person's attention. The tokens page says how to connect a
   client, and `docs/mcp.md` lists the tools.
+- Outbound webhooks (#110), under Webhooks in the account menu, kept by the
+  organization's administrators as in Armature. A webhook takes page
+  published, page moved, page deleted and comment added, or everything,
+  and the worker posts each event as Armature's envelope, signed with
+  `X-Stator-Signature-256: sha256=` and the HMAC of the body under a secret
+  shown once and sealed with `STATOR_SECRET_KEY`. A failed attempt is tried
+  again after 1, 5 and 30 minutes, 2 and 12 hours; a webhook that fails
+  every attempt for a day is turned off and the audit log says so. The
+  delivery log keeps every attempt for 30 days, any of which can be sent
+  again, and a test ping checks the address. Payloads are read as the
+  webhook's owner, the administrator who saved it last, when they are sent,
+  so a page the owner may not view is withheld rather than posted. Every
+  request goes through the SSRF guard (`STATOR_OUTBOUND_ALLOW`). Adding,
+  changing, rotating and deleting a webhook is written to the audit log.
+  Moving a published page to another parent or space and deleting one now
+  write `page.moved` and `page.deleted` to the outbox.
 
 ### Changed
 

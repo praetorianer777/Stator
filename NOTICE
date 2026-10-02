@@ -109,6 +109,13 @@ Adapted from Armature:
   00032_notifications and 00040_outbox_trace
 - backend/internal/netguard: internal/netguard, the SSRF guard, with Names
   and a transport of its own for the Armature backchannel
+- backend/internal/webhook, webhook_handlers.go, migration 00290 and
+  web/src/features/webhooks: internal/webhook (endpoints, deliveries one row
+  per attempt, Sign and Verify, the backoff, the sender, test and
+  redelivery), the webhook handlers and routes, webhook_endpoint and
+  webhook_delivery of migration 00033_automation, and
+  web/src/routes/webhooks.tsx, with sealed secrets, owners, leases and
+  turning a failing endpoint off added
 - backend/cmd/armature-stub: the signature of internal/webhook (Sign) and
   the envelope and headers Armature posts; api/armature/openapi.json is
   Armature's own document, unchanged
