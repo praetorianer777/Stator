@@ -3366,7 +3366,7 @@
     "/pages": {
       "post": {
         "operationId": "createPage",
-        "summary": "Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set.",
+        "summary": "Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once.",
         "tags": [
           "pages"
         ],
@@ -6826,7 +6826,7 @@
       },
       "post": {
         "operationId": "createSpace",
-        "summary": "Make a space and its home page. For whoever may create spaces.",
+        "summary": "Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see.",
         "tags": [
           "spaces"
         ],
@@ -10844,6 +10844,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "personal": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -12420,6 +12423,13 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
           "labels": {
             "type": "array",
             "items": {
@@ -12498,6 +12508,7 @@
           "spaceKey",
           "parentId",
           "title",
+          "kind",
           "body",
           "version",
           "home",
@@ -12560,6 +12571,13 @@
           },
           "body": {
             "description": "A JSON value."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
           },
           "parentId": {
             "type": "string",
@@ -13728,6 +13746,16 @@
           "name": {
             "type": "string"
           },
+          "owner": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SpaceOwner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "starred": {
             "type": "boolean"
           },
@@ -13751,7 +13779,8 @@
           "archivedByName",
           "can",
           "watching",
-          "starred"
+          "starred",
+          "owner"
         ]
       },
       "SpaceGrant": {
@@ -13816,6 +13845,22 @@
         },
         "required": [
           "grants"
+        ]
+      },
+      "SpaceOwner": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "Spec": {
@@ -14418,6 +14463,13 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
           "parentId": {
             "type": "string",
             "format": "uuid"
@@ -14439,7 +14491,8 @@
           "hasChildren",
           "archived",
           "unpublished",
-          "restricted"
+          "restricted",
+          "kind"
         ]
       },
       "UpdateInput": {

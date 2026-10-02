@@ -16,6 +16,7 @@ export function aSpace(over: Partial<Space> = {}): Space {
     can: { editPages: true, administer: true, delete: true, purgeTrash: true, addComments: true, deletePages: true },
     watching: false,
     starred: false,
+    owner: null,
     ...over,
   };
 }
@@ -28,6 +29,7 @@ export function aPage(over: Partial<Page> = {}): Page {
     spaceKey: "DOCS",
     parentId: null,
     title: "Handbook",
+    kind: "page",
     body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome to the handbook." }] }] },
     version: 1,
     home: true,

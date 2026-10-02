@@ -316,7 +316,7 @@
     overflow-wrap: anywhere;
   }
   .doc-content > * + *,
-  .doc-content :is(li, blockquote, td, th, [data-panel]) > * + * {
+  .doc-content :is(li, blockquote, td, th, [data-panel], [data-column]) > * + * {
     margin-top: 0.5rem;
   }
   .doc-content :is(h1, h2, h3, h4) {
@@ -615,6 +615,29 @@
   }
   .doc-content .doc-expand[data-expanded="false"] > .doc-expand-body {
     display: none;
+  }
+  /* Columns split their row by each one's stored share, evenly where none is
+   * stored. Under the shell breakpoint (48rem) side by side leaves too little
+   * of each to read, so they stack in their reading order. */
+  .doc-content .doc-columns {
+    display: flex;
+    gap: 1.5rem;
+  }
+  .doc-content .doc-column {
+    flex: var(--column-share, 50) 1 0;
+    min-width: 0;
+  }
+  @media (width < 48rem) {
+    .doc-content .doc-columns {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
+  /* An author sees where each column ends; a reader sees only the layout. */
+  .doc-content[contenteditable="true"] .doc-column {
+    outline: 1px dashed var(--color-border);
+    outline-offset: 0.25rem;
+    border-radius: var(--radius-control);
   }
   /* A table of contents and a list of child pages: generated lists in a
    * quiet frame, so they read as the page's furniture rather than its text. */

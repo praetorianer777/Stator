@@ -44,6 +44,13 @@ const richDoc = `{"type":"doc","content":[
   {"type":"paragraph","content":[{"type":"text","text":"Revert the release"}]},
   {"type":"expand","attrs":{"title":""},"content":[{"type":"paragraph","content":[{"type":"text","text":"Nested detail"}]}]}]},
  {"type":"expand","content":[{"type":"paragraph"}]},
+ {"type":"columns","content":[
+  {"type":"column","attrs":{"width":33},"content":[{"type":"paragraph","content":[{"type":"text","text":"Left side"}]}]},
+  {"type":"column","attrs":{"width":67},"content":[{"type":"paragraph","content":[{"type":"text","text":"Right side"}]},
+   {"type":"columns","content":[
+    {"type":"column","attrs":{"width":null},"content":[{"type":"paragraph"}]},
+    {"type":"column","content":[{"type":"paragraph"}]},
+    {"type":"column","content":[{"type":"paragraph"}]}]}]}]},
  {"type":"heading","attrs":{"level":3,"id":null},"content":[{"type":"text","text":"Plan"}]},
  {"type":"tableOfContents","attrs":{"maxLevel":2}},
  {"type":"childPages","attrs":{"scope":"subtree","depth":3,"sort":"updated"}},
@@ -101,6 +108,15 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"expand title null", `{"type":"doc","content":[{"type":"expand","attrs":{"title":null},"content":[{"type":"paragraph"}]}]}`, `title=null`},
 		{"expand stored open", `{"type":"doc","content":[{"type":"expand","attrs":{"title":"More","open":true},"content":[{"type":"paragraph"}]}]}`, `attribute "open"`},
 		{"expand inline", para(`{"type":"expand","attrs":{"title":"More"}}`), `puts a "expand"`},
+		{"one column", columns(column(`null`)), `a "columns" holding 1,`},
+		{"four columns", columns(column(`null`), column(`null`), column(`null`), column(`null`)), `a "columns" holding 4,`},
+		{"no columns", `{"type":"doc","content":[{"type":"columns","content":[]}]}`, `a "columns" holding 0,`},
+		{"column too narrow", columns(column(`9`), column(`91`)), `width=9`},
+		{"column too wide", columns(column(`81`), column(`19`)), `width=81`},
+		{"column width not whole", columns(column(`50.5`), column(`49.5`)), `width=50.5`},
+		{"column width as text", columns(column(`"50%"`), column(`50`)), `width="50%"`},
+		{"column outside columns", `{"type":"doc","content":[{"type":"column","content":[{"type":"paragraph"}]}]}`, `puts a "column"`},
+		{"paragraph in columns", `{"type":"doc","content":[{"type":"columns","content":[{"type":"paragraph"},{"type":"paragraph"}]}]}`, `puts a "paragraph"`},
 		{"cell background colour", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"background":"#ff0000"},"content":[{"type":"paragraph"}]}]}]}]}`, `background=`},
 		{"cell align", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"align":"justify;color:red"},"content":[{"type":"paragraph"}]}]}]}]}`, `align=`},
 		{"huge colspan", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":100000},"content":[{"type":"paragraph"}]}]}]}]}`, `colspan=`},
@@ -241,6 +257,8 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		"Rollback steps",
 		"Revert the release",
 		"Nested detail",
+		"Left side",
+		"Right side",
 		"Plan",
 	}, "\n")
 	if got := PlainText(root); got != want {
@@ -301,4 +319,12 @@ func TestAllowlistFileIsCurrent(t *testing.T) {
 	if string(committed) != string(fresh) {
 		t.Fatal("api/document-allowlist.json is out of date; run make document-allowlist and commit it.")
 	}
+}
+
+func columns(cols ...string) string {
+	return `{"type":"doc","content":[{"type":"columns","content":[` + strings.Join(cols, ",") + `]}]}`
+}
+
+func column(width string) string {
+	return `{"type":"column","attrs":{"width":` + width + `},"content":[{"type":"paragraph"}]}`
 }

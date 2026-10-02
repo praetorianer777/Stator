@@ -23,6 +23,55 @@ out and they land on their own home.
 anything renders, so nobody sees their own home flash first. The reader's
 own home then lives at `/home`, where the navigation's Home leads; a check
 keeps landing off while there is no hub.
+## 2026-10-02: A folder is a page of another kind, version 1 from the start
+
+A folder is a row of `page` with `kind = 'folder'`, not a table of its own:
+it has a parent, a rank, a place in the trash and the archive, restrictions
+that reach what is below it, and moves and copies with its subtree, all as
+the page tree already does them. What it lacks is everything a page holds:
+a CHECK keeps its body the empty document, and one trigger on each table of
+a page's content (versions, drafts, files, labels, threads, comments,
+reactions, shares, owners, verifications) refuses a row for a folder,
+whichever service writes it. The API answers that refusal as a 409 with the
+code `folder`. A row stays the kind it was made as, and a home page is
+never a folder, since a space opens on it.
+
+A folder is made at version 1 with no version row. A row at version 0 is
+its creator's alone until published, and so would be everything put in it,
+but a folder has nothing to publish. It has no history, so renaming it
+changes its title and nothing else. Its `published_at` stays empty, which
+keeps it out of the home page's feeds and the stale report; search finds
+pages by their published version, which a folder has none of.
+
+Opening a folder shows the pages and folders in it, the list a child pages
+block draws, and offers new pages, new folders, renaming, moving and the
+trash. It has no editor, history, comments or watching of its own.
+## 2026-10-02: A personal space is an ordinary space with an owner, and starts closed
+
+A personal space is a row of `space` with `owner_id` set to the person it
+belongs to, not a kind of space of its own: pages, search, trash, archive and
+permissions work in it as in any other, and sharing it is the space's own
+permission table, which its owner administers. A partial unique index on
+`(org_id, owner_id)` keeps it to one each, so the directory and the button
+that offers one can trust there is at most one.
+
+Making a space takes `createSpace`, which members do not hold by default, but
+a personal space takes only `use`, with a token for the whole organization:
+everybody needs somewhere to draft before sharing, and it reaches nobody
+else until they share it. The insert policy says so, and requires the owner
+to be the person making it, so nobody makes one in somebody else's name. The
+grant trigger gives a personal space no `everyone` rows, only its owner's
+`administer`.
+
+The owner is fixed when the space is made; a trigger refuses any other
+owner, since a space handed over would be somebody's without their asking.
+When the owner's account goes, `owner_id` becomes null and what is left is an
+ordinary space that only administrators reach.
+
+Administrators of the organization still reach every personal space, as they
+reach every other space: they hold every permission so that no space is ever
+orphaned (2026-09-30), and a space nobody else can open is the one most at
+risk of that. Private means private from the other members.
 
 ## 2026-10-02: A shortcut is a ranked row of the space, read through the page's own view rule
 
@@ -789,6 +838,35 @@ An emoji is a character of the text, not a node: it reads, copies, searches
 and diffs like any other, and needs nothing on the server. The names a colon
 finds it by come from gemoji, bundled with the client under the MIT License
 and loaded with the first colon, so no emoji is ever fetched from elsewhere.
+
+## 2026-10-02: Columns store a share of their row and stack on a narrow screen
+
+A column layout is a `columns` node holding two or three `column` nodes,
+each with any blocks a panel takes. The bound on how many is the
+allowlist's: a node spec now names the fewest and most children it takes,
+which the server and the web editor's check read alike, because one column
+is just the page and a fourth is too narrow to read beside the text. A
+column inside a column is allowed, since a table cell or a panel inside one
+is, but the editor does not make one: the room left would be too little.
+
+Each column stores its `width` as a share of the row, a whole percent from
+10 to 80. The shares are read as proportions, so a body written elsewhere
+whose shares do not add up still lays out, and a column with none stored
+takes an even share. Storing shares rather than pixels keeps a layout the
+same on every screen. The editor offers named layouts, even or with one
+column wider, rather than dragging a border: they work the same from the
+keyboard and on a touch screen, and they give readers the same few shapes
+across pages. A layout with fewer columns folds the blocks of the ones it
+drops into the last column it keeps, so changing the layout loses nothing.
+
+Under 48rem, the shell's own breakpoint, the columns stack in their
+reading order: side by side, each would be a few words wide. Markdown has
+no columns, so an export writes the blocks one column after another, as a
+phone shows them, and an import of that file brings them back as plain blocks.
+
+Search needs no change: `document.PlainText` and the database's
+`page_plain_blocks` already read the blocks inside any node they do not
+name, column by column.
 
 ## 2026-10-01: An expand block stores its title, never whether it is open
 

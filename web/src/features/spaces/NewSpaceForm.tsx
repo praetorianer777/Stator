@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useMe } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { suggestKey, useCreateSpace } from "@/api/spaces";
 import { useCanCreateSpace } from "@/features/permissions/access";
@@ -7,26 +8,42 @@ import { Button, ErrorBanner, Field, PageHeader } from "@/components/ui";
 import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_KEY_MAX_LENGTH, SPACE_NAME_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
 
-/** Makes a space; the key follows the name until somebody types one of their own. */
-export function NewSpaceForm() {
+/**
+ * Makes a space; the key follows the name until somebody types one of their
+ * own. A personal one, which everybody may make, starts named for its owner.
+ */
+export function NewSpaceForm({ personal = false }: { personal?: boolean }) {
   const navigate = useNavigate();
-  const mayCreate = useCanCreateSpace();
+  const mayCreateAny = useCanCreateSpace();
+  const mayCreate = personal || mayCreateAny;
+  const { data: me } = useMe();
   const create = useCreateSpace();
   const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [key, setKey] = useState("");
   const [keyTouched, setKeyTouched] = useState(false);
   const [description, setDescription] = useState("");
   const fields = create.error instanceof ApiError ? create.error.fields : {};
-  const shownKey = keyTouched ? key : suggestKey(name, SPACE_KEY_MAX_LENGTH);
+  const shownName = nameTouched || !personal || !me ? name : t.spaces.personalName(me.user.name);
+  // A personal space's key comes from its owner's name, not the possessive around it.
+  const keySource = personal && !nameTouched && me ? me.user.name : shownName;
+  const shownKey = keyTouched ? key : suggestKey(keySource, SPACE_KEY_MAX_LENGTH);
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    create.mutate({ name, key: shownKey, description }, { onSuccess: (made) => void navigate({ to: "/s/$spaceKey", params: { spaceKey: made.key } }) });
+    create.mutate(
+      { name: shownName, key: shownKey, description, personal: personal || undefined },
+      { onSuccess: (made) => void navigate({ to: "/s/$spaceKey", params: { spaceKey: made.key } }) },
+    );
   }
 
   return (
-    <div className="mx-auto max-w-2xl" data-new-space>
-      <PageHeader crumbs={[{ label: t.spaces.title, render: (label) => <Link to="/spaces">{label}</Link> }]} title={t.spaces.createTitle} />
+    <div className="mx-auto max-w-2xl" data-new-space={personal ? "personal" : ""}>
+      <PageHeader
+        crumbs={[{ label: t.spaces.title, render: (label) => <Link to="/spaces">{label}</Link> }]}
+        title={personal ? t.spaces.createPersonalTitle : t.spaces.createTitle}
+      />
+      {personal && <p className="mb-4 text-sm text-ink-muted">{t.spaces.personalIntro}</p>}
       {!mayCreate ? (
         <p className="text-sm text-ink-muted">{t.spaces.notAdmin}</p>
       ) : (
@@ -35,9 +52,12 @@ export function NewSpaceForm() {
           <Field
             label={t.spaces.name}
             hint={t.spaces.nameHint}
-            value={name}
+            value={shownName}
             maxLength={SPACE_NAME_MAX_LENGTH}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              setNameTouched(true);
+              setName(event.target.value);
+            }}
             error={fields.name}
             autoFocus
             required
@@ -66,7 +86,7 @@ export function NewSpaceForm() {
           />
           <div className="flex gap-2">
             <Button type="submit" loading={create.isPending} data-action="create-space">
-              {t.spaces.submit}
+              {personal ? t.spaces.createPersonal : t.spaces.submit}
             </Button>
             <Button type="button" variant="secondary" onClick={() => navigate({ to: "/spaces" })}>
               {t.spaces.cancel}

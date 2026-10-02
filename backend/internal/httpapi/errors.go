@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
@@ -123,12 +125,24 @@ var (
 		Message: "This token is limited to some spaces, and this concerns the whole organization. Use a token without that limit, or sign in."}
 )
 
+// The database's names for its refusals of a folder's content and of a change of kind.
+const (
+	folderConstraint = "page_is_folder"
+	kindConstraint   = "page_kind_fixed"
+)
+
 // toAPIError maps a domain error onto the wire shape. One place for it is what
 // stops handlers leaking internals into responses by accident.
 func toAPIError(err error) *APIError {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
 		return apiErr
+	}
+	// The database holds what a folder may not have whichever service asks,
+	// so its refusal reads as the service's would.
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && (pgErr.ConstraintName == folderConstraint || pgErr.ConstraintName == kindConstraint) {
+		err = page.ErrFolder
 	}
 	var invalid *oidc.ValidationError
 	if errors.As(err, &invalid) {
@@ -188,6 +202,10 @@ func toAPIError(err error) *APIError {
 	var full *shortcut.FullError
 	if errors.As(err, &full) {
 		return ErrConflict(full.Error())
+	}
+	var taken *space.PersonalTakenError
+	if errors.As(err, &taken) {
+		return ErrConflict(taken.Error())
 	}
 	var closed *share.CannotViewError
 	if errors.As(err, &closed) {
@@ -334,6 +352,10 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusConflict, Code: "archived", Message: sentence(err.Error())}
 	case errors.Is(err, page.ErrHomeNotTrashed), errors.Is(err, page.ErrCycle), errors.Is(err, page.ErrHomeFixed), errors.Is(err, page.ErrNotASibling):
 		return ErrConflict(sentence(err.Error()))
+	case errors.Is(err, page.ErrFolder):
+		return &APIError{Status: http.StatusConflict, Code: "folder", Message: sentence(err.Error())}
+	case errors.Is(err, page.ErrBadKind):
+		return ErrValidation(map[string]string{"kind": sentence(err.Error())})
 	case errors.Is(err, page.ErrStale):
 		return ErrConflict("Somebody else saved this page after you opened it. Copy your changes, reload the page and make them again.")
 	case errors.Is(err, attachment.ErrNotFound):
