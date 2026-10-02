@@ -272,6 +272,18 @@ export const AUDIT_PATH = "/settings/audit";
 export const AUDIT_PAGE_SIZE = 50;
 /** Where the audit log is downloaded as a spreadsheet, under the API's base. */
 export const AUDIT_EXPORT_PATH = "/audit/export";
+/** Where an administrator keeps the organization's outbound webhooks. */
+export const WEBHOOKS_PATH = "/settings/webhooks";
+/** The topic that takes every event, and the events a webhook may take, as the API lists them. */
+export const WEBHOOK_TOPIC_ANY = "*";
+export const WEBHOOK_TOPICS = ["page.published", "page.moved", "page.deleted", "comment.created"] as const;
+/** The database's bounds on a webhook's name and address. */
+export const WEBHOOK_NAME_MAX_LENGTH = 100;
+export const WEBHOOK_URL_MAX_LENGTH = 2000;
+/** Attempts the delivery log shows, within the API's 200. */
+export const WEBHOOK_DELIVERIES_PAGE_SIZE = 50;
+/** The header each delivery's signature travels in, for the receiver to check. */
+export const WEBHOOK_SIGNATURE_HEADER = "X-Stator-Signature-256";
 /** Where administrators read which pages nobody opened or published for a while. */
 export const STALE_PATH = "/settings/stale";
 /** Pages the stale report shows per page, within the API's 100. */
@@ -281,6 +293,8 @@ export const STALE_AGE_DAYS = [30, 90, 180, 365, 730] as const;
 export const STALE_DEFAULT_DAYS = 180;
 /** What a link from the stale report carries, so reviewing a page is not a view that takes it off the report. */
 export const STALE_REVIEW_FROM = "stale";
+/** Readers a page's views dialog lists at a time, within the API's 100. */
+export const PAGE_READERS_PAGE_SIZE = 25;
 /** How every Armature personal access token and webhook secret starts, as Armature makes them. */
 export const ARMATURE_TOKEN_PREFIX = "armature_pat_";
 export const ARMATURE_WEBHOOK_SECRET_PREFIX = "armature_whs_";

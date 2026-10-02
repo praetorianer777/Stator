@@ -97,7 +97,13 @@
       "name": "verification"
     },
     {
+      "name": "views"
+    },
+    {
       "name": "watching"
+    },
+    {
+      "name": "webhooks"
     }
   ],
   "paths": {
@@ -1162,6 +1168,11 @@
                 "page.unarchived",
                 "space.archived",
                 "space.unarchived",
+                "webhook.created",
+                "webhook.updated",
+                "webhook.deleted",
+                "webhook.secret_rotated",
+                "webhook.disabled",
                 "page.shared"
               ]
             }
@@ -1314,6 +1325,11 @@
                 "page.unarchived",
                 "space.archived",
                 "space.unarchived",
+                "webhook.created",
+                "webhook.updated",
+                "webhook.deleted",
+                "webhook.secret_rotated",
+                "webhook.disabled",
                 "page.shared"
               ]
             }
@@ -5220,6 +5236,64 @@
         }
       }
     },
+    "/pages/{pageID}/readers": {
+      "get": {
+        "operationId": "pageReaders",
+        "summary": "Who read a page within the retention, the latest first, leaving out who chose not to be named; next is the cursor for the window after, null at the end. For people who may edit the page.",
+        "tags": [
+          "views"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 25 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The next of the window before; the first window when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readers"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/restrictions": {
       "get": {
         "operationId": "getPageRestrictions",
@@ -5969,10 +6043,52 @@
         }
       }
     },
+    "/pages/{pageID}/views": {
+      "get": {
+        "operationId": "pageViews",
+        "summary": "How often a page was read, each person counted once a day, and by how many people, in all and over the last days; never by whom. For anybody who may view the page.",
+        "tags": [
+          "views"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewCounts"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/visit": {
       "post": {
         "operationId": "visitPage",
-        "summary": "Note that the caller opened a page, for their recent pages.",
+        "summary": "Note that the caller opened a page, for their recent pages, and count the view once a day.",
         "tags": [
           "search"
         ],
@@ -8858,6 +8974,438 @@
           }
         }
       }
+    },
+    "/webhooks": {
+      "get": {
+        "operationId": "listWebhooks",
+        "summary": "Where the organization's events are posted, by name, without their secrets. For administrators.",
+        "tags": [
+          "webhooks"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhooks": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Webhook"
+                      }
+                    }
+                  },
+                  "required": [
+                    "webhooks"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWebhook",
+        "summary": "Add a webhook; its secret is in this answer and never again. The caller becomes its owner, whose permissions every payload is read with. For administrators.",
+        "tags": [
+          "webhooks"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhook": {
+                      "$ref": "#/components/schemas/Webhook"
+                    }
+                  },
+                  "required": [
+                    "webhook"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/{webhookID}": {
+      "delete": {
+        "operationId": "deleteWebhook",
+        "summary": "Remove a webhook and its log. For administrators.",
+        "tags": [
+          "webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "webhookID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateWebhook",
+        "summary": "Change a webhook's name, address, topics or whether it is on; the caller becomes its owner, and turning it on clears its failures. For administrators.",
+        "tags": [
+          "webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "webhookID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhook": {
+                      "$ref": "#/components/schemas/Webhook"
+                    }
+                  },
+                  "required": [
+                    "webhook"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/{webhookID}/deliveries": {
+      "get": {
+        "operationId": "listWebhookDeliveries",
+        "summary": "A webhook's log, one row per attempt, newest first; kept for 30 days. For administrators.",
+        "tags": [
+          "webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "webhookID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 200; 50 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deliveries": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WebhookDelivery"
+                      }
+                    }
+                  },
+                  "required": [
+                    "deliveries"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver": {
+      "post": {
+        "operationId": "redeliverWebhook",
+        "summary": "Send a logged delivery's event again, now, as its next attempt, with the payload read afresh as the owner. For administrators.",
+        "tags": [
+          "webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "webhookID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "deliveryID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "delivery": {
+                      "$ref": "#/components/schemas/WebhookDelivery"
+                    }
+                  },
+                  "required": [
+                    "delivery"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/{webhookID}/rotate-secret": {
+      "post": {
+        "operationId": "rotateWebhookSecret",
+        "summary": "Issue a new secret, in this answer and never again; the old one stops at once. For administrators.",
+        "tags": [
+          "webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "webhookID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhook": {
+                      "$ref": "#/components/schemas/Webhook"
+                    }
+                  },
+                  "required": [
+                    "webhook"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/{webhookID}/test": {
+      "post": {
+        "operationId": "testWebhook",
+        "summary": "Post a ping now, even while the webhook is off, and answer the attempt as logged. For administrators.",
+        "tags": [
+          "webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "webhookID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "delivery": {
+                      "$ref": "#/components/schemas/WebhookDelivery"
+                    }
+                  },
+                  "required": [
+                    "delivery"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9399,6 +9947,11 @@
               "page.unarchived",
               "space.archived",
               "space.unarchived",
+              "webhook.created",
+              "webhook.updated",
+              "webhook.deleted",
+              "webhook.secret_rotated",
+              "webhook.disabled",
               "page.shared"
             ]
           },
@@ -9489,6 +10042,11 @@
                 "page.unarchived",
                 "space.archived",
                 "space.unarchived",
+                "webhook.created",
+                "webhook.updated",
+                "webhook.deleted",
+                "webhook.secret_rotated",
+                "webhook.disabled",
                 "page.shared"
               ]
             }
@@ -11993,6 +12551,63 @@
           "name"
         ]
       },
+      "Reader": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "viewedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "viewedAt",
+          "days"
+        ]
+      },
+      "Readers": {
+        "type": "object",
+        "properties": {
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reader"
+            }
+          },
+          "retentionDays": {
+            "type": "integer"
+          },
+          "unnamed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "readers",
+          "unnamed",
+          "retentionDays",
+          "next"
+        ]
+      },
       "ReadinessResponse": {
         "type": "object",
         "properties": {
@@ -13308,6 +13923,9 @@
               "en",
               "de"
             ]
+          },
+          "showInReaders": {
+            "type": "boolean"
           }
         }
       },
@@ -13334,13 +13952,17 @@
           },
           "name": {
             "type": "string"
+          },
+          "showInReaders": {
+            "type": "boolean"
           }
         },
         "required": [
           "id",
           "email",
           "name",
-          "locale"
+          "locale",
+          "showInReaders"
         ]
       },
       "Verification": {
@@ -13482,6 +14104,37 @@
           "restoredFrom"
         ]
       },
+      "ViewCounts": {
+        "type": "object",
+        "properties": {
+          "canListReaders": {
+            "type": "boolean"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "readers": {
+            "type": "integer"
+          },
+          "recentReaders": {
+            "type": "integer"
+          },
+          "recentViews": {
+            "type": "integer"
+          },
+          "views": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "views",
+          "readers",
+          "recentViews",
+          "recentReaders",
+          "days",
+          "canListReaders"
+        ]
+      },
       "Watch": {
         "type": "object",
         "properties": {
@@ -13596,6 +14249,178 @@
           "inherited"
         ]
       },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "disabledReason": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "failing"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "failures": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/WebhookOwner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "secret": {
+            "type": "string"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "*",
+                "page.published",
+                "page.moved",
+                "page.deleted",
+                "comment.created"
+              ]
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "url",
+          "topics",
+          "enabled",
+          "disabledReason",
+          "failures",
+          "owner",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "WebhookDelivery": {
+        "type": "object",
+        "properties": {
+          "attempt": {
+            "type": "integer"
+          },
+          "attemptedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deliveredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "error": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "manual": {
+            "type": "boolean"
+          },
+          "nextAttemptAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "delivered",
+              "failed",
+              "withheld",
+              "cancelled"
+            ]
+          },
+          "status": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "ping",
+              "page.published",
+              "page.moved",
+              "page.deleted",
+              "comment.created"
+            ]
+          },
+          "webhookId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "webhookId",
+          "eventId",
+          "topic",
+          "attempt",
+          "manual",
+          "state",
+          "status",
+          "error",
+          "nextAttemptAt",
+          "attemptedAt",
+          "deliveredAt",
+          "createdAt"
+        ]
+      },
       "WebhookEnvelope": {
         "type": "object",
         "properties": {
@@ -13624,6 +14449,54 @@
           "orgId",
           "occurredAt",
           "payload"
+        ]
+      },
+      "WebhookInput": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "*",
+                "page.published",
+                "page.moved",
+                "page.deleted",
+                "comment.created"
+              ]
+            }
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "topics"
+        ]
+      },
+      "WebhookOwner": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       }
     },

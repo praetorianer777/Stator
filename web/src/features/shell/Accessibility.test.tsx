@@ -93,7 +93,8 @@ describe("the account menu", () => {
     const menu = screen.getByRole("menu", { name: "Your account" });
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveAttribute("aria-controls", menu.id);
-    const [profile, themes, tokens, notifications, watching, sso, permissions, armature, audit, stale, signOut] = within(menu).getAllByRole("menuitem");
+    const [profile, themes, tokens, notifications, watching, sso, permissions, armature, audit, webhooks, stale, signOut] =
+      within(menu).getAllByRole("menuitem");
     expect(profile).not.toHaveAttribute("aria-disabled", "true");
     expect(themes).not.toHaveAttribute("aria-disabled", "true");
     expect(signOut).not.toHaveAttribute("aria-disabled", "true");
@@ -114,6 +115,8 @@ describe("the account menu", () => {
     expect(armature).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
     expect(audit).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(webhooks).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
     expect(stale).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");

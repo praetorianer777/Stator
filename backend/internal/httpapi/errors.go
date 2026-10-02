@@ -25,6 +25,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/watch"
+	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
 
 // APIError is the single error shape every endpoint returns, so that clients
@@ -160,6 +161,10 @@ func toAPIError(err error) *APIError {
 	var reactionField *reaction.FieldError
 	if errors.As(err, &reactionField) {
 		return ErrValidation(map[string]string{reactionField.Field: sentence(reactionField.Message)})
+	}
+	var webhookField *webhook.FieldError
+	if errors.As(err, &webhookField) {
+		return ErrValidation(map[string]string{webhookField.Field: webhookField.Message})
 	}
 	var shareField *share.FieldError
 	if errors.As(err, &shareField) {
@@ -335,6 +340,11 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: msg, Fields: map[string]string{"file": msg}}
 	case errors.Is(err, mdio.ErrTooManyBelow):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
+	case errors.Is(err, webhook.ErrNotFound):
+		return ErrNotFound("That webhook or delivery is not here. It may have been deleted; reload the list.")
+	case errors.Is(err, webhook.ErrNoKey):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "secret_key_missing",
+			Message: "Webhooks need STATOR_SECRET_KEY to keep their secrets. Ask the operator to set it, then try again.", cause: err}
 	case errors.Is(err, theme.ErrNotFound):
 		return ErrNotFound("That theme was not found. It may have been deleted or taken private.")
 	case errors.Is(err, theme.ErrAssetNotFound):

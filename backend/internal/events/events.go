@@ -23,13 +23,15 @@ const (
 	TopicThreadResolved = "thread.resolved"
 	TopicThreadReopened = "thread.reopened"
 	TopicArmatureLinks  = "armature.links"
+	TopicPageMoved      = "page.moved"
+	TopicPageDeleted    = "page.deleted"
 	// TopicVerificationLapsed is written by the worker, not by a request.
 	TopicVerificationLapsed = "page.verification_lapsed"
 	TopicPageShared         = "page.shared"
 )
 
 // Topics lists every topic the product emits.
-var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageShared}
+var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared}
 
 // Event is one committed domain event.
 type Event struct {
@@ -100,6 +102,24 @@ type PageShared struct {
 type ArmatureLinks struct {
 	PageID  uuid.UUID `json:"pageId"`
 	ActorID uuid.UUID `json:"actorId"`
+}
+
+// PageMoved is a page put somewhere else, in its space or another, with
+// where it stood before; the pages that went with it are not named.
+type PageMoved struct {
+	PageID       uuid.UUID  `json:"pageId"`
+	ActorID      uuid.UUID  `json:"actorId"`
+	FromSpaceID  uuid.UUID  `json:"fromSpaceId"`
+	FromParentID *uuid.UUID `json:"fromParentId"`
+	ToSpaceID    uuid.UUID  `json:"toSpaceId"`
+	ToParentID   *uuid.UUID `json:"toParentId"`
+}
+
+// PageDeleted is a page moved to its space's trash, with the pages below it.
+type PageDeleted struct {
+	PageID  uuid.UUID `json:"pageId"`
+	ActorID uuid.UUID `json:"actorId"`
+	SpaceID uuid.UUID `json:"spaceId"`
 }
 
 // VerificationLapsed is a page whose verification ran out, noticed by the

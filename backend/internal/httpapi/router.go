@@ -23,6 +23,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
@@ -32,6 +33,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/watch"
+	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
 
 // readinessTimeout bounds the database round trip behind /readyz, so a probe
@@ -79,6 +81,10 @@ type Server struct {
 	Stale *stale.Service
 	// Shares sends pages to people who may read them, with a note.
 	Shares *share.Service
+	// PageViews reads how often pages were read and by whom;
+	// PageViewRetention is how long the worker keeps named views, zero forever.
+	PageViews         *pageview.Service
+	PageViewRetention time.Duration
 	// Perms answers the permission screens and the use check in front of
 	// every route; nil lets everybody who is a member through.
 	Perms *perm.Service
@@ -93,6 +99,9 @@ type Server struct {
 	// both. AuditRetention is how long the worker keeps an entry, zero forever.
 	Audit          *audit.Service
 	AuditRetention time.Duration
+	// Webhooks keeps where the organization's events are posted; nil answers
+	// that webhooks are not set up.
+	Webhooks *webhook.Service
 	// Fresh remembers each caller's last write between requests; nil leaves
 	// reads unpinned, which is only right without replicas.
 	Fresh Freshness
@@ -218,6 +227,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/audit", s.handleListAudit)
 			r.Get("/audit/facets", s.handleAuditFacets)
 			r.Get("/audit/export", s.handleExportAudit)
+			r.Get("/webhooks", s.handleListWebhooks)
+			r.Post("/webhooks", s.handleCreateWebhook)
+			r.Patch("/webhooks/{webhookID}", s.handleUpdateWebhook)
+			r.Delete("/webhooks/{webhookID}", s.handleDeleteWebhook)
+			r.Post("/webhooks/{webhookID}/rotate-secret", s.handleRotateWebhookSecret)
+			r.Post("/webhooks/{webhookID}/test", s.handleTestWebhook)
+			r.Get("/webhooks/{webhookID}/deliveries", s.handleListWebhookDeliveries)
+			r.Post("/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", s.handleRedeliverWebhook)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(requireOrg, s.requireUse)
@@ -301,6 +318,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/pages/{pageID}/restrictions", s.handleSetPageRestrictions)
 			r.Get("/pages/{pageID}/access/{userID}", s.handleInspectPageAccess)
 			r.Post("/pages/{pageID}/visit", s.handleVisitPage)
+			r.Get("/pages/{pageID}/views", s.handlePageViews)
+			r.Get("/pages/{pageID}/readers", s.handlePageReaders)
 			r.Get("/pages/{pageID}/comments", s.handleListComments)
 			r.Post("/pages/{pageID}/comments", s.handleStartThread)
 			r.Get("/comments/{commentID}", s.handleGetThread)

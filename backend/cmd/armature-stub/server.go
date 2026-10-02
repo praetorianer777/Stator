@@ -68,6 +68,7 @@ type stub struct {
 	world   *world
 	openapi []byte
 	client  *http.Client
+	hooks   *bins
 }
 
 // call is one request as a person of a tenant.
@@ -79,7 +80,7 @@ type call struct {
 }
 
 func newStub(openapi []byte) *stub {
-	return &stub{world: newWorld(), openapi: openapi, client: &http.Client{Timeout: webhookTimeout}}
+	return &stub{world: newWorld(), openapi: openapi, client: &http.Client{Timeout: webhookTimeout}, hooks: newBins()}
 }
 
 // handler routes Armature's operations and the /_stub/ controls.
@@ -111,6 +112,7 @@ func (s *stub) handler() http.Handler {
 		s.world.mu.Unlock()
 		w.WriteHeader(http.StatusNoContent)
 	})
+	s.hooks.routes(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		refuse(w, http.StatusNotFound, "not_found", "The stub does not serve this. Add it to cmd/armature-stub when Stator starts calling it.")
 	})

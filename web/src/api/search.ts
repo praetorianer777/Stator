@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QUICK_SEARCH_LIMIT, RECENT_PAGES_LIMIT, SEARCH_PAGE_SIZE, SEARCH_PEOPLE_LIMIT } from "@/config";
 import { api } from "./client";
+import { pageReadersQueryKey, pageViewsQueryKey } from "./pageviews";
 import type { components } from "./schema";
 
 type Wire = components["schemas"];
@@ -96,7 +97,7 @@ export function usePeople() {
 
 /**
  * Notes that the reader opened a page, once each time it is shown, for their
- * recent pages. It never holds up the page, and a failure is not the reader's concern.
+ * recent pages and its views. It never holds up the page, and a failure is not the reader's concern.
  */
 export function useVisit(pageId: string | undefined) {
   const queryClient = useQueryClient();
@@ -108,7 +109,13 @@ export function useVisit(pageId: string | undefined) {
     noted.current = pageId;
     api
       .POST("/pages/{pageID}/visit", { params: { path: { pageID: pageId } } })
-      .then(() => queryClient.invalidateQueries({ queryKey: recentPagesQueryKey }))
+      .then(async () => {
+        // A first read of the counts still on its way left before the visit
+        // was noted; invalidating would only wait for it, so it is dropped.
+        const counted = [pageViewsQueryKey(pageId), pageReadersQueryKey(pageId)];
+        await Promise.all(counted.map((queryKey) => queryClient.cancelQueries({ queryKey })));
+        await Promise.all([recentPagesQueryKey, ...counted].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+      })
       .catch(() => {});
   }, [pageId, queryClient]);
 }

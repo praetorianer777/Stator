@@ -42,6 +42,10 @@ const (
 	// audit.MinRetention, which a test holds the two to.
 	DefaultRetainAudit = 365 * 24 * time.Hour
 	MinRetainAudit     = 24 * time.Hour
+	// DefaultRetainPageViews and MinRetainPageViews are
+	// pageview.DefaultRetention and pageview.MinRetention, held so by a test.
+	DefaultRetainPageViews = 90 * 24 * time.Hour
+	MinRetainPageViews     = 30 * 24 * time.Hour
 	// DefaultVerificationCheck is page.DefaultLapseInterval, which a test
 	// holds the two to.
 	DefaultVerificationCheck = 10 * time.Minute
@@ -84,6 +88,9 @@ type Config struct {
 	// RetainAudit is how long the worker keeps an audit entry; zero keeps
 	// every one forever.
 	RetainAudit time.Duration
+	// RetainPageViews is how long the worker keeps who read which page on
+	// which day before only the count stays; zero keeps them forever.
+	RetainPageViews time.Duration
 	// VerificationCheck is how often the worker looks for page verifications
 	// that ran out, to tell their owners.
 	VerificationCheck time.Duration
@@ -288,6 +295,7 @@ func Load() (Config, error) {
 			Token:   l.str("STATOR_TEST_ENDPOINTS_TOKEN", ""),
 		},
 		RetainAudit:       l.duration("STATOR_RETAIN_AUDIT", DefaultRetainAudit),
+		RetainPageViews:   l.duration("STATOR_RETAIN_PAGE_VIEWS", DefaultRetainPageViews),
 		VerificationCheck: l.duration("STATOR_VERIFICATION_CHECK_INTERVAL", DefaultVerificationCheck),
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
@@ -359,6 +367,9 @@ func Load() (Config, error) {
 	}
 	if c.RetainAudit != 0 && c.RetainAudit < MinRetainAudit {
 		l.problem(fmt.Sprintf("STATOR_RETAIN_AUDIT is %s, but the audit log keeps every entry for at least %.0fh; set it to that or longer, such as 8760h, or to 0 to keep the log forever.", c.RetainAudit, MinRetainAudit.Hours()))
+	}
+	if c.RetainPageViews != 0 && c.RetainPageViews < MinRetainPageViews {
+		l.problem(fmt.Sprintf("STATOR_RETAIN_PAGE_VIEWS is %s, but page views are kept for at least %.0fh so the recent counts have their whole period; set it to that or longer, such as 2160h, or to 0 to keep them forever.", c.RetainPageViews, MinRetainPageViews.Hours()))
 	}
 	if c.VerificationCheck < time.Second {
 		l.problem(fmt.Sprintf("STATOR_VERIFICATION_CHECK_INTERVAL is %s; set it to a second or more, such as 10m.", c.VerificationCheck))

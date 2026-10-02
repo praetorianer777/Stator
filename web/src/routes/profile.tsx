@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { createRoute } from "@tanstack/react-router";
 import { useMe, useSetLanguage } from "@/api/auth";
-import { Avatar, Card, ErrorBanner, PageHeader, SectionTitle, Select } from "@/components/ui";
+import { useSetShowInReaders } from "@/api/pageviews";
+import { Avatar, Card, ErrorBanner, PageHeader, SectionTitle, Select, Switch } from "@/components/ui";
 import { AccountSection } from "@/features/armature/AccountSection";
 import { PROFILE_PATH } from "@/config";
 import { browserLanguage, isLanguage, LANGUAGES, resolveLanguage, t, useLanguage, type LanguageChoice } from "@/i18n";
@@ -28,8 +29,40 @@ function ProfilePage() {
         </section>
       )}
       {me && <LanguageSection choice={me.user.locale} />}
+      {me && <PrivacySection shown={me.user.showInReaders} />}
       <AccountSection />
     </div>
+  );
+}
+
+function PrivacySection({ shown }: { shown: boolean }) {
+  const save = useSetShowInReaders();
+  return (
+    <section aria-labelledby="profile-privacy" className="space-y-3" data-profile-privacy="">
+      <SectionTitle id="profile-privacy">{t.profile.privacy}</SectionTitle>
+      <Card className="space-y-3 p-4">
+        <p className="text-sm text-ink-muted">{t.profile.privacyIntro}</p>
+        {save.error && <ErrorBanner>{save.error.message}</ErrorBanner>}
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={shown}
+            label={t.profile.showInReaders}
+            disabled={save.isPending}
+            onChange={(next) => save.mutate(next)}
+            data-field="show-in-readers"
+          />
+          <span aria-hidden="true" className="text-sm font-medium text-ink">
+            {t.profile.showInReaders}
+          </span>
+        </div>
+        {!shown && <p className="text-sm text-ink-muted">{t.profile.hiddenNote}</p>}
+        {save.isSuccess && (
+          <p role="status" className="text-sm text-ink-muted" data-privacy-saved="">
+            {t.profile.privacySaved}
+          </p>
+        )}
+      </Card>
+    </section>
   );
 }
 

@@ -99,6 +99,9 @@ check "the upload limit is set, and can be changed" \
 check "the audit log is kept a year, and that can be changed" \
     "$(grep -c 'STATOR_RETAIN_AUDIT: "8760h"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set retention.audit=2160h 2>&1 | grep -c 'STATOR_RETAIN_AUDIT: "2160h"')" \
     "1 1"
+check "page views are named for a season, and that can be changed" \
+    "$(grep -c 'STATOR_RETAIN_PAGE_VIEWS: "2160h"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set retention.pageViews=720h 2>&1 | grep -c 'STATOR_RETAIN_PAGE_VIEWS: "720h"')" \
+    "1 1"
 check "verifications are checked every ten minutes, and that can be changed" \
     "$(grep -c 'STATOR_VERIFICATION_CHECK_INTERVAL: "10m"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set verification.checkInterval=1h 2>&1 | grep -c 'STATOR_VERIFICATION_CHECK_INTERVAL: "1h"')" \
     "1 1"
