@@ -7,6 +7,9 @@ import type { Hit } from "@/api/search";
 import { renderAt, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
+// The edit route's chunk carries the editor. Loaded inside a test it outlasted
+// the test's time on a busy machine; loaded here it is at hand for the router.
+import "@/routes/page-edit.lazy";
 
 afterEach(() => {
   vi.unstubAllGlobals();

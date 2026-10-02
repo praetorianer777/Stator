@@ -12,6 +12,9 @@ import { editorExtensions } from "@/features/editor/extensions";
 import { PassagesContext } from "@/features/editor/passages";
 import type { Doc, DocMark, DocNode } from "@/features/editor/schema";
 import { findPassage, markPassage, relocate, selectedPassage } from "./passages";
+// The composer loads this lazily, and on a busy machine the chunk took longer
+// than a test waits for the editor to appear; loaded here it is at hand.
+import "./CommentEditor";
 
 beforeAll(() => {
   // jsdom lays nothing out, so a range has no box of its own.
