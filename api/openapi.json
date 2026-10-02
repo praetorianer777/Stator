@@ -76,6 +76,9 @@
       "name": "sharing"
     },
     {
+      "name": "shortcuts"
+    },
+    {
       "name": "spaces"
     },
     {
@@ -1173,7 +1176,10 @@
                 "webhook.deleted",
                 "webhook.secret_rotated",
                 "webhook.disabled",
-                "page.shared"
+                "page.shared",
+                "space.shortcut_added",
+                "space.shortcut_moved",
+                "space.shortcut_removed"
               ]
             }
           },
@@ -1330,7 +1336,10 @@
                 "webhook.deleted",
                 "webhook.secret_rotated",
                 "webhook.disabled",
-                "page.shared"
+                "page.shared",
+                "space.shortcut_added",
+                "space.shortcut_moved",
+                "space.shortcut_removed"
               ]
             }
           },
@@ -7283,6 +7292,249 @@
         }
       }
     },
+    "/spaces/{spaceKey}/shortcuts": {
+      "get": {
+        "operationId": "listShortcuts",
+        "summary": "The space's shortcuts in order: each a page or an address. A shortcut to a page the caller may not view, or one in the trash, is left out.",
+        "tags": [
+          "shortcuts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shortcuts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Shortcut"
+                      }
+                    }
+                  },
+                  "required": [
+                    "shortcuts"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createShortcut",
+        "summary": "Pin a shortcut last: a page the caller may view, or an http or https address with a label, its host when none is given. For the space's administrators.",
+        "tags": [
+          "shortcuts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortcutInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shortcut": {
+                      "$ref": "#/components/schemas/Shortcut"
+                    }
+                  },
+                  "required": [
+                    "shortcut"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}": {
+      "delete": {
+        "operationId": "deleteShortcut",
+        "summary": "Remove a shortcut; the page it opened stays. For the space's administrators.",
+        "tags": [
+          "shortcuts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "shortcutID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}/move": {
+      "post": {
+        "operationId": "moveShortcut",
+        "summary": "Put a shortcut after another of the space, or first when after is null, and answer them all in their new order. For the space's administrators.",
+        "tags": [
+          "shortcuts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "shortcutID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortcutMove"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shortcuts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Shortcut"
+                      }
+                    }
+                  },
+                  "required": [
+                    "shortcuts"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/spaces/{spaceKey}/star": {
       "delete": {
         "operationId": "unstarSpace",
@@ -9952,7 +10204,10 @@
               "webhook.deleted",
               "webhook.secret_rotated",
               "webhook.disabled",
-              "page.shared"
+              "page.shared",
+              "space.shortcut_added",
+              "space.shortcut_moved",
+              "space.shortcut_removed"
             ]
           },
           "actorId": {
@@ -10047,7 +10302,10 @@
                 "webhook.deleted",
                 "webhook.secret_rotated",
                 "webhook.disabled",
-                "page.shared"
+                "page.shared",
+                "space.shortcut_added",
+                "space.shortcut_moved",
+                "space.shortcut_removed"
               ]
             }
           },
@@ -13149,6 +13407,106 @@
         },
         "required": [
           "recipients"
+        ]
+      },
+      "Shortcut": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "link"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ShortcutPage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "url",
+          "page"
+        ]
+      },
+      "ShortcutInput": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "ShortcutMove": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "after"
+        ]
+      },
+      "ShortcutPage": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "home": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "home",
+          "archived"
         ]
       },
       "Space": {

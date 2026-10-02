@@ -235,6 +235,15 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.delete(t, "/api/v1/spaces/AUD/archive"), http.StatusOK, "unarchive the space")
 	once(audit.ActionSpaceUnarchived, me, spaceID)
 
+	cut := idOf(t, want(t, owner.post(t, "/api/v1/spaces/AUD/shortcuts", map[string]any{"url": "https://status.example.com"}), http.StatusCreated, "pin a shortcut"), "shortcut")
+	if data := once(audit.ActionShortcutAdded, me, spaceID); !strings.Contains(data, "status.example.com") || !strings.Contains(data, cut) {
+		t.Errorf("the shortcut's record reads %s", data)
+	}
+	want(t, owner.post(t, "/api/v1/spaces/AUD/shortcuts/"+cut+"/move", map[string]any{"after": nil}), http.StatusOK, "move the shortcut")
+	once(audit.ActionShortcutMoved, me, spaceID)
+	want(t, owner.delete(t, "/api/v1/spaces/AUD/shortcuts/"+cut), http.StatusNoContent, "remove the shortcut")
+	once(audit.ActionShortcutRemoved, me, spaceID)
+
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)
 

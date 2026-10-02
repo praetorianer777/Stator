@@ -1636,6 +1636,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/spaces/{spaceKey}/shortcuts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The space's shortcuts in order: each a page or an address. A shortcut to a page the caller may not view, or one in the trash, is left out. */
+        get: operations["listShortcuts"];
+        put?: never;
+        /** Pin a shortcut last: a page the caller may view, or an http or https address with a label, its host when none is given. For the space's administrators. */
+        post: operations["createShortcut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a shortcut; the page it opened stays. For the space's administrators. */
+        delete: operations["deleteShortcut"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a shortcut after another of the space, or first when after is null, and answer them all in their new order. For the space's administrators. */
+        post: operations["moveShortcut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces/{spaceKey}/star": {
         parameters: {
             query?: never;
@@ -2323,7 +2375,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared";
+            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -2339,7 +2391,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared")[];
+            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -3183,6 +3235,33 @@ export interface components {
         ShareInput: {
             message?: string;
             recipients: components["schemas"]["SubjectRef"][];
+        };
+        Shortcut: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "page" | "link";
+            label: string;
+            page: components["schemas"]["ShortcutPage"] | null;
+            url: string | null;
+        };
+        ShortcutInput: {
+            label?: string;
+            /** Format: uuid */
+            pageId?: string;
+            url?: string;
+        };
+        ShortcutMove: {
+            /** Format: uuid */
+            after: string | null;
+        };
+        ShortcutPage: {
+            archived: boolean;
+            home: boolean;
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            title: string;
         };
         Space: {
             /** Format: date-time */
@@ -4281,7 +4360,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -4330,7 +4409,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -8184,6 +8263,162 @@ export interface operations {
                 content: {
                     "application/json": {
                         grants: components["schemas"]["SpaceGrant"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listShortcuts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        shortcuts: components["schemas"]["Shortcut"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShortcutInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        shortcut: components["schemas"]["Shortcut"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+                shortcutID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    moveShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+                shortcutID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShortcutMove"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        shortcuts: components["schemas"]["Shortcut"][];
                     };
                 };
             };
