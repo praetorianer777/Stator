@@ -86,6 +86,8 @@ describe("the slash menu's blocks", () => {
       status: (d) => JSON.stringify(find(d, "status")[0]?.attrs) === JSON.stringify({ label: "Blocked", color: "danger" }),
       date: (d) => JSON.stringify(find(d, "date")[0]?.attrs) === JSON.stringify({ date: "2026-11-02" }),
       emoji: (d) => find(d, "text")[0]?.text === ":",
+      mathBlock: (d) => find(d, "mathBlock")[0]?.attrs?.latex === "\\sqrt{2}",
+      mathInline: (d) => find(d, "paragraph")[0]?.content?.[0]?.type === "mathInline" && find(d, "mathInline")[0]?.attrs?.latex === "\\sqrt{2}",
     };
     expect(SLASH_ITEMS.map((item) => item.key).sort()).toEqual(Object.keys(expected).sort());
     for (const item of SLASH_ITEMS) {
@@ -96,7 +98,13 @@ describe("the slash menu's blocks", () => {
         editInlineValue: (target) =>
           setTimeout(() =>
             editor?.commands.command(({ tr }) => {
-              tr.setNodeMarkup(target.pos, undefined, target.kind === "status" ? { label: "Blocked", color: "danger" } : { date: "2026-11-02" });
+              const attrs = {
+                status: { label: "Blocked", color: "danger" },
+                date: { date: "2026-11-02" },
+                mathInline: { latex: "\\sqrt{2}" },
+                mathBlock: { latex: "\\sqrt{2}" },
+              };
+              tr.setNodeMarkup(target.pos, undefined, attrs[target.kind]);
               return true;
             }),
           ),
@@ -106,6 +114,32 @@ describe("the slash menu's blocks", () => {
       expect(expected[item.key]?.(e.getJSON() as DocNode), item.key).toBe(true);
       e.destroy();
     }
+  });
+});
+
+describe("formulas", () => {
+  it("are read back from what the editor copies, inline and on their own line", async () => {
+    const doc: DocNode = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Area " },
+            { type: "mathInline", attrs: { latex: "\\pi r^2" } },
+          ],
+        },
+        { type: "mathBlock", attrs: { latex: "a < b & c" } },
+      ],
+    };
+    const e = await make(doc);
+    const html = e.getHTML();
+    expect(e.getText()).toContain("$\\pi r^2$");
+    e.destroy();
+    const back = await make();
+    back.commands.setContent(html);
+    // The editor keeps a line after a closing block to type on.
+    expect(back.getJSON().content?.slice(0, 2)).toEqual(doc.content);
   });
 });
 

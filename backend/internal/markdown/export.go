@@ -110,6 +110,10 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 		return "---", true
 	case "codeBlock":
 		return codeFence(textOf(n), stringAttr(n, "language")), true
+	// A math fence is how Markdown that typesets formulas writes one on its
+	// own line, and the import reads it back as one.
+	case document.NodeMathBlock:
+		return codeFence(stringAttr(n, "latex"), mathLanguage), true
 	case "blockquote":
 		return quote(r.blocks(n.Content, depth+1)), true
 	case "panel":
@@ -585,8 +589,31 @@ func (r renderer) atom(n document.Node, ctx inlineCtx) string {
 		return span(kindStatus, [][2]string{{"data-color", stringAttr(n, "color")}}, r.escape(stringAttr(n, "label"), esc, false))
 	case document.NodeDate:
 		return span(kindDate, nil, r.escape(stringAttr(n, "date"), esc, false))
+	case document.NodeMathInline:
+		return inlineMath(stringAttr(n, "latex"), ctx)
 	}
 	return ""
+}
+
+// mathLanguage is the fence language a formula on its own line is written with.
+const mathLanguage = "math"
+
+// inlineMath writes a formula between dollar signs, its source as it is: TeX
+// already writes a dollar inside a formula as \$, so a bare one is escaped
+// only to keep the formula closed. A table splits its cells before anything
+// else and takes every \| back to a pipe, so each pipe there gains one.
+func inlineMath(latex string, ctx inlineCtx) string {
+	latex = strings.Join(strings.Fields(latex), " ")
+	var b strings.Builder
+	escaped := false
+	for _, c := range latex {
+		if (c == '$' && !escaped) || (c == '|' && ctx == ctxTable) {
+			b.WriteByte('\\')
+		}
+		escaped = c == '\\' && !escaped
+		b.WriteRune(c)
+	}
+	return "$" + b.String() + "$"
 }
 
 func span(kind string, attrs [][2]string, inner string) string {

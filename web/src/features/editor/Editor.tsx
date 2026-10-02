@@ -23,24 +23,25 @@ import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
 import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
 import type { InlineValueTarget } from "./inlineValues";
-import { DateDialog, StatusDialog } from "./InlineValueDialogs";
+import { DateDialog, MathDialog, StatusDialog } from "./InlineValueDialogs";
 import type { Emoji } from "./emoji";
 import { EmojiList } from "./EmojiList";
 
 // The dialog held the page still, but a node that is no longer where it was
-// opened is left as it is rather than changing whatever is there now.
+// opened is left as it is rather than changing whatever is there now. The
+// caret goes on after an inline node; a block, with no text to put it in,
+// stays selected.
 function changeInlineValue(editor: TiptapEditor, target: InlineValueTarget, attrs: InlineValueTarget["attrs"]) {
   const node = editor.state.doc.nodeAt(target.pos);
   if (node?.type.name !== target.kind) return;
-  editor
+  const chain = editor
     .chain()
     .focus()
     .command(({ tr }) => {
       tr.setNodeMarkup(target.pos, undefined, { ...node.attrs, ...attrs });
       return true;
-    })
-    .setTextSelection(target.pos + node.nodeSize)
-    .run();
+    });
+  (node.isInline ? chain.setTextSelection(target.pos + node.nodeSize) : chain.setNodeSelection(target.pos)).run();
 }
 
 /** What a form may do to the editor from outside: put words in, or empty it. */
@@ -284,6 +285,17 @@ export function Editor({
           onSave={(date) => {
             setEditingValue(null);
             changeInlineValue(editor, editingValue, { date });
+          }}
+        />
+      )}
+      {(editingValue?.kind === "mathInline" || editingValue?.kind === "mathBlock") && editor && (
+        <MathDialog
+          initial={editingValue.attrs.latex}
+          display={editingValue.kind === "mathBlock"}
+          onClose={() => setEditingValue(null)}
+          onSave={(latex) => {
+            setEditingValue(null);
+            changeInlineValue(editor, editingValue, { latex });
           }}
         />
       )}

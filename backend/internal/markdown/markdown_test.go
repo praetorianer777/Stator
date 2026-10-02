@@ -184,6 +184,10 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"childPages","attrs":{"scope":"subtree","depth":2,"sort":"title"}}`,
 			`{"type":"childPages","attrs":{"scope":"children","depth":null,"sort":"tree"}}`,
 		),
+		"formulas": doc(
+			`{"type":"mathBlock","attrs":{"latex":"\\sum_{i=1}^n i = \\frac{n(n+1)}{2}"}}`,
+			`{"type":"mathBlock","attrs":{"latex":"a\n`+"```"+`\nb"}}`,
+		),
 		"breaks and links to pages": doc(
 			para(txt("line one"), `{"type":"hardBreak"}`, txt("line two")),
 			para(txt("other page", `{"type":"link","attrs":{"href":"/s/DOCS/p/`+otherID+`#part"}}`)),
@@ -217,9 +221,13 @@ func TestExportReadsAsMarkdown(t *testing.T) {
 		`{"type":"image","attrs":{"attachmentId":"`+fileID+`","alt":"A chart","width":null}}`,
 		`{"type":"expand","attrs":{"title":"More"},"content":[`+para(txt("inside"))+`]}`,
 		para(`{"type":"status","attrs":{"label":"DONE","color":"success"}}`),
+		para(txt("Energy "), `{"type":"mathInline","attrs":{"latex":"E =\n mc^2 \\$ $"}}`),
+		`{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[`+para(`{"type":"mathInline","attrs":{"latex":"\\|x\\| = |y|"}}`)+`]}]}]}`,
 	)
 	md := Render("Plan", parseDoc(t, body), testLinks)
 	for _, want := range []string{
+		`Energy $E = mc^2 \$ \$$`,
+		`| $\\|x\\| = \|y\|$ |`,
 		"# Plan\n\n## Intro\n",
 		"> [!WARNING]\n> Careful\n",
 		"- [x] done\n",

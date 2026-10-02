@@ -110,6 +110,9 @@ const (
 	MaxColumnShare = 80
 	// MaxStatusLength keeps a status label short enough to sit in a line of text.
 	MaxStatusLength = 40
+	// MaxMathLength bounds a formula's TeX source, so one formula cannot keep
+	// every reader's browser typesetting.
+	MaxMathLength = 4000
 )
 
 // The states of a decision item.
@@ -127,6 +130,13 @@ const (
 	NodeDate   = "date"
 )
 
+// NodeMathInline and NodeMathBlock are a formula in running text and one on
+// a line of its own, each stored as its TeX source.
+const (
+	NodeMathInline = "mathInline"
+	NodeMathBlock  = "mathBlock"
+)
+
 // DatePattern is a day as a date node stores it; the validator also checks
 // that the day exists.
 const DatePattern = `^[0-9]{4}-[0-9]{2}-[0-9]{2}$`
@@ -142,8 +152,9 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
-	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
+	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
+	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
 		"rowspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -286,6 +297,10 @@ var Allowed = Allowlist{
 			Inline: true,
 			Attrs:  map[string]Attr{"date": {Kind: KindString, Pattern: DatePattern, Date: true}},
 		},
+		// Only the source: each reader's browser typesets it, so a formula is
+		// never stored as markup a reader's browser would run.
+		NodeMathInline: {Inline: true, Attrs: mathAttrs},
+		NodeMathBlock:  {Attrs: mathAttrs},
 		"attachment": {
 			Inline: true,
 			Attrs: map[string]Attr{

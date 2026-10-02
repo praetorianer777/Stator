@@ -1,10 +1,11 @@
 import { useId, useState, type FormEvent, type ReactNode } from "react";
-import { Button, Dialog, Input, Labelled } from "@/components/ui";
+import { Button, Dialog, Input, Labelled, Textarea } from "@/components/ui";
 import { describedBy } from "@/components/ui/controls";
-import { STATUS_LABEL_MAX_LENGTH } from "@/config";
+import { MATH_MAX_LENGTH, MATH_SOURCE_ROWS, STATUS_LABEL_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
 import { STATUS_COLORS, type StatusColor } from "./schema";
 import { StatusLabel, isoDay, statusLabel, type StatusAttrs } from "./InlineValueViews";
+import { MathFormula, mathSource, typeset } from "./MathViews";
 
 function Actions() {
   return (
@@ -126,6 +127,58 @@ export function DateDialog({ initial, onSave, onClose }: { initial: string; onSa
             }}
           />
         </Labelled>
+      </Form>
+    </Dialog>
+  );
+}
+
+/**
+ * Asks for a formula's LaTeX source and typesets it as it is typed; a source
+ * KaTeX cannot read is not saved, so readers never meet a broken formula.
+ */
+export function MathDialog({ initial, display, onSave, onClose }: { initial: string; display: boolean; onSave: (latex: string) => void; onClose: () => void }) {
+  const m = t.inlineValues.math;
+  const id = useId();
+  const [text, setText] = useState(initial);
+  const [tried, setTried] = useState(false);
+  const latex = mathSource(text.trim());
+  const typeError = latex ? typeset(latex, display).error : null;
+  const problem = !latex ? (tried ? m.empty : undefined) : typeError ? m.unreadable(typeError) : undefined;
+  const fieldId = `${id}-latex`;
+  const hint = m.hint(MATH_MAX_LENGTH);
+  return (
+    <Dialog title={m.dialog} onClose={onClose} data-math-dialog="">
+      <Form
+        onSubmit={() => {
+          setTried(true);
+          if (latex && !typeError) onSave(latex);
+        }}
+      >
+        <Labelled id={fieldId} label={m.field} hint={hint} error={problem}>
+          <Textarea
+            id={fieldId}
+            value={text}
+            rows={MATH_SOURCE_ROWS}
+            maxLength={MATH_MAX_LENGTH}
+            spellCheck={false}
+            autoComplete="off"
+            className="font-mono"
+            invalid={Boolean(problem)}
+            aria-describedby={describedBy(fieldId, hint, problem)}
+            onChange={(event) => {
+              setText(event.target.value);
+              setTried(false);
+            }}
+          />
+        </Labelled>
+        {latex && !typeError && (
+          <div className="space-y-1 text-sm text-ink-muted" data-math-preview="">
+            <p>{m.preview}</p>
+            <div className="overflow-x-auto text-ink">
+              <MathFormula latex={latex} display={display} />
+            </div>
+          </div>
+        )}
       </Form>
     </Dialog>
   );

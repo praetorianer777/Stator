@@ -357,6 +357,16 @@ export const ARMATURE_LINKS_POLL_MS = 2000;
 
 /** The longest status label, matching the API's MaxStatusLength. */
 export const STATUS_LABEL_MAX_LENGTH = 40;
+/** The longest formula source, matching the API's MaxMathLength. */
+export const MATH_MAX_LENGTH = 4000;
+/** How many macro expansions one formula may take, so a macro that calls itself stops instead of holding the page. */
+export const MATH_MAX_EXPAND = 1000;
+/** The largest box, in em, a formula may ask for, so one cannot cover the page. */
+export const MATH_MAX_SIZE = 20;
+/** What a new formula holds until its author writes their own. */
+export const MATH_DEFAULT_LATEX = "a^2 + b^2 = c^2";
+/** How many lines the formula dialog's source field shows. */
+export const MATH_SOURCE_ROWS = 5;
 /** How many emoji a colon offers at once. */
 export const EMOJI_MAX_SUGGESTIONS = 8;
 /** What a colon offers before a letter is typed, by shortcode, most used first. */

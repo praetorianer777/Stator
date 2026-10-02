@@ -4,6 +4,7 @@ import { NodeSelection, type Transaction } from "@tiptap/pm/state";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import { t } from "@/i18n";
 import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel, today, type StatusAttrs } from "./InlineValueViews";
+import { MATH_BLOCK_NODE, MATH_INLINE_NODE } from "./MathViews";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -16,10 +17,11 @@ declare module "@tiptap/core" {
   }
 }
 
-/** A status or a date in the document, at the position its node starts, as it was when it was opened. */
+/** A status, a date or a formula in the document, at the position its node starts, as it was when it was opened. */
 export type InlineValueTarget =
   | { kind: typeof STATUS_NODE; pos: number; attrs: StatusAttrs }
-  | { kind: typeof DATE_NODE; pos: number; attrs: { date: string } };
+  | { kind: typeof DATE_NODE; pos: number; attrs: { date: string } }
+  | { kind: typeof MATH_INLINE_NODE | typeof MATH_BLOCK_NODE; pos: number; attrs: { latex: string } };
 
 export interface InlineValueOptions {
   /** Opens the dialog that changes a status or a date; without it they keep what they have. */
@@ -29,10 +31,13 @@ export interface InlineValueOptions {
 function targetOf(node: PMNode, pos: number): InlineValueTarget | null {
   if (node.type.name === STATUS_NODE) return { kind: STATUS_NODE, pos, attrs: { label: String(node.attrs.label ?? ""), color: statusColor(node.attrs.color) } };
   if (node.type.name === DATE_NODE) return { kind: DATE_NODE, pos, attrs: { date: String(node.attrs.date ?? "") } };
+  if (node.type.name === MATH_INLINE_NODE || node.type.name === MATH_BLOCK_NODE)
+    return { kind: node.type.name, pos, attrs: { latex: String(node.attrs.latex ?? "") } };
   return null;
 }
 
-function open(props: NodeViewProps) {
+/** Opens the dialog for the node a view draws. */
+export function open(props: NodeViewProps) {
   const pos = props.getPos();
   const target = typeof pos === "number" ? targetOf(props.node, pos) : null;
   if (target) (props.extension.options as InlineValueOptions).edit?.(target);
@@ -58,7 +63,7 @@ function DateView(props: NodeViewProps) {
 
 // Enter on a selected status or date opens its dialog, as a click does: the
 // arrow keys select an inline atom before they pass it.
-function openSelected(editor: Editor, type: NodeType, options: InlineValueOptions): boolean {
+export function openSelected(editor: Editor, type: NodeType, options: InlineValueOptions): boolean {
   const { selection } = editor.state;
   if (!(selection instanceof NodeSelection) || selection.node.type !== type || !options.edit) return false;
   const target = targetOf(selection.node, selection.from);
@@ -72,6 +77,22 @@ function insertAndOpen(tr: Transaction, type: NodeType, options: InlineValueOpti
   tr.replaceSelectionWith(node, false);
   const pos = tr.selection.from - node.nodeSize;
   const target = tr.doc.nodeAt(pos)?.type === type ? targetOf(node, pos) : null;
+  if (target) options.edit?.(target);
+}
+
+/**
+ * Opens the dialog on the node of this type that the steps from the given
+ * one put in, for a node placed by a command that may move it, as a block
+ * that replaces an empty line is.
+ */
+export function openInserted(tr: Transaction, type: NodeType, options: InlineValueOptions, firstStep: number, from: number) {
+  const start = tr.mapping.slice(firstStep).map(from, -1);
+  let target: InlineValueTarget | null = null;
+  tr.doc.nodesBetween(start, Math.min(tr.doc.content.size, start + 2), (node, pos) => {
+    if (target) return false;
+    if (node.type === type) target = targetOf(node, pos);
+    return !target;
+  });
   if (target) options.edit?.(target);
 }
 

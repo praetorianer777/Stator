@@ -27,6 +27,7 @@ import { ArmatureIssue, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
+import { MathBlock, MathInline } from "./math";
 import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 import { FindReplace } from "./findReplace";
 
@@ -303,7 +304,7 @@ export interface ExtensionOptions {
   pickIssue?: () => void;
   /** Opens the settings dialog the slash menu's Armature issue list starts with. */
   pickIssueList?: () => void;
-  /** Opens the dialog that changes a status or a date. */
+  /** Opens the dialog that changes a status, a date or a formula. */
   editInlineValue?: (target: InlineValueTarget) => void;
   /** Draws the emoji a colon offers; without it a colon offers none. */
   emoji?: Partial<EmojiOptions["suggestion"]>;
@@ -387,6 +388,8 @@ export function editorExtensions({
     ArmatureIssueList.configure({ pick: pickIssueList }),
     Status.configure({ edit: editInlineValue }),
     DateNode.configure({ edit: editInlineValue }),
+    MathInline.configure({ edit: editInlineValue }),
+    MathBlock.configure({ edit: editInlineValue }),
     FindReplace.configure({ open: find }),
   ];
 }

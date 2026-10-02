@@ -1139,6 +1139,10 @@ export const en = {
       decided: "Decided",
       undecided: "Undecided",
     },
+    math: {
+      edit: "Click to change the formula",
+      unreadable: "This formula cannot be typeset; its source:",
+    },
     expandTools: "Expand",
     removeExpand: "Remove the expand, keep its content",
     columnTools: "Columns",
@@ -1210,6 +1214,7 @@ export const en = {
       panelWarning: { label: "Warning panel", description: "A highlighted box for something to be careful about." },
       panelError: { label: "Error panel", description: "A highlighted box for something that must not happen." },
       decision: { label: "Decision", description: "A decision, decided or not, which the space's decision log lists." },
+      mathBlock: { label: "Formula block", description: "A LaTeX formula on a line of its own, centred." },
       expand: { label: "Expand", description: "A titled section readers open when they want the detail." },
       columns2: { label: "Two columns", description: "Two blocks side by side, stacked on a narrow screen." },
       columns3: { label: "Three columns", description: "Three blocks side by side, stacked on a narrow screen." },
@@ -1219,6 +1224,7 @@ export const en = {
       armatureIssueList: { label: "Armature issue list", description: "A table of the issues a query finds, as each reader may see them." },
       status: { label: "Status", description: "A coloured label with words of your own, in the line of text." },
       date: { label: "Date", description: "A day, shown in each reader's own date format." },
+      mathInline: { label: "Inline formula", description: "A LaTeX formula in the line of text." },
       emoji: { label: "Emoji", description: "Pick an emoji by name. Typing a colon does the same." },
     },
     toc: {
@@ -1264,6 +1270,14 @@ export const en = {
       dialog: "Date",
       field: "Day",
       empty: "Pick a day, or press Escape to keep the date as it was.",
+    },
+    math: {
+      dialog: "Formula",
+      field: "LaTeX source",
+      hint: (max: number) => `Up to ${max} characters, such as \\frac{a}{b} or x^2.`,
+      empty: "Write the formula in LaTeX, or press Escape to keep it as it was.",
+      unreadable: (reason: string) => `This formula cannot be typeset: ${reason}. Change the source and save again.`,
+      preview: "Looks like",
     },
     save: "Save",
     emoji: {

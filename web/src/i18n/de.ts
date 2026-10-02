@@ -1165,6 +1165,10 @@ export const de: Messages = {
       decided: "Entschieden",
       undecided: "Offen",
     },
+    math: {
+      edit: "Klicken Sie, um die Formel zu ändern",
+      unreadable: "Diese Formel kann nicht gesetzt werden; ihre Quelle:",
+    },
     expandTools: "Aufklappbereich",
     removeExpand: "Aufklappbereich entfernen, Inhalt behalten",
     columnTools: "Spalten",
@@ -1236,6 +1240,7 @@ export const de: Messages = {
       panelWarning: { label: "Warn-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, bei dem Vorsicht geboten ist." },
       panelError: { label: "Fehler-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, das nicht passieren darf." },
       decision: { label: "Entscheidung", description: "Eine Entscheidung, getroffen oder offen, die das Entscheidungsprotokoll des Bereichs auflistet." },
+      mathBlock: { label: "Formelblock", description: "Eine LaTeX-Formel in einer eigenen Zeile, zentriert." },
       expand: { label: "Aufklappbereich", description: "Ein Abschnitt mit Titel, den Lesende öffnen, wenn sie die Einzelheiten wollen." },
       columns2: { label: "Zwei Spalten", description: "Zwei Blöcke nebeneinander, auf schmalen Bildschirmen untereinander." },
       columns3: { label: "Drei Spalten", description: "Drei Blöcke nebeneinander, auf schmalen Bildschirmen untereinander." },
@@ -1251,6 +1256,7 @@ export const de: Messages = {
       },
       status: { label: "Status", description: "Ein farbiges Etikett mit eigenen Worten, mitten in der Textzeile." },
       date: { label: "Datum", description: "Ein Tag, im Datumsformat aller Lesenden angezeigt." },
+      mathInline: { label: "Formel im Text", description: "Eine LaTeX-Formel in der Textzeile." },
       emoji: { label: "Emoji", description: "Wählen Sie ein Emoji nach seinem englischen Namen. Ein Doppelpunkt tut dasselbe." },
     },
     toc: {
@@ -1295,6 +1301,14 @@ export const de: Messages = {
       dialog: "Datum",
       field: "Tag",
       empty: "Wählen Sie einen Tag, oder drücken Sie Esc, um das Datum zu lassen, wie es war.",
+    },
+    math: {
+      dialog: "Formel",
+      field: "LaTeX-Quelle",
+      hint: (max: number) => `Bis zu ${max} Zeichen, etwa \\frac{a}{b} oder x^2.`,
+      empty: "Schreiben Sie die Formel in LaTeX, oder drücken Sie Esc, um sie zu lassen, wie sie war.",
+      unreadable: (reason: string) => `Diese Formel kann nicht gesetzt werden: ${reason}. Ändern Sie die Quelle und speichern Sie erneut.`,
+      preview: "Sieht so aus",
     },
     save: "Speichern",
     emoji: {
