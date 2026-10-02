@@ -415,6 +415,11 @@ func (c *converter) block(n ast.Node, depth int) ([]document.Node, error) {
 		if n.Info != nil {
 			if fields := strings.Fields(string(n.Language(c.src))); len(fields) > 0 {
 				lang := strings.ToLower(decode(fields[0]))
+				if lang == mathLanguage {
+					if n, ok := mathBlock(c.lines(n)); ok {
+						return []document.Node{n}, nil
+					}
+				}
 				if languagePattern.MatchString(lang) && len(lang) <= maxLanguageLength {
 					language = lang
 				}
@@ -445,6 +450,16 @@ func codeBlock(code string, language any) document.Node {
 		n.Content = []document.Node{{Type: "text", Text: code}}
 	}
 	return n
+}
+
+// mathBlock reads a math fence as a formula on its own line; one too long
+// or empty to be a formula stays a code block.
+func mathBlock(code string) (document.Node, bool) {
+	latex := strings.TrimSpace(code)
+	if latex == "" || utf8.RuneCountInString(latex) > document.MaxMathLength {
+		return document.Node{}, false
+	}
+	return document.Node{Type: document.NodeMathBlock, Attrs: map[string]any{"latex": latex}}, true
 }
 
 var alertLine = regexp.MustCompile(`^\s*\[!([A-Za-z]+)\]\s*$`)

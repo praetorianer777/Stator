@@ -8,6 +8,8 @@
 @import "@fontsource/inter/600.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
+/* KaTeX's fonts come along the same way, so a formula needs no third party either. */
+@import "katex/dist/katex.min.css";
 
 /* Design tokens: the Clay identity. Armature's docs/design/01-tokens.md is the table
  * these values come from.
@@ -883,6 +885,34 @@
   .ProseMirror-selectednode :is(.doc-status, .doc-date) {
     outline: 2px solid var(--color-focus);
     outline-offset: 1px;
+  }
+  /* A formula on its own line scrolls sideways rather than widening the page
+   * on a narrow screen. */
+  .doc-content div.doc-math {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.25rem 0;
+  }
+  .doc-math .katex-display {
+    margin: 0;
+  }
+  .doc-math[data-math-error] code {
+    color: var(--color-danger);
+  }
+  .doc-math-edit {
+    cursor: pointer;
+  }
+  div.doc-math-edit {
+    border-radius: var(--radius-control);
+  }
+  div.doc-math-edit:hover {
+    background: var(--color-surface);
+  }
+  .ProseMirror-selectednode.doc-math-edit,
+  .ProseMirror-selectednode > .doc-math-edit {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+    border-radius: var(--radius-control);
   }
 }
 

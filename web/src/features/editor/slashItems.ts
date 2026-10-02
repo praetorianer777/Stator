@@ -42,6 +42,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("panelWarning", Icon.Panel, ["panel", "warning", "caution"], (c) => c.setPanel("warning")),
   item("panelError", Icon.Panel, ["panel", "error", "danger"], (c) => c.setPanel("error")),
   item("decision", Icon.Decision, ["decision", "decide", "agreed", "resolution", "outcome"], (c) => c.setDecision()),
+  item("mathBlock", Icon.Sigma, ["math", "formula", "equation", "latex", "tex", "katex"], (c) => c.insertMathBlock()),
   item("expand", Icon.Disclosure, ["expand", "collapse", "toggle", "details", "fold"], (c) => c.setExpand()),
   item("columns2", Icon.Columns, ["columns", "layout", "side by side", "two", "split"], (c) => c.setColumns(2)),
   item("columns3", Icon.Columns, ["columns", "layout", "side by side", "three"], (c) => c.setColumns(3)),
@@ -51,6 +52,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   { ...item("armatureIssueList", Icon.Table, ["armature", "issues", "query", "nql", "list"], (c) => c.pickArmatureIssueList()), armature: true },
   item("status", Icon.Label, ["status", "state", "badge", "label", "tag"], (c) => c.insertStatus()),
   item("date", Icon.Calendar, ["date", "day", "today", "deadline", "when"], (c) => c.insertDate()),
+  item("mathInline", Icon.Sigma, ["math", "formula", "equation", "latex", "tex", "katex", "inline"], (c) => c.insertMathInline()),
   // The colon opens the emoji list as if typed, so there is one picker to learn.
   item("emoji", Icon.Smile, ["emoji", "smiley", "reaction"], (c) => c.insertContent(":")),
 ];

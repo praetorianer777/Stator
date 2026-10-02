@@ -3,6 +3,37 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A formula is stored as its TeX source and typeset by each reader's browser
+
+A formula is a node holding nothing but its LaTeX source: `mathInline` in
+a line of text, `mathBlock` on a line of its own, each with one `latex`
+attribute of up to 4000 characters. The source is what an author edits and
+what search, an export and a copy read, so it is the one thing kept; the
+typeset markup is drawn from it with KaTeX wherever the page is shown,
+in the editor and in the read-only view alike, and never stored, so no
+body carries markup a reader's browser would run.
+
+KaTeX runs with `trust` off: `\href`, `\url`, `\includegraphics` and the
+`\html...` commands draw as their own names in red rather than as links,
+images or attributes. Expansion stops at 1000 macro steps and a box at 20
+em, so a formula that calls itself or asks for a huge box cannot hold or
+cover the page. KaTeX writes MathML beside its markup for screen readers.
+Its stylesheet and fonts are bundled, as the text fonts are, so a formula
+needs no third party at load time.
+
+The dialog that edits a formula refuses a source KaTeX cannot read, with
+KaTeX's own reason; the server takes any source within the limit, since
+TeX's grammar is KaTeX's to judge, and a reader meets a broken formula as
+its source in red, saying so.
+
+Search reads a formula by its source, in `document.PlainText` and in
+`page_plain_blocks` alike (migration 00370). A Markdown export writes an
+inline formula between dollar signs and a block one as a `math` fence,
+which is how Markdown that typesets formulas writes them; the import reads
+the fence back as a formula. An inline formula comes back as text, since
+reading dollar signs as formulas would turn prices in imported prose into
+mathematics.
+
 ## 2026-10-02: A decision is a line of the page, and the log is read from published bodies
 
 A decision item is one node, `decision`, holding a line of text as a
@@ -26,6 +57,7 @@ Search reads a decision as a line of the page's words, in
 `document.PlainText` and in `page_plain_blocks` alike (migration 00360).
 Markdown has no decision items, so an export writes one as a line that
 begins with its state in bold.
+
 ## 2026-10-02: The hub is a page an administrator points at, and landing on it is a redirect
 
 The organization's hub is not a document of its own but one of its pages,

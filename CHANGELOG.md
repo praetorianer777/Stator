@@ -556,6 +556,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   to its page (`GET /spaces/{key}/decisions`, the `list_decisions` tool).
   Search finds a page by its decisions, and a Markdown export writes each
   as a line that starts with its state.
+- Math formulas (#45). "Inline formula" and "Formula block" in the slash
+  menu ask for LaTeX source in a dialog that typesets it as it is typed and
+  refuses what cannot be typeset; a click on a formula opens its source
+  again. Readers see formulas typeset with KaTeX, with MathML for screen
+  readers. Search finds a page by its formulas' source, and a Markdown
+  export writes them as `$...$` and a `math` fence, which an import reads
+  back as a formula.
 
 ### Changed
 

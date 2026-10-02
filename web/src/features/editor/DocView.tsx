@@ -16,6 +16,7 @@ import { languageLabel, lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
 import { Passage, usePassages, type BlockPath } from "./passages";
 import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel } from "./InlineValueViews";
+import { MATH_BLOCK_NODE, MATH_INLINE_NODE, MathFormula, mathSource } from "./MathViews";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
@@ -245,6 +246,10 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
         </div>
       );
     }
+    case MATH_BLOCK_NODE: {
+      const latex = mathSource(node.attrs?.latex);
+      return latex ? <MathFormula latex={latex} display /> : null;
+    }
     case "image":
       return <DocImage node={node} />;
     // A comparison says what the block asks for rather than drawing it: its
@@ -392,6 +397,10 @@ function inlineNode(node: DocNode): ReactNode {
     case DATE_NODE: {
       const day = isoDay(node.attrs?.date);
       return day ? marked(<DateChip day={day} />, node.marks) : null;
+    }
+    case MATH_INLINE_NODE: {
+      const latex = mathSource(node.attrs?.latex);
+      return latex ? marked(<MathFormula latex={latex} display={false} />, node.marks) : null;
     }
     default:
       return textOf(node);

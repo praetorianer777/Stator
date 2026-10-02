@@ -77,6 +77,7 @@
         "expand",
         "columns",
         "decision",
+        "mathBlock",
         "image",
         "tableOfContents",
         "childPages",
@@ -150,6 +151,7 @@
         "expand",
         "columns",
         "decision",
+        "mathBlock",
         "image",
         "tableOfContents",
         "childPages",
@@ -191,7 +193,8 @@
         "attachment",
         "armatureIssue",
         "status",
-        "date"
+        "date",
+        "mathInline"
       ],
       "allowsMarks": true
     },
@@ -210,6 +213,7 @@
         "expand",
         "columns",
         "decision",
+        "mathBlock",
         "image",
         "tableOfContents",
         "childPages",
@@ -238,6 +242,7 @@
         "expand",
         "columns",
         "decision",
+        "mathBlock",
         "image",
         "tableOfContents",
         "childPages",
@@ -269,7 +274,8 @@
         "attachment",
         "armatureIssue",
         "status",
-        "date"
+        "date",
+        "mathInline"
       ],
       "allowsMarks": true
     },
@@ -308,12 +314,32 @@
         "expand",
         "columns",
         "decision",
+        "mathBlock",
         "image",
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList"
       ]
+    },
+    "mathBlock": {
+      "attrs": {
+        "latex": {
+          "kind": "string",
+          "maxLength": 4000,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "mathInline": {
+      "attrs": {
+        "latex": {
+          "kind": "string",
+          "maxLength": 4000,
+          "pattern": "\\S"
+        }
+      },
+      "inline": true
     },
     "mention": {
       "attrs": {
@@ -385,6 +411,7 @@
         "expand",
         "columns",
         "decision",
+        "mathBlock",
         "image",
         "tableOfContents",
         "childPages",
@@ -400,7 +427,8 @@
         "attachment",
         "armatureIssue",
         "status",
-        "date"
+        "date",
+        "mathInline"
       ],
       "allowsMarks": true
     },
@@ -482,6 +510,7 @@
         "expand",
         "columns",
         "decision",
+        "mathBlock",
         "image",
         "tableOfContents",
         "childPages",
@@ -542,6 +571,7 @@
         "expand",
         "columns",
         "decision",
+        "mathBlock",
         "image",
         "tableOfContents",
         "childPages",
@@ -584,6 +614,7 @@
         "expand",
         "columns",
         "decision",
+        "mathBlock",
         "image",
         "tableOfContents",
         "childPages",
