@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
@@ -172,6 +173,14 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &shareField) {
 		return ErrValidation(map[string]string{shareField.Field: shareField.Message})
 	}
+	var shortcutField *shortcut.FieldError
+	if errors.As(err, &shortcutField) {
+		return ErrValidation(map[string]string{shortcutField.Field: shortcutField.Message})
+	}
+	var full *shortcut.FullError
+	if errors.As(err, &full) {
+		return ErrConflict(full.Error())
+	}
 	var closed *share.CannotViewError
 	if errors.As(err, &closed) {
 		return &APIError{Status: http.StatusConflict, Code: "cannot_view", Message: closed.Error()}
@@ -278,6 +287,8 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound), errors.Is(err, reaction.ErrPageNotFound),
 		errors.Is(err, share.ErrPageNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
+	case errors.Is(err, shortcut.ErrNotFound):
+		return ErrNotFound("That shortcut was not found. Somebody may have removed it already; reload the list.")
 	case errors.Is(err, comment.ErrNotFound), errors.Is(err, reaction.ErrCommentNotFound):
 		return ErrNotFound("That comment was not found. It may have been deleted, or its page moved; reload the page.")
 	case errors.Is(err, comment.ErrUnpublished):

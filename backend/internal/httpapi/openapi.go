@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
@@ -182,6 +183,18 @@ var operations = []operation{
 		responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/pages/{pageID}/archive", handler: "handleUnarchivePage", tag: "archive", summary: "Unarchive a page and the pages archived with it; refused for a page archived with one above it. For the space's administrators.",
 		responses: ok(env{"page": page.Page{}})},
+	// Shortcuts (#39).
+	{method: "GET", path: "/spaces/{spaceKey}/shortcuts", handler: "handleListShortcuts", tool: "list_space_shortcuts", toolHelp: "The links a space pins above its page tree, in order: pages the caller may view and addresses on the web.", tag: "shortcuts",
+		summary:   "The space's shortcuts in order: each a page or an address. A shortcut to a page the caller may not view, or one in the trash, is left out.",
+		responses: ok(env{"shortcuts": []shortcut.Shortcut{}})},
+	{method: "POST", path: "/spaces/{spaceKey}/shortcuts", handler: "handleCreateShortcut", tag: "shortcuts",
+		summary: "Pin a shortcut last: a page the caller may view, or an http or https address with a label, its host when none is given. For the space's administrators.",
+		request: shortcut.ShortcutInput{}, responses: map[int]any{201: env{"shortcut": shortcut.Shortcut{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/spaces/{spaceKey}/shortcuts/{shortcutID}/move", handler: "handleMoveShortcut", tag: "shortcuts",
+		summary: "Put a shortcut after another of the space, or first when after is null, and answer them all in their new order. For the space's administrators.",
+		request: shortcut.ShortcutMove{}, responses: ok(env{"shortcuts": []shortcut.Shortcut{}})},
+	{method: "DELETE", path: "/spaces/{spaceKey}/shortcuts/{shortcutID}", handler: "handleDeleteShortcut", tag: "shortcuts",
+		summary: "Remove a shortcut; the page it opened stays. For the space's administrators.", responses: none()},
 	{method: "GET", path: "/spaces/{spaceKey}/trash", handler: "handleListTrash", tag: "trash", summary: "The space's trash, the latest first.", responses: ok(env{"items": []page.TrashItem{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash", handler: "handleEmptyTrash", tag: "trash", summary: "Delete everything in the space's trash for good. For administrators.", responses: none()},
 	{method: "POST", path: "/spaces/{spaceKey}/trash/{pageID}/restore", handler: "handleRestorePage", tag: "trash", summary: "Put a trashed page back where it was, or under the home page when that is gone.", responses: ok(env{"page": page.Page{}})},
@@ -668,6 +681,7 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(comment.AnchorState(""))] = enumStrings(comment.AnchorStates)
 	b.Enums[reflect.TypeOf(watch.Kind(""))] = enumStrings(watch.Kinds)
 	b.Enums[reflect.TypeOf(star.Kind(""))] = enumStrings(star.Kinds)
+	b.Enums[reflect.TypeOf(shortcut.Kind(""))] = enumStrings(shortcut.Kinds)
 	b.Enums[reflect.TypeOf(notify.Kind(""))] = enumStrings(notify.Kinds)
 	b.Enums[reflect.TypeOf(notify.Digest(""))] = enumStrings(notify.Digests)
 	b.Enums[reflect.TypeOf(armature.Status(""))] = enumStrings(armature.Statuses)

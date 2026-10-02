@@ -67,6 +67,10 @@ const (
 	ActionWebhookDisabled      = "webhook.disabled"
 	// ActionPageShared is a page sent to people with a note; the note is not kept.
 	ActionPageShared = "page.shared"
+	// Shortcuts pinned above a space's page tree.
+	ActionShortcutAdded   = "space.shortcut_added"
+	ActionShortcutMoved   = "space.shortcut_moved"
+	ActionShortcutRemoved = "space.shortcut_removed"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -84,6 +88,7 @@ var Actions = []string{
 	ActionPageArchived, ActionPageUnarchived, ActionSpaceArchived, ActionSpaceUnarchived,
 	ActionWebhookCreated, ActionWebhookUpdated, ActionWebhookDeleted, ActionWebhookSecretRotated, ActionWebhookDisabled,
 	ActionPageShared,
+	ActionShortcutAdded, ActionShortcutMoved, ActionShortcutRemoved,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

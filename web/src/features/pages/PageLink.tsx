@@ -10,6 +10,7 @@ export function PageLink({
   home = false,
   className,
   tabIndex,
+  onClick,
   children,
 }: {
   spaceKey: string;
@@ -18,11 +19,13 @@ export function PageLink({
   home?: boolean;
   className?: string;
   tabIndex?: number;
+  /** Called when the link is followed, such as to close the drawer it sits in. */
+  onClick?: () => void;
   children?: ReactNode;
 }) {
   if (home) {
     return (
-      <Link to="/s/$spaceKey" params={{ spaceKey }} className={className} tabIndex={tabIndex}>
+      <Link to="/s/$spaceKey" params={{ spaceKey }} className={className} tabIndex={tabIndex} onClick={onClick}>
         {children ?? title}
       </Link>
     );
@@ -33,6 +36,7 @@ export function PageLink({
       params={{ spaceKey, pageId: id, slug: pageSlug(title) }}
       className={className}
       tabIndex={tabIndex}
+      onClick={onClick}
       draggable={false}
     >
       {children ?? title}

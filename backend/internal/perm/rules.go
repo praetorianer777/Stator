@@ -79,7 +79,7 @@ func Decide(f Facts, action Action) bool {
 		return f.HoldsSpace(SpaceAddComments)
 	case DeletePages:
 		return f.HoldsSpace(SpaceDelete)
-	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace, ReviewStale:
+	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace, ReviewStale, ManageShortcuts:
 		return f.HoldsSpace(SpaceAdminister)
 	}
 	return false

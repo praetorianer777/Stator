@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
@@ -81,6 +82,8 @@ type Server struct {
 	Stale *stale.Service
 	// Shares sends pages to people who may read them, with a note.
 	Shares *share.Service
+	// Shortcuts keeps the links pinned above each space's page tree.
+	Shortcuts *shortcut.Service
 	// PageViews reads how often pages were read and by whom;
 	// PageViewRetention is how long the worker keeps named views, zero forever.
 	PageViews         *pageview.Service
@@ -279,6 +282,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/spaces/{spaceKey}/archive", s.handleArchiveSpace)
 			r.Delete("/spaces/{spaceKey}/archive", s.handleUnarchiveSpace)
 			r.Get("/spaces/{spaceKey}/archived-pages", s.handleListArchivedPages)
+			r.Get("/spaces/{spaceKey}/shortcuts", s.handleListShortcuts)
+			r.Post("/spaces/{spaceKey}/shortcuts", s.handleCreateShortcut)
+			r.Post("/spaces/{spaceKey}/shortcuts/{shortcutID}/move", s.handleMoveShortcut)
+			r.Delete("/spaces/{spaceKey}/shortcuts/{shortcutID}", s.handleDeleteShortcut)
 			r.Get("/spaces/{spaceKey}/trash", s.handleListTrash)
 			r.Delete("/spaces/{spaceKey}/trash", s.handleEmptyTrash)
 			r.Post("/spaces/{spaceKey}/trash/{pageID}/restore", s.handleRestorePage)

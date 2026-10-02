@@ -158,6 +158,14 @@ export const CODE_LANGUAGES = [
 export const SPACE_KEY_MAX_LENGTH = 10;
 export const SPACE_NAME_MAX_LENGTH = 100;
 export const SPACE_DESCRIPTION_MAX_LENGTH = 1000;
+/** How many shortcuts a space holds, and the longest label and address, matching the API's limits. */
+export const SHORTCUTS_MAX = 30;
+export const SHORTCUT_LABEL_MAX_LENGTH = 100;
+export const SHORTCUT_URL_MAX_LENGTH = 2000;
+/** The schemes a shortcut's address may use; anything else could run a script. */
+export const SHORTCUT_URL_SCHEMES: readonly string[] = ["http:", "https:"];
+/** What an address somebody typed opens with: its own tab, no hold on this one, no word for it from us. */
+export const EXTERNAL_LINK_REL = "noopener noreferrer nofollow";
 /** The longest page title, matching the API's MaxTitleLength. */
 export const PAGE_TITLE_MAX_LENGTH = 255;
 /** Where a template's title takes the day the page is made, matching the API's template.DateToken. */

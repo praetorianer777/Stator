@@ -21,7 +21,7 @@ import (
 const (
 	whyEdge       = "a probe, the document itself (a resource instead), the endpoint itself or a sign-in step"
 	whySelf       = "the caller's own session, settings, tokens, themes or Armature account, changed by a person at the keyboard"
-	whyAdmin      = "administration or who may do what: the provider, members, tokens, permissions, restrictions, spaces themselves, archiving, webhooks"
+	whyAdmin      = "administration or who may do what: the provider, members, tokens, permissions, restrictions, spaces themselves and their shortcuts, archiving, webhooks"
 	whyRemoves    = "deletes or takes something away; no tool removes anything, as in Armature"
 	whyBrowser    = "furniture of the browser client: typeahead, badges, pickers, visits and drafts"
 	whyFiles      = "moves files rather than words; get_page_markdown and replace_page_markdown carry a page's words"
@@ -172,6 +172,11 @@ var notTools = map[string]string{
 	"PATCH /comments/{commentID}":                                  whyThreads,
 	"POST /comments/{commentID}/resolve":                           whyThreads,
 	"POST /comments/{commentID}/reopen":                            whyThreads,
+
+	// Shortcuts are the space's administrators' furniture, kept where they show.
+	"POST /spaces/{spaceKey}/shortcuts":                   whyAdmin,
+	"POST /spaces/{spaceKey}/shortcuts/{shortcutID}/move": whyAdmin,
+	"DELETE /spaces/{spaceKey}/shortcuts/{shortcutID}":    whyRemoves,
 }
 
 // Offering an operation to assistants is decided for each one: a route added

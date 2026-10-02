@@ -66,6 +66,7 @@ ask for less.
 | `get_page` | `GET /pages/{pageID}` | yes |
 | `get_page_markdown` | `GET /pages/{pageID}/markdown` | yes |
 | `list_archived_pages` | `GET /spaces/{spaceKey}/archived-pages` | yes |
+| `list_space_shortcuts` | `GET /spaces/{spaceKey}/shortcuts` | yes |
 | `list_pages_below` | `GET /pages/{pageID}/below` | yes |
 | `list_templates` | `GET /templates` | yes |
 | `get_template` | `GET /templates/{templateKey}` | yes |
@@ -109,8 +110,9 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
 - anything that deletes or takes something away, the trash included;
 - administration and who may do what: the identity provider, members,
   tokens, permissions, page restrictions, making or changing spaces, and
-  archiving or unarchiving pages and spaces, which is for a space's
-  administrators, and the organization's webhooks;
+  archiving or unarchiving pages and spaces and pinning, ordering or
+  removing a space's shortcuts, which is for a space's administrators, and
+  the organization's webhooks;
 - who read a page (`GET /pages/{pageID}/readers`), which stays with its
   editors in the page; `get_page_views` counts them;
 - the caller's own session, settings, tokens, themes and Armature account;
