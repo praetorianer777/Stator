@@ -525,6 +525,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   fewer than two columns or more than three, and a comment holds none.
   Search reads every column, and a Markdown export writes them one after
   another.
+- Personal spaces (#35). Everybody may make one space of their own from the
+  space directory, named for them, for drafts and notes. Nobody else sees it
+  until its owner shares it from its permissions like any other space;
+  administrators of the organization reach it, as every space. The directory
+  lists personal spaces apart, with whose each is. The database holds to one
+  each, made only by and for its owner, and refuses handing it to somebody
+  else; members still need `createSpace` for any other space.
 
 ### Changed
 

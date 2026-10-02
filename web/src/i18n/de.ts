@@ -710,6 +710,13 @@ export const de: Messages = {
     cancel: "Abbrechen",
     notAdmin:
       "Sie dürfen hier keine Bereiche anlegen. Bitten Sie einen Administrator Ihrer Organisation, einen für Sie anzulegen oder Ihnen das Anlegen von Bereichen zu erlauben.",
+    personalTitle: "Persönliche Bereiche",
+    createPersonal: "Eigenen Bereich anlegen",
+    createPersonalTitle: "Ihr persönlicher Bereich",
+    personalIntro: "Ein eigener Bereich für Entwürfe und Notizen. Nur Sie sehen ihn, bis Sie ihn über seine Berechtigungen teilen.",
+    personalName: (name: string) => `Bereich von ${name}`,
+    columnOwner: "Eigentümer",
+    yours: "Sie",
   },
   space: {
     home: "Startseite des Bereichs",

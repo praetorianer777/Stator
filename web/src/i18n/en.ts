@@ -691,6 +691,13 @@ export const en = {
     submit: "Create space",
     cancel: "Cancel",
     notAdmin: "You may not create spaces here. Ask an administrator of your organization to make one for you, or to let you create spaces.",
+    personalTitle: "Personal spaces",
+    createPersonal: "Create your personal space",
+    createPersonalTitle: "Your personal space",
+    personalIntro: "A space of your own for drafts and notes. Only you see it until you share it from its permissions.",
+    personalName: (name: string) => `${name}'s space`,
+    columnOwner: "Owner",
+    yours: "You",
   },
   space: {
     home: "Space home",
