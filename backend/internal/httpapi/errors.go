@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -172,6 +173,13 @@ func toAPIError(err error) *APIError {
 	var shareField *share.FieldError
 	if errors.As(err, &shareField) {
 		return ErrValidation(map[string]string{shareField.Field: shareField.Message})
+	}
+	var hubField *hub.FieldError
+	if errors.As(err, &hubField) {
+		return ErrValidation(map[string]string{hubField.Field: hubField.Message})
+	}
+	if errors.Is(err, hub.ErrNotAdmin) {
+		return ErrForbidden("Only an administrator of the organization chooses its hub. Ask one of them to change it.")
 	}
 	var shortcutField *shortcut.FieldError
 	if errors.As(err, &shortcutField) {

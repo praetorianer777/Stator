@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/home"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -298,6 +299,8 @@ var operations = []operation{
 		responses: ok(env{"permissions": []perm.GlobalGrant{}})},
 	{method: "PUT", path: "/org/permissions/{permission}", handler: "handleSetGlobalPermission", orgWide: true, tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.",
 		request: perm.GlobalGrantInput{}, responses: ok(env{"permission": perm.GlobalGrant{}})},
+	{method: "GET", path: "/org/hub", handler: "handleGetHub", tool: "get_hub", toolHelp: "The organization's hub page, if there is one the caller may read, and whether everybody lands on it.", tag: "hub", summary: "The organization's hub page as the caller may see it, and whether everybody lands on it.", responses: ok(env{"hub": hub.Hub{}})},
+	{method: "PUT", path: "/org/hub", handler: "handleSetHub", orgWide: true, tag: "hub", summary: "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.", request: hub.HubInput{}, responses: ok(env{"hub": hub.Hub{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
 		responses: ok(env{"grants": []perm.SpaceGrant{}})},
 	{method: "PUT", path: "/spaces/{spaceKey}/permissions", handler: "handleSetSpacePermissions", tag: "permissions", summary: "Replace a space's whole permission table. For the space's administrators.",

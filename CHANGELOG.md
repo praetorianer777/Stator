@@ -515,6 +515,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   password are taken, refused by the database as well as the API, and they
   open in a new tab with `rel="noopener noreferrer nofollow"`. Adding,
   moving and removing a shortcut is written to the audit log.
+- The organization's hub page (#40). Under Hub page in the account menu, an
+  administrator names one page of any space as the organization's hub,
+  which everybody who may read it finds under Hub in the navigation, and
+  may make it where everybody lands when they open Stator; their own home
+  is then at `/home`. `GET /org/hub` and `PUT /org/hub` (administrators
+  only, in the audit log). Only administrators change it, the database
+  included, and a hub page deleted for good stops being the hub.
 
 ### Changed
 

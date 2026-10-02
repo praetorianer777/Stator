@@ -10,6 +10,7 @@ export const de: Messages = {
     breadcrumb: "Pfadnavigation",
   },
   nav: {
+    hub: "Hub",
     everywhere: "Überall",
     whereYouAre: "Hier",
     home: "Start",
@@ -80,6 +81,7 @@ export const de: Messages = {
     tooltip: (label: string) => `Darstellung: ${label}`,
   },
   account: {
+    hub: "Hub-Seite",
     menu: "Ihr Konto",
     guest: "Gast",
     profile: "Ihr Profil",
@@ -304,6 +306,19 @@ export const de: Messages = {
       save: "Speichern",
       cancel: "Abbrechen",
     },
+  },
+  hub: {
+    title: "Hub-Seite",
+    intro:
+      "Eine Seite der Organisation, die alle in der Navigation unter Hub finden, für gemeinsame Neuigkeiten und Ressourcen. Sie wird geschrieben, veröffentlicht und eingeschränkt wie jede andere Seite.",
+    current: "Die Hub-Seite ist",
+    everybodyLands: "und alle landen auf ihr.",
+    none: "Es gibt noch keine Hub-Seite.",
+    page: "Seite",
+    landing: "Alle landen beim Öffnen von Stator auf der Hub-Seite",
+    save: "Hub speichern",
+    clear: "Keine Hub-Seite",
+    notAdmin: "Nur ein Administrator der Organisation wählt die Hub-Seite. Bitten Sie einen von ihnen, sie zu ändern.",
   },
   settings: {
     title: "Einstellungen",
@@ -1690,6 +1705,7 @@ export const de: Messages = {
       "page.purged": "Seite endgültig gelöscht",
       "trash.emptied": "Papierkorb geleert",
       "org.permission_set": "Globale Berechtigung geändert",
+      "org.hub_set": "Hub-Seite gewählt",
       "space.permissions_set": "Bereichsberechtigungen geändert",
       "page.restrictions_set": "Seitenbeschränkungen geändert",
       "comment.deleted": "Kommentar durch Moderation gelöscht",

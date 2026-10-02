@@ -41,8 +41,10 @@ const (
 	ActionPageRestrictionsSet = "page.restrictions_set"
 	// ActionCommentDeleted is somebody else's comment deleted with the
 	// space's delete permission; one's own is not recorded.
-	ActionCommentDeleted            = "comment.deleted"
-	ActionThemeDefaultSet           = "theme.default_set"
+	ActionCommentDeleted  = "comment.deleted"
+	ActionThemeDefaultSet = "theme.default_set"
+	// ActionOrgHubSet is the organization's hub chosen, changed or cleared.
+	ActionOrgHubSet                 = "org.hub_set"
 	ActionArmatureConnectionSaved   = "armature.connection_saved"
 	ActionArmatureConnectionRemoved = "armature.connection_removed"
 	// Exports: what left the wiki as a file, and the record itself.
@@ -81,7 +83,7 @@ var Actions = []string{
 	ActionTokenCreated, ActionTokenRevoked,
 	ActionSpaceCreated, ActionSpaceUpdated, ActionSpaceDeleted, ActionPagePurged, ActionTrashEmptied,
 	ActionOrgPermissionSet, ActionSpacePermissionsSet, ActionPageRestrictionsSet,
-	ActionCommentDeleted, ActionThemeDefaultSet,
+	ActionCommentDeleted, ActionThemeDefaultSet, ActionOrgHubSet,
 	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved,
 	ActionPageExported, ActionAuditExported,
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,

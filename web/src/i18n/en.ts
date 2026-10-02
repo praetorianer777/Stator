@@ -15,6 +15,7 @@ export const en = {
     breadcrumb: "Breadcrumb",
   },
   nav: {
+    hub: "Hub",
     everywhere: "Everywhere",
     whereYouAre: "Where you are",
     home: "Home",
@@ -85,6 +86,7 @@ export const en = {
     tooltip: (label: string) => `Theme: ${label}`,
   },
   account: {
+    hub: "Hub page",
     menu: "Your account",
     guest: "Guest",
     profile: "Your profile",
@@ -297,6 +299,19 @@ export const en = {
       save: "Save",
       cancel: "Cancel",
     },
+  },
+  hub: {
+    title: "Hub page",
+    intro:
+      "One page of the organization that everybody finds under Hub in the navigation, for shared news and resources. It is written, published and restricted like any other page.",
+    current: "The hub is",
+    everybodyLands: "and everybody lands on it.",
+    none: "There is no hub page yet.",
+    page: "Page",
+    landing: "Everybody lands on the hub when they open Stator",
+    save: "Save hub",
+    clear: "No hub",
+    notAdmin: "Only an administrator of the organization chooses its hub page. Ask one of them to change it.",
   },
   settings: {
     title: "Settings",
@@ -1650,6 +1665,7 @@ export const en = {
       "page.purged": "Page deleted for good",
       "trash.emptied": "Trash emptied",
       "org.permission_set": "Global permission changed",
+      "org.hub_set": "Hub page chosen",
       "space.permissions_set": "Space permissions changed",
       "page.restrictions_set": "Page restrictions changed",
       "comment.deleted": "Comment deleted by a moderator",
