@@ -21,6 +21,7 @@ import { spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
 import { searchRoute } from "./search";
 import { staleRoute } from "./stale";
+import { tasksRoute } from "./tasks";
 import { ssoRoute } from "./sso";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
@@ -35,6 +36,7 @@ const routeTree = rootRoute.addChildren([
     spaceNewRoute,
     spaceRoute.addChildren([spaceHomeRoute, pageRoute, pageBareRoute, pageEditRoute, pageHistoryRoute, spaceSettingsRoute, spaceLabelRoute]),
     searchRoute,
+    tasksRoute,
     labelRoute,
     themesRoute,
     themeNewRoute,

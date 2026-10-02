@@ -15,6 +15,8 @@ export interface DocPage {
   spaceKey: string;
   /** Opens the page to edit, for a reader who may; a block that needs fixing offers it. */
   onEdit?: () => void;
+  /** Ticks a published task off or opens it again, for a reader who may edit the page. */
+  toggleTask?: (taskId: string, done: boolean) => void;
 }
 
 export const DocPageContext = createContext<DocPage | null>(null);

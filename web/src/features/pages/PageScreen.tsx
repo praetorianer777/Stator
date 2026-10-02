@@ -5,6 +5,7 @@ import { useArchivePage } from "@/api/archive";
 import { usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useVisit } from "@/api/search";
+import { useSetTaskDone } from "@/api/tasks";
 import { useTrashPage } from "@/api/trash";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -99,6 +100,8 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   const [dialog, setDialog] = useState<Dialog>();
   const [watchFailed, setWatchFailed] = useState(false);
   const [starFailed, setStarFailed] = useState(false);
+  const [taskFailed, setTaskFailed] = useState(false);
+  const setTaskDone = useSetTaskDone();
   // A dialog is about the page it was opened on, so going to another page closes it.
   const [dialogPage, setDialogPage] = useState(pageId);
   if (dialogPage !== pageId) {
@@ -106,6 +109,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
     setDialog(undefined);
     setWatchFailed(false);
     setStarFailed(false);
+    setTaskFailed(false);
   }
   // Opening a page from the stale report to review it is not reading it, or
   // reviewing the report would empty it.
@@ -116,6 +120,14 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (isLoading || !data) return <Skeleton />;
   const { page, space } = data;
+  // Ticking a box publishes the page, so only an editor of a published page out of the archive gets live boxes.
+  const toggleTask =
+    page.can.edit && !page.unpublished && !page.archived
+      ? (taskId: string, done: boolean) => {
+          setTaskFailed(false);
+          setTaskDone.mutate({ pageId: page.id, taskId, done }, { onError: () => setTaskFailed(true) });
+        }
+      : undefined;
   const edit = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
   const history = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/history", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
   const open = (placed: Page, editing = false) => {
@@ -249,6 +261,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       <ArchiveBanner page={page} space={space} />
       {watchFailed && <ErrorBanner>{t.watch.failed}</ErrorBanner>}
       {starFailed && <ErrorBanner>{t.star.failed}</ErrorBanner>}
+      {taskFailed && <ErrorBanner>{t.tasks.tickFailed}</ErrorBanner>}
       {page.unpublished && (
         <p className="mb-4 text-sm text-ink-muted" data-unpublished-note="">
           {t.page.unpublishedNote}
@@ -279,7 +292,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         }
       >
         <KnownAttachmentsContext value={attachmentIds}>
-          <DocPageContext value={{ id: page.id, spaceKey: space.key, onEdit: page.can.edit ? edit : undefined }}>
+          <DocPageContext value={{ id: page.id, spaceKey: space.key, onEdit: page.can.edit ? edit : undefined, toggleTask }}>
             <DocView doc={page.body} />
           </DocPageContext>
         </KnownAttachmentsContext>

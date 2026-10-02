@@ -5,7 +5,7 @@ import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { DocAttachment, DocImage } from "./AttachmentView";
-import { ChildPagesList, TocList, childPagesSummary, tocSummary } from "./BlockViews";
+import { ChildPagesList, DocPageContext, TocList, childPagesSummary, tocSummary } from "./BlockViews";
 import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
@@ -17,6 +17,8 @@ import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, sta
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
+import { DueChip } from "@/features/tasks/DueChip";
+import { taskOfItem } from "@/features/tasks/taskItem";
 
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
@@ -155,17 +157,9 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     case "taskList":
       return (
         <ul data-type="taskList">
-          {(node.content ?? []).map((item, i) => {
-            const checked = item.attrs?.checked === true;
-            return (
-              <li key={i} data-checked={checked}>
-                <input type="checkbox" checked={checked} readOnly disabled aria-label={t.editor.taskDone} />
-                <div>
-                  <Blocks nodes={item.content} copy={copy} path={[...path, i]} />
-                </div>
-              </li>
-            );
-          })}
+          {(node.content ?? []).map((item, i) => (
+            <TaskLine key={i} item={item} copy={copy} path={[...path, i]} />
+          ))}
         </ul>
       );
     case "blockquote":
@@ -278,6 +272,36 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     default:
       return <p>{textOf(node)}</p>;
   }
+}
+
+// A published item can be ticked off where the page offers it, which is the
+// live page to its editors; a comparison or a preview draws the box still.
+function TaskLine({ item, copy, path }: { item: DocNode; copy: Copy; path: BlockPath }) {
+  const page = useContext(DocPageContext);
+  const task = taskOfItem(item);
+  const toggle = copy && task.id ? page?.toggleTask : undefined;
+  const words = (item.content ?? [])
+    .filter((block) => block.type !== "taskList")
+    .map(textOf)
+    .join(" ")
+    .trim();
+  return (
+    <li data-checked={task.done} data-task-id={task.id ?? undefined}>
+      <input
+        type="checkbox"
+        checked={task.done}
+        readOnly={!toggle}
+        disabled={!toggle}
+        aria-label={words ? t.tasks.tick(words) : t.editor.taskDone}
+        onChange={toggle && task.id ? (event) => toggle(task.id!, event.target.checked) : undefined}
+        data-task-check={words}
+      />
+      <div>
+        <Blocks nodes={item.content} copy={copy} path={path} />
+      </div>
+      <DueChip due={task.due} done={task.done} brief className="mt-1" />
+    </li>
+  );
 }
 
 function Heading({ node, copy, block }: { node: DocNode; copy: Copy; block?: string }) {

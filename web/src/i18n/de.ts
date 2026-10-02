@@ -15,6 +15,7 @@ export const de: Messages = {
     home: "Start",
     spaces: "Bereiche",
     search: "Suche",
+    tasks: "Meine Aufgaben",
     groupWiki: "Wiki",
     collapseSidebar: "Seitenleiste einklappen",
     expandSidebar: "Seitenleiste ausklappen",
@@ -1462,6 +1463,10 @@ export const de: Messages = {
     sentence: (kind: string, actor: string, title: string, version: number | null, inComment = false) => {
       const who = actor || "Jemand";
       switch (kind) {
+        case "assigned":
+          return `${who} hat Ihnen eine Aufgabe auf ${title} zugewiesen`;
+        case "due":
+          return `Eine Ihrer Aufgaben auf ${title} ist fällig`;
         case "mentioned":
           return inComment ? `${who} hat Sie in einem Kommentar zu ${title} erwähnt` : `${who} hat Sie auf ${title} erwähnt`;
         case "shared":
@@ -1489,6 +1494,8 @@ export const de: Messages = {
     inApp: "In der App",
     email: "Per E-Mail",
     kinds: {
+      assigned: "Jemand weist Ihnen eine Aufgabe zu",
+      due: "Eine Ihnen zugewiesene Aufgabe wird fällig",
       mentioned: "Jemand erwähnt Sie",
       shared: "Jemand teilt eine Seite mit Ihnen",
       replied: "Jemand antwortet in einer Diskussion, in der Sie geschrieben haben",
@@ -1497,7 +1504,7 @@ export const de: Messages = {
       published: "Eine Seite, die Sie beobachten, wird mit Benachrichtigung veröffentlicht",
       created: "Unter einer Seite oder einem Bereich, die Sie beobachten, wird erstmals eine Seite veröffentlicht",
       expired: "Die Bestätigung einer Seite, die Ihnen gehört, läuft ab",
-    } as Record<"mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
+    } as Record<"assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
     inAppFor: (kind: string) => `In der App: ${kind}`,
     emailFor: (kind: string) => `Per E-Mail: ${kind}`,
     digest: "Wann E-Mails verschickt werden",
@@ -1829,6 +1836,32 @@ export const de: Messages = {
     editorsOnly: "Wer die Seite gelesen hat, sehen nur Personen, die sie bearbeiten dürfen.",
     yourChoice: "Ob Ihr eigener Name erscheint, legen Sie in Ihrem Profil fest.",
     failed: "Die Seitenaufrufe konnten nicht geladen werden. Versuchen Sie es gleich noch einmal.",
+  },
+  tasks: {
+    title: "Meine Aufgaben",
+    intro:
+      "Checklisteneinträge, die Sie erwähnen, von allen Seiten, die Sie lesen dürfen. Eine Aufgabe gehört Ihnen, wenn ihre erste Erwähnung Sie nennt, und ist am ersten Datum darin fällig.",
+    open: "Offen",
+    done: "Erledigt",
+    emptyOpen: "Keine offenen Aufgaben. Sobald jemand Sie in einem Checklisteneintrag erwähnt und die Seite veröffentlicht, erscheint er hier.",
+    emptyDone: "Noch nichts abgehakt.",
+    loadFailed: "Ihre Aufgaben konnten nicht geladen werden. Versuchen Sie es gleich noch einmal.",
+    more: "Mehr anzeigen",
+    tick: (text: string) => `Erledigt: ${text}`,
+    readOnly: "Sie dürfen diese Seite nicht bearbeiten und können die Aufgabe deshalb hier nicht abhaken.",
+    ticked: (text: string) => `${text} ist erledigt.`,
+    reopened: (text: string) => `${text} ist wieder offen.`,
+    tickFailed: "Die Aufgabe konnte nicht geändert werden. Laden Sie die Seite neu und versuchen Sie es noch einmal.",
+    onPage: (title: string, space: string) => `${title} in ${space}`,
+    assignedBy: (who: string) => `Zugewiesen von ${who}`,
+    doneOn: (day: string) => `Erledigt am ${day}`,
+    overdue: "Überfällig",
+    overdueSince: (day: string) => `Überfällig, fällig am ${day}`,
+    dueToday: "Heute fällig",
+    dueOn: (day: string) => `Fällig am ${day}`,
+    homeTitle: "Meine Aufgaben",
+    homeEmpty: "Keine offenen Aufgaben für Sie.",
+    homeAll: "Alle meine Aufgaben",
   },
   api: {
     unexpected: (status: number) => `Der Server hat mit Status ${status} geantwortet. Versuchen Sie es gleich noch einmal.`,

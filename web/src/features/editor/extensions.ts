@@ -81,6 +81,26 @@ export const Panel = Node.create({
   },
 });
 
+/**
+ * A checklist item that keeps the id its task has on the server, which gives
+ * one to every item without when the page is published.
+ */
+export const Task = TaskItem.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      taskId: {
+        default: null,
+        // A new item from Enter is a new task, and a copy pasted from markup
+        // must not claim the original's id, so the id only comes from a document.
+        keepOnSplit: false,
+        parseHTML: () => null,
+        renderHTML: (attrs: Record<string, unknown>) => (typeof attrs.taskId === "string" ? { "data-task-id": attrs.taskId } : {}),
+      },
+    };
+  },
+});
+
 const background = {
   default: null,
   parseHTML: (el: HTMLElement) => oneOf(CELL_BACKGROUNDS, el.getAttribute("data-background")),
@@ -361,7 +381,7 @@ export function editorExtensions({
   return [
     ...shared,
     TaskList,
-    TaskItem.configure({ nested: true, a11y: { checkboxLabel: () => t.editor.taskDone } }),
+    Task.configure({ nested: true, a11y: { checkboxLabel: () => t.editor.taskDone } }),
     Table.configure({ resizable: false }),
     TableRow,
     HeaderCell,

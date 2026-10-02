@@ -69,6 +69,9 @@ function SidebarGroups({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to="/spaces" icon="Space" rail={false} onNavigate={onNavigate}>
           {t.nav.spaces}
         </NavItem>
+        <NavItem to="/tasks" icon="Checklist" rail={false} onNavigate={onNavigate}>
+          {t.nav.tasks}
+        </NavItem>
         <NavItem
           to="/search"
           icon="Search"

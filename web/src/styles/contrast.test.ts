@@ -297,3 +297,35 @@ describe("archive mark contrast", () => {
     });
   });
 });
+
+// Read from the rules that paint a task's due day, so a state added there is
+// judged without anyone remembering to list it here.
+const DUE_TEXT = css.match(/\.task-due \{[^}]*\bcolor: var\(--color-([a-z0-9-]+)\)/)![1]!;
+const DUE_STATES = Object.fromEntries(
+  [...css.matchAll(/\[data-task-due="([a-z]+)"\] \{\s*--task-due-fill: var\(--color-([a-z0-9-]+)\);\s*--task-due-glyph: var\(--color-([a-z0-9-]+)\);/g)].map(
+    (m) => [m[1]!, { fill: m[2]!, glyph: m[3]! }],
+  ),
+);
+
+describe("task due day contrast", () => {
+  it("reads every state, the ink of the words and each glyph's colour", () => {
+    expect(DUE_TEXT).toBe("ink");
+    expect(Object.keys(DUE_STATES).sort()).toEqual(["overdue", "today", "upcoming"]);
+    for (const { palette } of cases()) {
+      for (const { fill, glyph } of Object.values(DUE_STATES)) {
+        expect(palette[fill], fill).toMatch(/^#[0-9a-f]{6}$/);
+        expect(palette[glyph], glyph).toMatch(/^#[0-9a-f]{6}$/);
+      }
+    }
+  });
+
+  // A due day sits in a page and in the list of tasks, never on a repainted rail.
+  describe.each(cases().filter((c) => c.surfaces === SURFACE_TOKENS))("$name", ({ palette }) => {
+    it.each(Object.entries(DUE_STATES))("a task %s", (_state, { fill, glyph }) => {
+      const words = contrast(palette[DUE_TEXT]!, palette[fill]!);
+      expect(words, `${DUE_TEXT} ${palette[DUE_TEXT]} on ${fill} ${palette[fill]} is ${words.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_TEXT);
+      const mark = contrast(palette[glyph]!, palette[fill]!);
+      expect(mark, `${glyph} ${palette[glyph]} on ${fill} ${palette[fill]} is ${mark.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_LARGE_TEXT_OR_ICON);
+    });
+  });
+});
