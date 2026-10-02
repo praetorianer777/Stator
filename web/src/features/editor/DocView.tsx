@@ -10,6 +10,7 @@ import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
 import { columnStyle } from "./columns";
+import { decisionState } from "./decision";
 import { ExpandView, revealInExpands } from "./ExpandView";
 import { languageLabel, lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
@@ -233,6 +234,17 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
           ))}
         </div>
       );
+    case "decision": {
+      const state = decisionState(node.attrs?.state);
+      return (
+        <div className="doc-decision" data-decision={state} data-block={block}>
+          <span className="doc-decision-badge">{state === "decided" ? t.editor.decision.decided : t.editor.decision.undecided}</span>
+          <p className="doc-decision-text" data-decision-text="">
+            {inline(node.content)}
+          </p>
+        </div>
+      );
+    }
     case "image":
       return <DocImage node={node} />;
     // A comparison says what the block asks for rather than drawing it: its

@@ -548,6 +548,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   is then at `/home`. `GET /org/hub` and `PUT /org/hub` (administrators
   only, in the audit log). Only administrators change it, the database
   included, and a hub page deleted for good stops being the hub.
+- Decision items (#44). "Decision" in the slash menu turns a line into a
+  decision, undecided until its label is pressed to mark it decided; readers
+  see the state in words before the line. Each space has a decision log,
+  under Decisions in its navigation, quoting every decision on its published
+  pages the reader may read, newest page first, filtered by state and linked
+  to its page (`GET /spaces/{key}/decisions`, the `list_decisions` tool).
+  Search finds a page by its decisions, and a Markdown export writes each
+  as a line that starts with its state.
 
 ### Changed
 

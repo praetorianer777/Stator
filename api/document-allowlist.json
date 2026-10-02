@@ -76,6 +76,7 @@
         "panel",
         "expand",
         "columns",
+        "decision",
         "image",
         "tableOfContents",
         "childPages",
@@ -148,6 +149,7 @@
         "panel",
         "expand",
         "columns",
+        "decision",
         "image",
         "tableOfContents",
         "childPages",
@@ -172,6 +174,27 @@
       },
       "inline": true
     },
+    "decision": {
+      "attrs": {
+        "state": {
+          "kind": "string",
+          "enum": [
+            "decided",
+            "undecided"
+          ]
+        }
+      },
+      "content": [
+        "text",
+        "hardBreak",
+        "mention",
+        "attachment",
+        "armatureIssue",
+        "status",
+        "date"
+      ],
+      "allowsMarks": true
+    },
     "doc": {
       "content": [
         "paragraph",
@@ -186,6 +209,7 @@
         "panel",
         "expand",
         "columns",
+        "decision",
         "image",
         "tableOfContents",
         "childPages",
@@ -213,6 +237,7 @@
         "panel",
         "expand",
         "columns",
+        "decision",
         "image",
         "tableOfContents",
         "childPages",
@@ -282,6 +307,7 @@
         "panel",
         "expand",
         "columns",
+        "decision",
         "image",
         "tableOfContents",
         "childPages",
@@ -358,6 +384,7 @@
         "panel",
         "expand",
         "columns",
+        "decision",
         "image",
         "tableOfContents",
         "childPages",
@@ -454,6 +481,7 @@
         "panel",
         "expand",
         "columns",
+        "decision",
         "image",
         "tableOfContents",
         "childPages",
@@ -513,6 +541,7 @@
         "panel",
         "expand",
         "columns",
+        "decision",
         "image",
         "tableOfContents",
         "childPages",
@@ -554,6 +583,7 @@
         "panel",
         "expand",
         "columns",
+        "decision",
         "image",
         "tableOfContents",
         "childPages",

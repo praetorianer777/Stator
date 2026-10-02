@@ -22,7 +22,7 @@ func writeBlocks(b *strings.Builder, blocks []Node, depth int) {
 	}
 	for _, n := range blocks {
 		switch n.Type {
-		case "paragraph", "heading", "codeBlock":
+		case "paragraph", "heading", "codeBlock", NodeDecision:
 			if text := InlineText(n); text != "" {
 				b.WriteString(text)
 				b.WriteByte('\n')

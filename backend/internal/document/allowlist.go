@@ -112,6 +112,15 @@ const (
 	MaxStatusLength = 40
 )
 
+// The states of a decision item.
+const (
+	DecisionDecided   = "decided"
+	DecisionUndecided = "undecided"
+)
+
+// NodeDecision is a decision item: one line of text and whether it is decided.
+const NodeDecision = "decision"
+
 // NodeStatus and NodeDate are the inline status label and the inline date.
 const (
 	NodeStatus = "status"
@@ -133,7 +142,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -147,7 +156,9 @@ var (
 // PanelKinds and CellBackgrounds name theme roles rather than colours, so a
 // custom theme recolours them.
 var (
-	PanelKinds      = []string{"info", "note", "success", "warning", "error"}
+	PanelKinds = []string{"info", "note", "success", "warning", "error"}
+	// DecisionStates is whether a decision item has been made yet.
+	DecisionStates  = []string{DecisionDecided, DecisionUndecided}
 	CellBackgrounds = []string{"neutral", "accent", "success", "warning", "danger"}
 	StatusColors    = []string{"neutral", "accent", "success", "warning", "danger"}
 )
@@ -173,6 +184,8 @@ var Allowed = Allowlist{
 	Nodes: map[string]NodeSpec{
 		"doc":       {Content: blockNodes},
 		"paragraph": {Content: inlineNodes, AllowsMarks: true},
+		// A decision is a line of its own, so the log can quote it whole.
+		NodeDecision: {Content: inlineNodes, AllowsMarks: true, Attrs: map[string]Attr{"state": {Kind: KindString, Enum: DecisionStates}}},
 		"heading": {
 			Content:     inlineNodes,
 			AllowsMarks: true,

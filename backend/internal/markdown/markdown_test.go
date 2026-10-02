@@ -243,9 +243,11 @@ func TestWhatMarkdownCannotCarryIsReadable(t *testing.T) {
 		para(txt("hinted", `{"type":"hint"}`), txt(" "), txt("discussed", `{"type":"inlineComment","attrs":{"threadId":"`+userID+`"}}`)),
 		`{"type":"image","attrs":{"attachmentId":"`+otherID+`","alt":"Somewhere else","width":null}}`,
 		`{"type":"columns","content":[{"type":"column","attrs":{"width":67},"content":[`+para(txt("left column"))+`]},{"type":"column","attrs":{"width":33},"content":[{"type":"paragraph"}]},{"type":"column","attrs":{"width":null},"content":[`+para(txt("right column"))+`]}]}`,
+		`{"type":"decision","attrs":{"state":"decided"},"content":[`+txt("Ship on Fridays")+`]}`,
+		`{"type":"decision","attrs":{"state":"undecided"},"content":[`+txt("Which region")+`]}`,
 	)
 	md := Render("Plan", parseDoc(t, body), testLinks)
-	for _, want := range []string{"1. lettered", "| wide |  |", "| a<br>item | b |", "hinted discussed", "Somewhere else", "left column\n\nright column"} {
+	for _, want := range []string{"1. lettered", "| wide |  |", "| a<br>item | b |", "hinted discussed", "Somewhere else", "left column\n\nright column", "**Decided:** Ship on Fridays", "**Undecided:** Which region"} {
 		if !strings.Contains(md, want) {
 			t.Errorf("the export lacks %q:\n%s", want, md)
 		}

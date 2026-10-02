@@ -7158,6 +7158,59 @@
         }
       }
     },
+    "/spaces/{spaceKey}/decisions": {
+      "get": {
+        "operationId": "listDecisions",
+        "summary": "The decision log of a space: every decision item on its published pages the caller may read, newest page first.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "decided or undecided to keep one state; both when absent.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "decided",
+                "undecided"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionLog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/spaces/{spaceKey}/outline": {
       "get": {
         "operationId": "spaceOutline",
@@ -10969,6 +11022,57 @@
           "assetId",
           "hotspotX",
           "hotspotY"
+        ]
+      },
+      "Decision": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pageTitle": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedByName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageId",
+          "pageTitle",
+          "text",
+          "state",
+          "updatedAt",
+          "updatedByName"
+        ]
+      },
+      "DecisionLog": {
+        "type": "object",
+        "properties": {
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Decision"
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decisions",
+          "truncated"
         ]
       },
       "DefaultThemeRequest": {

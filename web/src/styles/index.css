@@ -639,6 +639,37 @@
     outline-offset: 0.25rem;
     border-radius: var(--radius-control);
   }
+  /* A decision item: its state as a label in words before its line, so it
+   * reads without colour, on the tint of a role that matches the state. */
+  .doc-content .doc-decision {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .doc-content .doc-decision-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .doc-decision-badge {
+    flex-shrink: 0;
+    border-radius: var(--radius-control);
+    padding: 0 0.375rem;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-ink);
+    background: var(--color-warning-subtle);
+  }
+  [data-decision="decided"] > .doc-decision-badge,
+  .doc-decision-badge[data-decision="decided"] {
+    background: var(--color-success-subtle);
+  }
+  button.doc-decision-badge {
+    cursor: pointer;
+  }
+  button.doc-decision-badge:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
   /* A table of contents and a list of child pages: generated lists in a
    * quiet frame, so they read as the page's furniture rather than its text. */
   .doc-content .doc-block {

@@ -1602,6 +1602,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/spaces/{spaceKey}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The decision log of a space: every decision item on its published pages the caller may read, newest page first. */
+        get: operations["listDecisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces/{spaceKey}/outline": {
         parameters: {
             query?: never;
@@ -2567,6 +2584,20 @@ export interface components {
             assetId: string;
             hotspotX: number;
             hotspotY: number;
+        };
+        Decision: {
+            /** Format: uuid */
+            pageId: string;
+            pageTitle: string;
+            state: string;
+            text: string;
+            /** Format: date-time */
+            updatedAt: string;
+            updatedByName: string;
+        };
+        DecisionLog: {
+            decisions: components["schemas"]["Decision"][];
+            truncated: boolean;
         };
         DefaultThemeRequest: {
             /** Format: uuid */
@@ -8242,6 +8273,40 @@ export interface operations {
                     "application/json": {
                         items: components["schemas"]["ArchiveItem"][];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDecisions: {
+        parameters: {
+            query?: {
+                /** @description decided or undecided to keep one state; both when absent. */
+                state?: "decided" | "undecided";
+            };
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionLog"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

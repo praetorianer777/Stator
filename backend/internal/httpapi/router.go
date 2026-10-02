@@ -280,6 +280,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/spaces/{spaceKey}", s.handleDeleteSpace)
 			r.Get("/spaces/{spaceKey}/pages", s.handleListPages)
 			r.Get("/spaces/{spaceKey}/outline", s.handleSpaceOutline)
+			r.Get("/spaces/{spaceKey}/decisions", s.handleListDecisions)
 			r.Get("/spaces/{spaceKey}/permissions", s.handleListSpacePermissions)
 			r.Put("/spaces/{spaceKey}/permissions", s.handleSetSpacePermissions)
 			r.Put("/spaces/{spaceKey}/archive", s.handleArchiveSpace)

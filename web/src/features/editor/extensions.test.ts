@@ -72,6 +72,7 @@ describe("the slash menu's blocks", () => {
       panelSuccess: (d) => find(d, "panel")[0]?.attrs?.kind === "success",
       panelWarning: (d) => find(d, "panel")[0]?.attrs?.kind === "warning",
       panelError: (d) => find(d, "panel")[0]?.attrs?.kind === "error",
+      decision: (d) => d.content?.[0]?.type === "decision" && d.content[0].attrs?.state === "undecided",
       expand: (d) => d.content?.[0]?.type === "expand" && d.content[0].attrs?.title === "" && d.content[0].content?.[0]?.type === "paragraph",
       columns2: (d) => JSON.stringify(find(d, "column").map((c) => c.attrs?.width)) === "[50,50]",
       columns3: (d) => JSON.stringify(find(d, "column").map((c) => c.attrs?.width)) === "[33,34,33]",
@@ -194,6 +195,25 @@ describe("panels", () => {
     e.chain().unsetPanel().run();
     expect(find(e.getJSON() as DocNode, "panel")).toHaveLength(0);
     expect(find(e.getJSON() as DocNode, "text").map((n) => n.text)).toEqual(["hello"]);
+  });
+});
+
+describe("decision items", () => {
+  it("turn the line into a decision, undecided until somebody says otherwise", async () => {
+    const e = await make();
+    e.chain().insertContent("Ship weekly").setDecision().run();
+    expect(find(e.getJSON() as DocNode, "decision")[0]?.attrs).toEqual({ state: "undecided" });
+    e.commands.updateAttributes("decision", { state: "decided" });
+    expect(find(e.getJSON() as DocNode, "decision")[0]?.attrs).toEqual({ state: "decided" });
+    expect(find(e.getJSON() as DocNode, "text").map((n) => n.text)).toEqual(["Ship weekly"]);
+  });
+
+  it("are read back from the reader's view, its label left out", async () => {
+    const e = await make();
+    e.commands.setContent('<div data-decision="decided"><span class="doc-decision-badge">Decided</span><p data-decision-text>Use Postgres</p></div>');
+    const [item] = find(e.getJSON() as DocNode, "decision");
+    expect(item?.attrs).toEqual({ state: "decided" });
+    expect(find(item!, "text").map((n) => n.text)).toEqual(["Use Postgres"]);
   });
 });
 
