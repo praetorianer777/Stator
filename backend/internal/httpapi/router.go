@@ -23,6 +23,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
@@ -80,6 +81,10 @@ type Server struct {
 	Stale *stale.Service
 	// Shares sends pages to people who may read them, with a note.
 	Shares *share.Service
+	// PageViews reads how often pages were read and by whom;
+	// PageViewRetention is how long the worker keeps named views, zero forever.
+	PageViews         *pageview.Service
+	PageViewRetention time.Duration
 	// Perms answers the permission screens and the use check in front of
 	// every route; nil lets everybody who is a member through.
 	Perms *perm.Service
@@ -314,6 +319,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/pages/{pageID}/restrictions", s.handleSetPageRestrictions)
 			r.Get("/pages/{pageID}/access/{userID}", s.handleInspectPageAccess)
 			r.Post("/pages/{pageID}/visit", s.handleVisitPage)
+			r.Get("/pages/{pageID}/views", s.handlePageViews)
+			r.Get("/pages/{pageID}/readers", s.handlePageReaders)
 			r.Get("/pages/{pageID}/comments", s.handleListComments)
 			r.Post("/pages/{pageID}/comments", s.handleStartThread)
 			r.Get("/comments/{commentID}", s.handleGetThread)

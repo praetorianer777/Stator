@@ -61,9 +61,9 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT id, email, name, COALESCE(avatar_url, ''), COALESCE(locale, ''), is_active, password_hash
+			SELECT id, email, name, COALESCE(avatar_url, ''), COALESCE(locale, ''), show_in_readers, is_active, password_hash
 			FROM app_user WHERE email = $1`, email,
-		).Scan(&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &active, &stored)
+		).Scan(&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.ShowInReaders, &active, &stored)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		_, _, _ = VerifyPassword(password, decoyHash, s.params)
@@ -129,7 +129,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 // round trip; outer joins, since a person may have no organization yet.
 const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
-       u.id, u.email, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.is_active,
+       u.id, u.email, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.show_in_readers, u.is_active,
        o.id, o.slug, o.name, m.org_role
 FROM user_session s
 JOIN app_user u ON u.id = s.user_id
@@ -159,7 +159,7 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
 			&sessionID, &lastSeen, &p.Proof,
-			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &active,
+			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.ShowInReaders, &active,
 			&orgID, &orgSlug, &orgName, &memberRole,
 		)
 	})
@@ -280,6 +280,15 @@ func (s *Service) SetLocale(ctx context.Context, userID uuid.UUID, locale Locale
 	}
 	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `UPDATE app_user SET locale = NULLIF($2, '') WHERE id = $1`, userID, string(locale))
+		return err
+	})
+}
+
+// SetShowInReaders records whether the person's name appears among the readers
+// of the pages they read.
+func (s *Service) SetShowInReaders(ctx context.Context, userID uuid.UUID, show bool) (db.LSN, error) {
+	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		_, err := tx.Exec(ctx, `UPDATE app_user SET show_in_readers = $2 WHERE id = $1`, userID, show)
 		return err
 	})
 }

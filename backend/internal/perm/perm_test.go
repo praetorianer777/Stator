@@ -148,7 +148,7 @@ func TestASaveMayNotLockItsSaverOut(t *testing.T) {
 }
 
 func TestRefusalsAreSentences(t *testing.T) {
-	for _, a := range []Action{CreateSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, Action("x")} {
+	for _, a := range []Action{CreateSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, Action("x")} {
 		err := error(&DeniedError{Action: a})
 		if !errors.Is(err, ErrDenied) {
 			t.Errorf("the refusal of %s does not wrap ErrDenied", a)

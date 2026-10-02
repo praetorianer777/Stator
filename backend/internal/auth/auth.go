@@ -27,6 +27,8 @@ type Principal struct {
 	// Locale is the language the person chose for the interface; empty
 	// means the browser's.
 	Locale Locale
+	// ShowInReaders says the person's name appears among a page's readers.
+	ShowInReaders bool
 	// OrgName is Org's display name, empty when Org is nil.
 	OrgName string
 	// Role is the caller's standing in Org, empty when Org is nil.

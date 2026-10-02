@@ -44,6 +44,9 @@ const (
 	// ReviewStale reads which pages of the space nobody opened or published
 	// for a while.
 	ReviewStale Action = "space.review"
+	// ListReaders reads who opened a page, which the people who may change
+	// it may; everybody who may view it reads how many.
+	ListReaders Action = "page.readers"
 )
 
 // Actor is who asks: a person and their standing in the organization the
@@ -101,6 +104,8 @@ func (e *DeniedError) Error() string {
 		return "Only an administrator of this space can archive it and unarchive it. Ask one of them."
 	case ReviewStale:
 		return "Only administrators of a space, or of the organization, can read which of its pages went stale. Ask one of them to check the space."
+	case ListReaders:
+		return "Only people who may edit this page see who read it. Ask one of its editors, or an administrator of the space, for access."
 	}
 	return "You do not have permission to do that. Ask an administrator of the organization."
 }

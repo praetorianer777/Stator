@@ -84,6 +84,7 @@ ask for less.
 | `list_notifications` | `GET /notifications` | yes |
 | `list_audit_log` | `GET /audit` (administrators) | yes |
 | `list_stale_pages` | `GET /stale-pages` (administrators of a space) | yes |
+| `get_page_views` | `GET /pages/{pageID}/views` | yes |
 | `create_page` | `POST /pages` | no |
 | `update_page` | `PATCH /pages/{pageID}` | no |
 | `replace_page_markdown` | `PUT /pages/{pageID}/markdown` | no |
@@ -110,6 +111,8 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
   tokens, permissions, page restrictions, making or changing spaces, and
   archiving or unarchiving pages and spaces, which is for a space's
   administrators, and the organization's webhooks;
+- who read a page (`GET /pages/{pageID}/readers`), which stays with its
+  editors in the page; `get_page_views` counts them;
 - the caller's own session, settings, tokens, themes and Armature account;
 - what reaches other people or a page's standing: shares, reactions,
   watches, stars, owners and verification;

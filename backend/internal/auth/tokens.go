@@ -247,7 +247,7 @@ func (s *Service) revoke(ctx context.Context, orgID uuid.UUID, owner *uuid.UUID,
 const apiTokenPrincipalSQL = `
 SELECT t.id, t.scopes, t.last_used_at, t.spaces_only,
        ARRAY(SELECT ts.space_id FROM api_token_space ts WHERE ts.token_id = t.id ORDER BY ts.space_id),
-       u.id, u.email::text, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.is_active,
+       u.id, u.email::text, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.show_in_readers, u.is_active,
        o.id, o.slug, o.name, m.org_role
 FROM api_token t
 JOIN app_user u ON u.id = t.user_id
@@ -272,7 +272,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, apiTokenPrincipalSQL, HashToken(secret)).Scan(
 			&tokenID, &p.Scopes, &lastUsed, &p.SpacesOnly, &p.TokenSpaces,
-			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &active,
+			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.ShowInReaders, &active,
 			&org.id, &org.slug, &org.name, &p.Role,
 		)
 	})

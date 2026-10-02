@@ -65,19 +65,19 @@ export interface ThrowawayPerson {
 }
 
 /**
- * A member of a new organisation with a password session, for a spec that
- * changes what belongs to a person and must not change it for alice or bob.
+ * A member of a new organisation with a password session, or of `inOrg` when named, for a
+ * spec that changes what belongs to a person and must not change it for alice or bob.
  */
-export async function throwawayPerson(testInfo: TestInfo, label: string): Promise<ThrowawayPerson> {
+export async function throwawayPerson(testInfo: TestInfo, label: string, inOrg?: { id: string }): Promise<ThrowawayPerson> {
   const tag = `${label}-${testInfo.workerIndex}-${Date.now().toString(36)}`;
   const email = `${tag}@stator.test`;
   const slug = `e2e-${tag}`;
   const secret = randomBytes(32).toString("base64url");
   const name = `Throwaway ${label}`;
   await withDatabase(async (db) => {
-    const org = await db.query<{ id: string }>("INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id", [slug, name]);
+    const orgId = inOrg?.id ?? (await db.query<{ id: string }>("INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id", [slug, name])).rows[0]!.id;
     const user = await db.query<{ id: string }>("INSERT INTO app_user (email, name) VALUES ($1, $2) RETURNING id", [email, name]);
-    const [orgId, userId] = [org.rows[0]!.id, user.rows[0]!.id];
+    const userId = user.rows[0]!.id;
     await db.query("INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')", [orgId, userId]);
     await db.query(
       `INSERT INTO user_session (user_id, token_hash, current_org_id, proof_org_id, proof, expires_at)

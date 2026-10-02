@@ -29,6 +29,7 @@ const (
 	whyAttention  = "reaches other people or a page's standing: shares, reactions, watches, stars, owners and verification"
 	whyReorganize = "moves, copies, restores or publishes a draft; a person does that in the tree, the trash or the history"
 	whyThreads    = "an inline thread needs the body with a passage marked, and threads are rewritten or resolved where they are read"
+	whyReaders    = "names the people who read a page, which stays with its editors in the page; get_page_views counts them"
 )
 
 // notTools holds the decision for every operation that is not a tool, so a
@@ -124,6 +125,7 @@ var notTools = map[string]string{
 	"GET /search/quick":                                            whyBrowser,
 	"GET /recent-pages":                                            whyBrowser,
 	"POST /pages/{pageID}/visit":                                   whyBrowser,
+	"GET /pages/{pageID}/readers":                                  whyReaders,
 	"GET /notifications/unread-count":                              whyBrowser,
 	"POST /notifications/read":                                     whyBrowser,
 	"GET /pages/{pageID}/mentionable":                              whyBrowser,

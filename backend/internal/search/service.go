@@ -11,6 +11,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 )
 
@@ -296,20 +297,37 @@ func (s *Service) Recent(ctx context.Context, actor perm.Actor, limit int) ([]Re
 	return out, err
 }
 
-// Visit notes that the actor opened a page, refusing with page.ErrNotFound one
-// they may not view.
+// VisitQuery moves a page to the top of the actor's recent pages. One on top
+// since today began keeps its row untouched, so reloading it writes nothing.
+const VisitQuery = `
+	INSERT INTO page_visit (org_id, user_id, page_id)
+	SELECT current_org_id(), $1, $2
+	WHERE NOT EXISTS (
+		SELECT 1 FROM page_visit r
+		WHERE r.org_id = current_org_id() AND r.user_id = $1 AND r.page_id = $2
+		  AND r.visited_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
+		  AND NOT EXISTS (SELECT 1 FROM page_visit w
+		                  WHERE w.org_id = current_org_id() AND w.user_id = $1 AND w.visited_at > r.visited_at))
+	ON CONFLICT (org_id, user_id, page_id) DO UPDATE SET visited_at = now()`
+
+// Visit notes that the actor opened a page and counts the view, refusing with
+// page.ErrNotFound one they may not view; a reload the same day writes nothing.
 func (s *Service) Visit(ctx context.Context, actor perm.Actor, id uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `
-			INSERT INTO page_visit (org_id, user_id, page_id)
-			SELECT p.org_id, $1, p.id FROM page p
-			WHERE p.id = $2 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 1)+`
-			ON CONFLICT (org_id, user_id, page_id) DO UPDATE SET visited_at = now()`, actor.UserID, id)
-		if err != nil {
-			return fmt.Errorf("note the visit: %w", err)
+		var viewable bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (SELECT 1 FROM page p WHERE p.id = $2 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 1)+`)`,
+			actor.UserID, id).Scan(&viewable); err != nil {
+			return fmt.Errorf("find the page visited: %w", err)
 		}
-		if tag.RowsAffected() == 0 {
+		if !viewable {
 			return page.ErrNotFound
+		}
+		if err := pageview.Count(ctx, tx, actor, id); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, VisitQuery, actor.UserID, id); err != nil {
+			return fmt.Errorf("note the visit: %w", err)
 		}
 		return nil
 	})
