@@ -77,8 +77,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
   refused with `spaces_token` what concerns the whole organization, such as
   making spaces, the audit log or tokens; an assistant holding it is not
   offered those tools. The database holds it there too, through
-  `app.token_spaces`, so search, the home feed and the stale report keep to
-  its spaces. The list says what each token reaches, and `audit_log` names
+  `app.token_spaces`, so search, the home feed, the stale report, page views
+  and its own views and shares keep to its spaces. The list says what each token reaches, and `audit_log` names
   the spaces a token was made for.
 - The integration suite checks every answer against `api/openapi.json`
   and fails when an operation was never answered successfully or never

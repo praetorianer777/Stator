@@ -41,6 +41,13 @@ transaction that made it, `spaces_only` cannot change, and a limited token
 can neither read nor write tokens at all. Listing a token names only the
 spaces its reader may still see.
 
+Two kinds of a person's own rows name a page without asking whether they
+may view it: their page views and the shares they sent. Their policies
+also ask `perm_token_reaches_page`, so a limited token reads only those
+about pages in its spaces, while a session keeps reading its own rows as
+before. The page view counts and readers ask `perm_page_viewable` and
+`perm_space_holds`, and follow the limit with no change.
+
 ## 2026-10-02: A view is a person on a day, counted for every reader and named only to editors
 
 Page views (#97) answer how often a page is read and by how many people.

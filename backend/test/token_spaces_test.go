@@ -151,6 +151,25 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 		}
 	})
 
+	// After the stale report, which a visit would take Far zebra out of.
+	bobID := h.addPerson(t, home.org, "member")
+	t.Run("page views and shares keep to its space", func(t *testing.T) {
+		want(t, owner.post(t, pagePath(farPage, "/visit"), nil), http.StatusNoContent, "the owner opens Far zebra")
+		want(t, owner.post(t, pagePath(farPage, "/share"), map[string]any{"recipients": []any{user(bobID)}, "message": "Look."}), http.StatusCreated, "the owner shares Far zebra")
+		h.settle(t)
+		want(t, limited.get(t, pagePath(nearPage, "/views")), http.StatusOK, "the counts of a page in its space")
+		want(t, limited.get(t, pagePath(nearPage, "/readers")), http.StatusOK, "the readers of a page in its space")
+		for what, got := range map[string]response{
+			"the counts of Far zebra":  limited.get(t, pagePath(farPage, "/views")),
+			"the readers of Far zebra": limited.get(t, pagePath(farPage, "/readers")),
+		} {
+			if got.Status == http.StatusOK {
+				t.Errorf("the token reads %s: %s", what, got.Raw)
+			}
+		}
+		want(t, owner.get(t, pagePath(farPage, "/views")), http.StatusOK, "the owner reads Far zebra's counts")
+	})
+
 	t.Run("an assistant holding it keeps to its space", func(t *testing.T) {
 		m := &mcpSession{c: limited}
 		tools := m.tools(t)
@@ -182,8 +201,24 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 			return n
 		}
 		// The owner first, so every zero below is the token's doing.
-		if count(`SELECT count(*) FROM page WHERE id = $1`, farPage) != 1 || count(`SELECT count(*) FROM audit_log`) == 0 {
-			t.Fatal("the owner does not see FAR or the audit log, so this proves nothing")
+		// Each count below is non-zero for the owner without the token.
+		ownRows := map[string]string{
+			"its own views of Far zebra":    `SELECT count(*) FROM page_view WHERE page_id = '` + farPage + `'`,
+			"its own share of Far zebra":    `SELECT count(*) FROM page_share WHERE page_id = '` + farPage + `'`,
+			"the share's recipients":        `SELECT count(*) FROM page_share_recipient r JOIN page_share s ON s.id = r.share_id WHERE s.page_id = '` + farPage + `'`,
+			"Far zebra's counts":            `SELECT count(*) FROM page_view_stats('` + farPage + `', 30)`,
+			"Far zebra's readers":           `SELECT count(*) FROM page_readers('` + farPage + `', NULL, NULL, 100)`,
+			"Far zebra's unnamed readers":   `SELECT count(*) FROM page_readers_unnamed('` + farPage + `') AS n WHERE n IS NOT NULL`,
+			"a page of FAR":                 `SELECT count(*) FROM page WHERE id = '` + farPage + `'`,
+			"the audit log":                 `SELECT count(*) FROM audit_log`,
+			"FAR in the home feed":          `SELECT count(*) FROM home_edited(NULL, NULL, 100) WHERE page_id = '` + farPage + `'`,
+			"FAR's grants for the token":    `SELECT count(*) FROM space_grant g JOIN space s ON s.id = g.space_id WHERE s.key = 'FAR'`,
+			"FAR itself, as the owner sees": `SELECT count(*) FROM space WHERE key = 'FAR'`,
+		}
+		for what, sql := range ownRows {
+			if count(sql) == 0 {
+				t.Fatalf("the owner reads no rows of %s, so the token's zero would prove nothing", what)
+			}
 		}
 		if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, db.TokenSpacesVar, "{"+nearID+"}"); err != nil {
 			t.Fatal(err)
@@ -202,6 +237,15 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 				t.Errorf("the token reads %d rows of %s", n, what)
 			}
 		}
+		for what, sql := range ownRows {
+			if n := count(sql); n != 0 {
+				t.Errorf("the token reads %d rows of %s", n, what)
+			}
+		}
+		if count(`SELECT count(*) FROM page_view_stats($1, 30)`, nearPage) != 1 {
+			t.Error("the token does not read the counts of a page in its space")
+		}
+		denied(t, conn, "a view of Far zebra", `INSERT INTO page_view (org_id, page_id, user_id, day) VALUES ($1, $2, $3, page_view_today())`, home.org, farPage, home.user)
 		if count(`SELECT count(*) FROM page WHERE id = $1`, nearPage) != 1 {
 			t.Error("the token does not read its own space")
 		}
