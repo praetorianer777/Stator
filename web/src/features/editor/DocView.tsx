@@ -17,6 +17,7 @@ import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, saf
 import { Passage, usePassages, type BlockPath } from "./passages";
 import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel } from "./InlineValueViews";
 import { MATH_BLOCK_NODE, MATH_INLINE_NODE, MathFormula, mathSource } from "./MathViews";
+import { DIAGRAM_NODE, DiagramFigure, diagramSource } from "./DiagramViews";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
@@ -245,6 +246,10 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
           </p>
         </div>
       );
+    }
+    case DIAGRAM_NODE: {
+      const source = diagramSource(node.attrs?.source);
+      return source ? <DiagramFigure source={source} /> : null;
     }
     case MATH_BLOCK_NODE: {
       const latex = mathSource(node.attrs?.latex);

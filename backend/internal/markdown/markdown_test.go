@@ -188,6 +188,10 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"mathBlock","attrs":{"latex":"\\sum_{i=1}^n i = \\frac{n(n+1)}{2}"}}`,
 			`{"type":"mathBlock","attrs":{"latex":"a\n`+"```"+`\nb"}}`,
 		),
+		"diagrams": doc(
+			`{"type":"diagram","attrs":{"source":"flowchart LR\n  A[\"Draft <b>\"] --> B[Published]\n\n  B -.-> A"}}`,
+			`{"type":"diagram","attrs":{"source":"sequenceDiagram\n  Ada->>Bob: `+"```"+`"}}`,
+		),
 		"breaks and links to pages": doc(
 			para(txt("line one"), `{"type":"hardBreak"}`, txt("line two")),
 			para(txt("other page", `{"type":"link","attrs":{"href":"/s/DOCS/p/`+otherID+`#part"}}`)),

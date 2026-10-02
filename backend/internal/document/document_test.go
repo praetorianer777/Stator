@@ -55,6 +55,7 @@ const richDoc = `{"type":"doc","content":[
  {"type":"decision","attrs":{"state":"undecided"}},
  {"type":"paragraph","content":[{"type":"text","text":"Energy is "},{"type":"mathInline","attrs":{"latex":"E = mc^2"},"marks":[{"type":"bold"}]}]},
  {"type":"mathBlock","attrs":{"latex":"\\int_0^1 x\\,dx = \\frac{1}{2}"}},
+ {"type":"diagram","attrs":{"source":"flowchart LR\n  A[Draft] --> B[Published]"}},
  {"type":"heading","attrs":{"level":3,"id":null},"content":[{"type":"text","text":"Plan"}]},
  {"type":"tableOfContents","attrs":{"maxLevel":2}},
  {"type":"childPages","attrs":{"scope":"subtree","depth":3,"sort":"updated"}},
@@ -113,6 +114,9 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"expand stored open", `{"type":"doc","content":[{"type":"expand","attrs":{"title":"More","open":true},"content":[{"type":"paragraph"}]}]}`, `attribute "open"`},
 		{"decision state", `{"type":"doc","content":[{"type":"decision","attrs":{"state":"maybe"}}]}`, `state="maybe"`},
 		{"decision holding a block", `{"type":"doc","content":[{"type":"decision","attrs":{"state":"decided"},"content":[{"type":"paragraph"}]}]}`, `puts a "paragraph"`},
+		{"diagram without source", `{"type":"doc","content":[{"type":"diagram","attrs":{"source":"\n "}}]}`, `source="\n "`},
+		{"diagram too long", `{"type":"doc","content":[{"type":"diagram","attrs":{"source":"` + strings.Repeat("x", MaxDiagramLength+1) + `"}}]}`, `source="xxx`},
+		{"diagram in a line", para(`{"type":"diagram","attrs":{"source":"x"}}`), `puts a "diagram"`},
 		{"formula without source", para(`{"type":"mathInline","attrs":{"latex":" "}}`), `latex=" "`},
 		{"formula not text", `{"type":"doc","content":[{"type":"mathBlock","attrs":{"latex":42}}]}`, `latex=42`},
 		{"formula too long", `{"type":"doc","content":[{"type":"mathBlock","attrs":{"latex":"` + strings.Repeat("x", MaxMathLength+1) + `"}}]}`, `latex="xxx`},
@@ -274,6 +278,8 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		"Ship weekly",
 		"Energy is E = mc^2",
 		`\int_0^1 x\,dx = \frac{1}{2}`,
+		"flowchart LR",
+		"  A[Draft] --> B[Published]",
 		"Plan",
 	}, "\n")
 	if got := PlainText(root); got != want {

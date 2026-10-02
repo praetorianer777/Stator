@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
+import { DIAGRAM_DEFAULT_SOURCE } from "@/config";
 import { editorExtensions, type ExtensionOptions } from "./extensions";
 import type { DocNode } from "./schema";
 import { SLASH_ITEMS } from "./slashItems";
@@ -86,6 +87,7 @@ describe("the slash menu's blocks", () => {
       status: (d) => JSON.stringify(find(d, "status")[0]?.attrs) === JSON.stringify({ label: "Blocked", color: "danger" }),
       date: (d) => JSON.stringify(find(d, "date")[0]?.attrs) === JSON.stringify({ date: "2026-11-02" }),
       emoji: (d) => find(d, "text")[0]?.text === ":",
+      diagram: (d) => find(d, "diagram")[0]?.attrs?.source === DIAGRAM_DEFAULT_SOURCE,
       mathBlock: (d) => find(d, "mathBlock")[0]?.attrs?.latex === "\\sqrt{2}",
       mathInline: (d) => find(d, "paragraph")[0]?.content?.[0]?.type === "mathInline" && find(d, "mathInline")[0]?.attrs?.latex === "\\sqrt{2}",
     };
@@ -114,6 +116,19 @@ describe("the slash menu's blocks", () => {
       expect(expected[item.key]?.(e.getJSON() as DocNode), item.key).toBe(true);
       e.destroy();
     }
+  });
+});
+
+describe("diagrams", () => {
+  it("are read back from what the editor copies, their lines and spaces kept", async () => {
+    const doc: DocNode = { type: "doc", content: [{ type: "diagram", attrs: { source: 'flowchart LR\n  a["<b>Draft</b>"] --> b\n\n  b --> c' } }] };
+    const e = await make(doc);
+    const html = e.getHTML();
+    expect(html).not.toContain("<b>");
+    e.destroy();
+    const back = await make();
+    back.commands.setContent(html);
+    expect(back.getJSON().content?.slice(0, 1)).toEqual(doc.content);
   });
 });
 

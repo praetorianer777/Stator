@@ -563,6 +563,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   readers. Search finds a page by its formulas' source, and a Markdown
   export writes them as `$...$` and a `math` fence, which an import reads
   back as a formula.
+- Diagrams (#46). "Diagram" in the slash menu puts in a block of Mermaid
+  text with a sketch to start from, drawn below the text as it is typed and
+  saying why when it cannot be. Readers see the diagram as SVG in the
+  page's own colours and can download it as an SVG file. Labels are text,
+  never markup, links or pictures. Search finds a page by its diagrams'
+  text, and a Markdown export writes a `mermaid` fence, which an import
+  reads back as a diagram.
 
 ### Changed
 

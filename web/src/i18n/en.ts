@@ -1139,6 +1139,13 @@ export const en = {
       decided: "Decided",
       undecided: "Undecided",
     },
+    diagram: {
+      source: "Diagram source in Mermaid",
+      drawing: "Diagram",
+      unreadable: (reason: string) => `This diagram cannot be drawn: ${reason} Its source is shown instead.`,
+      empty: "Write the diagram in Mermaid, such as flowchart LR followed by A --> B.",
+      download: "Download as SVG",
+    },
     math: {
       edit: "Click to change the formula",
       unreadable: "This formula cannot be typeset; its source:",
@@ -1215,6 +1222,7 @@ export const en = {
       panelError: { label: "Error panel", description: "A highlighted box for something that must not happen." },
       decision: { label: "Decision", description: "A decision, decided or not, which the space's decision log lists." },
       mathBlock: { label: "Formula block", description: "A LaTeX formula on a line of its own, centred." },
+      diagram: { label: "Diagram", description: "A flowchart, sequence or other diagram written as Mermaid text, drawn as you type." },
       expand: { label: "Expand", description: "A titled section readers open when they want the detail." },
       columns2: { label: "Two columns", description: "Two blocks side by side, stacked on a narrow screen." },
       columns3: { label: "Three columns", description: "Three blocks side by side, stacked on a narrow screen." },

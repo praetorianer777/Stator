@@ -902,6 +902,45 @@
   .doc-math-edit {
     cursor: pointer;
   }
+  /* A diagram draws at its own size up to the page's width, and scrolls
+   * sideways rather than shrinking its words past reading on a narrow screen. */
+  .doc-content .doc-diagram {
+    margin: 0;
+  }
+  .doc-diagram-svg {
+    overflow-x: auto;
+  }
+  .doc-diagram-svg svg {
+    display: block;
+    margin: 0 auto;
+    height: auto;
+  }
+  .doc-diagram-tools {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .doc-diagram-error {
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+  }
+  .doc-diagram-edit {
+    display: grid;
+    gap: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    padding: 0.5rem 0.75rem;
+  }
+  .doc-diagram-label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-ink-muted);
+  }
+  .ProseMirror-selectednode.doc-diagram-edit,
+  .ProseMirror-selectednode > .doc-diagram-edit {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
   div.doc-math-edit {
     border-radius: var(--radius-control);
   }
