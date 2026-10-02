@@ -107,6 +107,14 @@ const (
 	NodeDate   = "date"
 )
 
+// NodeVariable is a template's blank: where a value the author gives when
+// making a page goes. Only a template's body holds one.
+const NodeVariable = "templateVariable"
+
+// VariableNamePattern is a variable's name, as its node and a title's braces
+// write it.
+const VariableNamePattern = `^[a-z][a-z0-9_]{0,39}$`
+
 // DatePattern is a day as a date node stores it; the validator also checks
 // that the day exists.
 const DatePattern = `^[0-9]{4}-[0-9]{2}-[0-9]{2}$`
@@ -328,6 +336,27 @@ func (a Allowlist) Subset(nodes, marks []string) Allowlist {
 			panic("document: no mark " + name + " to keep")
 		}
 		out.Marks[name] = spec
+	}
+	return out
+}
+
+// TemplateAllowed is what a template's body may hold: everything a page may,
+// and a variable wherever inline content goes. Written to
+// api/template-allowlist.json for the template editor.
+var TemplateAllowed = Allowed.withInline(NodeVariable, NodeSpec{
+	Inline: true,
+	Attrs:  map[string]Attr{"name": {Kind: KindString, Pattern: VariableNamePattern}},
+})
+
+// withInline adds an inline node to every node that holds inline content,
+// leaving one that takes nothing but text, such as a code block, as it is.
+func (a Allowlist) withInline(name string, spec NodeSpec) Allowlist {
+	out := Allowlist{Nodes: map[string]NodeSpec{name: spec}, Marks: a.Marks}
+	for typ, n := range a.Nodes {
+		if slices.Contains(n.Content, "mention") {
+			n.Content = append(slices.Clone(n.Content), name)
+		}
+		out.Nodes[typ] = n
 	}
 	return out
 }

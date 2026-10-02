@@ -54,8 +54,8 @@ func writeBlocks(b *strings.Builder, blocks []Node, depth int) {
 }
 
 // InlineText flattens a block's inline children: text, mentions as @Name,
-// files by name, issues by key, statuses by label, dates as YYYY-MM-DD and
-// breaks as newlines.
+// files by name, issues by key, statuses by label, dates as YYYY-MM-DD, a
+// template's variables as {name} and breaks as newlines.
 func InlineText(n Node) string {
 	var b strings.Builder
 	for _, c := range n.Content {
@@ -79,6 +79,9 @@ func InlineText(n Node) string {
 		case NodeDate:
 			date, _ := c.Attrs["date"].(string)
 			b.WriteString(date)
+		case NodeVariable:
+			name, _ := c.Attrs["name"].(string)
+			b.WriteString("{" + name + "}")
 		}
 	}
 	return b.String()

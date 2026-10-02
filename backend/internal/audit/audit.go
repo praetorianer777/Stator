@@ -67,6 +67,10 @@ const (
 	ActionWebhookDisabled      = "webhook.disabled"
 	// ActionPageShared is a page sent to people with a note; the note is not kept.
 	ActionPageShared = "page.shared"
+	// Templates of the organization's own, for every space or for one.
+	ActionTemplateCreated = "template.created"
+	ActionTemplateUpdated = "template.updated"
+	ActionTemplateDeleted = "template.deleted"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -84,6 +88,7 @@ var Actions = []string{
 	ActionPageArchived, ActionPageUnarchived, ActionSpaceArchived, ActionSpaceUnarchived,
 	ActionWebhookCreated, ActionWebhookUpdated, ActionWebhookDeleted, ActionWebhookSecretRotated, ActionWebhookDisabled,
 	ActionPageShared,
+	ActionTemplateCreated, ActionTemplateUpdated, ActionTemplateDeleted,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

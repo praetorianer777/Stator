@@ -1,6 +1,7 @@
 // Command docallowlist writes the document allowlists as JSON: what a page
-// may hold to the first path given, and what a comment may hold to the
-// second, or the page's to stdout when no path is given.
+// may hold to the first path given, what a comment may hold to the
+// second, what a template may hold to the third, or the page's to stdout
+// when no path is given.
 package main
 
 import (
@@ -11,7 +12,7 @@ import (
 )
 
 func main() {
-	lists := []document.Allowlist{document.Allowed, document.CommentAllowed}
+	lists := []document.Allowlist{document.Allowed, document.CommentAllowed, document.TemplateAllowed}
 	if len(os.Args) == 1 {
 		encoded, err := document.Allowed.JSON()
 		if err != nil {

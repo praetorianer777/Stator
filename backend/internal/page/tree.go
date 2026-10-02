@@ -16,6 +16,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/rank"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
@@ -83,6 +84,12 @@ type CreateInput struct {
 	// Publish makes the page version 1 at once, seen by everybody who may see
 	// the space; otherwise it stays an unpublished page of its creator's.
 	Publish bool `json:"publish,omitempty"`
+	// Template starts the page from a template in place of a body: a
+	// built-in's key or the id of one of the organization's. The server fills
+	// its variables from Values, by name, and the title's names in braces
+	// with them; an empty title takes the template's.
+	Template string            `json:"template,omitempty"`
+	Values   map[string]string `json:"values,omitempty"`
 }
 
 // MoveInput moves a page. Without its children they stay where the page was.
@@ -311,13 +318,21 @@ func (s *Service) Outline(ctx context.Context, actor perm.Actor, spaceKey string
 
 // Create adds a page under a parent, last unless a place is named.
 func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) (*Page, db.LSN, error) {
-	title, err := cleanTitle(in.Title)
-	if err != nil {
-		return nil, 0, err
-	}
-	if in.Body != nil {
-		if err := document.Validate(in.Body); err != nil {
+	var title string
+	switch {
+	case in.Template != "" && in.Body != nil:
+		return nil, 0, &FieldError{Field: "body", Message: "Send either a body or a template, not both."}
+	case in.Template == "" && len(in.Values) > 0:
+		return nil, 0, &FieldError{Field: "values", Message: "Values fill a template's variables; name the template too."}
+	case in.Template == "":
+		var err error
+		if title, err = cleanTitle(in.Title); err != nil {
 			return nil, 0, err
+		}
+		if in.Body != nil {
+			if err := document.Validate(in.Body); err != nil {
+				return nil, 0, err
+			}
 		}
 	}
 	var out *Page
@@ -325,6 +340,17 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		_, sp, err := parentFor(ctx, tx, actor, in.ParentID)
 		if err != nil {
 			return err
+		}
+		if in.Template != "" {
+			filled, body, err := template.Instantiate(ctx, tx, sp.ID, in.Template, in.Values, in.Title)
+			if err != nil {
+				return err
+			}
+			if title, err = cleanTitle(filled); err != nil {
+				return &FieldError{Field: "title", Message: fmt.Sprintf(
+					"Give the page a title of at most %d characters once the template's values are filled in.", MaxTitleLength)}
+			}
+			in.Body = body
 		}
 		r, err := rankAt(ctx, tx, in.Placement, uuid.Nil)
 		if err != nil {

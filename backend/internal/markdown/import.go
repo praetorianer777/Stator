@@ -83,6 +83,17 @@ var parser = goldmark.New(goldmark.WithExtensions(extension.Table, extension.Str
 // Convert reads a Markdown file as a page. Raw HTML never reaches it: only
 // the elements Render writes are read back, as the nodes they stand for.
 func Convert(src []byte, resolve Resolver) (*Result, error) {
+	return convert(src, resolve, false)
+}
+
+// ConvertTemplate reads a Markdown file as a template's body: as Convert
+// does, and with a template's variables read back as variables, where a
+// page keeps their words.
+func ConvertTemplate(src []byte, resolve Resolver) (*Result, error) {
+	return convert(src, resolve, true)
+}
+
+func convert(src []byte, resolve Resolver, template bool) (*Result, error) {
 	if len(src) > MaxSourceBytes {
 		return nil, ErrTooLarge
 	}
@@ -96,7 +107,7 @@ func Convert(src []byte, resolve Resolver) (*Result, error) {
 	if resolve == nil {
 		resolve = func(string) Target { return Target{} }
 	}
-	c := &converter{resolve: resolve, seen: map[string]bool{}}
+	c := &converter{resolve: resolve, seen: map[string]bool{}, template: template}
 	root := parser.Parse(text.NewReader(src))
 	c.src = src
 
@@ -120,7 +131,7 @@ func Convert(src []byte, resolve Resolver) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := document.Validate(body); err != nil {
+	if err := check(body, template); err != nil {
 		return nil, err
 	}
 	return &Result{Title: title, Body: body, Warnings: c.warnings}, nil
@@ -210,6 +221,8 @@ type converter struct {
 	nest     int
 	// detailsSeen remembers what each HTML block says of details elements.
 	detailsSeen map[ast.Node]detailsInfo
+	// template reads into a template's body, which may hold variables.
+	template bool
 }
 
 // maxInlineNesting bounds how deep emphasis and links are followed; what is
@@ -998,7 +1011,7 @@ func (c *converter) rawHTML(raw string, rest []ast.Node, end int, marks []docume
 	}
 	text := strings.TrimSpace(words.String())
 	n, ok := spanNode(statorKind, e.attrs, text)
-	if !ok || !validates(n, true) {
+	if !ok || !validatesIn(n, true, c.template) {
 		return textItem(text, marks), end + 1
 	}
 	n.Marks = marks
@@ -1017,6 +1030,8 @@ func spanNode(kind string, attrs map[string]string, words string) (document.Node
 		return document.Node{Type: document.NodeStatus, Attrs: map[string]any{"label": words, "color": attrs["data-color"]}}, true
 	case kindDate:
 		return document.Node{Type: document.NodeDate, Attrs: map[string]any{"date": words}}, true
+	case kindVariable:
+		return document.Node{Type: document.NodeVariable, Attrs: map[string]any{"name": attrs["data-name"]}}, true
 	}
 	return document.Node{}, false
 }
