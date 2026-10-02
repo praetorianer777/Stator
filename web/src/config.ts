@@ -122,6 +122,22 @@ export const CHILD_PAGES_MAX_DEPTH = 10;
 export const CHILD_PAGES_LIMIT = 500;
 /** The longest title an expand block takes, matching the API's MaxExpandTitleLength. */
 export const EXPAND_TITLE_MAX_LENGTH = 200;
+/** The narrowest and widest share of its row a column takes, in percent, matching the API's MinColumnShare and MaxColumnShare. */
+export const COLUMN_SHARE_MIN = 10;
+export const COLUMN_SHARE_MAX = 80;
+/**
+ * The layouts a column section offers, by name and each column's share of the
+ * row. The first of each count is the one inserting that many columns makes.
+ */
+export const COLUMN_LAYOUTS = [
+  { key: "twoEven", widths: [50, 50] },
+  { key: "twoWideLeft", widths: [67, 33] },
+  { key: "twoWideRight", widths: [33, 67] },
+  { key: "threeEven", widths: [33, 34, 33] },
+  { key: "threeWideLeft", widths: [50, 25, 25] },
+  { key: "threeWideMiddle", widths: [25, 50, 25] },
+  { key: "threeWideRight", widths: [25, 25, 50] },
+] as const;
 
 /** The languages a code block offers, by highlighting grammar, and the name the picker shows. */
 export const CODE_LANGUAGES = [

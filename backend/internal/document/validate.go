@@ -134,6 +134,9 @@ func (v validator) node(n Node, parent NodeSpec, depth int) error {
 	if len(spec.Content) == 0 && len(n.Content) > 0 {
 		return v.invalid("This %s puts content inside a %q, which holds none.", n.Type)
 	}
+	if (spec.MinContent > 0 && len(n.Content) < spec.MinContent) || (spec.MaxContent > 0 && len(n.Content) > spec.MaxContent) {
+		return v.invalid("This %s has a %q holding %d, which takes %d to %d; add or take some out.", n.Type, len(n.Content), spec.MinContent, spec.MaxContent)
+	}
 	if err := v.checkAttrs(n.Attrs, spec.Attrs, fmt.Sprintf("a %q", n.Type)); err != nil {
 		return err
 	}
