@@ -4432,6 +4432,59 @@
         }
       }
     },
+    "/pages/{pageID}/excerpts": {
+      "get": {
+        "operationId": "listExcerpts",
+        "summary": "The named excerpts of a page's published body, in reading order, for choosing one to include elsewhere.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "excerpts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Excerpt"
+                      }
+                    }
+                  },
+                  "required": [
+                    "excerpts"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/export": {
       "get": {
         "operationId": "exportPage",
@@ -11354,6 +11407,25 @@
           "name",
           "description",
           "spec"
+        ]
+      },
+      "Excerpt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "text"
         ]
       },
       "Font": {

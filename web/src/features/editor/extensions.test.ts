@@ -88,6 +88,10 @@ describe("the slash menu's blocks", () => {
       date: (d) => JSON.stringify(find(d, "date")[0]?.attrs) === JSON.stringify({ date: "2026-11-02" }),
       emoji: (d) => find(d, "text")[0]?.text === ":",
       diagram: (d) => find(d, "diagram")[0]?.attrs?.source === DIAGRAM_DEFAULT_SOURCE,
+      excerpt: (d) => {
+        const e = find(d, "excerpt")[0];
+        return e?.attrs?.name === "Excerpt 1" && /^[0-9a-f-]{36}$/.test(String(e.attrs.id)) && e.content?.[0]?.type !== undefined;
+      },
       // The dialog asks for the address; this one answers as a person would.
       linkCard: (d) => JSON.stringify(find(d, "linkCard")[0]?.attrs) === JSON.stringify({ url: "https://example.test/post", view: "card" }),
       mathBlock: (d) => find(d, "mathBlock")[0]?.attrs?.latex === "\\sqrt{2}",

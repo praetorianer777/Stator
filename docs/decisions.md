@@ -3,6 +3,28 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: An excerpt is a frame in the page, found by an id that outlives its name
+
+An excerpt is one block, `excerpt`, around the blocks it names, with an
+`id` and a `name`. It is part of the page rather than a record beside it,
+so it is versioned, restricted, searched and exported with the page, and
+moving text in or out of it is ordinary editing. An include finds it by its
+id, so renaming an excerpt breaks nothing; the name is what a picker shows.
+
+Within a page ids and names are unique, names ignoring case, and an
+excerpt never holds another at any depth: an include of the outer one would
+otherwise carry the inner one twice over. The validator refuses all three
+straight from the body, and the editor keeps to them as it goes: a pasted
+copy gets a new id and a stock name, and an excerpt pasted into another
+gives up its frame and keeps its blocks. The name box may be emptied while
+a name is typed; the page keeps the last name until there is a new one.
+
+`GET /pages/{id}/excerpts` reads the published body a reader may view, so a
+draft's excerpts are its author's until it is published, as an include
+shows published words only. The picker chooses a space, a page from its
+outline, and the whole page or one excerpt, leaving out the page being
+edited; the include block (#53) is what uses it.
+
 ## 2026-10-02: A link card keeps its address, and the server reads the page for each reader
 
 A link card is one block, `linkCard`, holding an http or https `url` and a

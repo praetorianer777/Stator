@@ -30,6 +30,7 @@ import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
 import { MathBlock, MathInline } from "./math";
 import { Diagram } from "./diagram";
 import { LinkCardNode } from "./linkCard";
+import { Excerpt } from "./excerpt";
 import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 import { FindReplace } from "./findReplace";
 
@@ -397,6 +398,7 @@ export function editorExtensions({
     MathBlock.configure({ edit: editInlineValue }),
     Diagram,
     LinkCardNode.configure({ pick: pickLinkCard }),
+    Excerpt,
     FindReplace.configure({ open: find }),
   ];
 }

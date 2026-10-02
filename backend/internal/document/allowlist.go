@@ -116,6 +116,8 @@ const (
 	// MaxDiagramLength bounds a diagram's source, room for a sketch of a whole
 	// system while one diagram cannot keep a reader's browser drawing.
 	MaxDiagramLength = 20000
+	// MaxExcerptNameLength keeps an excerpt's name to what fits in a picker's line.
+	MaxExcerptNameLength = 80
 )
 
 // The states of a decision item.
@@ -139,6 +141,10 @@ const (
 	NodeMathInline = "mathInline"
 	NodeMathBlock  = "mathBlock"
 )
+
+// NodeExcerpt is a named part of a page that other pages include. Its id
+// stays when it is renamed, so an include keeps finding it.
+const NodeExcerpt = "excerpt"
 
 // NodeLinkCard is a link shown as a card with what its page says about
 // itself, or as the player of an allowlisted site.
@@ -166,7 +172,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -318,6 +324,11 @@ var Allowed = Allowlist{
 		// Only the text, for the same reason: the drawing is made from it.
 		// Only the address and the view: what the page says is read for each
 		// reader, so it is never stale in the body.
+		// Any blocks but another excerpt, which the validator refuses at any depth.
+		NodeExcerpt: {Content: blockNodes, Attrs: map[string]Attr{
+			"id":   {Kind: KindString, Pattern: UUIDPattern},
+			"name": {Kind: KindString, MaxLength: MaxExcerptNameLength, Pattern: `\S`},
+		}},
 		NodeLinkCard: {Attrs: map[string]Attr{
 			"url":  {Kind: KindString, MaxLength: MaxHrefLength, URL: true, Pattern: `^[Hh][Tt][Tt][Pp][Ss]?://`},
 			"view": {Kind: KindString, Enum: LinkCardViews},
