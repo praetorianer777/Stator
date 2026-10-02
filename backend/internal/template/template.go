@@ -1,12 +1,10 @@
 // Package template holds the documents a new page can start from.
 //
 // Built-ins are data, not rows: one JSON file per language under builtin/,
-// read once at start. An organization's own templates are rows, for every
-// space or for one, in the same shape and the same list. Each body is a
-// document as the editor stores it, so the allowlist judges it like any page,
-// and its hints are text carrying the hint mark, which the database strips
-// from whatever is published. A template of the organization's may also hold
-// variables, which the server fills in when a page is made from it.
+// read once at start; an organization's own templates are rows in the same
+// shape, with variables the server fills in. Each body is a document as the
+// editor stores it, and its hints are text carrying the hint mark, which the
+// database strips from whatever is published.
 package template
 
 import (

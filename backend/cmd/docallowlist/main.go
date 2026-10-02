@@ -1,7 +1,5 @@
-// Command docallowlist writes the document allowlists as JSON: what a page
-// may hold to the first path given, what a comment may hold to the
-// second, what a template may hold to the third, or the page's to stdout
-// when no path is given.
+// Command docallowlist writes the page, comment and template allowlists as
+// JSON to the paths given, in that order, or the page's to stdout.
 package main
 
 import (

@@ -84,10 +84,8 @@ type CreateInput struct {
 	// Publish makes the page version 1 at once, seen by everybody who may see
 	// the space; otherwise it stays an unpublished page of its creator's.
 	Publish bool `json:"publish,omitempty"`
-	// Template starts the page from a template in place of a body: a
-	// built-in's key or the id of one of the organization's. The server fills
-	// its variables from Values, by name, and the title's names in braces
-	// with them; an empty title takes the template's.
+	// Template starts the page from a template's key in place of a body; the
+	// server fills its variables, and the title's names in braces, from Values.
 	Template string            `json:"template,omitempty"`
 	Values   map[string]string `json:"values,omitempty"`
 }

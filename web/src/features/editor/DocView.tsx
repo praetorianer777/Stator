@@ -14,6 +14,7 @@ import { languageLabel, lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
 import { Passage, usePassages, type BlockPath } from "./passages";
 import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel } from "./InlineValueViews";
+import { Blank, TEMPLATE_VARIABLE_NODE, variableName } from "./blanks";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
@@ -369,6 +370,10 @@ function inlineNode(node: DocNode): ReactNode {
     case DATE_NODE: {
       const day = isoDay(node.attrs?.date);
       return day ? marked(<DateChip day={day} />, node.marks) : null;
+    }
+    case TEMPLATE_VARIABLE_NODE: {
+      const name = variableName(node.attrs?.name);
+      return name ? marked(<Blank name={name} />, node.marks) : null;
     }
     default:
       return textOf(node);

@@ -86,9 +86,8 @@ func Convert(src []byte, resolve Resolver) (*Result, error) {
 	return convert(src, resolve, false)
 }
 
-// ConvertTemplate reads a Markdown file as a template's body: as Convert
-// does, and with a template's variables read back as variables, where a
-// page keeps their words.
+// ConvertTemplate reads a Markdown file as a template's body, its variables
+// read back as variables where a page keeps their words.
 func ConvertTemplate(src []byte, resolve Resolver) (*Result, error) {
 	return convert(src, resolve, true)
 }

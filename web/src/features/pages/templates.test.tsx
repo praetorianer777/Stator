@@ -91,7 +91,7 @@ describe("the template picker", () => {
     ).toEqual([checked(dialog)]);
   });
 
-  it("makes the page unpublished with the template's body, keeps a typed title, and opens the editor", async () => {
+  it("makes the page unpublished from the template, which the server fills, keeps a typed title, and opens the editor", async () => {
     const sent = stub();
     const router = await renderAt("/s/DOCS");
     const dialog = await openDialog();
@@ -100,8 +100,7 @@ describe("the template picker", () => {
     expect(within(dialog).getByLabelText("Title")).toHaveValue("Retro");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
     await arrival(router, `/s/DOCS/p/${made.id}/retro/edit`);
-    const retrospective = templates.find((tpl) => tpl.key === "retrospective");
-    expect(sent.find((r) => r.method === "POST" && r.path === "/pages")?.body).toEqual({ parentId: home.id, title: "Retro", body: retrospective?.body });
+    expect(sent.find((r) => r.method === "POST" && r.path === "/pages")?.body).toEqual({ parentId: home.id, title: "Retro", template: "retrospective" });
   });
 
   it("still makes a blank page when the templates cannot be loaded", async () => {

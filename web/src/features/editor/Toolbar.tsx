@@ -60,10 +60,10 @@ export function EditorToolbar({
       table: e.isActive("table"),
       panel: e.isActive("panel"),
       panelKind: (e.getAttributes("panel").kind as PanelKind | undefined) ?? "info",
-      expand: variant === "page" && e.isActive("expand"),
+      expand: variant !== "comment" && e.isActive("expand"),
       // A comment's editor has no tables, and so neither command.
-      canMerge: variant === "page" && e.can().mergeCells(),
-      canSplit: variant === "page" && e.can().splitCell(),
+      canMerge: variant !== "comment" && e.can().mergeCells(),
+      canSplit: variant !== "comment" && e.can().splitCell(),
       issueItems: onCreateIssues ? (planSelection(e.state)?.items.length ?? 0) : 0,
     }),
   });
@@ -163,7 +163,7 @@ export function EditorToolbar({
             onClick={b.run}
           />
         ))}
-        {variant === "page" && <AttachButton editor={editor} />}
+        {variant !== "comment" && <AttachButton editor={editor} />}
         {onFind && (
           <>
             <Separator />

@@ -27,6 +27,7 @@ import { ArmatureIssueList } from "./armatureIssueList";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
 import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 import { FindReplace } from "./findReplace";
+import { TemplateVariable } from "./templateVariable";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -281,8 +282,8 @@ const ShiftedHeading = Heading.extend({
   },
 });
 
-/** A page holds every block the allowlist names; a comment holds text and its structure only. */
-export type EditorVariant = "page" | "comment";
+/** A page holds every block the allowlist names, a template those and its blanks, a comment text and its structure only. */
+export type EditorVariant = "page" | "template" | "comment";
 
 export interface ExtensionOptions {
   /** Which allowlist the editor's schema follows; a page's by default. */
@@ -330,7 +331,7 @@ export function editorExtensions({
       underline: false,
       codeBlock: false,
       heading: false,
-      horizontalRule: variant === "page" ? {} : false,
+      horizontalRule: variant === "comment" ? false : {},
       link: { openOnClick: false, autolink: true, isAllowedUri: (url) => safeHref(url) !== null },
     }),
     ShiftedHeading.configure({ levels: [...HEADING_LEVELS] }),
@@ -383,5 +384,6 @@ export function editorExtensions({
     Status.configure({ edit: editInlineValue }),
     DateNode.configure({ edit: editInlineValue }),
     FindReplace.configure({ open: find }),
+    ...(variant === "template" ? [TemplateVariable] : []),
   ];
 }

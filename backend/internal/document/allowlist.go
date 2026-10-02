@@ -340,9 +340,8 @@ func (a Allowlist) Subset(nodes, marks []string) Allowlist {
 	return out
 }
 
-// TemplateAllowed is what a template's body may hold: everything a page may,
-// and a variable wherever inline content goes. Written to
-// api/template-allowlist.json for the template editor.
+// TemplateAllowed is what a template's body may hold: a page's nodes and a
+// variable wherever inline content goes, as api/template-allowlist.json.
 var TemplateAllowed = Allowed.withInline(NodeVariable, NodeSpec{
 	Inline: true,
 	Attrs:  map[string]Attr{"name": {Kind: KindString, Pattern: VariableNamePattern}},

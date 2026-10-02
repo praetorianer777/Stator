@@ -222,9 +222,8 @@ func normalize(v Variable, raw string) (string, error) {
 	return value, nil
 }
 
-// Resolve answers each variable's value for a new page: the one given, else
-// its default, else empty. today is the day Today stands for. A value for a
-// name the template lacks is refused, so a typing mistake is not dropped.
+// Resolve answers each variable's value: the one given, else its default, else
+// empty. A value for a name the template lacks is refused rather than dropped.
 func Resolve(vars []Variable, values map[string]string, today string) (map[string]string, error) {
 	for _, name := range sortedKeys(values) {
 		if !slices.ContainsFunc(vars, func(v Variable) bool { return v.Name == name }) {
@@ -255,10 +254,8 @@ func Resolve(vars []Variable, values map[string]string, today string) (map[strin
 // read by the caller from the space the page goes in.
 type People map[string]string
 
-// Fill replaces every variable of a template's body with its value: words as
-// text, a day as a date, a person as a mention, each with the variable's
-// styles. A blank left empty becomes its label as hint text, which the
-// author sees and publishing strips, so no placeholder reaches a reader.
+// Fill replaces every variable with its value, keeping the blank's styles; an
+// empty one becomes its label as hint text, which publishing strips.
 func Fill(root document.Node, vars []Variable, values map[string]string, people People) document.Node {
 	byName := make(map[string]Variable, len(vars))
 	for _, v := range vars {
@@ -306,9 +303,8 @@ func filled(v Variable, value string, people People, marks []document.Mark) docu
 	return document.Node{Type: "text", Text: value, Marks: marks}
 }
 
-// FillTitle puts each variable's value where the title names it in braces,
-// a person by name and an empty value as nothing; braces naming no variable
-// stay as typed.
+// FillTitle puts each value where the title names its variable in braces, a
+// person by name; braces naming no variable stay as typed.
 func FillTitle(title string, vars []Variable, values map[string]string, people People) string {
 	out := tokenPattern.ReplaceAllStringFunc(title, func(token string) string {
 		name := token[1 : len(token)-1]

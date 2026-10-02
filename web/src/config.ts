@@ -164,6 +164,25 @@ export const PAGE_TITLE_MAX_LENGTH = 255;
 export const TEMPLATE_DATE_TOKEN = "{date}";
 /** The picker's value for a page that starts empty; no template key can be empty. */
 export const BLANK_TEMPLATE = "";
+/** The API's bounds on one of the organization's templates, matching package template. */
+export const TEMPLATE_NAME_MAX_LENGTH = 100;
+export const TEMPLATE_DESCRIPTION_MAX_LENGTH = 500;
+export const TEMPLATE_TITLE_MAX_LENGTH = 255;
+export const TEMPLATE_VARIABLES_MAX = 20;
+export const TEMPLATE_VARIABLE_LABEL_MAX_LENGTH = 80;
+export const TEMPLATE_TEXT_VALUE_MAX_LENGTH = 500;
+export const TEMPLATE_OPTIONS_MAX = 50;
+/** The kinds a variable can be, in the order the editor offers them, as the API lists them. */
+export const TEMPLATE_VARIABLE_KINDS = ["text", "date", "select", "person"] as const;
+/** A date variable's default that stands for the day the page is made, as the API spells it. */
+export const TEMPLATE_DEFAULT_TODAY = "today";
+/** A variable's name as the API takes it; the form derives one from the label. */
+export const TEMPLATE_VARIABLE_NAME_PATTERN = /^[a-z][a-z0-9_]{0,39}$/;
+export const TEMPLATE_VARIABLE_NAME_MAX_LENGTH = 40;
+/** Where administrators keep the organization's templates, and make or change one. */
+export const TEMPLATES_PATH = "/settings/templates";
+export const TEMPLATE_NEW_PATH = "/settings/templates/new";
+export const TEMPLATE_EDIT_PATH = "/settings/templates/$templateKey";
 /** How far a page's title runs into its address before it is cut. */
 export const PAGE_SLUG_MAX_LENGTH = 60;
 /** The slug of a page whose title leaves nothing usable in an address. */

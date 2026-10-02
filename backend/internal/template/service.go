@@ -366,11 +366,8 @@ func record(ctx context.Context, tx db.DBTX, actor perm.Actor, action string, t 
 	return audit.Write(ctx, tx, org.ID, audit.Entry{Action: action, TargetType: "template", TargetID: &id, Actor: actor.UserID, Data: data})
 }
 
-// Instantiate is where a page made from a template starts, in the
-// transaction that makes it in space: the body with every variable filled,
-// checked against the page allowlist, and the title with every name in
-// braces filled. An empty title takes the template's, its DateToken the day
-// in UTC. A template of another space is no template here.
+// Instantiate fills a template in for a page made in space, in its transaction:
+// the body held to the page allowlist, and the title, empty taking the template's.
 func Instantiate(ctx context.Context, tx db.DBTX, space uuid.UUID, key string, values map[string]string, title string) (string, json.RawMessage, error) {
 	tpl, err := forSpace(ctx, tx, space, key)
 	if err != nil {
