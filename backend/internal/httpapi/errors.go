@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/watch"
@@ -274,6 +275,8 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound), errors.Is(err, reaction.ErrPageNotFound),
 		errors.Is(err, share.ErrPageNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
+	case errors.Is(err, task.ErrNotFound):
+		return ErrNotFound("That task is not on the page any more. Reload the page or your list of tasks.")
 	case errors.Is(err, comment.ErrNotFound), errors.Is(err, reaction.ErrCommentNotFound):
 		return ErrNotFound("That comment was not found. It may have been deleted, or its page moved; reload the page.")
 	case errors.Is(err, comment.ErrUnpublished):

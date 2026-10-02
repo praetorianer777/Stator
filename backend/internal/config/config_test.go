@@ -27,7 +27,7 @@ func clean(t *testing.T) {
 		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
 		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
 		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
-		"STATOR_VERIFICATION_CHECK_INTERVAL",
+		"STATOR_VERIFICATION_CHECK_INTERVAL", "STATOR_TASK_DUE_CHECK_INTERVAL",
 	} {
 		t.Setenv(key, "")
 	}
@@ -221,6 +221,31 @@ func TestTheVerificationCheckIsAnInterval(t *testing.T) {
 		_, err := Load()
 		var cfgErr *Error
 		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_VERIFICATION_CHECK_INTERVAL") {
+			t.Errorf("%s was not refused by name: %v", bad, err)
+		}
+	}
+}
+
+// The task reminder runs every ten minutes unless told otherwise, and an
+// interval too short to be meant is refused with what to set.
+func TestTheTaskDueCheckIsAnInterval(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.TaskDueCheck != DefaultTaskDueCheck {
+		t.Errorf("the task reminder runs every %s, want %s", c.TaskDueCheck, DefaultTaskDueCheck)
+	}
+	t.Setenv("STATOR_TASK_DUE_CHECK_INTERVAL", "1m")
+	if c, err = Load(); err != nil || c.TaskDueCheck != time.Minute {
+		t.Errorf("1m read as %s, %v", c.TaskDueCheck, err)
+	}
+	for _, bad := range []string{"0s", "10ms", "-5m"} {
+		t.Setenv("STATOR_TASK_DUE_CHECK_INTERVAL", bad)
+		_, err := Load()
+		var cfgErr *Error
+		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_TASK_DUE_CHECK_INTERVAL") {
 			t.Errorf("%s was not refused by name: %v", bad, err)
 		}
 	}

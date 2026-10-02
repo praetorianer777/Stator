@@ -155,6 +155,11 @@ verification:
   # each page's owner. A second or more, such as 10m.
   checkInterval: 10m
 
+tasks:
+  # How often the worker looks for tasks whose due day came, to remind each
+  # assignee once. A second or more, such as 10m.
+  dueCheckInterval: 10m
+
 mail:
   # The SMTP relay the worker sends notifications through, as host:port.
   # Blank turns mail off: notifications are then shown in the app only.

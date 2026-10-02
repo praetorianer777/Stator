@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/secret"
+	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
@@ -121,6 +122,7 @@ func run() error {
 	go webhook.NewSender(hooks, log).Run(ctx)
 	go events.NewWorker(cluster, handlers, log).Run(ctx)
 	go page.NewLapseWatch(cluster, log, cfg.VerificationCheck).Run(ctx)
+	go task.NewDueWatch(cluster, log, cfg.TaskDueCheck).Run(ctx)
 	if mailer != nil {
 		go notify.NewDigester(cluster, mailer, cfg.AppBaseURL, log).Run(ctx)
 	}

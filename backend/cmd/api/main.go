@@ -43,6 +43,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
+	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/version"
@@ -174,6 +175,7 @@ func run() error {
 		Shares:            share.NewService(cluster),
 		Home:              home.NewService(cluster),
 		Stale:             stale.NewService(cluster),
+		Tasks:             task.NewService(cluster),
 		PageViews:         pageview.NewService(cluster),
 		PageViewRetention: cfg.RetainPageViews,
 		Armature:          armatures,

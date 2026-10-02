@@ -31,6 +31,10 @@ func Sentence(kind Kind, actor, title string, inComment bool) string {
 	}
 	quoted := `"` + title + `"`
 	switch kind {
+	case KindAssigned:
+		return fmt.Sprintf("%s assigned you a task on %s", actor, quoted)
+	case KindDue:
+		return fmt.Sprintf("A task of yours on %s is due", quoted)
 	case KindMentioned:
 		if inComment {
 			return fmt.Sprintf("%s mentioned you in a comment on %s", actor, quoted)

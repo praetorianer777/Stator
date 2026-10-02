@@ -28,10 +28,12 @@ const (
 	// TopicVerificationLapsed is written by the worker, not by a request.
 	TopicVerificationLapsed = "page.verification_lapsed"
 	TopicPageShared         = "page.shared"
+	// TopicTaskDue is written by the worker when a task's day comes.
+	TopicTaskDue = "task.due"
 )
 
 // Topics lists every topic the product emits.
-var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared}
+var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared, TopicTaskDue}
 
 // Event is one committed domain event.
 type Event struct {
@@ -127,6 +129,15 @@ type PageDeleted struct {
 type VerificationLapsed struct {
 	PageID    uuid.UUID `json:"pageId"`
 	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+// TaskDue is a task whose day came, noticed by the worker; it has no actor.
+// The assignee and the day let a reminder that is out of date tell nobody.
+type TaskDue struct {
+	PageID     uuid.UUID `json:"pageId"`
+	TaskID     uuid.UUID `json:"taskId"`
+	AssigneeID uuid.UUID `json:"assigneeId"`
+	DueOn      string    `json:"dueOn"`
 }
 
 // Emit writes an event in the caller's transaction, the one that makes the

@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
+	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
@@ -79,6 +80,8 @@ type Server struct {
 	Home  *home.Service
 	// Stale reads the stale content report for administrators.
 	Stale *stale.Service
+	// Tasks reads the tasks people are assigned on published pages.
+	Tasks *task.Service
 	// Shares sends pages to people who may read them, with a note.
 	Shares *share.Service
 	// PageViews reads how often pages were read and by whom;
@@ -354,6 +357,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/home/updates", s.handleHomeUpdates)
 			r.Get("/home/edited", s.handleHomeEdited)
 			r.Get("/stale-pages", s.handleListStalePages)
+			r.Get("/tasks", s.handleListMyTasks)
+			r.Patch("/pages/{pageID}/tasks/{taskID}", s.handleSetTaskDone)
 			r.Put("/pages/{pageID}/owner", s.handleSetPageOwner)
 			r.Delete("/pages/{pageID}/owner", s.handleRemovePageOwner)
 			r.Put("/pages/{pageID}/verification", s.handleVerifyPage)

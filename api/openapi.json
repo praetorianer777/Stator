@@ -82,6 +82,9 @@
       "name": "stale"
     },
     {
+      "name": "tasks"
+    },
+    {
       "name": "templates"
     },
     {
@@ -5636,6 +5639,75 @@
         }
       }
     },
+    "/pages/{pageID}/tasks/{taskID}": {
+      "patch": {
+        "operationId": "setTaskDone",
+        "summary": "Tick a task off or open it again, by publishing the page with its box changed as the next version; its state already is no change. For whoever may edit the page.",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "taskID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDoneInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  },
+                  "required": [
+                    "task"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/verification": {
       "delete": {
         "operationId": "unverifyPage",
@@ -7761,6 +7833,85 @@
                   "required": [
                     "next",
                     "stars"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks": {
+      "get": {
+        "operationId": "listMyTasks",
+        "summary": "The tasks assigned to the caller on published pages they may still view, out of the trash and the archive: open ones soonest due first and those without a day last, or done ones the latest first; next is the cursor for the window after, null at the end.",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "description": "open when absent.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "done"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The next of the window before; the first window when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Task"
+                      }
+                    }
+                  },
+                  "required": [
+                    "next",
+                    "tasks"
                   ]
                 }
               }
@@ -11708,6 +11859,8 @@
           "kind": {
             "type": "string",
             "enum": [
+              "assigned",
+              "due",
               "mentioned",
               "shared",
               "replied",
@@ -13067,6 +13220,17 @@
           "url"
         ]
       },
+      "SetDoneInput": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "done"
+        ]
+      },
       "SetGroupRoleRequest": {
         "type": "object",
         "properties": {
@@ -13556,10 +13720,16 @@
       "Switches": {
         "type": "object",
         "properties": {
+          "assigned": {
+            "type": "boolean"
+          },
           "commented": {
             "type": "boolean"
           },
           "created": {
+            "type": "boolean"
+          },
+          "due": {
             "type": "boolean"
           },
           "expired": {
@@ -13582,6 +13752,8 @@
           }
         },
         "required": [
+          "assigned",
+          "due",
           "mentioned",
           "shared",
           "replied",
@@ -13604,6 +13776,97 @@
         },
         "required": [
           "name"
+        ]
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "assignedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "assignedByName": {
+            "type": "string"
+          },
+          "assigneeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "assigneeName": {
+            "type": "string"
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "doneAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dueOn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "page": {
+            "$ref": "#/components/schemas/TaskPageRef"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "page",
+          "text",
+          "done",
+          "dueOn",
+          "assigneeId",
+          "assigneeName",
+          "assignedByName",
+          "assignedAt",
+          "doneAt",
+          "canEdit"
+        ]
+      },
+      "TaskPageRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName"
         ]
       },
       "Template": {

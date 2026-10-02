@@ -82,6 +82,7 @@ less.
 | `list_audit_log` | `GET /audit` (administrators) | yes |
 | `list_stale_pages` | `GET /stale-pages` (administrators of a space) | yes |
 | `get_page_views` | `GET /pages/{pageID}/views` | yes |
+| `list_my_tasks` | `GET /tasks` | yes |
 | `create_page` | `POST /pages` | no |
 | `update_page` | `PATCH /pages/{pageID}` | no |
 | `replace_page_markdown` | `PUT /pages/{pageID}/markdown` | no |
@@ -89,6 +90,7 @@ less.
 | `add_page_label` | `POST /pages/{pageID}/labels` | no |
 | `add_comment` | `POST /pages/{pageID}/comments` | no |
 | `reply_to_comment` | `POST /comments/{commentID}/replies` | no |
+| `set_task_done` | `PATCH /pages/{pageID}/tasks/{taskID}` | no |
 
 `tools/list` gives each tool's input schema: path values, query values and
 body fields in one object, every type it refers to carried along in

@@ -49,6 +49,9 @@ const (
 	// DefaultVerificationCheck is page.DefaultLapseInterval, which a test
 	// holds the two to.
 	DefaultVerificationCheck = 10 * time.Minute
+	// DefaultTaskDueCheck is task.DefaultDueInterval, which a test holds the
+	// two to.
+	DefaultTaskDueCheck = 10 * time.Minute
 	// DefaultUploadLimit is attachment.DefaultMaxSize, which a test holds
 	// the two to; this package cannot import that one.
 	DefaultUploadLimit int64 = 50 << 20
@@ -94,6 +97,9 @@ type Config struct {
 	// VerificationCheck is how often the worker looks for page verifications
 	// that ran out, to tell their owners.
 	VerificationCheck time.Duration
+	// TaskDueCheck is how often the worker looks for tasks whose day came, to
+	// remind their assignees.
+	TaskDueCheck time.Duration
 
 	// SecretKey encrypts secrets stored in the database, such as an identity
 	// provider's client secret. Nil in development when it is not set.
@@ -297,6 +303,7 @@ func Load() (Config, error) {
 		RetainAudit:       l.duration("STATOR_RETAIN_AUDIT", DefaultRetainAudit),
 		RetainPageViews:   l.duration("STATOR_RETAIN_PAGE_VIEWS", DefaultRetainPageViews),
 		VerificationCheck: l.duration("STATOR_VERIFICATION_CHECK_INTERVAL", DefaultVerificationCheck),
+		TaskDueCheck:      l.duration("STATOR_TASK_DUE_CHECK_INTERVAL", DefaultTaskDueCheck),
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
 	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
@@ -373,6 +380,9 @@ func Load() (Config, error) {
 	}
 	if c.VerificationCheck < time.Second {
 		l.problem(fmt.Sprintf("STATOR_VERIFICATION_CHECK_INTERVAL is %s; set it to a second or more, such as 10m.", c.VerificationCheck))
+	}
+	if c.TaskDueCheck < time.Second {
+		l.problem(fmt.Sprintf("STATOR_TASK_DUE_CHECK_INTERVAL is %s; set it to a second or more, such as 10m.", c.TaskDueCheck))
 	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		l.problem("STATOR_OTEL_SAMPLE_RATIO must be between 0 and 1.")

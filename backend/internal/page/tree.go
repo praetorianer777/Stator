@@ -567,6 +567,22 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			FROM page_restriction r JOIN unnest($1::uuid[], $2::uuid[]) AS m (old_id, new_id) ON r.page_id = m.old_id`, olds, news); err != nil {
 			return fmt.Errorf("copy the restrictions: %w", err)
 		}
+		// A copy is published, so its checklists are tasks too. Nobody chose
+		// whom they name here, so a copy somebody may not view leaves them
+		// unassigned, and no event tells anybody, as with mentions. A copy whose
+		// lists leave the copier out gets its rows when an editor publishes it.
+		for _, id := range news {
+			var editable bool
+			if err := tx.QueryRow(ctx, `SELECT page_stewardable($1, $2)`, id, actor.UserID).Scan(&editable); err != nil {
+				return err
+			}
+			if !editable {
+				continue
+			}
+			if err := syncTasks(ctx, tx, id, false); err != nil {
+				return err
+			}
+		}
 		if err := watch.Auto(ctx, tx, actor.UserID, made); err != nil {
 			return fmt.Errorf("watch the copy: %w", err)
 		}
