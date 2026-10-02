@@ -82,6 +82,9 @@ type operation struct {
 	// toolFile is the name a multipart tool sends its content under when the
 	// call names none.
 	toolFile string
+	// orgWide routes concern the organization as a whole, which a token
+	// limited to spaces is refused; token_test.go holds the router to it.
+	orgWide bool
 }
 
 // operations is the table. Order is by area, then by path; paths are relative
@@ -108,36 +111,36 @@ var operations = []operation{
 	{method: "POST", path: "/auth/switch-org", handler: "handleSwitchOrg", tag: "auth", summary: "Move the session to another organization.",
 		request: switchOrgRequest{}, responses: ok(env{"organization": auth.CurrentOrg{}})},
 
-	{method: "GET", path: "/oidc-provider", handler: "handleGetOIDCProvider", tag: "access", summary: "The organization's identity provider, if one is configured. For administrators.",
+	{method: "GET", path: "/oidc-provider", handler: "handleGetOIDCProvider", orgWide: true, tag: "access", summary: "The organization's identity provider, if one is configured. For administrators.",
 		responses: ok(providerView{})},
-	{method: "PUT", path: "/oidc-provider", handler: "handleSaveOIDCProvider", tag: "access", summary: "Configure the organization's identity provider. For administrators.",
+	{method: "PUT", path: "/oidc-provider", handler: "handleSaveOIDCProvider", orgWide: true, tag: "access", summary: "Configure the organization's identity provider. For administrators.",
 		request: saveOIDCProviderRequest{}, responses: ok(providerView{})},
-	{method: "GET", path: "/oidc-provider/group-roles", handler: "handleListGroupRoles", tag: "access", summary: "Which provider groups grant which role. For administrators.",
+	{method: "GET", path: "/oidc-provider/group-roles", handler: "handleListGroupRoles", orgWide: true, tag: "access", summary: "Which provider groups grant which role. For administrators.",
 		responses: ok(env{"groupRoles": []oidc.GroupRole{}})},
-	{method: "POST", path: "/oidc-provider/group-roles", handler: "handleSetGroupRole", tag: "access", summary: "Map a provider group to a role, or change the role it maps to; members follow at their next sign-in. For administrators.",
+	{method: "POST", path: "/oidc-provider/group-roles", handler: "handleSetGroupRole", orgWide: true, tag: "access", summary: "Map a provider group to a role, or change the role it maps to; members follow at their next sign-in. For administrators.",
 		request: setGroupRoleRequest{}, responses: ok(env{"groupRole": oidc.GroupRole{}})},
-	{method: "DELETE", path: "/oidc-provider/group-roles/{groupRoleID}", handler: "handleRemoveGroupRole", tag: "access", summary: "Unmap a provider group; the roles it granted go at each person's next sign-in. For administrators.",
+	{method: "DELETE", path: "/oidc-provider/group-roles/{groupRoleID}", handler: "handleRemoveGroupRole", orgWide: true, tag: "access", summary: "Unmap a provider group; the roles it granted go at each person's next sign-in. For administrators.",
 		responses: none()},
-	{method: "GET", path: "/users", handler: "handleListMembers", tag: "access", summary: "The organization's members, with their roles and whether the identity provider decides them. For administrators.",
+	{method: "GET", path: "/users", handler: "handleListMembers", orgWide: true, tag: "access", summary: "The organization's members, with their roles and whether the identity provider decides them. For administrators.",
 		responses: ok(env{"members": []auth.Member{}})},
-	{method: "DELETE", path: "/users/{userID}", handler: "handleRemoveMember", tag: "access", summary: "Take somebody out of the organization. The owner stays. For administrators.",
+	{method: "DELETE", path: "/users/{userID}", handler: "handleRemoveMember", orgWide: true, tag: "access", summary: "Take somebody out of the organization. The owner stays. For administrators.",
 		responses: none()},
-	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", tag: "access", summary: "Who signed in through the identity provider and is waiting to be let in. For administrators.",
+	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", orgWide: true, tag: "access", summary: "Who signed in through the identity provider and is waiting to be let in. For administrators.",
 		responses: ok(env{"requests": []auth.JoinRequest{}})},
-	{method: "POST", path: "/users/requests/{userID}/admit", handler: "handleAdmitJoinRequest", tag: "access", summary: "Let a waiting person in with the standing given. For administrators.",
+	{method: "POST", path: "/users/requests/{userID}/admit", handler: "handleAdmitJoinRequest", orgWide: true, tag: "access", summary: "Let a waiting person in with the standing given. For administrators.",
 		request: admitRequest{}, responses: ok(env{"membership": auth.Membership{}})},
-	{method: "DELETE", path: "/users/requests/{userID}", handler: "handleDeclineJoinRequest", tag: "access", summary: "Turn a waiting person away; they may ask again. For administrators.",
+	{method: "DELETE", path: "/users/requests/{userID}", handler: "handleDeclineJoinRequest", orgWide: true, tag: "access", summary: "Turn a waiting person away; they may ask again. For administrators.",
 		responses: none()},
-	{method: "GET", path: "/org/tokens", handler: "handleListOrgAPITokens", tag: "access", summary: "Every personal access token in the organization, with whose it is. For administrators.",
+	{method: "GET", path: "/org/tokens", handler: "handleListOrgAPITokens", orgWide: true, tag: "access", summary: "Every personal access token in the organization, with whose it is. For administrators.",
 		responses: ok(env{"tokens": []auth.OrgAPIToken{}})},
-	{method: "DELETE", path: "/org/tokens/{tokenID}", handler: "handleRevokeOrgAPIToken", tag: "access", summary: "Revoke anybody's token in the organization. For administrators.",
+	{method: "DELETE", path: "/org/tokens/{tokenID}", handler: "handleRevokeOrgAPIToken", orgWide: true, tag: "access", summary: "Revoke anybody's token in the organization. For administrators.",
 		responses: none()},
 
-	{method: "GET", path: "/tokens", handler: "handleListAPITokens", tag: "tokens", summary: "The caller's personal access tokens in this organization, without their secrets.",
+	{method: "GET", path: "/tokens", handler: "handleListAPITokens", orgWide: true, tag: "tokens", summary: "The caller's personal access tokens in this organization, without their secrets.",
 		responses: ok(env{"tokens": []auth.APIToken{}})},
-	{method: "POST", path: "/tokens", handler: "handleCreateAPIToken", tag: "tokens", summary: "Make a personal access token; the secret is in this answer and never again. Needs a session.",
+	{method: "POST", path: "/tokens", handler: "handleCreateAPIToken", orgWide: true, tag: "tokens", summary: "Make a personal access token; the secret is in this answer and never again. Needs a session.",
 		request: createTokenRequest{}, responses: created(env{"token": auth.APIToken{}})},
-	{method: "DELETE", path: "/tokens/{tokenID}", handler: "handleRevokeAPIToken", tag: "tokens", summary: "Revoke one of the caller's tokens; it stops working at once.",
+	{method: "DELETE", path: "/tokens/{tokenID}", handler: "handleRevokeAPIToken", orgWide: true, tag: "tokens", summary: "Revoke one of the caller's tokens; it stops working at once.",
 		responses: none()},
 
 	// Themes, as Armature serves them.
@@ -159,7 +162,7 @@ var operations = []operation{
 	{method: "GET", path: "/spaces", handler: "handleListSpaces", tool: "list_spaces", toolHelp: "The spaces the caller may see, with the keys other tools take; archived true lists archived ones too.", tag: "spaces", summary: "Every space the caller may see, by name; archived ones only when asked for.",
 		query:     []param{{name: "archived", schema: &openapi.Schema{Type: "boolean"}, description: "true to list archived spaces too; false when absent."}},
 		responses: ok(env{"spaces": []space.Space{}})},
-	{method: "POST", path: "/spaces", handler: "handleCreateSpace", tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
+	{method: "POST", path: "/spaces", handler: "handleCreateSpace", orgWide: true, tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For the space's administrators.", responses: none()},
@@ -269,9 +272,9 @@ var operations = []operation{
 	// Permissions (#19).
 	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "permissions", summary: "What the caller may do across the organization, which decides which buttons to draw.",
 		responses: ok(env{"can": perm.GlobalCan{}})},
-	{method: "GET", path: "/org/permissions", handler: "handleListGlobalPermissions", tag: "permissions", summary: "Each global permission and whom it is granted to. For administrators.",
+	{method: "GET", path: "/org/permissions", handler: "handleListGlobalPermissions", orgWide: true, tag: "permissions", summary: "Each global permission and whom it is granted to. For administrators.",
 		responses: ok(env{"permissions": []perm.GlobalGrant{}})},
-	{method: "PUT", path: "/org/permissions/{permission}", handler: "handleSetGlobalPermission", tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.",
+	{method: "PUT", path: "/org/permissions/{permission}", handler: "handleSetGlobalPermission", orgWide: true, tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.",
 		request: perm.GlobalGrantInput{}, responses: ok(env{"permission": perm.GlobalGrant{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
 		responses: ok(env{"grants": []perm.SpaceGrant{}})},
@@ -440,51 +443,51 @@ var operations = []operation{
 		request: notify.Preferences{}, responses: ok(env{"preferences": notify.Preferences{}})},
 
 	// Connecting Armature (#27); see docs/api-contract-m3.md.
-	{method: "GET", path: "/armature/connection", handler: "handleGetArmatureConnection", tag: "armature",
+	{method: "GET", path: "/armature/connection", handler: "handleGetArmatureConnection", orgWide: true, tag: "armature",
 		summary:   "The organization's Armature instance and what to enter in Armature's webhook settings, or null. For administrators.",
 		responses: ok(env{"connection": (*armature.Connection)(nil)})},
-	{method: "PUT", path: "/armature/connection", handler: "handleSaveArmatureConnection", tag: "armature",
+	{method: "PUT", path: "/armature/connection", handler: "handleSaveArmatureConnection", orgWide: true, tag: "armature",
 		summary: "Connect an Armature instance; a new address or organization forgets every stored token. For administrators.",
 		request: armature.ConnectionInput{}, responses: ok(env{"connection": armature.Connection{}})},
-	{method: "DELETE", path: "/armature/connection", handler: "handleRemoveArmatureConnection", tag: "armature",
+	{method: "DELETE", path: "/armature/connection", handler: "handleRemoveArmatureConnection", orgWide: true, tag: "armature",
 		summary:   "Disconnect Armature, forgetting every stored token and the webhook secret. For administrators.",
 		responses: none()},
 
 	// The audit log (#107), as Armature's administrators read theirs.
-	{method: "GET", path: "/audit", handler: "handleListAudit", tool: "list_audit_log", toolHelp: "Who did what in the organization, newest first. For administrators.", tag: "audit",
+	{method: "GET", path: "/audit", handler: "handleListAudit", orgWide: true, tool: "list_audit_log", toolHelp: "Who did what in the organization, newest first. For administrators.", tag: "audit",
 		summary: "Who did what to the organization, newest first: members, sign-in, tokens, spaces, permissions, deletions for good and exports; next is the cursor for the window after, null at the end. For administrators.",
 		query:   append(auditQuery, keysetQueryOf(audit.DefaultLimit, audit.MaxLimit)...), responses: ok(env{"entries": []audit.AuditEntry{}, "next": (*string)(nil)})},
-	{method: "GET", path: "/audit/facets", handler: "handleAuditFacets", tag: "audit",
+	{method: "GET", path: "/audit/facets", handler: "handleAuditFacets", orgWide: true, tag: "audit",
 		summary:   "The actions, people and kinds of target the log holds, to narrow it by, and how many days an entry is kept, 0 for ever. For administrators.",
 		responses: ok(env{"facets": audit.AuditFacets{}})},
-	{method: "GET", path: "/audit/export", handler: "handleExportAudit", tag: "audit",
+	{method: "GET", path: "/audit/export", handler: "handleExportAudit", orgWide: true, tag: "audit",
 		summary: "The log as a CSV file, newest first, narrowed like the list; the export is itself recorded. Refused with export_too_large past " + strconv.Itoa(audit.MaxExport) + " entries. For administrators.",
 		binary:  true, query: auditQuery, responses: map[int]any{200: nil, 422: errorEnvelope{}}},
 
 	// Webhooks (#110), as Armature's administrators keep theirs.
-	{method: "GET", path: "/webhooks", handler: "handleListWebhooks", tag: "webhooks",
+	{method: "GET", path: "/webhooks", handler: "handleListWebhooks", orgWide: true, tag: "webhooks",
 		summary:   "Where the organization's events are posted, by name, without their secrets. For administrators.",
 		responses: ok(env{"webhooks": []webhook.Webhook{}})},
-	{method: "POST", path: "/webhooks", handler: "handleCreateWebhook", tag: "webhooks",
+	{method: "POST", path: "/webhooks", handler: "handleCreateWebhook", orgWide: true, tag: "webhooks",
 		summary: "Add a webhook; its secret is in this answer and never again. The caller becomes its owner, whose permissions every payload is read with. For administrators.",
 		request: webhook.WebhookInput{}, responses: map[int]any{201: env{"webhook": webhook.Webhook{}}, 422: errorEnvelope{}}},
-	{method: "PATCH", path: "/webhooks/{webhookID}", handler: "handleUpdateWebhook", tag: "webhooks",
+	{method: "PATCH", path: "/webhooks/{webhookID}", handler: "handleUpdateWebhook", orgWide: true, tag: "webhooks",
 		summary: "Change a webhook's name, address, topics or whether it is on; the caller becomes its owner, and turning it on clears its failures. For administrators.",
 		request: webhook.WebhookInput{}, responses: map[int]any{200: env{"webhook": webhook.Webhook{}}, 422: errorEnvelope{}}},
-	{method: "DELETE", path: "/webhooks/{webhookID}", handler: "handleDeleteWebhook", tag: "webhooks",
+	{method: "DELETE", path: "/webhooks/{webhookID}", handler: "handleDeleteWebhook", orgWide: true, tag: "webhooks",
 		summary:   "Remove a webhook and its log. For administrators.",
 		responses: none()},
-	{method: "POST", path: "/webhooks/{webhookID}/rotate-secret", handler: "handleRotateWebhookSecret", tag: "webhooks",
+	{method: "POST", path: "/webhooks/{webhookID}/rotate-secret", handler: "handleRotateWebhookSecret", orgWide: true, tag: "webhooks",
 		summary:   "Issue a new secret, in this answer and never again; the old one stops at once. For administrators.",
 		responses: ok(env{"webhook": webhook.Webhook{}})},
-	{method: "POST", path: "/webhooks/{webhookID}/test", handler: "handleTestWebhook", tag: "webhooks",
+	{method: "POST", path: "/webhooks/{webhookID}/test", handler: "handleTestWebhook", orgWide: true, tag: "webhooks",
 		summary:   "Post a ping now, even while the webhook is off, and answer the attempt as logged. For administrators.",
 		responses: ok(env{"delivery": webhook.WebhookDelivery{}})},
-	{method: "GET", path: "/webhooks/{webhookID}/deliveries", handler: "handleListWebhookDeliveries", tag: "webhooks",
+	{method: "GET", path: "/webhooks/{webhookID}/deliveries", handler: "handleListWebhookDeliveries", orgWide: true, tag: "webhooks",
 		summary:   "A webhook's log, one row per attempt, newest first; kept for " + strconv.Itoa(int(webhook.DeliveryRetention.Hours()/24)) + " days. For administrators.",
 		query:     []param{{name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(webhook.MaxDeliveries) + "; " + strconv.Itoa(webhook.DefaultDeliveries) + " when absent."}},
 		responses: map[int]any{200: env{"deliveries": []webhook.WebhookDelivery{}}, 422: errorEnvelope{}}},
-	{method: "POST", path: "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", handler: "handleRedeliverWebhook", tag: "webhooks",
+	{method: "POST", path: "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", handler: "handleRedeliverWebhook", orgWide: true, tag: "webhooks",
 		summary:   "Send a logged delivery's event again, now, as its next attempt, with the payload read afresh as the owner. For administrators.",
 		responses: ok(env{"delivery": webhook.WebhookDelivery{}})},
 
@@ -690,7 +693,7 @@ func Spec() *openapi.Document {
 			SecuritySchemes: map[string]openapi.SecurityScheme{
 				"session": {Type: "apiKey", In: "cookie", Name: config.DefaultSessionCookie, Description: "The cookie a sign-in sets."},
 				"token": {Type: "http", Scheme: "bearer", BearerFormat: auth.APITokenPrefix + "<43 characters>",
-					Description: "A personal access token, made under Tokens in the account menu; a token with the read scope is refused every write."},
+					Description: "A personal access token, made under Tokens in the account menu; a token with the read scope is refused every write, and one limited to spaces reaches nothing outside them and nothing that concerns the whole organization."},
 			},
 		},
 		Security: []map[string][]string{{"session": {}}, {"token": {}}},
@@ -835,13 +838,15 @@ type Route struct {
 	Redirect         bool
 	// Pending operations answer 501 until they are built.
 	Pending bool
+	// OrgWide operations are refused a token limited to spaces.
+	OrgWide bool
 }
 
 // Catalog lists every operation in the table.
 func Catalog() []Route {
 	out := make([]Route, 0, len(operations))
 	for _, op := range operations {
-		out = append(out, Route{Method: op.method, Path: op.path, ID: op.operationID(), Public: op.public, Binary: op.binary, Redirect: op.redirect, Pending: op.pending})
+		out = append(out, Route{Method: op.method, Path: op.path, ID: op.operationID(), Public: op.public, Binary: op.binary, Redirect: op.redirect, Pending: op.pending, OrgWide: op.orgWide})
 	}
 	return out
 }

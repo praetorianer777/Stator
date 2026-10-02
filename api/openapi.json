@@ -9337,6 +9337,9 @@
       "APIToken": {
         "type": "object",
         "properties": {
+          "allSpaces": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -9373,12 +9376,20 @@
           },
           "secret": {
             "type": "string"
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "id",
           "name",
           "scopes",
+          "spaces",
+          "allSpaces",
           "lastUsedAt",
           "expiresAt",
           "createdAt"
@@ -10441,6 +10452,12 @@
               "enum": [
                 "read"
               ]
+            }
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           }
         },
@@ -11714,6 +11731,9 @@
       "OrgAPIToken": {
         "type": "object",
         "properties": {
+          "allSpaces": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -11753,12 +11773,20 @@
           },
           "secret": {
             "type": "string"
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "id",
           "name",
           "scopes",
+          "spaces",
+          "allSpaces",
           "lastUsedAt",
           "expiresAt",
           "createdAt",
@@ -14313,7 +14341,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "stator_pat_\u003c43 characters\u003e",
-        "description": "A personal access token, made under Tokens in the account menu; a token with the read scope is refused every write."
+        "description": "A personal access token, made under Tokens in the account menu; a token with the read scope is refused every write, and one limited to spaces reaches nothing outside them and nothing that concerns the whole organization."
       }
     }
   },
