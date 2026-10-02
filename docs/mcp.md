@@ -107,7 +107,7 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
 - administration and who may do what: the identity provider, members,
   tokens, permissions, page restrictions, making or changing spaces, and
   archiving or unarchiving pages and spaces, which is for a space's
-  administrators;
+  administrators, and the organization's webhooks;
 - who read a page (`GET /pages/{pageID}/readers`), which stays with its
   editors in the page; `get_page_views` counts them;
 - the caller's own session, settings, tokens, themes and Armature account;

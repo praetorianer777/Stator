@@ -33,6 +33,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/watch"
+	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
 
 // readinessTimeout bounds the database round trip behind /readyz, so a probe
@@ -98,6 +99,9 @@ type Server struct {
 	// both. AuditRetention is how long the worker keeps an entry, zero forever.
 	Audit          *audit.Service
 	AuditRetention time.Duration
+	// Webhooks keeps where the organization's events are posted; nil answers
+	// that webhooks are not set up.
+	Webhooks *webhook.Service
 	// Fresh remembers each caller's last write between requests; nil leaves
 	// reads unpinned, which is only right without replicas.
 	Fresh Freshness
@@ -223,6 +227,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/audit", s.handleListAudit)
 			r.Get("/audit/facets", s.handleAuditFacets)
 			r.Get("/audit/export", s.handleExportAudit)
+			r.Get("/webhooks", s.handleListWebhooks)
+			r.Post("/webhooks", s.handleCreateWebhook)
+			r.Patch("/webhooks/{webhookID}", s.handleUpdateWebhook)
+			r.Delete("/webhooks/{webhookID}", s.handleDeleteWebhook)
+			r.Post("/webhooks/{webhookID}/rotate-secret", s.handleRotateWebhookSecret)
+			r.Post("/webhooks/{webhookID}/test", s.handleTestWebhook)
+			r.Get("/webhooks/{webhookID}/deliveries", s.handleListWebhookDeliveries)
+			r.Post("/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", s.handleRedeliverWebhook)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(requireOrg, s.requireUse)

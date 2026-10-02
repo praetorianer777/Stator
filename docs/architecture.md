@@ -12,7 +12,7 @@ browser ──> web (nginx, React SPA) ──> api (Go) ──> PostgreSQL (prim
                                         │  ├──> Valkey (cache, rate limits)
                                         │  ├──> S3-compatible storage (attachments, theme assets)
                                         │  └──> Armature API (as the viewing user)
-                                        └── outbox ──> worker (Go) ──> mail, Armature link sync
+                                        └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks
 Keycloak / any OIDC provider <── login ──┘
 ```
 
@@ -101,6 +101,7 @@ process, which is only right for a single api process. `/readyz` and
 | `audit` | the organization's audit log: entries written with their act, read and exported by administrators, pruned by the worker |
 | `mail` | plain text mail over an SMTP relay, as in Armature |
 | `netguard` | SSRF guard for every outbound request |
+| `webhook` | outbound webhooks: endpoints, signed deliveries read as their owner, retries, the delivery log |
 
 ## Frontend (`web/`)
 

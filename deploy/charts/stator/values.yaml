@@ -179,8 +179,9 @@ network:
   # Extra browser origins allowed to call the API. Same-origin needs none.
   corsOrigins: []
   # Host names and CIDRs inside the network that outbound calls, such as those
-  # to an organization's Armature, may reach anyway. Every other address in
-  # the cluster's and the node's networks is refused. Empty allows none.
+  # to an organization's Armature or its webhooks' receivers, may reach anyway.
+  # Every other address in the cluster's and the node's networks is refused.
+  # Empty allows none.
   outboundAllow: []
 
 armature:
@@ -220,7 +221,8 @@ secrets:
     dbAdmin: ""
     valkey: ""
     # STATOR_SECRET_KEY, which seals stored secrets such as an identity
-    # provider's client secret: 32 random bytes in base64, in the key password.
+    # provider's client secret or a webhook's: 32 random bytes in base64, in the
+    # key password.
     secretKey: ""
   # The S3 keys only you can supply. create: the chart renders them into a
   # Secret. existingSecret: you made one with the keys s3-access-key and
