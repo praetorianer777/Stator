@@ -3199,9 +3199,6 @@ export interface components {
             description?: string;
             url: string;
         };
-        SetDoneInput: {
-            done: boolean;
-        };
         SetGroupRoleRequest: {
             group: string;
             /** @enum {string} */
@@ -3360,15 +3357,18 @@ export interface components {
             dueOn: string | null;
             /** Format: uuid */
             id: string;
-            page: components["schemas"]["TaskPageRef"];
+            page: components["schemas"]["TaskPage"];
             text: string;
         };
-        TaskPageRef: {
+        TaskPage: {
             /** Format: uuid */
             id: string;
             spaceKey: string;
             spaceName: string;
             title: string;
+        };
+        TaskSetDoneInput: {
+            done: boolean;
         };
         Template: {
             /** @description A JSON value. */
@@ -7268,7 +7268,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SetDoneInput"];
+                "application/json": components["schemas"]["TaskSetDoneInput"];
             };
         };
         responses: {

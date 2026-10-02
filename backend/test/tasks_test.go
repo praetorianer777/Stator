@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/task"
 )
@@ -506,4 +507,58 @@ func TestTasksAreHeldByTheDatabase(t *testing.T) {
 			t.Errorf("%d tasks are still assigned to somebody gone", n)
 		}
 	})
+}
+
+// A token limited to spaces lists and ticks only the tasks in them, and
+// straight through SQL reads and writes no task elsewhere, though its owner
+// reaches every one.
+func TestTasksFollowASpaceLimitedToken(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "task-token")
+	slug := h.slugOf(t, home.org)
+	owner := api.as(t, home.user, home.org, slug)
+
+	near := newTree(t, owner, "TNEAR", "Near")
+	far := newTree(t, owner, "TFAR", "Far")
+	nearPage, farPage := near.add(near.homeID, "Near list"), far.add(far.homeID, "Far list")
+	publishBody(t, owner, nearPage, todoDoc("Near.", todo{text: "Near task", assignee: home.user}))
+	publishBody(t, owner, farPage, todoDoc("Far.", todo{text: "Far task", assignee: home.user}))
+	nearID := obj(t, want(t, owner.get(t, "/api/v1/spaces/TNEAR"), http.StatusOK, "TNEAR"), "space")["id"].(string)
+	farTask := taskIDsOf(t, owner, farPage)["Far task"]
+	nearTask := taskIDsOf(t, owner, nearPage)["Near task"]
+	_, secret := makeToken(t, owner, map[string]any{"name": "near only", "spaces": []string{"TNEAR"}})
+	limited := api.withToken(secret)
+	h.settle(t)
+
+	sameList(t, "the owner's tasks", textsOf(tasksOf(t, owner, "open")), "Near task @Someone", "Far task @Someone")
+	sameList(t, "the token's tasks", textsOf(tasksOf(t, limited, "open")), "Near task @Someone")
+	want(t, limited.patch(t, pagePath(farPage, "/tasks/"+farTask), map[string]any{"done": true}), http.StatusNotFound, "the token ticks a task elsewhere")
+	want(t, limited.patch(t, pagePath(nearPage, "/tasks/"+nearTask), map[string]any{"done": true}), http.StatusOK, "the token ticks a task in its space")
+
+	conn := appConn(t)
+	ctx := context.Background()
+	actAs(t, conn, home.org, home.user)
+	count := func(sql string, args ...any) int {
+		t.Helper()
+		var n int
+		if err := conn.QueryRow(ctx, sql, args...).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if count(`SELECT count(*) FROM page_task WHERE page_id = $1`, farPage) != 1 {
+		t.Fatal("the owner reads no task of TFAR, so the token's zero would prove nothing")
+	}
+	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, db.TokenSpacesVar, "{"+nearID+"}"); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(`SELECT count(*) FROM page_task WHERE page_id = $1`, farPage); n != 0 {
+		t.Errorf("the token reads %d tasks of TFAR", n)
+	}
+	untouched(t, conn, "ticking TFAR's task", `UPDATE page_task SET done = true WHERE page_id = $1`, farPage)
+	denied(t, conn, "a task planted in TFAR", `INSERT INTO page_task (org_id, page_id, task_id, position, summary) VALUES ($1, $2, $3, 1, 'Planted')`, home.org, farPage, uuid.New())
+	if _, err := conn.Exec(ctx, `SELECT set_config($1, '', false)`, db.TokenSpacesVar); err != nil {
+		t.Fatal(err)
+	}
 }

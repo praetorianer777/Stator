@@ -656,6 +656,8 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(reaction.Input{})] = "ReactionInput"
 	b.Names[reflect.TypeOf(share.Input{})] = "ShareInput"
 	b.Names[reflect.TypeOf(watch.Input{})] = "WatchInput"
+	b.Names[reflect.TypeOf(task.PageRef{})] = "TaskPage"
+	b.Names[reflect.TypeOf(task.SetDoneInput{})] = "TaskSetDoneInput"
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
 	b.FieldOverrides["APIToken.scopes"] = scopes

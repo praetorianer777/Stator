@@ -5671,7 +5671,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetDoneInput"
+                "$ref": "#/components/schemas/TaskSetDoneInput"
               }
             }
           }
@@ -13248,17 +13248,6 @@
           "url"
         ]
       },
-      "SetDoneInput": {
-        "type": "object",
-        "properties": {
-          "done": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "done"
-        ]
-      },
       "SetGroupRoleRequest": {
         "type": "object",
         "properties": {
@@ -13853,7 +13842,7 @@
             "format": "uuid"
           },
           "page": {
-            "$ref": "#/components/schemas/TaskPageRef"
+            "$ref": "#/components/schemas/TaskPage"
           },
           "text": {
             "type": "string"
@@ -13873,7 +13862,7 @@
           "canEdit"
         ]
       },
-      "TaskPageRef": {
+      "TaskPage": {
         "type": "object",
         "properties": {
           "id": {
@@ -13895,6 +13884,17 @@
           "title",
           "spaceKey",
           "spaceName"
+        ]
+      },
+      "TaskSetDoneInput": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "done"
         ]
       },
       "Template": {
