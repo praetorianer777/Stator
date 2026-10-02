@@ -28,6 +28,7 @@ export function aPage(over: Partial<Page> = {}): Page {
     spaceKey: "DOCS",
     parentId: null,
     title: "Handbook",
+    kind: "page",
     body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome to the handbook." }] }] },
     version: 1,
     home: true,

@@ -3,6 +3,7 @@ package page
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -28,7 +29,7 @@ func NewService(cluster *db.Cluster) *Service {
 }
 
 const selectPages = `
-SELECT p.id, p.space_id, s.key, p.parent_id, p.title, p.body, p.version, p.parent_id IS NULL,
+SELECT p.id, p.space_id, s.key, p.parent_id, p.title, p.kind, p.body, p.version, p.parent_id IS NULL,
        COALESCE(cu.name, ''), p.created_at, COALESCE(uu.name, ''), p.updated_at
 FROM page p
 JOIN space s ON s.id = p.space_id
@@ -37,7 +38,7 @@ LEFT JOIN app_user uu ON uu.id = p.updated_by`
 
 func scan(row pgx.Row) (*Page, error) {
 	var p Page
-	err := row.Scan(&p.ID, &p.SpaceID, &p.SpaceKey, &p.ParentID, &p.Title, &p.Body, &p.Version, &p.Home,
+	err := row.Scan(&p.ID, &p.SpaceID, &p.SpaceKey, &p.ParentID, &p.Title, &p.Kind, &p.Body, &p.Version, &p.Home,
 		&p.CreatedByName, &p.CreatedAt, &p.UpdatedByName, &p.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -189,6 +190,17 @@ func (s *Service) Update(ctx context.Context, actor perm.Actor, id uuid.UUID, in
 		}
 		if in.Title == nil {
 			title = current.Title
+		}
+		// A folder has no versions: renaming it changes its title and nothing else.
+		if current.Kind == KindFolder {
+			if in.Body != nil {
+				return ErrFolder
+			}
+			if _, err := tx.Exec(ctx, `UPDATE page SET title = $2, updated_by = $3 WHERE id = $1`, id, title, actor.UserID); err != nil {
+				return fmt.Errorf("rename the folder: %w", err)
+			}
+			out, _, err = load(ctx, tx, actor, id, false)
+			return err
 		}
 		body := current.Body
 		if in.Body != nil {
