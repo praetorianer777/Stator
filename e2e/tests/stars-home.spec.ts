@@ -21,15 +21,23 @@ async function openPage(page: Page, spaceKey: string, target: WikiPage) {
   }).toPass();
 }
 
-/** Opens the home page until a list shows what a test waits for, which a replica may lag behind. */
-async function homeShows(page: Page, listName: string, title: string, shown = true) {
+type HomeList = "updates" | "starred" | "recent" | "edited";
+
+/**
+ * Opens the home page until every list named shows, or leaves out, a title in the same load. Each
+ * list asks on its own, so a lagging replica can answer one before it has seen what another has.
+ */
+async function homeShows(page: Page, title: string, want: Partial<Record<HomeList, boolean>>) {
   await expect(async () => {
     await page.goto("/");
-    const link = list(page, listName).getByRole("link", { name: title, exact: true });
-    if (shown) await expect(link).toBeVisible({ timeout: 1_000 });
-    else {
-      await expect(list(page, listName).locator("ul, p").first()).toBeVisible({ timeout: 1_000 });
-      await expect(link).toHaveCount(0, { timeout: 1_000 });
+    for (const [name, shown] of Object.entries(want)) {
+      const link = list(page, name).getByRole("link", { name: title, exact: true });
+      if (shown) await expect(link).toBeVisible({ timeout: 1_000 });
+      else {
+        // A list still loading shows no link either, so its answer is waited for first.
+        await expect(list(page, name).locator("ul, p").first()).toBeVisible({ timeout: 1_000 });
+        await expect(link).toHaveCount(0, { timeout: 1_000 });
+      }
     }
   }).toPass();
 }
@@ -79,7 +87,7 @@ test.describe("stars and the home page", { tag: ["@auth"] }, () => {
     const bob = must(await bobApi.GET("/auth/me")).user;
     await expect(async () => publishAs(bobApi, notes, "Bob's notes.", "Added the minutes")).toPass();
 
-    await homeShows(page, "updates", notes.title);
+    await homeShows(page, notes.title, { updates: true });
     const update = list(page, "updates").locator("li").filter({ hasText: notes.title });
     await expect(update).toContainText(`${bob.name} published version 2`);
     await expect(update).toContainText("Added the minutes");
@@ -105,15 +113,13 @@ test.describe("stars and the home page", { tag: ["@auth"] }, () => {
     await expect.poll(async () => (await bobApi.PUT("/pages/{pageID}/star", { params: { path: { pageID: secret.id } } })).response.status).toBe(204);
 
     const bob = await pageAs("bob");
-    await homeShows(bob, "starred", secret.title);
-    await expect(list(bob, "updates").getByRole("link", { name: secret.title, exact: true })).toBeVisible();
+    await homeShows(bob, secret.title, { starred: true, updates: true });
 
     const alice = must(await api.GET("/auth/me")).user;
     must(
       await api.PUT("/pages/{pageID}/restrictions", { params: { path: { pageID: secret.id } }, body: { view: [{ type: "user", id: alice.id }], edit: [] } }),
     );
-    await homeShows(bob, "starred", secret.title, false);
-    await expect(list(bob, "updates").getByRole("link", { name: secret.title, exact: true })).toHaveCount(0);
+    await homeShows(bob, secret.title, { starred: false, updates: false });
     await expect.poll(async () => (await bobApi.PUT("/pages/{pageID}/star", { params: { path: { pageID: secret.id } } })).response.status).toBe(404);
   });
 
@@ -126,7 +132,7 @@ test.describe("stars and the home page", { tag: ["@auth"] }, () => {
     }).toPass();
     await row.locator('[data-action="star-space"]').click();
     await expect(row.locator('[data-action="star-space"]')).toHaveAttribute("aria-pressed", "true");
-    await homeShows(page, "starred", space.name);
+    await homeShows(page, space.name, { starred: true });
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
@@ -144,8 +150,7 @@ test.describe("stars and the home page", { tag: ["@auth"] }, () => {
       await expect(starPage(page)).toBeFocused();
       await expectAccessible(page);
 
-      await homeShows(page, "starred", plan.title);
-      await expect(list(page, "updates").getByRole("link", { name: plan.title, exact: true })).toBeVisible();
+      await homeShows(page, plan.title, { starred: true, updates: true });
       await expectAccessible(page);
 
       const all = page.getByRole("tab", { name: "All updates" });
