@@ -22,6 +22,9 @@ type Builder struct {
 	// for fields whose Go type says less than the API promises, such as a raw
 	// JSON message that is always a rich text document.
 	FieldOverrides map[string]*Schema
+	// Names give a struct type its component name, for two types that share a
+	// Go name in different packages; without one the builder refuses the pair.
+	Names map[reflect.Type]string
 
 	components map[string]*Schema
 	names      map[reflect.Type]string
@@ -34,6 +37,7 @@ func NewBuilder() *Builder {
 		Enums:          map[reflect.Type][]string{},
 		Descriptions:   map[reflect.Type]string{},
 		FieldOverrides: map[string]*Schema{},
+		Names:          map[reflect.Type]string{},
 		components:     map[string]*Schema{},
 		names:          map[reflect.Type]string{},
 		taken:          map[string]reflect.Type{},
@@ -110,17 +114,16 @@ func (b *Builder) Schema(t reflect.Type) *Schema {
 }
 
 // name registers a struct type as a component and returns its name. Two types
-// called the same in different packages get the package name in front.
+// that would share a name are refused: keeping either one silently documents
+// the other's routes with the wrong body.
 func (b *Builder) name(t reflect.Type) string {
 	if name, ok := b.names[t]; ok {
 		return name
 	}
-	name := exportedName(t)
+	name := b.componentName(t)
 	if other, clash := b.taken[name]; clash && other != t {
-		name = strings.ToUpper(pkgName(t)[:1]) + pkgName(t)[1:] + name
-		if other, clash := b.taken[name]; clash && other != t {
-			panic(fmt.Sprintf("openapi: %s and %s both want to be called %s", other, t, name))
-		}
+		panic(fmt.Sprintf("openapi: %s and %s both map to the schema name %s; "+
+			"give one of them its own name in Builder.Names", qualifiedName(other), qualifiedName(t), name))
 	}
 	b.names[t] = name
 	b.taken[name] = t
@@ -132,9 +135,16 @@ func (b *Builder) name(t reflect.Type) string {
 	return name
 }
 
-func pkgName(t reflect.Type) string {
-	path := t.PkgPath()
-	return path[strings.LastIndex(path, "/")+1:]
+// componentName is the name a struct type is documented under.
+func (b *Builder) componentName(t reflect.Type) string {
+	if name, ok := b.Names[t]; ok {
+		return name
+	}
+	return exportedName(t)
+}
+
+func qualifiedName(t reflect.Type) string {
+	return t.PkgPath() + "." + t.Name()
 }
 
 // object describes a struct the way encoding/json writes it: tag names,
@@ -178,7 +188,7 @@ func (b *Builder) fields(owner, t reflect.Type, into *Schema) {
 			// Absent when nil rather than null, so the value itself is not nullable.
 			schema = b.Schema(f.Type.Elem())
 		}
-		if s, ok := b.FieldOverrides[exportedName(owner)+"."+name]; ok {
+		if s, ok := b.FieldOverrides[b.componentName(owner)+"."+name]; ok {
 			copied := *s
 			schema = &copied
 		}

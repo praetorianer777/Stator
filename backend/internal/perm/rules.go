@@ -20,17 +20,28 @@ type Facts struct {
 	// Global and Space are the grants as stored, before any implication.
 	Global []GlobalPermission
 	Space  []SpacePermission
+	// SpacesOnly says the person acts with a token limited to spaces, which
+	// reaches nothing of the organization as a whole. Facts about a space it
+	// does not reach are empty.
+	SpacesOnly bool
 }
 
-// OrgAdmin reports whether the person is an owner or administrator, who
-// holds every permission everywhere so nothing can be orphaned.
-func (f Facts) OrgAdmin() bool { return f.Member && f.Role.CanAdminister() }
+// roleAdmin reports whether the person is an owner or administrator, who
+// holds every permission in every space so nothing can be orphaned.
+func (f Facts) roleAdmin() bool { return f.Member && f.Role.CanAdminister() }
+
+// OrgAdmin reports whether the person administers the organization itself,
+// which a token limited to spaces never does.
+func (f Facts) OrgAdmin() bool { return f.roleAdmin() && !f.SpacesOnly }
 
 // HoldsGlobal reports whether a global permission applies. Without use a
-// person holds nothing, and administer follows the roles alone.
+// person holds nothing, administer follows the roles alone, and a token
+// limited to spaces holds use and nothing more.
 func (f Facts) HoldsGlobal(p GlobalPermission) bool {
 	switch {
-	case f.OrgAdmin():
+	case f.SpacesOnly && p != UseStator:
+		return false
+	case f.roleAdmin():
 		return true
 	case !f.Member, p == AdministerOrg:
 		return false
@@ -41,7 +52,7 @@ func (f Facts) HoldsGlobal(p GlobalPermission) bool {
 // HoldsSpace reports whether a space permission applies: every one implies
 // view, and administer implies all.
 func (f Facts) HoldsSpace(p SpacePermission) bool {
-	if f.OrgAdmin() {
+	if f.roleAdmin() {
 		return true
 	}
 	if !f.HoldsGlobal(UseStator) {

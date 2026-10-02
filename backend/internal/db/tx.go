@@ -109,6 +109,11 @@ func (c *Cluster) inTx(
 			if _, err := tx.Exec(ctx, setOrgSQL, UserVar, user.String()); err != nil {
 				return fmt.Errorf("apply the acting person: %w", err)
 			}
+			if spaces, only := SpacesFrom(ctx); only {
+				if _, err := tx.Exec(ctx, setOrgSQL, TokenSpacesVar, spacesSetting(spaces)); err != nil {
+					return fmt.Errorf("apply the token's spaces: %w", err)
+				}
+			}
 		}
 	}
 	if err := fn(ctx, tx); err != nil {
