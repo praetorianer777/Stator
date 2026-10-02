@@ -178,3 +178,33 @@ func TestPickerLimits(t *testing.T) {
 		t.Errorf("LikePrefix escapes to %q", got)
 	}
 }
+
+// A token limited to spaces is handed facts only for a space it reaches, so
+// within one its owner's role holds as ever, and the organization never.
+func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
+	admin := Facts{Member: true, Role: auth.RoleAdmin, SpacesOnly: true}
+	creator := Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}, SpacesOnly: true}
+	for _, tt := range []struct {
+		name   string
+		facts  Facts
+		action Action
+		want   bool
+	}{
+		{"an admin's token still administers a space it reaches", admin, AdministerSpace, true},
+		{"an admin's token still purges in a space it reaches", admin, PurgeTrash, true},
+		{"an admin's token creates no space", admin, CreateSpace, false},
+		{"a creator's token creates no space", creator, CreateSpace, false},
+		{"a member's token edits where the member may", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator}, Space: openSpace, SpacesOnly: true}, EditPages, true},
+		{"a space it does not reach comes as no facts at all", Facts{}, ViewSpace, false},
+	} {
+		if got := Decide(tt.facts, tt.action); got != tt.want {
+			t.Errorf("%s: %s = %v, want %v", tt.name, tt.action, got, tt.want)
+		}
+	}
+	if admin.OrgAdmin() || admin.GlobalCan().Administer || admin.GlobalCan().CreateSpace || !admin.GlobalCan().Use {
+		t.Errorf("an admin's limited token = %+v, want use and nothing more", admin.GlobalCan())
+	}
+	if !(Facts{Member: true, Role: auth.RoleAdmin}).OrgAdmin() {
+		t.Error("an admin without a limited token stopped administering the organization")
+	}
+}

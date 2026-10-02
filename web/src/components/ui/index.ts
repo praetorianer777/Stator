@@ -18,5 +18,6 @@ export { SectionTitle } from "./SectionTitle";
 export { Table, Th, Td } from "./Table";
 export { Segmented } from "./Segmented";
 export { Choice, OptionCard } from "./Choice";
+export { Chip } from "./Chip";
 export { Tabs, TabPanel, type Tab } from "./Tabs";
 export { Dialog } from "./Dialog";

@@ -42,7 +42,14 @@ type Principal struct {
 	// Scopes are the token's, empty for a session and for a token that may
 	// do whatever its owner may.
 	Scopes []string
+	// SpacesOnly marks a token that reaches only TokenSpaces, which may by
+	// now be none, and never the organization as a whole.
+	SpacesOnly  bool
+	TokenSpaces []uuid.UUID
 }
+
+// InSpacesOnly reports whether the caller came with a token limited to spaces.
+func (p *Principal) InSpacesOnly() bool { return p != nil && p.TokenID != nil && p.SpacesOnly }
 
 // ScopeRead marks a token that may read everything its owner can and change
 // nothing, so a script can be handed a key that cannot act.
@@ -60,5 +67,7 @@ func (p *Principal) ReadOnly() bool { return p.HasScope(ScopeRead) }
 func (p *Principal) InOrg() bool { return p != nil && p.Org != nil && p.Org.ID != uuid.Nil }
 
 // CanAdminister reports whether the caller may change the settings of the
-// organization they are acting in.
-func (p *Principal) CanAdminister() bool { return p.InOrg() && p.Role.CanAdminister() }
+// organization they are acting in, which a token limited to spaces may not.
+func (p *Principal) CanAdminister() bool {
+	return p.InOrg() && p.Role.CanAdminister() && !p.InSpacesOnly()
+}

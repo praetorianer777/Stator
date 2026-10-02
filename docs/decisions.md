@@ -3,6 +3,44 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A token limited to spaces is limited by the database
+
+A personal access token may name the spaces it reaches when it is made
+(#111), as an Armature key names projects: `spaces` on the create request,
+keys the maker can already see, and none for a token that reaches every
+space its owner does. Inside its spaces the token does what its owner may,
+an organization administrator's role included; outside them it finds
+nothing, as if the spaces did not exist. Like Armature it is refused what
+concerns the organization as a whole: making spaces, the audit log,
+members, groups' roles, the organization's permissions, tokens, webhooks
+and the Armature connection. The route table marks those operations
+`orgWide`, the router refuses them with `spaces_token`, a unit test holds
+the two to each other, and the MCP endpoint does not offer their tools.
+What is the person's own and in no space (their profile, theme,
+notifications and Armature account, and the people directory) stays open.
+
+Armature narrows a key in Go, in the permission set its handlers read.
+Here every rule is also a database function that the row level security
+policies call, so the limit lives there too: authentication reads the
+token's spaces, the transaction carries them in `app.token_spaces` beside
+`app.user_id`, and `perm_space_holds` refuses a space outside them while
+`perm_is_admin` and `perm_global_holds` refuse everything but `use`. Search,
+the home feed, the stale report, watching, notifications and the audit log
+all ask those functions, so none needed its own filter, and a query that
+forgets the limit in Go is still held to it. The limit is the caller's
+alone: a rule asked about somebody else, as the access inspector and the
+notification workers ask, answers for that person, and naming another
+person on a context drops it.
+
+A token keeps `spaces_only` apart from its rows in `api_token_space`, so one
+whose spaces are all deleted reaches nothing rather than everything; it
+lists `allSpaces: false` with no keys, which is why the answer carries
+`allSpaces` where Armature's empty `projects` alone means every project.
+The spaces are fixed when the token is made: rows may only be added in the
+transaction that made it, `spaces_only` cannot change, and a limited token
+can neither read nor write tokens at all. Listing a token names only the
+spaces its reader may still see.
+
 ## 2026-10-02: A webhook sends as the administrator who saved it, read when it is sent
 
 Outbound webhooks (#110) keep Armature's design: an endpoint is an address,

@@ -155,20 +155,23 @@ func LoadFacts(ctx context.Context, tx db.DBTX, actor Actor, space uuid.UUID) (F
 		return Facts{}, nil
 	}
 	var (
-		role   *string
-		global []string
-		held   []string
+		role           *string
+		global         []string
+		held           []string
+		whole, reached bool
 	)
+	// The token's limit comes from the transaction, as the policies read it.
 	err := tx.QueryRow(ctx, `
 		SELECT (SELECT org_role FROM org_member WHERE org_id = current_org_id() AND user_id = $1),
-		       perm_global_grants($1), perm_space_grants($1, $2)`, actor.UserID, space).Scan(&role, &global, &held)
+		       perm_global_grants($1), perm_space_grants($1, $2),
+		       perm_token_whole($1), perm_token_reaches($1, $2)`, actor.UserID, space).Scan(&role, &global, &held, &whole, &reached)
 	if err != nil {
 		return Facts{}, fmt.Errorf("read permissions: %w", err)
 	}
-	if role == nil {
+	if role == nil || (space != uuid.Nil && !reached) {
 		return Facts{}, nil
 	}
-	f := Facts{Member: true, Role: auth.OrgRole(*role)}
+	f := Facts{Member: true, Role: auth.OrgRole(*role), SpacesOnly: !whole}
 	for _, g := range global {
 		f.Global = append(f.Global, GlobalPermission(g))
 	}
