@@ -496,6 +496,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   changing, rotating and deleting a webhook is written to the audit log.
   Moving a published page to another parent or space and deleting one now
   write `page.moved` and `page.deleted` to the outbox.
+- Space shortcuts (#39): the administrators of a space pin up to 30 links
+  above its page tree, to pages of any space or to web addresses, under
+  Shortcuts in the space's settings, and order them with move up and move
+  down buttons (`/spaces/{key}/shortcuts`, read by the
+  `list_space_shortcuts` tool). Everybody who reads the space sees them; a
+  shortcut to a page is left out for whoever may not view the page or while
+  it is in the trash. Only `http` and `https` addresses without a name or
+  password are taken, refused by the database as well as the API, and they
+  open in a new tab with `rel="noopener noreferrer nofollow"`. Adding,
+  moving and removing a shortcut is written to the audit log.
 
 ### Changed
 

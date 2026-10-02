@@ -3,6 +3,51 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-02: A shortcut is a ranked row of the space, read through the page's own view rule
+
+Space shortcuts (#39) are links the administrators of a space pin above its
+page tree. Armature's project sidebar has none, so there was nothing to
+follow. A shortcut is a row of `space_shortcut` naming either a page or an
+address, never both, with a label and a rank from `internal/rank`, the
+ranks sibling pages use: moving one writes that one row, and the move names
+the shortcut it goes after, as a page's place does, rather than resending
+the whole order, which a list a reader sees only part of could not do.
+They are kept under Shortcuts in the space's settings, with move up and
+move down buttons that the keyboard works as it works everything else;
+dragging was left out, since the tree's own drag has the place dialog
+beside it for the keyboard and a list of thirty needs no more than buttons.
+
+Who keeps them is who administers the space, as for its name and its
+archive: they are what everybody reading the space sees first, so one
+editor should not rearrange them for all. Changes are allowed in an
+archived space, as renaming it is, since a shortcut is the space's
+furniture and not a page. Each addition, move and removal is written to the
+audit log on the space, as changes of its details are. Reading them is the `list_space_shortcuts` tool;
+changing them is administration, and not a tool.
+
+A shortcut to a page must never name a page to somebody who may not view
+it, so the list is read through `perm_page_viewable` for the reader, in the
+query and again in a restrictive policy on the table: a restricted page's
+shortcut is simply not in the list, and nothing says one was left out. A
+shortcut to a page in the trash is left out for everybody and comes back
+with the page; a purge takes it along. An archived page stays readable, and
+its shortcut is shown, marked archived, rather than hidden as the tree
+hides it: an administrator pinned it on purpose and may unpin it. The
+database lets an administrator point one only at a page they may view, out
+of the trash, and lets nobody change where a shortcut points or which space
+holds it, only its rank and label.
+
+An address is held to the web's own schemes, `http` and `https`, with a
+host and no name or password before it, by the API and by a check on the
+table, so `javascript:`, `data:` and the like are refused whatever writes
+the row; the client opens one only when it still parses as such, in a new
+tab with `noopener noreferrer nofollow`, as links in pages are. An address
+without a label shows its host, and a page without one shows its title as
+it is now, so a rename needs no second change. A space holds at most 30,
+`shortcut.MaxPerSpace`, which `space_shortcut_max()` repeats in SQL and a
+trigger counts under a lock per space, so two additions at once cannot both
+pass.
+
 ## 2026-10-02: A view is a person on a day, counted for every reader and named only to editors
 
 Page views (#97) answer how often a page is read and by how many people.
