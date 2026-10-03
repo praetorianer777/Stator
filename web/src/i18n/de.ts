@@ -850,6 +850,20 @@ export const de: Messages = {
       save: "Speichern",
     },
   },
+  attachmentList: {
+    title: "Dateien dieser Seite",
+    upload: "Dateien hochladen",
+    uploadHint: "Eine Datei mit dem Namen einer vorhandenen wird deren nächste Version.",
+    uploaded: (name: string, version: number) => (version > 1 ? `${name} als Version ${version} hochgeladen.` : `${name} hochgeladen.`),
+    unsaved: "Speichern Sie die Seite einmal, um ihre Dateien hier aufzulisten.",
+    failed: "Die Dateien konnten nicht aufgelistet werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+    empty: "Noch keine Dateien auf dieser Seite.",
+    emptyEditable: "Noch keine Dateien auf dieser Seite. Laden Sie eine mit Dateien hochladen hoch.",
+    someone: "Eine Person, die gegangen ist",
+    version: (n: number) => `Version ${n}`,
+    versionOf: (name: string, n: number) => `${name}, Version ${n}`,
+    earlier: (n: number) => (n === 1 ? "1 frühere Version" : `${n} frühere Versionen`),
+  },
   taskReport: {
     edit: "Bericht bearbeiten",
     loading: "Die Aufgaben werden gesucht",
@@ -1484,6 +1498,7 @@ export const de: Messages = {
       },
       labelledPages: { label: "Inhalte nach Schlagwort", description: "Eine Liste der Seiten mit bestimmten Schlagwörtern, immer aktuell." },
       recentlyUpdated: { label: "Zuletzt aktualisiert", description: "Die zuletzt veröffentlichten Seiten, in einem Bereich oder überall." },
+      attachmentList: { label: "Dateien", description: "Die Dateien dieser Seite mit ihren Versionen, und ein Ort, weitere hochzuladen." },
       taskReport: { label: "Aufgabenbericht", description: "Eine Liste von Aufgaben nach Bereich, zugewiesener Person, Fälligkeit und Status, stets aktuell." },
       propertiesReport: {
         label: "Eigenschaftenbericht",

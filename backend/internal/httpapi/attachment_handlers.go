@@ -25,7 +25,15 @@ func (s *Server) handleListAttachments(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, apiErr)
 		return
 	}
-	found, err := s.Attachments.List(r.Context(), actorFrom(r), id)
+	current := false
+	if raw := r.URL.Query().Get("current"); raw != "" {
+		var err error
+		if current, err = strconv.ParseBool(raw); err != nil {
+			respondError(w, r, ErrValidation(map[string]string{"current": "Say true to list only the latest version of each file, or false for every version."}))
+			return
+		}
+	}
+	found, err := s.Attachments.List(r.Context(), actorFrom(r), id, current)
 	if err != nil {
 		respondError(w, r, err)
 		return

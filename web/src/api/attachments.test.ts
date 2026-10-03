@@ -17,6 +17,8 @@ const stored: Attachment = {
   height: null,
   uploadedByName: "Ada Lovelace",
   createdAt: "2026-09-29T09:00:00Z",
+  version: 1,
+  versions: 1,
 };
 
 describe("formatSize", () => {

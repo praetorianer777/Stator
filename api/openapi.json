@@ -4193,7 +4193,7 @@
     "/pages/{pageID}/attachments": {
       "get": {
         "operationId": "listAttachments",
-        "summary": "The files on a page, the latest first.",
+        "summary": "The files on a page, the latest first. A file uploaded under a name the page already has, whatever its case, is that name's next version.",
         "tags": [
           "attachments"
         ],
@@ -4205,6 +4205,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "current",
+            "in": "query",
+            "description": "true lists only the latest version of each name; false when absent.",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -11288,6 +11296,12 @@
           "uploadedByName": {
             "type": "string"
           },
+          "version": {
+            "type": "integer"
+          },
+          "versions": {
+            "type": "integer"
+          },
           "width": {
             "type": [
               "integer",
@@ -11304,7 +11318,9 @@
           "width",
           "height",
           "uploadedByName",
-          "createdAt"
+          "createdAt",
+          "version",
+          "versions"
         ]
       },
       "AuditActor": {

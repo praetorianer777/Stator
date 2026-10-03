@@ -171,6 +171,9 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 			{"data-space", stringAttr(n, "space")},
 			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
 		}, ""), true
+	// The files are the page's own, which an export carries beside it.
+	case document.NodeAttachmentList:
+		return div(kindFiles, nil, ""), true
 	// A report's tasks are each reader's, so the export keeps what it picks.
 	case document.NodeTaskReport:
 		return div(kindTasks, [][2]string{

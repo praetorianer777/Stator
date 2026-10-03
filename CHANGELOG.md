@@ -662,6 +662,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   ones (`GET /task-report`, also the MCP tool `task_report`). Each reader
   sees the tasks on pages they may view, and whoever may edit a task's page
   ticks it off from the report. The page keeps only the filter.
+- Files block and file versions (#58). A file uploaded to a page under a
+  name it already has, whatever the case, is that file's next version: each
+  version keeps its own bytes and links, and the database numbers them. The
+  list of a page's files says each one's `version` and how many `versions`
+  the page holds, and `current=true` lists only the latest of each name
+  (`GET /pages/{id}/attachments`, the `list_attachments` tool). "Files" in
+  the slash menu puts the page's files in its content, the latest version of
+  each with its size, uploader and version and the earlier ones a click
+  away, and whoever may edit the page uploads from the block.
 
 ### Changed
 
