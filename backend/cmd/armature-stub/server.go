@@ -60,6 +60,7 @@ var routes = []route{
 	{Method: "GET", Path: "/issues/{issueKey}/remote-links", handler: (*stub).listLinks},
 	{Method: "POST", Path: "/issues/{issueKey}/remote-links", handler: (*stub).putLink},
 	{Method: "DELETE", Path: "/issues/{issueKey}/remote-links/{remoteLinkID}", handler: (*stub).deleteLink},
+	{Method: "GET", Path: "/projects/{projectKey}/reports/{kind}", handler: (*stub).report},
 	{Method: "GET", Path: "/themes/active", handler: (*stub).activeTheme},
 	{Method: "GET", Path: "/themes/{themeID}/export", handler: (*stub).exportTheme},
 }
@@ -329,6 +330,9 @@ func issueView(is *issue) map[string]any {
 	if is.DueDate != nil {
 		v["dueDate"] = is.DueDate
 	}
+	if is.ResolvedAt != nil {
+		v["resolvedAt"] = is.ResolvedAt
+	}
 	return v
 }
 
@@ -582,6 +586,12 @@ func (s *stub) changeIssue(c *call) {
 	if req.StatusCategory != nil {
 		if st := c.tenant.statusOf(*req.StatusCategory); st != nil {
 			is.Status = st
+			// Done is resolved, now; anything else is open again.
+			is.ResolvedAt = nil
+			if st.Category == "done" {
+				now := time.Now().UTC()
+				is.ResolvedAt = &now
+			}
 		}
 	}
 	if req.Priority != nil {

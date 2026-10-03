@@ -559,6 +559,15 @@ var operations = []operation{
 			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
 			{name: "offset", schema: intParam, description: "How many matches to skip; 0 when absent."},
 		}, responses: map[int]any{200: env{"status": armature.Status(""), "issues": []armature.Issue{}, "total": 0, "limit": 0, "offset": 0, "url": ""}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/armature/chart", handler: "handleArmatureChart", tag: "armature",
+		summary: "A count of the issues an NQL query matches in one project, as the caller may see them, for a chart block: shared out by a field for a pie, or created and resolved each day. Refused with bad_query and its position.",
+		query: []param{
+			{name: "project", description: "The project's key, such as CP."},
+			{name: "q", description: "An NQL query, at most 2000 characters."},
+			{name: "kind", schema: &openapi.Schema{Type: "string", Enum: enumStrings(armature.ChartKinds)}, description: "pie or createdResolved."},
+			{name: "groupBy", schema: &openapi.Schema{Type: "string", Enum: armature.ChartGroupings}, description: "The field a pie shares the issues out by."},
+			{name: "days", schema: intParam, description: "How many days back created against resolved counts, 7 to 365; 30 when absent."},
+		}, responses: map[int]any{200: env{"status": armature.Status(""), "chart": (*armature.Chart)(nil)}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/armature/projects", handler: "handleListArmatureProjects", tag: "armature",
 		summary:   "The Armature projects the caller may see, and whether they may file issues in each.",
 		responses: ok(env{"status": armature.Status(""), "projects": []armature.Project{}})},
@@ -706,6 +715,7 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(notify.Kind(""))] = enumStrings(notify.Kinds)
 	b.Enums[reflect.TypeOf(notify.Digest(""))] = enumStrings(notify.Digests)
 	b.Enums[reflect.TypeOf(armature.Status(""))] = enumStrings(armature.Statuses)
+	b.Enums[reflect.TypeOf(armature.ChartKind(""))] = enumStrings(armature.ChartKinds)
 	b.Enums[reflect.TypeOf(armature.LinkState(""))] = enumStrings(armature.LinkStates)
 	b.FieldOverrides["Issue.priority"] = &openapi.Schema{Type: "string", Enum: armature.Priorities}
 	b.FieldOverrides["IssueStatus.category"] = &openapi.Schema{Type: "string", Enum: armature.StatusCategories}

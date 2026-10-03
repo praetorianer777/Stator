@@ -19,6 +19,8 @@ import type { UploadFile } from "./attachments";
 import type { IssueSource } from "./armatureIssue";
 import { IssuePicker } from "@/features/armature/IssuePicker";
 import { IssueListDialog } from "@/features/armature/IssueListDialog";
+import { IssueChartDialog } from "@/features/armature/IssueChartDialog";
+import { newChartSettings } from "@/features/armature/chart";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
 import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
@@ -120,6 +122,7 @@ export function Editor({
   armatureRef.current = armature;
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
+  const [makingChart, setMakingChart] = useState(false);
   const [pickingLink, setPickingLink] = useState(false);
   const [pickingInclude, setPickingInclude] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
@@ -145,6 +148,7 @@ export function Editor({
       armature,
       pickIssue: () => setPickingIssue(true),
       pickIssueList: () => setMakingList(true),
+      pickChart: () => setMakingChart(true),
       pickLinkCard: () => setPickingLink(true),
       pickInclude: () => setPickingInclude(true),
       pageId: page?.id,
@@ -335,6 +339,17 @@ export function Editor({
           onInsert={(url) => {
             setPickingLink(false);
             editor.chain().focus().insertLinkCard(url).run();
+          }}
+        />
+      )}
+      {makingChart && editor && (
+        <IssueChartDialog
+          initial={newChartSettings()}
+          isNew
+          onClose={() => setMakingChart(false)}
+          onSave={(settings) => {
+            setMakingChart(false);
+            editor.chain().focus().insertArmatureChart(settings).run();
           }}
         />
       )}

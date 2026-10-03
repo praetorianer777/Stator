@@ -1,5 +1,40 @@
 {
   "nodes": {
+    "armatureChart": {
+      "attrs": {
+        "chart": {
+          "kind": "string",
+          "enum": [
+            "pie",
+            "createdResolved"
+          ]
+        },
+        "days": {
+          "kind": "integer",
+          "min": 7,
+          "max": 365
+        },
+        "groupBy": {
+          "kind": "string",
+          "enum": [
+            "status",
+            "statusCategory",
+            "type",
+            "priority",
+            "assignee"
+          ]
+        },
+        "project": {
+          "kind": "string",
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        },
+        "query": {
+          "kind": "string",
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      }
+    },
     "armatureIssue": {
       "attrs": {
         "key": {
@@ -86,7 +121,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "bulletList": {
@@ -164,7 +200,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "columns": {
@@ -239,7 +276,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "excerpt": {
@@ -277,7 +315,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "expand": {
@@ -310,7 +349,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "hardBreak": {
@@ -416,7 +456,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "mathBlock": {
@@ -517,7 +558,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "paragraph": {
@@ -620,7 +662,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "tableHeader": {
@@ -685,7 +728,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "tableOfContents": {
@@ -732,7 +776,8 @@
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart"
       ]
     },
     "taskList": {

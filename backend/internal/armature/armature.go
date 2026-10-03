@@ -68,6 +68,9 @@ const (
 	NodeIssueBlock = "armatureIssueBlock"
 	// NodeIssueList is a table from an NQL query, with query, columns and limit.
 	NodeIssueList = "armatureIssueList"
+	// NodeChart draws a count of an NQL query's issues, with project, query,
+	// chart, groupBy and days.
+	NodeChart = "armatureChart"
 )
 
 // Status says whether an answer came from Armature, and if not, why.

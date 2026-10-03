@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/chart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A count of the issues an NQL query matches in one project, as the caller may see them, for a chart block: shared out by a field for a pie, or created and resolved each day. Refused with bad_query and its position. */
+        get: operations["armatureChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/armature/connection": {
         parameters: {
             query?: never;
@@ -2542,6 +2559,25 @@ export interface components {
             editPages: boolean;
             purgeTrash: boolean;
         };
+        Chart: {
+            days: components["schemas"]["ChartDay"][];
+            groupBy: string;
+            /** @enum {string} */
+            kind: "pie" | "createdResolved";
+            slices: components["schemas"]["ChartSlice"][];
+            total: number;
+            url: string;
+        };
+        ChartDay: {
+            created: number;
+            day: string;
+            resolved: number;
+        };
+        ChartSlice: {
+            category: string;
+            count: number;
+            label: string;
+        };
         ChooseThemeRequest: {
             builtIn?: boolean;
             /** Format: uuid */
@@ -3973,6 +4009,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    armatureChart: {
+        parameters: {
+            query?: {
+                /** @description The project's key, such as CP. */
+                project?: string;
+                /** @description An NQL query, at most 2000 characters. */
+                q?: string;
+                /** @description pie or createdResolved. */
+                kind?: "pie" | "createdResolved";
+                /** @description The field a pie shares the issues out by. */
+                groupBy?: "status" | "statusCategory" | "type" | "priority" | "assignee";
+                /** @description How many days back created against resolved counts, 7 to 365; 30 when absent. */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        chart: components["schemas"]["Chart"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

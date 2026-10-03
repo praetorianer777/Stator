@@ -605,6 +605,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   editors change it (`PUT /pages/{id}/appearance`), the database included;
   a cover is always one of the page's own pictures, and goes when its file
   is deleted.
+- Armature charts (#51). "Armature chart" in the slash menu asks for a
+  project, an NQL query and a chart: a pie of the matching issues by status,
+  status category, type, priority or assignee, or the issues created against
+  resolved each day over 7 days to a year. Armature counts them with each
+  reader's own token, through its reports, so every reader sees the chart of
+  the issues they may see (`GET /armature/chart`). The pie keeps status
+  categories in their board colours and lists every share in a table beside
+  it; created against resolved reads a day at a time with the pointer or the
+  arrow keys and opens as a table. The stub serves the two reports and
+  `resolvedAt`.
 
 ### Changed
 

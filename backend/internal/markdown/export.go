@@ -176,6 +176,14 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 		return div(kindChildPages, attrs, ""), true
 	// What an include shows is read for each reader, so the export keeps
 	// what it points at, which an import into the same organization finds.
+	// A chart's counts are each reader's, so the export keeps what it counts.
+	case armature.NodeChart:
+		return div(kindChart, [][2]string{
+			{"data-project", stringAttr(n, "project")},
+			{"data-chart", stringAttr(n, "chart")},
+			{"data-group-by", stringAttr(n, "groupBy")},
+			{"data-days", strconv.Itoa(intAttr(n, "days", armature.DefaultChartDays))},
+		}, stringAttr(n, "query")), true
 	case document.NodeInclude:
 		attrs := [][2]string{{"data-page", stringAttr(n, "pageId")}}
 		if excerpt := stringAttr(n, "excerptId"); excerpt != "" {

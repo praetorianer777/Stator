@@ -3,6 +3,26 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-03: Armature counts a chart, with the reader's own token
+
+A chart block holds what to count and how to draw it, never the counts, as
+the issue list holds its query and never its rows. Each reader's view asks
+Armature's reports, `chart` for a pie and `created_vs_resolved` for the
+other, as that reader: Armature counts every issue the query matches that
+the reader may see, which no page of search results could, and two readers
+of one page may rightly see two different charts. The reports take a
+project, so a chart names one; its query narrows within it.
+
+The pie is a donut, as Armature draws it, with every share also in a table
+beside it, so no number hangs on telling colours apart. A status category
+keeps its board colour; any other field takes the chart palette's slots in
+order, a fixed set of eight checked for colour blindness against the light
+and the dark surface, and past eight the smallest shares fold into Other
+rather than take a colour nobody can tell apart. Created against resolved is
+two lines on one axis of whole issues, read a day at a time with the pointer
+or the arrow keys and offered as a table. The drawing is one unit to the
+pixel of the page it is on, so its words keep their size on a phone.
+
 ## 2026-10-03: How a page looks is a property of the page, not a version of it
 
 A page's emoji, width and cover are columns of the page row, changed at

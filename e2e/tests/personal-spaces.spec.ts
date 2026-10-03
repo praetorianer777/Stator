@@ -27,6 +27,8 @@ test.describe("personal spaces", { tag: ["@auth"] }, () => {
     await page.getByLabel("Key", { exact: true }).fill(key);
     await page.locator('[data-action="create-space"]').click();
     await expect(page).toHaveURL(new RegExp(`/s/${key}$`));
+    // The heading names the space once it has loaded, not while it does.
+    await expect(heading(page)).toHaveText(/'s space$/);
     const name = await heading(page).textContent();
 
     await page.goto("/spaces");

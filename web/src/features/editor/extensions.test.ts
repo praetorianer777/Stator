@@ -88,6 +88,9 @@ describe("the slash menu's blocks", () => {
       date: (d) => JSON.stringify(find(d, "date")[0]?.attrs) === JSON.stringify({ date: "2026-11-02" }),
       emoji: (d) => find(d, "text")[0]?.text === ":",
       diagram: (d) => find(d, "diagram")[0]?.attrs?.source === DIAGRAM_DEFAULT_SOURCE,
+      armatureChart: (d) =>
+        JSON.stringify(find(d, "armatureChart")[0]?.attrs) ===
+        JSON.stringify({ project: "CP", query: "project = CP", chart: "pie", groupBy: "type", days: 30 }),
       include: (d) => JSON.stringify(find(d, "include")[0]?.attrs) === JSON.stringify({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null }),
       excerpt: (d) => {
         const e = find(d, "excerpt")[0];
@@ -103,6 +106,8 @@ describe("the slash menu's blocks", () => {
       // The pickers answer later, as a dialog does, never inside the slash command.
       const e = await make(undefined, {
         pickIssue: () => setTimeout(() => editor?.commands.insertArmatureIssueBlock("cp-4")),
+        pickChart: () =>
+          setTimeout(() => editor?.commands.insertArmatureChart({ project: "CP", query: "project = CP", chart: "pie", groupBy: "type", days: 30 })),
         pickInclude: () => setTimeout(() => editor?.commands.insertInclude({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null })),
         pickLinkCard: () => setTimeout(() => editor?.commands.insertLinkCard("https://example.test/post")),
         pickIssueList: () => setTimeout(() => editor?.commands.insertArmatureIssueList({ query: "project = CP", columns: ["key", "due"], limit: 5 })),

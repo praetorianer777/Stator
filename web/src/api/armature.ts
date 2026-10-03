@@ -178,6 +178,26 @@ export function useArmatureSearch(query: string, limit: number, enabled: boolean
   });
 }
 
+/** A count of an NQL query's issues for a chart block, as the caller may see them. */
+export type ArmatureChartAnswer = Awaited<ReturnType<typeof chartOf>>;
+
+async function chartOf(settings: { project: string; query: string; chart: "pie" | "createdResolved"; groupBy: string; days: number }) {
+  return (
+    await api.GET("/armature/chart", {
+      params: { query: { project: settings.project, q: settings.query, kind: settings.chart, groupBy: settings.groupBy as never, days: settings.days } },
+    })
+  ).data!;
+}
+
+/** A chart block's counts; kept with the searches, so an issue's change asks again. */
+export function useArmatureChart(settings: Parameters<typeof chartOf>[0], enabled: boolean) {
+  return useQuery({
+    queryKey: [...searchQueryKey, "chart", settings.project, settings.query, settings.chart, settings.groupBy, settings.days],
+    enabled: enabled && settings.query.trim() !== "",
+    queryFn: () => chartOf(settings),
+  });
+}
+
 /** The issue types a new issue may take, sub-tasks left out. */
 export function useArmatureIssueTypes(enabled: boolean) {
   return useQuery({
