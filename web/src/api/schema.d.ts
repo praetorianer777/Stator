@@ -1998,6 +1998,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/task-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The tasks of published pages the caller may view, out of the trash and the archive, that the filter picks, for a task report block: open ones soonest due first and those without a day last, then done ones the latest first; truncated says more matched. */
+        get: operations["taskReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tasks": {
         parameters: {
             query?: never;
@@ -3805,6 +3822,11 @@ export interface components {
             spaceKey: string;
             spaceName: string;
             title: string;
+        };
+        TaskReport: {
+            assigneeName: string;
+            tasks: components["schemas"]["Task"][];
+            truncated: boolean;
         };
         TaskSetDoneInput: {
             done: boolean;
@@ -9665,6 +9687,55 @@ export interface operations {
                         next: string | null;
                         stars: components["schemas"]["Star"][];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    taskReport: {
+        parameters: {
+            query?: {
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description me for the caller, none for tasks nobody is assigned, or a person's id; anybody when absent. */
+                assignee?: string;
+                /** @description any when absent; overdue, today and week (today and the six days after) judge by today in UTC; none is tasks without a day. */
+                due?: "any" | "overdue" | "today" | "week" | "none";
+                /** @description open when absent. */
+                state?: "open" | "done" | "all";
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskReport"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

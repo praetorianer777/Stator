@@ -130,6 +130,10 @@ const (
 	// lists them shows when it names no number, and the most it may.
 	DefaultListedPages = 10
 	MaxListedPages     = 50
+	// DefaultReportedTasks and MaxReportedTasks are how many tasks a task
+	// report shows when it names no number, and the most it may.
+	DefaultReportedTasks = 20
+	MaxReportedTasks     = 100
 )
 
 // The states of a decision item.
@@ -188,6 +192,43 @@ const (
 	NodeRecentlyUpdated = "recentlyUpdated"
 )
 
+// NodeTaskReport lists the tasks of published pages a filter picks; it holds
+// the filter, and each reader's view asks for the tasks they may read.
+const NodeTaskReport = "taskReport"
+
+// Whom a task report's tasks are assigned to beside one person: whoever
+// reads the report, or nobody.
+const (
+	AssigneeReader = "me"
+	AssigneeNobody = "none"
+)
+
+// TaskAssigneePattern is a task report's assignee: the reader, nobody, or a person's id.
+const TaskAssigneePattern = `^(?:me|none|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$`
+
+// The due days a task report picks, judged against today in UTC as a date
+// node is: any, before today, today, from today for a week, or none.
+const (
+	DueAny     = "any"
+	DueOverdue = "overdue"
+	DueToday   = "today"
+	DueWeek    = "week"
+	DueNone    = "none"
+)
+
+// The states a task report picks.
+const (
+	TaskStateOpen = "open"
+	TaskStateDone = "done"
+	TaskStateAll  = "all"
+)
+
+// TaskReportDues and TaskReportStates are what a task report may choose.
+var (
+	TaskReportDues   = []string{DueAny, DueOverdue, DueToday, DueWeek, DueNone}
+	TaskReportStates = []string{TaskStateOpen, TaskStateDone, TaskStateAll}
+)
+
 // How a content by label list matches its labels and orders its pages.
 const (
 	MatchAll    = "all"
@@ -231,7 +272,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeTaskReport, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -448,6 +489,13 @@ var Allowed = Allowlist{
 		NodeRecentlyUpdated: {Attrs: map[string]Attr{
 			"space": {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},
 			"limit": {Kind: KindInteger, Min: 1, Max: MaxListedPages},
+		}},
+		NodeTaskReport: {Attrs: map[string]Attr{
+			"space":    {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},
+			"assignee": {Kind: KindString, Nullable: true, Pattern: TaskAssigneePattern},
+			"due":      {Kind: KindString, Enum: TaskReportDues},
+			"state":    {Kind: KindString, Enum: TaskReportStates},
+			"limit":    {Kind: KindInteger, Min: 1, Max: MaxReportedTasks},
 		}},
 		NodeLinkCard: {Attrs: map[string]Attr{
 			"url":  {Kind: KindString, MaxLength: MaxHrefLength, URL: true, Pattern: `^[Hh][Tt][Tt][Pp][Ss]?://`},

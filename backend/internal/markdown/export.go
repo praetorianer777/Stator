@@ -171,6 +171,15 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 			{"data-space", stringAttr(n, "space")},
 			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
 		}, ""), true
+	// A report's tasks are each reader's, so the export keeps what it picks.
+	case document.NodeTaskReport:
+		return div(kindTasks, [][2]string{
+			{"data-space", stringAttr(n, "space")},
+			{"data-assignee", stringAttr(n, "assignee")},
+			{"data-due", stringAttr(n, "due")},
+			{"data-state", stringAttr(n, "state")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultReportedTasks))},
+		}, ""), true
 	// A report's rows are each reader's, so the export keeps what it gathers.
 	case document.NodePropertiesReport:
 		columns, _ := json.Marshal(stringsAttr(n, "columns"))

@@ -3,6 +3,18 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-03: A task report filters by relative days and by the reader
+
+A task report stores its filter in the page, as the lists of pages do, and
+asks for the tasks each time it is read. Its due day choices are relative
+(overdue, today, the next 7 days) rather than fixed dates, because a report
+on a status page is meant to stay true without editing, and they are judged
+by the database's `task_today()` in UTC, the same day the reminders use. The
+assignee may be "whoever reads the page", stored as `me`, so one page shows
+each person their own tasks; a named person is stored by id and named by the
+report's answer, so a renamed person reads right, and one who left, whose
+tasks fall unassigned, leaves an empty report rather than a broken one.
+
 ## 2026-10-03: A list of pages holds what to list, and asks each time it is read
 
 Content by label and recently updated store their settings in the page, as

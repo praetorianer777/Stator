@@ -484,6 +484,15 @@ var operations = []operation{
 		summary:   "The tasks assigned to the caller on published pages they may still view, out of the trash and the archive: open ones soonest due first and those without a day last, or done ones the latest first; next is the cursor for the window after, null at the end.",
 		query:     append([]param{{name: "state", schema: &openapi.Schema{Type: "string", Enum: enumStrings(task.States)}, description: "open when absent."}}, keysetQueryOf(task.DefaultLimit, task.MaxLimit)...),
 		responses: ok(env{"tasks": []task.Task{}, "next": (*string)(nil)})},
+	{method: "GET", path: "/task-report", handler: "handleTaskReport", tool: "task_report", toolHelp: "The tasks of pages in one space or all, picked by assignee, due day and state: open ones soonest due first, then done ones.", tag: "tasks",
+		summary: "The tasks of published pages the caller may view, out of the trash and the archive, that the filter picks, for a task report block: open ones soonest due first and those without a day last, then done ones the latest first; truncated says more matched.",
+		query: []param{
+			{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."},
+			{name: "assignee", description: "me for the caller, none for tasks nobody is assigned, or a person's id; anybody when absent."},
+			{name: "due", schema: &openapi.Schema{Type: "string", Enum: document.TaskReportDues}, description: "any when absent; overdue, today and week (today and the six days after) judge by today in UTC; none is tasks without a day."},
+			{name: "state", schema: &openapi.Schema{Type: "string", Enum: document.TaskReportStates}, description: "open when absent."},
+			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
+		}, responses: map[int]any{200: task.Report{}, 422: errorEnvelope{}}},
 	{method: "PATCH", path: "/pages/{pageID}/tasks/{taskID}", handler: "handleSetTaskDone", tool: "set_task_done", toolHelp: "Tick a task of a page off, or open it again, which publishes the page as its next version.", tag: "tasks",
 		summary: "Tick a task off or open it again, by publishing the page with its box changed as the next version; its state already is no change. For whoever may edit the page.",
 		request: task.SetDoneInput{}, responses: ok(env{"task": task.Task{}})},
@@ -724,6 +733,7 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(watch.Input{})] = "WatchInput"
 	b.Names[reflect.TypeOf(task.PageRef{})] = "TaskPage"
 	b.Names[reflect.TypeOf(task.SetDoneInput{})] = "TaskSetDoneInput"
+	b.Names[reflect.TypeOf(task.Report{})] = "TaskReport"
 	b.FieldOverrides["LinkEmbed.kind"] = &openapi.Schema{Type: "string", Enum: unfurl.EmbedKinds}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}

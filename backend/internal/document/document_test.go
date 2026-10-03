@@ -41,6 +41,9 @@ const richDoc = `{"type":"doc","content":[
  {"type":"propertiesReport","attrs":{"labels":["v1.2"],"space":"DOCS","columns":["Owner","Review date"]}},
  {"type":"labelledPages","attrs":{"labels":["adr","v1.2"],"match":"any","space":null,"sort":"title","limit":50}},
  {"type":"recentlyUpdated","attrs":{"space":"DOCS","limit":1}},
+ {"type":"taskReport","attrs":{"space":"DOCS","assignee":"me","due":"week","state":"open","limit":20}},
+ {"type":"taskReport","attrs":{"space":null,"assignee":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","due":"any","state":"all","limit":100}},
+ {"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"none","state":"done","limit":1}},
  {"type":"table","content":[
   {"type":"tableRow","content":[
    {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Name"}]}]},
@@ -152,6 +155,11 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"labelled pages without labels", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":[],"match":"all","space":null,"sort":"title","limit":5}}]}`, `labels`},
 		{"labelled pages past the limit", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":["a"],"match":"all","space":null,"sort":"title","limit":51}}]}`, `limit=51`},
 		{"recently updated none", `{"type":"doc","content":[{"type":"recentlyUpdated","attrs":{"space":null,"limit":0}}]}`, `limit=0`},
+		{"task report for somebody", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":"ann","due":"any","state":"open","limit":5}}]}`, `assignee="ann"`},
+		{"task report due later", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"later","state":"open","limit":5}}]}`, `due="later"`},
+		{"task report half done", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"half","limit":5}}]}`, `state="half"`},
+		{"task report past the limit", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"open","limit":101}}]}`, `limit=101`},
+		{"task report with tasks", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"open","limit":5,"tasks":[]}}]}`, `attribute "tasks"`},
 		{"recently updated with pages", `{"type":"doc","content":[{"type":"recentlyUpdated","attrs":{"space":null,"limit":5,"pages":[]}}]}`, `attribute "pages"`},
 		{"report with its rows", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":["a"],"space":null,"columns":[],"rows":[]}}]}`, `attribute "rows"`},
 		{"chart with counts", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"CP","query":"x","chart":"pie","groupBy":"type","days":30,"total":5}}]}`, `attribute "total"`},

@@ -2,7 +2,9 @@ package httpapi
 
 import (
 	"net/http"
+	"strconv"
 
+	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/task"
 )
 
@@ -51,4 +53,27 @@ func (s *Server) handleSetTaskDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"task": t})
+}
+
+// A task report (#57): the tasks of published pages a filter picks, as the
+// caller may read them.
+func (s *Server) handleTaskReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	in := task.ReportInput{SpaceKey: q.Get("space"), Assignee: q.Get("assignee"), Due: q.Get("due"), State: q.Get("state"), Limit: document.DefaultReportedTasks}
+	if in.Due == "" {
+		in.Due = document.DueAny
+	}
+	if in.State == "" {
+		in.State = document.TaskStateOpen
+	}
+	// A limit that is no number is out of range, which the service refuses in words.
+	if raw := q.Get("limit"); raw != "" {
+		in.Limit, _ = strconv.Atoi(raw)
+	}
+	report, err := s.Tasks.Report(r.Context(), actorFrom(r), in)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, report)
 }
