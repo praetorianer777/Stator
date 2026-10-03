@@ -27,6 +27,8 @@ import { IssueList, listSettings } from "@/features/armature/IssueList";
 
 import { ARMATURE_CHART_NODE, chartSettings } from "@/features/armature/chart";
 import { IssueChart } from "@/features/armature/IssueChart";
+import { IssueRoadmap } from "@/features/armature/IssueRoadmap";
+import { ARMATURE_ROADMAP_NODE, roadmapSettings } from "@/features/armature/roadmap";
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
 /**
@@ -343,6 +345,18 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
         );
       }
       return <IssueChart settings={settings} />;
+    }
+    case ARMATURE_ROADMAP_NODE: {
+      const settings = roadmapSettings(node.attrs);
+      if (!settings.project || !settings.query.trim()) return null;
+      if (!copy) {
+        return (
+          <p className="doc-block doc-block-summary" data-armature-roadmap="">
+            {t.armature.roadmap.summary(settings.project, settings.query)}
+          </p>
+        );
+      }
+      return <IssueRoadmap settings={settings} />;
     }
     case ARMATURE_ISSUE_LIST_NODE: {
       const settings = listSettings(node.attrs);

@@ -402,6 +402,17 @@ export const ARMATURE_FLOW_WIDTH = 640;
 export const ARMATURE_FLOW_HEIGHT = 200;
 /** How many evenly spaced ticks a line chart's axes carry at most. */
 export const ARMATURE_FLOW_TICKS = 4;
+/** What a roadmap block puts its rows under, as armature.RoadmapGroupings. */
+export const ARMATURE_ROADMAP_GROUPINGS = ["epic", "team"] as const;
+export type ArmatureRoadmapGrouping = (typeof ARMATURE_ROADMAP_GROUPINGS)[number];
+/** Past this many days a roadmap's axis marks months; within it, weeks. */
+export const ARMATURE_ROADMAP_WEEKLY_DAYS = 70;
+/** The least room, in pixels, between two labels of a roadmap's axis; closer ones skip a label. */
+export const ARMATURE_ROADMAP_LABEL_GAP_PX = 64;
+/** The room, in pixels, a label of a roadmap's axis needs to its right; nearer the edge it is left out. */
+export const ARMATURE_ROADMAP_LABEL_ROOM_PX = 48;
+/** Days left either side of a roadmap's earliest and latest day, so no bar touches its edge. */
+export const ARMATURE_ROADMAP_MARGIN_DAYS = 3;
 /** How many emoji the appearance dialog offers for a page at once. */
 export const PAGE_ICON_CHOICES = 24;
 /** Where a new cover's focus starts, in percent: its middle. */

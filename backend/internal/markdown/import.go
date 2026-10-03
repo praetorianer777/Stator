@@ -726,6 +726,10 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 		return document.Node{Type: armature.NodeChart, Attrs: map[string]any{
 			"project": attrs["data-project"], "query": words, "chart": attrs["data-chart"], "groupBy": attrs["data-group-by"], "days": days,
 		}}, true
+	case kindRoadmap:
+		return document.Node{Type: armature.NodeRoadmap, Attrs: map[string]any{
+			"project": attrs["data-project"], "query": words, "groupBy": attrs["data-group-by"],
+		}}, true
 	case kindInclude:
 		if !uuidText.MatchString(attrs["data-page"]) {
 			return document.Node{}, false

@@ -178,6 +178,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/roadmap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The issues an NQL query matches in one project, as the caller may see them, on a timeline of their start and due days for a roadmap block: under their epics or their teams. Refused with bad_query and its position. */
+        get: operations["armatureRoadmap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/armature/search": {
         parameters: {
             query?: never;
@@ -3387,6 +3404,31 @@ export interface components {
             edit: components["schemas"]["SubjectRef"][];
             view: components["schemas"]["SubjectRef"][];
         };
+        Roadmap: {
+            from: string | null;
+            /** @enum {string} */
+            groupBy: "epic" | "team";
+            groups: components["schemas"]["RoadmapGroup"][];
+            hidden: number;
+            to: string | null;
+            unscheduled: number;
+            url: string;
+        };
+        RoadmapBar: {
+            derived: boolean;
+            due: string | null;
+            key: string;
+            start: string | null;
+            status: components["schemas"]["IssueStatus"];
+            summary: string;
+            type: components["schemas"]["IssueType"];
+            url: string;
+        };
+        RoadmapGroup: {
+            epic: components["schemas"]["RoadmapBar"] | null;
+            name: string;
+            rows: components["schemas"]["RoadmapBar"][];
+        };
         RpcError: {
             code: number;
             /** @description A JSON value. */
@@ -4363,6 +4405,55 @@ export interface operations {
                         /** @enum {string} */
                         status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    armatureRoadmap: {
+        parameters: {
+            query?: {
+                /** @description The project's key, such as CP. */
+                project?: string;
+                /** @description An NQL query, at most 2000 characters. */
+                q?: string;
+                /** @description epic or team. */
+                groupBy?: "epic" | "team";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        roadmap: components["schemas"]["Roadmap"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

@@ -636,6 +636,19 @@ the issue webhooks. A query Armature cannot read is 422 `bad_query` with its
 position, as for the list block; a project the reader may not see is a 422 on
 `project`.
 
+## #52: the roadmap block
+
+A roadmap block stores a project, an NQL query and a grouping (`epic` or
+`team`); never the dates. Each reader's view asks Stator's
+`GET /armature/roadmap?project&q&groupBy`, which asks Armature's
+`GET /projects/{projectKey}/plan?q` as that reader with their own token. The
+plan is the project's whole tree of items, each with `start`, `due` and
+`derived`, and `matched` lists the keys the query selects; Stator draws the
+matched issues alone, under the nearest epic (an issue type of level 1) or
+under the issue's `team`. Answers are kept per token for as long as searches
+and cleared with them. Refusals are the chart's: 422 `bad_query` with its
+position, or a 422 on `project`.
+
 ## The armature-stub
 
 `cmd/armature-stub` stands in for Armature in the integration suite and in
@@ -658,7 +671,14 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   `status`, `statusCategory`, `type`, `priority` or `assignee`) and
   `created_vs_resolved` (a day by day count over `days`, ending today), both
   filtered by `q`. Issues carry `resolvedAt` once done; making one done
-  through `PATCH /_stub/{tenant}/issues/{key}` resolves it now.
+  through `PATCH /_stub/{tenant}/issues/{key}` resolves it now. For the
+  roadmap block of #52, `GET /projects/{projectKey}/plan` answers the
+  project's issues as a tree by parent, an item without days of its own
+  spanning its children's, and `matched` from `q`. Issues carry `startDate`,
+  `parent` and `team`, set through the same `PATCH` (`startDate`, `dueDate`,
+  `parent` by key, `team` by name, empty to clear), and
+  `POST /_stub/{tenant}/projects/{projectKey}/issues` (`summary`, `type`)
+  files an issue of any type, such as an `Epic`, which Stator never files.
 - **Who asks.** A token `armature_pat_{tenant}_{person}` is `person` in the
   stub's organization `tenant`, made on first use with fixed projects (`CP`
   that everybody may write, `SEC` that only `admin` may see), issue types and
@@ -680,7 +700,7 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   `id` to repeat an event), and `DELETE /_stub/{tenant}` to start a tenant
   afresh.
 - **The fixed world.** Every tenant has the projects `CP` and `SEC`, the
-  types Task, Bug, Story and Sub-task, and the issues `CP-1` to `CP-5` and
+  types Task, Bug, Story, Sub-task and Epic, and the issues `CP-1` to `CP-5` and
   `SEC-1`; `CP-5` was `SEC-2` before it moved, and answers to that key too.
   A person is named `{person}` capitalised, with the email
   `{person}@{tenant}.armature.test`, and alice is assigned `CP-1` and `CP-4`.

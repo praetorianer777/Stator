@@ -3,6 +3,30 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-03: A roadmap is Armature's plan, grouped by Stator
+
+A roadmap block holds a project, a query and a grouping, never the dates,
+as a chart holds what to count. Each reader's view asks Armature's
+`GET /projects/{key}/plan` as that reader. The plan is the project's issues
+as a tree, with each issue's start and due dates or, for an epic without its
+own, the span of its children's; it is returned whole, with the keys the
+query matches. Stator groups only the matched issues, so an epic the query
+leaves out still heads the issues it matched, and the epic's span is
+Armature's, not one Stator works out again.
+
+Grouping by epic uses the nearest epic above an issue; an initiative above
+the epics is a row like any issue outside an epic, not a group, so a roadmap
+of epics is not one group holding everything. Grouping by team uses the
+issue's own team. Issues with neither date are counted under the timeline
+rather than drawn at an invented day, and a block stops at 100 rows and says
+how many it left out.
+
+The timeline is rows of labels beside tracks of whole days, laid out in HTML
+rather than one drawing, so it reflows on a phone, label above track. A bar
+takes its status category's board colour, as the board does, with a legend
+naming each, and every bar's dates are also in words for screen readers. An
+epic's span taken from its issues is an outline, its own dates a fill.
+
 ## 2026-10-03: Armature counts a chart, with the reader's own token
 
 A chart block holds what to count and how to draw it, never the counts, as

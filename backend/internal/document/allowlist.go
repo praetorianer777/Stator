@@ -176,7 +176,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -205,9 +205,10 @@ var (
 	ChildPagesSorts  = []string{"tree", "title", "updated"}
 )
 
-func chartKinds() []string {
-	out := make([]string, len(armature.ChartKinds))
-	for i, k := range armature.ChartKinds {
+// strs is a typed enum as the allowlist writes it.
+func strs[T ~string](in []T) []string {
+	out := make([]string, len(in))
+	for i, k := range in {
 		out[i] = string(k)
 	}
 	return out
@@ -321,9 +322,17 @@ var Allowed = Allowlist{
 			Attrs: map[string]Attr{
 				"project": {Kind: KindString, Pattern: armature.ProjectPattern},
 				"query":   {Kind: KindString, MaxLength: armature.MaxQueryLength, Pattern: `\S`},
-				"chart":   {Kind: KindString, Enum: chartKinds()},
+				"chart":   {Kind: KindString, Enum: strs(armature.ChartKinds)},
 				"groupBy": {Kind: KindString, Enum: armature.ChartGroupings},
 				"days":    {Kind: KindInteger, Min: armature.MinChartDays, Max: armature.MaxChartDays},
+			},
+		},
+		// What to draw, never the days: each reader's view asks Armature.
+		armature.NodeRoadmap: {
+			Attrs: map[string]Attr{
+				"project": {Kind: KindString, Pattern: armature.ProjectPattern},
+				"query":   {Kind: KindString, MaxLength: armature.MaxQueryLength, Pattern: `\S`},
+				"groupBy": {Kind: KindString, Enum: strs(armature.RoadmapGroupings)},
 			},
 		},
 		// The colour names a theme role, so a custom theme recolours it.

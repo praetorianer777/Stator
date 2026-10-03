@@ -71,6 +71,9 @@ const (
 	// NodeChart draws a count of an NQL query's issues, with project, query,
 	// chart, groupBy and days.
 	NodeChart = "armatureChart"
+	// NodeRoadmap draws an NQL query's issues on a timeline, with project,
+	// query and groupBy.
+	NodeRoadmap = "armatureRoadmap"
 )
 
 // Status says whether an answer came from Armature, and if not, why.

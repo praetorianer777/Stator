@@ -257,6 +257,22 @@ func (s *Server) handleArmatureChart(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "chart": chart})
 }
 
+// The roadmap block (#52): the issues an NQL query matches on a timeline of
+// their start and due days, under their epics or their teams.
+func (s *Server) handleArmatureRoadmap(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	q := r.URL.Query()
+	status, roadmap, err := s.Armature.Roadmap(r.Context(), armature.RoadmapInput{Project: q.Get("project"), Query: q.Get("q"), GroupBy: armature.RoadmapGrouping(q.Get("groupBy"))})
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "roadmap": roadmap})
+}
+
 func (s *Server) handleListArmatureIssueTypes(w http.ResponseWriter, r *http.Request) {
 	if s.Armature == nil {
 		respondError(w, r, errArmatureOff)

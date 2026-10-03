@@ -192,8 +192,8 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	if n := len(c.expect("GET", "/projects", alice, nil, 200)["projects"].([]any)); n != 1 {
 		t.Errorf("alice lists %d projects, want 1", n)
 	}
-	if n := len(c.expect("GET", "/issue-types", alice, nil, 200)["issueTypes"].([]any)); n != 4 {
-		t.Errorf("%d issue types, want 4", n)
+	if n := len(c.expect("GET", "/issue-types", alice, nil, 200)["issueTypes"].([]any)); n != 5 {
+		t.Errorf("%d issue types, want 5", n)
 	}
 
 	for _, tc := range []struct {
@@ -324,6 +324,27 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	}
 	c.expect("GET", "/projects/SEC/reports/chart?groupBy=type&q=project+%3D+SEC", alice, nil, 404)
 	c.expect("GET", "/projects/CP/reports/chart?groupBy=type&q=project+%3D", alice, nil, 400)
+	// The plan a roadmap block draws (#52): an epic's children give it the
+	// span it has no days of its own for.
+	epic := c.expect("POST", stubPrefix+"/acme/projects/CP/issues", "", map[string]any{"summary": "Launch", "type": "Epic"}, 201)["issue"].(map[string]any)["key"].(string)
+	c.expect("PATCH", stubPrefix+"/acme/issues/CP-1", "", map[string]any{"parent": epic, "startDate": "2026-10-01", "dueDate": "2026-10-09", "team": "Platform"}, 200)
+	c.expect("PATCH", stubPrefix+"/acme/issues/CP-4", "", map[string]any{"parent": epic, "startDate": "2026-10-12", "team": "Platform"}, 200)
+	c.expect("PATCH", stubPrefix+"/acme/issues/CP-4", "", map[string]any{"startDate": "someday"}, 422)
+	plan := c.expect("GET", "/projects/CP/plan?q=key+in+%28CP-1%2C+CP-4%29", alice, nil, 200)
+	var launch map[string]any
+	for _, it := range plan["items"].([]any) {
+		if it.(map[string]any)["issue"].(map[string]any)["key"] == epic {
+			launch = it.(map[string]any)
+		}
+	}
+	if launch == nil || launch["derived"] != true || !strings.HasPrefix(fmt.Sprint(launch["start"]), "2026-10-01") ||
+		!strings.HasPrefix(fmt.Sprint(launch["due"]), "2026-10-15") || len(launch["children"].([]any)) != 2 {
+		t.Errorf("the epic in the plan is %v", launch)
+	}
+	if fmt.Sprint(plan["matched"]) != "[CP-1 CP-4]" {
+		t.Errorf("a plan for two keys matches %v", plan["matched"])
+	}
+	c.expect("GET", "/projects/SEC/plan", alice, nil, 404)
 	c.expect("POST", stubPrefix+"/acme/issues/CP-3/move", "", map[string]any{"projectKey": "SEC"}, 200)
 	if got := c.expect("GET", "/issues/CP-3", admin, nil, 200)["issue"].(map[string]any); got["key"] != "SEC-3" {
 		t.Errorf("a moved issue answers to %v, want SEC-3", got["key"])

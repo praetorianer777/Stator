@@ -83,6 +83,26 @@
         }
       }
     },
+    "armatureRoadmap": {
+      "attrs": {
+        "groupBy": {
+          "kind": "string",
+          "enum": [
+            "epic",
+            "team"
+          ]
+        },
+        "project": {
+          "kind": "string",
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        },
+        "query": {
+          "kind": "string",
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      }
+    },
     "attachment": {
       "attrs": {
         "attachmentId": {
@@ -122,7 +142,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "bulletList": {
@@ -201,7 +222,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "columns": {
@@ -277,7 +299,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "excerpt": {
@@ -316,7 +339,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "expand": {
@@ -350,7 +374,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "hardBreak": {
@@ -457,7 +482,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "mathBlock": {
@@ -559,7 +585,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "paragraph": {
@@ -663,7 +690,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "tableHeader": {
@@ -729,7 +757,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "tableOfContents": {
@@ -777,7 +806,8 @@
         "childPages",
         "armatureIssueBlock",
         "armatureIssueList",
-        "armatureChart"
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "taskList": {

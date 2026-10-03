@@ -876,6 +876,103 @@
         }
       }
     },
+    "/armature/roadmap": {
+      "get": {
+        "operationId": "armatureRoadmap",
+        "summary": "The issues an NQL query matches in one project, as the caller may see them, on a timeline of their start and due days for a roadmap block: under their epics or their teams. Refused with bad_query and its position.",
+        "tags": [
+          "armature"
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "description": "The project's key, such as CP.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "An NQL query, at most 2000 characters.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupBy",
+            "in": "query",
+            "description": "epic or team.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "epic",
+                "team"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "roadmap": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Roadmap"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "not_configured",
+                        "not_connected",
+                        "rejected",
+                        "unreachable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "roadmap",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/armature/search": {
       "get": {
         "operationId": "searchArmatureIssues",
@@ -14087,6 +14184,128 @@
         "required": [
           "view",
           "edit"
+        ]
+      },
+      "Roadmap": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "epic",
+              "team"
+            ]
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoadmapGroup"
+            }
+          },
+          "hidden": {
+            "type": "integer"
+          },
+          "to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unscheduled": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupBy",
+          "from",
+          "to",
+          "groups",
+          "unscheduled",
+          "hidden",
+          "url"
+        ]
+      },
+      "RoadmapBar": {
+        "type": "object",
+        "properties": {
+          "derived": {
+            "type": "boolean"
+          },
+          "due": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "start": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/IssueStatus"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "url",
+          "summary",
+          "type",
+          "status",
+          "start",
+          "due",
+          "derived"
+        ]
+      },
+      "RoadmapGroup": {
+        "type": "object",
+        "properties": {
+          "epic": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RoadmapBar"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoadmapBar"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "epic",
+          "rows"
         ]
       },
       "RpcError": {

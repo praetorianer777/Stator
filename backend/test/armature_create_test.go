@@ -85,7 +85,7 @@ func TestIssuesAreFiledFromASelectionAsTheCaller(t *testing.T) {
 		for _, each := range list(t, r, "issueTypes") {
 			names = append(names, each.(map[string]any)["name"].(string))
 		}
-		if r.Body["status"] != "ok" || strings.Join(names, " ") != "Task Bug Story" {
+		if r.Body["status"] != "ok" || strings.Join(names, " ") != "Task Bug Story Epic" {
 			t.Errorf("the issue types are %s", r.Raw)
 		}
 		none := want(t, carol.get(t, "/api/v1/armature/issue-types"), http.StatusOK, "carol's issue types")
