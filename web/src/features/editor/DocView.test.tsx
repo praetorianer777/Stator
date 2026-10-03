@@ -161,7 +161,7 @@ describe("DocView", () => {
     expect(container.querySelector("br")).not.toBeNull();
     expect(container.querySelector("ul li")?.textContent).toBe("item");
     expect(container.querySelector("ol")?.getAttribute("start")).toBe("3");
-    expect(screen.getByRole("checkbox", { name: "Done" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Done: done" })).toBeChecked();
     expect(container.querySelector("hr")).not.toBeNull();
     expect(container.querySelector("th")?.getAttribute("colspan")).toBe("2");
     expect(container.querySelector("th")?.getAttribute("data-background")).toBe("accent");

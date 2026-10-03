@@ -31,6 +31,9 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
         <NavItem to="/spaces" icon="Space" rail>
           {t.nav.spaces}
         </NavItem>
+        <NavItem to="/tasks" icon="Checklist" rail>
+          {t.nav.tasks}
+        </NavItem>
         <NavItem to="/search" icon="Search" rail>
           {t.nav.search}
         </NavItem>

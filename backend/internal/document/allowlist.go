@@ -301,9 +301,14 @@ var Allowed = Allowlist{
 				"type":  {Kind: KindString, Nullable: true, Enum: []string{"1", "a", "A", "i", "I"}},
 			},
 		},
-		"listItem":   {Content: blockNodes},
-		"taskList":   {Content: []string{"taskItem"}},
-		"taskItem":   {Content: blockNodes, Attrs: map[string]Attr{"checked": {Kind: KindBoolean}}},
+		"listItem": {Content: blockNodes},
+		"taskList": {Content: []string{"taskItem"}},
+		// taskId keeps an item the same task from one version to the next; the
+		// server gives one to every item that has none when it is published.
+		"taskItem": {Content: blockNodes, Attrs: map[string]Attr{
+			"checked":  {Kind: KindBoolean},
+			AttrTaskID: {Kind: KindString, Nullable: true, Pattern: UUIDPattern},
+		}},
 		"blockquote": {Content: blockNodes},
 		"codeBlock": {
 			Content: []string{"text"},

@@ -96,6 +96,7 @@ func NewFanOut(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog
 	f.planners[events.TopicThreadReopened] = planThreadResolved
 	f.planners[events.TopicVerificationLapsed] = planVerificationLapsed
 	f.planners[events.TopicPageShared] = planShared
+	f.planners[events.TopicTaskDue] = planTaskDue
 	return f
 }
 
@@ -155,6 +156,25 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 	for _, m := range document.MentionsIn(body) {
 		blocks[m.ID] = m.Block
 	}
+	// The rows say who this version assigned, so a later version that
+	// assigned the task to somebody else, or saw it done, tells nobody here.
+	rows, err := tx.Query(ctx, `
+		SELECT assignee_id, summary FROM page_task
+		WHERE org_id = current_org_id() AND page_id = $1 AND assigned_version = $2 AND NOT done AND assignee_id IS NOT NULL
+		ORDER BY position`, in.PageID, in.Version)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		assignee uuid.UUID
+		summary  string
+	)
+	if _, err := pgx.ForEachRow(rows, []any{&assignee, &summary}, func() error {
+		plan.Tells = append(plan.Tells, Tell{UserID: assignee, Kind: KindAssigned, Excerpt: Excerpt(summary)})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
 	for _, id := range in.Mentioned {
 		plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: KindMentioned, Excerpt: Excerpt(blocks[id])})
 	}
@@ -165,7 +185,7 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 	if in.First {
 		kind = KindCreated
 	}
-	rows, err := tx.Query(ctx, `SELECT user_id FROM page_watch_coverage($1, $2)`, in.PageID, in.First)
+	rows, err = tx.Query(ctx, `SELECT user_id FROM page_watch_coverage($1, $2)`, in.PageID, in.First)
 	if err != nil {
 		return nil, err
 	}
@@ -212,6 +232,36 @@ func planVerificationLapsed(ctx context.Context, tx db.DBTX, e events.Event) (*P
 		plan.Tells = []Tell{{UserID: *verifier, Kind: KindExpired}}
 	}
 	return plan, nil
+}
+
+// planTaskDue reminds the assignee of a task whose day came. A task done, given
+// another day or another assignee since, or on an archived page, tells nobody.
+func planTaskDue(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) {
+	var in events.TaskDue
+	if err := json.Unmarshal(e.Payload, &in); err != nil {
+		return nil, nil
+	}
+	var (
+		summary string
+		version int
+	)
+	err := tx.QueryRow(ctx, `
+		SELECT t.summary, p.version FROM page_task t
+		JOIN page p ON p.org_id = t.org_id AND p.id = t.page_id
+		JOIN space s ON s.id = p.space_id
+		WHERE t.org_id = current_org_id() AND t.page_id = $1 AND t.task_id = $2 AND t.assignee_id = $3
+		  AND t.due_on = $4::date AND NOT t.done AND p.archived_at IS NULL AND s.archived_at IS NULL`,
+		in.PageID, in.TaskID, in.AssigneeID, in.DueOn).Scan(&summary, &version)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &Plan{
+		Subject: Subject{PageID: in.PageID, Version: &version, Excerpt: Excerpt(summary)},
+		Tells:   []Tell{{UserID: in.AssigneeID, Kind: KindDue}},
+	}, nil
 }
 
 // deliver writes one row acting for its recipient, so the database refuses

@@ -1718,6 +1718,31 @@
   }
 }
 
+/* How a task stands against its due day, in a page and in the list of tasks:
+ * words in ink on a tint of the state, as the verification badge, so the
+ * state is said in words; the glyph takes the role's colour where it reads. */
+@layer components {
+  .task-due {
+    background: var(--task-due-fill);
+    color: var(--color-ink);
+  }
+  .task-due svg {
+    color: var(--task-due-glyph);
+  }
+  [data-task-due="overdue"] {
+    --task-due-fill: var(--color-danger-subtle);
+    --task-due-glyph: var(--color-danger);
+  }
+  [data-task-due="today"] {
+    --task-due-fill: var(--color-warning-subtle);
+    --task-due-glyph: var(--color-ink);
+  }
+  [data-task-due="upcoming"] {
+    --task-due-fill: var(--color-surface-sunken);
+    --task-due-glyph: var(--color-ink-muted);
+  }
+}
+
 /* Whatever is archived, as a mark in a list or a banner on a page: words in
  * ink on a quiet tint that claims no state of work, the glyph a step softer. */
 @layer components {

@@ -385,6 +385,68 @@ it is now, so a rename needs no second change. A space holds at most 30,
 `shortcut.MaxPerSpace`, which `space_shortcut_max()` repeats in SQL and a
 trigger counts under a lock per space, so two additions at once cannot both
 pass.
+## 2026-10-02: A task is a checklist item of the published page, assigned by its first mention
+
+Tasks (#56) add no node. A checklist item is a task; the first person its
+own words mention is its assignee and the first date in them its due day,
+while an item nested in it is a task of its own. Mentions and dates already
+read, search, diff and convert to Markdown, the editor already offers both
+behind `@` and `/date`, and a person reads at a glance who has a task and
+by when without learning a new block.
+
+The document is the only record anybody writes. On every path that
+publishes (publish, restore, a page made published, an update, Markdown)
+and on a copy, the page's `page_task` rows are written from the body the
+database stored, so nothing a client sends besides the page itself says
+what the tasks are. Each item gets a `taskId`, given by the server at
+publish as inline threads are settled there, and the editor keeps it; an
+id is never read from pasted markup nor kept on Enter, and an item that
+claims an id an earlier item holds gets a new one. An item without an id
+takes the id of a task of the version before with the same words that no
+item claims, so a page written back as Markdown keeps its tasks and does
+not tell everybody again.
+
+An assignee must be a member who may view the page when they are assigned:
+a publish that assigns a member who may not is refused with a sentence
+naming them, and the database refuses the row too. A mention of somebody
+who is no member assigns nobody, as it tells nobody. A copy, which nobody
+wrote the names of, leaves such a task unassigned instead of refusing the
+copy. Somebody who later loses access keeps the task, as an owner is kept,
+and the list and the notifications, which ask `perm_page_viewable` when
+they are read and delivered, leave it out until they may view the page
+again; somebody who leaves the organization leaves it unassigned.
+
+`stator_app` may write a page's rows only as somebody who may edit the
+published page out of the trash (`page_stewardable`), and may not name the
+columns that say who assigned a task, in which version, when it was done
+and whether the reminder went: a trigger stamps them. The assignment
+notification reads the rows assigned in the version its event names, so a
+task given to somebody else before the worker came round tells only the
+new assignee, and a republish tells nobody. The new kind `assigned` comes
+first among the kinds, so a person assigned and mentioned in one publish
+hears once, as assigned, as Armature tells an assignee. The reminder is
+the worker's, as a lapse of verification is: `task.DueWatch` looks every
+`STATOR_TASK_DUE_CHECK_INTERVAL` for open tasks whose day came, in UTC as a
+date node is read, notes each once per day and assignee and writes
+`task.due` for the kind `due`. A day already past when it is set is not
+reminded, since the assignment says it.
+
+Ticking a box changes the page, so it publishes the next version with
+"Ticked off a task" and the task's words, for whoever may edit the page
+and only on a published page out of the archive, without a notice to its
+watchers. A done flag kept beside the document would have been a second
+truth, and a reader who may not edit would change a page they may not
+edit. A draft begun before the tick becomes a conflict as after any other
+publish.
+
+My tasks lists the caller's open tasks by their day and those without one
+last, by keyset on `(day, id)` with no day as 9999-12-31, and their done
+ones the latest first; the trash and the archive leave both. Each row says
+whether the caller may tick it. Overdue and due today are words on a theme
+tint, as Armature marks an overdue milestone, held to AA by the contrast
+test. The rows carry space, assignee, day and state, which is what a report
+of tasks (#57) filters by; it is not built here. Listing one's tasks is a
+read tool for assistants and ticking one a page write like `update_page`.
 
 ## 2026-10-02: A token limited to spaces is limited by the database
 

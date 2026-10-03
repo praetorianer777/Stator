@@ -1409,6 +1409,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/tasks/{taskID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Tick a task off or open it again, by publishing the page with its box changed as the next version; its state already is no change. For whoever may edit the page. */
+        patch: operations["setTaskDone"];
+        trace?: never;
+    };
     "/pages/{pageID}/verification": {
         parameters: {
             query?: never;
@@ -1973,6 +1990,23 @@ export interface paths {
         };
         /** The caller's stars on what they may still view, the latest first; next is the cursor for the window after, null at the end. */
         get: operations["listStars"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The tasks assigned to the caller on published pages they may still view, out of the trash and the archive: open ones soonest due first and those without a day last, or done ones the latest first; next is the cursor for the window after, null at the end. */
+        get: operations["listMyTasks"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3156,7 +3190,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired";
+            kind: "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired";
             page: components["schemas"]["PageLink"];
             /** Format: date-time */
             readAt: string | null;
@@ -3733,8 +3767,10 @@ export interface components {
             slug: string;
         };
         Switches: {
+            assigned: boolean;
             commented: boolean;
             created: boolean;
+            due: boolean;
             expired: boolean;
             mentioned: boolean;
             published: boolean;
@@ -3745,6 +3781,33 @@ export interface components {
         Tag: {
             description?: string;
             name: string;
+        };
+        Task: {
+            /** Format: date-time */
+            assignedAt: string | null;
+            assignedByName: string;
+            /** Format: uuid */
+            assigneeId: string | null;
+            assigneeName: string;
+            canEdit: boolean;
+            done: boolean;
+            /** Format: date-time */
+            doneAt: string | null;
+            dueOn: string | null;
+            /** Format: uuid */
+            id: string;
+            page: components["schemas"]["TaskPage"];
+            text: string;
+        };
+        TaskPage: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+        };
+        TaskSetDoneInput: {
+            done: boolean;
         };
         Template: {
             /** @description A JSON value. */
@@ -8006,6 +8069,44 @@ export interface operations {
             };
         };
     };
+    setTaskDone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                taskID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskSetDoneInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: components["schemas"]["Task"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     verifyPage: {
         parameters: {
             query?: never;
@@ -9563,6 +9664,45 @@ export interface operations {
                     "application/json": {
                         next: string | null;
                         stars: components["schemas"]["Star"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listMyTasks: {
+        parameters: {
+            query?: {
+                /** @description open when absent. */
+                state?: "open" | "done";
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        next: string | null;
+                        tasks: components["schemas"]["Task"][];
                     };
                 };
             };

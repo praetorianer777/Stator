@@ -3,11 +3,14 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { InfiniteData, UseInfiniteQueryResult } from "@tanstack/react-query";
 import { useRecentPages } from "@/api/search";
 import { useEdited, useStars, useUnstar, useUpdates, type Star, type UpdateScope } from "@/api/stars";
-import { Button, EmptyState, ErrorBanner, IconButton, PageHeader, SectionTitle, Skeleton, TabPanel, Tabs, Tag } from "@/components/ui";
+import { useHomeTasks, type Task } from "@/api/tasks";
+import { Button, EmptyState, ErrorBanner, IconButton, PageHeader, SectionTitle, Skeleton, TabPanel, Tabs, Tag, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { PageLink } from "@/features/pages/PageLink";
 import { StarGlyph } from "@/features/stars/StarButton";
 import { VerifiedMark } from "@/features/stewardship/VerificationBadge";
+import { DueChip } from "@/features/tasks/DueChip";
+import { TaskCheck } from "@/features/tasks/MyTasks";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 
@@ -117,6 +120,39 @@ function Starred({ onNotice }: { onNotice: (notice: string) => void }) {
         </li>
       ))}
       <More query={query} list="starred" />
+    </SideList>
+  );
+}
+
+function Tasks({ onNotice }: { onNotice: (notice: string) => void }) {
+  const query = useHomeTasks();
+  const tasks = query.data?.pages[0]?.tasks ?? [];
+  const headingId = useId();
+  const done = (task: Task, isDone: boolean) => {
+    onNotice(isDone ? t.tasks.ticked(task.text) : t.tasks.reopened(task.text));
+    document.getElementById(headingId)?.focus();
+  };
+  return (
+    <SideList title={t.tasks.homeTitle} list="tasks" query={query} count={tasks.length} empty={t.tasks.homeEmpty} headingId={headingId}>
+      {tasks.map((task) => (
+        <li key={`${task.page.id}:${task.id}`} className={cx(rowClass, "items-start")} data-task-row={task.text}>
+          <TaskCheck task={task} onDone={done} />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-sm break-words text-ink">{task.text}</span>
+            <span className="flex flex-wrap items-center gap-1.5 text-xs text-ink-subtle">
+              <PageLink spaceKey={task.page.spaceKey} id={task.page.id} title={task.page.title} className="truncate hover:text-accent hover:underline" />
+              <DueChip due={task.dueOn} done={task.done} brief />
+            </span>
+          </span>
+        </li>
+      ))}
+      {(tasks.length > 0 || query.hasNextPage) && (
+        <li className="px-2 pt-1">
+          <Link to="/tasks" className="text-sm text-accent hover:underline" data-home-all-tasks="">
+            {t.tasks.homeAll}
+          </Link>
+        </li>
+      )}
     </SideList>
   );
 }
@@ -245,6 +281,7 @@ export function HomeScreen() {
           </TabPanel>
         </section>
         <div className="flex min-w-0 flex-col gap-8">
+          <Tasks onNotice={setNotice} />
           <Starred onNotice={setNotice} />
           <Recent />
           <Edited />

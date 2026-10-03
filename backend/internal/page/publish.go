@@ -46,7 +46,13 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 	if err != nil {
 		return nil, err
 	}
-	r.body = body
+	var previous []document.Task
+	if p.Version > 0 {
+		previous = document.TasksIn(p.Body)
+	}
+	if r.body, err = document.SettleTasksIn(body, previous); err != nil {
+		return nil, err
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO page_version (org_id, page_id, number, title, body, comment, notify_watchers, restored_from, created_by)
 		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -60,6 +66,11 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 	}
 	if err := watch.Auto(ctx, tx, actor.UserID, p.ID); err != nil {
 		return nil, fmt.Errorf("watch the page: %w", err)
+	}
+	// After the page is published, so whom a task may be assigned to is read
+	// as the page now stands, and the stamp names this version.
+	if err := syncTasks(ctx, tx, p.ID, true); err != nil {
+		return nil, err
 	}
 	// Read after the page is published, so a first version's mentions reach
 	// the people who may view it now.

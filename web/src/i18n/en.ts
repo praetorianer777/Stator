@@ -21,6 +21,7 @@ export const en = {
     home: "Home",
     spaces: "Spaces",
     search: "Search",
+    tasks: "My tasks",
     groupWiki: "Wiki",
     collapseSidebar: "Collapse the sidebar",
     expandSidebar: "Expand the sidebar",
@@ -1768,6 +1769,10 @@ export const en = {
     sentence: (kind: string, actor: string, title: string, version: number | null, inComment = false) => {
       const who = actor || "Somebody";
       switch (kind) {
+        case "assigned":
+          return `${who} assigned you a task on ${title}`;
+        case "due":
+          return `A task of yours on ${title} is due`;
         case "mentioned":
           return inComment ? `${who} mentioned you in a comment on ${title}` : `${who} mentioned you on ${title}`;
         case "shared":
@@ -1795,6 +1800,8 @@ export const en = {
     inApp: "In the app",
     email: "By email",
     kinds: {
+      assigned: "Somebody assigns you a task",
+      due: "A task assigned to you is due",
       mentioned: "Somebody mentions you",
       shared: "Somebody shares a page with you",
       replied: "Somebody replies in a thread you wrote in",
@@ -1803,7 +1810,7 @@ export const en = {
       published: "A page you watch is published with a notice",
       created: "A page is first published below a page or space you watch",
       expired: "The verification of a page you own runs out",
-    } as Record<"mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
+    } as Record<"assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
     inAppFor: (kind: string) => `In the app: ${kind}`,
     emailFor: (kind: string) => `By email: ${kind}`,
     digest: "When emails go out",
@@ -2136,6 +2143,31 @@ export const en = {
     editorsOnly: "Only people who may edit this page see who read it.",
     yourChoice: "Whether your own name is shown is up to you, in your profile.",
     failed: "The page views could not be loaded. Try again in a moment.",
+  },
+  tasks: {
+    title: "My tasks",
+    intro: "Checklist items that mention you, from every page you may read. A task is yours when its first mention names you, and due on the first date in it.",
+    open: "Open",
+    done: "Done",
+    emptyOpen: "No open tasks. When somebody mentions you in a checklist item and publishes the page, it shows up here.",
+    emptyDone: "Nothing ticked off yet.",
+    loadFailed: "Your tasks could not be loaded. Try again in a moment.",
+    more: "Show more",
+    tick: (text: string) => `Done: ${text}`,
+    readOnly: "You may not edit this page, so you cannot tick this task off here.",
+    ticked: (text: string) => `${text} is done.`,
+    reopened: (text: string) => `${text} is open again.`,
+    tickFailed: "The task could not be changed. Reload the page and try again.",
+    onPage: (title: string, space: string) => `${title} in ${space}`,
+    assignedBy: (who: string) => `Assigned by ${who}`,
+    doneOn: (day: string) => `Done ${day}`,
+    overdue: "Overdue",
+    overdueSince: (day: string) => `Overdue, due ${day}`,
+    dueToday: "Due today",
+    dueOn: (day: string) => `Due ${day}`,
+    homeTitle: "My tasks",
+    homeEmpty: "No open tasks for you.",
+    homeAll: "All my tasks",
   },
   api: {
     unexpected: (status: number) => `The server answered with status ${status}. Try again in a moment.`,

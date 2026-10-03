@@ -234,6 +234,9 @@ export const RECENT_PAGES_LIMIT = 8;
 export const HOME_STARS_PAGE_SIZE = 10;
 export const HOME_UPDATES_PAGE_SIZE = 20;
 export const HOME_EDITED_PAGE_SIZE = 8;
+/** How many open tasks the home page shows, and the list of tasks reads at a time, within the API's limit of 100. */
+export const HOME_TASKS_PAGE_SIZE = 5;
+export const TASKS_PAGE_SIZE = 25;
 /** How many hits one page of search results shows, within the API's limit of 100. */
 export const SEARCH_PAGE_SIZE = 20;
 /** The longest query, matching the API's limit. */

@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
+	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
@@ -478,6 +479,15 @@ var operations = []operation{
 		summary: "Pages the caller published, holds a draft of, or made and never published, that they may still view, the latest first.",
 		query:   keysetQuery(50), responses: ok(env{"pages": []home.EditedPage{}, "next": (*string)(nil)})},
 
+	// Tasks (#56): checklist items read from published pages.
+	{method: "GET", path: "/tasks", handler: "handleListMyTasks", tool: "list_my_tasks", toolHelp: "The tasks assigned to the caller on pages they may view: open ones soonest due first, or done ones latest first.", tag: "tasks",
+		summary:   "The tasks assigned to the caller on published pages they may still view, out of the trash and the archive: open ones soonest due first and those without a day last, or done ones the latest first; next is the cursor for the window after, null at the end.",
+		query:     append([]param{{name: "state", schema: &openapi.Schema{Type: "string", Enum: enumStrings(task.States)}, description: "open when absent."}}, keysetQueryOf(task.DefaultLimit, task.MaxLimit)...),
+		responses: ok(env{"tasks": []task.Task{}, "next": (*string)(nil)})},
+	{method: "PATCH", path: "/pages/{pageID}/tasks/{taskID}", handler: "handleSetTaskDone", tool: "set_task_done", toolHelp: "Tick a task of a page off, or open it again, which publishes the page as its next version.", tag: "tasks",
+		summary: "Tick a task off or open it again, by publishing the page with its box changed as the next version; its state already is no change. For whoever may edit the page.",
+		request: task.SetDoneInput{}, responses: ok(env{"task": task.Task{}})},
+
 	// The stale content report (#99).
 	{method: "GET", path: "/stale-pages", handler: "handleListStalePages", tool: "list_stale_pages", toolHelp: "Published pages nobody published or opened for olderThan days, the longest untouched first, in the spaces the caller administers. For administrators.", tag: "stale",
 		summary: "Published pages nobody published or opened within the period, in the spaces the caller administers, archived ones only when asked for, the longest untouched first; next is the cursor for the window after, null at the end. For administrators of a space or of the organization.",
@@ -712,6 +722,8 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(reaction.Input{})] = "ReactionInput"
 	b.Names[reflect.TypeOf(share.Input{})] = "ShareInput"
 	b.Names[reflect.TypeOf(watch.Input{})] = "WatchInput"
+	b.Names[reflect.TypeOf(task.PageRef{})] = "TaskPage"
+	b.Names[reflect.TypeOf(task.SetDoneInput{})] = "TaskSetDoneInput"
 	b.FieldOverrides["LinkEmbed.kind"] = &openapi.Schema{Type: "string", Enum: unfurl.EmbedKinds}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
