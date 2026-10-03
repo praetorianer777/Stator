@@ -91,6 +91,8 @@ describe("the slash menu's blocks", () => {
       armatureChart: (d) =>
         JSON.stringify(find(d, "armatureChart")[0]?.attrs) ===
         JSON.stringify({ project: "CP", query: "project = CP", chart: "pie", groupBy: "type", days: 30 }),
+      armatureRoadmap: (d) =>
+        JSON.stringify(find(d, "armatureRoadmap")[0]?.attrs) === JSON.stringify({ project: "CP", query: "project = CP", groupBy: "team" }),
       include: (d) => JSON.stringify(find(d, "include")[0]?.attrs) === JSON.stringify({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null }),
       excerpt: (d) => {
         const e = find(d, "excerpt")[0];
@@ -108,6 +110,7 @@ describe("the slash menu's blocks", () => {
         pickIssue: () => setTimeout(() => editor?.commands.insertArmatureIssueBlock("cp-4")),
         pickChart: () =>
           setTimeout(() => editor?.commands.insertArmatureChart({ project: "CP", query: "project = CP", chart: "pie", groupBy: "type", days: 30 })),
+        pickRoadmap: () => setTimeout(() => editor?.commands.insertArmatureRoadmap({ project: "CP", query: "project = CP", groupBy: "team" })),
         pickInclude: () => setTimeout(() => editor?.commands.insertInclude({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null })),
         pickLinkCard: () => setTimeout(() => editor?.commands.insertLinkCard("https://example.test/post")),
         pickIssueList: () => setTimeout(() => editor?.commands.insertArmatureIssueList({ query: "project = CP", columns: ["key", "due"], limit: 5 })),

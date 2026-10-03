@@ -181,6 +181,7 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"armatureIssueList","attrs":{"query":"project = STA AND text ~ \"<b>\"","columns":["key","summary","status"],"limit":25}}`,
 			`{"type":"armatureIssueList","attrs":{"query":"assignee = me()","columns":["key"]}}`,
 			`{"type":"armatureChart","attrs":{"project":"CP","query":"project = CP AND text ~ \"<b>\"","chart":"createdResolved","groupBy":"statusCategory","days":90}}`,
+			`{"type":"armatureRoadmap","attrs":{"project":"CP","query":"project = CP ORDER BY key","groupBy":"team"}}`,
 			`{"type":"tableOfContents","attrs":{"maxLevel":2}}`,
 			`{"type":"childPages","attrs":{"scope":"subtree","depth":2,"sort":"title"}}`,
 			`{"type":"childPages","attrs":{"scope":"children","depth":null,"sort":"tree"}}`,

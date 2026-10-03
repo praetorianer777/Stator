@@ -184,6 +184,11 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 			{"data-group-by", stringAttr(n, "groupBy")},
 			{"data-days", strconv.Itoa(intAttr(n, "days", armature.DefaultChartDays))},
 		}, stringAttr(n, "query")), true
+	case armature.NodeRoadmap:
+		return div(kindRoadmap, [][2]string{
+			{"data-project", stringAttr(n, "project")},
+			{"data-group-by", stringAttr(n, "groupBy")},
+		}, stringAttr(n, "query")), true
 	case document.NodeInclude:
 		attrs := [][2]string{{"data-page", stringAttr(n, "pageId")}}
 		if excerpt := stringAttr(n, "excerptId"); excerpt != "" {

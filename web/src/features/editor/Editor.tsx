@@ -21,6 +21,8 @@ import { IssuePicker } from "@/features/armature/IssuePicker";
 import { IssueListDialog } from "@/features/armature/IssueListDialog";
 import { IssueChartDialog } from "@/features/armature/IssueChartDialog";
 import { newChartSettings } from "@/features/armature/chart";
+import { IssueRoadmapDialog } from "@/features/armature/IssueRoadmapDialog";
+import { newRoadmapSettings } from "@/features/armature/roadmap";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
 import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
@@ -123,6 +125,7 @@ export function Editor({
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
   const [makingChart, setMakingChart] = useState(false);
+  const [makingRoadmap, setMakingRoadmap] = useState(false);
   const [pickingLink, setPickingLink] = useState(false);
   const [pickingInclude, setPickingInclude] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
@@ -149,6 +152,7 @@ export function Editor({
       pickIssue: () => setPickingIssue(true),
       pickIssueList: () => setMakingList(true),
       pickChart: () => setMakingChart(true),
+      pickRoadmap: () => setMakingRoadmap(true),
       pickLinkCard: () => setPickingLink(true),
       pickInclude: () => setPickingInclude(true),
       pageId: page?.id,
@@ -350,6 +354,17 @@ export function Editor({
           onSave={(settings) => {
             setMakingChart(false);
             editor.chain().focus().insertArmatureChart(settings).run();
+          }}
+        />
+      )}
+      {makingRoadmap && editor && (
+        <IssueRoadmapDialog
+          initial={newRoadmapSettings()}
+          isNew
+          onClose={() => setMakingRoadmap(false)}
+          onSave={(settings) => {
+            setMakingRoadmap(false);
+            editor.chain().focus().insertArmatureRoadmap(settings).run();
           }}
         />
       )}

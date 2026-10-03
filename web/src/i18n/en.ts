@@ -304,6 +304,45 @@ export const en = {
       day: "Day",
       showTable: "Show the counts as a table",
     },
+    roadmap: {
+      edit: "Edit roadmap",
+      loading: "Reading the plan in Armature",
+      connect: "Connect your Armature account to see this roadmap.",
+      failed: "The roadmap could not be drawn. Reload the page to try again.",
+      empty: "No issues match this query.",
+      allUnscheduled: (n: number) =>
+        n === 1
+          ? "The 1 issue this query finds has no start or due date. Set them in Armature to see it here."
+          : `The ${n} issues this query finds have no start or due date. Set them in Armature to see them here.`,
+      unscheduled: (n: number) =>
+        n === 1 ? "1 more issue has no start or due date, so it is not drawn." : `${n} more issues have no start or due date, so they are not drawn.`,
+      hidden: (n: number) =>
+        n === 1 ? "1 more issue is left out; narrow the query to see it." : `${n} more issues are left out; narrow the query to see them.`,
+      title: (project: string, grouping: string) => `${project} roadmap, ${grouping}`,
+      byEpic: "by epic",
+      byTeam: "by team",
+      summary: (project: string, query: string) => `Armature roadmap of ${project}: ${query}`,
+      noEpic: "Not in an epic",
+      noTeam: "No team",
+      categories: { todo: "To do", in_progress: "In progress", done: "Done" } as Record<string, string>,
+      derived: "taken from its issues",
+      derivedKey: "Dates taken from its issues",
+      span: (start: string, due: string) => `${start} to ${due}`,
+      startsOn: (day: string) => `starts ${day}, no due date`,
+      dueOn: (day: string) => `due ${day}, no start date`,
+    },
+    roadmapDialog: {
+      titleNew: "Insert an Armature roadmap",
+      titleEdit: "Edit the Armature roadmap",
+      project: "Project",
+      projectNone: "Choose the project to draw the roadmap of.",
+      query: "Query",
+      queryHint: "The NQL the issues on the roadmap must match, such as project = CP AND statusCategory != done.",
+      groupBy: "Group by",
+      groupings: { epic: "Epic, each issue under the epic it belongs to", team: "Team, each issue under its team" } as Record<string, string>,
+      insert: "Insert",
+      save: "Save",
+    },
     chartDialog: {
       titleNew: "Insert an Armature chart",
       titleEdit: "Edit the Armature chart",
@@ -1311,6 +1350,10 @@ export const en = {
       armatureChart: {
         label: "Armature chart",
         description: "A pie chart, or created against resolved, of the issues a query finds, as each reader may see them.",
+      },
+      armatureRoadmap: {
+        label: "Armature roadmap",
+        description: "The issues a query finds on a timeline of their start and due dates, under their epics or teams.",
       },
       armatureIssueList: { label: "Armature issue list", description: "A table of the issues a query finds, as each reader may see them." },
       status: { label: "Status", description: "A coloured label with words of your own, in the line of text." },

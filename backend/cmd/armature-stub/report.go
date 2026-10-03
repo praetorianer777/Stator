@@ -16,27 +16,36 @@ import (
 
 var categoryLabels = map[string]string{"todo": "To do", "in_progress": "In progress", "done": "Done"}
 
-func (s *stub) report(c *call) {
-	q := c.r.URL.Query()
+// scoped reads a project route's project and its q, answering for itself
+// when it cannot: counted are the issues of the project the query matches.
+func scoped(c *call) (pr *project, counted []*issue, ok bool) {
 	// Armature takes an issue key for its project too.
 	key, _, _ := strings.Cut(strings.ToUpper(c.r.PathValue("projectKey")), "-")
-	pr := c.tenant.project(key)
+	pr = c.tenant.project(key)
 	if pr == nil || !c.person.sees(pr) {
 		refuse(c.w, http.StatusNotFound, "not_found", "That project was not found.")
-		return
+		return nil, nil, false
 	}
-	parsed, err := parseQuery(q.Get("q"))
+	parsed, err := parseQuery(c.r.URL.Query().Get("q"))
 	var bad *queryError
 	if errors.As(err, &bad) {
 		pos := bad.Pos
 		respond(c.w, http.StatusBadRequest, map[string]apiError{"error": {Code: "bad_query", Message: bad.Msg, Position: &pos}})
-		return
+		return nil, nil, false
 	}
-	var counted []*issue
 	for _, is := range parsed.run(c.tenant, c.person) {
 		if is.Project == pr {
 			counted = append(counted, is)
 		}
+	}
+	return pr, counted, true
+}
+
+func (s *stub) report(c *call) {
+	q := c.r.URL.Query()
+	_, counted, ok := scoped(c)
+	if !ok {
+		return
 	}
 	switch c.r.PathValue("kind") {
 	case "chart":

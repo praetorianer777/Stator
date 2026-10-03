@@ -615,6 +615,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   it; created against resolved reads a day at a time with the pointer or the
   arrow keys and opens as a table. The stub serves the two reports and
   `resolvedAt`.
+- Armature roadmaps (#52). "Armature roadmap" in the slash menu asks for a
+  project and an NQL query, and draws the matching issues on a timeline of
+  their start and due dates, under their epics or their teams, from
+  Armature's plan read with each reader's own token
+  (`GET /armature/roadmap`). An epic heads its issues even when the query
+  leaves it out, and spans their dates when it has none of its own, drawn as
+  an outline; a bar takes its status category's board colour, a lone start or
+  due date is a point, and today is marked. Issues without either date are
+  counted below it. The stub serves the plan, an Epic type, teams, start dates
+  and parents.
 
 ### Changed
 

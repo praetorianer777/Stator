@@ -311,6 +311,49 @@ export const de: Messages = {
       day: "Tag",
       showTable: "Die Zahlen als Tabelle zeigen",
     },
+    roadmap: {
+      edit: "Roadmap bearbeiten",
+      loading: "Der Plan wird in Armature gelesen",
+      connect: "Verbinden Sie Ihr Armature-Konto, um diese Roadmap zu sehen.",
+      failed: "Die Roadmap konnte nicht gezeichnet werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+      empty: "Keine Vorgänge passen zu dieser Abfrage.",
+      allUnscheduled: (n: number) =>
+        n === 1
+          ? "Der 1 Vorgang, den diese Abfrage findet, hat kein Start- oder Fälligkeitsdatum. Legen Sie diese in Armature fest, um ihn hier zu sehen."
+          : `Die ${n} Vorgänge, die diese Abfrage findet, haben kein Start- oder Fälligkeitsdatum. Legen Sie diese in Armature fest, um sie hier zu sehen.`,
+      unscheduled: (n: number) =>
+        n === 1
+          ? "1 weiterer Vorgang hat kein Start- oder Fälligkeitsdatum und wird nicht gezeichnet."
+          : `${n} weitere Vorgänge haben kein Start- oder Fälligkeitsdatum und werden nicht gezeichnet.`,
+      hidden: (n: number) =>
+        n === 1
+          ? "1 weiterer Vorgang ist ausgelassen; grenzen Sie die Abfrage ein, um ihn zu sehen."
+          : `${n} weitere Vorgänge sind ausgelassen; grenzen Sie die Abfrage ein, um sie zu sehen.`,
+      title: (project: string, grouping: string) => `Roadmap von ${project}, ${grouping}`,
+      byEpic: "nach Epic",
+      byTeam: "nach Team",
+      summary: (project: string, query: string) => `Armature-Roadmap von ${project}: ${query}`,
+      noEpic: "In keinem Epic",
+      noTeam: "Kein Team",
+      categories: { todo: "Zu erledigen", in_progress: "In Arbeit", done: "Erledigt" } as Record<string, string>,
+      derived: "aus seinen Vorgängen übernommen",
+      derivedKey: "Daten aus den Vorgängen übernommen",
+      span: (start: string, due: string) => `${start} bis ${due}`,
+      startsOn: (day: string) => `beginnt am ${day}, ohne Fälligkeit`,
+      dueOn: (day: string) => `fällig am ${day}, ohne Startdatum`,
+    },
+    roadmapDialog: {
+      titleNew: "Armature-Roadmap einfügen",
+      titleEdit: "Armature-Roadmap bearbeiten",
+      project: "Projekt",
+      projectNone: "Wählen Sie das Projekt, dessen Roadmap gezeichnet wird.",
+      query: "Abfrage",
+      queryHint: "Die NQL, zu der die Vorgänge der Roadmap passen müssen, etwa project = CP AND statusCategory != done.",
+      groupBy: "Gruppieren nach",
+      groupings: { epic: "Epic, jeder Vorgang unter seinem Epic", team: "Team, jeder Vorgang unter seinem Team" } as Record<string, string>,
+      insert: "Einfügen",
+      save: "Speichern",
+    },
     chartDialog: {
       titleNew: "Armature-Diagramm einfügen",
       titleEdit: "Armature-Diagramm bearbeiten",
@@ -1341,6 +1384,10 @@ export const de: Messages = {
       armatureChart: {
         label: "Armature-Diagramm",
         description: "Ein Kreisdiagramm oder erstellte gegen erledigte Vorgänge einer Abfrage, wie alle Lesenden sie sehen dürfen.",
+      },
+      armatureRoadmap: {
+        label: "Armature-Roadmap",
+        description: "Die Vorgänge einer Abfrage auf einer Zeitleiste ihrer Start- und Fälligkeitsdaten, nach Epic oder Team.",
       },
       armatureIssueList: {
         label: "Armature-Vorgangsliste",

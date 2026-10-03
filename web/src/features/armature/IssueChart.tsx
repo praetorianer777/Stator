@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useContext, useId, useMemo, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
 import { useArmatureAccount, useArmatureChart, type ArmatureChartAnswer } from "@/api/armature";
 import {
@@ -13,6 +13,7 @@ import {
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { locale, t } from "@/i18n";
 import { BadQuery, Note, OpenInArmature } from "./IssueList";
+import { useWidth } from "./useWidth";
 import { donutPaths, foldSlices, linePoints, percent, readoutAnchor, ticks, type ChartSettings, type Slice } from "./chart";
 
 type Chart = NonNullable<ArmatureChartAnswer["chart"]>;
@@ -115,26 +116,6 @@ function dayLabel(day: string): string {
 const PAD = { left: 32, right: 12, top: 12, bottom: 24 };
 // How wide the readout is taken to be when it is kept inside the plot.
 const READOUT_WIDTH = 120;
-
-/**
- * The plot's width in pixels, so the drawing is one unit to the pixel and its
- * words keep their size on a phone rather than shrinking with the drawing.
- */
-function useWidth(fallback: number) {
-  const box = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(fallback);
-  useEffect(() => {
-    const el = box.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const seen = new ResizeObserver(([entry]) => {
-      const w = Math.round(entry?.contentRect.width ?? 0);
-      if (w > 0) setWidth(w);
-    });
-    seen.observe(el);
-    return () => seen.disconnect();
-  }, []);
-  return { box, width };
-}
 
 function Flow({ chart, days }: { chart: Chart; days: number }) {
   const c = t.armature.chart;
