@@ -27,6 +27,10 @@ type Attachment struct {
 	Height         *int      `json:"height"`
 	UploadedByName string    `json:"uploadedByName"`
 	CreatedAt      time.Time `json:"createdAt"`
+	// Version counts the uploads of its name to its page, whatever the case,
+	// 1 for the first; Versions is how many of them the page still holds.
+	Version  int `json:"version"`
+	Versions int `json:"versions"`
 }
 
 var (

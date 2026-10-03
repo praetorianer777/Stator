@@ -114,7 +114,7 @@ func (s *Service) Export(ctx context.Context, actor perm.Actor, id uuid.UUID, su
 	}
 	if s.files != nil {
 		for _, e := range out.pages {
-			list, err := s.files.List(ctx, actor, e.page.ID)
+			list, err := s.files.List(ctx, actor, e.page.ID, false)
 			if err != nil {
 				return nil, err
 			}

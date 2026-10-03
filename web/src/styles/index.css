@@ -1142,6 +1142,15 @@
     font-size: var(--text-xs);
     color: var(--color-ink-muted);
   }
+  /* A file's earlier versions fold under its latest. */
+  .doc-content .doc-file-versions ul {
+    margin: 0.25rem 0 0;
+    padding-left: 1rem;
+  }
+  .doc-file-versions summary {
+    cursor: pointer;
+    width: fit-content;
+  }
   /* A task report's row leads with its box, as a checklist does. */
   .doc-content .doc-page-list > li.doc-task-report-row {
     flex-direction: row;

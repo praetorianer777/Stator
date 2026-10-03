@@ -739,6 +739,8 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 		return document.Node{Type: document.NodeLabelledPages, Attrs: map[string]any{
 			"labels": labels, "match": attrs["data-match"], "space": space, "sort": attrs["data-sort"], "limit": limit,
 		}}, true
+	case kindFiles:
+		return document.Node{Type: document.NodeAttachmentList}, true
 	case kindTasks:
 		limit, err := strconv.Atoi(attrs["data-limit"])
 		if err != nil {

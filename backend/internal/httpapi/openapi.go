@@ -352,7 +352,8 @@ var operations = []operation{
 		query: pickerQuery, responses: ok(env{"groups": []perm.Group{}})},
 
 	// Attachments (#20), as Armature serves them.
-	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tool: "list_attachments", toolHelp: "The files on a page, with their names and sizes.", tag: "attachments", summary: "The files on a page, the latest first.",
+	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tool: "list_attachments", toolHelp: "The files on a page, with their names, sizes, uploaders and versions; current=true for the latest version of each name.", tag: "attachments", summary: "The files on a page, the latest first. A file uploaded under a name the page already has, whatever its case, is that name's next version.",
+		query:     []param{{name: "current", schema: &openapi.Schema{Type: "boolean"}, description: "true lists only the latest version of each name; false when absent."}},
 		responses: ok(env{"attachments": []attachment.Attachment{}})},
 	{method: "POST", path: "/pages/{pageID}/attachments", handler: "handleUploadAttachment", tag: "attachments", summary: "Put a file on a page, as a multipart part named file; refused with too_large over the upload limit.", multipart: true,
 		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 413: errorEnvelope{}}},

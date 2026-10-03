@@ -998,7 +998,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The files on a page, the latest first. */
+        /** The files on a page, the latest first. A file uploaded under a name the page already has, whatever its case, is that name's next version. */
         get: operations["listAttachments"];
         put?: never;
         /** Put a file on a page, as a multipart part named file; refused with too_large over the upload limit. */
@@ -2619,6 +2619,8 @@ export interface components {
             pageId: string;
             size: number;
             uploadedByName: string;
+            version: number;
+            versions: number;
             width: number | null;
         };
         AuditActor: {
@@ -6773,7 +6775,10 @@ export interface operations {
     };
     listAttachments: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description true lists only the latest version of each name; false when absent. */
+                current?: boolean;
+            };
             header?: never;
             path: {
                 pageID: string;

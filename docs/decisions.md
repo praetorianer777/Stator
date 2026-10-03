@@ -3,6 +3,18 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-03: A file's versions are uploads of one name to one page
+
+A file has versions so the files block can say which one a reader sees. An
+upload under a name the page already has, compared without case as people
+read names, is that name's next version. Each version stays its own row with
+its own bytes, so a link or picture in an older page version still shows
+what it showed; nothing is overwritten. The number is stamped by a trigger
+under a lock on the name, so two uploads at once cannot take one number and
+the app cannot claim one. Deleting a version leaves the others their
+numbers. A copy of a page is a new page, so its versions count from 1 again
+in the order they were uploaded.
+
 ## 2026-10-03: A task report filters by relative days and by the reader
 
 A task report stores its filter in the page, as the lists of pages do, and

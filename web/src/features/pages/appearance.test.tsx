@@ -29,6 +29,8 @@ const picture: Attachment = {
   height: 900,
   createdAt: "2026-09-01T10:00:00Z",
   uploadedByName: "Ada",
+  version: 1,
+  versions: 1,
 };
 const node: TreeNode = {
   id: PAGE_ID,
