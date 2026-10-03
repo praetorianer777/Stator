@@ -28,6 +28,8 @@ import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
 import { ArmatureChart } from "./armatureChart";
 import { ArmatureRoadmap } from "./armatureRoadmap";
+import { Properties, PropertyRow } from "./properties";
+import { PropertiesReportNode } from "./propertiesReport";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
 import { MathBlock, MathInline } from "./math";
 import { Diagram } from "./diagram";
@@ -314,6 +316,8 @@ export interface ExtensionOptions {
   pickChart?: () => void;
   /** Opens the settings dialog the slash menu's Armature roadmap starts with. */
   pickRoadmap?: () => void;
+  /** Opens the settings dialog the slash menu's properties report starts with. */
+  pickPropertiesReport?: () => void;
   /** Opens the dialog the slash menu's link preview asks for an address with. */
   pickLinkCard?: () => void;
   /** Opens the picker the slash menu's include asks what to include with. */
@@ -343,6 +347,7 @@ export function editorExtensions({
   pickLinkCard,
   pickChart,
   pickRoadmap,
+  pickPropertiesReport,
   pickInclude,
   pageId,
   editInlineValue,
@@ -409,6 +414,9 @@ export function editorExtensions({
     ArmatureIssueList.configure({ pick: pickIssueList }),
     ArmatureChart.configure({ pick: pickChart }),
     ArmatureRoadmap.configure({ pick: pickRoadmap }),
+    Properties,
+    PropertyRow,
+    PropertiesReportNode.configure({ pick: pickPropertiesReport }),
     Status.configure({ edit: editInlineValue }),
     DateNode.configure({ edit: editInlineValue }),
     MathInline.configure({ edit: editInlineValue }),

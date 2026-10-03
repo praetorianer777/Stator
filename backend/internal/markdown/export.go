@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"regexp"
@@ -153,6 +154,17 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 		return out, out != ""
 	case "bulletList", "orderedList", "taskList":
 		return r.list(n, depth), true
+	// Markdown has no properties, so they read as the two-column table they look like.
+	case document.NodeProperties:
+		return r.table(propertiesTable(n), depth)
+	// A report's rows are each reader's, so the export keeps what it gathers.
+	case document.NodePropertiesReport:
+		columns, _ := json.Marshal(stringsAttr(n, "columns"))
+		return div(kindReport, [][2]string{
+			{"data-labels", strings.Join(stringsAttr(n, "labels"), ",")},
+			{"data-space", stringAttr(n, "space")},
+			{"data-columns", string(columns)},
+		}, ""), true
 	case "table":
 		return r.table(n, depth)
 	case "image":
@@ -276,6 +288,24 @@ func (r renderer) image(n document.Node) (string, bool) {
 
 // table writes a GFM table. The first row is its header; a merged cell's
 // content goes in its first place, and each cell's blocks share one line.
+// propertiesTable is a properties block as a table headed Property and Value.
+func propertiesTable(n document.Node) document.Node {
+	cell := func(kind string, content ...document.Node) document.Node {
+		return document.Node{Type: kind, Content: []document.Node{{Type: "paragraph", Content: content}}}
+	}
+	text := func(s string) []document.Node {
+		if s == "" {
+			return nil
+		}
+		return []document.Node{{Type: "text", Text: s}}
+	}
+	rows := []document.Node{{Type: "tableRow", Content: []document.Node{cell("tableHeader", text("Property")...), cell("tableHeader", text("Value")...)}}}
+	for _, row := range n.Content {
+		rows = append(rows, document.Node{Type: "tableRow", Content: []document.Node{cell("tableCell", text(stringAttr(row, "key"))...), cell("tableCell", row.Content...)}})
+	}
+	return document.Node{Type: "table", Content: rows}
+}
+
 func (r renderer) table(n document.Node, depth int) (string, bool) {
 	var grid [][]string
 	var aligns []string

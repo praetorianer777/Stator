@@ -18,7 +18,8 @@ const (
 	KindInteger  AttrKind = "integer"
 	KindBoolean  AttrKind = "boolean"
 	KindIntegers AttrKind = "integers"
-	// KindStrings is a list of distinct strings, each one of Enum.
+	// KindStrings is a list of distinct strings, each one of Enum, or matching
+	// Pattern when it has one.
 	KindStrings AttrKind = "strings"
 	// KindNull is an attribute the editor always writes and always leaves empty.
 	KindNull AttrKind = "null"
@@ -118,6 +119,13 @@ const (
 	MaxDiagramLength = 20000
 	// MaxExcerptNameLength keeps an excerpt's name to what fits in a picker's line.
 	MaxExcerptNameLength = 80
+	// MaxPropertyKeyLength keeps a property's name to a report column's heading.
+	MaxPropertyKeyLength = 60
+	// MaxProperties bounds one properties block, a page's metadata rather than its body.
+	MaxProperties = 50
+	// MaxReportLabels and MaxReportColumns bound what a properties report asks for.
+	MaxReportLabels  = 5
+	MaxReportColumns = 10
 )
 
 // The states of a decision item.
@@ -157,6 +165,27 @@ const NodeLinkCard = "linkCard"
 // LinkCardViews are how a link card shows its page.
 var LinkCardViews = []string{"card", "embed"}
 
+// NodeProperties is a page's metadata as a two-column table, one
+// NodePropertyRow per name; a properties report gathers them across pages.
+const (
+	NodeProperties  = "properties"
+	NodePropertyRow = "propertyRow"
+)
+
+// NodePropertiesReport lists the properties of the pages carrying labels; it
+// holds what to list, and each reader's view asks for the pages they may read.
+const NodePropertiesReport = "propertiesReport"
+
+// LabelPattern is a label as label.Normalize leaves it.
+const LabelPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}][\p{Ll}\p{Lo}\p{Lm}\p{N}_.-]{0,39}$`
+
+// PropertyKeyPattern is a property's name as a report column takes it: trimmed,
+// within MaxPropertyKeyLength.
+const PropertyKeyPattern = `^\S(?:.{0,58}\S)?$`
+
+// SpaceKeyPattern is a space's key, as space.ValidKey reads it.
+const SpaceKeyPattern = `^[A-Z][A-Z0-9]{1,9}$`
+
 // NodeDiagram is a diagram written as Mermaid text, drawn by each reader's
 // browser.
 const NodeDiagram = "diagram"
@@ -176,7 +205,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -366,6 +395,17 @@ var Allowed = Allowlist{
 		NodeInclude: {Attrs: map[string]Attr{
 			"pageId":    {Kind: KindString, Pattern: UUIDPattern},
 			"excerptId": {Kind: KindString, Nullable: true, Pattern: UUIDPattern},
+		}},
+		// A name may be empty while it is typed; a report leaves such rows out.
+		NodeProperties: {Content: []string{NodePropertyRow}, MinContent: 1, MaxContent: MaxProperties},
+		NodePropertyRow: {Content: inlineNodes, AllowsMarks: true, Attrs: map[string]Attr{
+			"key": {Kind: KindString, MaxLength: MaxPropertyKeyLength},
+		}},
+		// What to gather, never the values: each reader's view asks for them.
+		NodePropertiesReport: {Attrs: map[string]Attr{
+			"labels":  {Kind: KindStrings, Pattern: LabelPattern, MinLength: 1, MaxLength: MaxReportLabels},
+			"space":   {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},
+			"columns": {Kind: KindStrings, Pattern: PropertyKeyPattern, MaxLength: MaxReportColumns},
 		}},
 		NodeLinkCard: {Attrs: map[string]Attr{
 			"url":  {Kind: KindString, MaxLength: MaxHrefLength, URL: true, Pattern: `^[Hh][Tt][Tt][Pp][Ss]?://`},

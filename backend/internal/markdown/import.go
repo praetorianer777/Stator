@@ -718,6 +718,22 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 			level = document.MaxHeadingLevel
 		}
 		return document.Node{Type: "tableOfContents", Attrs: map[string]any{"maxLevel": level}}, true
+	case kindReport:
+		labels := []string{}
+		for name := range strings.SplitSeq(attrs["data-labels"], ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				labels = append(labels, name)
+			}
+		}
+		columns := []string{}
+		if raw := attrs["data-columns"]; raw != "" && json.Unmarshal([]byte(raw), &columns) != nil {
+			return document.Node{}, false
+		}
+		var space any
+		if key := attrs["data-space"]; key != "" {
+			space = key
+		}
+		return document.Node{Type: document.NodePropertiesReport, Attrs: map[string]any{"labels": labels, "space": space, "columns": columns}}, true
 	case kindChart:
 		days, err := strconv.Atoi(attrs["data-days"])
 		if err != nil {

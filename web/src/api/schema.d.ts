@@ -1564,6 +1564,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/properties-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The properties of the published pages that carry every label given and that the caller may read, by title, for a properties report. */
+        get: operations["propertiesReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/readyz": {
         parameters: {
             query?: never;
@@ -3030,6 +3047,12 @@ export interface components {
             email: string;
             password: string;
         };
+        Mark: {
+            attrs?: {
+                [key: string]: unknown;
+            };
+            type: string;
+        };
         MarkReadInput: {
             all?: boolean;
             ids?: string[];
@@ -3077,6 +3100,15 @@ export interface components {
             /** Format: uuid */
             parentId: string;
             withChildren?: boolean;
+        };
+        Node: {
+            attrs?: {
+                [key: string]: unknown;
+            };
+            content?: components["schemas"]["Node"][];
+            marks?: components["schemas"]["Mark"][];
+            text?: string;
+            type: string;
         };
         Notification: {
             /** Format: uuid */
@@ -3285,6 +3317,16 @@ export interface components {
             key: string;
             name: string;
         };
+        PropertiesReport: {
+            columns: string[];
+            rows: components["schemas"]["ReportRow"][];
+            truncated: boolean;
+        };
+        Property: {
+            content: components["schemas"]["Node"][];
+            key: string;
+            text: string;
+        };
         Provider: {
             clientId: string;
             createGroups: boolean;
@@ -3372,6 +3414,15 @@ export interface components {
             healthy: boolean;
             lastError?: string;
             name: string;
+        };
+        ReportRow: {
+            /** Format: uuid */
+            pageId: string;
+            spaceKey: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            values: (components["schemas"]["Property"] | null)[];
         };
         RequestBody: {
             content: {
@@ -8287,6 +8338,51 @@ export interface operations {
                     "application/json": {
                         people: components["schemas"]["Person"][];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    propertiesReport: {
+        parameters: {
+            query?: {
+                /** @description 1 to 5 labels; a page carries all of them. */
+                label?: string[];
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description Up to 10 property names to show, in order; every name found when absent. */
+                column?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertiesReport"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

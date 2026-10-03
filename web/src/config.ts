@@ -402,6 +402,13 @@ export const ARMATURE_FLOW_WIDTH = 640;
 export const ARMATURE_FLOW_HEIGHT = 200;
 /** How many evenly spaced ticks a line chart's axes carry at most. */
 export const ARMATURE_FLOW_TICKS = 4;
+/** The longest property name, matching the API's MaxPropertyKeyLength. */
+export const PROPERTY_KEY_MAX_LENGTH = 60;
+/** The most rows one properties block holds, matching the API's MaxProperties. */
+export const PROPERTIES_MAX_ROWS = 50;
+/** The most labels and columns a properties report asks for, matching MaxReportLabels and MaxReportColumns. */
+export const PROPERTIES_REPORT_MAX_LABELS = 5;
+export const PROPERTIES_REPORT_MAX_COLUMNS = 10;
 /** What a roadmap block puts its rows under, as armature.RoadmapGroupings. */
 export const ARMATURE_ROADMAP_GROUPINGS = ["epic", "team"] as const;
 export type ArmatureRoadmapGrouping = (typeof ARMATURE_ROADMAP_GROUPINGS)[number];

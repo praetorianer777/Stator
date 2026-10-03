@@ -818,6 +818,39 @@ export const de: Messages = {
     columnOwner: "Eigentümer",
     yours: "Sie",
   },
+  properties: {
+    report: {
+      edit: "Bericht bearbeiten",
+      loading: "Die Eigenschaften der Seiten werden gesammelt",
+      failed: "Der Bericht konnte nicht gelesen werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+      empty: (labels: string[]) =>
+        `Keine veröffentlichte Seite, die Sie lesen dürfen, trägt ${labels.length === 1 ? "das Schlagwort" : "alle Schlagwörter"} ${labels.join(", ")}.`,
+      page: "Seite",
+      title: (labels: string[], space: string | null) => `Seiten mit ${labels.join(", ")}${space ? ` in ${space}` : ""}`,
+      caption: (labels: string[], n: number) =>
+        `${n === 1 ? "1 Seite" : `${n} Seiten`} mit ${labels.join(", ")} und ihren Eigenschaften. Wählen Sie die Überschrift einer Spalte, um danach zu sortieren.`,
+      summary: (labels: string[], space: string | null) => `Eigenschaftenbericht der Seiten mit ${labels.join(", ")}${space ? ` in ${space}` : ""}`,
+      truncated: "Nur die ersten 200 Seiten sind aufgeführt; fügen Sie ein Schlagwort hinzu oder wählen Sie einen Bereich, um den Bericht einzugrenzen.",
+    },
+    dialog: {
+      titleNew: "Eigenschaftenbericht einfügen",
+      titleEdit: "Eigenschaftenbericht bearbeiten",
+      labels: "Schlagwörter",
+      labelsHint: "Trennen Sie Schlagwörter mit Kommas. Der Bericht listet die Seiten, die alle tragen.",
+      labelsNone: "Nennen Sie mindestens ein Schlagwort, nach dem Seiten gesammelt werden.",
+      labelsMany: (n: number) => `Nennen Sie höchstens ${n} Schlagwörter.`,
+      labelBad: (raw: string) => `"${raw}" kann kein Schlagwort sein. Verwenden Sie Buchstaben, Ziffern, Bindestriche, Unterstriche und Punkte.`,
+      space: "Bereich",
+      everySpace: "Alle Bereiche",
+      columns: "Angezeigte Eigenschaften",
+      columnsHint: "Ein Name pro Zeile, in der Reihenfolge der Spalten. Leer lassen, um jede Eigenschaft der Seiten zu zeigen.",
+      columnLong: (n: number) => `Halten Sie jeden Namen bei höchstens ${n} Zeichen.`,
+      columnsMany: (n: number) => `Zeigen Sie höchstens ${n} Eigenschaften.`,
+      cancel: "Abbrechen",
+      insert: "Einfügen",
+      save: "Speichern",
+    },
+  },
   decisions: {
     title: "Entscheidungen",
     filter: "Anzeigen",
@@ -1250,6 +1283,12 @@ export const de: Messages = {
       decided: "Entschieden",
       undecided: "Offen",
     },
+    properties: {
+      keyLabel: "Name der Eigenschaft",
+      keyPlaceholder: "Name",
+      // Die Zeilen, mit denen eine neue Eigenschaftentabelle beginnt; ihre Namen lassen sich ändern.
+      starterKeys: ["Verantwortlich", "Status"],
+    },
     include: {
       loading: "Die eingebundene Seite wird geladen",
       unavailable:
@@ -1366,6 +1405,14 @@ export const de: Messages = {
       panelSuccess: { label: "Erfolgs-Hinweisfeld", description: "Ein hervorgehobener Kasten für ein Ergebnis oder einen Tipp." },
       panelWarning: { label: "Warn-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, bei dem Vorsicht geboten ist." },
       panelError: { label: "Fehler-Hinweisfeld", description: "Ein hervorgehobener Kasten für etwas, das nicht passieren darf." },
+      properties: {
+        label: "Eigenschaften",
+        description: "Eine Tabelle aus Namen und Werten, etwa Verantwortlich und Status, die ein Eigenschaftenbericht sammelt.",
+      },
+      propertiesReport: {
+        label: "Eigenschaftenbericht",
+        description: "Eine Tabelle der Seiten mit bestimmten Schlagwörtern und ihrer Eigenschaften, immer aktuell.",
+      },
       decision: { label: "Entscheidung", description: "Eine Entscheidung, getroffen oder offen, die das Entscheidungsprotokoll des Bereichs auflistet." },
       mathBlock: { label: "Formelblock", description: "Eine LaTeX-Formel in einer eigenen Zeile, zentriert." },
       include: { label: "Einbinden", description: "Eine andere Seite oder einen ihrer Auszüge hier zeigen, aktuell, wie sich die Seite ändert." },

@@ -36,6 +36,13 @@ func writeBlocks(b *strings.Builder, blocks []Node, depth int) {
 			}
 			b.WriteString(strings.Join(cells, "\t"))
 			b.WriteByte('\n')
+		// A property reads as a table row does: its name, a tab, its value.
+		case NodePropertyRow:
+			key, _ := n.Attrs["key"].(string)
+			if line := strings.TrimRight(key+"\t"+InlineText(n), "\t"); line != "" {
+				b.WriteString(line)
+				b.WriteByte('\n')
+			}
 		case "expand":
 			if title, _ := n.Attrs["title"].(string); title != "" {
 				b.WriteString(title)

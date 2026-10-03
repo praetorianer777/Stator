@@ -3,6 +3,23 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-03: Page properties live in the page body and are read when asked
+
+A page's properties are a block of its body, a row per name with the value
+as inline content, not columns of the page or a table of their own. They are
+versioned, compared, exported and searched with the rest of the page, take
+the same mentions, dates and statuses as any line, and need no second place
+to keep in step. The name is an attribute of its row, so a value is one run
+of inline content the editor already knows how to edit.
+
+A properties report reads the published bodies of the pages carrying every
+label given, at most 200, as the decision log reads decision items: on each
+request, as the reader, so restricted pages and drafts stay out without a
+copy to keep current. Names are matched by their words in any case, the
+first value of a name on a page wins, and a row without a name is one still
+being typed, left out of the report and the read view alike. A report takes
+the labels as AND, so a register narrows by adding a label.
+
 ## 2026-10-03: A roadmap is Armature's plan, grouped by Stator
 
 A roadmap block holds a project, a query and a grouping, never the dates,

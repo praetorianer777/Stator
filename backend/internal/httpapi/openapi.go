@@ -303,6 +303,12 @@ var operations = []operation{
 	{method: "GET", path: "/labels/{labelName}/pages", handler: "handleListLabelPages", tool: "list_label_pages", toolHelp: "The pages that carry a label.", tag: "labels", summary: "The pages out of the trash that carry a label and that the caller may view, by title.",
 		query:     append([]param{{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."}}, pageQuery...),
 		responses: ok(env{"pages": []label.LabeledPage{}, "total": 0, "limit": 0, "offset": 0})},
+	{method: "GET", path: "/properties-report", handler: "handlePropertiesReport", tool: "properties_report", toolHelp: "A register of the pages that carry every label given, with the value of each property their properties blocks set; column names the properties to show, all of them when absent.", tag: "labels", summary: "The properties of the published pages that carry every label given and that the caller may read, by title, for a properties report.",
+		query: []param{
+			{name: "label", repeated: true, description: "1 to 5 labels; a page carries all of them."},
+			{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."},
+			{name: "column", repeated: true, description: "Up to 10 property names to show, in order; every name found when absent."},
+		}, responses: map[int]any{200: label.PropertiesReport{}, 422: errorEnvelope{}}},
 
 	// Permissions (#19).
 	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "permissions", summary: "What the caller may do across the organization, which decides which buttons to draw.",

@@ -243,7 +243,7 @@ func attrValid(rule Attr, value any) bool {
 		seen := make(map[string]bool, len(list))
 		for _, item := range list {
 			s, ok := item.(string)
-			if !ok || seen[s] || !slices.Contains(rule.Enum, s) {
+			if !ok || seen[s] || (rule.Pattern == "" && !slices.Contains(rule.Enum, s)) || (rule.Pattern != "" && !patterns[rule.Pattern].MatchString(s)) {
 				return false
 			}
 			seen[s] = true

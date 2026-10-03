@@ -137,6 +137,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",
@@ -217,6 +219,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",
@@ -294,6 +298,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",
@@ -334,6 +340,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",
@@ -369,6 +377,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",
@@ -477,6 +487,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",
@@ -580,6 +592,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",
@@ -590,6 +604,52 @@
       ]
     },
     "paragraph": {
+      "content": [
+        "text",
+        "hardBreak",
+        "mention",
+        "attachment",
+        "armatureIssue",
+        "status",
+        "date",
+        "mathInline"
+      ],
+      "allowsMarks": true
+    },
+    "properties": {
+      "content": [
+        "propertyRow"
+      ],
+      "minContent": 1,
+      "maxContent": 50
+    },
+    "propertiesReport": {
+      "attrs": {
+        "columns": {
+          "kind": "strings",
+          "maxLength": 10,
+          "pattern": "^\\S(?:.{0,58}\\S)?$"
+        },
+        "labels": {
+          "kind": "strings",
+          "minLength": 1,
+          "maxLength": 5,
+          "pattern": "^[\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}][\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}_.-]{0,39}$"
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
+    },
+    "propertyRow": {
+      "attrs": {
+        "key": {
+          "kind": "string",
+          "maxLength": 60
+        }
+      },
       "content": [
         "text",
         "hardBreak",
@@ -685,6 +745,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",
@@ -752,6 +814,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",
@@ -801,6 +865,8 @@
         "linkCard",
         "excerpt",
         "include",
+        "properties",
+        "propertiesReport",
         "image",
         "tableOfContents",
         "childPages",

@@ -89,6 +89,18 @@ func (s *Server) handleSuggestLabels(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"labels": found})
 }
 
+// A properties report (#54): the properties of the pages carrying every
+// label given, as the caller may read them.
+func (s *Server) handlePropertiesReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	report, err := s.Labels.PropertiesReport(r.Context(), actorFrom(r), label.ReportInput{Labels: q["label"], SpaceKey: q.Get("space"), Columns: q["column"]})
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, report)
+}
+
 func (s *Server) handleListLabelPages(w http.ResponseWriter, r *http.Request) {
 	limit, offset, apiErr := window(r, label.DefaultLimit, label.MaxLimit)
 	if apiErr != nil {
