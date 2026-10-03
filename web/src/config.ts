@@ -385,6 +385,12 @@ export const LINK_PREVIEW_STALE_MS = 5 * 60_000;
 export const LINK_CARD_VIEWS = ["inline", "card", "embed"] as const;
 /** The longest excerpt name, matching the API's MaxExcerptNameLength. */
 export const EXCERPT_NAME_MAX_LENGTH = 80;
+/** How many emoji the appearance dialog offers for a page at once. */
+export const PAGE_ICON_CHOICES = 24;
+/** Where a new cover's focus starts, in percent: its middle. */
+export const COVER_FOCUS_DEFAULT = 50;
+/** How far one arrow key moves a cover's focus, in percent. */
+export const COVER_FOCUS_STEP = 5;
 /** How many emoji a colon offers at once. */
 export const EMOJI_MAX_SUGGESTIONS = 8;
 /** What a colon offers before a letter is typed, by shortcode, most used first. */

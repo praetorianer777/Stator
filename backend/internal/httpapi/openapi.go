@@ -205,6 +205,7 @@ var operations = []operation{
 	{method: "POST", path: "/spaces/{spaceKey}/trash/{pageID}/restore", handler: "handleRestorePage", tag: "trash", summary: "Put a trashed page back where it was, or under the home page when that is gone.", responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash/{pageID}", handler: "handlePurgePage", tag: "trash", summary: "Delete a trashed page and what went with it for good. For administrators.", responses: none()},
 	{method: "POST", path: "/pages", handler: "handleCreatePage", tool: "create_page", toolHelp: "Add a page under parentId; body is a document as get_page returns one, and publish true makes it visible to the space at once. kind folder makes a folder, which holds pages and has no body.", tag: "pages", summary: "Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
+	{method: "PUT", path: "/pages/{pageID}/appearance", handler: "handleSetAppearance", tag: "pages", summary: "Replace how a page looks: one emoji before its title and in the tree, fixed or full width, and one of its own pictures as its cover with the point that stays in view. A null icon or cover takes it away. For the page's editors.", request: page.AppearanceInput{}, responses: ok(env{"appearance": page.Appearance{}})},
 	{method: "GET", path: "/pages/{pageID}/included", handler: "handleGetIncluded", tag: "pages", summary: "What an include of a page shows the caller: its published body, or one excerpt's blocks. 404 for a page the caller may not read, never published, or without that excerpt; 409 for an include that leads back to a page in via or is nested too deep.",
 		query: []param{
 			{name: "excerpt", schema: &openapi.Schema{Type: "string", Format: "uuid"}, description: "The excerpt to show; the whole page when absent."},
@@ -684,6 +685,7 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["CreateTokenRequest.scopes"] = scopes
 	b.Enums[reflect.TypeOf(auth.OrgRole(""))] = enumStrings(auth.OrgRoles)
 	b.Enums[reflect.TypeOf(page.Kind(""))] = enumStrings(page.Kinds)
+	b.Enums[reflect.TypeOf(page.Width(""))] = enumStrings(page.Widths)
 	b.Enums[reflect.TypeOf(auth.RoleSource(""))] = enumStrings(auth.RoleSources)
 	b.Enums[reflect.TypeOf(auth.Locale(""))] = enumStrings(auth.Locales)
 	b.Enums[reflect.TypeOf(perm.SubjectType(""))] = enumStrings(perm.SubjectTypes)

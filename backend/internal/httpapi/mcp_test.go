@@ -86,6 +86,7 @@ var notTools = map[string]string{
 	"DELETE /org/tokens/{tokenID}":                    whyAdmin,
 	"GET /access/me":                                  whyAdmin,
 	"GET /org/permissions":                            whyAdmin,
+	"PUT /pages/{pageID}/appearance":                  whyBrowser,
 	"GET /pages/{pageID}/included":                    whyBrowser,
 	"GET /link-preview":                               whyBrowser,
 	"PUT /org/hub":                                    whyAdmin,

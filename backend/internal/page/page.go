@@ -75,6 +75,8 @@ type Page struct {
 	// Kind is page, or folder for a row that only holds others and has no
 	// body, versions, drafts or comments of its own.
 	Kind Kind `json:"kind"`
+	// Appearance is the page's emoji, width and cover.
+	Appearance Appearance `json:"appearance"`
 	// Body is the document, ProseMirror JSON the allowlist accepts.
 	Body json.RawMessage `json:"body"`
 	// Version is the number of the published version the title and body

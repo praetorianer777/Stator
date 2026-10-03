@@ -3,6 +3,30 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-03: How a page looks is a property of the page, not a version of it
+
+A page's emoji, width and cover are columns of the page row, changed at
+once with `PUT /pages/{id}/appearance`, not part of the body or the
+versions: they say how the page is presented, not what it says, and an
+author choosing a cover should not have to publish to see it or find it in
+the history between two edits of the words. Changing them needs edit on the
+page, as editing the words does; a trigger holds the app's role to that.
+
+The emoji is one emoji, perhaps several code points joined, never words:
+the service checks it against what makes an emoji, and the database keeps
+it to sixteen code points without spaces. The tree shows it in place of
+the folder mark when there is one, so a page is found by sight.
+
+A cover is one of the page's own pictures: the foreign key on
+`(id, cover_attachment_id)` to `attachment (page_id, id)` refuses any other
+file, and deleting the file takes the cover with it, as the hub goes with
+its page. Its focus is a point in percent of the picture, kept in view by
+`object-position` however wide the window cuts it; the dialog sets it with
+a click on the picture or with the arrow keys.
+
+Full width takes the page's reading width limit off, in the reader and the
+editor alike, for tables and diagrams too wide for comfortable lines.
+
 ## 2026-10-02: An include is read for each reader, and the chain it sits in catches cycles
 
 An include is one block, `include`, holding a `pageId` and, for one
