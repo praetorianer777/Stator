@@ -132,6 +132,13 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	}
 	want(t, owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": nil}), http.StatusOK, "back to the built-in theme")
 	once(audit.ActionThemeDefaultSet, me, nil)
+
+	want(t, owner.put(t, "/api/v1/org/hub", map[string]any{"pageId": plans, "landing": true}), http.StatusOK, "choose the hub")
+	if data := once(audit.ActionOrgHubSet, me, plans); !strings.Contains(data, "Plans") {
+		t.Errorf("the hub's entry holds %s", data)
+	}
+	want(t, owner.put(t, "/api/v1/org/hub", map[string]any{"pageId": nil, "landing": false}), http.StatusOK, "clear the hub")
+	once(audit.ActionOrgHubSet, me, nil)
 	var ip *string
 	if err := h.super.QueryRow(context.Background(), `SELECT host(ip) FROM audit_log WHERE org_id = $1 AND action = $2 AND target_id = $3`, home.org, audit.ActionThemeDefaultSet, themeID).Scan(&ip); err != nil || ip == nil {
 		t.Errorf("the caller's address is not recorded: %v %v", ip, err)
@@ -234,6 +241,15 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	once(audit.ActionSpaceArchived, me, spaceID)
 	want(t, owner.delete(t, "/api/v1/spaces/AUD/archive"), http.StatusOK, "unarchive the space")
 	once(audit.ActionSpaceUnarchived, me, spaceID)
+
+	cut := idOf(t, want(t, owner.post(t, "/api/v1/spaces/AUD/shortcuts", map[string]any{"url": "https://status.example.com"}), http.StatusCreated, "pin a shortcut"), "shortcut")
+	if data := once(audit.ActionShortcutAdded, me, spaceID); !strings.Contains(data, "status.example.com") || !strings.Contains(data, cut) {
+		t.Errorf("the shortcut's record reads %s", data)
+	}
+	want(t, owner.post(t, "/api/v1/spaces/AUD/shortcuts/"+cut+"/move", map[string]any{"after": nil}), http.StatusOK, "move the shortcut")
+	once(audit.ActionShortcutMoved, me, spaceID)
+	want(t, owner.delete(t, "/api/v1/spaces/AUD/shortcuts/"+cut), http.StatusNoContent, "remove the shortcut")
+	once(audit.ActionShortcutRemoved, me, spaceID)
 
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)

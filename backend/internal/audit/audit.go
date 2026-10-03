@@ -41,8 +41,10 @@ const (
 	ActionPageRestrictionsSet = "page.restrictions_set"
 	// ActionCommentDeleted is somebody else's comment deleted with the
 	// space's delete permission; one's own is not recorded.
-	ActionCommentDeleted            = "comment.deleted"
-	ActionThemeDefaultSet           = "theme.default_set"
+	ActionCommentDeleted  = "comment.deleted"
+	ActionThemeDefaultSet = "theme.default_set"
+	// ActionOrgHubSet is the organization's hub chosen, changed or cleared.
+	ActionOrgHubSet                 = "org.hub_set"
 	ActionArmatureConnectionSaved   = "armature.connection_saved"
 	ActionArmatureConnectionRemoved = "armature.connection_removed"
 	// Exports: what left the wiki as a file, and the record itself.
@@ -67,6 +69,10 @@ const (
 	ActionWebhookDisabled      = "webhook.disabled"
 	// ActionPageShared is a page sent to people with a note; the note is not kept.
 	ActionPageShared = "page.shared"
+	// Shortcuts pinned above a space's page tree.
+	ActionShortcutAdded   = "space.shortcut_added"
+	ActionShortcutMoved   = "space.shortcut_moved"
+	ActionShortcutRemoved = "space.shortcut_removed"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -77,13 +83,14 @@ var Actions = []string{
 	ActionTokenCreated, ActionTokenRevoked,
 	ActionSpaceCreated, ActionSpaceUpdated, ActionSpaceDeleted, ActionPagePurged, ActionTrashEmptied,
 	ActionOrgPermissionSet, ActionSpacePermissionsSet, ActionPageRestrictionsSet,
-	ActionCommentDeleted, ActionThemeDefaultSet,
+	ActionCommentDeleted, ActionThemeDefaultSet, ActionOrgHubSet,
 	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved,
 	ActionPageExported, ActionAuditExported,
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
 	ActionPageArchived, ActionPageUnarchived, ActionSpaceArchived, ActionSpaceUnarchived,
 	ActionWebhookCreated, ActionWebhookUpdated, ActionWebhookDeleted, ActionWebhookSecretRotated, ActionWebhookDisabled,
 	ActionPageShared,
+	ActionShortcutAdded, ActionShortcutMoved, ActionShortcutRemoved,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

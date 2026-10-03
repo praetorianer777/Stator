@@ -9,9 +9,19 @@ import { TemplatePicker } from "./TemplatePicker";
 
 /**
  * Names a new page under a parent and picks what it starts from; the page is
- * made unpublished and opens in the editor.
+ * made unpublished and opens in the editor. A folder takes a name alone.
  */
-export function NewPageDialog({ parent, onClose, onDone }: { parent: { id: string; title: string }; onClose: () => void; onDone: (page: Page) => void }) {
+export function NewPageDialog({
+  parent,
+  folder = false,
+  onClose,
+  onDone,
+}: {
+  parent: { id: string; title: string };
+  folder?: boolean;
+  onClose: () => void;
+  onDone: (page: Page) => void;
+}) {
   const create = useCreatePage();
   const [title, setTitle] = useState("");
   // A title the author typed is theirs; one a template filled in follows the choice.
@@ -33,11 +43,17 @@ export function NewPageDialog({ parent, onClose, onDone }: { parent: { id: strin
       return;
     }
     setError("");
-    create.mutate({ parentId: parent.id, title, ...(template ? { body: template.body } : {}) }, { onSuccess: onDone });
+    const what = folder ? { kind: "folder" as const } : template ? { body: template.body } : {};
+    create.mutate({ parentId: parent.id, title, ...what }, { onSuccess: onDone });
   }
 
   return (
-    <Dialog title={t.page.newPageUnder(parent.title)} wide onClose={onClose} data-new-page-dialog="">
+    <Dialog
+      title={folder ? t.page.newFolderUnder(parent.title) : t.page.newPageUnder(parent.title)}
+      wide={!folder}
+      onClose={onClose}
+      data-new-page-dialog={folder ? "folder" : ""}
+    >
       <form onSubmit={submit} className="space-y-3" noValidate>
         {create.error && <ErrorBanner>{create.error.message}</ErrorBanner>}
         <Field
@@ -51,13 +67,13 @@ export function NewPageDialog({ parent, onClose, onDone }: { parent: { id: strin
           error={error}
           autoFocus
         />
-        <TemplatePicker value={key} onChange={choose} />
+        {!folder && <TemplatePicker value={key} onChange={choose} />}
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="secondary" onClick={onClose}>
             {t.page.cancel}
           </Button>
           <Button type="submit" loading={create.isPending} data-action="confirm-new-page">
-            {t.page.create}
+            {folder ? t.page.createFolder : t.page.create}
           </Button>
         </div>
       </form>

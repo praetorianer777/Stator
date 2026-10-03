@@ -6,11 +6,14 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -21,10 +24,12 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
@@ -122,12 +127,24 @@ var (
 		Message: "This token is limited to some spaces, and this concerns the whole organization. Use a token without that limit, or sign in."}
 )
 
+// The database's names for its refusals of a folder's content and of a change of kind.
+const (
+	folderConstraint = "page_is_folder"
+	kindConstraint   = "page_kind_fixed"
+)
+
 // toAPIError maps a domain error onto the wire shape. One place for it is what
 // stops handlers leaking internals into responses by accident.
 func toAPIError(err error) *APIError {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
 		return apiErr
+	}
+	// The database holds what a folder may not have whichever service asks,
+	// so its refusal reads as the service's would.
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && (pgErr.ConstraintName == folderConstraint || pgErr.ConstraintName == kindConstraint) {
+		err = page.ErrFolder
 	}
 	var invalid *oidc.ValidationError
 	if errors.As(err, &invalid) {
@@ -172,6 +189,34 @@ func toAPIError(err error) *APIError {
 	var shareField *share.FieldError
 	if errors.As(err, &shareField) {
 		return ErrValidation(map[string]string{shareField.Field: shareField.Message})
+	}
+	if errors.Is(err, unfurl.ErrBadURL) {
+		return ErrValidation(map[string]string{"url": "Give the full address of a web page, starting with https:// or http://."})
+	}
+	if errors.Is(err, page.ErrIncludeCycle) {
+		return &APIError{Status: http.StatusConflict, Code: "include_cycle", Message: sentence(err.Error()) + "."}
+	}
+	if errors.Is(err, page.ErrIncludeTooDeep) {
+		return &APIError{Status: http.StatusConflict, Code: "include_depth", Message: sentence(err.Error()) + "."}
+	}
+	var hubField *hub.FieldError
+	if errors.As(err, &hubField) {
+		return ErrValidation(map[string]string{hubField.Field: hubField.Message})
+	}
+	if errors.Is(err, hub.ErrNotAdmin) {
+		return ErrForbidden("Only an administrator of the organization chooses its hub. Ask one of them to change it.")
+	}
+	var shortcutField *shortcut.FieldError
+	if errors.As(err, &shortcutField) {
+		return ErrValidation(map[string]string{shortcutField.Field: shortcutField.Message})
+	}
+	var full *shortcut.FullError
+	if errors.As(err, &full) {
+		return ErrConflict(full.Error())
+	}
+	var taken *space.PersonalTakenError
+	if errors.As(err, &taken) {
+		return ErrConflict(taken.Error())
 	}
 	var closed *share.CannotViewError
 	if errors.As(err, &closed) {
@@ -281,6 +326,8 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
 	case errors.Is(err, task.ErrNotFound):
 		return ErrNotFound("That task is not on the page any more. Reload the page or your list of tasks.")
+	case errors.Is(err, shortcut.ErrNotFound):
+		return ErrNotFound("That shortcut was not found. Somebody may have removed it already; reload the list.")
 	case errors.Is(err, comment.ErrNotFound), errors.Is(err, reaction.ErrCommentNotFound):
 		return ErrNotFound("That comment was not found. It may have been deleted, or its page moved; reload the page.")
 	case errors.Is(err, comment.ErrUnpublished):
@@ -318,6 +365,10 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusConflict, Code: "archived", Message: sentence(err.Error())}
 	case errors.Is(err, page.ErrHomeNotTrashed), errors.Is(err, page.ErrCycle), errors.Is(err, page.ErrHomeFixed), errors.Is(err, page.ErrNotASibling):
 		return ErrConflict(sentence(err.Error()))
+	case errors.Is(err, page.ErrFolder):
+		return &APIError{Status: http.StatusConflict, Code: "folder", Message: sentence(err.Error())}
+	case errors.Is(err, page.ErrBadKind):
+		return ErrValidation(map[string]string{"kind": sentence(err.Error())})
 	case errors.Is(err, page.ErrStale):
 		return ErrConflict("Somebody else saved this page after you opened it. Copy your changes, reload the page and make them again.")
 	case errors.Is(err, attachment.ErrNotFound):

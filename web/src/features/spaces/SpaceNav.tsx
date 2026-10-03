@@ -7,10 +7,11 @@ import { PageTree } from "@/features/pages/PageTree";
 import { PlaceDialog } from "@/features/pages/PlaceDialog";
 import { NavItem } from "@/features/shell/nav";
 import { SidebarGroup } from "@/features/shell/SidebarGroup";
+import { SidebarShortcuts } from "@/features/shortcuts/SidebarShortcuts";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 
-/** The space the reader is in, in the sidebar: its home, its pages as a tree, and its settings. */
+/** The space the reader is in, in the sidebar: its home, its shortcuts, its pages as a tree, and its settings. */
 export function SpaceNav({ open, onToggle, onNavigate }: { open: boolean; onToggle: () => void; onNavigate?: () => void }) {
   const { spaceKey, pageId } = useParams({ strict: false });
   const { data: space } = useSpace(spaceKey ?? "");
@@ -31,9 +32,13 @@ export function SpaceNav({ open, onToggle, onNavigate }: { open: boolean; onTogg
         <NavItem to={`/s/${space.key}`} exact icon="Home" rail={false} onNavigate={onNavigate}>
           {t.space.home}
         </NavItem>
+        <SidebarShortcuts spaceKey={space.key} onNavigate={onNavigate} />
         <div className="my-1">
           <PageTree space={space} currentId={pageId} openPath={openPath} onMove={setMoving} />
         </div>
+        <NavItem to={`/s/${space.key}/decisions`} icon="Decision" rail={false} onNavigate={onNavigate}>
+          {t.space.decisions}
+        </NavItem>
         {space.can.deletePages && (
           <NavItem to={`/s/${space.key}/settings`} search={{ tab: "trash" }} icon="Trash" rail={false} onNavigate={onNavigate}>
             {t.space.trash}

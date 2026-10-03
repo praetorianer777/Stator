@@ -70,6 +70,20 @@ export const Icon = {
   Expand: makeIcon("expand", ["M2.5 3h11v10h-11z", "M6 3v10", "m9 6.5 1.5 1.5L9 9.5"]),
   Menu: makeIcon("menu", ["M2.5 4h11", "M2.5 8h11", "M2.5 12h11"]),
   X: makeIcon("x", ["m4 4 8 8", "m12 4-8 8"]),
+  Folder: makeIcon("folder", ["M2 4.5A1 1 0 0 1 3 3.5h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"]),
+  Flag: makeIcon("flag", ["M3.5 14V2.5", "M3.5 3h8.5l-2 3 2 3H3.5"]),
+  Decision: makeIcon("decision", ["M8 14.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z", "m5.5 8 2 2 3-4"]),
+  // A summation sign, the shape most people know a formula by.
+  Sigma: makeIcon("sigma", ["M12.5 3.5v-1h-9L8 8l-4.5 5.5h9v-1"]),
+  // Two boxes and the arrow between them, as a flowchart draws them.
+  Diagram: makeIcon("diagram", ["M2 2.5h5v3.5H2z", "M9 10h5v3.5H9z", "M4.5 6v5.75H9"]),
+  // A block cut out between two marks, as a passage lifted from a page.
+  Excerpt: makeIcon("excerpt", ["M2.5 3.5h2", "M11.5 3.5h2", "M2.5 12.5h2", "M11.5 12.5h2", "M5 6.5h6", "M5 9.5h4"]),
+  // A page with another page's lines brought into it.
+  Include: makeIcon("include", ["M3 2.5h7l3 3v8H3z", "M5.5 8h5", "M5.5 10.5h5", "m8 5.5 2.5 2.5L8 10.5"]),
+  // A ring cut into shares, as a pie chart draws them.
+  Roadmap: makeIcon("roadmap", ["M2.5 4h5", "M5.5 8h6", "M9 12h4.5", "M2 2v12"]),
+  Chart: makeIcon("chart", ["M8 2a6 6 0 1 0 6 6H8z", "M10 1.5a4.5 4.5 0 0 1 4.5 4.5H10z"]),
   Plus: makeIcon("plus", ["M8 3v10", "M3 8h10"]),
   Users: makeIcon("users", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),
   Check: makeIcon("check", ["m3 8.5 3 3 7-7"]),
@@ -99,6 +113,7 @@ export const Icon = {
   CodeBlock: makeIcon("code-block", ["M2.5 2.5h11v11h-11z", "M6 6.5 4.5 8 6 9.5", "M10 6.5 11.5 8 10 9.5"]),
   Divider: makeIcon("divider", ["M2.5 8h11", "M4.5 4.5h7", "M4.5 11.5h7"]),
   Table: makeIcon("table", ["M2.5 3h11v10h-11z", "M2.5 6.5h11", "M2.5 10h11", "M7 3v10"]),
+  Columns: makeIcon("columns", ["M2.5 3h4.5v10h-4.5z", "M9 3h4.5v10H9z"]),
   Panel: makeIcon("panel", ["M2.5 3h11v10h-11z", "M5 6h.01", "M7 6h4.5", "M5 9.5h6.5"]),
   Hash: makeIcon("hash", ["M6 2.5 4.5 13.5", "M11.5 2.5 10 13.5", "M3 6h10.5", "M2.5 10H13"]),
   Label: makeIcon("label", ["M2.5 2.5h5.3l5.7 5.7-5.3 5.3-5.7-5.7z", "M5.5 5.5h.01"]),

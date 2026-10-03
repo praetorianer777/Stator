@@ -120,8 +120,26 @@ export const TOC_DEFAULT_MAX_LEVEL = EDITOR_HEADING_LEVELS[EDITOR_HEADING_LEVELS
 export const CHILD_PAGES_MAX_DEPTH = 10;
 /** How many pages one child pages block lists at most, matching the API's MaxBelow. */
 export const CHILD_PAGES_LIMIT = 500;
+/** How long the organization's hub stays fresh before it is asked for again; administrators change it rarely. */
+export const HUB_STALE_MS = 60_000;
 /** The longest title an expand block takes, matching the API's MaxExpandTitleLength. */
 export const EXPAND_TITLE_MAX_LENGTH = 200;
+/** The narrowest and widest share of its row a column takes, in percent, matching the API's MinColumnShare and MaxColumnShare. */
+export const COLUMN_SHARE_MIN = 10;
+export const COLUMN_SHARE_MAX = 80;
+/**
+ * The layouts a column section offers, by name and each column's share of the
+ * row. The first of each count is the one inserting that many columns makes.
+ */
+export const COLUMN_LAYOUTS = [
+  { key: "twoEven", widths: [50, 50] },
+  { key: "twoWideLeft", widths: [67, 33] },
+  { key: "twoWideRight", widths: [33, 67] },
+  { key: "threeEven", widths: [33, 34, 33] },
+  { key: "threeWideLeft", widths: [50, 25, 25] },
+  { key: "threeWideMiddle", widths: [25, 50, 25] },
+  { key: "threeWideRight", widths: [25, 25, 50] },
+] as const;
 
 /** The languages a code block offers, by highlighting grammar, and the name the picker shows. */
 export const CODE_LANGUAGES = [
@@ -158,6 +176,14 @@ export const CODE_LANGUAGES = [
 export const SPACE_KEY_MAX_LENGTH = 10;
 export const SPACE_NAME_MAX_LENGTH = 100;
 export const SPACE_DESCRIPTION_MAX_LENGTH = 1000;
+/** How many shortcuts a space holds, and the longest label and address, matching the API's limits. */
+export const SHORTCUTS_MAX = 30;
+export const SHORTCUT_LABEL_MAX_LENGTH = 100;
+export const SHORTCUT_URL_MAX_LENGTH = 2000;
+/** The schemes a shortcut's address may use; anything else could run a script. */
+export const SHORTCUT_URL_SCHEMES: readonly string[] = ["http:", "https:"];
+/** What an address somebody typed opens with: its own tab, no hold on this one, no word for it from us. */
+export const EXTERNAL_LINK_REL = "noopener noreferrer nofollow";
 /** The longest page title, matching the API's MaxTitleLength. */
 export const PAGE_TITLE_MAX_LENGTH = 255;
 /** Where a template's title takes the day the page is made, matching the API's template.DateToken. */
@@ -334,6 +360,83 @@ export const ARMATURE_LINKS_POLL_MS = 2000;
 
 /** The longest status label, matching the API's MaxStatusLength. */
 export const STATUS_LABEL_MAX_LENGTH = 40;
+/** The longest formula source, matching the API's MaxMathLength. */
+export const MATH_MAX_LENGTH = 4000;
+/** How many macro expansions one formula may take, so a macro that calls itself stops instead of holding the page. */
+export const MATH_MAX_EXPAND = 1000;
+/** The largest box, in em, a formula may ask for, so one cannot cover the page. */
+export const MATH_MAX_SIZE = 20;
+/** What a new formula holds until its author writes their own. */
+export const MATH_DEFAULT_LATEX = "a^2 + b^2 = c^2";
+/** How many lines the formula dialog's source field shows. */
+export const MATH_SOURCE_ROWS = 5;
+/** The longest diagram source, matching the API's MaxDiagramLength. */
+export const DIAGRAM_MAX_LENGTH = 20000;
+/** The most arrows one diagram may draw, so a huge graph cannot hold the page while it lays out. */
+export const DIAGRAM_MAX_EDGES = 500;
+/** How long the preview waits after the last keystroke before drawing the diagram again. */
+export const DIAGRAM_PREVIEW_DELAY_MS = 300;
+/** How many lines the diagram's source field shows. */
+export const DIAGRAM_SOURCE_ROWS = 6;
+/** What a new diagram holds until its author writes their own: a sketch that shows the syntax. */
+export const DIAGRAM_DEFAULT_SOURCE = "flowchart LR\n  idea[Idea] --> draft[Draft] --> published[Published]";
+/** The name a downloaded diagram is saved under. */
+export const DIAGRAM_FILE_NAME = "diagram.svg";
+/** How long a link's card is shown before it is asked for again; the server keeps it an hour. */
+export const LINK_PREVIEW_STALE_MS = 5 * 60_000;
+/** The views a link card offers, in the order its toolbar lists them. */
+export const LINK_CARD_VIEWS = ["inline", "card", "embed"] as const;
+/** The longest excerpt name, matching the API's MaxExcerptNameLength. */
+export const EXCERPT_NAME_MAX_LENGTH = 80;
+/** What a chart block shares issues out by, as armature.ChartGroupings. */
+export const ARMATURE_CHART_GROUPINGS = ["status", "statusCategory", "type", "priority", "assignee"] as const;
+export type ArmatureChartGrouping = (typeof ARMATURE_CHART_GROUPINGS)[number];
+/** The windows a created against resolved chart offers, in days, within armature.MinChartDays to MaxChartDays. */
+export const ARMATURE_CHART_DAY_CHOICES: readonly number[] = [7, 14, 30, 90, 180, 365];
+/** A new created against resolved chart's window, as armature.DefaultChartDays. */
+export const ARMATURE_CHART_DEFAULT_DAYS = 30;
+/** The most slices a pie draws; the rest share one slice, Other, rather than take a colour nobody tells apart. */
+export const ARMATURE_CHART_MAX_SLICES = 8;
+/** A pie's size and its hole, in SVG units. */
+export const ARMATURE_PIE_SIZE = 160;
+export const ARMATURE_PIE_HOLE = 0.6;
+/** A line chart's drawing box, in SVG units; it scales to the page's width. */
+export const ARMATURE_FLOW_WIDTH = 640;
+export const ARMATURE_FLOW_HEIGHT = 200;
+/** How many evenly spaced ticks a line chart's axes carry at most. */
+export const ARMATURE_FLOW_TICKS = 4;
+/** The longest property name, matching the API's MaxPropertyKeyLength. */
+export const PROPERTY_KEY_MAX_LENGTH = 60;
+/** The most rows one properties block holds, matching the API's MaxProperties. */
+export const PROPERTIES_MAX_ROWS = 50;
+/** The most labels and columns a properties report asks for, matching MaxReportLabels and MaxReportColumns. */
+export const PROPERTIES_REPORT_MAX_LABELS = 5;
+export const PROPERTIES_REPORT_MAX_COLUMNS = 10;
+/** How many pages a list block shows when it names no number, and the most, as document.DefaultListedPages and MaxListedPages. */
+export const PAGE_LIST_DEFAULT_LIMIT = 10;
+export const PAGE_LIST_MAX_LIMIT = 50;
+/** The lengths a list block's settings offer, within 1 to PAGE_LIST_MAX_LIMIT. */
+export const PAGE_LIST_LIMIT_CHOICES: readonly number[] = [5, 10, 20, 50];
+/** How a content by label list matches its labels and orders its pages, as document.ListMatches and ListSorts. */
+export const PAGE_LIST_MATCHES = ["all", "any"] as const;
+export const PAGE_LIST_SORTS = ["updated", "title"] as const;
+/** What a roadmap block puts its rows under, as armature.RoadmapGroupings. */
+export const ARMATURE_ROADMAP_GROUPINGS = ["epic", "team"] as const;
+export type ArmatureRoadmapGrouping = (typeof ARMATURE_ROADMAP_GROUPINGS)[number];
+/** Past this many days a roadmap's axis marks months; within it, weeks. */
+export const ARMATURE_ROADMAP_WEEKLY_DAYS = 70;
+/** The least room, in pixels, between two labels of a roadmap's axis; closer ones skip a label. */
+export const ARMATURE_ROADMAP_LABEL_GAP_PX = 64;
+/** The room, in pixels, a label of a roadmap's axis needs to its right; nearer the edge it is left out. */
+export const ARMATURE_ROADMAP_LABEL_ROOM_PX = 48;
+/** Days left either side of a roadmap's earliest and latest day, so no bar touches its edge. */
+export const ARMATURE_ROADMAP_MARGIN_DAYS = 3;
+/** How many emoji the appearance dialog offers for a page at once. */
+export const PAGE_ICON_CHOICES = 24;
+/** Where a new cover's focus starts, in percent: its middle. */
+export const COVER_FOCUS_DEFAULT = 50;
+/** How far one arrow key moves a cover's focus, in percent. */
+export const COVER_FOCUS_STEP = 5;
 /** How many emoji a colon offers at once. */
 export const EMOJI_MAX_SUGGESTIONS = 8;
 /** What a colon offers before a letter is typed, by shortcode, most used first. */

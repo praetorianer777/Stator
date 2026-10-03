@@ -48,6 +48,49 @@ describe("the space directory", () => {
   });
 });
 
+describe("personal spaces in the directory", () => {
+  const ada = { id: signedIn.user.id, name: signedIn.user.name };
+  const bob = { id: "u-bob", name: "Bob Bell" };
+
+  it("sit apart from the others, saying whose they are", async () => {
+    stubApi({
+      "GET /spaces": {
+        status: 200,
+        body: {
+          spaces: [space, aSpace({ id: "p1", key: "ADA", name: "Ada's space", owner: ada }), aSpace({ id: "p2", key: "BOB", name: "Bob's notes", owner: bob })],
+        },
+      },
+    });
+    await renderAt("/spaces", { me: member });
+    const section = await screen.findByRole("region", { name: "Personal spaces" });
+    expect(within(section).getByRole("link", { name: "Ada's space" }).closest("tr")).toHaveTextContent("You");
+    expect(within(section).getByRole("link", { name: "Bob's notes" }).closest("tr")).toHaveTextContent("Bob Bell");
+    expect(within(section).queryByRole("link", { name: "Handbook" })).toBeNull();
+    // Ada has one, so nothing offers another.
+    expect(screen.queryByRole("button", { name: "Create your personal space" })).toBeNull();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("offers a member without one their own, named and keyed for them", async () => {
+    const mine = aSpace({ key: "AL", name: "Ada Lovelace's space", owner: ada });
+    const sent = stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [space] } },
+      "POST /spaces": { status: 201, body: { space: mine } },
+      "GET /spaces/AL": { status: 200, body: { space: mine } },
+      [`GET /pages/${home.id}`]: { status: 200, body: { page: home, space: mine } },
+    });
+    await renderAt("/spaces", { me: member });
+    expect(screen.queryByRole("button", { name: "Create space" })).toBeNull();
+    await userEvent.click(await screen.findByRole("button", { name: "Create your personal space" }));
+    expect(await screen.findByLabelText("Name")).toHaveValue("Ada Lovelace's space");
+    expect(screen.getByLabelText("Key")).toHaveValue("AL");
+    expect(screen.getByText(/Only you see it until you share it/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Create your personal space" }));
+    expect(await screen.findByText("Welcome to the handbook.")).toBeInTheDocument();
+    expect(sent.find((r) => r.method === "POST")?.body).toEqual({ name: "Ada Lovelace's space", key: "AL", description: "", personal: true });
+  });
+});
+
 describe("creating a space", () => {
   it("suggests the key from the name and lands on the new home page", async () => {
     const sent = stubApi({

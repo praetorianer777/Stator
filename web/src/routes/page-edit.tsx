@@ -1,4 +1,4 @@
-import { createRoute } from "@tanstack/react-router";
+import { createRoute, redirect } from "@tanstack/react-router";
 import { pageQuery } from "@/api/pages";
 import { draftQuery } from "@/api/versions";
 import { spaceRoute } from "./space";
@@ -13,6 +13,8 @@ export const pageEditRoute = createRoute({
   // not edit has no draft to read, and the editor tells them so.
   loader: async ({ context, params }) => {
     const { page } = await context.queryClient.ensureQueryData(pageQuery(params.pageId));
+    // A folder has nothing to edit; its own view renames it.
+    if (page.kind === "folder") throw redirect({ to: "/s/$spaceKey/p/$pageId/$slug", params });
     if (page.can.edit) await context.queryClient.fetchQuery({ ...draftQuery(params.pageId), staleTime: 0 });
   },
 }).lazy(() => import("./page-edit.lazy").then((module) => module.Route));

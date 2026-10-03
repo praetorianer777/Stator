@@ -60,6 +60,8 @@ var routes = []route{
 	{Method: "GET", Path: "/issues/{issueKey}/remote-links", handler: (*stub).listLinks},
 	{Method: "POST", Path: "/issues/{issueKey}/remote-links", handler: (*stub).putLink},
 	{Method: "DELETE", Path: "/issues/{issueKey}/remote-links/{remoteLinkID}", handler: (*stub).deleteLink},
+	{Method: "GET", Path: "/projects/{projectKey}/reports/{kind}", handler: (*stub).report},
+	{Method: "GET", Path: "/projects/{projectKey}/plan", handler: (*stub).plan},
 	{Method: "GET", Path: "/themes/active", handler: (*stub).activeTheme},
 	{Method: "GET", Path: "/themes/{themeID}/export", handler: (*stub).exportTheme},
 }
@@ -91,6 +93,7 @@ func (s *stub) handler() http.Handler {
 	}
 	mux.HandleFunc("GET "+stubPrefix+"/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	mux.HandleFunc("PATCH "+stubPrefix+"/{tenant}/issues/{issueKey}", s.control((*stub).changeIssue))
+	mux.HandleFunc("POST "+stubPrefix+"/{tenant}/projects/{projectKey}/issues", s.control((*stub).addIssue))
 	mux.HandleFunc("POST "+stubPrefix+"/{tenant}/issues/{issueKey}/move", s.control((*stub).moveIssue))
 	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/people/{person}/theme", s.control((*stub).setTheme))
 	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/people/{person}/theme-delay", s.control((*stub).setThemeDelay))
@@ -317,8 +320,8 @@ func issueView(is *issue) map[string]any {
 		"status":      map[string]any{"id": is.Status.ID, "name": is.Status.Name, "category": is.Status.Category, "position": is.Status.Position},
 		"labels":      []any{},
 		"fixVersions": []any{}, "affectsVersions": []any{}, "components": []any{},
-		"commentCount": 0, "childCount": 0,
-		"createdAt": is.CreatedAt, "updatedAt": is.UpdatedAt,
+		"commentCount": 0,
+		"createdAt":    is.CreatedAt, "updatedAt": is.UpdatedAt,
 	}
 	if is.Assignee != nil {
 		v["assignee"] = personRef(is.Assignee)
@@ -329,6 +332,21 @@ func issueView(is *issue) map[string]any {
 	if is.DueDate != nil {
 		v["dueDate"] = is.DueDate
 	}
+	if is.ResolvedAt != nil {
+		v["resolvedAt"] = is.ResolvedAt
+	}
+	if is.StartDate != nil {
+		v["startDate"] = is.StartDate
+	}
+	if p := is.Parent; p != nil {
+		v["parent"] = map[string]any{"id": p.ID, "key": p.Key, "summary": p.Summary, "type": typeView(p.Type)}
+		v["parentId"], v["parentKey"] = p.ID, p.Key
+	}
+	if is.Team != nil {
+		v["team"] = map[string]any{"id": is.Team.ID, "name": is.Team.Name}
+		v["teamId"] = is.Team.ID
+	}
+	v["childCount"] = is.Children
 	return v
 }
 
@@ -564,6 +582,22 @@ type issueChange struct {
 	Priority       *string `json:"priority,omitempty"`
 	// Assignee is a person's name, or empty for nobody.
 	Assignee *string `json:"assignee,omitempty"`
+	// StartDate and DueDate are days, YYYY-MM-DD, or empty to clear one.
+	StartDate *string `json:"startDate,omitempty"`
+	DueDate   *string `json:"dueDate,omitempty"`
+	// Parent is the key of the issue it belongs to, or empty for none.
+	Parent *string `json:"parent,omitempty"`
+	// Team is a team's name, made on first use, or empty for none.
+	Team *string `json:"team,omitempty"`
+}
+
+// day reads a day of a change; empty clears it.
+func day(raw string) (*time.Time, bool) {
+	if raw == "" {
+		return nil, true
+	}
+	d, err := time.Parse(time.DateOnly, raw)
+	return &d, err == nil
 }
 
 func (s *stub) changeIssue(c *call) {
@@ -582,6 +616,12 @@ func (s *stub) changeIssue(c *call) {
 	if req.StatusCategory != nil {
 		if st := c.tenant.statusOf(*req.StatusCategory); st != nil {
 			is.Status = st
+			// Done is resolved, now; anything else is open again.
+			is.ResolvedAt = nil
+			if st.Category == "done" {
+				now := time.Now().UTC()
+				is.ResolvedAt = &now
+			}
 		}
 	}
 	if req.Priority != nil {
@@ -595,8 +635,57 @@ func (s *stub) changeIssue(c *call) {
 			is.Assignee = c.tenant.person(*req.Assignee)
 		}
 	}
+	for _, d := range []struct {
+		raw  *string
+		into **time.Time
+	}{{req.StartDate, &is.StartDate}, {req.DueDate, &is.DueDate}} {
+		if d.raw == nil {
+			continue
+		}
+		at, ok := day(*d.raw)
+		if !ok {
+			refuseField(c.w, "startDate", "Give a day as YYYY-MM-DD.")
+			return
+		}
+		*d.into = at
+	}
+	if req.Parent != nil {
+		var parent *issue
+		if *req.Parent != "" {
+			if parent = c.tenant.lookup(c.tenant.person(adminName), *req.Parent); parent == nil || parent == is {
+				refuse(c.w, http.StatusNotFound, "not_found", "Name another issue as the parent.")
+				return
+			}
+		}
+		is.setParent(parent)
+	}
+	if req.Team != nil {
+		is.Team = nil
+		if *req.Team != "" {
+			is.Team = c.tenant.teamNamed(*req.Team)
+		}
+	}
 	is.UpdatedAt = time.Now().UTC()
 	respond(c.w, http.StatusOK, map[string]any{"issue": issueView(is)})
+}
+
+// addIssue files an issue of any type as the admin, so a test can make an
+// epic, which Stator itself never files.
+func (s *stub) addIssue(c *call) {
+	var req struct {
+		Summary string `json:"summary"`
+		Type    string `json:"type"`
+	}
+	if !decode(c, &req) {
+		return
+	}
+	pr, kind := c.tenant.project(c.r.PathValue("projectKey")), c.tenant.typeNamed(req.Type)
+	if pr == nil || kind == nil || strings.TrimSpace(req.Summary) == "" {
+		refuse(c.w, http.StatusNotFound, "not_found", "Name a project, a type and a summary.")
+		return
+	}
+	is := c.tenant.add(pr, kind, req.Summary, c.tenant.person(adminName), time.Now().UTC())
+	respond(c.w, http.StatusCreated, map[string]any{"issue": issueView(is)})
 }
 
 func (s *stub) moveIssue(c *call) {

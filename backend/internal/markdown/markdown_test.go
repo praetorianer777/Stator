@@ -180,9 +180,29 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"armatureIssueBlock","attrs":{"key":"STA-7"}}`,
 			`{"type":"armatureIssueList","attrs":{"query":"project = STA AND text ~ \"<b>\"","columns":["key","summary","status"],"limit":25}}`,
 			`{"type":"armatureIssueList","attrs":{"query":"assignee = me()","columns":["key"]}}`,
+			`{"type":"armatureChart","attrs":{"project":"CP","query":"project = CP AND text ~ \"<b>\"","chart":"createdResolved","groupBy":"statusCategory","days":90}}`,
+			`{"type":"armatureRoadmap","attrs":{"project":"CP","query":"project = CP ORDER BY key","groupBy":"team"}}`,
+			`{"type":"propertiesReport","attrs":{"labels":["release-notes","v1.2"],"space":"DOCS","columns":["Owner","Say \"hi\", <b>"]}}`,
+			`{"type":"propertiesReport","attrs":{"labels":["adr"],"space":null,"columns":[]}}`,
+			`{"type":"labelledPages","attrs":{"labels":["adr","v1.2"],"match":"any","space":"DOCS","sort":"title","limit":20}}`,
+			`{"type":"labelledPages","attrs":{"labels":["adr"],"match":"all","space":null,"sort":"updated","limit":10}}`,
+			`{"type":"recentlyUpdated","attrs":{"space":null,"limit":5}}`,
+			`{"type":"recentlyUpdated","attrs":{"space":"DOCS","limit":50}}`,
 			`{"type":"tableOfContents","attrs":{"maxLevel":2}}`,
 			`{"type":"childPages","attrs":{"scope":"subtree","depth":2,"sort":"title"}}`,
 			`{"type":"childPages","attrs":{"scope":"children","depth":null,"sort":"tree"}}`,
+		),
+		"includes": doc(
+			`{"type":"include","attrs":{"pageId":"`+otherID+`","excerptId":null}}`,
+			`{"type":"include","attrs":{"pageId":"`+otherID+`","excerptId":"`+fileID+`"}}`,
+		),
+		"formulas": doc(
+			`{"type":"mathBlock","attrs":{"latex":"\\sum_{i=1}^n i = \\frac{n(n+1)}{2}"}}`,
+			`{"type":"mathBlock","attrs":{"latex":"a\n`+"```"+`\nb"}}`,
+		),
+		"diagrams": doc(
+			`{"type":"diagram","attrs":{"source":"flowchart LR\n  A[\"Draft <b>\"] --> B[Published]\n\n  B -.-> A"}}`,
+			`{"type":"diagram","attrs":{"source":"sequenceDiagram\n  Ada->>Bob: `+"```"+`"}}`,
 		),
 		"breaks and links to pages": doc(
 			para(txt("line one"), `{"type":"hardBreak"}`, txt("line two")),
@@ -217,9 +237,15 @@ func TestExportReadsAsMarkdown(t *testing.T) {
 		`{"type":"image","attrs":{"attachmentId":"`+fileID+`","alt":"A chart","width":null}}`,
 		`{"type":"expand","attrs":{"title":"More"},"content":[`+para(txt("inside"))+`]}`,
 		para(`{"type":"status","attrs":{"label":"DONE","color":"success"}}`),
+		`{"type":"linkCard","attrs":{"url":"https://example.test/a?b=<c>","view":"embed"}}`,
+		para(txt("Energy "), `{"type":"mathInline","attrs":{"latex":"E =\n mc^2 \\$ $"}}`),
+		`{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[`+para(`{"type":"mathInline","attrs":{"latex":"\\|x\\| = |y|"}}`)+`]}]}]}`,
 	)
 	md := Render("Plan", parseDoc(t, body), testLinks)
 	for _, want := range []string{
+		`Energy $E = mc^2 \$ \$$`,
+		`| $\\|x\\| = \|y\|$ |`,
+		"\n\n<https://example.test/a?b=%3Cc%3E>\n\n",
 		"# Plan\n\n## Intro\n",
 		"> [!WARNING]\n> Careful\n",
 		"- [x] done\n",
@@ -242,9 +268,14 @@ func TestWhatMarkdownCannotCarryIsReadable(t *testing.T) {
 			`]}`,
 		para(txt("hinted", `{"type":"hint"}`), txt(" "), txt("discussed", `{"type":"inlineComment","attrs":{"threadId":"`+userID+`"}}`)),
 		`{"type":"image","attrs":{"attachmentId":"`+otherID+`","alt":"Somewhere else","width":null}}`,
+		`{"type":"columns","content":[{"type":"column","attrs":{"width":67},"content":[`+para(txt("left column"))+`]},{"type":"column","attrs":{"width":33},"content":[{"type":"paragraph"}]},{"type":"column","attrs":{"width":null},"content":[`+para(txt("right column"))+`]}]}`,
+		`{"type":"decision","attrs":{"state":"decided"},"content":[`+txt("Ship on Fridays")+`]}`,
+		`{"type":"decision","attrs":{"state":"undecided"},"content":[`+txt("Which region")+`]}`,
+		`{"type":"excerpt","attrs":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a71","name":"Hours"},"content":[`+para(txt("Inside the excerpt"))+`]}`,
+		`{"type":"properties","content":[{"type":"propertyRow","attrs":{"key":"Owner"},"content":[`+txt("Ada", `{"type":"bold"}`)+`]},{"type":"propertyRow","attrs":{"key":"Due"}}]}`,
 	)
 	md := Render("Plan", parseDoc(t, body), testLinks)
-	for _, want := range []string{"1. lettered", "| wide |  |", "| a<br>item | b |", "hinted discussed", "Somewhere else"} {
+	for _, want := range []string{"1. lettered", "| wide |  |", "| a<br>item | b |", "hinted discussed", "Somewhere else", "left column\n\nright column", "**Decided:** Ship on Fridays", "**Undecided:** Which region", "\n\nInside the excerpt", "| Property | Value |", "| Owner | **Ada** |", "| Due |  |"} {
 		if !strings.Contains(md, want) {
 			t.Errorf("the export lacks %q:\n%s", want, md)
 		}

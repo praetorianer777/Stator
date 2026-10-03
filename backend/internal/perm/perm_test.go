@@ -41,6 +41,9 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"a member of an open space does not review its stale pages", member(openSpace...), ReviewStale, false},
 		{"an administrator of the space reviews its stale pages", member(SpaceAdminister), ReviewStale, true},
 		{"an organization admin reviews every space's stale pages", admin, ReviewStale, true},
+		{"a member of an open space does not change its shortcuts", member(openSpace...), ManageShortcuts, false},
+		{"an administrator of the space changes its shortcuts", member(SpaceAdminister), ManageShortcuts, true},
+		{"an organization admin changes every space's shortcuts", admin, ManageShortcuts, true},
 		{"no grant is no view", member(), ViewSpace, false},
 		{"without use nothing holds", Facts{Member: true, Role: auth.RoleMember, Space: openSpace}, ViewSpace, false},
 		{"a stranger holds nothing", Facts{Space: openSpace, Global: []GlobalPermission{UseStator}}, ViewSpace, false},
@@ -51,6 +54,9 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"a member granted createSpace creates", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateSpace, true},
 		{"createSpace without use is nothing", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{CreateSpaces}}, CreateSpace, false},
 		{"admins create spaces", admin, CreateSpace, true},
+		{"every member creates a personal space", member(), CreatePersonalSpace, true},
+		{"a personal space takes use", Facts{Member: true, Role: auth.RoleMember}, CreatePersonalSpace, false},
+		{"a stranger creates no personal space", Facts{Global: []GlobalPermission{UseStator}}, CreatePersonalSpace, false},
 		{"an unknown action is refused", admin, Action("space.unknown"), false},
 	} {
 		if got := Decide(tt.facts, tt.action); got != tt.want {
@@ -148,7 +154,7 @@ func TestASaveMayNotLockItsSaverOut(t *testing.T) {
 }
 
 func TestRefusalsAreSentences(t *testing.T) {
-	for _, a := range []Action{CreateSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, Action("x")} {
+	for _, a := range []Action{CreateSpace, CreatePersonalSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, Action("x")} {
 		err := error(&DeniedError{Action: a})
 		if !errors.Is(err, ErrDenied) {
 			t.Errorf("the refusal of %s does not wrap ErrDenied", a)

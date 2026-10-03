@@ -97,9 +97,9 @@ func (s *Service) Delete(ctx context.Context, slug string) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM user_session WHERE proof_org_id = $1`, id); err != nil {
 			return err
 		}
-		// Cleared first: the cascade to theme would otherwise set it null on
-		// the very row this statement is deleting.
-		if _, err := tx.Exec(ctx, `UPDATE org SET default_theme_id = NULL WHERE id = $1`, id); err != nil {
+		// Cleared first: the cascades to theme and page would otherwise set
+		// them null on the very row this statement is deleting.
+		if _, err := tx.Exec(ctx, `UPDATE org SET default_theme_id = NULL, hub_page_id = NULL WHERE id = $1`, id); err != nil {
 			return err
 		}
 		_, err = tx.Exec(ctx, `DELETE FROM org WHERE id = $1`, id)

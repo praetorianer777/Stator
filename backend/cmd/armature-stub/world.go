@@ -93,10 +93,24 @@ type issue struct {
 	Assignee *person
 	Reporter *person
 	DueDate  *time.Time
+	// StartDate and DueDate are days at midnight UTC, as Armature keeps them.
+	StartDate *time.Time
+	// Parent is the epic, or other issue a level up, it belongs to.
+	Parent   *issue
+	Children int
+	Team     *team
 	// Description is the rich text it was filed with, kept as sent.
 	Description json.RawMessage
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	// ResolvedAt is when it was last done, nil while it is not.
+	ResolvedAt *time.Time
+}
+
+// team is one of a project's teams in Armature; the stub keeps them by name.
+type team struct {
+	ID   uuid.UUID
+	Name string
 }
 
 type remoteLink struct {
@@ -117,6 +131,7 @@ type tenant struct {
 	people   map[string]*person
 	projects []*project
 	types    []*issueType
+	teams    map[string]*team
 	statuses []*status
 	issues   map[string]*issue
 	// moved finds an issue by a key it had before it moved to another project.
@@ -181,7 +196,7 @@ func (t *tenant) person(name string) *person {
 func seed(slug string) *tenant {
 	t := &tenant{
 		Slug: slug, OrgID: idOf(slug, "org"), people: map[string]*person{},
-		issues: map[string]*issue{}, moved: map[string]string{}, next: map[string]int{},
+		issues: map[string]*issue{}, teams: map[string]*team{}, moved: map[string]string{}, next: map[string]int{},
 	}
 	t.projects = []*project{
 		{ID: idOf(slug, "project", projectOpen), Key: projectOpen, Name: "Core platform"},
@@ -190,12 +205,9 @@ func seed(slug string) *tenant {
 	for i, spec := range []struct {
 		name, icon string
 		subtask    bool
-	}{{"Task", "task", false}, {"Bug", "bug", false}, {"Story", "story", false}, {"Sub-task", "subtask", true}} {
-		level := 0
-		if spec.subtask {
-			level = -1
-		}
-		t.types = append(t.types, &issueType{ID: idOf(slug, "type", spec.name), Name: spec.name, Icon: spec.icon, Level: level, IsSubtask: spec.subtask, Position: i})
+		level      int
+	}{{"Task", "task", false, 0}, {"Bug", "bug", false, 0}, {"Story", "story", false, 0}, {"Sub-task", "subtask", true, -1}, {"Epic", "epic", false, 1}} {
+		t.types = append(t.types, &issueType{ID: idOf(slug, "type", spec.name), Name: spec.name, Icon: spec.icon, Level: spec.level, IsSubtask: spec.subtask, Position: i})
 	}
 	for i, spec := range [][2]string{{"To do", "todo"}, {"In progress", "in_progress"}, {"Done", "done"}} {
 		t.statuses = append(t.statuses, &status{ID: idOf(slug, "status", spec[1]), Name: spec[0], Category: spec[1], Position: i})
@@ -215,6 +227,10 @@ func seed(slug string) *tenant {
 		at := seeded.Add(time.Duration(i) * time.Hour)
 		is := t.add(t.project(spec.project), t.typeNamed(spec.kind), spec.summary, t.person(spec.reporter), at)
 		is.Status, is.Priority, is.DueDate, is.UpdatedAt = t.statusOf(spec.category), spec.priority, spec.due, at
+		if spec.category == "done" {
+			resolved := at.Add(24 * time.Hour)
+			is.ResolvedAt, is.UpdatedAt = &resolved, resolved
+		}
 		if spec.assignee != "" {
 			is.Assignee = t.person(spec.assignee)
 		}
@@ -268,6 +284,27 @@ func (t *tenant) typeNamed(name string) *issueType {
 		}
 	}
 	return nil
+}
+
+// teamNamed is the team of that name, made on first use.
+func (t *tenant) teamNamed(name string) *team {
+	if tm, ok := t.teams[name]; ok {
+		return tm
+	}
+	tm := &team{ID: idOf(t.Slug, "team", name), Name: name}
+	t.teams[name] = tm
+	return tm
+}
+
+// setParent moves an issue under another, or to the top when parent is nil.
+func (is *issue) setParent(parent *issue) {
+	if is.Parent != nil {
+		is.Parent.Children--
+	}
+	is.Parent = parent
+	if parent != nil {
+		parent.Children++
+	}
 }
 
 func (t *tenant) typeByID(id uuid.UUID) *issueType {

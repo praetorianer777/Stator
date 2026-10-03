@@ -415,6 +415,16 @@ func (c *converter) block(n ast.Node, depth int) ([]document.Node, error) {
 		if n.Info != nil {
 			if fields := strings.Fields(string(n.Language(c.src))); len(fields) > 0 {
 				lang := strings.ToLower(decode(fields[0]))
+				if lang == mathLanguage {
+					if n, ok := mathBlock(c.lines(n)); ok {
+						return []document.Node{n}, nil
+					}
+				}
+				if lang == diagramLanguage {
+					if n, ok := diagram(c.lines(n)); ok {
+						return []document.Node{n}, nil
+					}
+				}
 				if languagePattern.MatchString(lang) && len(lang) <= maxLanguageLength {
 					language = lang
 				}
@@ -446,6 +456,28 @@ func codeBlock(code string, language any) document.Node {
 	}
 	return n
 }
+
+// mathBlock reads a math fence as a formula on its own line; one too long
+// or empty to be a formula stays a code block.
+func mathBlock(code string) (document.Node, bool) {
+	latex := strings.TrimSpace(code)
+	if latex == "" || utf8.RuneCountInString(latex) > document.MaxMathLength {
+		return document.Node{}, false
+	}
+	return document.Node{Type: document.NodeMathBlock, Attrs: map[string]any{"latex": latex}}, true
+}
+
+// diagram reads a mermaid fence as a diagram; one too long or empty to be a
+// diagram stays a code block.
+func diagram(code string) (document.Node, bool) {
+	source := strings.TrimSuffix(code, "\n")
+	if strings.TrimSpace(source) == "" || utf8.RuneCountInString(source) > document.MaxDiagramLength {
+		return document.Node{}, false
+	}
+	return document.Node{Type: document.NodeDiagram, Attrs: map[string]any{"source": source}}, true
+}
+
+var uuidText = regexp.MustCompile(document.UUIDPattern)
 
 var alertLine = regexp.MustCompile(`^\s*\[!([A-Za-z]+)\]\s*$`)
 
@@ -686,6 +718,67 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 			level = document.MaxHeadingLevel
 		}
 		return document.Node{Type: "tableOfContents", Attrs: map[string]any{"maxLevel": level}}, true
+	case kindLabelled, kindUpdated:
+		limit, err := strconv.Atoi(attrs["data-limit"])
+		if err != nil {
+			return document.Node{}, false
+		}
+		var space any
+		if key := attrs["data-space"]; key != "" {
+			space = key
+		}
+		if kind == kindUpdated {
+			return document.Node{Type: document.NodeRecentlyUpdated, Attrs: map[string]any{"space": space, "limit": limit}}, true
+		}
+		labels := []string{}
+		for name := range strings.SplitSeq(attrs["data-labels"], ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				labels = append(labels, name)
+			}
+		}
+		return document.Node{Type: document.NodeLabelledPages, Attrs: map[string]any{
+			"labels": labels, "match": attrs["data-match"], "space": space, "sort": attrs["data-sort"], "limit": limit,
+		}}, true
+	case kindReport:
+		labels := []string{}
+		for name := range strings.SplitSeq(attrs["data-labels"], ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				labels = append(labels, name)
+			}
+		}
+		columns := []string{}
+		if raw := attrs["data-columns"]; raw != "" && json.Unmarshal([]byte(raw), &columns) != nil {
+			return document.Node{}, false
+		}
+		var space any
+		if key := attrs["data-space"]; key != "" {
+			space = key
+		}
+		return document.Node{Type: document.NodePropertiesReport, Attrs: map[string]any{"labels": labels, "space": space, "columns": columns}}, true
+	case kindChart:
+		days, err := strconv.Atoi(attrs["data-days"])
+		if err != nil {
+			return document.Node{}, false
+		}
+		return document.Node{Type: armature.NodeChart, Attrs: map[string]any{
+			"project": attrs["data-project"], "query": words, "chart": attrs["data-chart"], "groupBy": attrs["data-group-by"], "days": days,
+		}}, true
+	case kindRoadmap:
+		return document.Node{Type: armature.NodeRoadmap, Attrs: map[string]any{
+			"project": attrs["data-project"], "query": words, "groupBy": attrs["data-group-by"],
+		}}, true
+	case kindInclude:
+		if !uuidText.MatchString(attrs["data-page"]) {
+			return document.Node{}, false
+		}
+		n := document.Node{Type: document.NodeInclude, Attrs: map[string]any{"pageId": attrs["data-page"], "excerptId": nil}}
+		if excerpt, ok := attrs["data-excerpt"]; ok {
+			if !uuidText.MatchString(excerpt) {
+				return document.Node{}, false
+			}
+			n.Attrs["excerptId"] = excerpt
+		}
+		return n, true
 	case kindChildPages:
 		n := document.Node{Type: "childPages", Attrs: map[string]any{"scope": attrs["data-scope"], "sort": attrs["data-sort"], "depth": nil}}
 		if v, ok := attrs["data-depth"]; ok {

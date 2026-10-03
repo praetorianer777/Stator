@@ -42,6 +42,22 @@ export interface PageChanges {
   version: number;
 }
 
+/** How a page looks apart from its words: an emoji, a width and a cover. */
+export type Appearance = Wire["Appearance"];
+
+/** Replaces how a page looks; the tree shows the emoji, so its levels are asked again. */
+export function useSetAppearance(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (appearance: Wire["AppearanceInput"]): Promise<Appearance> =>
+      (await api.PUT("/pages/{pageID}/appearance", { params: { path: { pageID: id } }, body: appearance })).data!.appearance,
+    onSuccess: (saved) => {
+      queryClient.setQueryData<PageInSpace>(pageQueryKey(id), (current) => (current ? { ...current, page: { ...current.page, appearance: saved } } : current));
+      return queryClient.invalidateQueries({ queryKey: ["tree"] });
+    },
+  });
+}
+
 export function useUpdatePage(id: string) {
   const queryClient = useQueryClient();
   return useMutation({

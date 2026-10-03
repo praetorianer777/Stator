@@ -1,4 +1,5 @@
 import { useRef, type ReactNode } from "react";
+import { HomeNavItem, HubNavItem } from "@/features/hub/HubNav";
 import { createPortal } from "react-dom";
 import { IconButton } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
@@ -63,9 +64,8 @@ function SidebarGroups({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <SidebarGroup id="wiki" title={t.nav.groupWiki} open={isOpen("wiki", true)} onToggle={() => toggleGroup("wiki", true)}>
-        <NavItem to="/" exact icon="Home" rail={false} onNavigate={onNavigate}>
-          {t.nav.home}
-        </NavItem>
+        <HomeNavItem rail={false} onNavigate={onNavigate} />
+        <HubNavItem rail={false} onNavigate={onNavigate} />
         <NavItem to="/spaces" icon="Space" rail={false} onNavigate={onNavigate}>
           {t.nav.spaces}
         </NavItem>

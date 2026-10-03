@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useContext, useEffect, useId, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { MentionNodeAttrs } from "@tiptap/extension-mention";
@@ -19,28 +19,39 @@ import type { UploadFile } from "./attachments";
 import type { IssueSource } from "./armatureIssue";
 import { IssuePicker } from "@/features/armature/IssuePicker";
 import { IssueListDialog } from "@/features/armature/IssueListDialog";
+import { IssueChartDialog } from "@/features/armature/IssueChartDialog";
+import { newChartSettings } from "@/features/armature/chart";
+import { IssueRoadmapDialog } from "@/features/armature/IssueRoadmapDialog";
+import { newRoadmapSettings } from "@/features/armature/roadmap";
+import { PropertiesReportDialog } from "@/features/properties/PropertiesReportDialog";
+import { PageListDialog } from "@/features/pageLists/PageListDialog";
+import { labelledSettings } from "@/features/pageLists/lists";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
 import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
 import type { InlineValueTarget } from "./inlineValues";
-import { DateDialog, StatusDialog } from "./InlineValueDialogs";
+import { DateDialog, MathDialog, StatusDialog } from "./InlineValueDialogs";
+import { LinkCardDialog } from "./LinkCardDialog";
+import { ExcerptPicker } from "@/features/pages/ExcerptPicker";
+import { DocPageContext } from "./BlockViews";
 import type { Emoji } from "./emoji";
 import { EmojiList } from "./EmojiList";
 
 // The dialog held the page still, but a node that is no longer where it was
-// opened is left as it is rather than changing whatever is there now.
+// opened is left as it is rather than changing whatever is there now. The
+// caret goes on after an inline node; a block, with no text to put it in,
+// stays selected.
 function changeInlineValue(editor: TiptapEditor, target: InlineValueTarget, attrs: InlineValueTarget["attrs"]) {
   const node = editor.state.doc.nodeAt(target.pos);
   if (node?.type.name !== target.kind) return;
-  editor
+  const chain = editor
     .chain()
     .focus()
     .command(({ tr }) => {
       tr.setNodeMarkup(target.pos, undefined, { ...node.attrs, ...attrs });
       return true;
-    })
-    .setTextSelection(target.pos + node.nodeSize)
-    .run();
+    });
+  (node.isInline ? chain.setTextSelection(target.pos + node.nodeSize) : chain.setNodeSelection(target.pos)).run();
 }
 
 /** What a form may do to the editor from outside: put words in, or empty it. */
@@ -97,6 +108,8 @@ export function Editor({
   variant = "page",
   armature,
 }: EditorProps) {
+  // The page being edited, so an include starts in its space and never shows the page itself.
+  const page = useContext(DocPageContext);
   const slashId = useId();
   const mentionId = useId();
   const submitRef = useRef(onSubmit);
@@ -114,6 +127,12 @@ export function Editor({
   armatureRef.current = armature;
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
+  const [makingChart, setMakingChart] = useState(false);
+  const [makingRoadmap, setMakingRoadmap] = useState(false);
+  const [makingReport, setMakingReport] = useState(false);
+  const [makingLabelled, setMakingLabelled] = useState(false);
+  const [pickingLink, setPickingLink] = useState(false);
+  const [pickingInclude, setPickingInclude] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
   const [editingValue, setEditingValue] = useState<InlineValueTarget | null>(null);
   const emojiId = useId();
@@ -137,6 +156,13 @@ export function Editor({
       armature,
       pickIssue: () => setPickingIssue(true),
       pickIssueList: () => setMakingList(true),
+      pickChart: () => setMakingChart(true),
+      pickRoadmap: () => setMakingRoadmap(true),
+      pickPropertiesReport: () => setMakingReport(true),
+      pickLabelledPages: () => setMakingLabelled(true),
+      pickLinkCard: () => setPickingLink(true),
+      pickInclude: () => setPickingInclude(true),
+      pageId: page?.id,
       editInlineValue: setEditingValue,
       emoji: { render: emoji.renderer },
       find: openFind,
@@ -287,12 +313,88 @@ export function Editor({
           }}
         />
       )}
+      {(editingValue?.kind === "mathInline" || editingValue?.kind === "mathBlock") && editor && (
+        <MathDialog
+          initial={editingValue.attrs.latex}
+          display={editingValue.kind === "mathBlock"}
+          onClose={() => setEditingValue(null)}
+          onSave={(latex) => {
+            setEditingValue(null);
+            changeInlineValue(editor, editingValue, { latex });
+          }}
+        />
+      )}
       {pickingIssue && editor && (
         <IssuePicker
           onClose={() => setPickingIssue(false)}
           onInsert={(key) => {
             setPickingIssue(false);
             editor.chain().focus().insertArmatureIssueBlock(key).run();
+          }}
+        />
+      )}
+      {pickingInclude && editor && (
+        <ExcerptPicker
+          initialSpaceKey={page?.spaceKey}
+          excludePageId={page?.id}
+          onClose={() => setPickingInclude(false)}
+          onPick={(choice) => {
+            setPickingInclude(false);
+            editor.chain().focus().insertInclude({ pageId: choice.pageId, excerptId: choice.excerptId }).run();
+          }}
+        />
+      )}
+      {pickingLink && editor && (
+        <LinkCardDialog
+          onClose={() => setPickingLink(false)}
+          onInsert={(url) => {
+            setPickingLink(false);
+            editor.chain().focus().insertLinkCard(url).run();
+          }}
+        />
+      )}
+      {makingChart && editor && (
+        <IssueChartDialog
+          initial={newChartSettings()}
+          isNew
+          onClose={() => setMakingChart(false)}
+          onSave={(settings) => {
+            setMakingChart(false);
+            editor.chain().focus().insertArmatureChart(settings).run();
+          }}
+        />
+      )}
+      {makingRoadmap && editor && (
+        <IssueRoadmapDialog
+          initial={newRoadmapSettings()}
+          isNew
+          onClose={() => setMakingRoadmap(false)}
+          onSave={(settings) => {
+            setMakingRoadmap(false);
+            editor.chain().focus().insertArmatureRoadmap(settings).run();
+          }}
+        />
+      )}
+      {makingLabelled && editor && (
+        <PageListDialog
+          kind="labelled"
+          initial={labelledSettings({})}
+          isNew
+          onClose={() => setMakingLabelled(false)}
+          onSave={(settings) => {
+            setMakingLabelled(false);
+            editor.chain().focus().insertLabelledPages(settings).run();
+          }}
+        />
+      )}
+      {makingReport && editor && (
+        <PropertiesReportDialog
+          initial={{ labels: [], space: null, columns: [] }}
+          isNew
+          onClose={() => setMakingReport(false)}
+          onSave={(settings) => {
+            setMakingReport(false);
+            editor.chain().focus().insertPropertiesReport(settings).run();
           }}
         />
       )}

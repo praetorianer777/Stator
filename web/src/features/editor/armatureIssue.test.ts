@@ -76,11 +76,14 @@ describe("Armature issue chips in the editor", () => {
     expect(paste(e, `${BASE}/issues/sec-2/?focus=1`)).toBe(true);
     expect(inline(e)).toBe("See [SEC-2]");
 
+    // Among words, where an address pasted alone on a line is not a link card.
     const f = make(author);
+    type(f, "See ");
     expect(paste(f, "https://elsewhere.example.com/issues/CP-1")).toBe(false);
     expect(paste(f, `${BASE}/projects/CP`)).toBe(false);
 
     const g = make({ baseUrl: () => null, knowsProject: () => true });
+    type(g, "See ");
     expect(paste(g, `${BASE}/issues/CP-1`)).toBe(false);
 
     const h = make(author, { type: "doc", content: [{ type: "codeBlock", attrs: { language: null } }] });

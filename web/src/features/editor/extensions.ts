@@ -18,13 +18,25 @@ import type { SlashItem } from "./slashItems";
 import type { AttachmentIndex } from "./attachmentIndex";
 import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachments";
 import { ChildPages, TableOfContents } from "./blockNodes";
+import { Column, Columns } from "./columns";
+import { Decision } from "./decision";
 import { Expand } from "./expand";
 import { Hint } from "./hint";
 import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
+import { ArmatureChart } from "./armatureChart";
+import { ArmatureRoadmap } from "./armatureRoadmap";
+import { Properties, PropertyRow } from "./properties";
+import { PropertiesReportNode } from "./propertiesReport";
+import { LabelledPagesNode, RecentlyUpdatedNode } from "./pageLists";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
+import { MathBlock, MathInline } from "./math";
+import { Diagram } from "./diagram";
+import { LinkCardNode } from "./linkCard";
+import { Excerpt } from "./excerpt";
+import { Include } from "./include";
 import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 import { FindReplace } from "./findReplace";
 
@@ -321,7 +333,21 @@ export interface ExtensionOptions {
   pickIssue?: () => void;
   /** Opens the settings dialog the slash menu's Armature issue list starts with. */
   pickIssueList?: () => void;
-  /** Opens the dialog that changes a status or a date. */
+  /** Opens the settings dialog the slash menu's Armature chart starts with. */
+  pickChart?: () => void;
+  /** Opens the settings dialog the slash menu's Armature roadmap starts with. */
+  pickRoadmap?: () => void;
+  /** Opens the settings dialog the slash menu's properties report starts with. */
+  pickPropertiesReport?: () => void;
+  /** Opens the settings dialog the slash menu's content by label starts with. */
+  pickLabelledPages?: () => void;
+  /** Opens the dialog the slash menu's link preview asks for an address with. */
+  pickLinkCard?: () => void;
+  /** Opens the picker the slash menu's include asks what to include with. */
+  pickInclude?: () => void;
+  /** The page being edited, which an include may not show. */
+  pageId?: string;
+  /** Opens the dialog that changes a status, a date or a formula. */
   editInlineValue?: (target: InlineValueTarget) => void;
   /** Draws the emoji a colon offers; without it a colon offers none. */
   emoji?: Partial<EmojiOptions["suggestion"]>;
@@ -341,6 +367,13 @@ export function editorExtensions({
   armature,
   pickIssue,
   pickIssueList,
+  pickLinkCard,
+  pickChart,
+  pickRoadmap,
+  pickPropertiesReport,
+  pickLabelledPages,
+  pickInclude,
+  pageId,
   editInlineValue,
   emoji,
   find,
@@ -388,6 +421,9 @@ export function editorExtensions({
     Cell,
     Panel,
     Expand,
+    Columns,
+    Column,
+    Decision,
     HeadingAnchors,
     SlashMenu.configure({ suggestion: slash }),
     TableOfContents,
@@ -400,8 +436,21 @@ export function editorExtensions({
     ArmatureIssue.configure({ source: armature }),
     ArmatureIssueBlock.configure({ pick: pickIssue }),
     ArmatureIssueList.configure({ pick: pickIssueList }),
+    ArmatureChart.configure({ pick: pickChart }),
+    ArmatureRoadmap.configure({ pick: pickRoadmap }),
+    Properties,
+    PropertyRow,
+    PropertiesReportNode.configure({ pick: pickPropertiesReport }),
+    LabelledPagesNode.configure({ pick: pickLabelledPages }),
+    RecentlyUpdatedNode,
     Status.configure({ edit: editInlineValue }),
     DateNode.configure({ edit: editInlineValue }),
+    MathInline.configure({ edit: editInlineValue }),
+    MathBlock.configure({ edit: editInlineValue }),
+    Diagram,
+    LinkCardNode.configure({ pick: pickLinkCard }),
+    Excerpt,
+    Include.configure({ pick: pickInclude, pageId }),
     FindReplace.configure({ open: find }),
   ];
 }

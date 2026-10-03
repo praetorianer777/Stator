@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/home"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -26,12 +27,14 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
@@ -164,7 +167,7 @@ var operations = []operation{
 	{method: "GET", path: "/spaces", handler: "handleListSpaces", tool: "list_spaces", toolHelp: "The spaces the caller may see, with the keys other tools take; archived true lists archived ones too.", tag: "spaces", summary: "Every space the caller may see, by name; archived ones only when asked for.",
 		query:     []param{{name: "archived", schema: &openapi.Schema{Type: "boolean"}, description: "true to list archived spaces too; false when absent."}},
 		responses: ok(env{"spaces": []space.Space{}})},
-	{method: "POST", path: "/spaces", handler: "handleCreateSpace", orgWide: true, tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
+	{method: "POST", path: "/spaces", handler: "handleCreateSpace", orgWide: true, tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For the space's administrators.", responses: none()},
@@ -172,6 +175,9 @@ var operations = []operation{
 	{method: "GET", path: "/spaces/{spaceKey}/pages", handler: "handleListPages", tool: "list_child_pages", toolHelp: "The pages directly under a parent page, in order; without parent, those under the space's home page.", tag: "pages", summary: "The pages directly under a parent, by default under the space's home page, in order.",
 		query: []param{{name: "parent", description: "The page whose children to list.", schema: &openapi.Schema{Type: "string", Format: "uuid"}}}, responses: ok(env{"pages": []page.TreeNode{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/outline", handler: "handleSpaceOutline", tool: "get_space_outline", toolHelp: "Every page of a space in reading order with its depth, to find a page or where a new one goes.", tag: "pages", summary: "Every page of a space in reading order, with its depth, for choosing where a page goes.", responses: ok(env{"pages": []page.OutlineEntry{}})},
+	{method: "GET", path: "/spaces/{spaceKey}/decisions", handler: "handleListDecisions", tool: "list_decisions", toolHelp: "The decision items on a space's published pages, newest page first, each with its state and its page; state decided or undecided keeps one kind.", tag: "pages", summary: "The decision log of a space: every decision item on its published pages the caller may read, newest page first.",
+		query:     []param{{name: "state", schema: &openapi.Schema{Type: "string", Enum: []string{"decided", "undecided"}}, description: "decided or undecided to keep one state; both when absent."}},
+		responses: ok(page.DecisionLog{})},
 	// Archive (#37).
 	{method: "PUT", path: "/spaces/{spaceKey}/archive", handler: "handleArchiveSpace", tag: "archive", summary: "Archive a space: it stays readable, leaves the space list, search and the home page, and none of its pages changes. For the space's administrators; archiving it again is no change.",
 		responses: ok(env{"space": space.Space{}})},
@@ -183,11 +189,31 @@ var operations = []operation{
 		responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/pages/{pageID}/archive", handler: "handleUnarchivePage", tag: "archive", summary: "Unarchive a page and the pages archived with it; refused for a page archived with one above it. For the space's administrators.",
 		responses: ok(env{"page": page.Page{}})},
+	// Shortcuts (#39).
+	{method: "GET", path: "/spaces/{spaceKey}/shortcuts", handler: "handleListShortcuts", tool: "list_space_shortcuts", toolHelp: "The links a space pins above its page tree, in order: pages the caller may view and addresses on the web.", tag: "shortcuts",
+		summary:   "The space's shortcuts in order: each a page or an address. A shortcut to a page the caller may not view, or one in the trash, is left out.",
+		responses: ok(env{"shortcuts": []shortcut.Shortcut{}})},
+	{method: "POST", path: "/spaces/{spaceKey}/shortcuts", handler: "handleCreateShortcut", tag: "shortcuts",
+		summary: "Pin a shortcut last: a page the caller may view, or an http or https address with a label, its host when none is given. For the space's administrators.",
+		request: shortcut.ShortcutInput{}, responses: map[int]any{201: env{"shortcut": shortcut.Shortcut{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/spaces/{spaceKey}/shortcuts/{shortcutID}/move", handler: "handleMoveShortcut", tag: "shortcuts",
+		summary: "Put a shortcut after another of the space, or first when after is null, and answer them all in their new order. For the space's administrators.",
+		request: shortcut.ShortcutMove{}, responses: ok(env{"shortcuts": []shortcut.Shortcut{}})},
+	{method: "DELETE", path: "/spaces/{spaceKey}/shortcuts/{shortcutID}", handler: "handleDeleteShortcut", tag: "shortcuts",
+		summary: "Remove a shortcut; the page it opened stays. For the space's administrators.", responses: none()},
 	{method: "GET", path: "/spaces/{spaceKey}/trash", handler: "handleListTrash", tag: "trash", summary: "The space's trash, the latest first.", responses: ok(env{"items": []page.TrashItem{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash", handler: "handleEmptyTrash", tag: "trash", summary: "Delete everything in the space's trash for good. For administrators.", responses: none()},
 	{method: "POST", path: "/spaces/{spaceKey}/trash/{pageID}/restore", handler: "handleRestorePage", tag: "trash", summary: "Put a trashed page back where it was, or under the home page when that is gone.", responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash/{pageID}", handler: "handlePurgePage", tag: "trash", summary: "Delete a trashed page and what went with it for good. For administrators.", responses: none()},
-	{method: "POST", path: "/pages", handler: "handleCreatePage", tool: "create_page", toolHelp: "Add a page under parentId; body is a document as get_page returns one, and publish true makes it visible to the space at once.", tag: "pages", summary: "Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
+	{method: "POST", path: "/pages", handler: "handleCreatePage", tool: "create_page", toolHelp: "Add a page under parentId; body is a document as get_page returns one, and publish true makes it visible to the space at once. kind folder makes a folder, which holds pages and has no body.", tag: "pages", summary: "Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
+	{method: "PUT", path: "/pages/{pageID}/appearance", handler: "handleSetAppearance", tag: "pages", summary: "Replace how a page looks: one emoji before its title and in the tree, fixed or full width, and one of its own pictures as its cover with the point that stays in view. A null icon or cover takes it away. For the page's editors.", request: page.AppearanceInput{}, responses: ok(env{"appearance": page.Appearance{}})},
+	{method: "GET", path: "/pages/{pageID}/included", handler: "handleGetIncluded", tag: "pages", summary: "What an include of a page shows the caller: its published body, or one excerpt's blocks. 404 for a page the caller may not read, never published, or without that excerpt; 409 for an include that leads back to a page in via or is nested too deep.",
+		query: []param{
+			{name: "excerpt", schema: &openapi.Schema{Type: "string", Format: "uuid"}, description: "The excerpt to show; the whole page when absent."},
+			{name: "via", schema: &openapi.Schema{Type: "string"}, description: "The ids of the pages the include sits in, outermost first, separated by commas."},
+		},
+		responses: ok(env{"included": page.Included{}})},
+	{method: "GET", path: "/pages/{pageID}/excerpts", handler: "handleListExcerpts", tool: "list_page_excerpts", toolHelp: "The named excerpts of a page's published body, in reading order, each with its id, its name and the start of its words.", tag: "pages", summary: "The named excerpts of a page's published body, in reading order, for choosing one to include elsewhere.", responses: ok(env{"excerpts": []document.Excerpt{}})},
 	{method: "GET", path: "/pages/{pageID}", handler: "handleGetPage", tool: "get_page", toolHelp: "One page with its title, its body as a document, its version and its space.", tag: "pages", summary: "One page with its body, and the space it is in.", responses: ok(pageResponse{})},
 	{method: "PATCH", path: "/pages/{pageID}", handler: "handleUpdatePage", tool: "update_page", toolHelp: "Publish a new title or body document as the next version; version is the one the change was made from.", tag: "pages", summary: "Publish a new title or body as the next version, with no comment, over the version it was made from; drafts are left alone.", request: page.UpdateInput{}, responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/pages/{pageID}", handler: "handleTrashPage", tag: "pages", summary: "Move a page and every page below it to its space's trash.", responses: none()},
@@ -278,6 +304,25 @@ var operations = []operation{
 	{method: "GET", path: "/labels/{labelName}/pages", handler: "handleListLabelPages", tool: "list_label_pages", toolHelp: "The pages that carry a label.", tag: "labels", summary: "The pages out of the trash that carry a label and that the caller may view, by title.",
 		query:     append([]param{{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."}}, pageQuery...),
 		responses: ok(env{"pages": []label.LabeledPage{}, "total": 0, "limit": 0, "offset": 0})},
+	{method: "GET", path: "/properties-report", handler: "handlePropertiesReport", tool: "properties_report", toolHelp: "A register of the pages that carry every label given, with the value of each property their properties blocks set; column names the properties to show, all of them when absent.", tag: "labels", summary: "The properties of the published pages that carry every label given and that the caller may read, by title, for a properties report.",
+		query: []param{
+			{name: "label", repeated: true, description: "1 to 5 labels; a page carries all of them."},
+			{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."},
+			{name: "column", repeated: true, description: "Up to 10 property names to show, in order; every name found when absent."},
+		}, responses: map[int]any{200: label.PropertiesReport{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/labelled-pages", handler: "handleLabelledPages", tool: "list_labelled_pages", toolHelp: "The published pages that carry all, or with match any, any of the labels given, latest first or by title.", tag: "labels", summary: "The published pages out of the trash and the archive that carry the labels, all or any, and that the caller may read, for a content by label block.",
+		query: []param{
+			{name: "label", repeated: true, description: "1 to 5 labels."},
+			{name: "match", schema: &openapi.Schema{Type: "string", Enum: document.ListMatches}, description: "all when absent: a page carries every label; any: at least one."},
+			{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."},
+			{name: "sort", schema: &openapi.Schema{Type: "string", Enum: document.ListSorts}, description: "updated, the latest published first, when absent; or title."},
+			{name: "limit", schema: intParam, description: "1 to 50; 10 when absent."},
+		}, responses: map[int]any{200: env{"pages": []label.LabeledPage{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/updated-pages", handler: "handleUpdatedPages", tool: "list_updated_pages", toolHelp: "The pages published last, by anybody, in one space or across the organization, with who published each.", tag: "pages", summary: "The pages published last that the caller may read, in a space or across the organization, folders, the trash and the archive left out, for a recently updated block.",
+		query: []param{
+			{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."},
+			{name: "limit", schema: intParam, description: "1 to 50; 10 when absent."},
+		}, responses: map[int]any{200: env{"pages": []page.UpdatedPage{}}, 422: errorEnvelope{}}},
 
 	// Permissions (#19).
 	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "permissions", summary: "What the caller may do across the organization, which decides which buttons to draw.",
@@ -286,6 +331,11 @@ var operations = []operation{
 		responses: ok(env{"permissions": []perm.GlobalGrant{}})},
 	{method: "PUT", path: "/org/permissions/{permission}", handler: "handleSetGlobalPermission", orgWide: true, tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.",
 		request: perm.GlobalGrantInput{}, responses: ok(env{"permission": perm.GlobalGrant{}})},
+	{method: "GET", path: "/link-preview", handler: "handleLinkPreview", tag: "pages", summary: "What a web page says about itself, its title, summary and site, for a link's card, and the player it embeds in when its site is allowlisted. Read through the outbound guard and kept an hour.",
+		query:     []param{{name: "url", schema: &openapi.Schema{Type: "string", Format: "uri"}, description: "The full address of the web page, http or https."}},
+		responses: ok(env{"preview": unfurl.LinkPreview{}})},
+	{method: "GET", path: "/org/hub", handler: "handleGetHub", tool: "get_hub", toolHelp: "The organization's hub page, if there is one the caller may read, and whether everybody lands on it.", tag: "hub", summary: "The organization's hub page as the caller may see it, and whether everybody lands on it.", responses: ok(env{"hub": hub.Hub{}})},
+	{method: "PUT", path: "/org/hub", handler: "handleSetHub", orgWide: true, tag: "hub", summary: "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.", request: hub.HubInput{}, responses: ok(env{"hub": hub.Hub{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
 		responses: ok(env{"grants": []perm.SpaceGrant{}})},
 	{method: "PUT", path: "/spaces/{spaceKey}/permissions", handler: "handleSetSpacePermissions", tag: "permissions", summary: "Replace a space's whole permission table. For the space's administrators.",
@@ -538,6 +588,22 @@ var operations = []operation{
 			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
 			{name: "offset", schema: intParam, description: "How many matches to skip; 0 when absent."},
 		}, responses: map[int]any{200: env{"status": armature.Status(""), "issues": []armature.Issue{}, "total": 0, "limit": 0, "offset": 0, "url": ""}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/armature/chart", handler: "handleArmatureChart", tag: "armature",
+		summary: "A count of the issues an NQL query matches in one project, as the caller may see them, for a chart block: shared out by a field for a pie, or created and resolved each day. Refused with bad_query and its position.",
+		query: []param{
+			{name: "project", description: "The project's key, such as CP."},
+			{name: "q", description: "An NQL query, at most 2000 characters."},
+			{name: "kind", schema: &openapi.Schema{Type: "string", Enum: enumStrings(armature.ChartKinds)}, description: "pie or createdResolved."},
+			{name: "groupBy", schema: &openapi.Schema{Type: "string", Enum: armature.ChartGroupings}, description: "The field a pie shares the issues out by."},
+			{name: "days", schema: intParam, description: "How many days back created against resolved counts, 7 to 365; 30 when absent."},
+		}, responses: map[int]any{200: env{"status": armature.Status(""), "chart": (*armature.Chart)(nil)}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/armature/roadmap", handler: "handleArmatureRoadmap", tag: "armature",
+		summary: "The issues an NQL query matches in one project, as the caller may see them, on a timeline of their start and due days for a roadmap block: under their epics or their teams. Refused with bad_query and its position.",
+		query: []param{
+			{name: "project", description: "The project's key, such as CP."},
+			{name: "q", description: "An NQL query, at most 2000 characters."},
+			{name: "groupBy", schema: &openapi.Schema{Type: "string", Enum: enumStrings(armature.RoadmapGroupings)}, description: "epic or team."},
+		}, responses: map[int]any{200: env{"status": armature.Status(""), "roadmap": (*armature.Roadmap)(nil)}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/armature/projects", handler: "handleListArmatureProjects", tag: "armature",
 		summary:   "The Armature projects the caller may see, and whether they may file issues in each.",
 		responses: ok(env{"status": armature.Status(""), "projects": []armature.Project{}})},
@@ -658,12 +724,15 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(watch.Input{})] = "WatchInput"
 	b.Names[reflect.TypeOf(task.PageRef{})] = "TaskPage"
 	b.Names[reflect.TypeOf(task.SetDoneInput{})] = "TaskSetDoneInput"
+	b.FieldOverrides["LinkEmbed.kind"] = &openapi.Schema{Type: "string", Enum: unfurl.EmbedKinds}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
 	b.FieldOverrides["APIToken.scopes"] = scopes
 	b.FieldOverrides["OrgAPIToken.scopes"] = scopes
 	b.FieldOverrides["CreateTokenRequest.scopes"] = scopes
 	b.Enums[reflect.TypeOf(auth.OrgRole(""))] = enumStrings(auth.OrgRoles)
+	b.Enums[reflect.TypeOf(page.Kind(""))] = enumStrings(page.Kinds)
+	b.Enums[reflect.TypeOf(page.Width(""))] = enumStrings(page.Widths)
 	b.Enums[reflect.TypeOf(auth.RoleSource(""))] = enumStrings(auth.RoleSources)
 	b.Enums[reflect.TypeOf(auth.Locale(""))] = enumStrings(auth.Locales)
 	b.Enums[reflect.TypeOf(perm.SubjectType(""))] = enumStrings(perm.SubjectTypes)
@@ -680,9 +749,12 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(comment.AnchorState(""))] = enumStrings(comment.AnchorStates)
 	b.Enums[reflect.TypeOf(watch.Kind(""))] = enumStrings(watch.Kinds)
 	b.Enums[reflect.TypeOf(star.Kind(""))] = enumStrings(star.Kinds)
+	b.Enums[reflect.TypeOf(shortcut.Kind(""))] = enumStrings(shortcut.Kinds)
 	b.Enums[reflect.TypeOf(notify.Kind(""))] = enumStrings(notify.Kinds)
 	b.Enums[reflect.TypeOf(notify.Digest(""))] = enumStrings(notify.Digests)
 	b.Enums[reflect.TypeOf(armature.Status(""))] = enumStrings(armature.Statuses)
+	b.Enums[reflect.TypeOf(armature.ChartKind(""))] = enumStrings(armature.ChartKinds)
+	b.Enums[reflect.TypeOf(armature.RoadmapGrouping(""))] = enumStrings(armature.RoadmapGroupings)
 	b.Enums[reflect.TypeOf(armature.LinkState(""))] = enumStrings(armature.LinkStates)
 	b.FieldOverrides["Issue.priority"] = &openapi.Schema{Type: "string", Enum: armature.Priorities}
 	b.FieldOverrides["IssueStatus.category"] = &openapi.Schema{Type: "string", Enum: armature.StatusCategories}

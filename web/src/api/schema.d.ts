@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/chart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A count of the issues an NQL query matches in one project, as the caller may see them, for a chart block: shared out by a field for a pie, or created and resolved each day. Refused with bad_query and its position. */
+        get: operations["armatureChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/armature/connection": {
         parameters: {
             query?: never;
@@ -153,6 +170,23 @@ export interface paths {
         };
         /** The Armature projects the caller may see, and whether they may file issues in each. */
         get: operations["listArmatureProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/roadmap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The issues an NQL query matches in one project, as the caller may see them, on a timeline of their start and due days for a roadmap block: under their epics or their teams. Refused with bad_query and its position. */
+        get: operations["armatureRoadmap"];
         put?: never;
         post?: never;
         delete?: never;
@@ -542,6 +576,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/labelled-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The published pages out of the trash and the archive that carry the labels, all or any, and that the caller may read, for a content by label block. */
+        get: operations["labelledPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/labels": {
         parameters: {
             query?: never;
@@ -568,6 +619,23 @@ export interface paths {
         };
         /** The pages out of the trash that carry a label and that the caller may view, by title. */
         get: operations["listLabelPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/link-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a web page says about itself, its title, summary and site, for a link's card, and the player it embeds in when its site is allowlisted. Read through the outbound guard and kept an hour. */
+        get: operations["linkPreview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -732,6 +800,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/org/hub": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's hub page as the caller may see it, and whether everybody lands on it. */
+        get: operations["getHub"];
+        /** Choose the organization's hub page, or none, and whether everybody lands on it. For administrators. */
+        put: operations["setHub"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org/permissions": {
         parameters: {
             query?: never;
@@ -809,7 +895,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set. */
+        /** Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once. */
         post: operations["createPage"];
         delete?: never;
         options?: never;
@@ -846,6 +932,23 @@ export interface paths {
         /** What a person may do to a page and which grant or restriction decides each right, as the database answers it. For the space's administrators. */
         get: operations["inspectPageAccess"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/appearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace how a page looks: one emoji before its title and in the tree, fixed or full width, and one of its own pictures as its cover with the point that stays in view. A null icon or cover takes it away. For the page's editors. */
+        put: operations["setAppearance"];
         post?: never;
         delete?: never;
         options?: never;
@@ -994,6 +1097,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/excerpts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The named excerpts of a page's published body, in reading order, for choosing one to include elsewhere. */
+        get: operations["listExcerpts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/export": {
         parameters: {
             query?: never;
@@ -1022,6 +1142,23 @@ export interface paths {
         put?: never;
         /** Make pages under a page from Markdown files and their folders, sent as parts named file with their paths, or as a .zip; each folder of Markdown is a page too. */
         post: operations["importMarkdown"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/included": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What an include of a page shows the caller: its published body, or one excerpt's blocks. 404 for a page the caller may not read, never published, or without that excerpt; 409 for an include that leads back to a page in via or is nested too deep. */
+        get: operations["getIncluded"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1461,6 +1598,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/properties-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The properties of the published pages that carry every label given and that the caller may read, by title, for a properties report. */
+        get: operations["propertiesReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/readyz": {
         parameters: {
             query?: never;
@@ -1539,7 +1693,7 @@ export interface paths {
         /** Every space the caller may see, by name; archived ones only when asked for. */
         get: operations["listSpaces"];
         put?: never;
-        /** Make a space and its home page. For whoever may create spaces. */
+        /** Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see. */
         post: operations["createSpace"];
         delete?: never;
         options?: never;
@@ -1601,6 +1755,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/spaces/{spaceKey}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The decision log of a space: every decision item on its published pages the caller may read, newest page first. */
+        get: operations["listDecisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces/{spaceKey}/outline": {
         parameters: {
             query?: never;
@@ -1647,6 +1818,58 @@ export interface paths {
         /** Replace a space's whole permission table. For the space's administrators. */
         put: operations["setSpacePermissions"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/shortcuts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The space's shortcuts in order: each a page or an address. A shortcut to a page the caller may not view, or one in the trash, is left out. */
+        get: operations["listShortcuts"];
+        put?: never;
+        /** Pin a shortcut last: a page the caller may view, or an http or https address with a label, its host when none is given. For the space's administrators. */
+        post: operations["createShortcut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a shortcut; the page it opened stays. For the space's administrators. */
+        delete: operations["deleteShortcut"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a shortcut after another of the space, or first when after is null, and answer them all in their new order. For the space's administrators. */
+        post: operations["moveShortcut"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2019,6 +2242,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/updated-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The pages published last that the caller may read, in a space or across the organization, folders, the trash and the archive left out, for a recently updated block. */
+        get: operations["updatedPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users": {
         parameters: {
             query?: never;
@@ -2312,6 +2552,18 @@ export interface components {
             /** @enum {string} */
             state: "anchored" | "detached";
         };
+        Appearance: {
+            cover: components["schemas"]["Cover"] | null;
+            icon: string | null;
+            /** @enum {string} */
+            width: "fixed" | "full";
+        };
+        AppearanceInput: {
+            cover: components["schemas"]["Cover"] | null;
+            icon: string | null;
+            /** @enum {string} */
+            width: "fixed" | "full";
+        };
         Archive: {
             /** Format: date-time */
             archivedAt: string;
@@ -2359,7 +2611,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared";
+            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -2375,7 +2627,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared")[];
+            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -2408,6 +2660,25 @@ export interface components {
             deletePages: boolean;
             editPages: boolean;
             purgeTrash: boolean;
+        };
+        Chart: {
+            days: components["schemas"]["ChartDay"][];
+            groupBy: string;
+            /** @enum {string} */
+            kind: "pie" | "createdResolved";
+            slices: components["schemas"]["ChartSlice"][];
+            total: number;
+            url: string;
+        };
+        ChartDay: {
+            created: number;
+            day: string;
+            resolved: number;
+        };
+        ChartSlice: {
+            category: string;
+            count: number;
+            label: string;
         };
         ChooseThemeRequest: {
             builtIn?: boolean;
@@ -2489,6 +2760,12 @@ export interface components {
             inline: number;
             page: number;
         };
+        Cover: {
+            /** Format: uuid */
+            attachmentId: string;
+            focusX: number;
+            focusY: number;
+        };
         CreateFailure: {
             code: string;
             index: number;
@@ -2498,6 +2775,7 @@ export interface components {
             description?: string;
             key: string;
             name: string;
+            personal?: boolean;
         };
         CreateIssuesInput: {
             items: components["schemas"]["CreateItem"][];
@@ -2530,6 +2808,20 @@ export interface components {
             assetId: string;
             hotspotX: number;
             hotspotY: number;
+        };
+        Decision: {
+            /** Format: uuid */
+            pageId: string;
+            pageTitle: string;
+            state: string;
+            text: string;
+            /** Format: date-time */
+            updatedAt: string;
+            updatedByName: string;
+        };
+        DecisionLog: {
+            decisions: components["schemas"]["Decision"][];
+            truncated: boolean;
         };
         DefaultThemeRequest: {
             /** Format: uuid */
@@ -2597,6 +2889,11 @@ export interface components {
             name: string;
             spec: components["schemas"]["Spec"];
         };
+        Excerpt: {
+            id: string;
+            name: string;
+            text: string;
+        };
         Font: {
             /** Format: uuid */
             assetId?: string;
@@ -2653,6 +2950,21 @@ export interface components {
             updatedByName: string;
             verified: boolean;
         };
+        Hub: {
+            landing: boolean;
+            page: components["schemas"]["HubPage"] | null;
+        };
+        HubInput: {
+            landing: boolean;
+            /** Format: uuid */
+            pageId: string | null;
+        };
+        HubPage: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            title: string;
+        };
         Icon: {
             /** Format: uuid */
             assetId?: string;
@@ -2664,6 +2976,22 @@ export interface components {
             id: string;
             /** Format: uuid */
             parentId: string;
+            title: string;
+        };
+        Included: {
+            /** @description A JSON value. */
+            body: unknown;
+            excerpt: components["schemas"]["IncludedExcerpt"] | null;
+            page: components["schemas"]["IncludedPage"];
+        };
+        IncludedExcerpt: {
+            id: string;
+            name: string;
+        };
+        IncludedPage: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
             title: string;
         };
         Info: {
@@ -2769,9 +3097,29 @@ export interface components {
             /** Format: date-time */
             syncedAt: string | null;
         };
+        LinkEmbed: {
+            /** @enum {string} */
+            kind: "video" | "design";
+            provider: string;
+            src: string;
+        };
+        LinkPreview: {
+            description: string;
+            embed: components["schemas"]["LinkEmbed"] | null;
+            fetched: boolean;
+            siteName: string;
+            title: string;
+            url: string;
+        };
         LoginRequest: {
             email: string;
             password: string;
+        };
+        Mark: {
+            attrs?: {
+                [key: string]: unknown;
+            };
+            type: string;
         };
         MarkReadInput: {
             all?: boolean;
@@ -2820,6 +3168,15 @@ export interface components {
             /** Format: uuid */
             parentId: string;
             withChildren?: boolean;
+        };
+        Node: {
+            attrs?: {
+                [key: string]: unknown;
+            };
+            content?: components["schemas"]["Node"][];
+            marks?: components["schemas"]["Mark"][];
+            text?: string;
+            type: string;
         };
         Notification: {
             /** Format: uuid */
@@ -2891,6 +3248,7 @@ export interface components {
         };
         Page: {
             ancestors: components["schemas"]["Ref"][];
+            appearance: components["schemas"]["Appearance"];
             archived: components["schemas"]["Archive"] | null;
             /** @description A JSON value. */
             body: unknown;
@@ -2903,6 +3261,8 @@ export interface components {
             home: boolean;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder";
             labels: string[];
             owner: components["schemas"]["Owner"] | null;
             /** Format: uuid */
@@ -2936,6 +3296,8 @@ export interface components {
             beforeId?: string;
             /** @description A JSON value. */
             body?: unknown;
+            /** @enum {string} */
+            kind?: "page" | "folder";
             /** Format: uuid */
             parentId: string;
             publish?: boolean;
@@ -3022,6 +3384,16 @@ export interface components {
             canCreate: boolean;
             key: string;
             name: string;
+        };
+        PropertiesReport: {
+            columns: string[];
+            rows: components["schemas"]["ReportRow"][];
+            truncated: boolean;
+        };
+        Property: {
+            content: components["schemas"]["Node"][];
+            key: string;
+            text: string;
         };
         Provider: {
             clientId: string;
@@ -3111,6 +3483,15 @@ export interface components {
             lastError?: string;
             name: string;
         };
+        ReportRow: {
+            /** Format: uuid */
+            pageId: string;
+            spaceKey: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            values: (components["schemas"]["Property"] | null)[];
+        };
         RequestBody: {
             content: {
                 [key: string]: components["schemas"]["MediaType"];
@@ -3141,6 +3522,31 @@ export interface components {
         RestrictionsInput: {
             edit: components["schemas"]["SubjectRef"][];
             view: components["schemas"]["SubjectRef"][];
+        };
+        Roadmap: {
+            from: string | null;
+            /** @enum {string} */
+            groupBy: "epic" | "team";
+            groups: components["schemas"]["RoadmapGroup"][];
+            hidden: number;
+            to: string | null;
+            unscheduled: number;
+            url: string;
+        };
+        RoadmapBar: {
+            derived: boolean;
+            due: string | null;
+            key: string;
+            start: string | null;
+            status: components["schemas"]["IssueStatus"];
+            summary: string;
+            type: components["schemas"]["IssueType"];
+            url: string;
+        };
+        RoadmapGroup: {
+            epic: components["schemas"]["RoadmapBar"] | null;
+            name: string;
+            rows: components["schemas"]["RoadmapBar"][];
         };
         RpcError: {
             code: number;
@@ -3223,6 +3629,33 @@ export interface components {
             message?: string;
             recipients: components["schemas"]["SubjectRef"][];
         };
+        Shortcut: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "page" | "link";
+            label: string;
+            page: components["schemas"]["ShortcutPage"] | null;
+            url: string | null;
+        };
+        ShortcutInput: {
+            label?: string;
+            /** Format: uuid */
+            pageId?: string;
+            url?: string;
+        };
+        ShortcutMove: {
+            /** Format: uuid */
+            after: string | null;
+        };
+        ShortcutPage: {
+            archived: boolean;
+            home: boolean;
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            title: string;
+        };
         Space: {
             /** Format: date-time */
             archivedAt: string | null;
@@ -3237,6 +3670,7 @@ export interface components {
             id: string;
             key: string;
             name: string;
+            owner: components["schemas"]["SpaceOwner"] | null;
             starred: boolean;
             /** Format: date-time */
             updatedAt: string;
@@ -3252,6 +3686,11 @@ export interface components {
         };
         SpaceGrantsInput: {
             grants: components["schemas"]["SpaceGrantInput"][];
+        };
+        SpaceOwner: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         Spec: {
             backdrop?: components["schemas"]["Backdrop"];
@@ -3443,8 +3882,11 @@ export interface components {
         TreeNode: {
             archived: boolean;
             hasChildren: boolean;
+            icon: string | null;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder";
             /** Format: uuid */
             parentId: string;
             restricted: boolean;
@@ -3459,6 +3901,16 @@ export interface components {
             /** @enum {string} */
             locale?: "" | "en" | "de";
             showInReaders?: boolean;
+        };
+        UpdatedPage: {
+            authorName: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            publishedAt: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
         };
         User: {
             avatarUrl?: string;
@@ -3757,6 +4209,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    armatureChart: {
+        parameters: {
+            query?: {
+                /** @description The project's key, such as CP. */
+                project?: string;
+                /** @description An NQL query, at most 2000 characters. */
+                q?: string;
+                /** @description pie or createdResolved. */
+                kind?: "pie" | "createdResolved";
+                /** @description The field a pie shares the issues out by. */
+                groupBy?: "status" | "statusCategory" | "type" | "priority" | "assignee";
+                /** @description How many days back created against resolved counts, 7 to 365; 30 when absent. */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        chart: components["schemas"]["Chart"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -4071,6 +4576,55 @@ export interface operations {
             };
         };
     };
+    armatureRoadmap: {
+        parameters: {
+            query?: {
+                /** @description The project's key, such as CP. */
+                project?: string;
+                /** @description An NQL query, at most 2000 characters. */
+                q?: string;
+                /** @description epic or team. */
+                groupBy?: "epic" | "team";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        roadmap: components["schemas"]["Roadmap"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     searchArmatureIssues: {
         parameters: {
             query?: {
@@ -4349,7 +4903,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -4398,7 +4952,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -5140,6 +5694,57 @@ export interface operations {
             };
         };
     };
+    labelledPages: {
+        parameters: {
+            query?: {
+                /** @description 1 to 5 labels. */
+                label?: string[];
+                /** @description all when absent: a page carries every label; any: at least one. */
+                match?: "all" | "any";
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description updated, the latest published first, when absent; or title. */
+                sort?: "updated" | "title";
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["LabeledPage"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     suggestLabels: {
         parameters: {
             query?: {
@@ -5206,6 +5811,40 @@ export interface operations {
                         offset: number;
                         pages: components["schemas"]["LabeledPage"][];
                         total: number;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    linkPreview: {
+        parameters: {
+            query?: {
+                /** @description The full address of the web page, http or https. */
+                url?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        preview: components["schemas"]["LinkPreview"];
                     };
                 };
             };
@@ -5614,6 +6253,72 @@ export interface operations {
             };
         };
     };
+    getHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hub: components["schemas"]["Hub"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HubInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hub: components["schemas"]["Hub"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listGlobalPermissions: {
         parameters: {
             query?: never;
@@ -5894,6 +6599,43 @@ export interface operations {
                 content: {
                     "application/json": {
                         access: components["schemas"]["AccessReport"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setAppearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppearanceInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        appearance: components["schemas"]["Appearance"];
                     };
                 };
             };
@@ -6386,6 +7128,39 @@ export interface operations {
             };
         };
     };
+    listExcerpts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        excerpts: components["schemas"]["Excerpt"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     exportPage: {
         parameters: {
             query?: {
@@ -6457,6 +7232,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getIncluded: {
+        parameters: {
+            query?: {
+                /** @description The excerpt to show; the whole page when absent. */
+                excerpt?: string;
+                /** @description The ids of the pages the include sits in, outermost first, separated by commas. */
+                via?: string;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        included: components["schemas"]["Included"];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -7734,6 +8547,51 @@ export interface operations {
             };
         };
     };
+    propertiesReport: {
+        parameters: {
+            query?: {
+                /** @description 1 to 5 labels; a page carries all of them. */
+                label?: string[];
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description Up to 10 property names to show, in order; every name found when absent. */
+                column?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertiesReport"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     readiness: {
         parameters: {
             query?: never;
@@ -8165,6 +9023,40 @@ export interface operations {
             };
         };
     };
+    listDecisions: {
+        parameters: {
+            query?: {
+                /** @description decided or undecided to keep one state; both when absent. */
+                state?: "decided" | "undecided";
+            };
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionLog"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     spaceOutline: {
         parameters: {
             query?: never;
@@ -8290,6 +9182,162 @@ export interface operations {
                 content: {
                     "application/json": {
                         grants: components["schemas"]["SpaceGrant"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listShortcuts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        shortcuts: components["schemas"]["Shortcut"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShortcutInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        shortcut: components["schemas"]["Shortcut"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+                shortcutID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    moveShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+                shortcutID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShortcutMove"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        shortcuts: components["schemas"]["Shortcut"][];
                     };
                 };
             };
@@ -9285,6 +10333,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updatedPages: {
+        parameters: {
+            query?: {
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["UpdatedPage"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

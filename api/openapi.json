@@ -46,6 +46,9 @@
       "name": "home"
     },
     {
+      "name": "hub"
+    },
+    {
       "name": "labels"
     },
     {
@@ -74,6 +77,9 @@
     },
     {
       "name": "sharing"
+    },
+    {
+      "name": "shortcuts"
     },
     {
       "name": "spaces"
@@ -281,6 +287,126 @@
                   "required": [
                     "account"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/armature/chart": {
+      "get": {
+        "operationId": "armatureChart",
+        "summary": "A count of the issues an NQL query matches in one project, as the caller may see them, for a chart block: shared out by a field for a pie, or created and resolved each day. Refused with bad_query and its position.",
+        "tags": [
+          "armature"
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "description": "The project's key, such as CP.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "An NQL query, at most 2000 characters.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "pie or createdResolved.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pie",
+                "createdResolved"
+              ]
+            }
+          },
+          {
+            "name": "groupBy",
+            "in": "query",
+            "description": "The field a pie shares the issues out by.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "status",
+                "statusCategory",
+                "type",
+                "priority",
+                "assignee"
+              ]
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "How many days back created against resolved counts, 7 to 365; 30 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chart": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Chart"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "not_configured",
+                        "not_connected",
+                        "rejected",
+                        "unreachable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "chart",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -753,6 +879,103 @@
         }
       }
     },
+    "/armature/roadmap": {
+      "get": {
+        "operationId": "armatureRoadmap",
+        "summary": "The issues an NQL query matches in one project, as the caller may see them, on a timeline of their start and due days for a roadmap block: under their epics or their teams. Refused with bad_query and its position.",
+        "tags": [
+          "armature"
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "description": "The project's key, such as CP.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "An NQL query, at most 2000 characters.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupBy",
+            "in": "query",
+            "description": "epic or team.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "epic",
+                "team"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "roadmap": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Roadmap"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "not_configured",
+                        "not_connected",
+                        "rejected",
+                        "unreachable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "roadmap",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/armature/search": {
       "get": {
         "operationId": "searchArmatureIssues",
@@ -1159,6 +1382,7 @@
                 "page.restrictions_set",
                 "comment.deleted",
                 "theme.default_set",
+                "org.hub_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -1176,7 +1400,10 @@
                 "webhook.deleted",
                 "webhook.secret_rotated",
                 "webhook.disabled",
-                "page.shared"
+                "page.shared",
+                "space.shortcut_added",
+                "space.shortcut_moved",
+                "space.shortcut_removed"
               ]
             }
           },
@@ -1316,6 +1543,7 @@
                 "page.restrictions_set",
                 "comment.deleted",
                 "theme.default_set",
+                "org.hub_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -1333,7 +1561,10 @@
                 "webhook.deleted",
                 "webhook.secret_rotated",
                 "webhook.disabled",
-                "page.shared"
+                "page.shared",
+                "space.shortcut_added",
+                "space.shortcut_moved",
+                "space.shortcut_removed"
               ]
             }
           },
@@ -2421,6 +2652,111 @@
         }
       }
     },
+    "/labelled-pages": {
+      "get": {
+        "operationId": "labelledPages",
+        "summary": "The published pages out of the trash and the archive that carry the labels, all or any, and that the caller may read, for a content by label block.",
+        "tags": [
+          "labels"
+        ],
+        "parameters": [
+          {
+            "name": "label",
+            "in": "query",
+            "description": "1 to 5 labels.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "match",
+            "in": "query",
+            "description": "all when absent: a page carries every label; any: at least one.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "any"
+              ]
+            }
+          },
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key to stay inside; a space the caller may not view is not found.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "updated, the latest published first, when absent; or title.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "updated",
+                "title"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 10 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LabeledPage"
+                      }
+                    }
+                  },
+                  "required": [
+                    "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/labels": {
       "get": {
         "operationId": "suggestLabels",
@@ -2558,6 +2894,56 @@
                     "offset",
                     "pages",
                     "total"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link-preview": {
+      "get": {
+        "operationId": "linkPreview",
+        "summary": "What a web page says about itself, its title, summary and site, for a link's card, and the player it embeds in when its site is allowlisted. Read through the outbound guard and kept an hour.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "description": "The full address of the web page, http or https.",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preview": {
+                      "$ref": "#/components/schemas/LinkPreview"
+                    }
+                  },
+                  "required": [
+                    "preview"
                   ]
                 }
               }
@@ -3083,6 +3469,92 @@
         }
       }
     },
+    "/org/hub": {
+      "get": {
+        "operationId": "getHub",
+        "summary": "The organization's hub page as the caller may see it, and whether everybody lands on it.",
+        "tags": [
+          "hub"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hub": {
+                      "$ref": "#/components/schemas/Hub"
+                    }
+                  },
+                  "required": [
+                    "hub"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setHub",
+        "summary": "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.",
+        "tags": [
+          "hub"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HubInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hub": {
+                      "$ref": "#/components/schemas/Hub"
+                    }
+                  },
+                  "required": [
+                    "hub"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/org/permissions": {
       "get": {
         "operationId": "listGlobalPermissions",
@@ -3269,7 +3741,7 @@
     "/pages": {
       "post": {
         "operationId": "createPage",
-        "summary": "Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set.",
+        "summary": "Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once.",
         "tags": [
           "pages"
         ],
@@ -3489,6 +3961,66 @@
                   },
                   "required": [
                     "access"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/appearance": {
+      "put": {
+        "operationId": "setAppearance",
+        "summary": "Replace how a page looks: one emoji before its title and in the tree, fixed or full width, and one of its own pictures as its cover with the point that stays in view. A null icon or cover takes it away. For the page's editors.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppearanceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "appearance": {
+                      "$ref": "#/components/schemas/Appearance"
+                    }
+                  },
+                  "required": [
+                    "appearance"
                   ]
                 }
               }
@@ -4285,6 +4817,59 @@
         }
       }
     },
+    "/pages/{pageID}/excerpts": {
+      "get": {
+        "operationId": "listExcerpts",
+        "summary": "The named excerpts of a page's published body, in reading order, for choosing one to include elsewhere.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "excerpts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Excerpt"
+                      }
+                    }
+                  },
+                  "required": [
+                    "excerpts"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/export": {
       "get": {
         "operationId": "exportPage",
@@ -4408,6 +4993,73 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/included": {
+      "get": {
+        "operationId": "getIncluded",
+        "summary": "What an include of a page shows the caller: its published body, or one excerpt's blocks. 404 for a page the caller may not read, never published, or without that excerpt; 409 for an include that leads back to a page in via or is nested too deep.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "excerpt",
+            "in": "query",
+            "description": "The excerpt to show; the whole page when absent.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "via",
+            "in": "query",
+            "description": "The ids of the pages the include sits in, outermost first, separated by commas.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "included": {
+                      "$ref": "#/components/schemas/Included"
+                    }
+                  },
+                  "required": [
+                    "included"
+                  ]
                 }
               }
             }
@@ -6425,6 +7077,79 @@
         }
       }
     },
+    "/properties-report": {
+      "get": {
+        "operationId": "propertiesReport",
+        "summary": "The properties of the published pages that carry every label given and that the caller may read, by title, for a properties report.",
+        "tags": [
+          "labels"
+        ],
+        "parameters": [
+          {
+            "name": "label",
+            "in": "query",
+            "description": "1 to 5 labels; a page carries all of them.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key to stay inside; a space the caller may not view is not found.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "column",
+            "in": "query",
+            "description": "Up to 10 property names to show, in order; every name found when absent.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertiesReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/readyz": {
       "get": {
         "operationId": "readiness",
@@ -6798,7 +7523,7 @@
       },
       "post": {
         "operationId": "createSpace",
-        "summary": "Make a space and its home page. For whoever may create spaces.",
+        "summary": "Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see.",
         "tags": [
           "spaces"
         ],
@@ -7130,6 +7855,59 @@
         }
       }
     },
+    "/spaces/{spaceKey}/decisions": {
+      "get": {
+        "operationId": "listDecisions",
+        "summary": "The decision log of a space: every decision item on its published pages the caller may read, newest page first.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "decided or undecided to keep one state; both when absent.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "decided",
+                "undecided"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionLog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/spaces/{spaceKey}/outline": {
       "get": {
         "operationId": "spaceOutline",
@@ -7337,6 +8115,249 @@
                   },
                   "required": [
                     "grants"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/shortcuts": {
+      "get": {
+        "operationId": "listShortcuts",
+        "summary": "The space's shortcuts in order: each a page or an address. A shortcut to a page the caller may not view, or one in the trash, is left out.",
+        "tags": [
+          "shortcuts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shortcuts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Shortcut"
+                      }
+                    }
+                  },
+                  "required": [
+                    "shortcuts"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createShortcut",
+        "summary": "Pin a shortcut last: a page the caller may view, or an http or https address with a label, its host when none is given. For the space's administrators.",
+        "tags": [
+          "shortcuts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortcutInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shortcut": {
+                      "$ref": "#/components/schemas/Shortcut"
+                    }
+                  },
+                  "required": [
+                    "shortcut"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}": {
+      "delete": {
+        "operationId": "deleteShortcut",
+        "summary": "Remove a shortcut; the page it opened stays. For the space's administrators.",
+        "tags": [
+          "shortcuts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "shortcutID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}/move": {
+      "post": {
+        "operationId": "moveShortcut",
+        "summary": "Put a shortcut after another of the space, or first when after is null, and answer them all in their new order. For the space's administrators.",
+        "tags": [
+          "shortcuts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "shortcutID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortcutMove"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shortcuts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Shortcut"
+                      }
+                    }
+                  },
+                  "required": [
+                    "shortcuts"
                   ]
                 }
               }
@@ -8841,6 +9862,76 @@
         }
       }
     },
+    "/updated-pages": {
+      "get": {
+        "operationId": "updatedPages",
+        "summary": "The pages published last that the caller may read, in a space or across the organization, folders, the trash and the archive left out, for a recently updated block.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key to stay inside; a space the caller may not view is not found.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 10 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UpdatedPage"
+                      }
+                    }
+                  },
+                  "required": [
+                    "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users": {
       "get": {
         "operationId": "listMembers",
@@ -9910,6 +11001,72 @@
           "quote"
         ]
       },
+      "Appearance": {
+        "type": "object",
+        "properties": {
+          "cover": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Cover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "width": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "full"
+            ]
+          }
+        },
+        "required": [
+          "icon",
+          "width",
+          "cover"
+        ]
+      },
+      "AppearanceInput": {
+        "type": "object",
+        "properties": {
+          "cover": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Cover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "width": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "full"
+            ]
+          }
+        },
+        "required": [
+          "icon",
+          "width",
+          "cover"
+        ]
+      },
       "Archive": {
         "type": "object",
         "properties": {
@@ -10097,6 +11254,7 @@
               "page.restrictions_set",
               "comment.deleted",
               "theme.default_set",
+              "org.hub_set",
               "armature.connection_saved",
               "armature.connection_removed",
               "page.exported",
@@ -10114,7 +11272,10 @@
               "webhook.deleted",
               "webhook.secret_rotated",
               "webhook.disabled",
-              "page.shared"
+              "page.shared",
+              "space.shortcut_added",
+              "space.shortcut_moved",
+              "space.shortcut_removed"
             ]
           },
           "actorId": {
@@ -10192,6 +11353,7 @@
                 "page.restrictions_set",
                 "comment.deleted",
                 "theme.default_set",
+                "org.hub_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -10209,7 +11371,10 @@
                 "webhook.deleted",
                 "webhook.secret_rotated",
                 "webhook.disabled",
-                "page.shared"
+                "page.shared",
+                "space.shortcut_added",
+                "space.shortcut_moved",
+                "space.shortcut_removed"
               ]
             }
           },
@@ -10330,6 +11495,85 @@
           "purgeTrash",
           "addComments",
           "deletePages"
+        ]
+      },
+      "Chart": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChartDay"
+            }
+          },
+          "groupBy": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "pie",
+              "createdResolved"
+            ]
+          },
+          "slices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChartSlice"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "groupBy",
+          "total",
+          "slices",
+          "days",
+          "url"
+        ]
+      },
+      "ChartDay": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "integer"
+          },
+          "day": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "created",
+          "resolved"
+        ]
+      },
+      "ChartSlice": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "category",
+          "count"
         ]
       },
       "ChooseThemeRequest": {
@@ -10614,6 +11858,26 @@
           "detached"
         ]
       },
+      "Cover": {
+        "type": "object",
+        "properties": {
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "focusX": {
+            "type": "integer"
+          },
+          "focusY": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attachmentId",
+          "focusX",
+          "focusY"
+        ]
+      },
       "CreateFailure": {
         "type": "object",
         "properties": {
@@ -10644,6 +11908,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "personal": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -10766,6 +12033,57 @@
           "assetId",
           "hotspotX",
           "hotspotY"
+        ]
+      },
+      "Decision": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pageTitle": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedByName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageId",
+          "pageTitle",
+          "text",
+          "state",
+          "updatedAt",
+          "updatedByName"
+        ]
+      },
+      "DecisionLog": {
+        "type": "object",
+        "properties": {
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Decision"
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decisions",
+          "truncated"
         ]
       },
       "DefaultThemeRequest": {
@@ -10999,6 +12317,25 @@
           "spec"
         ]
       },
+      "Excerpt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "text"
+        ]
+      },
       "Font": {
         "type": "object",
         "properties": {
@@ -11212,6 +12549,67 @@
           "updatedByName"
         ]
       },
+      "Hub": {
+        "type": "object",
+        "properties": {
+          "landing": {
+            "type": "boolean"
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HubPage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "page",
+          "landing"
+        ]
+      },
+      "HubInput": {
+        "type": "object",
+        "properties": {
+          "landing": {
+            "type": "boolean"
+          },
+          "pageId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "pageId",
+          "landing"
+        ]
+      },
+      "HubPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey"
+        ]
+      },
       "Icon": {
         "type": "object",
         "properties": {
@@ -11250,6 +12648,67 @@
           "parentId",
           "title",
           "depth"
+        ]
+      },
+      "Included": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "A JSON value."
+          },
+          "excerpt": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IncludedExcerpt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "page": {
+            "$ref": "#/components/schemas/IncludedPage"
+          }
+        },
+        "required": [
+          "page",
+          "excerpt",
+          "body"
+        ]
+      },
+      "IncludedExcerpt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "IncludedPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey"
         ]
       },
       "Info": {
@@ -11657,6 +13116,67 @@
           "syncedAt"
         ]
       },
+      "LinkEmbed": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "video",
+              "design"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "src": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "kind",
+          "src"
+        ]
+      },
+      "LinkPreview": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "embed": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LinkEmbed"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fetched": {
+            "type": "boolean"
+          },
+          "siteName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "title",
+          "description",
+          "siteName",
+          "fetched",
+          "embed"
+        ]
+      },
       "LoginRequest": {
         "type": "object",
         "properties": {
@@ -11670,6 +13190,23 @@
         "required": [
           "email",
           "password"
+        ]
+      },
+      "Mark": {
+        "type": "object",
+        "properties": {
+          "attrs": {
+            "type": "object",
+            "additionalProperties": {
+              "description": "A JSON value."
+            }
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
         ]
       },
       "MarkReadInput": {
@@ -11840,6 +13377,38 @@
         },
         "required": [
           "parentId"
+        ]
+      },
+      "Node": {
+        "type": "object",
+        "properties": {
+          "attrs": {
+            "type": "object",
+            "additionalProperties": {
+              "description": "A JSON value."
+            }
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Node"
+            }
+          },
+          "marks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Mark"
+            }
+          },
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
         ]
       },
       "Notification": {
@@ -12118,6 +13687,9 @@
               "$ref": "#/components/schemas/Ref"
             }
           },
+          "appearance": {
+            "$ref": "#/components/schemas/Appearance"
+          },
           "archived": {
             "oneOf": [
               {
@@ -12160,6 +13732,13 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
           },
           "labels": {
             "type": "array",
@@ -12239,6 +13818,8 @@
           "spaceKey",
           "parentId",
           "title",
+          "kind",
+          "appearance",
           "body",
           "version",
           "home",
@@ -12301,6 +13882,13 @@
           },
           "body": {
             "description": "A JSON value."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
           },
           "parentId": {
             "type": "string",
@@ -12604,6 +14192,53 @@
           "key",
           "name",
           "canCreate"
+        ]
+      },
+      "PropertiesReport": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportRow"
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "columns",
+          "rows",
+          "truncated"
+        ]
+      },
+      "Property": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Node"
+            }
+          },
+          "key": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "text",
+          "content"
         ]
       },
       "Provider": {
@@ -12930,6 +14565,45 @@
           "healthy"
         ]
       },
+      "ReportRow": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Property"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "pageId",
+          "title",
+          "spaceKey",
+          "updatedAt",
+          "values"
+        ]
+      },
       "RequestBody": {
         "type": "object",
         "properties": {
@@ -13046,6 +14720,128 @@
         "required": [
           "view",
           "edit"
+        ]
+      },
+      "Roadmap": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "epic",
+              "team"
+            ]
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoadmapGroup"
+            }
+          },
+          "hidden": {
+            "type": "integer"
+          },
+          "to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unscheduled": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupBy",
+          "from",
+          "to",
+          "groups",
+          "unscheduled",
+          "hidden",
+          "url"
+        ]
+      },
+      "RoadmapBar": {
+        "type": "object",
+        "properties": {
+          "derived": {
+            "type": "boolean"
+          },
+          "due": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "start": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/IssueStatus"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "url",
+          "summary",
+          "type",
+          "status",
+          "start",
+          "due",
+          "derived"
+        ]
+      },
+      "RoadmapGroup": {
+        "type": "object",
+        "properties": {
+          "epic": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RoadmapBar"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoadmapBar"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "epic",
+          "rows"
         ]
       },
       "RpcError": {
@@ -13332,6 +15128,106 @@
           "recipients"
         ]
       },
+      "Shortcut": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "link"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ShortcutPage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "url",
+          "page"
+        ]
+      },
+      "ShortcutInput": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "ShortcutMove": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "after"
+        ]
+      },
+      "ShortcutPage": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "home": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "home",
+          "archived"
+        ]
+      },
       "Space": {
         "type": "object",
         "properties": {
@@ -13369,6 +15265,16 @@
           "name": {
             "type": "string"
           },
+          "owner": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SpaceOwner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "starred": {
             "type": "boolean"
           },
@@ -13392,7 +15298,8 @@
           "archivedByName",
           "can",
           "watching",
-          "starred"
+          "starred",
+          "owner"
         ]
       },
       "SpaceGrant": {
@@ -13457,6 +15364,22 @@
         },
         "required": [
           "grants"
+        ]
+      },
+      "SpaceOwner": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "Spec": {
@@ -14165,9 +16088,22 @@
           "hasChildren": {
             "type": "boolean"
           },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
           },
           "parentId": {
             "type": "string",
@@ -14190,7 +16126,9 @@
           "hasChildren",
           "archived",
           "unpublished",
-          "restricted"
+          "restricted",
+          "kind",
+          "icon"
         ]
       },
       "UpdateInput": {
@@ -14219,6 +16157,39 @@
             "type": "boolean"
           }
         }
+      },
+      "UpdatedPage": {
+        "type": "object",
+        "properties": {
+          "authorName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName",
+          "publishedAt",
+          "authorName"
+        ]
       },
       "User": {
         "type": "object",

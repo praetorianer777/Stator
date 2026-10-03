@@ -86,6 +86,7 @@ process, which is only right for a single api process. `/readyz` and
 | `reaction` | emoji reactions on pages and comments |
 | `label`, `watch`, `notify` | labels, watchers, in-app and email notifications |
 | `star`, `home` | starred pages and spaces, the home page's updates and edits |
+| `shortcut` | the links a space's administrators pin above its page tree, to pages or web addresses, each shown only to whoever may view its page |
 | `task` | the tasks of published pages: each person's list, and the worker's reminder on the due day |
 | `stale` | the stale content report: pages nobody published or opened for a while, for the administrators of their spaces |
 | `pageview` | page views: each person once a day per page, counted for every reader, named to editors within the retention, pruned into a tally by the worker |

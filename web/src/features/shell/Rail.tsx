@@ -1,4 +1,5 @@
 import { IconButton } from "@/components/ui";
+import { HomeNavItem, HubNavItem } from "@/features/hub/HubNav";
 import { Icon } from "@/components/icons";
 import { SIDEBAR_RAIL_WIDTH } from "@/config";
 import { t } from "@/i18n";
@@ -25,9 +26,8 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
         />
       </div>
       <nav aria-label={t.nav.everywhere} className="flex flex-1 flex-col items-center gap-1 py-3">
-        <NavItem to="/" exact icon="Home" rail>
-          {t.nav.home}
-        </NavItem>
+        <HomeNavItem rail />
+        <HubNavItem rail />
         <NavItem to="/spaces" icon="Space" rail>
           {t.nav.spaces}
         </NavItem>

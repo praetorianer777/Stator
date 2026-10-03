@@ -9,17 +9,33 @@ import { ChildPagesList, DocPageContext, TocList, childPagesSummary, tocSummary 
 import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
+import { columnStyle } from "./columns";
+import { decisionState } from "./decision";
 import { ExpandView, revealInExpands } from "./ExpandView";
 import { languageLabel, lowlight } from "./languages";
-import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
+import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type Doc, type DocNode } from "./schema";
 import { Passage, usePassages, type BlockPath } from "./passages";
 import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel } from "./InlineValueViews";
+import { MATH_BLOCK_NODE, MATH_INLINE_NODE, MathFormula, mathSource } from "./MathViews";
+import { DIAGRAM_NODE, DiagramFigure, diagramSource } from "./DiagramViews";
+import { LINK_CARD_NODE, LinkCard, linkCardView, webAddress } from "./LinkCardViews";
+import { INCLUDE_NODE, IncludeBlock, IncludeChain, includeId } from "./IncludeViews";
+import { PassagesContext } from "./passages";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
 import { DueChip } from "@/features/tasks/DueChip";
 import { taskOfItem } from "@/features/tasks/taskItem";
 
+import { ARMATURE_CHART_NODE, chartSettings } from "@/features/armature/chart";
+import { IssueChart } from "@/features/armature/IssueChart";
+import { IssueRoadmap } from "@/features/armature/IssueRoadmap";
+import { ARMATURE_ROADMAP_NODE, roadmapSettings } from "@/features/armature/roadmap";
+import { PropertiesReport } from "@/features/properties/PropertiesReport";
+import { PROPERTIES_REPORT_NODE, reportSettings } from "@/features/properties/report";
+import { LabelledPages, UpdatedPages } from "@/features/pageLists/PageLists";
+import { LABELLED_PAGES_NODE, RECENTLY_UPDATED_NODE, labelledSettings, updatedSettings } from "@/features/pageLists/lists";
+import { PROPERTIES_NODE, propertyKey } from "./properties";
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
 /**
@@ -39,6 +55,10 @@ export function DocView({
   /** False for a preview beside the page, whose headings must not take the page's anchors. */
   anchors?: boolean;
 }) {
+  // The page this is the body of starts the chain, so an include in it that
+  // leads back to it is caught.
+  const chain = useContext(IncludeChain);
+  const pageId = useContext(DocPageContext)?.id;
   const { copy, status } = useCopyHeadingLink();
   const headings = useMemo(() => headingsOfDoc(doc), [doc]);
   const keys = useMemo(() => issueKeysOf(doc), [doc]);
@@ -55,13 +75,25 @@ export function DocView({
   if (!doc) return null;
   return (
     <div ref={root} className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
-      <HeadingsContext value={headings}>
-        <WithIssues keys={keys}>
-          <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
-        </WithIssues>
-      </HeadingsContext>
+      <IncludeChain value={pageId && chain.length === 0 ? [pageId] : chain}>
+        <HeadingsContext value={headings}>
+          <WithIssues keys={keys}>
+            <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
+          </WithIssues>
+        </HeadingsContext>
+      </IncludeChain>
       {status}
     </div>
+  );
+}
+
+// An included document takes no anchors and no inline threads of the page
+// it is shown in: those belong to the page whose words they are.
+function drawIncluded(doc: Doc) {
+  return (
+    <PassagesContext value={null}>
+      <DocView doc={doc} anchors={false} />
+    </PassagesContext>
   );
 }
 
@@ -216,6 +248,92 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
           <Blocks nodes={node.content} copy={copy} path={path} />
         </ExpandView>
       );
+    case "columns":
+      return (
+        <div className="doc-columns" data-columns="">
+          {(node.content ?? []).map((column, c) => (
+            <div key={c} className="doc-column" data-column="" style={columnStyle(column.attrs?.width)}>
+              <Blocks nodes={column.content} copy={copy} path={[...path, c]} />
+            </div>
+          ))}
+        </div>
+      );
+    case "decision": {
+      const state = decisionState(node.attrs?.state);
+      return (
+        <div className="doc-decision" data-decision={state} data-block={block}>
+          <span className="doc-decision-badge">{state === "decided" ? t.editor.decision.decided : t.editor.decision.undecided}</span>
+          <p className="doc-decision-text" data-decision-text="">
+            {inline(node.content)}
+          </p>
+        </div>
+      );
+    }
+    // A row without a name is one still being typed, which a report leaves out too.
+    case PROPERTIES_NODE: {
+      const rows = (node.content ?? []).filter((row) => propertyKey(row.attrs?.key).trim() !== "");
+      if (rows.length === 0) return null;
+      return (
+        <table className="doc-properties" data-properties="" data-block={block}>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} data-property-row="">
+                <th scope="row">{propertyKey(row.attrs?.key)}</th>
+                <td className="doc-property-value">{inline(row.content)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    // Its rows are each reader's own, now; a comparison says what it gathers.
+    case PROPERTIES_REPORT_NODE: {
+      const settings = reportSettings(node.attrs);
+      if (settings.labels.length === 0) return null;
+      if (!copy) {
+        return (
+          <p className="doc-block doc-block-summary" data-properties-report="">
+            {t.properties.report.summary(settings.labels, settings.space)}
+          </p>
+        );
+      }
+      return <PropertiesReport settings={settings} draw={drawInline} />;
+    }
+    // A list's pages are each reader's own, now; a comparison says what it lists.
+    case LABELLED_PAGES_NODE: {
+      const settings = labelledSettings(node.attrs);
+      if (settings.labels.length === 0) return null;
+      if (!copy) return <p className="doc-block doc-block-summary">{t.pageLists.labelledTitle(settings.labels, settings.match, settings.space)}</p>;
+      return <LabelledPages settings={settings} />;
+    }
+    case RECENTLY_UPDATED_NODE: {
+      const settings = updatedSettings(node.attrs);
+      if (!copy) return <p className="doc-block doc-block-summary">{t.pageLists.updatedTitle(settings.space)}</p>;
+      return <UpdatedPages settings={settings} />;
+    }
+    // An excerpt reads as the blocks it marks; its name is for pickers.
+    case "excerpt":
+      return (
+        <div className="doc-excerpt" data-excerpt={String(node.attrs?.id ?? "")}>
+          <Blocks nodes={node.content} copy={copy} path={path} />
+        </div>
+      );
+    case INCLUDE_NODE: {
+      const id = includeId(node.attrs?.pageId);
+      return id ? <IncludeBlock pageId={id} excerptId={includeId(node.attrs?.excerptId)} draw={drawIncluded} /> : null;
+    }
+    case LINK_CARD_NODE: {
+      const url = webAddress(node.attrs?.url);
+      return url ? <LinkCard url={url} view={linkCardView(node.attrs?.view)} /> : null;
+    }
+    case DIAGRAM_NODE: {
+      const source = diagramSource(node.attrs?.source);
+      return source ? <DiagramFigure source={source} /> : null;
+    }
+    case MATH_BLOCK_NODE: {
+      const latex = mathSource(node.attrs?.latex);
+      return latex ? <MathFormula latex={latex} display /> : null;
+    }
     case "image":
       return <DocImage node={node} />;
     // A comparison says what the block asks for rather than drawing it: its
@@ -257,6 +375,30 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       return <IssueBlock issueKey={key} />;
     }
     // Its rows are each reader's own, now; a comparison says what it asks for.
+    case ARMATURE_CHART_NODE: {
+      const settings = chartSettings(node.attrs);
+      if (!settings.project || !settings.query.trim()) return null;
+      if (!copy) {
+        return (
+          <p className="doc-block doc-block-summary" data-armature-chart="">
+            {t.armature.chart.summary(settings.project, settings.query)}
+          </p>
+        );
+      }
+      return <IssueChart settings={settings} />;
+    }
+    case ARMATURE_ROADMAP_NODE: {
+      const settings = roadmapSettings(node.attrs);
+      if (!settings.project || !settings.query.trim()) return null;
+      if (!copy) {
+        return (
+          <p className="doc-block doc-block-summary" data-armature-roadmap="">
+            {t.armature.roadmap.summary(settings.project, settings.query)}
+          </p>
+        );
+      }
+      return <IssueRoadmap settings={settings} />;
+    }
     case ARMATURE_ISSUE_LIST_NODE: {
       const settings = listSettings(node.attrs);
       if (!settings.query.trim()) return null;
@@ -362,6 +504,11 @@ function items(nodes: DocNode[] | undefined, copy: Copy, path: BlockPath): React
   ));
 }
 
+/** Draws inline nodes as the read view does, for a block that shows another page's words. */
+export function drawInline(nodes: DocNode[]): ReactNode {
+  return inline(nodes);
+}
+
 function inline(nodes: DocNode[] | undefined): ReactNode {
   return (nodes ?? []).map((node, i) => <Fragment key={i}>{inlineNode(node)}</Fragment>);
 }
@@ -393,6 +540,10 @@ function inlineNode(node: DocNode): ReactNode {
     case DATE_NODE: {
       const day = isoDay(node.attrs?.date);
       return day ? marked(<DateChip day={day} />, node.marks) : null;
+    }
+    case MATH_INLINE_NODE: {
+      const latex = mathSource(node.attrs?.latex);
+      return latex ? marked(<MathFormula latex={latex} display={false} />, node.marks) : null;
     }
     default:
       return textOf(node);

@@ -621,6 +621,34 @@ while the caller follows Armature and Armature answered.
   `PUT /_stub/{tenant}/people/{person}/theme-delay` (`ms`), which holds back
   that person's `GET /themes/active`.
 
+## #51: the chart block
+
+A chart block stores a project, an NQL query, a chart kind (`pie` or
+`createdResolved`), a field to share a pie out by and a window of days;
+never the counts. Each reader's view asks Stator's
+`GET /armature/chart?project&q&kind&groupBy&days`, which asks Armature's
+`GET /projects/{projectKey}/reports/{kind}` as that reader with their own
+token: `chart` with `groupBy`, `measure=count` and `shape=donut` for a pie,
+`created_vs_resolved` with `days` for the other. Armature counts, so the
+chart covers every matching issue the reader may see, not a page of them.
+Answers are kept per token for as long as searches and cleared with them by
+the issue webhooks. A query Armature cannot read is 422 `bad_query` with its
+position, as for the list block; a project the reader may not see is a 422 on
+`project`.
+
+## #52: the roadmap block
+
+A roadmap block stores a project, an NQL query and a grouping (`epic` or
+`team`); never the dates. Each reader's view asks Stator's
+`GET /armature/roadmap?project&q&groupBy`, which asks Armature's
+`GET /projects/{projectKey}/plan?q` as that reader with their own token. The
+plan is the project's whole tree of items, each with `start`, `due` and
+`derived`, and `matched` lists the keys the query selects; Stator draws the
+matched issues alone, under the nearest epic (an issue type of level 1) or
+under the issue's `team`. Answers are kept per token for as long as searches
+and cleared with them. Refusals are the chart's: 422 `bad_query` with its
+position, or a 422 on `project`.
+
 ## The armature-stub
 
 `cmd/armature-stub` stands in for Armature in the integration suite and in
@@ -637,8 +665,20 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   created, updated or priority; anything else is 400 `bad_query` with a
   position), `GET /issues/{issueKey}` (with old keys of moved issues),
   `POST /issues`, `GET` and `POST /issues/{issueKey}/remote-links`,
-  `DELETE /issues/{issueKey}/remote-links/{remoteLinkID}`, `GET /themes/active`
-  and `GET /themes/{themeID}/export`.
+  `DELETE /issues/{issueKey}/remote-links/{remoteLinkID}`, `GET /themes/active`,
+  `GET /themes/{themeID}/export`, and, for the chart block of #51,
+  `GET /projects/{projectKey}/reports/{kind}` for `chart` (a count grouped by
+  `status`, `statusCategory`, `type`, `priority` or `assignee`) and
+  `created_vs_resolved` (a day by day count over `days`, ending today), both
+  filtered by `q`. Issues carry `resolvedAt` once done; making one done
+  through `PATCH /_stub/{tenant}/issues/{key}` resolves it now. For the
+  roadmap block of #52, `GET /projects/{projectKey}/plan` answers the
+  project's issues as a tree by parent, an item without days of its own
+  spanning its children's, and `matched` from `q`. Issues carry `startDate`,
+  `parent` and `team`, set through the same `PATCH` (`startDate`, `dueDate`,
+  `parent` by key, `team` by name, empty to clear), and
+  `POST /_stub/{tenant}/projects/{projectKey}/issues` (`summary`, `type`)
+  files an issue of any type, such as an `Epic`, which Stator never files.
 - **Who asks.** A token `armature_pat_{tenant}_{person}` is `person` in the
   stub's organization `tenant`, made on first use with fixed projects (`CP`
   that everybody may write, `SEC` that only `admin` may see), issue types and
@@ -660,7 +700,7 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   `id` to repeat an event), and `DELETE /_stub/{tenant}` to start a tenant
   afresh.
 - **The fixed world.** Every tenant has the projects `CP` and `SEC`, the
-  types Task, Bug, Story and Sub-task, and the issues `CP-1` to `CP-5` and
+  types Task, Bug, Story, Sub-task and Epic, and the issues `CP-1` to `CP-5` and
   `SEC-1`; `CP-5` was `SEC-2` before it moved, and answers to that key too.
   A person is named `{person}` capitalised, with the email
   `{person}@{tenant}.armature.test`, and alice is assigned `CP-1` and `CP-4`.

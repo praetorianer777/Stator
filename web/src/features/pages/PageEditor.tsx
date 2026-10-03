@@ -6,7 +6,7 @@ import { useMentionSource } from "@/api/mentions";
 import { pageQuery, usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useDiscardDraft, useDraft, usePublish, useSaveDraft, type Draft, type PublishOptions } from "@/api/versions";
-import { Button, ErrorBanner, Field, PageHeader, Skeleton } from "@/components/ui";
+import { Button, ErrorBanner, Field, PageHeader, Skeleton, cx } from "@/components/ui";
 import { useEditorAttachments } from "@/features/attachments/hooks";
 import { ArmatureIssuesProvider } from "@/features/armature/IssueChip";
 import { issueKeysOf } from "@/features/armature/issueKeys";
@@ -230,7 +230,12 @@ function PageForm({ page, space, draft }: { page: Page; space: Space; draft: Dra
   const error = publish.error && !(publish.error instanceof ApiError && publish.error.code === "publish_conflict") ? publish.error : discard.error;
 
   return (
-    <form id={PAGE_FORM_ID} onSubmit={openPublish} className="mx-auto max-w-3xl space-y-4" data-page-editor={page.id}>
+    <form
+      id={PAGE_FORM_ID}
+      onSubmit={openPublish}
+      className={cx("mx-auto space-y-4", page.appearance.width === "full" ? "max-w-none" : "max-w-3xl")}
+      data-page-editor={page.id}
+    >
       <PageHeader
         crumbs={pageCrumbs(space, page)}
         title={t.page.editing(page.title)}

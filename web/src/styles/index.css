@@ -8,6 +8,8 @@
 @import "@fontsource/inter/600.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
+/* KaTeX's fonts come along the same way, so a formula needs no third party either. */
+@import "katex/dist/katex.min.css";
 
 /* Design tokens: the Clay identity. Armature's docs/design/01-tokens.md is the table
  * these values come from.
@@ -140,11 +142,35 @@
  * first follows the system when nothing was chosen, the second is the explicit
  * choice, which overrides the system in both directions. */
 @layer theme {
+  /* Chart series, in a fixed order checked for colour blindness against the
+   * light surface; a chart takes them in turn and never by rank. Outside
+   * @theme, since a chart names its slots by number and Tailwind would keep
+   * only the ones it finds written out. */
+  :root {
+    --chart-1: #2a78d6;
+    --chart-2: #eb6834;
+    --chart-3: #1baf7a;
+    --chart-4: #eda100;
+    --chart-5: #e87ba4;
+    --chart-6: #008300;
+    --chart-7: #4a3aa7;
+    --chart-8: #e34948;
+    --chart-other: #a8a29a;
+  }
   :root[data-theme="dark"],
   :root:not([data-theme="light"]) {
     @media (prefers-color-scheme: dark) {
       --color-canvas: #14171c;
       --color-surface: #1a1e24;
+      --chart-1: #3987e5;
+      --chart-2: #d95926;
+      --chart-3: #199e70;
+      --chart-4: #c98500;
+      --chart-5: #d55181;
+      --chart-6: #008300;
+      --chart-7: #9085e9;
+      --chart-8: #e66767;
+      --chart-other: #6f6a62;
       --color-surface-raised: #222731;
       --color-surface-sunken: #0f1216;
       --color-surface-overlay: #262c36;
@@ -196,6 +222,15 @@
   :root[data-theme="dark"] {
     --color-canvas: #14171c;
     --color-surface: #1a1e24;
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    --chart-6: #008300;
+    --chart-7: #9085e9;
+    --chart-8: #e66767;
+    --chart-other: #6f6a62;
     --color-surface-raised: #222731;
     --color-surface-sunken: #0f1216;
     --color-surface-overlay: #262c36;
@@ -316,7 +351,7 @@
     overflow-wrap: anywhere;
   }
   .doc-content > * + *,
-  .doc-content :is(li, blockquote, td, th, [data-panel]) > * + * {
+  .doc-content :is(li, blockquote, td, th, [data-panel], [data-column]) > * + * {
     margin-top: 0.5rem;
   }
   .doc-content :is(h1, h2, h3, h4) {
@@ -616,6 +651,60 @@
   .doc-content .doc-expand[data-expanded="false"] > .doc-expand-body {
     display: none;
   }
+  /* Columns split their row by each one's stored share, evenly where none is
+   * stored. Under the shell breakpoint (48rem) side by side leaves too little
+   * of each to read, so they stack in their reading order. */
+  .doc-content .doc-columns {
+    display: flex;
+    gap: 1.5rem;
+  }
+  .doc-content .doc-column {
+    flex: var(--column-share, 50) 1 0;
+    min-width: 0;
+  }
+  @media (width < 48rem) {
+    .doc-content .doc-columns {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
+  /* An author sees where each column ends; a reader sees only the layout. */
+  .doc-content[contenteditable="true"] .doc-column {
+    outline: 1px dashed var(--color-border);
+    outline-offset: 0.25rem;
+    border-radius: var(--radius-control);
+  }
+  /* A decision item: its state as a label in words before its line, so it
+   * reads without colour, on the tint of a role that matches the state. */
+  .doc-content .doc-decision {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .doc-content .doc-decision-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .doc-decision-badge {
+    flex-shrink: 0;
+    border-radius: var(--radius-control);
+    padding: 0 0.375rem;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-ink);
+    background: var(--color-warning-subtle);
+  }
+  [data-decision="decided"] > .doc-decision-badge,
+  .doc-decision-badge[data-decision="decided"] {
+    background: var(--color-success-subtle);
+  }
+  button.doc-decision-badge {
+    cursor: pointer;
+  }
+  button.doc-decision-badge:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
   /* A table of contents and a list of child pages: generated lists in a
    * quiet frame, so they read as the page's furniture rather than its text. */
   .doc-content .doc-block {
@@ -830,6 +919,736 @@
     outline: 2px solid var(--color-focus);
     outline-offset: 1px;
   }
+  /* A formula on its own line scrolls sideways rather than widening the page
+   * on a narrow screen. */
+  .doc-content div.doc-math {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.25rem 0;
+  }
+  .doc-math .katex-display {
+    margin: 0;
+  }
+  .doc-math[data-math-error] code {
+    color: var(--color-danger);
+  }
+  .doc-math-edit {
+    cursor: pointer;
+  }
+  /* An Armature chart: thin marks, the surface's gap between slices,
+   * hairline grids, and every number also in a table. */
+  .doc-chart {
+    margin: 0;
+  }
+  .doc-chart > a {
+    display: inline-block;
+    margin-top: 0.5rem;
+  }
+  .doc-chart + .doc-chart {
+    margin-top: 1.5rem;
+  }
+  .doc-chart-title {
+    margin-bottom: 0.5rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .doc-chart-pie {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .doc-chart-donut {
+    width: 10rem;
+    height: 10rem;
+    flex: none;
+  }
+  .doc-chart-slice {
+    stroke: var(--color-surface);
+    stroke-width: 2;
+    transition: opacity 120ms;
+  }
+  .doc-chart-slice[data-active="false"] {
+    opacity: 0.35;
+  }
+  .doc-chart-hole-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    fill: var(--color-ink);
+  }
+  .doc-chart-hole-label {
+    font-size: 0.75rem;
+    fill: var(--color-ink-muted);
+  }
+  .doc-content .doc-chart-legend {
+    width: auto;
+    min-width: 0;
+    table-layout: auto;
+    margin: 0;
+    border: 0;
+    font-size: var(--text-sm);
+  }
+  .doc-content .doc-chart-legend :is(th, td) {
+    min-width: 0;
+    border: 0;
+    padding: 0.125rem 0.75rem 0.125rem 0;
+    font-weight: 400;
+    text-align: left;
+    background: none;
+  }
+  .doc-content .doc-chart-legend td {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink-muted);
+  }
+  .doc-chart-legend tr[data-active] th {
+    font-weight: 600;
+  }
+  .doc-chart-swatch {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    margin-right: 0.5rem;
+    border-radius: 2px;
+    vertical-align: -0.0625rem;
+  }
+  .doc-content .doc-chart-keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 0 0 0.25rem;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+    color: var(--color-ink);
+  }
+  .doc-content .doc-chart-keys li {
+    margin: 0;
+    list-style: none;
+  }
+  .doc-content .doc-chart-keys li::marker {
+    content: none;
+  }
+  .doc-chart-key {
+    display: inline-block;
+    width: 0.875rem;
+    height: 2px;
+    margin-right: 0.375rem;
+    vertical-align: middle;
+  }
+  .doc-chart-plot {
+    position: relative;
+  }
+  .doc-chart-lines {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .doc-chart-lines:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+  .doc-chart-grid {
+    stroke: var(--color-border);
+    stroke-width: 1;
+  }
+  .doc-chart-tick {
+    font-size: 11px;
+    fill: var(--color-ink-muted);
+  }
+  .doc-chart-line {
+    fill: none;
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .doc-chart-crosshair {
+    stroke: var(--color-ink-muted);
+    stroke-width: 1;
+  }
+  .doc-chart-dot {
+    stroke: var(--color-surface);
+    stroke-width: 2;
+  }
+  .doc-chart-tooltip {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    display: grid;
+    gap: 0.125rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface-overlay);
+    padding: 0.375rem 0.5rem;
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+  }
+  .doc-chart-tooltip[data-anchor="start"] {
+    transform: none;
+  }
+  .doc-chart-tooltip[data-anchor="end"] {
+    transform: translateX(-100%);
+  }
+  .doc-chart-tooltip strong {
+    color: var(--color-ink);
+  }
+  .doc-chart-tooltip-day {
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .doc-chart-table summary {
+    margin-top: 0.5rem;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    cursor: pointer;
+  }
+
+  /* A list of pages: a title and where it lives on each line, as the home
+   * page's feed reads. */
+  .doc-page-list-block + .doc-page-list-block {
+    margin-top: 1.5rem;
+  }
+  .doc-content .doc-page-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .doc-content .doc-page-list > li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin: 0;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .doc-content .doc-page-list > li::marker {
+    content: none;
+  }
+  .doc-page-list-title {
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+  a.doc-page-list-title:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+  .doc-page-list-meta {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+
+  /* Page properties: a narrow column of names beside their values, quieter
+   * than a table of content so the page's own words lead. */
+  .doc-content table.doc-properties {
+    table-layout: auto;
+    min-width: 0;
+    width: 100%;
+  }
+  .doc-content .doc-properties :is(th, td) {
+    border-width: 0 0 1px;
+    border-color: var(--color-border);
+    padding: 0.375rem 0.75rem 0.375rem 0;
+  }
+  .doc-content .doc-properties th {
+    width: 1%;
+    min-width: 8rem;
+    max-width: 16rem;
+    background: none;
+    font-weight: 500;
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+  }
+  .doc-property-key {
+    width: 100%;
+    min-width: 7rem;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    padding: 0.125rem 0.25rem;
+    font: inherit;
+    color: inherit;
+  }
+  .doc-property-key:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+  .doc-property-key::placeholder {
+    color: var(--color-ink-muted);
+  }
+  /* A properties report: a register that scrolls sideways rather than squeeze
+   * its columns, with headings that sort it. */
+  .doc-properties-report {
+    margin: 0;
+  }
+  .doc-report-scroll {
+    overflow-x: auto;
+  }
+  .doc-content table.doc-report {
+    table-layout: auto;
+    font-size: var(--text-sm);
+  }
+  .doc-content .doc-report th[scope="row"] {
+    background: none;
+    font-weight: 500;
+  }
+  .doc-report-sort {
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+  }
+  .doc-report-sort:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  /* An Armature roadmap: a row per issue, its label beside a track of whole
+   * days, bars in the colour of the status category, hairline month marks. */
+  .doc-roadmap-chart {
+    display: grid;
+    gap: 0.125rem;
+  }
+  .doc-roadmap-row {
+    display: grid;
+    grid-template-columns: minmax(7rem, 16rem) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 1.75rem;
+  }
+  .doc-content .doc-roadmap-rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .doc-content .doc-roadmap-rows > li {
+    margin: 0;
+  }
+  .doc-content .doc-roadmap-rows > li::marker {
+    content: none;
+  }
+  .doc-roadmap-group {
+    padding-top: 0.375rem;
+    border-top: 1px solid var(--color-border);
+  }
+  .doc-roadmap-head .doc-roadmap-label {
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .doc-roadmap-label {
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--color-ink-muted);
+  }
+  .doc-roadmap-rows .doc-roadmap-label {
+    padding-left: 0.75rem;
+  }
+  .doc-roadmap-key {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-ink);
+  }
+  .doc-roadmap-summary {
+    color: inherit;
+  }
+  .doc-roadmap-track {
+    position: relative;
+    height: 1.25rem;
+  }
+  .doc-roadmap-axis {
+    min-height: 1.25rem;
+  }
+  .doc-roadmap-axis .doc-roadmap-track {
+    overflow: hidden;
+  }
+  .doc-roadmap-tick {
+    position: absolute;
+    top: 0;
+    padding-left: 0.25rem;
+    border-left: 1px solid var(--color-border-strong);
+    font-size: 11px;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    color: var(--color-ink-muted);
+  }
+  .doc-roadmap-gridline,
+  .doc-roadmap-today {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 1px solid var(--color-border);
+  }
+  .doc-roadmap-today {
+    border-left: 2px solid var(--color-accent);
+  }
+  .doc-roadmap-bar {
+    position: absolute;
+    top: 0.25rem;
+    height: 0.75rem;
+    min-width: 0.375rem;
+    border-radius: 3px;
+    background: var(--roadmap-fill);
+    border: 1px solid var(--roadmap-fill);
+  }
+  /* A point is a day without its other end: a diamond on that day. */
+  .doc-roadmap-bar:is([data-shape="start"], [data-shape="due"]) {
+    width: 0.75rem;
+    min-width: 0;
+    border-radius: 2px;
+    transform: translateX(-50%) rotate(45deg) scale(0.8);
+  }
+  /* Days taken from an epic's issues are drawn as an outline, its own as a fill. */
+  .doc-roadmap-bar[data-derived],
+  .doc-roadmap-key-swatch[data-derived] {
+    background: var(--color-surface);
+    border-style: dashed;
+  }
+  :is(.doc-roadmap-bar, .doc-roadmap-key-swatch)[data-category="todo"] {
+    --roadmap-fill: var(--color-status-todo);
+  }
+  :is(.doc-roadmap-bar, .doc-roadmap-key-swatch)[data-category="in_progress"] {
+    --roadmap-fill: var(--color-status-progress);
+  }
+  :is(.doc-roadmap-bar, .doc-roadmap-key-swatch)[data-category="done"] {
+    --roadmap-fill: var(--color-status-done);
+  }
+  .doc-roadmap-key-swatch {
+    display: inline-block;
+    width: 1rem;
+    height: 0.625rem;
+    margin-right: 0.375rem;
+    border: 1px solid var(--roadmap-fill);
+    border-radius: 3px;
+    background: var(--roadmap-fill);
+    vertical-align: -0.0625rem;
+  }
+  .doc-roadmap-note {
+    margin-top: 0.5rem;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+  /* On a phone each label sits above its track, which keeps the whole width. */
+  @media (max-width: 40rem) {
+    .doc-roadmap-row {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+    }
+    .doc-roadmap-axis .doc-roadmap-label {
+      display: none;
+    }
+  }
+
+  /* An include: another page's words, framed and named, so a reader knows
+   * where they come from and where to change them. */
+  .doc-include {
+    border-left: 2px solid var(--color-border-strong);
+    padding-left: 0.75rem;
+  }
+  .doc-include-head {
+    margin-bottom: 0.25rem;
+    font-size: var(--text-xs);
+  }
+  .doc-include-source {
+    color: var(--color-ink-muted);
+  }
+  .doc-include-source:hover {
+    color: var(--color-ink);
+  }
+  .doc-include-note {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+  .doc-include-edit {
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    padding: 0.25rem 0.5rem;
+  }
+  .ProseMirror-selectednode.doc-include-edit,
+  .ProseMirror-selectednode > .doc-include-edit {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+  /* An excerpt: readers see only its blocks; its author sees where it
+   * begins and ends, and its name, since other pages include it by that. */
+  .doc-excerpt-edit {
+    border-left: 2px solid var(--color-accent);
+    padding-left: 0.75rem;
+  }
+  .doc-excerpt-head {
+    margin-bottom: 0.25rem;
+  }
+  .doc-excerpt-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-ink-muted);
+  }
+  .doc-excerpt-name {
+    min-width: 12rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    padding: 0.125rem 0.375rem;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+  .doc-excerpt-name:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+  /* A link card: the page's site, title and summary in a quiet frame, the
+   * whole card one link, so it reads as a pointer away from the page. */
+  .doc-link-card {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .doc-link-card-body {
+    display: grid;
+    gap: 0.125rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    padding: 0.625rem 0.875rem;
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+  a.doc-link-card-body:hover {
+    border-color: var(--color-border-strong);
+  }
+  a.doc-link-card-body:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+  .doc-link-card-site {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+  .doc-link-card-title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .doc-link-card-description {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .doc-link-card-url {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* A player keeps its shape as the page narrows: a video's wide frame, a
+   * design's squarer one. */
+  .doc-link-embed iframe {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-surface-sunken);
+  }
+  .doc-link-embed[data-link-embed="design"] iframe {
+    aspect-ratio: 4 / 3;
+  }
+  .doc-link-card-edit {
+    display: grid;
+    gap: 0.375rem;
+  }
+  .doc-link-card-views {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--text-xs);
+  }
+  .doc-link-card-views button {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    padding: 0.125rem 0.5rem;
+    color: var(--color-ink);
+    background: var(--color-surface);
+    cursor: pointer;
+  }
+  .doc-link-card-views button[aria-pressed="true"] {
+    background: var(--color-accent-subtle);
+    border-color: var(--color-accent);
+  }
+  .doc-link-card-views button:disabled {
+    color: var(--color-ink-muted);
+    cursor: not-allowed;
+  }
+  .doc-link-card-views button:focus-visible,
+  .doc-link-card-open:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+  .doc-link-card-open {
+    margin-left: auto;
+    color: var(--color-accent);
+  }
+  .ProseMirror-selectednode.doc-link-card-edit,
+  .ProseMirror-selectednode > .doc-link-card-edit {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+  /* A diagram draws at its own size up to the page's width, and scrolls
+   * sideways rather than shrinking its words past reading on a narrow screen. */
+  .doc-content .doc-diagram {
+    margin: 0;
+  }
+  .doc-diagram-svg {
+    overflow-x: auto;
+  }
+  .doc-diagram-svg svg {
+    display: block;
+    margin: 0 auto;
+    height: auto;
+  }
+  .doc-diagram-tools {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .doc-diagram-error {
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+  }
+  .doc-diagram-edit {
+    display: grid;
+    gap: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    padding: 0.5rem 0.75rem;
+  }
+  .doc-diagram-label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-ink-muted);
+  }
+  .ProseMirror-selectednode.doc-diagram-edit,
+  .ProseMirror-selectednode > .doc-diagram-edit {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+  div.doc-math-edit {
+    border-radius: var(--radius-control);
+  }
+  div.doc-math-edit:hover {
+    background: var(--color-surface);
+  }
+  .ProseMirror-selectednode.doc-math-edit,
+  .ProseMirror-selectednode > .doc-math-edit {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+    border-radius: var(--radius-control);
+  }
+}
+
+/* A page's cover: a wide band of its picture, cut to the point its author
+   chose, above the title. */
+.page-cover {
+  margin-bottom: 1.5rem;
+  height: 12rem;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+}
+.page-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (width >= 48rem) {
+  .page-cover {
+    height: 16rem;
+  }
+}
+.appearance-emoji {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+.appearance-emoji:hover {
+  background: var(--color-surface-raised);
+}
+.appearance-emoji[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+.appearance-emoji:focus-visible,
+.appearance-focus:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+.appearance-cover-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+.appearance-cover-choice img {
+  width: 4.5rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: var(--radius-control);
+}
+.appearance-focus {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  cursor: crosshair;
+}
+.appearance-focus img {
+  display: block;
+  width: 100%;
+  max-height: 16rem;
+  object-fit: contain;
+  border-radius: var(--radius-control);
+}
+.appearance-focus-point {
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  margin: -0.5rem 0 0 -0.5rem;
+  border: 2px solid var(--color-on-accent);
+  border-radius: 9999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-ink);
 }
 
 /* Where the page leaves room beside it, a passage's thread opens in a panel at

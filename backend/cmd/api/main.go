@@ -25,6 +25,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
@@ -40,12 +41,14 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
@@ -173,6 +176,9 @@ func run() error {
 		Notifications:     notify.NewService(cluster),
 		Stars:             star.NewService(cluster),
 		Shares:            share.NewService(cluster),
+		Shortcuts:         shortcut.NewService(cluster),
+		Hub:               hub.NewService(cluster),
+		Unfurl:            unfurlService(cfg, valkey, log),
 		Home:              home.NewService(cluster),
 		Stale:             stale.NewService(cluster),
 		Tasks:             task.NewService(cluster),
@@ -258,6 +264,16 @@ func telemetryConfig(cfg config.Config, service string) observability.Config {
 		OTLPEndpoint: cfg.Telemetry.OTLPEndpoint,
 		SampleRatio:  cfg.Telemetry.SampleRatio,
 	}
+}
+
+// unfurlService reads link previews through the outbound guard, keeping them
+// in Valkey when there is one.
+func unfurlService(cfg config.Config, valkey *redis.Client, log *slog.Logger) *unfurl.Service {
+	client := netguard.Client(unfurl.FetchTimeout, netguard.ParseAllow(cfg.Armature.OutboundAllow))
+	if valkey == nil {
+		return unfurl.NewService(client, nil, log)
+	}
+	return unfurl.NewService(client, valkey, log)
 }
 
 // openValkey connects to STATOR_VALKEY_URL, or returns nil when it is blank.

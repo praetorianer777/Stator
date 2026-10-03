@@ -123,6 +123,35 @@ describe("expand blocks in the reader's view", () => {
   });
 });
 
+describe("columns in the reader's view", () => {
+  const side: Doc = {
+    type: "doc",
+    content: [
+      {
+        type: "columns",
+        content: [
+          { type: "column", attrs: { width: 25 }, content: [{ type: "paragraph", content: [{ type: "text", text: "Narrow" }] }] },
+          {
+            type: "column",
+            attrs: { width: 50 },
+            content: [{ type: "heading", attrs: { level: 2, id: "middle" }, content: [{ type: "text", text: "Middle" }] }],
+          },
+          { type: "column", attrs: { width: 99 }, content: [{ type: "paragraph", content: [{ type: "text", text: "Unshared" }] }] },
+        ],
+      },
+    ],
+  };
+
+  it("sit side by side at their shares, a share out of range left even, in reading order", () => {
+    const { container } = render(<DocView doc={side} />);
+    const columns = container.querySelectorAll<HTMLElement>("[data-columns] > [data-column]");
+    expect(columns).toHaveLength(3);
+    for (const [i, words] of ["Narrow", "Middle", "Unshared"].entries()) expect(columns[i]).toHaveTextContent(words);
+    expect([...columns].map((c) => c.style.getPropertyValue("--column-share"))).toEqual(["25", "50", ""]);
+    expect(screen.getByRole("heading", { name: "Middle" })).toHaveAttribute("id", "middle");
+  });
+});
+
 describe("DocView", () => {
   it("draws each node as the element that means it", () => {
     const { container } = render(<DocView doc={doc} />);

@@ -458,3 +458,36 @@ what is archived; anything but true or false is 422.
   `page_archive` and `page_unarchive`, which check that the actor administers
   the space, keeps archived pages where they are even for an administrator's
   `page_place`, and stamps when and by whom a space was archived.
+
+## #39 Space shortcuts
+
+Added after M2, in migration 00320; the types live in `internal/shortcut`.
+
+| Operation | Needs | Answers |
+|---|---|---|
+| `GET /spaces/{spaceKey}/shortcuts` | view of the space | `{shortcuts}` in order: each `Shortcut` with `kind` (`page` or `link`), `label`, `url` (null for a page) and `page` (`id`, `title`, `spaceKey`, `home`, `archived`; null for a link) |
+| `POST /spaces/{spaceKey}/shortcuts` | administer of the space | 201 `{shortcut}`, pinned last; takes `pageId` or `url`, and `label`; 422 on `url`, `pageId` or `label`; 409 when the space holds 30 already |
+| `POST /spaces/{spaceKey}/shortcuts/{shortcutID}/move` | administer of the space | `{shortcuts}` in their new order; takes `after`, the shortcut to follow, or null for first; 422 on `after` for itself or one not in the list |
+| `DELETE /spaces/{spaceKey}/shortcuts/{shortcutID}` | administer of the space | 204; 404 for one that is gone |
+
+- **Pages.** A page shortcut opens a page of any space that the
+  administrator may view, out of the trash. It is left out for whoever may
+  not view the page, and while the page is in the trash; it comes back with
+  a restore and goes when the page is purged. An archived page is shown,
+  marked `archived`. An empty `label` shows the page's title as it is now.
+- **Addresses.** Only `http://` and `https://` with a host and without a
+  name or password before it, at most 2000 characters, no blanks or control
+  characters; the scheme is kept in lower case. An empty `label` is the
+  host. The client opens one in a new tab with
+  `rel="noopener noreferrer nofollow"`.
+- **Order** is a rank from `internal/rank`, as sibling pages have; a move
+  writes the one row, or numbers them all again when two share a rank.
+- **Audit.** `space.shortcut_added`, `space.shortcut_moved` and
+  `space.shortcut_removed` on the space, with the label and the address or
+  page.
+- **The database** lets `stator_app` read a shortcut only while the actor
+  may view its space and, for a page, the page; add, reorder and remove
+  them only as an administrator of the space, and add one to a page only
+  while the actor may view it out of the trash; it refuses any other
+  address, any change of where one points or which space holds it, and a
+  31st, counted under a lock whoever adds it.

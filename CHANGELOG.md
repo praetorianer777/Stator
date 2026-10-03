@@ -505,6 +505,142 @@ and the versioning [Semantic Versioning](https://semver.org/).
   changing, rotating and deleting a webhook is written to the audit log.
   Moving a published page to another parent or space and deleting one now
   write `page.moved` and `page.deleted` to the outbox.
+- Space shortcuts (#39): the administrators of a space pin up to 30 links
+  above its page tree, to pages of any space or to web addresses, under
+  Shortcuts in the space's settings, and order them with move up and move
+  down buttons (`/spaces/{key}/shortcuts`, read by the
+  `list_space_shortcuts` tool). Everybody who reads the space sees them; a
+  shortcut to a page is left out for whoever may not view the page or while
+  it is in the trash. Only `http` and `https` addresses without a name or
+  password are taken, refused by the database as well as the API, and they
+  open in a new tab with `rel="noopener noreferrer nofollow"`. Adding,
+  moving and removing a shortcut is written to the audit log.
+- Column layouts (#42). "Two columns" and "Three columns" in the slash menu
+  put the blocks under the caret in the first of that many columns side by
+  side. The toolbar changes the layout, even or with one column wider, and
+  going from three columns to two folds the third into the second;
+  "Remove the columns, keep their content" puts the blocks back one after
+  another. Under 48rem the columns stack in reading order. The page stores
+  each column's share of the row, from 10 to 80 percent; the API refuses
+  fewer than two columns or more than three, and a comment holds none.
+  Search reads every column, and a Markdown export writes them one after
+  another.
+- Personal spaces (#35). Everybody may make one space of their own from the
+  space directory, named for them, for drafts and notes. Nobody else sees it
+  until its owner shares it from its permissions like any other space;
+  administrators of the organization reach it, as every space. The directory
+  lists personal spaces apart, with whose each is. The database holds to one
+  each, made only by and for its owner, and refuses handing it to somebody
+  else; members still need `createSpace` for any other space.
+- Folders in the page tree (#36). "New folder" in a page's menu, or on a
+  folder, adds a folder: a named group of pages and folders with no text of
+  its own, seen at once by everybody who may see where it is. Opening one
+  lists what it holds; it is renamed from its menu, and moved, copied,
+  restricted, archived and deleted as a page is, with what it holds. The
+  tree marks it with a folder icon. A folder takes no body, drafts,
+  versions, comments, reactions, labels, files, shares or stewardship, and
+  the database refuses them whichever request asks; `POST /pages` takes
+  `kind: "folder"`.
+- The organization's hub page (#40). Under Hub page in the account menu, an
+  administrator names one page of any space as the organization's hub,
+  which everybody who may read it finds under Hub in the navigation, and
+  may make it where everybody lands when they open Stator; their own home
+  is then at `/home`. `GET /org/hub` and `PUT /org/hub` (administrators
+  only, in the audit log). Only administrators change it, the database
+  included, and a hub page deleted for good stops being the hub.
+- Decision items (#44). "Decision" in the slash menu turns a line into a
+  decision, undecided until its label is pressed to mark it decided; readers
+  see the state in words before the line. Each space has a decision log,
+  under Decisions in its navigation, quoting every decision on its published
+  pages the reader may read, newest page first, filtered by state and linked
+  to its page (`GET /spaces/{key}/decisions`, the `list_decisions` tool).
+  Search finds a page by its decisions, and a Markdown export writes each
+  as a line that starts with its state.
+- Math formulas (#45). "Inline formula" and "Formula block" in the slash
+  menu ask for LaTeX source in a dialog that typesets it as it is typed and
+  refuses what cannot be typeset; a click on a formula opens its source
+  again. Readers see formulas typeset with KaTeX, with MathML for screen
+  readers. Search finds a page by its formulas' source, and a Markdown
+  export writes them as `$...$` and a `math` fence, which an import reads
+  back as a formula.
+- Diagrams (#46). "Diagram" in the slash menu puts in a block of Mermaid
+  text with a sketch to start from, drawn below the text as it is typed and
+  saying why when it cannot be. Readers see the diagram as SVG in the
+  page's own colours and can download it as an SVG file. Labels are text,
+  never markup, links or pictures. Search finds a page by its diagrams'
+  text, and a Markdown export writes a `mermaid` fence, which an import
+  reads back as a diagram.
+- Link previews and embeds (#47). An address pasted alone on an empty line
+  becomes a card with the linked page's title, summary and site, and the
+  page's player when it is a YouTube or Vimeo video or a Figma file; "Link
+  preview" in the slash menu asks for one. A card's toolbar shows it inline,
+  as a link titled as its page, as a card, or embedded. The server reads
+  what a page says about itself through the outbound guard
+  (`STATOR_OUTBOUND_ALLOW`), from its head alone, and keeps it an hour in
+  Valkey (`GET /link-preview`); a page keeps only the address and the view.
+  Players load in a sandbox from the origins the Content-Security-Policy's
+  new `frame-src` names.
+- Excerpts (#48). "Excerpt" in the slash menu marks the blocks under the
+  caret as a named part of the page, framed for its author with its name in
+  a box to type over; readers see only the blocks. An excerpt keeps an id
+  that outlives a rename, and the editor gives a pasted copy an id and a
+  name of its own and takes the frame off one pasted inside another.
+  `GET /pages/{id}/excerpts` (the `list_page_excerpts` tool) lists a page's
+  published excerpts by name with the start of their words, and a picker
+  chooses a page and the whole of it or one excerpt, for the include block.
+- Include page and excerpt blocks (#53). "Include" in the slash menu opens
+  the picker, and the page then shows the other page's published words, or
+  one excerpt's, framed and named with a link to where they come from, kept
+  up to date as that page changes. Each reader sees what they may read: a
+  page kept from them, never published, or whose excerpt is gone is one
+  notice that says no more. A page cannot include itself, and an include
+  that leads back to a page on the way to it, or more than five deep, says
+  so instead (`GET /pages/{id}/included`). A Markdown export keeps what an
+  include points at, which an import reads back.
+- Page appearance (#50). Appearance in a page's menu chooses an emoji,
+  found by name, shown before the title and in the page tree; a width,
+  fixed for comfortable lines or full for wide tables and diagrams; and a
+  cover picture from the page's own files or a new upload, with the point
+  that stays in view, set by a click or the arrow keys. Only the page's
+  editors change it (`PUT /pages/{id}/appearance`), the database included;
+  a cover is always one of the page's own pictures, and goes when its file
+  is deleted.
+- Armature charts (#51). "Armature chart" in the slash menu asks for a
+  project, an NQL query and a chart: a pie of the matching issues by status,
+  status category, type, priority or assignee, or the issues created against
+  resolved each day over 7 days to a year. Armature counts them with each
+  reader's own token, through its reports, so every reader sees the chart of
+  the issues they may see (`GET /armature/chart`). The pie keeps status
+  categories in their board colours and lists every share in a table beside
+  it; created against resolved reads a day at a time with the pointer or the
+  arrow keys and opens as a table. The stub serves the two reports and
+  `resolvedAt`.
+- Armature roadmaps (#52). "Armature roadmap" in the slash menu asks for a
+  project and an NQL query, and draws the matching issues on a timeline of
+  their start and due dates, under their epics or their teams, from
+  Armature's plan read with each reader's own token
+  (`GET /armature/roadmap`). An epic heads its issues even when the query
+  leaves it out, and spans their dates when it has none of its own, drawn as
+  an outline; a bar takes its status category's board colour, a lone start or
+  due date is a point, and today is marked. Issues without either date are
+  counted below it. The stub serves the plan, an Epic type, teams, start dates
+  and parents.
+- Page properties (#54). "Properties" in the slash menu puts a two-column
+  table of names and values on a page, starting with Owner and Status; a
+  value takes marks, mentions, dates and statuses, Enter starts the next
+  property and Backspace in an empty one removes it. Search reads them as
+  table rows. "Properties report" lists the published pages carrying every
+  label given, in one space or all, with a column for each property found or
+  for those named, sortable by any column, as each reader may read them
+  (`GET /properties-report`, also the MCP tool `properties_report`).
+- Page lists (#55). "Content by label" lists the published pages carrying
+  all or any of some labels, in one space or all, latest first or by title,
+  5 to 50 of them (`GET /labelled-pages`); "Recently updated" lists the pages
+  published last in a space or across the organization, with who published
+  each (`GET /updated-pages`). Both show each reader the pages they may read,
+  leave the trash, the archive and folders out, and keep only their settings
+  in the page, so an overview stays current without editing. The latest blog
+  posts block waits for blog posts (#72).
 - Tasks (#56): a checklist item is a task, assigned to the first person it
   @mentions and due on the first date in it. Publishing gives every item a
   `taskId` and reads the tasks from the stored page, so the document stays

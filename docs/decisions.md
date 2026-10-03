@@ -3,6 +3,388 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-03: A list of pages holds what to list, and asks each time it is read
+
+Content by label and recently updated store their settings in the page, as
+the chart and the report do, and each reader's view asks for the pages: an
+overview stays current without anybody editing it, and two readers of one
+page rightly see two lists when they may read different pages. Both count a
+page from when it was last published, which only publishing moves, so a
+draft or a move does not bring a page to the top. Folders, the
+trash and the archive stay out, as they do on the home page. A latest blog
+posts block needs blog posts first, so it moved to #72.
+
+## 2026-10-03: Page properties live in the page body and are read when asked
+
+A page's properties are a block of its body, a row per name with the value
+as inline content, not columns of the page or a table of their own. They are
+versioned, compared, exported and searched with the rest of the page, take
+the same mentions, dates and statuses as any line, and need no second place
+to keep in step. The name is an attribute of its row, so a value is one run
+of inline content the editor already knows how to edit.
+
+A properties report reads the published bodies of the pages carrying every
+label given, at most 200, as the decision log reads decision items: on each
+request, as the reader, so restricted pages and drafts stay out without a
+copy to keep current. Names are matched by their words in any case, the
+first value of a name on a page wins, and a row without a name is one still
+being typed, left out of the report and the read view alike. A report takes
+the labels as AND, so a register narrows by adding a label.
+
+## 2026-10-03: A roadmap is Armature's plan, grouped by Stator
+
+A roadmap block holds a project, a query and a grouping, never the dates,
+as a chart holds what to count. Each reader's view asks Armature's
+`GET /projects/{key}/plan` as that reader. The plan is the project's issues
+as a tree, with each issue's start and due dates or, for an epic without its
+own, the span of its children's; it is returned whole, with the keys the
+query matches. Stator groups only the matched issues, so an epic the query
+leaves out still heads the issues it matched, and the epic's span is
+Armature's, not one Stator works out again.
+
+Grouping by epic uses the nearest epic above an issue; an initiative above
+the epics is a row like any issue outside an epic, not a group, so a roadmap
+of epics is not one group holding everything. Grouping by team uses the
+issue's own team. Issues with neither date are counted under the timeline
+rather than drawn at an invented day, and a block stops at 100 rows and says
+how many it left out.
+
+The timeline is rows of labels beside tracks of whole days, laid out in HTML
+rather than one drawing, so it reflows on a phone, label above track. A bar
+takes its status category's board colour, as the board does, with a legend
+naming each, and every bar's dates are also in words for screen readers. An
+epic's span taken from its issues is an outline, its own dates a fill.
+
+## 2026-10-03: Armature counts a chart, with the reader's own token
+
+A chart block holds what to count and how to draw it, never the counts, as
+the issue list holds its query and never its rows. Each reader's view asks
+Armature's reports, `chart` for a pie and `created_vs_resolved` for the
+other, as that reader: Armature counts every issue the query matches that
+the reader may see, which no page of search results could, and two readers
+of one page may rightly see two different charts. The reports take a
+project, so a chart names one; its query narrows within it.
+
+The pie is a donut, as Armature draws it, with every share also in a table
+beside it, so no number hangs on telling colours apart. A status category
+keeps its board colour; any other field takes the chart palette's slots in
+order, a fixed set of eight checked for colour blindness against the light
+and the dark surface, and past eight the smallest shares fold into Other
+rather than take a colour nobody can tell apart. Created against resolved is
+two lines on one axis of whole issues, read a day at a time with the pointer
+or the arrow keys and offered as a table. The drawing is one unit to the
+pixel of the page it is on, so its words keep their size on a phone.
+
+## 2026-10-03: How a page looks is a property of the page, not a version of it
+
+A page's emoji, width and cover are columns of the page row, changed at
+once with `PUT /pages/{id}/appearance`, not part of the body or the
+versions: they say how the page is presented, not what it says, and an
+author choosing a cover should not have to publish to see it or find it in
+the history between two edits of the words. Changing them needs edit on the
+page, as editing the words does; a trigger holds the app's role to that.
+
+The emoji is one emoji, perhaps several code points joined, never words:
+the service checks it against what makes an emoji, and the database keeps
+it to sixteen code points without spaces. The tree shows it in place of
+the folder mark when there is one, so a page is found by sight.
+
+A cover is one of the page's own pictures: the foreign key on
+`(id, cover_attachment_id)` to `attachment (page_id, id)` refuses any other
+file, and deleting the file takes the cover with it, as the hub goes with
+its page. Its focus is a point in percent of the picture, kept in view by
+`object-position` however wide the window cuts it; the dialog sets it with
+a click on the picture or with the arrow keys.
+
+Full width takes the page's reading width limit off, in the reader and the
+editor alike, for tables and diagrams too wide for comfortable lines.
+
+## 2026-10-02: An include is read for each reader, and the chain it sits in catches cycles
+
+An include is one block, `include`, holding a `pageId` and, for one
+excerpt, an `excerptId`; never the words. The words are read when the page
+is shown, through `GET /pages/{id}/included`, as the reader: so the included
+page's restrictions hold for every page that includes it, and its next
+version reaches them all without anybody saving them. It shows the
+published body only, as the included page's own readers see it.
+
+Whatever keeps the words from a reader, a restriction, a page never
+published, a folder, an excerpt removed or a page deleted, answers the same
+404 and the same notice, so an include tells a reader nothing about a page
+they may not read, not even that it exists.
+
+Cycles are caught twice. Saving a page that includes itself, at any depth
+of its body, is refused, as a draft and as a version. A longer loop, A
+includes B includes A, cannot be refused on save without reading pages the
+author may not read, so it is caught as it is shown: each include asks with
+`via`, the chain of pages it sits in, starting from the page being read,
+and the server answers 409 for a page already on it, or for a chain five
+deep. The reader then sees the loop's notice once, in place of the page
+showing itself inside itself.
+
+Included words take no anchors and no inline threads of the page they are
+shown in: those belong to the page whose words they are. They are not in
+the including page's search text either, for the same reason; search finds
+them on their own page. The Markdown export writes what the include points
+at, which an import into the same organization reads back.
+
+## 2026-10-02: An excerpt is a frame in the page, found by an id that outlives its name
+
+An excerpt is one block, `excerpt`, around the blocks it names, with an
+`id` and a `name`. It is part of the page rather than a record beside it,
+so it is versioned, restricted, searched and exported with the page, and
+moving text in or out of it is ordinary editing. An include finds it by its
+id, so renaming an excerpt breaks nothing; the name is what a picker shows.
+
+Within a page ids and names are unique, names ignoring case, and an
+excerpt never holds another at any depth: an include of the outer one would
+otherwise carry the inner one twice over. The validator refuses all three
+straight from the body, and the editor keeps to them as it goes: a pasted
+copy gets a new id and a stock name, and an excerpt pasted into another
+gives up its frame and keeps its blocks. The name box may be emptied while
+a name is typed; the page keeps the last name until there is a new one.
+
+`GET /pages/{id}/excerpts` reads the published body a reader may view, so a
+draft's excerpts are its author's until it is published, as an include
+shows published words only. The picker chooses a space, a page from its
+outline, and the whole page or one excerpt, leaving out the page being
+edited; the include block (#53) is what uses it.
+
+## 2026-10-02: A link card keeps its address, and the server reads the page for each reader
+
+A link card is one block, `linkCard`, holding an http or https `url` and a
+`view` of `card` or `embed`. What the linked page says, its title, summary
+and site, is not stored: it would be readable by anybody who reads the page
+whatever the site later says, and would go stale, as an Armature issue's
+summary would. The inline view is no node of its own: it is an ordinary link
+whose text is the page's title, so it reads, exports and searches as any
+link does.
+
+`GET /link-preview` reads the page on the server, not in the reader's
+browser, so a reader's address and cookies never reach the site and the
+browser's policy stays `connect-src 'self'`. The read goes through the same
+outbound guard as webhooks and Armature, `STATOR_OUTBOUND_ALLOW` included,
+so a member cannot make the server read Valkey, Postgres or a cloud metadata
+address. It takes only text/html, reads at most 512 KB looking for the head,
+gives up after 5 seconds and three redirects, and sends no credentials.
+Answers are kept in Valkey for an hour, an unreadable page for five
+minutes, shared by every organization: what a public page says about itself
+is the same for all of them. A page that cannot be read still gets a card,
+named by its host. No picture from the page is shown: it would load from the
+site in the reader's browser, which the policy refuses and the reader did
+not ask for.
+
+Embeds are an allowlist in code, not a setting: YouTube through its privacy
+enhanced player, Vimeo's player and Figma's embed page, each worked out from
+the address alone, without reading the site. The Content-Security-Policy's
+`frame-src` names exactly their origins, a unit test holds the compose and
+chart policies to the list, and the frame is sandboxed to scripts, its own
+origin, popups and presentation. A card whose site has no player shows as a
+card whatever its view says.
+
+An address pasted alone on an empty line becomes a card, and the site's
+player when it has one, without an undo step of its own for the change of
+view; pasted among words it stays a link. The compose stack lets the guard
+read the web container, so the browser suite has a page inside the network
+to preview; the chart allows nothing inside the network, as before.
+
+## 2026-10-02: A diagram is stored as its Mermaid text and drawn in the reader's browser
+
+A diagram is one block, `diagram`, holding its Mermaid text in `source`, up
+to 20000 characters. The text is what is versioned, compared, searched and
+exported, so it is all that is kept; the SVG is drawn from it wherever the
+page is shown. Drawing on the server would take a browser engine in the API
+for every save, and a stored drawing would be markup in the body that goes
+stale when Mermaid or the theme changes.
+
+The editor shows the text in a field with the drawing below it, drawn again
+once typing has paused for 300 ms; a text Mermaid cannot read keeps the last
+drawing's place with the reason and the text. The reader's view draws it
+the same way and offers the drawing as an SVG file to download, which is the
+export of the drawing; the Markdown export writes a `mermaid` fence, drawn
+by Markdown readers that draw them and read as text by the rest, and the
+import reads one back as a diagram.
+
+Mermaid runs in strict mode with labels drawn as SVG text: click handlers
+and scripts are dropped, and a tag in a label reads as its own words rather
+than becoming an element, since strict mode alone keeps an `<img>` that would
+fetch its source. It is capped at the text limit and 500 edges. It takes its
+colours from the theme's tokens when they are hex, and Mermaid's light or
+dark set otherwise. It is large, so it loads with the first diagram on a
+page rather than with the application.
+
+Search reads a diagram's text as lines of the page, in `document.PlainText`
+and in `page_plain_blocks` alike (migration 00380).
+
+## 2026-10-02: A formula is stored as its TeX source and typeset by each reader's browser
+
+A formula is a node holding nothing but its LaTeX source: `mathInline` in
+a line of text, `mathBlock` on a line of its own, each with one `latex`
+attribute of up to 4000 characters. The source is what an author edits and
+what search, an export and a copy read, so it is the one thing kept; the
+typeset markup is drawn from it with KaTeX wherever the page is shown,
+in the editor and in the read-only view alike, and never stored, so no
+body carries markup a reader's browser would run.
+
+KaTeX runs with `trust` off: `\href`, `\url`, `\includegraphics` and the
+`\html...` commands draw as their own names in red rather than as links,
+images or attributes. Expansion stops at 1000 macro steps and a box at 20
+em, so a formula that calls itself or asks for a huge box cannot hold or
+cover the page. KaTeX writes MathML beside its markup for screen readers.
+Its stylesheet and fonts are bundled, as the text fonts are, so a formula
+needs no third party at load time.
+
+The dialog that edits a formula refuses a source KaTeX cannot read, with
+KaTeX's own reason; the server takes any source within the limit, since
+TeX's grammar is KaTeX's to judge, and a reader meets a broken formula as
+its source in red, saying so.
+
+Search reads a formula by its source, in `document.PlainText` and in
+`page_plain_blocks` alike (migration 00370). A Markdown export writes an
+inline formula between dollar signs and a block one as a `math` fence,
+which is how Markdown that typesets formulas writes them; the import reads
+the fence back as a formula. An inline formula comes back as text, since
+reading dollar signs as formulas would turn prices in imported prose into
+mathematics.
+
+## 2026-10-02: A decision is a line of the page, and the log is read from published bodies
+
+A decision item is one node, `decision`, holding a line of text as a
+paragraph does and a `state` of `decided` or `undecided`. It is a block of
+the page rather than a record beside it, so it is written, versioned,
+restricted, searched and moved with the page it is on, and a decision can
+sit in a panel, an expand block or a table like any line. Its state is a
+label in words before the line, so it reads without colour, and in the
+editor that label is the button that changes it.
+
+A space's decision log, `GET /spaces/{key}/decisions`, is read from the
+published bodies of the space's pages the reader may view, out of the trash
+and the archive, newest page first and in reading order within a page; the
+database finds the pages with a JSON path, and the service quotes the
+lines. Nothing is kept beside the pages, so the log cannot drift from them:
+a decision changed in a draft reaches the log when it is published, and a
+restricted page keeps its decisions to those who may read it. It is cut at
+500 decisions, saying so, and filters by state.
+
+Search reads a decision as a line of the page's words, in
+`document.PlainText` and in `page_plain_blocks` alike (migration 00360).
+Markdown has no decision items, so an export writes one as a line that
+begins with its state in bold.
+
+## 2026-10-02: The hub is a page an administrator points at, and landing on it is a redirect
+
+The organization's hub is not a document of its own but one of its pages,
+named by `org.hub_page_id`: a page is already written, published, restricted,
+watched and kept in history, and a hub that needed its own editor and its
+own rules would repeat all of that. Any page of any space may be the hub;
+the foreign key on `(id, hub_page_id)` to `page (org_id, id)` keeps it one of
+the organization's own, and a page deleted for good stops being it.
+
+Only administrators choose it, and the database holds to that: a trigger
+refuses a change of the hub or of landing by anybody else acting through
+the app's role. Everybody else reads it through `GET /org/hub`, which names
+the page only to whoever may view it, out of the trash and the archive. A
+hub the reader may not read is no hub for them: the navigation leaves it
+out and they land on their own home.
+
+`hub_landing` makes `/` a redirect to the hub, decided in the route before
+anything renders, so nobody sees their own home flash first. The reader's
+own home then lives at `/home`, where the navigation's Home leads; a check
+keeps landing off while there is no hub.
+## 2026-10-02: A folder is a page of another kind, version 1 from the start
+
+A folder is a row of `page` with `kind = 'folder'`, not a table of its own:
+it has a parent, a rank, a place in the trash and the archive, restrictions
+that reach what is below it, and moves and copies with its subtree, all as
+the page tree already does them. What it lacks is everything a page holds:
+a CHECK keeps its body the empty document, and one trigger on each table of
+a page's content (versions, drafts, files, labels, threads, comments,
+reactions, shares, owners, verifications) refuses a row for a folder,
+whichever service writes it. The API answers that refusal as a 409 with the
+code `folder`. A row stays the kind it was made as, and a home page is
+never a folder, since a space opens on it.
+
+A folder is made at version 1 with no version row. A row at version 0 is
+its creator's alone until published, and so would be everything put in it,
+but a folder has nothing to publish. It has no history, so renaming it
+changes its title and nothing else. Its `published_at` stays empty, which
+keeps it out of the home page's feeds and the stale report; search finds
+pages by their published version, which a folder has none of.
+
+Opening a folder shows the pages and folders in it, the list a child pages
+block draws, and offers new pages, new folders, renaming, moving and the
+trash. It has no editor, history, comments or watching of its own.
+## 2026-10-02: A personal space is an ordinary space with an owner, and starts closed
+
+A personal space is a row of `space` with `owner_id` set to the person it
+belongs to, not a kind of space of its own: pages, search, trash, archive and
+permissions work in it as in any other, and sharing it is the space's own
+permission table, which its owner administers. A partial unique index on
+`(org_id, owner_id)` keeps it to one each, so the directory and the button
+that offers one can trust there is at most one.
+
+Making a space takes `createSpace`, which members do not hold by default, but
+a personal space takes only `use`, with a token for the whole organization:
+everybody needs somewhere to draft before sharing, and it reaches nobody
+else until they share it. The insert policy says so, and requires the owner
+to be the person making it, so nobody makes one in somebody else's name. The
+grant trigger gives a personal space no `everyone` rows, only its owner's
+`administer`.
+
+The owner is fixed when the space is made; a trigger refuses any other
+owner, since a space handed over would be somebody's without their asking.
+When the owner's account goes, `owner_id` becomes null and what is left is an
+ordinary space that only administrators reach.
+
+Administrators of the organization still reach every personal space, as they
+reach every other space: they hold every permission so that no space is ever
+orphaned (2026-09-30), and a space nobody else can open is the one most at
+risk of that. Private means private from the other members.
+
+## 2026-10-02: A shortcut is a ranked row of the space, read through the page's own view rule
+
+Space shortcuts (#39) are links the administrators of a space pin above its
+page tree. Armature's project sidebar has none, so there was nothing to
+follow. A shortcut is a row of `space_shortcut` naming either a page or an
+address, never both, with a label and a rank from `internal/rank`, the
+ranks sibling pages use: moving one writes that one row, and the move names
+the shortcut it goes after, as a page's place does, rather than resending
+the whole order, which a list a reader sees only part of could not do.
+They are kept under Shortcuts in the space's settings, with move up and
+move down buttons that the keyboard works as it works everything else;
+dragging was left out, since the tree's own drag has the place dialog
+beside it for the keyboard and a list of thirty needs no more than buttons.
+
+Who keeps them is who administers the space, as for its name and its
+archive: they are what everybody reading the space sees first, so one
+editor should not rearrange them for all. Changes are allowed in an
+archived space, as renaming it is, since a shortcut is the space's
+furniture and not a page. Each addition, move and removal is written to the
+audit log on the space, as changes of its details are. Reading them is the `list_space_shortcuts` tool;
+changing them is administration, and not a tool.
+
+A shortcut to a page must never name a page to somebody who may not view
+it, so the list is read through `perm_page_viewable` for the reader, in the
+query and again in a restrictive policy on the table: a restricted page's
+shortcut is simply not in the list, and nothing says one was left out. A
+shortcut to a page in the trash is left out for everybody and comes back
+with the page; a purge takes it along. An archived page stays readable, and
+its shortcut is shown, marked archived, rather than hidden as the tree
+hides it: an administrator pinned it on purpose and may unpin it. The
+database lets an administrator point one only at a page they may view, out
+of the trash, and lets nobody change where a shortcut points or which space
+holds it, only its rank and label.
+
+An address is held to the web's own schemes, `http` and `https`, with a
+host and no name or password before it, by the API and by a check on the
+table, so `javascript:`, `data:` and the like are refused whatever writes
+the row; the client opens one only when it still parses as such, in a new
+tab with `noopener noreferrer nofollow`, as links in pages are. An address
+without a label shows its host, and a page without one shows its title as
+it is now, so a rename needs no second change. A space holds at most 30,
+`shortcut.MaxPerSpace`, which `space_shortcut_max()` repeats in SQL and a
+trigger counts under a lock per space, so two additions at once cannot both
+pass.
 ## 2026-10-02: A task is a checklist item of the published page, assigned by its first mention
 
 Tasks (#56) add no node. A checklist item is a task; the first person its
@@ -786,6 +1168,35 @@ An emoji is a character of the text, not a node: it reads, copies, searches
 and diffs like any other, and needs nothing on the server. The names a colon
 finds it by come from gemoji, bundled with the client under the MIT License
 and loaded with the first colon, so no emoji is ever fetched from elsewhere.
+
+## 2026-10-02: Columns store a share of their row and stack on a narrow screen
+
+A column layout is a `columns` node holding two or three `column` nodes,
+each with any blocks a panel takes. The bound on how many is the
+allowlist's: a node spec now names the fewest and most children it takes,
+which the server and the web editor's check read alike, because one column
+is just the page and a fourth is too narrow to read beside the text. A
+column inside a column is allowed, since a table cell or a panel inside one
+is, but the editor does not make one: the room left would be too little.
+
+Each column stores its `width` as a share of the row, a whole percent from
+10 to 80. The shares are read as proportions, so a body written elsewhere
+whose shares do not add up still lays out, and a column with none stored
+takes an even share. Storing shares rather than pixels keeps a layout the
+same on every screen. The editor offers named layouts, even or with one
+column wider, rather than dragging a border: they work the same from the
+keyboard and on a touch screen, and they give readers the same few shapes
+across pages. A layout with fewer columns folds the blocks of the ones it
+drops into the last column it keeps, so changing the layout loses nothing.
+
+Under 48rem, the shell's own breakpoint, the columns stack in their
+reading order: side by side, each would be a few words wide. Markdown has
+no columns, so an export writes the blocks one column after another, as a
+phone shows them, and an import of that file brings them back as plain blocks.
+
+Search needs no change: `document.PlainText` and the database's
+`page_plain_blocks` already read the blocks inside any node they do not
+name, column by column.
 
 ## 2026-10-01: An expand block stores its title, never whether it is open
 
