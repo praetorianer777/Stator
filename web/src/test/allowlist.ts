@@ -48,7 +48,7 @@ export function attrProblem(rule: Attr, value: unknown): string | null {
         value.length >= (rule.minLength ?? 0) &&
         value.length <= (rule.maxLength ?? 0) &&
         new Set(value).size === value.length &&
-        value.every((v) => typeof v === "string" && (rule.enum ?? []).includes(v))
+        value.every((v) => typeof v === "string" && (rule.pattern ? new RegExp(rule.pattern, "u").test(v) : (rule.enum ?? []).includes(v)))
         ? null
         : "is not a list of allowed values";
     case "string": {

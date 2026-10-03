@@ -625,6 +625,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   due date is a point, and today is marked. Issues without either date are
   counted below it. The stub serves the plan, an Epic type, teams, start dates
   and parents.
+- Page properties (#54). "Properties" in the slash menu puts a two-column
+  table of names and values on a page, starting with Owner and Status; a
+  value takes marks, mentions, dates and statuses, Enter starts the next
+  property and Backspace in an empty one removes it. Search reads them as
+  table rows. "Properties report" lists the published pages carrying every
+  label given, in one space or all, with a column for each property found or
+  for those named, sortable by any column, as each reader may read them
+  (`GET /properties-report`, also the MCP tool `properties_report`).
 
 ### Changed
 

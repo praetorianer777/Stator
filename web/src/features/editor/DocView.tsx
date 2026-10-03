@@ -29,6 +29,9 @@ import { ARMATURE_CHART_NODE, chartSettings } from "@/features/armature/chart";
 import { IssueChart } from "@/features/armature/IssueChart";
 import { IssueRoadmap } from "@/features/armature/IssueRoadmap";
 import { ARMATURE_ROADMAP_NODE, roadmapSettings } from "@/features/armature/roadmap";
+import { PropertiesReport } from "@/features/properties/PropertiesReport";
+import { PROPERTIES_REPORT_NODE, reportSettings } from "@/features/properties/report";
+import { PROPERTIES_NODE, propertyKey } from "./properties";
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
 /**
@@ -270,6 +273,36 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
         </div>
       );
     }
+    // A row without a name is one still being typed, which a report leaves out too.
+    case PROPERTIES_NODE: {
+      const rows = (node.content ?? []).filter((row) => propertyKey(row.attrs?.key).trim() !== "");
+      if (rows.length === 0) return null;
+      return (
+        <table className="doc-properties" data-properties="" data-block={block}>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} data-property-row="">
+                <th scope="row">{propertyKey(row.attrs?.key)}</th>
+                <td className="doc-property-value">{inline(row.content)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    // Its rows are each reader's own, now; a comparison says what it gathers.
+    case PROPERTIES_REPORT_NODE: {
+      const settings = reportSettings(node.attrs);
+      if (settings.labels.length === 0) return null;
+      if (!copy) {
+        return (
+          <p className="doc-block doc-block-summary" data-properties-report="">
+            {t.properties.report.summary(settings.labels, settings.space)}
+          </p>
+        );
+      }
+      return <PropertiesReport settings={settings} draw={drawInline} />;
+    }
     // An excerpt reads as the blocks it marks; its name is for pickers.
     case "excerpt":
       return (
@@ -431,6 +464,11 @@ function items(nodes: DocNode[] | undefined, copy: Copy, path: BlockPath): React
       <Blocks nodes={item.content} copy={copy} path={[...path, i]} />
     </li>
   ));
+}
+
+/** Draws inline nodes as the read view does, for a block that shows another page's words. */
+export function drawInline(nodes: DocNode[]): ReactNode {
+  return inline(nodes);
 }
 
 function inline(nodes: DocNode[] | undefined): ReactNode {
