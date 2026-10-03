@@ -26,6 +26,7 @@ const (
 	kindTOC        = "toc"
 	kindChildPages = "child-pages"
 	kindInclude    = "include"
+	kindChart      = "issue-chart"
 )
 
 // panelAlerts pairs each panel kind with the alert a quote opens with, one

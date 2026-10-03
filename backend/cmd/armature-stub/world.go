@@ -97,6 +97,8 @@ type issue struct {
 	Description json.RawMessage
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	// ResolvedAt is when it was last done, nil while it is not.
+	ResolvedAt *time.Time
 }
 
 type remoteLink struct {
@@ -215,6 +217,10 @@ func seed(slug string) *tenant {
 		at := seeded.Add(time.Duration(i) * time.Hour)
 		is := t.add(t.project(spec.project), t.typeNamed(spec.kind), spec.summary, t.person(spec.reporter), at)
 		is.Status, is.Priority, is.DueDate, is.UpdatedAt = t.statusOf(spec.category), spec.priority, spec.due, at
+		if spec.category == "done" {
+			resolved := at.Add(24 * time.Hour)
+			is.ResolvedAt, is.UpdatedAt = &resolved, resolved
+		}
 		if spec.assignee != "" {
 			is.Assignee = t.person(spec.assignee)
 		}

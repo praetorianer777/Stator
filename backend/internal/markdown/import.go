@@ -718,6 +718,14 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 			level = document.MaxHeadingLevel
 		}
 		return document.Node{Type: "tableOfContents", Attrs: map[string]any{"maxLevel": level}}, true
+	case kindChart:
+		days, err := strconv.Atoi(attrs["data-days"])
+		if err != nil {
+			return document.Node{}, false
+		}
+		return document.Node{Type: armature.NodeChart, Attrs: map[string]any{
+			"project": attrs["data-project"], "query": words, "chart": attrs["data-chart"], "groupBy": attrs["data-group-by"], "days": days,
+		}}, true
 	case kindInclude:
 		if !uuidText.MatchString(attrs["data-page"]) {
 			return document.Node{}, false

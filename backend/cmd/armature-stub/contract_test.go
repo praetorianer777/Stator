@@ -304,6 +304,26 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	if changed["issue"].(map[string]any)["summary"] != "Renamed" {
 		t.Errorf("a change did not hold: %v", changed)
 	}
+	if changed["issue"].(map[string]any)["resolvedAt"] == nil {
+		t.Errorf("an issue made done has no resolvedAt: %v", changed)
+	}
+
+	// The reports a chart block draws (#51), counted over what the person
+	// may see and the query matches.
+	pie := c.expect("GET", "/projects/CP/reports/chart?groupBy=statusCategory&measure=count&shape=donut&q=project+%3D+CP", alice, nil, 200)
+	sum := 0.0
+	for _, g := range pie["groups"].([]any) {
+		sum += g.(map[string]any)["value"].(float64)
+	}
+	if len(pie["groups"].([]any)) != 3 || sum != pie["total"] {
+		t.Errorf("the chart by status category is %v", pie)
+	}
+	flow := c.expect("GET", "/projects/CP-1/reports/created_vs_resolved?days=7&q=project+%3D+CP", alice, nil, 200)
+	if days := flow["days"].([]any); len(days) != 7 || days[6].(map[string]any)["resolved"] != float64(1) {
+		t.Errorf("created against resolved is %v", flow)
+	}
+	c.expect("GET", "/projects/SEC/reports/chart?groupBy=type&q=project+%3D+SEC", alice, nil, 404)
+	c.expect("GET", "/projects/CP/reports/chart?groupBy=type&q=project+%3D", alice, nil, 400)
 	c.expect("POST", stubPrefix+"/acme/issues/CP-3/move", "", map[string]any{"projectKey": "SEC"}, 200)
 	if got := c.expect("GET", "/issues/CP-3", admin, nil, 200)["issue"].(map[string]any); got["key"] != "SEC-3" {
 		t.Errorf("a moved issue answers to %v, want SEC-3", got["key"])

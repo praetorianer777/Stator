@@ -31,6 +31,7 @@ const richDoc = `{"type":"doc","content":[
  {"type":"paragraph","content":[{"type":"text","text":"Fixed in "},{"type":"armatureIssue","attrs":{"key":"CP-12"}}]},
  {"type":"armatureIssueBlock","attrs":{"key":"CP-7"}},
  {"type":"armatureIssueList","attrs":{"query":"project = CP AND statusCategory != done","columns":["key","summary","due"],"limit":20}},
+ {"type":"armatureChart","attrs":{"project":"CP","query":"project = CP","chart":"pie","groupBy":"statusCategory","days":30}},
  {"type":"table","content":[
   {"type":"tableRow","content":[
    {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Name"}]}]},
@@ -124,6 +125,10 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"link card to mail", `{"type":"doc","content":[{"type":"linkCard","attrs":{"url":"mailto:a@example.test","view":"card"}}]}`, `url="mailto`},
 		{"link card view", `{"type":"doc","content":[{"type":"linkCard","attrs":{"url":"https://example.test","view":"frame"}}]}`, `view="frame"`},
 		{"link card in a line", para(`{"type":"linkCard","attrs":{"url":"https://example.test","view":"card"}}`), `puts a "linkCard"`},
+		{"chart of a project in lower case", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"cp","query":"x","chart":"pie","groupBy":"type","days":30}}]}`, `project="cp"`},
+		{"chart of a bar", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"CP","query":"x","chart":"bar","groupBy":"type","days":30}}]}`, `chart="bar"`},
+		{"chart a year and a day back", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"CP","query":"x","chart":"createdResolved","groupBy":"type","days":366}}]}`, `days=366`},
+		{"chart with counts", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"CP","query":"x","chart":"pie","groupBy":"type","days":30,"total":5}}]}`, `attribute "total"`},
 		{"include of no page", `{"type":"doc","content":[{"type":"include","attrs":{"pageId":"HOME","excerptId":null}}]}`, `pageId="HOME"`},
 		{"include in a line", para(`{"type":"include","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80"}}`), `puts a "include"`},
 		{"include with words", `{"type":"doc","content":[{"type":"include","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80","title":"Stale"}}]}`, `attribute "title"`},

@@ -621,6 +621,21 @@ while the caller follows Armature and Armature answered.
   `PUT /_stub/{tenant}/people/{person}/theme-delay` (`ms`), which holds back
   that person's `GET /themes/active`.
 
+## #51: the chart block
+
+A chart block stores a project, an NQL query, a chart kind (`pie` or
+`createdResolved`), a field to share a pie out by and a window of days;
+never the counts. Each reader's view asks Stator's
+`GET /armature/chart?project&q&kind&groupBy&days`, which asks Armature's
+`GET /projects/{projectKey}/reports/{kind}` as that reader with their own
+token: `chart` with `groupBy`, `measure=count` and `shape=donut` for a pie,
+`created_vs_resolved` with `days` for the other. Armature counts, so the
+chart covers every matching issue the reader may see, not a page of them.
+Answers are kept per token for as long as searches and cleared with them by
+the issue webhooks. A query Armature cannot read is 422 `bad_query` with its
+position, as for the list block; a project the reader may not see is a 422 on
+`project`.
+
 ## The armature-stub
 
 `cmd/armature-stub` stands in for Armature in the integration suite and in
@@ -637,8 +652,13 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   created, updated or priority; anything else is 400 `bad_query` with a
   position), `GET /issues/{issueKey}` (with old keys of moved issues),
   `POST /issues`, `GET` and `POST /issues/{issueKey}/remote-links`,
-  `DELETE /issues/{issueKey}/remote-links/{remoteLinkID}`, `GET /themes/active`
-  and `GET /themes/{themeID}/export`.
+  `DELETE /issues/{issueKey}/remote-links/{remoteLinkID}`, `GET /themes/active`,
+  `GET /themes/{themeID}/export`, and, for the chart block of #51,
+  `GET /projects/{projectKey}/reports/{kind}` for `chart` (a count grouped by
+  `status`, `statusCategory`, `type`, `priority` or `assignee`) and
+  `created_vs_resolved` (a day by day count over `days`, ending today), both
+  filtered by `q`. Issues carry `resolvedAt` once done; making one done
+  through `PATCH /_stub/{tenant}/issues/{key}` resolves it now.
 - **Who asks.** A token `armature_pat_{tenant}_{person}` is `person` in the
   stub's organization `tenant`, made on first use with fixed projects (`CP`
   that everybody may write, `SEC` that only `admin` may see), issue types and

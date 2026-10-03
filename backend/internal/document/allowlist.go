@@ -176,7 +176,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -204,6 +204,14 @@ var (
 	ChildPagesScopes = []string{"children", "subtree"}
 	ChildPagesSorts  = []string{"tree", "title", "updated"}
 )
+
+func chartKinds() []string {
+	out := make([]string, len(armature.ChartKinds))
+	for i, k := range armature.ChartKinds {
+		out[i] = string(k)
+	}
+	return out
+}
 
 func issueColumns() []string {
 	out := make([]string, len(armature.Columns))
@@ -305,6 +313,17 @@ var Allowed = Allowlist{
 				"query":   {Kind: KindString, MaxLength: armature.MaxQueryLength, Pattern: `\S`},
 				"columns": {Kind: KindStrings, Enum: issueColumns(), MinLength: 1, MaxLength: armature.MaxColumns},
 				"limit":   {Kind: KindInteger, Min: 1, Max: armature.MaxListLimit},
+			},
+		},
+		// What to count and how to draw it, never the counts: each reader's
+		// view asks Armature, with their own token, for what they may see.
+		armature.NodeChart: {
+			Attrs: map[string]Attr{
+				"project": {Kind: KindString, Pattern: armature.ProjectPattern},
+				"query":   {Kind: KindString, MaxLength: armature.MaxQueryLength, Pattern: `\S`},
+				"chart":   {Kind: KindString, Enum: chartKinds()},
+				"groupBy": {Kind: KindString, Enum: armature.ChartGroupings},
+				"days":    {Kind: KindInteger, Min: armature.MinChartDays, Max: armature.MaxChartDays},
 			},
 		},
 		// The colour names a theme role, so a custom theme recolours it.

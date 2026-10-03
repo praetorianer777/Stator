@@ -385,6 +385,23 @@ export const LINK_PREVIEW_STALE_MS = 5 * 60_000;
 export const LINK_CARD_VIEWS = ["inline", "card", "embed"] as const;
 /** The longest excerpt name, matching the API's MaxExcerptNameLength. */
 export const EXCERPT_NAME_MAX_LENGTH = 80;
+/** What a chart block shares issues out by, as armature.ChartGroupings. */
+export const ARMATURE_CHART_GROUPINGS = ["status", "statusCategory", "type", "priority", "assignee"] as const;
+export type ArmatureChartGrouping = (typeof ARMATURE_CHART_GROUPINGS)[number];
+/** The windows a created against resolved chart offers, in days, within armature.MinChartDays to MaxChartDays. */
+export const ARMATURE_CHART_DAY_CHOICES: readonly number[] = [7, 14, 30, 90, 180, 365];
+/** A new created against resolved chart's window, as armature.DefaultChartDays. */
+export const ARMATURE_CHART_DEFAULT_DAYS = 30;
+/** The most slices a pie draws; the rest share one slice, Other, rather than take a colour nobody tells apart. */
+export const ARMATURE_CHART_MAX_SLICES = 8;
+/** A pie's size and its hole, in SVG units. */
+export const ARMATURE_PIE_SIZE = 160;
+export const ARMATURE_PIE_HOLE = 0.6;
+/** A line chart's drawing box, in SVG units; it scales to the page's width. */
+export const ARMATURE_FLOW_WIDTH = 640;
+export const ARMATURE_FLOW_HEIGHT = 200;
+/** How many evenly spaced ticks a line chart's axes carry at most. */
+export const ARMATURE_FLOW_TICKS = 4;
 /** How many emoji the appearance dialog offers for a page at once. */
 export const PAGE_ICON_CHOICES = 24;
 /** Where a new cover's focus starts, in percent: its middle. */

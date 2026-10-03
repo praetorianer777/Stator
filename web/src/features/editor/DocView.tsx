@@ -25,6 +25,8 @@ import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
 
+import { ARMATURE_CHART_NODE, chartSettings } from "@/features/armature/chart";
+import { IssueChart } from "@/features/armature/IssueChart";
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
 /**
@@ -330,6 +332,18 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       return <IssueBlock issueKey={key} />;
     }
     // Its rows are each reader's own, now; a comparison says what it asks for.
+    case ARMATURE_CHART_NODE: {
+      const settings = chartSettings(node.attrs);
+      if (!settings.project || !settings.query.trim()) return null;
+      if (!copy) {
+        return (
+          <p className="doc-block doc-block-summary" data-armature-chart="">
+            {t.armature.chart.summary(settings.project, settings.query)}
+          </p>
+        );
+      }
+      return <IssueChart settings={settings} />;
+    }
     case ARMATURE_ISSUE_LIST_NODE: {
       const settings = listSettings(node.attrs);
       if (!settings.query.trim()) return null;

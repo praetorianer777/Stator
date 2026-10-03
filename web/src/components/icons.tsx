@@ -81,6 +81,8 @@ export const Icon = {
   Excerpt: makeIcon("excerpt", ["M2.5 3.5h2", "M11.5 3.5h2", "M2.5 12.5h2", "M11.5 12.5h2", "M5 6.5h6", "M5 9.5h4"]),
   // A page with another page's lines brought into it.
   Include: makeIcon("include", ["M3 2.5h7l3 3v8H3z", "M5.5 8h5", "M5.5 10.5h5", "m8 5.5 2.5 2.5L8 10.5"]),
+  // A ring cut into shares, as a pie chart draws them.
+  Chart: makeIcon("chart", ["M8 2a6 6 0 1 0 6 6H8z", "M10 1.5a4.5 4.5 0 0 1 4.5 4.5H10z"]),
   Plus: makeIcon("plus", ["M8 3v10", "M3 8h10"]),
   Users: makeIcon("users", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),
   Check: makeIcon("check", ["m3 8.5 3 3 7-7"]),

@@ -53,6 +53,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("tableOfContents", Icon.Hash, ["toc", "contents", "headings", "outline"], (c) => c.insertTableOfContents()),
   item("childPages", Icon.Page, ["children", "pages", "subpages", "tree"], (c) => c.insertChildPages()),
   { ...item("armatureIssue", Icon.Task, ["armature", "issue", "ticket", "card"], (c) => c.pickArmatureIssue()), armature: true },
+  { ...item("armatureChart", Icon.Chart, ["armature", "chart", "pie", "report", "created", "resolved"], (c) => c.pickArmatureChart()), armature: true },
   { ...item("armatureIssueList", Icon.Table, ["armature", "issues", "query", "nql", "list"], (c) => c.pickArmatureIssueList()), armature: true },
   item("status", Icon.Label, ["status", "state", "badge", "label", "tag"], (c) => c.insertStatus()),
   item("date", Icon.Calendar, ["date", "day", "today", "deadline", "when"], (c) => c.insertDate()),

@@ -301,6 +301,126 @@
         }
       }
     },
+    "/armature/chart": {
+      "get": {
+        "operationId": "armatureChart",
+        "summary": "A count of the issues an NQL query matches in one project, as the caller may see them, for a chart block: shared out by a field for a pie, or created and resolved each day. Refused with bad_query and its position.",
+        "tags": [
+          "armature"
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "description": "The project's key, such as CP.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "An NQL query, at most 2000 characters.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "pie or createdResolved.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pie",
+                "createdResolved"
+              ]
+            }
+          },
+          {
+            "name": "groupBy",
+            "in": "query",
+            "description": "The field a pie shares the issues out by.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "status",
+                "statusCategory",
+                "type",
+                "priority",
+                "assignee"
+              ]
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "How many days back created against resolved counts, 7 to 365; 30 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chart": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Chart"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "not_configured",
+                        "not_connected",
+                        "rejected",
+                        "unreachable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "chart",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/armature/connection": {
       "delete": {
         "operationId": "removeArmatureConnection",
@@ -10879,6 +10999,85 @@
           "purgeTrash",
           "addComments",
           "deletePages"
+        ]
+      },
+      "Chart": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChartDay"
+            }
+          },
+          "groupBy": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "pie",
+              "createdResolved"
+            ]
+          },
+          "slices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChartSlice"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "groupBy",
+          "total",
+          "slices",
+          "days",
+          "url"
+        ]
+      },
+      "ChartDay": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "integer"
+          },
+          "day": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "created",
+          "resolved"
+        ]
+      },
+      "ChartSlice": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "category",
+          "count"
         ]
       },
       "ChooseThemeRequest": {
