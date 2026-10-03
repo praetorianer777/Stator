@@ -35,6 +35,8 @@ import { PropertiesReport } from "@/features/properties/PropertiesReport";
 import { PROPERTIES_REPORT_NODE, reportSettings } from "@/features/properties/report";
 import { LabelledPages, UpdatedPages } from "@/features/pageLists/PageLists";
 import { LABELLED_PAGES_NODE, RECENTLY_UPDATED_NODE, labelledSettings, updatedSettings } from "@/features/pageLists/lists";
+import { TaskReport } from "@/features/taskReport/TaskReport";
+import { TASK_REPORT_NODE, taskReportSettings } from "@/features/taskReport/report";
 import { PROPERTIES_NODE, propertyKey } from "./properties";
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
@@ -310,6 +312,12 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       const settings = updatedSettings(node.attrs);
       if (!copy) return <p className="doc-block doc-block-summary">{t.pageLists.updatedTitle(settings.space)}</p>;
       return <UpdatedPages settings={settings} />;
+    }
+    case TASK_REPORT_NODE: {
+      const settings = taskReportSettings(node.attrs);
+      // Without the person's name, which only the report answers with.
+      if (!copy) return <p className="doc-block doc-block-summary">{t.taskReport.title(settings, "")}</p>;
+      return <TaskReport settings={settings} />;
     }
     // An excerpt reads as the blocks it marks; its name is for pickers.
     case "excerpt":

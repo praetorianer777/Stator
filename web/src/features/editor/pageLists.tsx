@@ -33,13 +33,13 @@ export interface PageListOptions {
 
 // The list's own controls: ProseMirror would otherwise take a click on them
 // as selecting the block.
-const ownEvent = ({ event }: { event: Event }) => event.target instanceof Element && event.target.closest("a, button") !== null;
+export const ownEvent = ({ event }: { event: Event }) => event.target instanceof Element && event.target.closest("a, button") !== null;
 
 /**
  * Every attribute travels as JSON in data-settings, as a list of labels does
  * not fit one HTML attribute otherwise; read reads it back put right.
  */
-function settingsAttrs<T extends object>(read: (attrs: Record<string, unknown>) => T) {
+export function settingsAttrs<T extends object>(read: (attrs: Record<string, unknown>) => T) {
   const fresh = read({});
   const fromHTML = (el: HTMLElement): Record<string, unknown> => {
     try {

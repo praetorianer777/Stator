@@ -420,6 +420,14 @@ export const PAGE_LIST_LIMIT_CHOICES: readonly number[] = [5, 10, 20, 50];
 /** How a content by label list matches its labels and orders its pages, as document.ListMatches and ListSorts. */
 export const PAGE_LIST_MATCHES = ["all", "any"] as const;
 export const PAGE_LIST_SORTS = ["updated", "title"] as const;
+/** How many tasks a task report shows when it names no number, and the most, as document.DefaultReportedTasks and MaxReportedTasks. */
+export const TASK_REPORT_DEFAULT_LIMIT = 20;
+export const TASK_REPORT_MAX_LIMIT = 100;
+/** The lengths a task report's settings offer, within 1 to TASK_REPORT_MAX_LIMIT. */
+export const TASK_REPORT_LIMIT_CHOICES: readonly number[] = [10, 20, 50, 100];
+/** The due days and states a task report picks, as document.TaskReportDues and TaskReportStates. */
+export const TASK_REPORT_DUES = ["any", "overdue", "today", "week", "none"] as const;
+export const TASK_REPORT_STATES = ["open", "done", "all"] as const;
 /** What a roadmap block puts its rows under, as armature.RoadmapGroupings. */
 export const ARMATURE_ROADMAP_GROUPINGS = ["epic", "team"] as const;
 export type ArmatureRoadmapGrouping = (typeof ARMATURE_ROADMAP_GROUPINGS)[number];

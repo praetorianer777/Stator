@@ -31,6 +31,7 @@ const (
 	kindReport     = "properties-report"
 	kindLabelled   = "labelled-pages"
 	kindUpdated    = "updated-pages"
+	kindTasks      = "task-report"
 )
 
 // panelAlerts pairs each panel kind with the alert a quote opens with, one

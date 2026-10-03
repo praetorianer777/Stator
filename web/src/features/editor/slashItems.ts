@@ -64,6 +64,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("recentlyUpdated", Icon.Page, ["recently updated", "recent", "latest", "changes", "activity"], (c) =>
     c.insertRecentlyUpdated({ space: null, limit: 10 }),
   ),
+  item("taskReport", Icon.Task, ["task report", "tasks", "todo", "actions", "assigned", "overdue"], (c) => c.pickTaskReport()),
   item("mathInline", Icon.Sigma, ["math", "formula", "equation", "latex", "tex", "katex", "inline"], (c) => c.insertMathInline()),
   // The colon opens the emoji list as if typed, so there is one picker to learn.
   item("emoji", Icon.Smile, ["emoji", "smiley", "reaction"], (c) => c.insertContent(":")),

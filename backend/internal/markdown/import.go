@@ -739,6 +739,20 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 		return document.Node{Type: document.NodeLabelledPages, Attrs: map[string]any{
 			"labels": labels, "match": attrs["data-match"], "space": space, "sort": attrs["data-sort"], "limit": limit,
 		}}, true
+	case kindTasks:
+		limit, err := strconv.Atoi(attrs["data-limit"])
+		if err != nil {
+			return document.Node{}, false
+		}
+		node := document.Node{Type: document.NodeTaskReport, Attrs: map[string]any{
+			"space": nil, "assignee": nil, "due": attrs["data-due"], "state": attrs["data-state"], "limit": limit,
+		}}
+		for _, name := range []string{"space", "assignee"} {
+			if v := attrs["data-"+name]; v != "" {
+				node.Attrs[name] = v
+			}
+		}
+		return node, true
 	case kindReport:
 		labels := []string{}
 		for name := range strings.SplitSeq(attrs["data-labels"], ",") {

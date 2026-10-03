@@ -8872,6 +8872,101 @@
         }
       }
     },
+    "/task-report": {
+      "get": {
+        "operationId": "taskReport",
+        "summary": "The tasks of published pages the caller may view, out of the trash and the archive, that the filter picks, for a task report block: open ones soonest due first and those without a day last, then done ones the latest first; truncated says more matched.",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key to stay inside; a space the caller may not view is not found.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assignee",
+            "in": "query",
+            "description": "me for the caller, none for tasks nobody is assigned, or a person's id; anybody when absent.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "any when absent; overdue, today and week (today and the six days after) judge by today in UTC; none is tasks without a day.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "any",
+                "overdue",
+                "today",
+                "week",
+                "none"
+              ]
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "open when absent.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "done",
+                "all"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tasks": {
       "get": {
         "operationId": "listMyTasks",
@@ -15807,6 +15902,28 @@
           "title",
           "spaceKey",
           "spaceName"
+        ]
+      },
+      "TaskReport": {
+        "type": "object",
+        "properties": {
+          "assigneeName": {
+            "type": "string"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tasks",
+          "assigneeName",
+          "truncated"
         ]
       },
       "TaskSetDoneInput": {

@@ -655,6 +655,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   due day, in UTC, every `STATOR_TASK_DUE_CHECK_INTERVAL` (10 minutes;
   `tasks.dueCheckInterval` in the chart); both are new kinds in the
   notification settings. A page shows when a task is overdue or due today.
+- Task report (#57): a block that lists the tasks of published pages, in one
+  space or all, assigned to whoever reads the page, to nobody or to one
+  person, overdue, due today, due in the next 7 days or without a day, open,
+  done or both, 10 to 100 of them: open ones soonest due first, then done
+  ones (`GET /task-report`, also the MCP tool `task_report`). Each reader
+  sees the tasks on pages they may view, and whoever may edit a task's page
+  ticks it off from the report. The page keeps only the filter.
 
 ### Changed
 

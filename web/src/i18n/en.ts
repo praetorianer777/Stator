@@ -827,6 +827,42 @@ export const en = {
       save: "Save",
     },
   },
+  taskReport: {
+    edit: "Edit report",
+    loading: "Finding the tasks",
+    failed: "The tasks could not be listed. Reload the page to try again.",
+    empty: "No task on a page you can read matches this report.",
+    nobody: "Nobody assigned",
+    truncated: (n: number) => `Showing the first ${n} tasks. Narrow the report to see the rest.`,
+    title: (s: { space: string | null; assignee: string | null; due: string; state: string }, name: string) =>
+      [
+        `${s.state === "done" ? "Done tasks" : s.state === "all" ? "Tasks" : "Open tasks"}${s.space ? ` in ${s.space}` : ""}`,
+        s.assignee === "me" ? "assigned to you" : s.assignee === "none" ? "assigned to nobody" : s.assignee ? `assigned to ${name || "one person"}` : "",
+        ({ overdue: "overdue", today: "due today", week: "due in the next 7 days", none: "without a due date" } as Record<string, string>)[s.due] ?? "",
+      ]
+        .filter(Boolean)
+        .join(", "),
+    dialog: {
+      titleNew: "Insert a task report",
+      titleEdit: "Edit the task report",
+      space: "Space",
+      everySpace: "Every space",
+      assignee: "Assigned to",
+      anybody: "Anybody",
+      reader: "Whoever reads the page",
+      nobody: "Nobody",
+      somebodyGone: "Somebody who has left",
+      due: "Due",
+      dues: { any: "Any day, or none", overdue: "Overdue", today: "Today", week: "In the next 7 days", none: "No due date" } as Record<string, string>,
+      state: "State",
+      states: { open: "Open", done: "Done", all: "Open and done" } as Record<string, string>,
+      limit: "Show",
+      limitChoice: (n: number) => `${n} tasks`,
+      cancel: "Cancel",
+      insert: "Insert",
+      save: "Save",
+    },
+  },
   properties: {
     report: {
       edit: "Edit report",
@@ -1408,6 +1444,7 @@ export const en = {
       properties: { label: "Properties", description: "A table of names and values, such as owner and status, which a properties report gathers." },
       labelledPages: { label: "Content by label", description: "A list of the pages carrying some labels, kept up to date." },
       recentlyUpdated: { label: "Recently updated", description: "The pages published last, in a space or everywhere." },
+      taskReport: { label: "Task report", description: "A list of tasks picked by space, assignee, due date and state, kept up to date." },
       propertiesReport: { label: "Properties report", description: "A table of the pages carrying some labels and their properties, kept up to date." },
       decision: { label: "Decision", description: "A decision, decided or not, which the space's decision log lists." },
       mathBlock: { label: "Formula block", description: "A LaTeX formula on a line of its own, centred." },

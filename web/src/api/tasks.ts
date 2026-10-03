@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HOME_TASKS_PAGE_SIZE, TASKS_PAGE_SIZE } from "@/config";
 import { api } from "./client";
 import { pageQueryKey } from "./pages";
@@ -20,6 +20,36 @@ export function useMyTasks(state: TaskState, pageSize: number = TASKS_PAGE_SIZE)
     initialPageParam: "",
     queryFn: async ({ pageParam }) => (await api.GET("/tasks", { params: { query: { state, limit: pageSize, cursor: pageParam || undefined } } })).data!,
     getNextPageParam: (last) => last.next ?? undefined,
+  });
+}
+
+/** What a task report block picks, as TaskReportSettings holds it. */
+export interface TaskReportQuery {
+  space: string | null;
+  assignee: string | null;
+  due: "any" | "overdue" | "today" | "week" | "none";
+  state: "open" | "done" | "all";
+  limit: number;
+}
+
+/** A task report's tasks as the reader may read them; kept with the reader's tasks, so a tick asks again. */
+export function useTaskReport(settings: TaskReportQuery) {
+  return useQuery({
+    queryKey: [...tasksQueryKey, "report", settings],
+    queryFn: async () =>
+      (
+        await api.GET("/task-report", {
+          params: {
+            query: {
+              space: settings.space ?? undefined,
+              assignee: settings.assignee ?? undefined,
+              due: settings.due,
+              state: settings.state,
+              limit: settings.limit,
+            },
+          },
+        })
+      ).data!,
   });
 }
 

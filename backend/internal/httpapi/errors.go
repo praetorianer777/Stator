@@ -166,6 +166,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &labelField) {
 		return ErrValidation(map[string]string{labelField.Field: sentence(labelField.Message)})
 	}
+	var taskField *task.FieldError
+	if errors.As(err, &taskField) {
+		return ErrValidation(map[string]string{taskField.Field: sentence(taskField.Message)})
+	}
 	var searchField *search.FieldError
 	if errors.As(err, &searchField) {
 		return ErrValidation(map[string]string{searchField.Field: searchField.Message})
