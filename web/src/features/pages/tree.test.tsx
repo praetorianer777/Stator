@@ -21,6 +21,7 @@ const node = (id: string, parentId: string, title: string, hasChildren = false):
   parentId,
   title,
   kind: "page",
+  icon: null,
   hasChildren,
   unpublished: false,
   restricted: false,

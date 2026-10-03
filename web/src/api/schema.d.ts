@@ -888,6 +888,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/appearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace how a page looks: one emoji before its title and in the tree, fixed or full width, and one of its own pictures as its cover with the point that stays in view. A null icon or cover takes it away. For the page's editors. */
+        put: operations["setAppearance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/archive": {
         parameters: {
             query?: never;
@@ -2416,6 +2433,18 @@ export interface components {
             /** @enum {string} */
             state: "anchored" | "detached";
         };
+        Appearance: {
+            cover: components["schemas"]["Cover"] | null;
+            icon: string | null;
+            /** @enum {string} */
+            width: "fixed" | "full";
+        };
+        AppearanceInput: {
+            cover: components["schemas"]["Cover"] | null;
+            icon: string | null;
+            /** @enum {string} */
+            width: "fixed" | "full";
+        };
         Archive: {
             /** Format: date-time */
             archivedAt: string;
@@ -2592,6 +2621,12 @@ export interface components {
             detached: number;
             inline: number;
             page: number;
+        };
+        Cover: {
+            /** Format: uuid */
+            attachmentId: string;
+            focusX: number;
+            focusY: number;
         };
         CreateFailure: {
             code: string;
@@ -3060,6 +3095,7 @@ export interface components {
         };
         Page: {
             ancestors: components["schemas"]["Ref"][];
+            appearance: components["schemas"]["Appearance"];
             archived: components["schemas"]["Archive"] | null;
             /** @description A JSON value. */
             body: unknown;
@@ -3620,6 +3656,7 @@ export interface components {
         TreeNode: {
             archived: boolean;
             hasChildren: boolean;
+            icon: string | null;
             /** Format: uuid */
             id: string;
             /** @enum {string} */
@@ -6173,6 +6210,43 @@ export interface operations {
                 content: {
                     "application/json": {
                         access: components["schemas"]["AccessReport"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setAppearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppearanceInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        appearance: components["schemas"]["Appearance"];
                     };
                 };
             };

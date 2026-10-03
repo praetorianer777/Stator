@@ -379,6 +379,7 @@ describe("an unpublished page", () => {
       restricted: false,
       archived: false,
       kind: "page",
+      icon: null,
     };
     stubPage({ "GET /spaces/DOCS/pages": { status: 200, body: { pages: [node] } } }, { page: fresh });
     await renderAt(`/s/DOCS/p/${PAGE_ID}/plans`);

@@ -58,6 +58,8 @@ type TreeNode struct {
 	Restricted  bool `json:"restricted"`
 	// Kind is page or folder.
 	Kind Kind `json:"kind"`
+	// Icon is the emoji before the page's title, null when it has none.
+	Icon *string `json:"icon"`
 }
 
 // OutlineEntry is one page of a whole space in reading order, for choosing
@@ -266,7 +268,7 @@ func (s *Service) Children(ctx context.Context, actor perm.Actor, spaceKey strin
 			       p.archived_at IS NOT NULL,
 			       p.version = 0,
 			       $3 OR EXISTS (SELECT 1 FROM page_restriction r WHERE r.page_id = p.id AND r.kind = 'view'),
-			       p.kind
+			       p.kind, p.icon
 			FROM page p WHERE p.parent_id = $1 AND`+live+` AND (p.archived_at IS NULL OR $4) AND `+perm.ViewablePage("p", 2)+`
 			ORDER BY p.rank, p.id`, under, actor.UserID, above.ViewRestricted, *archived)
 		if err != nil {

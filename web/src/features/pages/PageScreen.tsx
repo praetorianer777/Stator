@@ -6,7 +6,8 @@ import { usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useVisit } from "@/api/search";
 import { useTrashPage } from "@/api/trash";
-import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
+import { attachmentUrl } from "@/api/attachments";
+import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, cx, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ArchiveBanner, ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { ArmatureLinks } from "@/features/armature/ArmatureLinks";
@@ -20,6 +21,7 @@ import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { ChildPagesList, DocPageContext } from "@/features/editor/BlockViews";
 import { defaultChildPages } from "@/features/editor/childPages";
 import { DocView } from "@/features/editor/DocView";
+import { AppearanceDialog, coverPosition } from "./AppearanceDialog";
 import { PageLabels } from "@/features/labels/PageLabels";
 import { PageReactions } from "@/features/reactions/Reactions";
 import { AccessDialog } from "@/features/permissions/AccessDialog";
@@ -54,7 +56,20 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
   return crumbs;
 }
 
-type Dialog = "new" | "newFolder" | "rename" | "move" | "copy" | "restrictions" | "access" | "export" | "import" | "stewardship" | "share" | "views";
+type Dialog =
+  | "appearance"
+  | "new"
+  | "newFolder"
+  | "rename"
+  | "move"
+  | "copy"
+  | "restrictions"
+  | "access"
+  | "export"
+  | "import"
+  | "stewardship"
+  | "share"
+  | "views";
 
 /** Says a page is narrowed to some people, and opens who and why. */
 function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
@@ -143,6 +158,9 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   if (page.can.restrict) {
     actions.push({ label: t.restrictions.menu, icon: <Icon.Lock />, onSelect: () => setDialog("restrictions"), attrs: { "data-action": "page-restrictions" } });
   }
+  if (page.can.edit) {
+    actions.push({ label: t.appearance.menu, icon: <Icon.Smile />, onSelect: () => setDialog("appearance"), attrs: { "data-action": "page-appearance" } });
+  }
   if (page.can.edit && !page.unpublished && !folder) {
     actions.push({ label: t.stewardship.menu, icon: <Icon.Seal />, onSelect: () => setDialog("stewardship"), attrs: { "data-action": "page-stewardship" } });
   }
@@ -179,12 +197,28 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   }
 
   return (
-    <article className="mx-auto max-w-3xl" data-page={page.id} data-page-home={page.home || undefined}>
+    <article
+      className={cx("mx-auto", page.appearance.width === "full" ? "max-w-none" : "max-w-3xl")}
+      data-page={page.id}
+      data-page-home={page.home || undefined}
+      data-page-width={page.appearance.width}
+    >
+      {page.appearance.cover && (
+        <div className="page-cover" data-page-cover={page.appearance.cover.attachmentId}>
+          <img src={attachmentUrl(page.appearance.cover.attachmentId, true)} alt="" style={{ objectPosition: coverPosition(page.appearance.cover) }} />
+        </div>
+      )}
       <PageHeader
         crumbs={pageCrumbs(space, page)}
         title={
           <>
-            {folder && <Icon.Folder className="mr-2 inline align-baseline text-ink-muted" aria-hidden="true" />}
+            {page.appearance.icon ? (
+              <span className="mr-2" data-page-icon="">
+                {page.appearance.icon}
+              </span>
+            ) : (
+              folder && <Icon.Folder className="mr-2 inline align-baseline text-ink-muted" aria-hidden="true" />
+            )}
             <span data-page-title>{page.title}</span>
             {page.unpublished && <Tag data-unpublished="">{t.page.unpublished}</Tag>}
             {page.archived && (
@@ -314,6 +348,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
           </KnownAttachmentsContext>
         </InlineComments>
       )}
+      {dialog === "appearance" && <AppearanceDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "stewardship" && <StewardshipDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "share" && <ShareDialog page={page} onClose={() => setDialog(undefined)} />}

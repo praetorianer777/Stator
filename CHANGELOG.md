@@ -597,6 +597,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   that leads back to a page on the way to it, or more than five deep, says
   so instead (`GET /pages/{id}/included`). A Markdown export keeps what an
   include points at, which an import reads back.
+- Page appearance (#50). Appearance in a page's menu chooses an emoji,
+  found by name, shown before the title and in the page tree; a width,
+  fixed for comfortable lines or full for wide tables and diagrams; and a
+  cover picture from the page's own files or a new upload, with the point
+  that stays in view, set by a click or the arrow keys. Only the page's
+  editors change it (`PUT /pages/{id}/appearance`), the database included;
+  a cover is always one of the page's own pictures, and goes when its file
+  is deleted.
 
 ### Changed
 

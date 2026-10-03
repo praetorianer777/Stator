@@ -213,9 +213,21 @@ describe("a page's restrictions", () => {
   });
   const inherited: Restrictions = { view: [], edit: [], inherited: [{ page: plans, view: [eng], edit: [] }] };
   const tree: Record<string, TreeNode[]> = {
-    home: [{ id: ids.plans, parentId: home.id, title: "Plans", hasChildren: true, unpublished: false, restricted: true, archived: false, kind: "page" }],
+    home: [
+      { id: ids.plans, parentId: home.id, title: "Plans", hasChildren: true, unpublished: false, restricted: true, archived: false, kind: "page", icon: null },
+    ],
     [ids.plans]: [
-      { id: ids.secret, parentId: ids.plans, title: "Secret", hasChildren: false, unpublished: false, restricted: true, archived: false, kind: "page" },
+      {
+        id: ids.secret,
+        parentId: ids.plans,
+        title: "Secret",
+        hasChildren: false,
+        unpublished: false,
+        restricted: true,
+        archived: false,
+        kind: "page",
+        icon: null,
+      },
     ],
   };
   const stubPage = (page = secret, more: Record<string, Answer | ((request: Request) => Answer)> = {}) =>

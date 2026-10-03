@@ -373,6 +373,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/home/edited", s.handleHomeEdited)
 			r.Get("/stale-pages", s.handleListStalePages)
 			r.Put("/pages/{pageID}/owner", s.handleSetPageOwner)
+			r.Put("/pages/{pageID}/appearance", s.handleSetAppearance)
 			r.Delete("/pages/{pageID}/owner", s.handleRemovePageOwner)
 			r.Put("/pages/{pageID}/verification", s.handleVerifyPage)
 			r.Delete("/pages/{pageID}/verification", s.handleUnverifyPage)

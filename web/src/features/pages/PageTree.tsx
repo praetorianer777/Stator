@@ -265,7 +265,13 @@ function Item({ node, level }: { node: TreeNode; level: number }) {
         >
           {node.hasChildren && <Icon.ChevronDown className={cx("transition-transform", !open && "-rotate-90")} />}
         </span>
-        {node.kind === "folder" && <Icon.Folder className="shrink-0 text-ink-subtle" data-tree-folder="" />}
+        {node.icon ? (
+          <span className="shrink-0" aria-hidden="true" data-tree-icon={node.icon}>
+            {node.icon}
+          </span>
+        ) : (
+          node.kind === "folder" && <Icon.Folder className="shrink-0 text-ink-subtle" data-tree-folder="" />
+        )}
         <PageLink
           spaceKey={tree.space.key}
           id={node.id}

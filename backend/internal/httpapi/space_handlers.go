@@ -159,6 +159,26 @@ func (s *Server) handleSpaceOutline(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"pages": pages})
 }
 
+func (s *Server) handleSetAppearance(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req page.AppearanceInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	got, lsn, err := s.Pages.SetAppearance(r.Context(), actorFrom(r), id, req)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"appearance": got})
+}
+
 func (s *Server) handleGetIncluded(w http.ResponseWriter, r *http.Request) {
 	id, apiErr := pathUUID(r, "pageID", "page")
 	if apiErr != nil {

@@ -3654,6 +3654,66 @@
         }
       }
     },
+    "/pages/{pageID}/appearance": {
+      "put": {
+        "operationId": "setAppearance",
+        "summary": "Replace how a page looks: one emoji before its title and in the tree, fixed or full width, and one of its own pictures as its cover with the point that stays in view. A null icon or cover takes it away. For the page's editors.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppearanceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "appearance": {
+                      "$ref": "#/components/schemas/Appearance"
+                    }
+                  },
+                  "required": [
+                    "appearance"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/archive": {
       "delete": {
         "operationId": "unarchivePage",
@@ -10325,6 +10385,72 @@
           "quote"
         ]
       },
+      "Appearance": {
+        "type": "object",
+        "properties": {
+          "cover": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Cover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "width": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "full"
+            ]
+          }
+        },
+        "required": [
+          "icon",
+          "width",
+          "cover"
+        ]
+      },
+      "AppearanceInput": {
+        "type": "object",
+        "properties": {
+          "cover": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Cover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "width": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "full"
+            ]
+          }
+        },
+        "required": [
+          "icon",
+          "width",
+          "cover"
+        ]
+      },
       "Archive": {
         "type": "object",
         "properties": {
@@ -11035,6 +11161,26 @@
           "page",
           "inline",
           "detached"
+        ]
+      },
+      "Cover": {
+        "type": "object",
+        "properties": {
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "focusX": {
+            "type": "integer"
+          },
+          "focusY": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attachmentId",
+          "focusX",
+          "focusY"
         ]
       },
       "CreateFailure": {
@@ -12795,6 +12941,9 @@
               "$ref": "#/components/schemas/Ref"
             }
           },
+          "appearance": {
+            "$ref": "#/components/schemas/Appearance"
+          },
           "archived": {
             "oneOf": [
               {
@@ -12924,6 +13073,7 @@
           "parentId",
           "title",
           "kind",
+          "appearance",
           "body",
           "version",
           "home",
@@ -14874,6 +15024,12 @@
           "hasChildren": {
             "type": "boolean"
           },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -14907,7 +15063,8 @@
           "archived",
           "unpublished",
           "restricted",
-          "kind"
+          "kind",
+          "icon"
         ]
       },
       "UpdateInput": {
