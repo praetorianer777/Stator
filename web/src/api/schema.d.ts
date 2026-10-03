@@ -576,6 +576,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/labelled-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The published pages out of the trash and the archive that carry the labels, all or any, and that the caller may read, for a content by label block. */
+        get: operations["labelledPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/labels": {
         parameters: {
             query?: never;
@@ -2186,6 +2203,23 @@ export interface paths {
         post?: never;
         /** Revoke one of the caller's tokens; it stops working at once. */
         delete: operations["revokeAPIToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/updated-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The pages published last that the caller may read, in a space or across the organization, folders, the trash and the archive left out, for a recently updated block. */
+        get: operations["updatedPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3804,6 +3838,16 @@ export interface components {
             /** @enum {string} */
             locale?: "" | "en" | "de";
             showInReaders?: boolean;
+        };
+        UpdatedPage: {
+            authorName: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            publishedAt: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
         };
         User: {
             avatarUrl?: string;
@@ -5574,6 +5618,57 @@ export interface operations {
                         next: string | null;
                         updates: components["schemas"]["PageUpdate"][];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    labelledPages: {
+        parameters: {
+            query?: {
+                /** @description 1 to 5 labels. */
+                label?: string[];
+                /** @description all when absent: a page carries every label; any: at least one. */
+                match?: "all" | "any";
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description updated, the latest published first, when absent; or title. */
+                sort?: "updated" | "title";
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["LabeledPage"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -10098,6 +10193,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updatedPages: {
+        parameters: {
+            query?: {
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["UpdatedPage"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

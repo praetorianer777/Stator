@@ -409,6 +409,14 @@ export const PROPERTIES_MAX_ROWS = 50;
 /** The most labels and columns a properties report asks for, matching MaxReportLabels and MaxReportColumns. */
 export const PROPERTIES_REPORT_MAX_LABELS = 5;
 export const PROPERTIES_REPORT_MAX_COLUMNS = 10;
+/** How many pages a list block shows when it names no number, and the most, as document.DefaultListedPages and MaxListedPages. */
+export const PAGE_LIST_DEFAULT_LIMIT = 10;
+export const PAGE_LIST_MAX_LIMIT = 50;
+/** The lengths a list block's settings offer, within 1 to PAGE_LIST_MAX_LIMIT. */
+export const PAGE_LIST_LIMIT_CHOICES: readonly number[] = [5, 10, 20, 50];
+/** How a content by label list matches its labels and orders its pages, as document.ListMatches and ListSorts. */
+export const PAGE_LIST_MATCHES = ["all", "any"] as const;
+export const PAGE_LIST_SORTS = ["updated", "title"] as const;
 /** What a roadmap block puts its rows under, as armature.RoadmapGroupings. */
 export const ARMATURE_ROADMAP_GROUPINGS = ["epic", "team"] as const;
 export type ArmatureRoadmapGrouping = (typeof ARMATURE_ROADMAP_GROUPINGS)[number];

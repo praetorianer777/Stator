@@ -39,6 +39,8 @@ const richDoc = `{"type":"doc","content":[
   {"type":"propertyRow","attrs":{"key":"Due"}}]},
  {"type":"propertiesReport","attrs":{"labels":["release-notes","übersicht"],"space":null,"columns":[]}},
  {"type":"propertiesReport","attrs":{"labels":["v1.2"],"space":"DOCS","columns":["Owner","Review date"]}},
+ {"type":"labelledPages","attrs":{"labels":["adr","v1.2"],"match":"any","space":null,"sort":"title","limit":50}},
+ {"type":"recentlyUpdated","attrs":{"space":"DOCS","limit":1}},
  {"type":"table","content":[
   {"type":"tableRow","content":[
    {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Name"}]}]},
@@ -145,6 +147,12 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"report of an upper case label", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":["Release"],"space":null,"columns":[]}}]}`, `labels`},
 		{"report of a lower case space", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":["a"],"space":"docs","columns":[]}}]}`, `space="docs"`},
 		{"report of a padded column", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":["a"],"space":null,"columns":[" Owner"]}}]}`, `columns`},
+		{"labelled pages matching some", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":["a"],"match":"some","space":null,"sort":"title","limit":5}}]}`, `match="some"`},
+		{"labelled pages by views", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":["a"],"match":"all","space":null,"sort":"views","limit":5}}]}`, `sort="views"`},
+		{"labelled pages without labels", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":[],"match":"all","space":null,"sort":"title","limit":5}}]}`, `labels`},
+		{"labelled pages past the limit", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":["a"],"match":"all","space":null,"sort":"title","limit":51}}]}`, `limit=51`},
+		{"recently updated none", `{"type":"doc","content":[{"type":"recentlyUpdated","attrs":{"space":null,"limit":0}}]}`, `limit=0`},
+		{"recently updated with pages", `{"type":"doc","content":[{"type":"recentlyUpdated","attrs":{"space":null,"limit":5,"pages":[]}}]}`, `attribute "pages"`},
 		{"report with its rows", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":["a"],"space":null,"columns":[],"rows":[]}}]}`, `attribute "rows"`},
 		{"chart with counts", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"CP","query":"x","chart":"pie","groupBy":"type","days":30,"total":5}}]}`, `attribute "total"`},
 		{"include of no page", `{"type":"doc","content":[{"type":"include","attrs":{"pageId":"HOME","excerptId":null}}]}`, `pageId="HOME"`},

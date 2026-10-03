@@ -2649,6 +2649,111 @@
         }
       }
     },
+    "/labelled-pages": {
+      "get": {
+        "operationId": "labelledPages",
+        "summary": "The published pages out of the trash and the archive that carry the labels, all or any, and that the caller may read, for a content by label block.",
+        "tags": [
+          "labels"
+        ],
+        "parameters": [
+          {
+            "name": "label",
+            "in": "query",
+            "description": "1 to 5 labels.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "match",
+            "in": "query",
+            "description": "all when absent: a page carries every label; any: at least one.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "any"
+              ]
+            }
+          },
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key to stay inside; a space the caller may not view is not found.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "updated, the latest published first, when absent; or title.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "updated",
+                "title"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 10 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LabeledPage"
+                      }
+                    }
+                  },
+                  "required": [
+                    "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/labels": {
       "get": {
         "operationId": "suggestLabels",
@@ -9606,6 +9711,76 @@
         }
       }
     },
+    "/updated-pages": {
+      "get": {
+        "operationId": "updatedPages",
+        "summary": "The pages published last that the caller may read, in a space or across the organization, folders, the trash and the archive left out, for a recently updated block.",
+        "tags": [
+          "pages"
+        ],
+        "parameters": [
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key to stay inside; a space the caller may not view is not found.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 10 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UpdatedPage"
+                      }
+                    }
+                  },
+                  "required": [
+                    "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users": {
       "get": {
         "operationId": "listMembers",
@@ -15719,6 +15894,39 @@
             "type": "boolean"
           }
         }
+      },
+      "UpdatedPage": {
+        "type": "object",
+        "properties": {
+          "authorName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName",
+          "publishedAt",
+          "authorName"
+        ]
       },
       "User": {
         "type": "object",

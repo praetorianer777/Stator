@@ -633,6 +633,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   label given, in one space or all, with a column for each property found or
   for those named, sortable by any column, as each reader may read them
   (`GET /properties-report`, also the MCP tool `properties_report`).
+- Page lists (#55). "Content by label" lists the published pages carrying
+  all or any of some labels, in one space or all, latest first or by title,
+  5 to 50 of them (`GET /labelled-pages`); "Recently updated" lists the pages
+  published last in a space or across the organization, with who published
+  each (`GET /updated-pages`). Both show each reader the pages they may read,
+  leave the trash, the archive and folders out, and keep only their settings
+  in the page, so an overview stays current without editing. The latest blog
+  posts block waits for blog posts (#72).
 
 ### Changed
 

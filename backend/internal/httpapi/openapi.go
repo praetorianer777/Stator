@@ -309,6 +309,19 @@ var operations = []operation{
 			{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."},
 			{name: "column", repeated: true, description: "Up to 10 property names to show, in order; every name found when absent."},
 		}, responses: map[int]any{200: label.PropertiesReport{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/labelled-pages", handler: "handleLabelledPages", tool: "list_labelled_pages", toolHelp: "The published pages that carry all, or with match any, any of the labels given, latest first or by title.", tag: "labels", summary: "The published pages out of the trash and the archive that carry the labels, all or any, and that the caller may read, for a content by label block.",
+		query: []param{
+			{name: "label", repeated: true, description: "1 to 5 labels."},
+			{name: "match", schema: &openapi.Schema{Type: "string", Enum: document.ListMatches}, description: "all when absent: a page carries every label; any: at least one."},
+			{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."},
+			{name: "sort", schema: &openapi.Schema{Type: "string", Enum: document.ListSorts}, description: "updated, the latest published first, when absent; or title."},
+			{name: "limit", schema: intParam, description: "1 to 50; 10 when absent."},
+		}, responses: map[int]any{200: env{"pages": []label.LabeledPage{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/updated-pages", handler: "handleUpdatedPages", tool: "list_updated_pages", toolHelp: "The pages published last, by anybody, in one space or across the organization, with who published each.", tag: "pages", summary: "The pages published last that the caller may read, in a space or across the organization, folders, the trash and the archive left out, for a recently updated block.",
+		query: []param{
+			{name: "space", description: "A space key to stay inside; a space the caller may not view is not found."},
+			{name: "limit", schema: intParam, description: "1 to 50; 10 when absent."},
+		}, responses: map[int]any{200: env{"pages": []page.UpdatedPage{}}, 422: errorEnvelope{}}},
 
 	// Permissions (#19).
 	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "permissions", summary: "What the caller may do across the organization, which decides which buttons to draw.",

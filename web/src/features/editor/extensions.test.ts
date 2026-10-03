@@ -95,6 +95,9 @@ describe("the slash menu's blocks", () => {
         JSON.stringify(find(d, "armatureRoadmap")[0]?.attrs) === JSON.stringify({ project: "CP", query: "project = CP", groupBy: "team" }),
       properties: (d) => JSON.stringify(find(d, "propertyRow").map((r) => r.attrs?.key)) === JSON.stringify(["Owner", "Status"]),
       propertiesReport: (d) => JSON.stringify(find(d, "propertiesReport")[0]?.attrs) === JSON.stringify({ labels: ["adr"], space: null, columns: ["Owner"] }),
+      labelledPages: (d) =>
+        JSON.stringify(find(d, "labelledPages")[0]?.attrs) === JSON.stringify({ labels: ["adr"], match: "any", space: null, sort: "title", limit: 5 }),
+      recentlyUpdated: (d) => JSON.stringify(find(d, "recentlyUpdated")[0]?.attrs) === JSON.stringify({ space: null, limit: 10 }),
       include: (d) => JSON.stringify(find(d, "include")[0]?.attrs) === JSON.stringify({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null }),
       excerpt: (d) => {
         const e = find(d, "excerpt")[0];
@@ -114,6 +117,8 @@ describe("the slash menu's blocks", () => {
           setTimeout(() => editor?.commands.insertArmatureChart({ project: "CP", query: "project = CP", chart: "pie", groupBy: "type", days: 30 })),
         pickRoadmap: () => setTimeout(() => editor?.commands.insertArmatureRoadmap({ project: "CP", query: "project = CP", groupBy: "team" })),
         pickPropertiesReport: () => setTimeout(() => editor?.commands.insertPropertiesReport({ labels: ["adr"], space: null, columns: ["Owner"] })),
+        pickLabelledPages: () =>
+          setTimeout(() => editor?.commands.insertLabelledPages({ labels: ["adr"], match: "any", space: null, sort: "title", limit: 5 })),
         pickInclude: () => setTimeout(() => editor?.commands.insertInclude({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null })),
         pickLinkCard: () => setTimeout(() => editor?.commands.insertLinkCard("https://example.test/post")),
         pickIssueList: () => setTimeout(() => editor?.commands.insertArmatureIssueList({ query: "project = CP", columns: ["key", "due"], limit: 5 })),

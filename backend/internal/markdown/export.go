@@ -157,6 +157,20 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 	// Markdown has no properties, so they read as the two-column table they look like.
 	case document.NodeProperties:
 		return r.table(propertiesTable(n), depth)
+	// A list's pages are each reader's, so the export keeps what it lists.
+	case document.NodeLabelledPages:
+		return div(kindLabelled, [][2]string{
+			{"data-labels", strings.Join(stringsAttr(n, "labels"), ",")},
+			{"data-match", stringAttr(n, "match")},
+			{"data-space", stringAttr(n, "space")},
+			{"data-sort", stringAttr(n, "sort")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
+		}, ""), true
+	case document.NodeRecentlyUpdated:
+		return div(kindUpdated, [][2]string{
+			{"data-space", stringAttr(n, "space")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
+		}, ""), true
 	// A report's rows are each reader's, so the export keeps what it gathers.
 	case document.NodePropertiesReport:
 		columns, _ := json.Marshal(stringsAttr(n, "columns"))

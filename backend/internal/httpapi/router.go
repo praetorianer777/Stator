@@ -321,6 +321,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/labels", s.handleSuggestLabels)
 			r.Get("/labels/{labelName}/pages", s.handleListLabelPages)
 			r.Get("/properties-report", s.handlePropertiesReport)
+			r.Get("/labelled-pages", s.handleLabelledPages)
+			r.Get("/updated-pages", s.handleUpdatedPages)
 			r.Get("/pages/{pageID}/attachments", s.handleListAttachments)
 			r.Post("/pages/{pageID}/attachments", s.handleUploadAttachment)
 			r.Get("/attachments/{attachmentID}", s.handleDownloadAttachment)
