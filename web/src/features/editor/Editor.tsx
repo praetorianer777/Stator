@@ -24,6 +24,8 @@ import { newChartSettings } from "@/features/armature/chart";
 import { IssueRoadmapDialog } from "@/features/armature/IssueRoadmapDialog";
 import { newRoadmapSettings } from "@/features/armature/roadmap";
 import { PropertiesReportDialog } from "@/features/properties/PropertiesReportDialog";
+import { PageListDialog } from "@/features/pageLists/PageListDialog";
+import { labelledSettings } from "@/features/pageLists/lists";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
 import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
@@ -128,6 +130,7 @@ export function Editor({
   const [makingChart, setMakingChart] = useState(false);
   const [makingRoadmap, setMakingRoadmap] = useState(false);
   const [makingReport, setMakingReport] = useState(false);
+  const [makingLabelled, setMakingLabelled] = useState(false);
   const [pickingLink, setPickingLink] = useState(false);
   const [pickingInclude, setPickingInclude] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
@@ -156,6 +159,7 @@ export function Editor({
       pickChart: () => setMakingChart(true),
       pickRoadmap: () => setMakingRoadmap(true),
       pickPropertiesReport: () => setMakingReport(true),
+      pickLabelledPages: () => setMakingLabelled(true),
       pickLinkCard: () => setPickingLink(true),
       pickInclude: () => setPickingInclude(true),
       pageId: page?.id,
@@ -368,6 +372,18 @@ export function Editor({
           onSave={(settings) => {
             setMakingRoadmap(false);
             editor.chain().focus().insertArmatureRoadmap(settings).run();
+          }}
+        />
+      )}
+      {makingLabelled && editor && (
+        <PageListDialog
+          kind="labelled"
+          initial={labelledSettings({})}
+          isNew
+          onClose={() => setMakingLabelled(false)}
+          onSave={(settings) => {
+            setMakingLabelled(false);
+            editor.chain().focus().insertLabelledPages(settings).run();
           }}
         />
       )}

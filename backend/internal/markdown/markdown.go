@@ -29,6 +29,8 @@ const (
 	kindChart      = "issue-chart"
 	kindRoadmap    = "issue-roadmap"
 	kindReport     = "properties-report"
+	kindLabelled   = "labelled-pages"
+	kindUpdated    = "updated-pages"
 )
 
 // panelAlerts pairs each panel kind with the alert a quote opens with, one

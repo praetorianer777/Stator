@@ -3,6 +3,17 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-03: A list of pages holds what to list, and asks each time it is read
+
+Content by label and recently updated store their settings in the page, as
+the chart and the report do, and each reader's view asks for the pages: an
+overview stays current without anybody editing it, and two readers of one
+page rightly see two lists when they may read different pages. Both count a
+page from when it was last published, which only publishing moves, so a
+draft or a move does not bring a page to the top. Folders, the
+trash and the archive stay out, as they do on the home page. A latest blog
+posts block needs blog posts first, so it moved to #72.
+
 ## 2026-10-03: Page properties live in the page body and are read when asked
 
 A page's properties are a block of its body, a row per name with the value

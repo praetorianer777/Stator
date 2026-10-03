@@ -31,6 +31,8 @@ import { IssueRoadmap } from "@/features/armature/IssueRoadmap";
 import { ARMATURE_ROADMAP_NODE, roadmapSettings } from "@/features/armature/roadmap";
 import { PropertiesReport } from "@/features/properties/PropertiesReport";
 import { PROPERTIES_REPORT_NODE, reportSettings } from "@/features/properties/report";
+import { LabelledPages, UpdatedPages } from "@/features/pageLists/PageLists";
+import { LABELLED_PAGES_NODE, RECENTLY_UPDATED_NODE, labelledSettings, updatedSettings } from "@/features/pageLists/lists";
 import { PROPERTIES_NODE, propertyKey } from "./properties";
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
@@ -302,6 +304,18 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
         );
       }
       return <PropertiesReport settings={settings} draw={drawInline} />;
+    }
+    // A list's pages are each reader's own, now; a comparison says what it lists.
+    case LABELLED_PAGES_NODE: {
+      const settings = labelledSettings(node.attrs);
+      if (settings.labels.length === 0) return null;
+      if (!copy) return <p className="doc-block doc-block-summary">{t.pageLists.labelledTitle(settings.labels, settings.match, settings.space)}</p>;
+      return <LabelledPages settings={settings} />;
+    }
+    case RECENTLY_UPDATED_NODE: {
+      const settings = updatedSettings(node.attrs);
+      if (!copy) return <p className="doc-block doc-block-summary">{t.pageLists.updatedTitle(settings.space)}</p>;
+      return <UpdatedPages settings={settings} />;
     }
     // An excerpt reads as the blocks it marks; its name is for pickers.
     case "excerpt":

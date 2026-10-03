@@ -139,6 +139,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",
@@ -221,6 +223,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",
@@ -300,6 +304,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",
@@ -342,6 +348,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",
@@ -379,6 +387,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",
@@ -450,6 +460,40 @@
         }
       }
     },
+    "labelledPages": {
+      "attrs": {
+        "labels": {
+          "kind": "strings",
+          "minLength": 1,
+          "maxLength": 5,
+          "pattern": "^[\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}][\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}_.-]{0,39}$"
+        },
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 50
+        },
+        "match": {
+          "kind": "string",
+          "enum": [
+            "all",
+            "any"
+          ]
+        },
+        "sort": {
+          "kind": "string",
+          "enum": [
+            "updated",
+            "title"
+          ]
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
+    },
     "linkCard": {
       "attrs": {
         "url": {
@@ -489,6 +533,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",
@@ -594,6 +640,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",
@@ -661,6 +709,20 @@
         "mathInline"
       ],
       "allowsMarks": true
+    },
+    "recentlyUpdated": {
+      "attrs": {
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 50
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
     },
     "status": {
       "attrs": {
@@ -747,6 +809,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",
@@ -816,6 +880,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",
@@ -867,6 +933,8 @@
         "include",
         "properties",
         "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
         "image",
         "tableOfContents",
         "childPages",

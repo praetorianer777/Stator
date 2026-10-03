@@ -60,6 +60,10 @@ export const SLASH_ITEMS: SlashItem[] = [
   { ...item("armatureIssueList", Icon.Table, ["armature", "issues", "query", "nql", "list"], (c) => c.pickArmatureIssueList()), armature: true },
   item("status", Icon.Label, ["status", "state", "badge", "label", "tag"], (c) => c.insertStatus()),
   item("date", Icon.Calendar, ["date", "day", "today", "deadline", "when"], (c) => c.insertDate()),
+  item("labelledPages", Icon.Label, ["content by label", "labels", "tagged", "list", "pages"], (c) => c.pickLabelledPages()),
+  item("recentlyUpdated", Icon.Page, ["recently updated", "recent", "latest", "changes", "activity"], (c) =>
+    c.insertRecentlyUpdated({ space: null, limit: 10 }),
+  ),
   item("mathInline", Icon.Sigma, ["math", "formula", "equation", "latex", "tex", "katex", "inline"], (c) => c.insertMathInline()),
   // The colon opens the emoji list as if typed, so there is one picker to learn.
   item("emoji", Icon.Smile, ["emoji", "smiley", "reaction"], (c) => c.insertContent(":")),

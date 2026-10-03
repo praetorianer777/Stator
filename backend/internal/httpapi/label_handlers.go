@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -8,7 +10,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/page"
 )
 
 // labelName reads a label out of the route. No label holds a percent sign, so
@@ -87,6 +91,54 @@ func (s *Server) handleSuggestLabels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"labels": found})
+}
+
+// listLimit reads a page list's limit, document.DefaultListedPages when absent;
+// one that is no number is out of range, which the service refuses in words.
+func listLimit(r *http.Request) int {
+	raw := r.URL.Query().Get("limit")
+	if raw == "" {
+		return document.DefaultListedPages
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// Content by label (#55): the published pages carrying the labels, all or
+// any, as the caller may read them.
+func (s *Server) handleLabelledPages(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	in := label.ListInput{Labels: q["label"], Match: q.Get("match"), SpaceKey: q.Get("space"), Sort: q.Get("sort"), Limit: listLimit(r)}
+	if in.Match == "" {
+		in.Match = document.MatchAll
+	}
+	if in.Sort == "" {
+		in.Sort = document.SortUpdated
+	}
+	pages, err := s.Labels.Listed(r.Context(), actorFrom(r), in)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"pages": pages})
+}
+
+// Recently updated (#55): the pages published last, in a space or anywhere,
+// as the caller may read them.
+func (s *Server) handleUpdatedPages(w http.ResponseWriter, r *http.Request) {
+	pages, err := s.Pages.RecentlyUpdated(r.Context(), actorFrom(r), r.URL.Query().Get("space"), listLimit(r))
+	if errors.Is(err, page.ErrListLimit) {
+		respondError(w, r, ErrValidation(map[string]string{"limit": fmt.Sprintf("List 1 to %d pages.", document.MaxListedPages)}))
+		return
+	}
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"pages": pages})
 }
 
 // A properties report (#54): the properties of the pages carrying every

@@ -126,6 +126,10 @@ const (
 	// MaxReportLabels and MaxReportColumns bound what a properties report asks for.
 	MaxReportLabels  = 5
 	MaxReportColumns = 10
+	// DefaultListedPages and MaxListedPages are how many pages a block that
+	// lists them shows when it names no number, and the most it may.
+	DefaultListedPages = 10
+	MaxListedPages     = 50
 )
 
 // The states of a decision item.
@@ -176,6 +180,28 @@ const (
 // holds what to list, and each reader's view asks for the pages they may read.
 const NodePropertiesReport = "propertiesReport"
 
+// NodeLabelledPages lists the published pages carrying labels, and
+// NodeRecentlyUpdated those published last; each holds what to list, and each
+// reader's view asks for the pages they may read.
+const (
+	NodeLabelledPages   = "labelledPages"
+	NodeRecentlyUpdated = "recentlyUpdated"
+)
+
+// How a content by label list matches its labels and orders its pages.
+const (
+	MatchAll    = "all"
+	MatchAny    = "any"
+	SortTitle   = "title"
+	SortUpdated = "updated"
+)
+
+// ListMatches and ListSorts are what a content by label list may choose.
+var (
+	ListMatches = []string{MatchAll, MatchAny}
+	ListSorts   = []string{SortUpdated, SortTitle}
+)
+
 // LabelPattern is a label as label.Normalize leaves it.
 const LabelPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}][\p{Ll}\p{Lo}\p{Lm}\p{N}_.-]{0,39}$`
 
@@ -205,7 +231,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -406,6 +432,17 @@ var Allowed = Allowlist{
 			"labels":  {Kind: KindStrings, Pattern: LabelPattern, MinLength: 1, MaxLength: MaxReportLabels},
 			"space":   {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},
 			"columns": {Kind: KindStrings, Pattern: PropertyKeyPattern, MaxLength: MaxReportColumns},
+		}},
+		NodeLabelledPages: {Attrs: map[string]Attr{
+			"labels": {Kind: KindStrings, Pattern: LabelPattern, MinLength: 1, MaxLength: MaxReportLabels},
+			"match":  {Kind: KindString, Enum: ListMatches},
+			"space":  {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},
+			"sort":   {Kind: KindString, Enum: ListSorts},
+			"limit":  {Kind: KindInteger, Min: 1, Max: MaxListedPages},
+		}},
+		NodeRecentlyUpdated: {Attrs: map[string]Attr{
+			"space": {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},
+			"limit": {Kind: KindInteger, Min: 1, Max: MaxListedPages},
 		}},
 		NodeLinkCard: {Attrs: map[string]Attr{
 			"url":  {Kind: KindString, MaxLength: MaxHrefLength, URL: true, Pattern: `^[Hh][Tt][Tt][Pp][Ss]?://`},
