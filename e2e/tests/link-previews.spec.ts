@@ -118,7 +118,8 @@ test.describe("link previews", { tag: ["@auth"] }, () => {
       }).toPass();
       await expect(shown(page).locator("iframe")).toHaveCount(1);
       await expect(shown(page).locator('[data-link-card="card"][data-state="plain"]')).toContainText("unreachable.invalid/post");
-      await expectAccessible(page);
+      // The player inside the embed is the video site's own markup (#275).
+      await expectAccessible(page, { thirdPartyFrames: ["main [data-doc] iframe"] });
     });
   }
 });

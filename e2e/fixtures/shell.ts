@@ -37,9 +37,13 @@ const KNOWN_FINDINGS: Array<{ rule: string; matches: (page: Page, node: AxeNode)
 
 type AxeNode = Awaited<ReturnType<AxeBuilder["analyze"]>>["violations"][number]["nodes"][number];
 
-/** Runs axe over the whole page as it stands and fails with every violation it finds. */
-export async function expectAccessible(page: Page): Promise<void> {
-  const results = await new AxeBuilder({ page }).options({ rules: RULES_ON }).analyze();
+/** Runs axe over the whole page and fails with every violation it finds; inside a
+ *  thirdPartyFrames frame is another site's markup, so only the frame itself is checked. */
+export async function expectAccessible(page: Page, { thirdPartyFrames = [] }: { thirdPartyFrames?: string[] } = {}): Promise<void> {
+  let builder = new AxeBuilder({ page }).options({ rules: RULES_ON });
+  // The document inside each such frame, not the frame element itself.
+  for (const frame of thirdPartyFrames) builder = builder.exclude([frame, "html"]);
+  const results = await builder.analyze();
   const found: string[] = [];
   for (const violation of results.violations) {
     for (const node of violation.nodes) {
