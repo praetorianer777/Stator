@@ -267,7 +267,30 @@ func (c *converter) blocks(nodes []ast.Node, depth int) ([]document.Node, error)
 		}
 		out = append(out, made...)
 	}
-	return out, nil
+	return c.chartTables(out), nil
+}
+
+// chartTables gives each chart marker the table that follows it, as the
+// export writes them; a marker with no table after it is left out.
+func (c *converter) chartTables(nodes []document.Node) []document.Node {
+	out := nodes[:0]
+	for i := 0; i < len(nodes); i++ {
+		n := nodes[i]
+		if n.Type != document.NodeTableChart || len(n.Content) > 0 {
+			out = append(out, n)
+			continue
+		}
+		if i+1 < len(nodes) && nodes[i+1].Type == "table" {
+			n.Content = []document.Node{nodes[i+1]}
+			if validates(n, false) {
+				out = append(out, n)
+				i++
+				continue
+			}
+		}
+		c.warn("A %s block had no table after it and was left out.", kindTableChart)
+	}
+	return out
 }
 
 // detailsCloses pairs each details start in a run with the block that
@@ -681,6 +704,10 @@ func (c *converter) statorDiv(raw string) ([]document.Node, bool) {
 					return nil, false
 				}
 				n, ok := divNode(kind, e.attrs, strings.TrimSpace(words.String()))
+				// A chart's marker holds no table yet; blocks gives it the one after it.
+				if ok && kind == kindTableChart {
+					return []document.Node{n}, true
+				}
 				if !ok || !validates(n, false) {
 					c.warn("A %s block could not be read and was left out.", kind)
 					return nil, true
@@ -739,6 +766,12 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 		return document.Node{Type: document.NodeLabelledPages, Attrs: map[string]any{
 			"labels": labels, "match": attrs["data-match"], "space": space, "sort": attrs["data-sort"], "limit": limit,
 		}}, true
+	case kindTableChart:
+		chart := attrs["data-chart"]
+		if !slices.Contains(document.TableCharts, chart) {
+			return document.Node{}, false
+		}
+		return document.Node{Type: document.NodeTableChart, Attrs: map[string]any{"chart": chart, "showTable": attrs["data-show-table"] == "true"}}, true
 	case kindFiles:
 		return document.Node{Type: document.NodeAttachmentList}, true
 	case kindTasks:

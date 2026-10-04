@@ -45,6 +45,7 @@ const richDoc = `{"type":"doc","content":[
  {"type":"taskReport","attrs":{"space":null,"assignee":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","due":"any","state":"all","limit":100}},
  {"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"none","state":"done","limit":1}},
  {"type":"attachmentList"},
+ {"type":"tableChart","attrs":{"chart":"bar","showTable":true},"content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Q1"}]}]}]}]}]},
  {"type":"table","content":[
   {"type":"tableRow","content":[
    {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Name"}]}]},
@@ -160,6 +161,9 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"task report due later", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"later","state":"open","limit":5}}]}`, `due="later"`},
 		{"task report half done", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"half","limit":5}}]}`, `state="half"`},
 		{"task report past the limit", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"open","limit":101}}]}`, `limit=101`},
+		{"table chart of a donut", `{"type":"doc","content":[{"type":"tableChart","attrs":{"chart":"donut","showTable":true},"content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph"}]}]}]}]}]}`, `chart="donut"`},
+		{"table chart without a table", `{"type":"doc","content":[{"type":"tableChart","attrs":{"chart":"bar","showTable":true}}]}`, `tableChart`},
+		{"table chart of a paragraph", `{"type":"doc","content":[{"type":"tableChart","attrs":{"chart":"bar","showTable":true},"content":[{"type":"paragraph"}]}]}`, `paragraph`},
 		{"attachment list naming files", `{"type":"doc","content":[{"type":"attachmentList","attrs":{"files":[]}}]}`, `attribute "files"`},
 		{"task report with tasks", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"open","limit":5,"tasks":[]}}]}`, `attribute "tasks"`},
 		{"recently updated with pages", `{"type":"doc","content":[{"type":"recentlyUpdated","attrs":{"space":null,"limit":5,"pages":[]}}]}`, `attribute "pages"`},
@@ -323,6 +327,7 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		"Owner\t@Ada",
 		"\tFinal",
 		"Due",
+		"Q1",
 		"Name\tRole",
 		"Ada",
 		"Careful",
