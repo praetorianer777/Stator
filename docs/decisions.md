@@ -3,6 +3,54 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-05: A guest is a member held to one space, as a limited token is
+
+A guest (#69) is a row of `org_member` with the role `guest` and the space
+they were invited to, not a second kind of principal, as Armature keeps a
+portal customer a member with a role. Signing in, sessions, removal and the
+audit log then work for guests as for anybody, and every rule that already
+asks about members asks about them. An administrator of the organization
+invites one by address into a team space as a viewer, a commenter or an
+editor; the account is made if there is none, the grants naming them are
+written with the membership, and they sign in through the organization's
+provider with that address. A personal space takes no guest. There is no
+link mailed with a token: the provider proves the address, as it does for
+everybody else.
+
+What a guest reaches is what a token limited to their one space reaches, so
+the functions that hold such a token (`perm_token_reaches`,
+`perm_token_whole`) hold a guest too, for every caller who asks about them
+and whether or not the request says so: no other space, no personal space,
+no tokens, no organization grant beyond `use`, nothing the route table marks
+`orgWide`, which answers `403 guest`. Within their space a guest holds only
+the grants that name them: what everyone holds there is for the
+organization's members, and a guest invited to read stays a reader in an
+open space. The database refuses what would widen a guest: a grant in
+another space, administering their own (whose permission table names the
+organization's people and groups), a place in a group, which carries its
+members into every space it is granted, and any change of their role or
+space; the remedy for each is to remove them and invite or let them in
+anew. The provider's groups neither promote a guest nor take them in, as
+they never move an owner. Deleting the space removes its guests.
+
+Of the organization's people a guest sees only themselves and the people
+of their space: whoever a grant of the space names, directly or through a
+group, and whoever published, commented on or owns a page there. That is
+what the space shows by name, its authors, commenters and owners, and whom
+a guest may sensibly mention. It is not everybody who may read the space,
+which for an open space is the whole organization and would make the
+mention picker the directory the guest may not see. `app_user` and
+`org_member` hold a guest to it by policy, so the people picker, the mention
+picker, the search's author filter and every name joined into a page agree;
+groups, join requests and the provider settings are hidden from a guest
+outright. A guest's mention of anybody else is dropped before it is told,
+and refused by the outbox's policy if a request names them anyway. The
+members list is the administrators', and marks each guest with their space.
+
+The guest's interface follows from `organization.guestSpace` in
+`/auth/me`: they land in their space, and the navigation offers no space
+directory, hub, tokens or personal space.
+
 ## 2026-10-05: Without Valkey, api processes pass shared drafts' changes through Postgres
 
 Editing together (#65) first needed Valkey for more than one api pod, so the

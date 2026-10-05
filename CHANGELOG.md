@@ -742,6 +742,21 @@ and the versioning [Semantic Versioning](https://semver.org/).
   own draft still holds what they publish, and the editor edits alone, as
   before, when the shared draft is out of reach. The chart's nginx passes
   the WebSocket on.
+- Guests (#69). An administrator of the organization invites somebody from
+  outside into one team space by their address, to read, to read and
+  comment, or to read, comment and edit, under the space's new Guests tab
+  (`GET`, `POST /spaces/{key}/guests`, `DELETE /spaces/{key}/guests/{id}`).
+  The guest signs in through the organization's provider with that address
+  and lands in the space. They reach nothing else: no other space, no
+  personal space, no tokens, nothing of the organization as a whole, which
+  answers `403 guest`, and of its people only those of their space, so the
+  people picker, mentions and every name a page shows keep to the space
+  and the groups are hidden. The database holds all of it, and refuses a
+  guest a second space, a group, administering their space or a change of
+  role. The members list marks guests with their space; invitations and
+  removals go to the audit log, and deleting the space takes its guests
+  with it. An assistant acting for a guest is offered only what the guest
+  may do.
 
 ### Changed
 

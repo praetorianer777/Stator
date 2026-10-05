@@ -43,6 +43,9 @@ Every table carries an organisation and a row-level security policy keyed on
 Each transaction of a request also names the person it acts for, read by
 `current_actor_id()`, and restrictive policies hold `stator_app` to that
 person's space permissions and page restrictions (see `docs/decisions.md`).
+A guest, a member with the role `guest` and the one space they were invited
+to, is held by the same functions to that space and to the people in it,
+whatever a query forgets to ask.
 
 ### Reads, writes and replicas
 
@@ -79,6 +82,7 @@ process, which is only right for a single api process. `/readyz` and
 | `auth` | sessions, argon2 passwords, personal access tokens |
 | `oidc` | OIDC relying party per organisation, group sync |
 | `perm` | global, space and page permissions |
+| `guest` | guests: people from outside invited into one space, and taken out again |
 | `space` | spaces, space settings |
 | `document` | page document allowlist and validation, plain text for search, headings for the table of contents |
 | `page` | page tree (parent plus rank), move, copy, trash, archive, drafts, the shared draft of a page edited together, published versions, diff, restore, restrictions, owners and verification, pages made from a template, the people who published a page or a tree, and the worker's watch on verifications that run out |

@@ -51,8 +51,11 @@ writing tool called anyway is refused with the read-only sentence before the
 call is made. A token limited to spaces sees those spaces alone, as it does
 over HTTP, and is not offered the tools the route table marks `orgWide`,
 such as `list_audit_log`; one called anyway is refused with the
-`spaces_token` sentence. A result longer than 64 KiB is cut and says how to
-ask for less.
+`spaces_token` sentence. A guest of a space, who has no tokens and reaches
+the tools with their session, is held the same way: their space and the
+people in it alone, no `orgWide` tool offered, and one called anyway refused
+with the `guest` sentence. A result longer than 64 KiB is cut and says how
+to ask for less.
 
 ## Tools
 
