@@ -149,6 +149,11 @@ attachments:
   # The largest file a page takes, such as 50MB or 2GB. The Ingress in front
   # must allow at least this much; an nginx Ingress reads proxy-body-size.
   uploadLimit: 50MB
+  # The service that converts office documents to PDF for their previews, such
+  # as http://converter:3000: an image of gotenberg/gotenberg:8 you run beside
+  # the api, as deploy/docker-compose.yml does. Only the api calls it. Blank
+  # turns those previews off; PDFs show in place either way.
+  converterUrl: ""
 
 verification:
   # How often the worker looks for page verifications that ran out, to tell

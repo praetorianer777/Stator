@@ -11,6 +11,7 @@ should find their way around the other without a map.
 browser ──> web (nginx, React SPA) ──> api (Go) ──> PostgreSQL (primary + replica)
                                         │  ├──> Valkey (cache, rate limits)
                                         │  ├──> S3-compatible storage (attachments, theme assets)
+                                        │  ├──> converter (office documents to PDF, for previews)
                                         │  └──> Armature API (as the viewing user)
                                         └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks
 Keycloak / any OIDC provider <── login ──┘
@@ -95,7 +96,8 @@ process, which is only right for a single api process. `/readyz` and
 | `keyset` | the cursor a list ordered by time hands out for its next window |
 | `template` | page templates |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
-| `attachment` | uploads to S3-compatible storage |
+| `attachment` | uploads to S3-compatible storage, and their PDF previews, converted once and kept |
+| `convert` | the client of the conversion service that turns office documents into PDF |
 | `markdown` | a document as Markdown and Markdown as a document, held to the allowlist |
 | `mdio` | Markdown import and export of pages, subtrees and their files, through the page and file services |
 | `theme` | custom themes in the `armature-theme/1` format |
@@ -161,7 +163,9 @@ ports, so parallel worktrees do not collide.
 `deploy/` follows Armature's layout. `docker-compose.yml` is the development
 and test stack: Postgres 18 as a primary and a streaming replica, Valkey,
 SeaweedFS (S3), Mailpit, Keycloak with the `stator-dev` realm
-(`deploy/keycloak/realm.json`), the one-shot `migrate` and `seed`, `api`,
+(`deploy/keycloak/realm.json`), the converter that turns office documents
+into PDF for previews (a headless office suite behind an HTTP API, reached
+by the api alone), the one-shot `migrate` and `seed`, `api`,
 `worker`, `web`, and `armature-stub` in Armature's place, which only the
 stack lets the SSRF guard through to. Every service has a health check and the dependencies
 wait on them, so `docker compose up --wait` returns once the stack answers.

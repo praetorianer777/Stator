@@ -3,9 +3,11 @@ package httpapi
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/praetorianer777/stator/backend/internal/attachment"
@@ -66,5 +68,29 @@ func TestAnUploadNeedsAPartNamedFile(t *testing.T) {
 	}
 	if got := toAPIError(attachment.ErrEmpty); got.Status != http.StatusUnprocessableEntity || got.Fields["file"] == "" {
 		t.Fatalf("an empty file answers %d %v", got.Status, got.Fields)
+	}
+}
+
+// Every way a preview can be missing reads as a sentence that says to
+// download the file, under a code of its own the client can tell apart.
+func TestAMissingPreviewSaysToDownloadTheFile(t *testing.T) {
+	for _, c := range []struct {
+		err    error
+		status int
+		code   string
+	}{
+		{attachment.ErrNoPreview, http.StatusUnsupportedMediaType, "no_preview"},
+		{attachment.ErrPreviewTooLarge, http.StatusRequestEntityTooLarge, "preview_too_large"},
+		{attachment.ErrPreviewFailed, http.StatusUnprocessableEntity, "preview_failed"},
+		{attachment.ErrPreviewOff, http.StatusServiceUnavailable, "preview_off"},
+		{fmt.Errorf("%w: refused", attachment.ErrConverterUnavailable), http.StatusServiceUnavailable, "preview_unavailable"},
+	} {
+		got := toAPIError(c.err)
+		if got.Status != c.status || got.Code != c.code || !strings.Contains(strings.ToLower(got.Message), "download") || !strings.HasSuffix(got.Message, ".") {
+			t.Errorf("%v answered %d %s %q", c.err, got.Status, got.Code, got.Message)
+		}
+	}
+	if got := toAPIError(attachment.ErrPreviewTooLarge).Message; !strings.Contains(got, "20 MB") {
+		t.Errorf("the size refusal does not name the limit: %q", got)
 	}
 }

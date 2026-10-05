@@ -20,7 +20,7 @@ func clean(t *testing.T) {
 		"STATOR_VALKEY_URL", "STATOR_SESSION_COOKIE",
 		"STATOR_SECURE_COOKIES", "STATOR_OTEL_ENDPOINT", "STATOR_OTEL_SAMPLE_RATIO",
 		"STATOR_S3_ENDPOINT", "STATOR_S3_BUCKET", "STATOR_S3_ACCESS_KEY", "STATOR_S3_SECRET_KEY",
-		"STATOR_S3_REGION", "STATOR_S3_USE_SSL", "STATOR_UPLOAD_LIMIT",
+		"STATOR_S3_REGION", "STATOR_S3_USE_SSL", "STATOR_UPLOAD_LIMIT", "STATOR_CONVERTER_URL",
 		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
@@ -32,6 +32,25 @@ func clean(t *testing.T) {
 		t.Setenv(key, "")
 	}
 	t.Setenv("STATOR_DB_PRIMARY_URL", "postgres://app@db/stator")
+}
+
+// The conversion service is optional, and an address that is no web
+// address is refused by name rather than failing at the first preview.
+func TestTheConverterIsAnHTTPAddressOrNothing(t *testing.T) {
+	clean(t)
+	if cfg, err := Load(); err != nil || cfg.ConverterURL != "" {
+		t.Fatalf("no converter reads as %q, %v", cfg.ConverterURL, err)
+	}
+	t.Setenv("STATOR_CONVERTER_URL", "http://converter:3000/")
+	if cfg, err := Load(); err != nil || cfg.ConverterURL != "http://converter:3000" {
+		t.Errorf("the converter reads as %q, %v", cfg.ConverterURL, err)
+	}
+	for _, bad := range []string{"converter:3000", "ftp://converter", "http://"} {
+		t.Setenv("STATOR_CONVERTER_URL", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_CONVERTER_URL") {
+			t.Errorf("%q should be refused by name, got %v", bad, err)
+		}
+	}
 }
 
 func TestUploadLimitReadsSizes(t *testing.T) {
