@@ -28,6 +28,7 @@ const file = (over: Partial<Attachment>): Attachment => ({
   createdAt: "2026-09-29T09:00:00Z",
   version: 1,
   versions: 1,
+  preview: "office",
   ...over,
 });
 const third = file({ id: "0195f000-0000-7000-8000-0000000000f3", version: 3, versions: 2, uploadedByName: "Grace Hopper", createdAt: "2026-10-02T09:00:00Z" });
@@ -37,6 +38,7 @@ const notes = file({
   contentType: "text/plain",
   size: 12,
   createdAt: "2026-10-01T09:00:00Z",
+  preview: "none",
 });
 const first = file({ versions: 2, fileName: "Budget.XLSX" });
 

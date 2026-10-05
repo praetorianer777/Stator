@@ -381,6 +381,21 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(err.Error())}
 	case errors.Is(err, attachment.ErrEmpty):
 		return ErrValidation(map[string]string{"file": sentence(attachment.ErrEmpty.Error())})
+	case errors.Is(err, attachment.ErrNoPreview):
+		return &APIError{Status: http.StatusUnsupportedMediaType, Code: "no_preview",
+			Message: "This kind of file has no preview. Download it to open it."}
+	case errors.Is(err, attachment.ErrPreviewTooLarge):
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "preview_too_large",
+			Message: sentence(attachment.ErrPreviewTooLarge.Error()) + " Download it to open it."}
+	case errors.Is(err, attachment.ErrPreviewFailed):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "preview_failed",
+			Message: "This file could not be converted for a preview. Download it to open it, or upload it again saved in another format."}
+	case errors.Is(err, attachment.ErrPreviewOff):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "preview_off",
+			Message: "Previews of office documents are turned off on this site. Download the file to open it, or ask an administrator to set up the conversion service."}
+	case errors.Is(err, attachment.ErrConverterUnavailable):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "preview_unavailable",
+			Message: "The preview could not be made just now. Try again in a minute, or download the file to open it.", cause: err}
 	case errors.Is(err, objectstore.ErrNoObject):
 		return &APIError{Status: http.StatusNotFound, Code: "file_missing", Message: "The file's contents are missing from storage. Upload it again, or ask an administrator to check the file storage.", cause: err}
 	case errors.Is(err, page.ErrPublishConflict):

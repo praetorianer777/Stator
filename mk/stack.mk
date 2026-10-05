@@ -68,6 +68,7 @@ DOCKER_GO_STACK = $(call go_run,--network $(STACK_NET) \
 	-e STATOR_S3_BUCKET=$(STACK_TEST_BUCKET) \
 	-e STATOR_S3_ACCESS_KEY='$(S3_ACCESS_KEY)' \
 	-e STATOR_S3_SECRET_KEY='$(S3_SECRET_KEY)' \
+	-e STATOR_CONVERTER_URL=http://converter:3000 \
 	-e STATOR_TEST_WEB_URL=http://web \
 	-e STATOR_TEST_KEYCLOAK_URL=http://keycloak:8080 \
 	-e STATOR_SMTP_ADDR=mailpit:1025 \

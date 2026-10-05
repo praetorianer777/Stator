@@ -679,6 +679,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   the chart; readers see the table under it unless the author hides it, and
   can read each category by pointer or keyboard, or open the numbers as a
   table. A chart draws 8 series at most; a pie draws the first.
+- PDF and office previews (#61). A PDF, and a docx, xlsx, pptx, odt, ods or
+  odp document (or an older doc, xls or ppt), opens in place from the
+  attachments panel and the files block, in the browser's own PDF viewer,
+  with a download beside it. Office documents are converted to PDF by a
+  conversion service in the compose stack (`STATOR_CONVERTER_URL`;
+  `attachments.converterUrl` in the chart), once per version, and the PDF is
+  kept beside the file and goes with it. Each file says its `preview`, and
+  `GET /attachments/{id}/preview` answers the PDF, or a sentence saying why
+  there is none and to download the file. Documents over 20 MB are not
+  converted.
 
 ### Changed
 

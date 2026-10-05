@@ -1189,6 +1189,15 @@ export const de: Messages = {
     } as Record<string, string>,
     removeImage: "Bild entfernen",
   },
+  preview: {
+    open: (name: string) => `Vorschau von ${name}`,
+    title: (name: string) => `Vorschau von ${name}`,
+    frame: (name: string) => `${name}, als PDF angezeigt`,
+    loading: (name: string) => `${name} wird geladen`,
+    converting: (name: string) => `${name} wird für die Vorschau umgewandelt. Ein großes Dokument braucht beim ersten Mal einige Sekunden.`,
+    newTab: "In neuem Tab öffnen",
+    failed: "Die Vorschau konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und öffnen Sie sie erneut, oder laden Sie die Datei herunter.",
+  },
   markdown: {
     exportMenu: "Als Markdown exportieren",
     importMenu: "Markdown importieren",

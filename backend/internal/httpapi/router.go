@@ -330,6 +330,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/attachments", s.handleListAttachments)
 			r.Post("/pages/{pageID}/attachments", s.handleUploadAttachment)
 			r.Get("/attachments/{attachmentID}", s.handleDownloadAttachment)
+			r.Get("/attachments/{attachmentID}/preview", s.handlePreviewAttachment)
 			r.Delete("/attachments/{attachmentID}", s.handleDeleteAttachment)
 			r.Get("/pages/{pageID}/draft", s.handleGetDraft)
 			r.Put("/pages/{pageID}/draft", s.handleSaveDraft)

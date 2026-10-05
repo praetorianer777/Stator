@@ -13,6 +13,7 @@ import { useEscape, useFocusReturn } from "./overlay";
 export function Dialog({
   title,
   wide = false,
+  fill = false,
   onClose,
   children,
   ...rest
@@ -20,6 +21,8 @@ export function Dialog({
   title: string;
   /** Room for a form with lists side by side. */
   wide?: boolean;
+  /** Room for a document shown in place, as wide as the window allows. */
+  fill?: boolean;
   onClose: () => void;
   children: ReactNode;
   [attr: `data-${string}`]: string | undefined;
@@ -39,7 +42,7 @@ export function Dialog({
         aria-labelledby={titleId}
         className={cx(
           "max-h-[85vh] w-full overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-4 shadow-2",
-          wide ? "max-w-2xl" : "max-w-md",
+          fill ? "max-w-5xl" : wide ? "max-w-2xl" : "max-w-md",
         )}
       >
         <div className="mb-3 flex items-center gap-2">

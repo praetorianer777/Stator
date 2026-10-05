@@ -28,9 +28,10 @@ const file = (over: Partial<Attachment>): Attachment => ({
   createdAt: "2026-09-29T09:00:00Z",
   version: 1,
   versions: 1,
+  preview: "none",
   ...over,
 });
-const plan = file({});
+const plan = file({ preview: "pdf" });
 const shot = file({ id: "0195f000-0000-7000-8000-0000000000f2", fileName: "screen.png", contentType: "image/png", size: 2048, width: 800, height: 600 });
 const archive = file({ id: "0195f000-0000-7000-8000-0000000000f3", fileName: "logs.zip", contentType: "application/zip", size: 512 });
 const gone = "0195f000-0000-7000-8000-0000000000ff";

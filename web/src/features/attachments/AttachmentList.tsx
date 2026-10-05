@@ -4,6 +4,7 @@ import { Button, ErrorBanner } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
+import { PreviewButton } from "./PreviewDialog";
 import { byName } from "./versions";
 
 const day = localDateFormat({ dateStyle: "medium" });
@@ -68,7 +69,10 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
       <ul className="doc-page-list">
         {byName(files.data).map(({ latest, earlier }) => (
           <li key={latest.id} data-listed-file={latest.fileName} data-version={latest.version}>
-            <FileLink file={latest} label={latest.fileName} />
+            <span className="flex items-center gap-1">
+              <FileLink file={latest} label={latest.fileName} />
+              <PreviewButton file={latest} />
+            </span>
             <span className="doc-page-list-meta">{meta(latest)}</span>
             {earlier.length > 0 && (
               <details className="doc-file-versions">
@@ -77,6 +81,7 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
                   {earlier.map((file) => (
                     <li key={file.id} data-earlier-version={file.version}>
                       <FileLink file={file} label={l.versionOf(file.fileName, file.version)} />
+                      <PreviewButton file={file} label={l.versionOf(file.fileName, file.version)} />
                       <span className="doc-page-list-meta"> {meta(file)}</span>
                     </li>
                   ))}

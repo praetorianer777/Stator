@@ -138,6 +138,34 @@ func (s *Server) handleDownloadAttachment(w http.ResponseWriter, r *http.Request
 	_, _ = io.Copy(w, body)
 }
 
+// handlePreviewAttachment answers with a file as a PDF shown in place. The
+// first reader of an office document waits for its conversion, so it is a write.
+func (s *Server) handlePreviewAttachment(w http.ResponseWriter, r *http.Request) {
+	if !s.attachmentsOn(w, r) {
+		return
+	}
+	id, apiErr := pathUUID(r, "attachmentID", "file")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	preview, lsn, err := s.Attachments.Preview(r.Context(), actorFrom(r), id)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	defer preview.Body.Close()
+	h := w.Header()
+	h.Set("Content-Type", "application/pdf")
+	h.Set("Content-Length", strconv.FormatInt(preview.Size, 10))
+	h.Set("Content-Disposition", mime.FormatMediaType("inline", map[string]string{"filename": preview.Name}))
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Cache-Control", "private, max-age=0")
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.Copy(w, preview.Body)
+}
+
 // isSafeInline says which types a browser may show in place: images, PDFs
 // and plain text, which cannot run script against this origin. SVG can.
 func isSafeInline(contentType string) bool {
