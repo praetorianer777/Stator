@@ -387,6 +387,8 @@ var operations = []operation{
 		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 413: errorEnvelope{}}},
 	{method: "GET", path: "/attachments/{attachmentID}", handler: "handleDownloadAttachment", tag: "attachments", summary: "The bytes of a file, as a download.", binary: true,
 		query: []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: ok(nil)},
+	{method: "GET", path: "/attachments/{attachmentID}/preview", handler: "handlePreviewAttachment", tag: "attachments", summary: "A file as a PDF to show in place: a PDF itself, or an office document converted once and kept. Refused with no_preview for any other file, and with preview_failed, preview_too_large, preview_off or preview_unavailable when there is no PDF to show.", binary: true,
+		responses: map[int]any{200: nil, 413: errorEnvelope{}, 415: errorEnvelope{}, 422: errorEnvelope{}, 503: errorEnvelope{}}},
 	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a file off its page for good.",
 		responses: none()},
 
@@ -806,6 +808,7 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(perm.Right(""))] = enumStrings(perm.Rights)
 	b.Enums[reflect.TypeOf(perm.StepKind(""))] = enumStrings(perm.StepKinds)
 	b.Enums[reflect.TypeOf(perm.ListKind(""))] = enumStrings(perm.ListKinds)
+	b.Enums[reflect.TypeOf(attachment.PreviewKind(""))] = enumStrings(attachment.PreviewKinds)
 	b.Enums[reflect.TypeOf(page.DiffChange(""))] = enumStrings(page.DiffChanges)
 	b.Enums[reflect.TypeOf(page.VerificationStatus(""))] = enumStrings(page.VerificationStatuses)
 	b.Enums[reflect.TypeOf(stale.Verification(""))] = enumStrings(stale.Verifications)

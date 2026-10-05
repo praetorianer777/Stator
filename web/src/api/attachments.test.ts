@@ -19,6 +19,7 @@ const stored: Attachment = {
   createdAt: "2026-09-29T09:00:00Z",
   version: 1,
   versions: 1,
+  preview: "none",
 };
 
 describe("formatSize", () => {

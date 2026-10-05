@@ -4,7 +4,7 @@ nowhere else. This is that file with the real Service name, so a port-forward
 to the web pod alone gives a working application. The Ingress sends /api to
 the api Service directly, so this proxy is the fallback.
 */}}
-{{- $csp := "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.figma.com; frame-ancestors 'none'; object-src 'none'; base-uri 'none'" }}
+{{- $csp := "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; frame-src blob: https://www.youtube-nocookie.com https://player.vimeo.com https://www.figma.com; frame-ancestors 'none'; object-src 'none'; base-uri 'none'" }}
 {{- $api := printf "http://%s-api:%d" (include "stator.fullname" .) (int .Values.api.port) }}
 apiVersion: v1
 kind: ConfigMap

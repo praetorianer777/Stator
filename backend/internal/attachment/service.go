@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/praetorianer777/stator/backend/internal/convert"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -28,6 +29,8 @@ type Service struct {
 	log   *slog.Logger
 	// MaxSize is the largest file an upload takes.
 	MaxSize int64
+	// converter makes the previews of office documents; nil turns them off.
+	converter convert.Converter
 }
 
 // NewService makes the service and has it told of every page copy, so the
@@ -121,6 +124,7 @@ func (s *Service) List(ctx context.Context, actor perm.Actor, pageID uuid.UUID, 
 			if err != nil {
 				return err
 			}
+			s.describe(&a.Attachment)
 			out = append(out, a.Attachment)
 		}
 		return rows.Err()
@@ -183,6 +187,7 @@ func (s *Service) Upload(ctx context.Context, actor perm.Actor, pageID uuid.UUID
 		if err != nil {
 			return err
 		}
+		s.describe(&found.Attachment)
 		created = &found.Attachment
 		return nil
 	})
@@ -207,13 +212,17 @@ func (s *Service) Open(ctx context.Context, actor perm.Actor, id uuid.UUID) (*At
 	if err != nil {
 		return nil, nil, err
 	}
+	s.describe(&found.Attachment)
 	return &found.Attachment, body, nil
 }
 
 // Delete removes a file for good. The row goes in the transaction, which
 // leaves a tombstone; the object goes after the commit, else the reaper takes it.
 func (s *Service) Delete(ctx context.Context, actor perm.Actor, id uuid.UUID) (db.LSN, error) {
-	var found *stored
+	var (
+		found   *stored
+		preview string
+	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var (
 			p   *page.Page
@@ -226,6 +235,12 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, id uuid.UUID) (d
 		if !p.Can.Edit {
 			return p.Refusal(perm.EditPages)
 		}
+		// The preview goes with the file, by the cascade; its bytes go with
+		// the file's below.
+		err = tx.QueryRow(ctx, `SELECT object_key FROM attachment_preview WHERE attachment_id = $1 AND state = 'ready'`, id).Scan(&preview)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
 		// No row lock first: that takes UPDATE, which the app role does not
 		// have. Of two deletes racing, the one that removes nothing lost.
 		tag, err := tx.Exec(ctx, `DELETE FROM attachment WHERE id = $1`, id)
@@ -237,8 +252,13 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, id uuid.UUID) (d
 	if err != nil {
 		return 0, err
 	}
-	if err := s.reap(ctx, found.objectKey, s.db.Write); err != nil {
-		s.log.Warn("attachment object left for the reaper", "key", found.objectKey, "error", err)
+	for _, key := range []string{found.objectKey, preview} {
+		if key == "" {
+			continue
+		}
+		if err := s.reap(ctx, key, s.db.Write); err != nil {
+			s.log.Warn("attachment object left for the reaper", "key", key, "error", err)
+		}
 	}
 	return lsn, nil
 }

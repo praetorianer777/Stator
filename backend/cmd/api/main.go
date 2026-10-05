@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
+	"github.com/praetorianer777/stator/backend/internal/convert"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/home"
@@ -154,6 +155,11 @@ func run() error {
 		armature.NewClient(netguard.ParseAllow(cfg.Armature.OutboundAllow), cfg.Armature.Backchannel), cache,
 		armature.Options{AppURL: cfg.AppBaseURL, Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Development: cfg.Env == config.EnvDevelopment, Log: log})
 	files := attachment.NewService(cluster, store, pages).WithMaxSize(cfg.UploadLimit).WithLogger(log)
+	if cfg.ConverterURL != "" {
+		files.WithConverter(convert.New(cfg.ConverterURL, attachment.MaxPreviewSize))
+	} else {
+		log.Warn("office documents have no preview: STATOR_CONVERTER_URL is not set")
+	}
 	server := &httpapi.Server{
 		DB:                cluster,
 		Fresh:             fresh,

@@ -144,6 +144,7 @@ var notTools = map[string]string{
 	"GET /pages/{pageID}/export":                                   whyFiles,
 	"POST /pages/{pageID}/attachments":                             whyFiles,
 	"GET /attachments/{attachmentID}":                              whyFiles,
+	"GET /attachments/{attachmentID}/preview":                      whyFiles,
 	"GET /armature/issues":                                         whyArmature,
 	"GET /armature/issues/{issueKey}":                              whyArmature,
 	"GET /armature/search":                                         whyArmature,

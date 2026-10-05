@@ -95,8 +95,12 @@ func TestEmbedsComeOnlyFromAllowlistedSites(t *testing.T) {
 	}
 }
 
+// previewFrame is the one frame source besides the embeds: the PDF preview of
+// an attachment, which the client fetches and shows from a blob of its own.
+const previewFrame = "blob:"
+
 // The browser loads an embed only from an origin the policy names, in the
-// compose stack and in the chart alike.
+// compose stack and in the chart alike, and from nowhere else.
 func TestThePolicyLetsEveryEmbedLoad(t *testing.T) {
 	for _, path := range []string{"../../../deploy/nginx.conf", "../../../deploy/charts/stator/templates/configmap-nginx.yaml"} {
 		raw, err := os.ReadFile(path)
@@ -107,7 +111,7 @@ func TestThePolicyLetsEveryEmbedLoad(t *testing.T) {
 			if !strings.Contains(line, "frame-ancestors 'none'") {
 				continue
 			}
-			if want := "frame-src " + strings.Join(FrameSources(), " ") + ";"; !strings.Contains(line, want) {
+			if want := "frame-src " + strings.Join(append([]string{previewFrame}, FrameSources()...), " ") + ";"; !strings.Contains(line, want) {
 				t.Errorf("%s lacks %q in %s", path, want, strings.TrimSpace(line))
 			}
 		}

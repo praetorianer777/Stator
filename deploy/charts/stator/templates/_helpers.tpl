@@ -223,6 +223,9 @@ STATOR_DB_MAX_REPLICA_LAG: {{ .Values.database.pool.maxReplicaLag | quote }}
 STATOR_DB_REPLICA_LAG_SAMPLES: {{ .Values.database.pool.replicaLagSamples | quote }}
 STATOR_READ_YOUR_WRITES_TTL: {{ .Values.database.readYourWritesTTL | quote }}
 STATOR_UPLOAD_LIMIT: {{ .Values.attachments.uploadLimit | quote }}
+{{- with .Values.attachments.converterUrl }}
+STATOR_CONVERTER_URL: {{ . | quote }}
+{{- end }}
 STATOR_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
 STATOR_RETAIN_PAGE_VIEWS: {{ .Values.retention.pageViews | quote }}
 STATOR_VERIFICATION_CHECK_INTERVAL: {{ .Values.verification.checkInterval | quote }}
