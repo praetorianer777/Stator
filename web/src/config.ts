@@ -432,6 +432,16 @@ export const TASK_REPORT_LIMIT_CHOICES: readonly number[] = [10, 20, 50, 100];
 /** The due days and states a task report picks, as document.TaskReportDues and TaskReportStates. */
 export const TASK_REPORT_DUES = ["any", "overdue", "today", "week", "none"] as const;
 export const TASK_REPORT_STATES = ["open", "done", "all"] as const;
+/** The bounds of a template button's words and its pattern for the page's title, as document.MaxButtonLabelLength and MaxButtonTitleLength. */
+export const TEMPLATE_BUTTON_LABEL_MAX_LENGTH = 80;
+export const TEMPLATE_BUTTON_TITLE_MAX_LENGTH = PAGE_TITLE_MAX_LENGTH;
+/** What a contributors block counts, as document.ContributorScopes: the page alone, or it and the pages below it. */
+export const CONTRIBUTOR_SCOPES = ["page", "tree"] as const;
+/** How many people a contributors block names when it says no number, and the most, as document.DefaultContributors and MaxContributors. */
+export const CONTRIBUTORS_DEFAULT_LIMIT = 10;
+export const CONTRIBUTORS_MAX_LIMIT = 50;
+/** The lengths a contributors block's settings offer, within 1 to CONTRIBUTORS_MAX_LIMIT. */
+export const CONTRIBUTORS_LIMIT_CHOICES: readonly number[] = [5, 10, 20, 50];
 /** The charts a table becomes, as document.TableCharts. */
 export const TABLE_CHARTS = ["bar", "line", "pie"] as const;
 /** The most series a chart from a table draws, one per categorical colour; more columns are left out. */

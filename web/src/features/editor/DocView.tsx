@@ -43,6 +43,10 @@ import { TableChart } from "@/features/tableChart/TableChart";
 import { TABLE_CHART_NODE, tableChartSettings } from "@/features/tableChart/data";
 import { TeamCalendar } from "@/features/calendar/TeamCalendar";
 import { CALENDAR_NODE, calendarSettings } from "@/features/calendar/calendar";
+import { TemplateButton } from "@/features/templateButton/TemplateButton";
+import { TEMPLATE_BUTTON_NODE, templateButtonSettings } from "@/features/templateButton/button";
+import { Contributors } from "@/features/contributors/Contributors";
+import { CONTRIBUTORS_NODE, contributorsSettings } from "@/features/contributors/contributors";
 import { PROPERTIES_NODE, propertyKey } from "./properties";
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
@@ -337,6 +341,17 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       // A comparison says which project, never the month as it is now.
       if (!copy) return <p className="doc-block doc-block-summary">{t.calendar.summary(settings.project)}</p>;
       return <TeamCalendar settings={settings} />;
+    }
+    case TEMPLATE_BUTTON_NODE: {
+      const settings = templateButtonSettings(node.attrs);
+      // A comparison says what the button makes; nothing in it makes a page.
+      if (!copy) return <p className="doc-block doc-block-summary">{t.templateButton.summary(settings.template)}</p>;
+      return <TemplateButton settings={settings} />;
+    }
+    case CONTRIBUTORS_NODE: {
+      const settings = contributorsSettings(node.attrs);
+      if (!copy) return <p className="doc-block doc-block-summary">{t.contributors.title(settings.scope)}</p>;
+      return <Contributors settings={settings} />;
     }
     case TASK_REPORT_NODE: {
       const settings = taskReportSettings(node.attrs);

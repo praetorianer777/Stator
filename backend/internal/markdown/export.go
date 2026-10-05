@@ -193,6 +193,20 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 			{"data-calendar-id", stringAttr(n, "calendarId")},
 			{"data-project", stringAttr(n, "project")},
 		}, ""), true
+	// A button does its work in Stator, so the export keeps what it makes, its words as the text.
+	case document.NodeTemplateButton:
+		return div(kindButton, [][2]string{
+			{"data-template", stringAttr(n, "template")},
+			{"data-space", stringAttr(n, "space")},
+			{"data-parent", stringAttr(n, "parent")},
+			{"data-title", stringAttr(n, "title")},
+		}, stringAttr(n, "label")), true
+	// The people are read from the page's history, so the export keeps what to count.
+	case document.NodeContributors:
+		return div(kindPeople, [][2]string{
+			{"data-scope", stringAttr(n, "scope")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultContributors))},
+		}, ""), true
 	// A report's tasks are each reader's, so the export keeps what it picks.
 	case document.NodeTaskReport:
 		return div(kindTasks, [][2]string{

@@ -128,6 +128,7 @@ var notTools = map[string]string{
 	"DELETE /attachments/{attachmentID}":                           whyRemoves,
 	"DELETE /comments/{commentID}":                                 whyRemoves,
 	"GET /search/quick":                                            whyBrowser,
+	"GET /template-button":                                         whyBrowser,
 	"GET /recent-pages":                                            whyBrowser,
 	"POST /pages/{pageID}/visit":                                   whyBrowser,
 	"GET /pages/{pageID}/readers":                                  whyReaders,

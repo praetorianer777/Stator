@@ -146,6 +146,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -247,6 +249,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -262,6 +266,22 @@
       ],
       "minContent": 2,
       "maxContent": 3
+    },
+    "contributors": {
+      "attrs": {
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 50
+        },
+        "scope": {
+          "kind": "string",
+          "enum": [
+            "page",
+            "tree"
+          ]
+        }
+      }
     },
     "date": {
       "attrs": {
@@ -332,6 +352,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -380,6 +402,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -423,6 +447,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -573,6 +599,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -684,6 +712,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -857,6 +887,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -952,6 +984,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -1014,6 +1048,8 @@
         "attachmentList",
         "tableChart",
         "calendar",
+        "templateButton",
+        "contributors",
         "image",
         "tableOfContents",
         "childPages",
@@ -1062,6 +1098,33 @@
             "done",
             "all"
           ]
+        }
+      }
+    },
+    "templateButton": {
+      "attrs": {
+        "label": {
+          "kind": "string",
+          "maxLength": 80
+        },
+        "parent": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        },
+        "template": {
+          "kind": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "title": {
+          "kind": "string",
+          "maxLength": 255
         }
       }
     },

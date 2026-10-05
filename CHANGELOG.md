@@ -713,6 +713,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
   space form offers a blank space and every template as a radio group, with
   the chosen one's pages, labels and permissions beside it. A personal
   space starts blank.
+- Template button and contributors (#62). "Template button" in the slash
+  menu puts a button on a page that makes a new page from a template, under
+  a chosen page or at the top of a space, with words of its own and a title
+  in which `{date}` becomes the day, then opens it to write
+  (`POST /templates/{key}/pages`, also the MCP tool
+  `create_page_from_template`). Whoever may not add pages there sees it
+  disabled, with a sentence saying why (`GET /template-button`).
+  "Contributors" lists the people who published versions of the page, or of
+  it and the pages below it the reader may view, the most versions first,
+  each with their picture, how many versions and the day of the last, 1 to
+  50 of them (`GET /pages/{id}/contributors`, also the MCP tool
+  `list_page_contributors`). The page keeps only the template, the place
+  and the words, and which pages to count.
 
 ### Changed
 

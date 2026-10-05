@@ -35,6 +35,8 @@ const (
 	kindFiles      = "attachment-list"
 	kindTableChart = "table-chart"
 	kindCalendar   = "calendar"
+	kindButton     = "template-button"
+	kindPeople     = "contributors"
 )
 
 // panelAlerts pairs each panel kind with the alert a quote opens with, one

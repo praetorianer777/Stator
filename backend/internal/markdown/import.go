@@ -780,6 +780,22 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 			project = key
 		}
 		return document.Node{Type: document.NodeCalendar, Attrs: map[string]any{"calendarId": attrs["data-calendar-id"], "project": project}}, true
+	case kindButton:
+		node := document.Node{Type: document.NodeTemplateButton, Attrs: map[string]any{
+			"template": attrs["data-template"], "space": nil, "parent": nil, "label": words, "title": attrs["data-title"],
+		}}
+		for _, name := range []string{"space", "parent"} {
+			if v := attrs["data-"+name]; v != "" {
+				node.Attrs[name] = v
+			}
+		}
+		return node, true
+	case kindPeople:
+		limit, err := strconv.Atoi(attrs["data-limit"])
+		if err != nil {
+			return document.Node{}, false
+		}
+		return document.Node{Type: document.NodeContributors, Attrs: map[string]any{"scope": attrs["data-scope"], "limit": limit}}, true
 	case kindTasks:
 		limit, err := strconv.Atoi(attrs["data-limit"])
 		if err != nil {

@@ -1,7 +1,7 @@
 import type { ChainedCommands } from "@tiptap/core";
 import type { ComponentType } from "react";
 import { Icon, type IconProps } from "@/components/icons";
-import { TABLE_DEFAULT_COLS, TABLE_DEFAULT_ROWS } from "@/config";
+import { CONTRIBUTORS_DEFAULT_LIMIT, TABLE_DEFAULT_COLS, TABLE_DEFAULT_ROWS } from "@/config";
 import { t } from "@/i18n";
 
 export type BlockKey = keyof typeof t.editor.blocks;
@@ -68,6 +68,12 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("attachmentList", Icon.Paperclip, ["attachments", "files", "uploads", "documents", "downloads"], (c) => c.insertAttachmentList()),
   item("taskReport", Icon.Task, ["task report", "tasks", "todo", "actions", "assigned", "overdue"], (c) => c.pickTaskReport()),
   item("calendar", Icon.Calendar, ["calendar", "events", "absences", "holidays", "vacation", "schedule", "month"], (c) => c.pickCalendar()),
+  item("templateButton", Icon.Plus, ["template button", "button", "create from template", "new page", "recurring", "meeting notes"], (c) =>
+    c.pickTemplateButton(),
+  ),
+  item("contributors", Icon.Users, ["contributors", "authors", "editors", "people", "who edited", "history"], (c) =>
+    c.insertContributors({ scope: "page", limit: CONTRIBUTORS_DEFAULT_LIMIT }),
+  ),
   item("mathInline", Icon.Sigma, ["math", "formula", "equation", "latex", "tex", "katex", "inline"], (c) => c.insertMathInline()),
   // The colon opens the emoji list as if typed, so there is one picker to learn.
   item("emoji", Icon.Smile, ["emoji", "smiley", "reaction"], (c) => c.insertContent(":")),

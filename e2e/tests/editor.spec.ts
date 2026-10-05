@@ -5,7 +5,7 @@ import { expectAccessible, startInScheme } from "../fixtures/shell";
 // The editor on its development page, which pages will replace. Every state
 // the checklist reaches is also checked with axe, contrast included.
 const EDITOR_PATH = "/dev/editor";
-const SLASH_ITEM_COUNT = 39;
+const SLASH_ITEM_COUNT = 41;
 const TABLE_SIZE = 3;
 // Enough paragraphs that the stored document outgrows its box.
 const STORED_LINES = 12;

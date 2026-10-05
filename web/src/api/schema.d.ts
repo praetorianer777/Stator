@@ -1149,6 +1149,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/contributors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The people who published versions of a page, or with scope tree of it and the pages below it the caller may view, for a contributors block: the most versions first, then the latest; truncated says more did. */
+        get: operations["pageContributors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/copy": {
         parameters: {
             query?: never;
@@ -2155,6 +2172,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/template-button": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a template button makes and where, for its view: the template, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found. */
+        get: operations["templateButton"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/templates": {
         parameters: {
             query?: never;
@@ -2183,6 +2217,23 @@ export interface paths {
         get: operations["getTemplate"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/templates/{templateKey}/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC. For whoever may add pages there. */
+        post: operations["createFromTemplate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2948,6 +2999,15 @@ export interface components {
             orgSlug: string;
             webhookSecret?: string;
         };
+        Contributor: {
+            avatarUrl?: string;
+            edits: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastEditedAt: string;
+            name: string;
+        };
         CopyInput: {
             /** Format: uuid */
             afterId?: string;
@@ -3493,6 +3553,10 @@ export interface components {
             edit: boolean;
             restrict: boolean;
         };
+        PageContributors: {
+            contributors: components["schemas"]["Contributor"][];
+            truncated: boolean;
+        };
         PageCreateInput: {
             /** Format: uuid */
             afterId?: string;
@@ -3506,6 +3570,12 @@ export interface components {
             parentId: string;
             publish?: boolean;
             title: string;
+        };
+        PageFromTemplateInput: {
+            /** Format: uuid */
+            parentId?: string;
+            spaceKey?: string;
+            title?: string;
         };
         PageHit: {
             /** Format: uuid */
@@ -4043,6 +4113,18 @@ export interface components {
             body: unknown;
             builtIn: boolean;
             description: string;
+            key: string;
+            name: string;
+            title: string;
+        };
+        TemplateButton: {
+            canCreate: boolean;
+            parent: components["schemas"]["Ref"];
+            spaceKey: string;
+            spaceName: string;
+            template: components["schemas"]["TemplateRef"];
+        };
+        TemplateRef: {
             key: string;
             name: string;
             title: string;
@@ -7581,6 +7663,51 @@ export interface operations {
             };
         };
     };
+    pageContributors: {
+        parameters: {
+            query?: {
+                /** @description page, the default, or tree. */
+                scope?: "page" | "tree";
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageContributors"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     copyPage: {
         parameters: {
             query?: never;
@@ -10474,6 +10601,51 @@ export interface operations {
             };
         };
     };
+    templateButton: {
+        parameters: {
+            query?: {
+                /** @description The template's key, as GET /templates lists it. */
+                template?: string;
+                /** @description The space whose top the page goes at; ignored when parentId is given. */
+                spaceKey?: string;
+                /** @description The page the new one goes under, wherever it was moved. */
+                parentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateButton"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listTemplates: {
         parameters: {
             query?: never;
@@ -10525,6 +10697,52 @@ export interface operations {
                     "application/json": {
                         template: components["schemas"]["Template"];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createFromTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageFromTemplateInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

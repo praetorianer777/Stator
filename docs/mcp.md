@@ -71,6 +71,7 @@ ask for less.
 | `list_templates` | `GET /templates` | yes |
 | `get_template` | `GET /templates/{templateKey}` | yes |
 | `list_versions` | `GET /pages/{pageID}/versions` | yes |
+| `list_page_contributors` | `GET /pages/{pageID}/contributors` | yes |
 | `get_version` | `GET /pages/{pageID}/versions/{versionNumber}` | yes |
 | `compare_versions` | `GET /pages/{pageID}/compare` | yes |
 | `search` | `GET /search` | yes |
@@ -90,6 +91,7 @@ ask for less.
 | `list_calendars` | `GET /spaces/{spaceKey}/calendars` | yes |
 | `list_calendar_events` | `GET /calendars/{calendarID}/events` | yes |
 | `create_page` | `POST /pages` | no |
+| `create_page_from_template` | `POST /templates/{templateKey}/pages` | no |
 | `update_page` | `PATCH /pages/{pageID}` | no |
 | `replace_page_markdown` | `PUT /pages/{pageID}/markdown` | no |
 | `import_markdown` | `POST /pages/{pageID}/import` | no |
