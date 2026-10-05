@@ -156,6 +156,12 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[` + para(txt("Name")) + `]},{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"right"},"content":[` + para(txt("Count")) + `]}]},` +
 			`{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[` + para(txt("a | b"), `{"type":"hardBreak"}`, txt("c")) + `]},{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"right"},"content":[` + para(txt("2", `{"type":"bold"}`)) + `]}]}` +
 			`]}`),
+		"table chart": doc(`{"type":"tableChart","attrs":{"chart":"line","showTable":true},"content":[{"type":"table","content":[`+
+			`{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[`+para(txt("Quarter"))+`]},{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"right"},"content":[`+para(txt("Sales"))+`]}]},`+
+			`{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[`+para(txt("Q1"))+`]},{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"right"},"content":[`+para(txt("12"))+`]}]}`+
+			`]}]}`, `{"type":"tableChart","attrs":{"chart":"pie","showTable":false},"content":[{"type":"table","content":[`+
+			`{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[`+para(txt("Team"))+`]},{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[`+para(txt("Size"))+`]}]}`+
+			`]}]}`),
 		"panels": doc(
 			`{"type":"panel","attrs":{"kind":"info"},"content":[`+para(txt("info"))+`]}`,
 			`{"type":"panel","attrs":{"kind":"note"},"content":[`+para(txt("note"))+`]}`,

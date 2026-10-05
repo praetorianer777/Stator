@@ -64,6 +64,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("recentlyUpdated", Icon.Page, ["recently updated", "recent", "latest", "changes", "activity"], (c) =>
     c.insertRecentlyUpdated({ space: null, limit: 10 }),
   ),
+  item("tableChart", Icon.Chart, ["chart from table", "chart", "bar", "line", "pie", "graph", "plot"], (c) => c.insertTableChart()),
   item("attachmentList", Icon.Paperclip, ["attachments", "files", "uploads", "documents", "downloads"], (c) => c.insertAttachmentList()),
   item("taskReport", Icon.Task, ["task report", "tasks", "todo", "actions", "assigned", "overdue"], (c) => c.pickTaskReport()),
   item("mathInline", Icon.Sigma, ["math", "formula", "equation", "latex", "tex", "katex", "inline"], (c) => c.insertMathInline()),

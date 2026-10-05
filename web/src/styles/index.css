@@ -1142,6 +1142,17 @@
     font-size: var(--text-xs);
     color: var(--color-ink-muted);
   }
+  /* A chart from a table: the bars share the lines' plot, and the table follows the chart. */
+  .doc-chart-bar {
+    transition: opacity 120ms;
+  }
+  .doc-chart-bar[data-active="false"] {
+    opacity: 0.45;
+  }
+  .doc-table-chart > .doc-table-wrap,
+  .doc-table-chart-table {
+    margin-top: 0.75rem;
+  }
   /* A file's earlier versions fold under its latest. */
   .doc-content .doc-file-versions ul {
     margin: 0.25rem 0 0;

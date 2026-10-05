@@ -171,6 +171,19 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 			{"data-space", stringAttr(n, "space")},
 			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
 		}, ""), true
+	// Markdown has no charts, so the table stands as a table and a marker
+	// before it says what to draw of it.
+	case document.NodeTableChart:
+		show, _ := n.Attrs["showTable"].(bool)
+		marker := div(kindTableChart, [][2]string{{"data-chart", stringAttr(n, "chart")}, {"data-show-table", strconv.FormatBool(show)}}, "")
+		if len(n.Content) == 0 {
+			return marker, true
+		}
+		table, ok := r.table(n.Content[0], depth)
+		if !ok {
+			return marker, true
+		}
+		return marker + "\n\n" + table, true
 	// The files are the page's own, which an export carries beside it.
 	case document.NodeAttachmentList:
 		return div(kindFiles, nil, ""), true
