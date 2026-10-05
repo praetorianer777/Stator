@@ -194,6 +194,22 @@ export function useArmatureRoadmap(settings: Parameters<typeof roadmapOf>[0], en
   });
 }
 
+/** A project's dated issues in one month for a calendar block, as the caller may see them. */
+export type ArmatureCalendarAnswer = Awaited<ReturnType<typeof calendarMonthOf>>;
+
+async function calendarMonthOf(project: string, month: string) {
+  return (await api.GET("/armature/calendar", { params: { query: { project, month } } })).data!;
+}
+
+/** A calendar block's due issues; kept with the searches, so an issue's change asks again. */
+export function useArmatureCalendar(project: string | null, month: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...searchQueryKey, "calendar", project, month],
+    enabled: enabled && project !== null,
+    queryFn: () => calendarMonthOf(project!, month),
+  });
+}
+
 /** A count of an NQL query's issues for a chart block, as the caller may see them. */
 export type ArmatureChartAnswer = Awaited<ReturnType<typeof chartOf>>;
 

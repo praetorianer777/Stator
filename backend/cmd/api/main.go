@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/convert"
@@ -183,6 +184,7 @@ func run() error {
 		Stars:             star.NewService(cluster),
 		Shares:            share.NewService(cluster),
 		Shortcuts:         shortcut.NewService(cluster),
+		Calendars:         calendar.NewService(cluster),
 		Hub:               hub.NewService(cluster),
 		Unfurl:            unfurlService(cfg, valkey, log),
 		Home:              home.NewService(cluster),

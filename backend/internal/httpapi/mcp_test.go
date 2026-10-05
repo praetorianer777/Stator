@@ -149,6 +149,7 @@ var notTools = map[string]string{
 	"GET /armature/search":                                         whyArmature,
 	"GET /armature/chart":                                          whyArmature,
 	"GET /armature/roadmap":                                        whyArmature,
+	"GET /armature/calendar":                                       whyArmature,
 	"GET /armature/projects":                                       whyArmature,
 	"GET /armature/issue-types":                                    whyArmature,
 	"POST /armature/issues":                                        whyArmature,
@@ -184,6 +185,9 @@ var notTools = map[string]string{
 	"POST /spaces/{spaceKey}/shortcuts":                   whyAdmin,
 	"POST /spaces/{spaceKey}/shortcuts/{shortcutID}/move": whyAdmin,
 	"DELETE /spaces/{spaceKey}/shortcuts/{shortcutID}":    whyRemoves,
+
+	"DELETE /calendars/{calendarID}":                  whyRemoves,
+	"DELETE /calendars/{calendarID}/events/{eventID}": whyRemoves,
 }
 
 // Offering an operation to assistants is decided for each one: a route added

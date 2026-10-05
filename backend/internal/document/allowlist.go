@@ -210,6 +210,10 @@ var TableCharts = []string{ChartBar, ChartLine, ChartPie}
 // version of each name first; it holds nothing, the page's files are its own.
 const NodeAttachmentList = "attachmentList"
 
+// NodeCalendar draws a month of one of a space's calendars, with the due
+// issues of an Armature project beside its events; it holds which, never them.
+const NodeCalendar = "calendar"
+
 // NodeTaskReport lists the tasks of published pages a filter picks; it holds
 // the filter, and each reader's view asks for the tasks they may read.
 const NodeTaskReport = "taskReport"
@@ -290,7 +294,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeTaskReport, NodeAttachmentList, NodeTableChart, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -512,6 +516,10 @@ var Allowed = Allowlist{
 		NodeTableChart: {Content: []string{"table"}, MinContent: 1, MaxContent: 1, Attrs: map[string]Attr{
 			"chart":     {Kind: KindString, Enum: TableCharts},
 			"showTable": {Kind: KindBoolean},
+		}},
+		NodeCalendar: {Attrs: map[string]Attr{
+			"calendarId": {Kind: KindString, Pattern: UUIDPattern},
+			"project":    {Kind: KindString, Nullable: true, Pattern: armature.ProjectPattern},
 		}},
 		NodeTaskReport: {Attrs: map[string]Attr{
 			"space":    {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},

@@ -89,6 +89,7 @@ process, which is only right for a single api process. `/readyz` and
 | `star`, `home` | starred pages and spaces, the home page's updates and edits |
 | `shortcut` | the links a space's administrators pin above its page tree, to pages or web addresses, each shown only to whoever may view its page |
 | `task` | the tasks of published pages: each person's list, and the worker's reminder on the due day |
+| `calendar` | each space's calendars and their events and absences, which a calendar block draws a month of |
 | `stale` | the stale content report: pages nobody published or opened for a while, for the administrators of their spaces |
 | `pageview` | page views: each person once a day per page, counted for every reader, named to editors within the retention, pruned into a tally by the worker |
 | `share` | sending a page to people and groups who may view it, with a note |

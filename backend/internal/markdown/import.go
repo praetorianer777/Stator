@@ -774,6 +774,12 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 		return document.Node{Type: document.NodeTableChart, Attrs: map[string]any{"chart": chart, "showTable": attrs["data-show-table"] == "true"}}, true
 	case kindFiles:
 		return document.Node{Type: document.NodeAttachmentList}, true
+	case kindCalendar:
+		var project any
+		if key := attrs["data-project"]; key != "" {
+			project = key
+		}
+		return document.Node{Type: document.NodeCalendar, Attrs: map[string]any{"calendarId": attrs["data-calendar-id"], "project": project}}, true
 	case kindTasks:
 		limit, err := strconv.Atoi(attrs["data-limit"])
 		if err != nil {

@@ -145,6 +145,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",
@@ -158,6 +159,19 @@
       "content": [
         "listItem"
       ]
+    },
+    "calendar": {
+      "attrs": {
+        "calendarId": {
+          "kind": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "project": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
     },
     "childPages": {
       "attrs": {
@@ -232,6 +246,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",
@@ -316,6 +331,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",
@@ -363,6 +379,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",
@@ -405,6 +422,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",
@@ -554,6 +572,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",
@@ -664,6 +683,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",
@@ -836,6 +856,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",
@@ -930,6 +951,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",
@@ -991,6 +1013,7 @@
         "taskReport",
         "attachmentList",
         "tableChart",
+        "calendar",
         "image",
         "tableOfContents",
         "childPages",

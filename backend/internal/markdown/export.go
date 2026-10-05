@@ -187,6 +187,12 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 	// The files are the page's own, which an export carries beside it.
 	case document.NodeAttachmentList:
 		return div(kindFiles, nil, ""), true
+	// The events live in the calendar, so the export keeps which one to draw.
+	case document.NodeCalendar:
+		return div(kindCalendar, [][2]string{
+			{"data-calendar-id", stringAttr(n, "calendarId")},
+			{"data-project", stringAttr(n, "project")},
+		}, ""), true
 	// A report's tasks are each reader's, so the export keeps what it picks.
 	case document.NodeTaskReport:
 		return div(kindTasks, [][2]string{

@@ -28,6 +28,8 @@ import { PageListDialog } from "@/features/pageLists/PageListDialog";
 import { labelledSettings } from "@/features/pageLists/lists";
 import { TaskReportDialog } from "@/features/taskReport/TaskReportDialog";
 import { taskReportSettings } from "@/features/taskReport/report";
+import { CalendarDialog } from "@/features/calendar/CalendarDialog";
+import { calendarSettings } from "@/features/calendar/calendar";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
 import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
@@ -134,6 +136,7 @@ export function Editor({
   const [makingReport, setMakingReport] = useState(false);
   const [makingLabelled, setMakingLabelled] = useState(false);
   const [makingTasks, setMakingTasks] = useState(false);
+  const [makingCalendar, setMakingCalendar] = useState(false);
   const [pickingLink, setPickingLink] = useState(false);
   const [pickingInclude, setPickingInclude] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
@@ -164,6 +167,7 @@ export function Editor({
       pickPropertiesReport: () => setMakingReport(true),
       pickLabelledPages: () => setMakingLabelled(true),
       pickTaskReport: () => setMakingTasks(true),
+      pickCalendar: () => setMakingCalendar(true),
       pickLinkCard: () => setPickingLink(true),
       pickInclude: () => setPickingInclude(true),
       pageId: page?.id,
@@ -399,6 +403,18 @@ export function Editor({
           onSave={(settings) => {
             setMakingTasks(false);
             editor.chain().focus().insertTaskReport(settings).run();
+          }}
+        />
+      )}
+      {makingCalendar && editor && (
+        <CalendarDialog
+          initial={calendarSettings({})}
+          spaceKey={page?.spaceKey ?? null}
+          isNew
+          onClose={() => setMakingCalendar(false)}
+          onSave={(settings) => {
+            setMakingCalendar(false);
+            editor.chain().focus().insertCalendar(settings).run();
           }}
         />
       )}

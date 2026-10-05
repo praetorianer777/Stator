@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -85,6 +86,50 @@ func (s *stub) plan(c *call) {
 		"dependencies": []any{}, "sprints": []any{}, "milestones": []any{}, "warnings": []any{}, "linkTypes": []any{},
 		"load": map[string]any{"weeks": []any{}, "rows": []any{}}, "unscheduled": unscheduled, "unestimated": len(mine),
 	})
+}
+
+// calendar answers a project's month as a calendar block reads it (#60):
+// each issue with a start or a due day in the month, from the one to the
+// other; Stator asks for no sprints, milestones or versions, so none are kept.
+func (s *stub) calendar(c *call) {
+	key, _, _ := strings.Cut(strings.ToUpper(c.r.PathValue("projectKey")), "-")
+	pr := c.tenant.project(key)
+	if pr == nil || !c.person.sees(pr) {
+		refuse(c.w, http.StatusNotFound, "not_found", "That project was not found.")
+		return
+	}
+	now := time.Now().UTC()
+	first := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	if raw := c.r.URL.Query().Get("month"); raw != "" {
+		parsed, err := time.Parse("2006-01", raw)
+		if err != nil {
+			refuseField(c.w, "month", "Give the month as YYYY-MM.")
+			return
+		}
+		first = parsed
+	}
+	next := first.AddDate(0, 1, 0)
+	items := []map[string]any{}
+	for _, is := range c.tenant.visible(c.person) {
+		from, to := is.StartDate, is.DueDate
+		if from == nil {
+			from = to
+		}
+		if to == nil {
+			to = from
+		}
+		if is.Project != pr || from == nil || !from.Before(next) || to.Before(first) {
+			continue
+		}
+		items = append(items, map[string]any{
+			"kind": "issue", "id": is.ID, "key": is.Key, "title": is.Summary,
+			"from": from.Format(time.DateOnly), "to": to.Format(time.DateOnly),
+			"done": is.Status.Category == "done", "category": is.Status.Category,
+		})
+	}
+	respond(c.w, http.StatusOK, map[string]any{"month": map[string]any{
+		"year": first.Year(), "month": int(first.Month()), "items": items, "truncated": false,
+	}})
 }
 
 // span gives an item without a day of its own the span of its children's.
