@@ -9,7 +9,7 @@ should find their way around the other without a map.
 
 ```
 browser ──> web (nginx, React SPA) ──> api (Go) ──> PostgreSQL (primary + replica)
-                                        │  ├──> Valkey (cache, rate limits, shared drafts between api processes)
+                                        │  ├──> Valkey (cache, rate limits, shared drafts between api processes; Postgres carries those without it)
                                         │  ├──> S3-compatible storage (attachments, theme assets)
                                         │  ├──> converter (office documents to PDF, for previews)
                                         │  └──> Armature API (as the viewing user)
@@ -82,7 +82,7 @@ process, which is only right for a single api process. `/readyz` and
 | `space` | spaces, space settings |
 | `document` | page document allowlist and validation, plain text for search, headings for the table of contents |
 | `page` | page tree (parent plus rank), move, copy, trash, archive, drafts, the shared draft of a page edited together, published versions, diff, restore, restrictions, owners and verification, pages made from a template, the people who published a page or a tree, and the worker's watch on verifications that run out |
-| `collab` | editing together: the WebSocket of a page's shared draft, in y-protocols' framing, its updates stored and passed on unread, awareness, and the Valkey bus between api processes |
+| `collab` | editing together: the WebSocket of a page's shared draft, in y-protocols' framing, its updates stored and passed on unread, awareness, and the bus between api processes: Valkey when configured, else Postgres's LISTEN and NOTIFY, with catching up after a lost connection |
 | `version` | which build is running |
 | `comment` | page comments, inline comments anchored by mark id |
 | `reaction` | emoji reactions on pages and comments |
@@ -227,7 +227,9 @@ fallbacks to the primary by reason.
 For a trial, `values-demo.yaml` brings one Postgres pod and one Valkey pod of
 the chart's own. The chart refuses to render with both `cnpg.enabled` and
 `postgresql.enabled`, and refuses replicas behind more than one api pod
-without a Valkey they share. `tests/test-helm.sh` runs `helm lint` and
+without a Valkey they share. Several api pods without Valkey and without
+replicas render: editors on different pods reach each other through
+Postgres. `tests/test-helm.sh` runs `helm lint` and
 `helm template` in a container for each layout and checks the rendered URLs.
 
 The browser suite (`e2e/`, `mk/e2e.mk`) runs in Microsoft's Playwright image

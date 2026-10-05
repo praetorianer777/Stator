@@ -47,6 +47,8 @@ type Conn struct {
 	loading bool
 	pending []pending
 	ws      *websocket.Conn
+	store   Store
+	ctx     context.Context
 	failed  bool
 	code    websocket.StatusCode
 	reason  string
@@ -62,6 +64,17 @@ func (c *Conn) roomID() uuid.UUID {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.room
+}
+
+// viewer is the connection's store, to read its room on the bus's behalf,
+// once it serves that room and while it is not failing.
+func (c *Conn) viewer(room uuid.UUID) (viewer, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.store == nil || c.failed || c.room != room {
+		return viewer{}, false
+	}
+	return viewer{ctx: c.ctx, store: c.store}, true
 }
 
 // Leave counts out a connection that never served, as when its room could
@@ -127,7 +140,7 @@ func (c *Conn) Serve(ctx context.Context, ws *websocket.Conn, room Room, store S
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c.mu.Lock()
-	c.ws, c.room = ws, room.ID
+	c.ws, c.room, c.store, c.ctx = ws, room.ID, store, ctx
 	failed, code, reason := c.failed, c.code, c.reason
 	c.mu.Unlock()
 	defer c.hub.leave(c)
@@ -139,6 +152,7 @@ func (c *Conn) Serve(ctx context.Context, ws *websocket.Conn, room Room, store S
 	if err := c.load(ctx, ws, room, room.Updates, true); err != nil {
 		return
 	}
+	c.hub.loaded(c, room.Updates)
 	c.mu.Lock()
 	held := c.pending
 	c.pending, c.loading = nil, false
@@ -263,10 +277,11 @@ func (c *Conn) handle(ctx context.Context, ws *websocket.Conn, room Room, store 
 		if m.SubType == SyncStep1 || len(m.Update) == 0 || isEmptyUpdate(m.Update) {
 			return nil
 		}
-		if _, err := store.Append(ctx, m.Update); err != nil {
+		seq, err := store.Append(ctx, m.Update, c.hub.announce(c.page, room.ID))
+		if err != nil {
 			return err
 		}
-		c.hub.deliver(c.page, room.ID, c, UpdateFrame(m.Update), true)
+		c.hub.deliverUpdate(c.page, room.ID, c, seq, m.Update)
 		*appends++
 		if *appends%c.hub.opts.CompactCheckEvery == 0 {
 			return c.compactIfLong(ctx, ws, room, store)
@@ -290,10 +305,11 @@ func (c *Conn) handle(ctx context.Context, ws *websocket.Conn, room Room, store 
 		if len(m.Update) == 0 {
 			return ErrIgnored
 		}
-		if err := store.Seed(ctx, int(m.Version), m.Update); err != nil {
+		seq, err := store.Seed(ctx, int(m.Version), m.Update, c.hub.announce(c.page, room.ID))
+		if err != nil {
 			return err
 		}
-		c.hub.deliver(c.page, room.ID, c, UpdateFrame(m.Update), true)
+		c.hub.deliverUpdate(c.page, room.ID, c, seq, m.Update)
 		c.hub.deliver(c.page, room.ID, nil, BaseFrame(int(m.Version)), true)
 	case MsgPublished:
 		base, err := store.Published(ctx, int(m.Version))

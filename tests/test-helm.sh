@@ -130,6 +130,11 @@ echo "⎈ One api pod without Valkey"
 render "one api pod, no Valkey" --set database.host=db.example --set api.replicas=1
 check "no Valkey URL" "$(env_value "${RENDERED}" STATOR_VALKEY_URL)" ""
 
+# Editors on different pods pass each other's changes through Postgres then.
+echo "⎈ Several api pods without Valkey or replicas"
+render "three api pods, no Valkey" --set database.host=db.example --set api.replicas=3
+check "no Valkey URL" "$(env_value "${RENDERED}" STATOR_VALKEY_URL)" ""
+
 echo "⎈ CloudNativePG with one instance"
 render "cnpg, 1 instance" --set cnpg.enabled=true --set cnpg.spec.instances=1 "${VALKEY[@]}"
 check "writes go to -rw" "$(env_value "${RENDERED}" STATOR_DB_PRIMARY_URL)" "$(app_url "${RW}" require)"
@@ -161,9 +166,6 @@ refused "cnpg and the bundled Postgres together" \
 refused "replicas behind several api pods without Valkey" \
     "read-your-writes needs a Valkey all api pods share" \
     --set cnpg.enabled=true
-refused "several api pods without Valkey, whose editors could not reach each other" \
-    "people editing a page together need a Valkey all api pods share" \
-    --set database.host=db.example
 refused "no database at all" "Set database.host, or enable cnpg or the bundled postgresql" \
     --set database.host= "${VALKEY[@]}"
 refused "postgres as the owner under cnpg" "database.ownerRole is postgres, which CNPG keeps for its own superuser" \

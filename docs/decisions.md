@@ -3,6 +3,44 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-05: Without Valkey, api processes pass shared drafts' changes through Postgres
+
+Editing together (#65) first needed Valkey for more than one api pod, so the
+chart refused several pods without it. Every deployment has Postgres, and
+its LISTEN and NOTIFY carry small messages between every process connected
+to the primary, so without Valkey the api now uses that instead, chosen at
+startup from the same `STATOR_VALKEY_URL` that turns Valkey on. Each
+process holds one connection of its own to the primary, which it listens
+on and opens again, with a backoff, when it is lost.
+
+A notification holds at most 8000 bytes, while an update may hold 4 MB. An
+update is a row in `page_collab_update` already, so the bus carries only a
+pointer to it (page, room, row number), sent with `pg_notify` inside the
+transaction that inserts the row: Postgres delivers it on commit, so no
+receiver hears of a row it cannot read yet, and none of a row rolled back.
+The receiver reads the row as one of the people it holds in that room, so
+row level security decides as it does for every read. Awareness and the
+small control frames go whole when they fit under
+`collab.MaxNotifyBytes`; awareness that does not is dropped, since browsers
+renew theirs, and anything else that does not fit sends the room's
+browsers on the other processes to load it afresh, so nothing is lost.
+
+Either bus can lose messages while a process cannot hear it. Each process
+therefore remembers, per page it holds connections to, the last update the
+bus brought; once its listener (Postgres) or subscription (Valkey) is back,
+it reads each such room as somebody in it and relays every update past that
+number, and the room's base, or sends its browsers to load afresh when the
+room was thrown away meanwhile. A lost frame no longer waits for its
+browser's next load. Updates are numbered by an identity, so one numbered
+lower can commit after one numbered higher; in the instant around a lost
+connection catching up can miss it, and its browsers get it at their next
+load.
+
+During a rolling update that adds or removes Valkey, pods on different
+buses do not hear each other, so people on them see each other's edits
+when they reconnect rather than live. Nothing is lost, since every edit is
+stored before it is passed on.
+
 ## 2026-10-05: Editing together is a Yjs document the api stores and relays without reading
 
 People who open a page's editor at once (#65) edit one shared draft, a Yjs
@@ -58,11 +96,10 @@ socket in six seconds edits alone, saving its draft as before. The person
 who seeds a room from their draft does not lose it, and somebody joining a
 room overwrites their own draft with the shared one on their next change.
 
-Several api processes reach one room through Valkey's publish and
-subscribe, one channel per page, each process listening before it serves;
-a frame lost there reaches its browser at the next load. Without Valkey
-everybody editing a page must reach the same process, so the chart refuses
-more than one api pod without it. Limits are constants of
+Several api processes reach one room through a bus, each process
+listening before it serves: Valkey's publish and subscribe, one channel per
+page, or without Valkey Postgres's LISTEN and NOTIFY (see the next entry).
+Limits are constants of
 `internal/collab`: a message of 4 MB, which the database holds an update
 to as well, 50 connections per page per process, a ping every 25 seconds
 to keep proxies from closing a quiet socket, and a slow browser is let go

@@ -17,6 +17,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // The same bytes are in web/src/features/collab/protocol.test.ts, which
@@ -108,30 +109,51 @@ type memStore struct {
 	compacts int
 }
 
-func (m *memStore) Append(_ context.Context, body []byte) (int64, error) {
+// Append calls announce after taking the update, as the database's commit
+// delivers what was announced only once the row is there.
+func (m *memStore) Append(ctx context.Context, body []byte, announce Announce) (int64, error) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.refuse != nil {
+		m.mu.Unlock()
 		return 0, m.refuse
 	}
 	if m.gone {
+		m.mu.Unlock()
 		return 0, ErrGone
 	}
 	m.next++
-	m.updates = append(m.updates, Update{Seq: m.next, Body: body})
-	return m.next, nil
+	seq := m.next
+	m.updates = append(m.updates, Update{Seq: seq, Body: body})
+	m.mu.Unlock()
+	if announce != nil {
+		if err := announce(ctx, nil, seq); err != nil {
+			return 0, err
+		}
+	}
+	return seq, nil
 }
 
-func (m *memStore) Seed(ctx context.Context, base int, body []byte) error {
+func (m *memStore) Seed(ctx context.Context, base int, body []byte, announce Announce) (int64, error) {
 	m.mu.Lock()
 	if m.seeded {
 		m.mu.Unlock()
-		return ErrGone
+		return 0, ErrGone
 	}
 	m.seeded, m.base = true, base
 	m.mu.Unlock()
-	_, err := m.Append(ctx, body)
-	return err
+	return m.Append(ctx, body, announce)
+}
+
+func (m *memStore) Range(_ context.Context, from, to int64) ([]Update, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []Update
+	for _, u := range m.updates {
+		if u.Seq >= from && u.Seq <= to {
+			out = append(out, u)
+		}
+	}
+	return out, nil
 }
 
 func (m *memStore) Published(_ context.Context, version int) (int, error) {
@@ -174,6 +196,9 @@ func (m *memStore) Compact(_ context.Context, from, to int64, count int, merged 
 func (m *memStore) Reload(context.Context) (int, []Update, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.gone {
+		return 0, nil, ErrGone
+	}
 	return m.base, append([]Update(nil), m.updates...), nil
 }
 
@@ -484,14 +509,59 @@ func TestAShutdownAsksEveryBrowserBack(t *testing.T) {
 	}
 }
 
-// pipe is a bus between hubs in one process.
-type pipe struct{ hubs []*Hub }
+// pipe is a bus between hubs in one process, which can be cut, and which
+// refuses envelopes past limit when it has one.
+type pipe struct {
+	hubs  []*Hub
+	limit int
+
+	mu   sync.Mutex
+	cut  bool
+	sent []byte
+}
 
 func (p *pipe) Publish(_ context.Context, page uuid.UUID, envelope []byte) error {
+	p.mu.Lock()
+	if p.limit > 0 && len(envelope) > p.limit {
+		p.mu.Unlock()
+		return ErrTooLarge
+	}
+	cut := p.cut
+	p.sent = append(p.sent, envelope[32])
+	p.mu.Unlock()
+	if cut {
+		return nil
+	}
 	for _, h := range p.hubs {
 		h.Receive(page, envelope)
 	}
 	return nil
+}
+
+func (p *pipe) setCut(cut bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.cut = cut
+}
+
+func (p *pipe) setLimit(limit int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.limit = limit
+}
+
+func (p *pipe) kinds() []byte {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]byte(nil), p.sent...)
+}
+
+// announcing is a pipe that names updates in their transaction, as the
+// Postgres bus does.
+type announcing struct{ *pipe }
+
+func (a announcing) Announce(ctx context.Context, _ Execer, page uuid.UUID, envelope []byte) error {
+	return a.Publish(ctx, page, envelope)
 }
 
 func TestTwoProcessesShareARoomThroughTheBus(t *testing.T) {
@@ -517,4 +587,151 @@ func TestTwoProcessesShareARoomThroughTheBus(t *testing.T) {
 	two.Reset(page, room)
 	ann.closedWith(CloseGone)
 	bob.closedWith(CloseGone)
+}
+
+func TestAnAnnouncingBusPassesUpdatesAsPointersReadAsSomebodyInTheRoom(t *testing.T) {
+	p := &pipe{}
+	bus := announcing{p}
+	one, two := NewHub(bus, nil, testOptions()), NewHub(bus, nil, testOptions())
+	p.hubs = []*Hub{one, two}
+	store := &memStore{}
+	page, room := uuid.New(), uuid.New()
+	a, b := newSite(t, one, store, page, room), newSite(t, two, store, page, room)
+	ann := a.dial()
+	ann.loaded()
+	bob := b.dial()
+	bob.loaded()
+	ann.send((&writer{}).uint(MsgSeed).uint(3).bytes([]byte{4, 2}).buf)
+	bob.until("the seed", is(UpdateFrame([]byte{4, 2})))
+	bob.until("the base", is(BaseFrame(3)))
+	ann.send(UpdateFrame([]byte{1}))
+	bob.until("ann's update", is(UpdateFrame([]byte{1})))
+	for _, kind := range p.kinds() {
+		if kind == kindUpdate {
+			t.Fatal("an update went over the bus whole")
+		}
+	}
+	if !bytes.Contains(p.kinds(), []byte{kindPointer}) {
+		t.Error("no update went over the bus as a pointer")
+	}
+}
+
+func TestAProcessCatchesUpOnWhatItMissedWhileItCouldNotHearTheOthers(t *testing.T) {
+	for name, bus := range map[string]func(*pipe) Bus{
+		"whole updates": func(p *pipe) Bus { return p },
+		"pointers":      func(p *pipe) Bus { return announcing{p} },
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := &pipe{}
+			one, two := NewHub(bus(p), nil, testOptions()), NewHub(bus(p), nil, testOptions())
+			p.hubs = []*Hub{one, two}
+			store := &memStore{seeded: true, base: 1}
+			page, room := uuid.New(), uuid.New()
+			a, b := newSite(t, one, store, page, room), newSite(t, two, store, page, room)
+			ann, bob := a.dial(), b.dial()
+			ann.loaded()
+			bob.loaded()
+			ann.send(UpdateFrame([]byte{1}))
+			bob.until("ann's first", is(UpdateFrame([]byte{1})))
+
+			p.setCut(true)
+			ann.send(UpdateFrame([]byte{2}))
+			ann.send(UpdateFrame([]byte{3}))
+			waitFor(t, "both stored", func() bool { n, _ := store.Count(context.Background()); return n == 3 })
+			store.mu.Lock()
+			store.base = 2
+			store.mu.Unlock()
+			p.setCut(false)
+			two.CatchUp()
+			// Only what bob missed, not the update the bus brought before.
+			if f := bob.until("the first missed", func(f []byte) bool { return f[0] == MsgSync }); !bytes.Equal(f, UpdateFrame([]byte{2})) {
+				t.Fatalf("bob got %x", f)
+			}
+			bob.until("the second missed", is(UpdateFrame([]byte{3})))
+			bob.until("the base", is(BaseFrame(2)))
+
+			// A room thrown away meanwhile sends its browsers to load afresh.
+			p.setCut(true)
+			store.mu.Lock()
+			store.gone = true
+			store.mu.Unlock()
+			two.CatchUp()
+			bob.closedWith(CloseGone)
+		})
+	}
+}
+
+func TestWhatTheBusCannotCarryIsDroppedOrSendsTheOthersToLoadAfresh(t *testing.T) {
+	p := &pipe{}
+	one, two := NewHub(p, nil, testOptions()), NewHub(p, nil, testOptions())
+	p.hubs = []*Hub{one, two}
+	store := &memStore{seeded: true, base: 1}
+	page, room := uuid.New(), uuid.New()
+	a, b := newSite(t, one, store, page, room), newSite(t, two, store, page, room)
+	ann, bob := a.dial(), b.dial()
+	ann.loaded()
+	bob.loaded()
+	small := AwarenessFrame(EncodeAwareness([]Peer{{Client: 1, Clock: 1, State: "{}"}}))
+	p.setLimit(headerBytes + len(small))
+	big := AwarenessFrame(EncodeAwareness([]Peer{{Client: 1, Clock: 2, State: `{"user":{"name":"` + strings.Repeat("a", 64) + `"}}`}}))
+	ann.send(big)
+	ann.send(small)
+	// The large one is let go; the next that fits arrives, and nothing else.
+	if f := bob.until("ann's awareness", func([]byte) bool { return true }); !bytes.Equal(f, small) {
+		t.Fatalf("bob got %x", f)
+	}
+	p.setLimit(headerBytes + 1)
+	ann.send((&writer{}).uint(MsgPublished).uint(2).buf)
+	ann.until("the base", is(BaseFrame(2)))
+	bob.closedWith(CloseGone)
+}
+
+func waitFor(t *testing.T, what string, done func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for !done() {
+		if time.Now().After(deadline) {
+			t.Fatalf("waiting for %s", what)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// execRecorder is a pool or transaction that keeps what it was asked.
+type execRecorder struct{ args [][]any }
+
+func (e *execRecorder) Exec(_ context.Context, _ string, args ...any) (pgconn.CommandTag, error) {
+	e.args = append(e.args, args)
+	return pgconn.CommandTag{}, nil
+}
+
+func TestThePostgresBusSendsWhatFitsAndReadsItBack(t *testing.T) {
+	pool, tx := &execRecorder{}, &execRecorder{}
+	bus := NewPostgresBus(pool, "", "chan", nil)
+	page := uuid.New()
+	envelope := bytes.Repeat([]byte{7}, 100)
+	if err := bus.Publish(context.Background(), page, envelope); err != nil {
+		t.Fatal(err)
+	}
+	if err := bus.Announce(context.Background(), tx, page, envelope[:40]); err != nil {
+		t.Fatal(err)
+	}
+	if len(pool.args) != 1 || len(tx.args) != 1 || pool.args[0][0] != "chan" {
+		t.Fatalf("sent %v through the pool and %v in the transaction", pool.args, tx.args)
+	}
+	got, body, ok := parsePayload(pool.args[0][1].(string))
+	if !ok || got != page || !bytes.Equal(body, envelope) {
+		t.Errorf("read back %s %x", got, body)
+	}
+	// Base64 makes four characters of every three bytes.
+	tooBig := make([]byte, MaxNotifyBytes/4*3)
+	if err := bus.Publish(context.Background(), page, tooBig); !errors.Is(err, ErrTooLarge) {
+		t.Errorf("an envelope past the limit: %v", err)
+	}
+	if MaxNotifyBytes >= postgresNotifyLimit {
+		t.Errorf("MaxNotifyBytes %d is not below Postgres's %d", MaxNotifyBytes, postgresNotifyLimit)
+	}
+	if _, _, ok := parsePayload("not base64!"); ok {
+		t.Error("a payload that is not ours was read")
+	}
 }

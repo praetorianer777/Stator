@@ -25,10 +25,10 @@ func (b *ValkeyBus) Publish(ctx context.Context, page uuid.UUID, envelope []byte
 	return b.client.Publish(ctx, b.prefix+page.String(), envelope).Err()
 }
 
-// Listen subscribes to every page's channel and hands what arrives to
-// deliver until ctx ends. It returns once the subscription stands, so no
+// Listen subscribes to every page's channel and hands what arrives to the
+// hub until ctx ends. It returns once the subscription stands, so no
 // connection is served before this process can hear the others.
-func (b *ValkeyBus) Listen(ctx context.Context, deliver func(page uuid.UUID, envelope []byte)) error {
+func (b *ValkeyBus) Listen(ctx context.Context, hub *Hub) error {
 	sub := b.client.PSubscribe(ctx, b.prefix+"*")
 	if _, err := sub.Receive(ctx); err != nil {
 		_ = sub.Close()
@@ -36,7 +36,9 @@ func (b *ValkeyBus) Listen(ctx context.Context, deliver func(page uuid.UUID, env
 	}
 	go func() {
 		defer func() { _ = sub.Close() }()
-		messages := sub.Channel()
+		// The client subscribes again by itself after losing Valkey, and says
+		// so with a subscription message, which is when to catch up.
+		messages := sub.ChannelWithSubscriptions()
 		for {
 			select {
 			case <-ctx.Done():
@@ -45,11 +47,16 @@ func (b *ValkeyBus) Listen(ctx context.Context, deliver func(page uuid.UUID, env
 				if !ok {
 					return
 				}
-				page, err := uuid.Parse(strings.TrimPrefix(m.Channel, b.prefix))
-				if err != nil {
-					continue
+				switch m := m.(type) {
+				case *redis.Subscription:
+					hub.CatchUp()
+				case *redis.Message:
+					page, err := uuid.Parse(strings.TrimPrefix(m.Channel, b.prefix))
+					if err != nil {
+						continue
+					}
+					hub.Receive(page, []byte(m.Payload))
 				}
-				deliver(page, []byte(m.Payload))
 			}
 		}
 	}()

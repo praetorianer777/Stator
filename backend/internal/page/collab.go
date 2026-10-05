@@ -187,21 +187,53 @@ func (s *Service) CountCollab(ctx context.Context, actor perm.Actor, room uuid.U
 	return n, err
 }
 
+// Stored is called in the transaction that stores an update, with its
+// number, so what it sends is delivered only with the update's commit.
+type Stored func(ctx context.Context, tx db.DBTX, seq int64) error
+
+func (f Stored) call(ctx context.Context, tx db.DBTX, seq int64) error {
+	if f == nil {
+		return nil
+	}
+	return f(ctx, tx, seq)
+}
+
 // AppendCollab adds an update to a shared draft and says where it went. The
 // database refuses it once the sender may no longer edit the page.
-func (s *Service) AppendCollab(ctx context.Context, actor perm.Actor, id, room uuid.UUID, body []byte) (int64, error) {
+func (s *Service) AppendCollab(ctx context.Context, actor perm.Actor, id, room uuid.UUID, body []byte, stored Stored) (int64, error) {
 	var seq int64
 	_, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `
+		if err := tx.QueryRow(ctx, `
 			INSERT INTO page_collab_update (org_id, page_id, room_id, body) VALUES (current_org_id(), $1, $2, $3)
-			RETURNING seq`, id, room, body).Scan(&seq)
+			RETURNING seq`, id, room, body).Scan(&seq); err != nil {
+			return err
+		}
+		return stored.call(ctx, tx, seq)
 	})
 	return seq, collabRefusal(err)
 }
 
+// CollabRange is a shared draft's updates numbered from through to, read
+// on the primary, where a change just announced already is.
+func (s *Service) CollabRange(ctx context.Context, actor perm.Actor, id, room uuid.UUID, from, to int64) ([]CollabUpdate, error) {
+	var out []CollabUpdate
+	err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
+		rows, err := tx.Query(ctx, `
+			SELECT seq, body FROM page_collab_update
+			WHERE page_id = $1 AND room_id = $2 AND seq BETWEEN $3 AND $4 ORDER BY seq`, id, room, from, to)
+		if err != nil {
+			return err
+		}
+		out, err = pgx.CollectRows(rows, pgx.RowToStructByPos[CollabUpdate])
+		return err
+	})
+	return out, err
+}
+
 // SeedCollab writes a shared draft's first content, begun from base, which
 // only the person asked may send and only while it has none.
-func (s *Service) SeedCollab(ctx context.Context, actor perm.Actor, id, room uuid.UUID, base int, body []byte) error {
+func (s *Service) SeedCollab(ctx context.Context, actor perm.Actor, id, room uuid.UUID, base int, body []byte, stored Stored) (int64, error) {
+	var seq int64
 	_, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var (
 			seeded  bool
@@ -222,15 +254,17 @@ func (s *Service) SeedCollab(ctx context.Context, actor perm.Actor, id, room uui
 		if base < 0 || base > version {
 			return ErrBadBase
 		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_collab_update (org_id, page_id, room_id, body) VALUES (current_org_id(), $1, $2, $3)`,
-			id, room, body); err != nil {
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO page_collab_update (org_id, page_id, room_id, body) VALUES (current_org_id(), $1, $2, $3)
+			RETURNING seq`, id, room, body).Scan(&seq); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `UPDATE page_collab SET seeded = true, seed_until = NULL, base_version = $2 WHERE id = $1`, room, base)
-		return err
+		if _, err = tx.Exec(ctx, `UPDATE page_collab SET seeded = true, seed_until = NULL, base_version = $2 WHERE id = $1`, room, base); err != nil {
+			return err
+		}
+		return stored.call(ctx, tx, seq)
 	})
-	return collabRefusal(err)
+	return seq, collabRefusal(err)
 }
 
 // PublishedCollab moves a shared draft on to the version the actor just

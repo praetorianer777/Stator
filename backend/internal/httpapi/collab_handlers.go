@@ -11,6 +11,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/collab"
+	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 )
@@ -87,10 +88,7 @@ func (s *Server) handleCollab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ws.SetReadLimit(collab.MaxMessageBytes)
-	updates := make([]collab.Update, len(room.Updates))
-	for i, u := range room.Updates {
-		updates[i] = collab.Update{Seq: u.Seq, Body: u.Body}
-	}
+	updates := collabUpdates(room.Updates)
 	store := &collabStore{s: s, actor: actor, page: id, room: room.ID, credential: credentialFrom(r, s.CookieName)}
 	conn.Serve(context.WithoutCancel(r.Context()), ws, collab.Room{ID: room.ID, Base: room.Base, Seed: room.Seed, Updates: updates}, store)
 }
@@ -119,13 +117,30 @@ func collabError(err error) error {
 	return err
 }
 
-func (c *collabStore) Append(ctx context.Context, body []byte) (int64, error) {
-	seq, err := c.s.Pages.AppendCollab(ctx, c.actor, c.page, c.room, body)
+// stored has the page service announce an update in its transaction.
+func stored(announce collab.Announce) page.Stored {
+	if announce == nil {
+		return nil
+	}
+	return func(ctx context.Context, tx db.DBTX, seq int64) error { return announce(ctx, tx, seq) }
+}
+
+func (c *collabStore) Append(ctx context.Context, body []byte, announce collab.Announce) (int64, error) {
+	seq, err := c.s.Pages.AppendCollab(ctx, c.actor, c.page, c.room, body, stored(announce))
 	return seq, collabError(err)
 }
 
-func (c *collabStore) Seed(ctx context.Context, base int, body []byte) error {
-	return collabError(c.s.Pages.SeedCollab(ctx, c.actor, c.page, c.room, base, body))
+func (c *collabStore) Seed(ctx context.Context, base int, body []byte, announce collab.Announce) (int64, error) {
+	seq, err := c.s.Pages.SeedCollab(ctx, c.actor, c.page, c.room, base, body, stored(announce))
+	return seq, collabError(err)
+}
+
+func (c *collabStore) Range(ctx context.Context, from, to int64) ([]collab.Update, error) {
+	rows, err := c.s.Pages.CollabRange(ctx, c.actor, c.page, c.room, from, to)
+	if err != nil {
+		return nil, collabError(err)
+	}
+	return collabUpdates(rows), nil
 }
 
 func (c *collabStore) Published(ctx context.Context, version int) (int, error) {
@@ -146,11 +161,15 @@ func (c *collabStore) Reload(ctx context.Context) (int, []collab.Update, error) 
 	if err != nil {
 		return 0, nil, collabError(err)
 	}
+	return base, collabUpdates(rows), nil
+}
+
+func collabUpdates(rows []page.CollabUpdate) []collab.Update {
 	out := make([]collab.Update, len(rows))
 	for i, u := range rows {
 		out[i] = collab.Update{Seq: u.Seq, Body: u.Body}
 	}
-	return base, out, nil
+	return out
 }
 
 func (c *collabStore) Count(ctx context.Context) (int, error) {

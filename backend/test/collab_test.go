@@ -8,6 +8,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -371,7 +373,7 @@ func TestTwoAPIProcessesShareASharedDraftThroughValkey(t *testing.T) {
 			hub = collab.NewHub(bus, discard(), fastCollab())
 			s.Collab = hub
 		}))
-		if err := bus.Listen(t.Context(), hub.Receive); err != nil {
+		if err := bus.Listen(t.Context(), hub); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -392,6 +394,135 @@ func TestTwoAPIProcessesShareASharedDraftThroughValkey(t *testing.T) {
 	annWS.until("bob's change from the other process", is(collab.UpdateFrame([]byte{2})))
 	annWS.send([]byte{collab.MsgDiscard})
 	bobWS.closedWith(collab.CloseGone)
+}
+
+// postgresPods are two api processes, as two pods without Valkey, passing
+// frames over a channel of the test's own; each listens as its own
+// application, so a test can cut one of them off.
+func postgresPods(t *testing.T, h *harness) (apis []*apiServer, names []string) {
+	t.Helper()
+	channel := "stator_collab_test_" + strings.ReplaceAll(uuid.NewString()[:8], "-", "")
+	for i := range 2 {
+		name := channel + "_" + strconv.Itoa(i)
+		dsn, err := url.Parse(h.cfg.DB.PrimaryURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		q := dsn.Query()
+		q.Set("application_name", name)
+		dsn.RawQuery = q.Encode()
+		bus := collab.NewPostgresBus(h.cluster.Primary(), dsn.String(), channel, discard())
+		bus.Backoff = listenerBackoff
+		var hub *collab.Hub
+		apis = append(apis, newAPIServer(t, h, func(s *httpapi.Server) {
+			hub = collab.NewHub(bus, discard(), fastCollab())
+			s.Collab = hub
+		}))
+		if err := bus.Listen(t.Context(), hub); err != nil {
+			t.Fatal(err)
+		}
+		names = append(names, name)
+	}
+	return apis, names
+}
+
+// listenerBackoff is long enough that a change sent after a listener was cut
+// off is stored before it listens again, so only catching up can bring it.
+const listenerBackoff = 2 * time.Second
+
+// Two api processes without Valkey pass each other's changes, awareness and
+// publishes through Postgres.
+func TestTwoAPIProcessesShareASharedDraftThroughPostgres(t *testing.T) {
+	h := newHarness(t)
+	apis, _ := postgresPods(t, h)
+	home := h.makeMember(t, "collab-pg-pods")
+	slug := h.slugOf(t, home.org)
+	bobID := h.addPerson(t, home.org, "member")
+	ann, bob := apis[0].as(t, home.user, home.org, slug), apis[1].as(t, bobID, home.org, slug)
+	docs := newTree(t, ann, "PGPODS", "Pods")
+	page := docs.add(docs.homeID, "Shared")
+	h.settle(t)
+
+	annWS, bobWS := ann.open(t, page), bob.open(t, page)
+	annWS.load()
+	bobWS.load()
+	annWS.send(seedFrame(1, []byte{1}))
+	bobWS.until("ann's seed from the other process", is(collab.UpdateFrame([]byte{1})))
+	bobWS.until("the seed's base from the other process", is(collab.BaseFrame(1)))
+	bobWS.send(collab.UpdateFrame([]byte{2}))
+	annWS.until("bob's change from the other process", is(collab.UpdateFrame([]byte{2})))
+	// An update past what one notification holds goes as a pointer all the same.
+	large := bytes.Repeat([]byte{3}, collab.MaxNotifyBytes*2)
+	annWS.send(collab.UpdateFrame(large))
+	bobWS.until("ann's large change from the other process", is(collab.UpdateFrame(large)))
+
+	hello := collab.AwarenessFrame(collab.EncodeAwareness([]collab.Peer{{Client: 7, Clock: 1, State: `{"user":{"name":"Bob"}}`}}))
+	bobWS.send(hello)
+	annWS.until("bob's awareness from the other process", is(hello))
+
+	want(t, ann.put(t, pagePath(page, "/draft"), map[string]any{"title": "Shared", "body": textDoc("Together"), "baseVersion": 1}), http.StatusOK, "ann saves the draft")
+	want(t, ann.post(t, pagePath(page, "/publish"), map[string]any{}), http.StatusOK, "ann publishes")
+	annWS.send(publishedFrame(2))
+	bobWS.until("the base from the other process", is(collab.BaseFrame(2)))
+
+	annWS.send([]byte{collab.MsgDiscard})
+	bobWS.closedWith(collab.CloseGone)
+}
+
+// A process whose listening connection is cut off listens again and
+// relays what was stored meanwhile.
+func TestAProcessCutOffFromPostgresCatchesUp(t *testing.T) {
+	h := newHarness(t)
+	apis, names := postgresPods(t, h)
+	home := h.makeMember(t, "collab-pg-catchup")
+	slug := h.slugOf(t, home.org)
+	bobID := h.addPerson(t, home.org, "member")
+	ann, bob := apis[0].as(t, home.user, home.org, slug), apis[1].as(t, bobID, home.org, slug)
+	docs := newTree(t, ann, "PGCATCH", "Catch")
+	page := docs.add(docs.homeID, "Missed")
+	h.settle(t)
+
+	annWS, bobWS := ann.open(t, page), bob.open(t, page)
+	annWS.load()
+	bobWS.load()
+	annWS.send(seedFrame(1, []byte{1}))
+	bobWS.until("ann's seed", is(collab.UpdateFrame([]byte{1})))
+
+	listeners := func() int {
+		var n int
+		if err := h.cluster.Primary().QueryRow(context.Background(),
+			`SELECT count(*) FROM pg_stat_activity WHERE application_name = $1`, names[1]).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	until := func(what string, done func() bool) {
+		t.Helper()
+		deadline := time.Now().Add(10 * time.Second)
+		for !done() {
+			if time.Now().After(deadline) {
+				t.Fatalf("waiting for %s", what)
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	// The listener connects as the app role, which may end its own backends.
+	if _, err := h.cluster.Primary().Exec(context.Background(),
+		`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = $1`, names[1]); err != nil {
+		t.Fatal(err)
+	}
+	until("bob's listener to go", func() bool { return listeners() == 0 })
+	annWS.send(collab.UpdateFrame([]byte{2}))
+	annWS.send(collab.UpdateFrame([]byte{3}))
+	until("ann's changes to be stored", func() bool { _, _, n, _ := roomOf(t, h, page); return n == 3 })
+	if listeners() != 0 {
+		t.Fatal("bob's process listened again before the changes were stored, so this proves nothing")
+	}
+	bobWS.until("the first change missed", is(collab.UpdateFrame([]byte{2})))
+	bobWS.until("the second change missed", is(collab.UpdateFrame([]byte{3})))
+	until("bob's listener to be back", func() bool { return listeners() == 1 })
+	annWS.send(collab.UpdateFrame([]byte{4}))
+	bobWS.until("a change after catching up", is(collab.UpdateFrame([]byte{4})))
 }
 
 // The service refusing is not proof: straight through SQL, only somebody
