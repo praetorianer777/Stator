@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useMe } from "@/api/auth";
+import { guestSpaceOf, useMe } from "@/api/auth";
 import { useSpaces, type Space } from "@/api/spaces";
 import { ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { useCanCreateSpace } from "@/features/permissions/access";
@@ -29,7 +29,7 @@ export function SpaceDirectory() {
     </Button>
   ) : undefined;
   const createOwn =
-    spaces && me && !hasOwn ? (
+    spaces && me && !hasOwn && !guestSpaceOf(me) ? (
       <Button variant="secondary" icon={<Icon.User />} onClick={() => navigate({ to: "/spaces/new/personal" })} data-action="new-personal-space">
         {t.spaces.createPersonal}
       </Button>

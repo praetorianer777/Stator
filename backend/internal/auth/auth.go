@@ -48,7 +48,12 @@ type Principal struct {
 	// now be none, and never the organization as a whole.
 	SpacesOnly  bool
 	TokenSpaces []uuid.UUID
+	// GuestSpace is the one space a guest reaches; nil for everybody else.
+	GuestSpace *SpaceRef
 }
+
+// Guest reports whether the caller is a guest of one space in their organization.
+func (p *Principal) Guest() bool { return p != nil && p.Role == RoleGuest }
 
 // InSpacesOnly reports whether the caller came with a token limited to spaces.
 func (p *Principal) InSpacesOnly() bool { return p != nil && p.TokenID != nil && p.SpacesOnly }

@@ -130,11 +130,12 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
        u.id, u.email, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.show_in_readers, u.is_active,
-       o.id, o.slug, o.name, m.org_role
+       o.id, o.slug, o.name, m.org_role, gs.id, gs.key, gs.name
 FROM user_session s
 JOIN app_user u ON u.id = s.user_id
 LEFT JOIN org o ON o.id = s.current_org_id AND o.archived_at IS NULL
 LEFT JOIN org_member m ON m.org_id = o.id AND m.user_id = u.id
+LEFT JOIN space gs ON gs.org_id = m.org_id AND gs.id = m.guest_space_id
 WHERE s.token_hash = $1 AND s.expires_at > now()`
 
 // Authenticate resolves a session secret or a personal access token to its
@@ -155,12 +156,13 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 		orgSlug    *string
 		orgName    *string
 		memberRole *string
+		guest      guestSpaceColumns
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
 			&sessionID, &lastSeen, &p.Proof,
 			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.ShowInReaders, &active,
-			&orgID, &orgSlug, &orgName, &memberRole,
+			&orgID, &orgSlug, &orgName, &memberRole, &guest.id, &guest.key, &guest.name,
 		)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -179,6 +181,7 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 		p.Org = &tenant.Org{ID: *orgID, Slug: *orgSlug}
 		p.OrgName = *orgName
 		p.Role = OrgRole(*memberRole)
+		p.GuestSpace = guest.ref()
 	}
 	if s.now().Sub(lastSeen) > lastSeenEvery {
 		_, _ = s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -241,13 +244,16 @@ func (s *Service) memberships(ctx context.Context, userID uuid.UUID, sessionID *
 func (s *Service) SwitchOrg(ctx context.Context, sessionID, userID uuid.UUID, slug string) (*CurrentOrg, db.LSN, error) {
 	var org CurrentOrg
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var guest guestSpaceColumns
 		err := tx.QueryRow(ctx, `
-			SELECT o.id, o.slug, o.name, m.org_role
+			SELECT o.id, o.slug, o.name, m.org_role, gs.id, gs.key, gs.name
 			FROM org o
 			JOIN org_member m ON m.org_id = o.id AND m.user_id = $2
+			LEFT JOIN space gs ON gs.org_id = m.org_id AND gs.id = m.guest_space_id
 			WHERE o.slug = $1 AND o.archived_at IS NULL`,
 			strings.ToLower(strings.TrimSpace(slug)), userID,
-		).Scan(&org.ID, &org.Slug, &org.Name, &org.Role)
+		).Scan(&org.ID, &org.Slug, &org.Name, &org.Role, &guest.id, &guest.key, &guest.name)
+		org.GuestSpace = guest.ref()
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotAMember
 		}
@@ -399,4 +405,18 @@ func OpenSession(ctx context.Context, tx db.DBTX, userID uuid.UUID, orgID *uuid.
 // database is case insensitive anyway; this keeps what is stored tidy.
 func NormalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
+}
+
+// guestSpaceColumns scans a guest's space from an outer join, all null for
+// everybody else.
+type guestSpaceColumns struct {
+	id        *uuid.UUID
+	key, name *string
+}
+
+func (g guestSpaceColumns) ref() *SpaceRef {
+	if g.id == nil {
+		return nil
+	}
+	return &SpaceRef{ID: *g.id, Key: *g.key, Name: *g.name}
 }

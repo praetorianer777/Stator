@@ -215,4 +215,44 @@ func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
 	if !(Facts{Member: true, Role: auth.RoleAdmin}).OrgAdmin() {
 		t.Error("an admin without a limited token stopped administering the organization")
 	}
+	if Decide(admin, CreatePersonalSpace) {
+		t.Error("an admin's limited token makes a personal space")
+	}
+}
+
+// A guest's facts are what the database hands them: the grants naming them in
+// their one space, use from the organization, and nothing of the organization
+// as a whole, which the database marks as for a limited token.
+func TestAGuestHoldsTheirGrantsAndNothingOfTheOrganization(t *testing.T) {
+	guest := func(space ...SpacePermission) Facts {
+		return Facts{Member: true, Role: auth.RoleGuest, Global: []GlobalPermission{UseStator, CreateSpaces}, Space: space, SpacesOnly: true}
+	}
+	for _, tt := range []struct {
+		name   string
+		facts  Facts
+		action Action
+		want   bool
+	}{
+		{"a viewer views", guest(SpaceView), ViewSpace, true},
+		{"a viewer does not comment", guest(SpaceView), AddComments, false},
+		{"a viewer does not edit", guest(SpaceView), EditPages, false},
+		{"a commenter comments", guest(SpaceView, SpaceAddComments), AddComments, true},
+		{"a commenter does not edit", guest(SpaceView, SpaceAddComments), EditPages, false},
+		{"an editor edits", guest(SpaceView, SpaceAddComments, SpaceAddPages, SpaceDelete), EditPages, true},
+		{"an editor trashes", guest(SpaceView, SpaceAddComments, SpaceAddPages, SpaceDelete), DeletePages, true},
+		{"an editor does not administer", guest(SpaceView, SpaceAddComments, SpaceAddPages, SpaceDelete), AdministerSpace, false},
+		{"createSpace for everyone does not reach a guest", guest(SpaceView), CreateSpace, false},
+		{"a guest makes no personal space", guest(SpaceView), CreatePersonalSpace, false},
+		{"another space comes as no facts at all", Facts{}, ViewSpace, false},
+	} {
+		if got := Decide(tt.facts, tt.action); got != tt.want {
+			t.Errorf("%s: %s = %v, want %v", tt.name, tt.action, got, tt.want)
+		}
+	}
+	if got := guest(SpaceView).GlobalCan(); got != (GlobalCan{Use: true}) {
+		t.Errorf("a guest is offered %+v across the organization, want use alone", got)
+	}
+	if guest(SpaceView).OrgAdmin() {
+		t.Error("a guest administers the organization")
+	}
 }

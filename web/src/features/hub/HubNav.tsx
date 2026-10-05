@@ -1,3 +1,4 @@
+import { guestSpaceOf, useMe } from "@/api/auth";
 import { useHub } from "@/api/hub";
 import { NavItem } from "@/features/shell/nav";
 import { t } from "@/i18n";
@@ -13,10 +14,11 @@ export function HomeNavItem({ rail, onNavigate }: { rail: boolean; onNavigate?: 
   );
 }
 
-/** The organization's hub, for whoever may read it. */
+/** The organization's hub, for whoever may read it; a guest's organization is their one space. */
 export function HubNavItem({ rail, onNavigate }: { rail: boolean; onNavigate?: () => void }) {
   const { data: hub } = useHub();
-  if (!hub?.page) return null;
+  const { data: me } = useMe();
+  if (!hub?.page || guestSpaceOf(me)) return null;
   return (
     <NavItem to={`/s/${hub.page.spaceKey}/p/${hub.page.id}/${pageSlug(hub.page.title)}`} icon="Flag" rail={rail} onNavigate={onNavigate}>
       {t.nav.hub}

@@ -5,6 +5,7 @@ package test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -173,14 +174,23 @@ func TestTheServiceAndTheDatabaseAgree(t *testing.T) {
 	want(t, restrict(t, ann, a, []any{user(people["ann"]), group(team)}, nil), http.StatusOK, "restrict A")
 	want(t, restrict(t, ann, c, []any{user(people["ann"])}, []any{user(people["ann"])}), http.StatusOK, "restrict C")
 	unpublished := obj(t, want(t, ann.post(t, "/api/v1/pages", map[string]any{"parentId": d, "title": "Ann's own"}), http.StatusCreated, "ann's unpublished page"), "page")["id"].(string)
+	elsewhere := newTree(t, owner, "ELSE", "Elsewhere")
+	e := elsewhere.add(elsewhere.homeID, "E")
+	// A guest of AGREE who may read it: the space's grant to everyone is not
+	// theirs, its view lists hold them as anybody, and ELSE is out of reach.
+	gwenEmail := fmt.Sprintf("gwen-%s@example.test", uuid.NewString()[:8])
+	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, gwenEmail) })
+	gwen := obj(t, want(t, owner.post(t, "/api/v1/spaces/AGREE/guests", map[string]any{"email": gwenEmail, "role": "viewer"}), http.StatusCreated, "invite gwen"), "guest")
+	people["gwen"] = uuid.MustParse(gwen["userId"].(string))
 	h.settle(t)
 
-	titles := map[string]string{docs.homeID: "Home", a: "A", b: "B", c: "C", d: "D", unpublished: "Ann's own"}
+	titles := map[string]string{docs.homeID: "Home", a: "A", b: "B", c: "C", d: "D", unpublished: "Ann's own", elsewhere.homeID: "Else", e: "E"}
 	expected := map[string][]string{
-		"owner": {"Home", "A", "B", "C", "D"},
-		"ann":   {"Home", "A", "B", "C", "D", "Ann's own"},
-		"bob":   {"Home", "A", "B", "D"},
-		"carl":  {"Home", "D"},
+		"owner": {"Home", "A", "B", "C", "D", "Else", "E"},
+		"ann":   {"Home", "A", "B", "C", "D", "Ann's own", "Else", "E"},
+		"bob":   {"Home", "A", "B", "D", "Else", "E"},
+		"carl":  {"Home", "D", "Else", "E"},
+		"gwen":  {"Home", "D"},
 	}
 	for name, id := range people {
 		caller := api.as(t, id, home.org, slug)

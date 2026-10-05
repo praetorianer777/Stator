@@ -158,6 +158,9 @@ func (s *Service) SetPermissions(ctx context.Context, actor perm.Actor, key stri
 		}
 		return record(ctx, tx, actor, audit.ActionSpacePermissionsSet, sp.ID, map[string]any{"key": sp.Key, "grants": logged})
 	})
+	if msg, ok := perm.GuestRefusal(err); ok {
+		return nil, lsn, &FieldError{Field: "grants", Message: msg}
+	}
 	return out, lsn, err
 }
 

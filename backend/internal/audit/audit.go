@@ -24,16 +24,18 @@ const (
 	ActionMemberJoined = "member.joined"
 	// ActionMemberRoleChanged is a role the identity provider's groups changed.
 	ActionMemberRoleChanged = "member.role_changed"
-	ActionSSOProviderSaved  = "sso.provider_saved"
-	ActionGroupRoleSet      = "sso.group_role_set"
-	ActionGroupRoleRemoved  = "sso.group_role_removed"
-	ActionTokenCreated      = "token.created"
-	ActionTokenRevoked      = "token.revoked"
-	ActionSpaceCreated      = "space.created"
-	ActionSpaceUpdated      = "space.updated"
-	ActionSpaceDeleted      = "space.deleted"
-	ActionPagePurged        = "page.purged"
-	ActionTrashEmptied      = "trash.emptied"
+	// ActionGuestInvited is somebody from outside let into one space.
+	ActionGuestInvited     = "member.guest_invited"
+	ActionSSOProviderSaved = "sso.provider_saved"
+	ActionGroupRoleSet     = "sso.group_role_set"
+	ActionGroupRoleRemoved = "sso.group_role_removed"
+	ActionTokenCreated     = "token.created"
+	ActionTokenRevoked     = "token.revoked"
+	ActionSpaceCreated     = "space.created"
+	ActionSpaceUpdated     = "space.updated"
+	ActionSpaceDeleted     = "space.deleted"
+	ActionPagePurged       = "page.purged"
+	ActionTrashEmptied     = "trash.emptied"
 	// Permissions: whom a global permission is granted to, a space's table,
 	// and a page's own restrictions.
 	ActionOrgPermissionSet    = "org.permission_set"
@@ -78,7 +80,7 @@ const (
 // Actions is every action the log may hold, for a filter to offer and a
 // client to name.
 var Actions = []string{
-	ActionMemberAdmitted, ActionMemberDeclined, ActionMemberRemoved, ActionMemberJoined, ActionMemberRoleChanged,
+	ActionMemberAdmitted, ActionMemberDeclined, ActionMemberRemoved, ActionMemberJoined, ActionMemberRoleChanged, ActionGuestInvited,
 	ActionSSOProviderSaved, ActionGroupRoleSet, ActionGroupRoleRemoved,
 	ActionTokenCreated, ActionTokenRevoked,
 	ActionSpaceCreated, ActionSpaceUpdated, ActionSpaceDeleted, ActionPagePurged, ActionTrashEmptied,

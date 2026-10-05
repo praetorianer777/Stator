@@ -7,7 +7,7 @@ import { Icon } from "@/components/icons";
 import { APP_NAME, APP_VERSION, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { t } from "@/i18n";
 import { SpaceNav } from "@/features/spaces/SpaceNav";
-import { NavItem } from "./nav";
+import { NavItem, SpacesNavItem } from "./nav";
 import { Rail } from "./Rail";
 import { SidebarGroup } from "./SidebarGroup";
 import { DRAWER_ID, SIDEBAR_ID, useSidebarGroups, useSidebarMode } from "./state";
@@ -66,9 +66,7 @@ function SidebarGroups({ onNavigate }: { onNavigate?: () => void }) {
       <SidebarGroup id="wiki" title={t.nav.groupWiki} open={isOpen("wiki", true)} onToggle={() => toggleGroup("wiki", true)}>
         <HomeNavItem rail={false} onNavigate={onNavigate} />
         <HubNavItem rail={false} onNavigate={onNavigate} />
-        <NavItem to="/spaces" icon="Space" rail={false} onNavigate={onNavigate}>
-          {t.nav.spaces}
-        </NavItem>
+        <SpacesNavItem rail={false} onNavigate={onNavigate} />
         <NavItem to="/tasks" icon="Checklist" rail={false} onNavigate={onNavigate}>
           {t.nav.tasks}
         </NavItem>

@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
@@ -388,6 +389,12 @@ var operations = []operation{
 		responses: ok(env{"grants": []perm.SpaceGrant{}})},
 	{method: "PUT", path: "/spaces/{spaceKey}/permissions", handler: "handleSetSpacePermissions", tag: "permissions", summary: "Replace a space's whole permission table. For the space's administrators.",
 		request: perm.SpaceGrantsInput{}, responses: ok(env{"grants": []perm.SpaceGrant{}})},
+	{method: "GET", path: "/spaces/{spaceKey}/guests", handler: "handleListGuests", orgWide: true, tag: "permissions", summary: "The people from outside let into this space alone, with what they may do there. For administrators of the organization.",
+		responses: ok(env{"guests": []guest.Guest{}})},
+	{method: "POST", path: "/spaces/{spaceKey}/guests", handler: "handleInviteGuest", orgWide: true, tag: "permissions", summary: "Let somebody from outside into this space alone, as a viewer, commenter or editor; they sign in through the organization's provider with the address given. For administrators of the organization.",
+		request: guest.InviteInput{}, responses: map[int]any{201: env{"guest": guest.Guest{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/spaces/{spaceKey}/guests/{userID}", handler: "handleRemoveGuest", orgWide: true, tag: "permissions", summary: "Take a guest out of this space, and so out of the organization. For administrators of the organization.",
+		responses: none()},
 	{method: "GET", path: "/pages/{pageID}/restrictions", handler: "handleGetPageRestrictions", tag: "permissions", summary: "Who may view and edit a page beyond the space's permissions, and the restricted pages above it.",
 		responses: ok(env{"restrictions": page.Restrictions{}})},
 	{method: "PUT", path: "/pages/{pageID}/restrictions", handler: "handleSetPageRestrictions", tag: "permissions", summary: "Replace a page's own view and edit restrictions; the pages below it inherit them.",
@@ -859,6 +866,11 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["WebhookDelivery.topic"] = &openapi.Schema{Type: "string", Enum: append([]string{webhook.TopicPing}, webhook.Topics...)}
 	b.FieldOverrides["GroupRole.role"] = granted
 	b.FieldOverrides["SetGroupRoleRequest.role"] = granted
+	// Letting somebody in makes a member or an admin; a guest is invited to a space.
+	b.FieldOverrides["AdmitRequest.role"] = granted
+	b.Enums[reflect.TypeOf(guest.Role(""))] = enumStrings(guest.Roles)
+	b.Names[reflect.TypeOf(guest.InviteInput{})] = "GuestInviteInput"
+	b.FieldOverrides["GuestInviteInput.role"] = &openapi.Schema{Type: "string", Enum: enumStrings(guest.Invitable)}
 	return b
 }
 

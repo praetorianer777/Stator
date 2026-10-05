@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
@@ -126,6 +127,8 @@ var (
 		Message: "A token cannot do this. Sign in to Stator and do it there."}
 	errSpacesToken = &APIError{Status: http.StatusForbidden, Code: "spaces_token",
 		Message: "This token is limited to some spaces, and this concerns the whole organization. Use a token without that limit, or sign in."}
+	errGuest = &APIError{Status: http.StatusForbidden, Code: "guest",
+		Message: "Guests reach the one space they were invited to, and this concerns the whole organization. Ask an administrator of the organization if you need more."}
 )
 
 // The database's names for its refusals of a folder's content and of a change of kind.
@@ -162,6 +165,10 @@ func toAPIError(err error) *APIError {
 	var permField *perm.FieldError
 	if errors.As(err, &permField) {
 		return ErrValidation(map[string]string{permField.Field: permField.Message})
+	}
+	var guestField *guest.FieldError
+	if errors.As(err, &guestField) {
+		return ErrValidation(map[string]string{guestField.Field: guestField.Message})
 	}
 	var labelField *label.FieldError
 	if errors.As(err, &labelField) {
@@ -334,6 +341,10 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
 	case errors.Is(err, space.ErrNotFound):
 		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
+	case errors.Is(err, guest.ErrNotGuest):
+		return ErrNotFound("That person is not a guest of this space. Reload the list of its guests.")
+	case errors.Is(err, guest.ErrPersonalSpace):
+		return ErrConflict("A personal space belongs to its owner alone. Invite the guest to another space.")
 	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound), errors.Is(err, reaction.ErrPageNotFound),
 		errors.Is(err, share.ErrPageNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")

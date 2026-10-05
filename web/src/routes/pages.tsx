@@ -1,4 +1,5 @@
 import { createRoute, redirect } from "@tanstack/react-router";
+import { guestSpaceOf, meQuery } from "@/api/auth";
 import { hubQuery } from "@/api/hub";
 import { HomeScreen } from "@/features/home/HomeScreen";
 import { pageSlug } from "@/lib/slug";
@@ -10,6 +11,9 @@ export const homeRoute = createRoute({
   // Where everybody lands on the hub, the start is the hub; a hub that does
   // not answer leaves the reader's own home, which needs nothing of it.
   beforeLoad: async ({ context }) => {
+    // A guest's whole organization is their one space, so that is where they start.
+    const own = guestSpaceOf(await context.queryClient.ensureQueryData(meQuery).catch(() => undefined));
+    if (own) throw redirect({ to: "/s/$spaceKey", params: { spaceKey: own.key }, replace: true });
     const hub = await context.queryClient.ensureQueryData(hubQuery).catch(() => undefined);
     const page = hub?.landing ? hub.page : null;
     if (page) {

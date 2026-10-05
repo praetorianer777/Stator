@@ -248,11 +248,12 @@ const apiTokenPrincipalSQL = `
 SELECT t.id, t.scopes, t.last_used_at, t.spaces_only,
        ARRAY(SELECT ts.space_id FROM api_token_space ts WHERE ts.token_id = t.id ORDER BY ts.space_id),
        u.id, u.email::text, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.show_in_readers, u.is_active,
-       o.id, o.slug, o.name, m.org_role
+       o.id, o.slug, o.name, m.org_role, gs.id, gs.key, gs.name
 FROM api_token t
 JOIN app_user u ON u.id = t.user_id
 JOIN org o ON o.id = t.org_id AND o.archived_at IS NULL
 JOIN org_member m ON m.org_id = t.org_id AND m.user_id = t.user_id
+LEFT JOIN space gs ON gs.org_id = m.org_id AND gs.id = m.guest_space_id
 WHERE t.token_hash = $1 AND (t.expires_at IS NULL OR t.expires_at > now())`
 
 func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Principal, error) {
@@ -264,6 +265,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 		tokenID  uuid.UUID
 		lastUsed *time.Time
 		active   bool
+		guest    guestSpaceColumns
 		org      struct {
 			id         uuid.UUID
 			slug, name string
@@ -273,7 +275,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 		return tx.QueryRow(ctx, apiTokenPrincipalSQL, HashToken(secret)).Scan(
 			&tokenID, &p.Scopes, &lastUsed, &p.SpacesOnly, &p.TokenSpaces,
 			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.ShowInReaders, &active,
-			&org.id, &org.slug, &org.name, &p.Role,
+			&org.id, &org.slug, &org.name, &p.Role, &guest.id, &guest.key, &guest.name,
 		)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -286,6 +288,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 		return nil, ErrUserInactive
 	}
 	p.TokenID = &tokenID
+	p.GuestSpace = guest.ref()
 	p.Org = &tenant.Org{ID: org.id, Slug: org.slug}
 	p.OrgName = org.name
 	if lastUsed == nil || s.now().Sub(*lastUsed) > lastSeenEvery {

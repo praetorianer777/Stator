@@ -14,10 +14,12 @@ const (
 	RoleOwner  OrgRole = "owner"
 	RoleAdmin  OrgRole = "admin"
 	RoleMember OrgRole = "member"
+	// RoleGuest is somebody from outside, let into one space and nothing else.
+	RoleGuest OrgRole = "guest"
 )
 
 // OrgRoles lists every role, in the order the API documents them.
-var OrgRoles = []OrgRole{RoleOwner, RoleAdmin, RoleMember}
+var OrgRoles = []OrgRole{RoleOwner, RoleAdmin, RoleMember, RoleGuest}
 
 // CanAdminister reports whether the role may change organization settings.
 func (r OrgRole) CanAdminister() bool { return r == RoleOwner || r == RoleAdmin }
@@ -46,6 +48,15 @@ type Member struct {
 	// RoleSource says whether the role follows the identity provider's groups.
 	RoleSource RoleSource `json:"roleSource"`
 	JoinedAt   time.Time  `json:"joinedAt"`
+	// GuestSpace is the one space a guest belongs to; null for everybody else.
+	GuestSpace *SpaceRef `json:"guestSpace"`
+}
+
+// SpaceRef names a space by its id, key and name.
+type SpaceRef struct {
+	ID   uuid.UUID `json:"id"`
+	Key  string    `json:"key"`
+	Name string    `json:"name"`
 }
 
 // Locale is a language the interface speaks.
@@ -84,6 +95,8 @@ type CurrentOrg struct {
 	Slug string    `json:"slug"`
 	Name string    `json:"name"`
 	Role OrgRole   `json:"role"`
+	// GuestSpace is where a guest lands and all they reach; null for everybody else.
+	GuestSpace *SpaceRef `json:"guestSpace"`
 }
 
 // Membership is a user's place in one organization.

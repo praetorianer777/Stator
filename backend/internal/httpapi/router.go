@@ -18,6 +18,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
@@ -93,8 +94,10 @@ type Server struct {
 	Shortcuts *shortcut.Service
 	// Calendars keeps each space's calendars and their events.
 	Calendars *calendar.Service
-	Hub       *hub.Service
-	Unfurl    *unfurl.Service
+	// Guests lets people from outside into one space each.
+	Guests *guest.Service
+	Hub    *hub.Service
+	Unfurl *unfurl.Service
 	// PageViews reads how often pages were read and by whom;
 	// PageViewRetention is how long the worker keeps named views, zero forever.
 	PageViews         *pageview.Service
@@ -202,6 +205,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/org/permissions", s.handleListGlobalPermissions)
 			r.Put("/org/permissions/{permission}", s.handleSetGlobalPermission)
 			r.Put("/org/hub", s.handleSetHub)
+			r.Get("/spaces/{spaceKey}/guests", s.handleListGuests)
+			r.Post("/spaces/{spaceKey}/guests", s.handleInviteGuest)
+			r.Delete("/spaces/{spaceKey}/guests/{userID}", s.handleRemoveGuest)
 		})
 
 		// What the caller may do is theirs to read even without use, so the
