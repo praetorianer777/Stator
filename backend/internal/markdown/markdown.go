@@ -33,6 +33,7 @@ const (
 	kindUpdated    = "updated-pages"
 	kindTasks      = "task-report"
 	kindFiles      = "attachment-list"
+	kindTableChart = "table-chart"
 	kindCalendar   = "calendar"
 )
 

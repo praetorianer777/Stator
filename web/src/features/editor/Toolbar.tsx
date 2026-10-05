@@ -59,6 +59,8 @@ export function EditorToolbar({
       codeBlock: e.isActive("codeBlock"),
       language: (e.getAttributes("codeBlock").language as string | null | undefined) ?? "",
       table: e.isActive("table"),
+      // A chart's table goes with its chart; there is no chart without one.
+      charted: variant === "page" && e.isActive("tableChart"),
       panel: e.isActive("panel"),
       panelKind: (e.getAttributes("panel").kind as PanelKind | undefined) ?? "info",
       expand: variant === "page" && e.isActive("expand"),
@@ -241,7 +243,17 @@ export function EditorToolbar({
             )}
           />
           <Separator />
-          <ToolButton label={t.editor.deleteTable} action="delete-table" run={() => chain().deleteTable().run()} />
+          {variant === "page" &&
+            (state.charted ? (
+              <ToolButton label={t.tableChart.unchart} action="unchart-table" run={() => chain().unchartTable().run()} />
+            ) : (
+              <ToolButton label={t.tableChart.chart} action="chart-table" run={() => chain().chartTable().run()} />
+            ))}
+          <ToolButton
+            label={state.charted ? t.tableChart.deleteChart : t.editor.deleteTable}
+            action="delete-table"
+            run={() => (state.charted ? chain().unchartTable().deleteTable().run() : chain().deleteTable().run())}
+          />
         </RovingToolbar>
       )}
       {state.codeBlock && (

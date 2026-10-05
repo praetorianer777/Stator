@@ -98,6 +98,7 @@ describe("the slash menu's blocks", () => {
       labelledPages: (d) =>
         JSON.stringify(find(d, "labelledPages")[0]?.attrs) === JSON.stringify({ labels: ["adr"], match: "any", space: null, sort: "title", limit: 5 }),
       recentlyUpdated: (d) => JSON.stringify(find(d, "recentlyUpdated")[0]?.attrs) === JSON.stringify({ space: null, limit: 10 }),
+      tableChart: (d) => find(d, "tableChart")[0]?.attrs?.chart === "bar" && find(d, "tableRow").length === 4,
       attachmentList: (d) => JSON.stringify(find(d, "attachmentList")[0]) === JSON.stringify({ type: "attachmentList" }),
       taskReport: (d) =>
         JSON.stringify(find(d, "taskReport")[0]?.attrs) === JSON.stringify({ space: "DOCS", assignee: "me", due: "week", state: "open", limit: 20 }),

@@ -671,6 +671,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   the slash menu puts the page's files in its content, the latest version of
   each with its size, uploader and version and the earlier ones a click
   away, and whoever may edit the page uploads from the block.
+- Chart from table (#59). "Chart from table" in the slash menu, or "Chart
+  this table" in the table tools, draws a table as bars, lines or a pie: the
+  first row names the series, the first column the categories, and numbers
+  may be written 1,234.5 or 1.234,5, with a sign, a unit, a percent or a
+  currency. The block holds the table itself, so editing the table redraws
+  the chart; readers see the table under it unless the author hides it, and
+  can read each category by pointer or keyboard, or open the numbers as a
+  table. A chart draws 8 series at most; a pie draws the first.
 - Team calendars (#60). A space keeps calendars, at most 20, each a name and
   its events: a title, an event or an absence, and whole days or two times
   (`GET` and `POST /spaces/{key}/calendars`, `PATCH` and `DELETE

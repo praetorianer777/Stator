@@ -33,6 +33,7 @@ import { PropertiesReportNode } from "./propertiesReport";
 import { LabelledPagesNode, RecentlyUpdatedNode } from "./pageLists";
 import { TaskReportNode } from "./taskReport";
 import { AttachmentListNode } from "./attachmentList";
+import { TableChartNode } from "./tableChart";
 import { CalendarNode } from "./calendar";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
 import { MathBlock, MathInline } from "./math";
@@ -454,6 +455,7 @@ export function editorExtensions({
     RecentlyUpdatedNode,
     TaskReportNode.configure({ pick: pickTaskReport }),
     AttachmentListNode.configure({ pageId }),
+    TableChartNode,
     CalendarNode.configure({ pick: pickCalendar }),
     Status.configure({ edit: editInlineValue }),
     DateNode.configure({ edit: editInlineValue }),

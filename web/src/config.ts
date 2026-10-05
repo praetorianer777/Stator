@@ -428,6 +428,17 @@ export const TASK_REPORT_LIMIT_CHOICES: readonly number[] = [10, 20, 50, 100];
 /** The due days and states a task report picks, as document.TaskReportDues and TaskReportStates. */
 export const TASK_REPORT_DUES = ["any", "overdue", "today", "week", "none"] as const;
 export const TASK_REPORT_STATES = ["open", "done", "all"] as const;
+/** The charts a table becomes, as document.TableCharts. */
+export const TABLE_CHARTS = ["bar", "line", "pie"] as const;
+/** The most series a chart from a table draws, one per categorical colour; more columns are left out. */
+export const TABLE_CHART_MAX_SERIES = 8;
+/** The plot of a bar or line chart from a table, before it takes its box's width. */
+export const TABLE_CHART_WIDTH = 640;
+export const TABLE_CHART_HEIGHT = 220;
+/** How many gridlines a chart from a table aims for. */
+export const TABLE_CHART_TICKS = 4;
+/** What a bar's group leaves free on each side, as a share of its slot. */
+export const TABLE_CHART_BAR_GAP = 0.2;
 /** The kinds of a calendar's events, as calendar.Kinds. */
 export const CALENDAR_EVENT_KINDS = ["event", "absence"] as const;
 /** How long a calendar's name and an event's title may be, as calendar.MaxNameLength and MaxTitleLength. */

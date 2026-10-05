@@ -3,6 +3,17 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-04: A chart from a table holds its table
+
+A chart from a table is a block whose one child is the table, not a chart
+that points at a table elsewhere on the page. A pointer would need an id on
+every table and would break when the table is deleted or copied without
+it; holding the table makes "the chart follows the table" true by
+construction, keeps the table searchable and exported as an ordinary
+Markdown table, and lets the author remove the chart and keep the table.
+The numbers are read in the browser on every draw rather than stored, so
+there is nothing to fall out of step. Markdown has no chart, so the export
+writes a marker before the table that the import joins back to it.
 ## 2026-10-05: A calendar is rows of its space, and a page draws a month of it
 
 Team calendars (#60) are kept beside the pages rather than in them: an event

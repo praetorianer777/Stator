@@ -144,6 +144,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",
@@ -244,6 +245,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",
@@ -328,6 +330,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",
@@ -375,6 +378,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",
@@ -417,6 +421,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",
@@ -566,6 +571,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",
@@ -676,6 +682,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",
@@ -848,6 +855,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",
@@ -857,6 +865,26 @@
         "armatureChart",
         "armatureRoadmap"
       ]
+    },
+    "tableChart": {
+      "attrs": {
+        "chart": {
+          "kind": "string",
+          "enum": [
+            "bar",
+            "line",
+            "pie"
+          ]
+        },
+        "showTable": {
+          "kind": "boolean"
+        }
+      },
+      "content": [
+        "table"
+      ],
+      "minContent": 1,
+      "maxContent": 1
     },
     "tableHeader": {
       "attrs": {
@@ -922,6 +950,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",
@@ -983,6 +1012,7 @@
         "recentlyUpdated",
         "taskReport",
         "attachmentList",
+        "tableChart",
         "calendar",
         "image",
         "tableOfContents",

@@ -39,6 +39,8 @@ import { TaskReport } from "@/features/taskReport/TaskReport";
 import { TASK_REPORT_NODE, taskReportSettings } from "@/features/taskReport/report";
 import { AttachmentList } from "@/features/attachments/AttachmentList";
 import { ATTACHMENT_LIST_NODE } from "./attachmentList";
+import { TableChart } from "@/features/tableChart/TableChart";
+import { TABLE_CHART_NODE, tableChartSettings } from "@/features/tableChart/data";
 import { TeamCalendar } from "@/features/calendar/TeamCalendar";
 import { CALENDAR_NODE, calendarSettings } from "@/features/calendar/calendar";
 import { PROPERTIES_NODE, propertyKey } from "./properties";
@@ -316,6 +318,17 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       const settings = updatedSettings(node.attrs);
       if (!copy) return <p className="doc-block doc-block-summary">{t.pageLists.updatedTitle(settings.space)}</p>;
       return <UpdatedPages settings={settings} />;
+    }
+    // The chart is drawn from the table it holds, which readers may see beneath it.
+    case TABLE_CHART_NODE: {
+      const settings = tableChartSettings(node.attrs);
+      const table = node.content?.[0];
+      return (
+        <div className="doc-table-chart" data-table-chart-block="">
+          <TableChart table={table} kind={settings.chart} dataTable={!settings.showTable} />
+          {settings.showTable && table && <Block node={table} copy={copy} path={[...path, 0]} />}
+        </div>
+      );
     }
     case ATTACHMENT_LIST_NODE:
       return <AttachmentListBlock copy={copy} />;
