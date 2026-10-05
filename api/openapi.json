@@ -4949,6 +4949,82 @@
         }
       }
     },
+    "/pages/{pageID}/collab": {
+      "get": {
+        "operationId": "collab",
+        "summary": "Edit a page together: a WebSocket carrying the page's shared draft, for somebody signed in who may edit the page.",
+        "description": "Binary frames in y-protocols' framing: a varuint message type, then its payload. Sync (0) and awareness (1) are y-protocols' own; the server stores sync updates and passes them and awareness on without reading them. The server opens with room (100: the room's id as a string, its base version, and 1 when this client is to send its first content), then every stored update as a sync update and an empty sync step 2 when they are all sent; room starts every such load. A client sends updates as sync updates, seed (102: base version, update) when asked for first content, published (101: version) after publishing from the room, discard (103) to throw the room away for everybody, and compacted (105: from, to, count, merged update) when the server asks with compact (104: from, to, count) for the merge of the updates the last load carried. The server says base (107: version) when a publish moves the room on. Close codes: 4401 the session ended, 4403 the person may no longer edit, 4408 the client fell behind, 4409 the room was started afresh; load again for the last two.",
+        "tags": [
+          "drafts"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "Switching Protocols: the connection is a WebSocket from here on."
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Upgrade Required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/comments": {
       "get": {
         "operationId": "listComments",

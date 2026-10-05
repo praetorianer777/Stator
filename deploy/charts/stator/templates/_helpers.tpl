@@ -97,8 +97,10 @@ a template can only return a string.
 
 {{/*
 Valkey: the bundled one, yours, or none. Read-your-writes positions have to be
-shared by every api pod once reads can reach a replica, so more than one api
-pod with replicas and no Valkey is refused rather than quietly inconsistent.
+shared by every api pod once reads can reach a replica, and people editing a
+page together may reach different api pods, which pass each other's changes
+through Valkey. So more than one api pod without Valkey is refused rather
+than quietly inconsistent.
 */}}
 {{- define "stator.valkeyHost" -}}
 {{- if .Values.valkey.bundled -}}
@@ -115,6 +117,9 @@ pod with replicas and no Valkey is refused rather than quietly inconsistent.
 {{- define "stator.checkValkey" -}}
 {{- if and (include "stator.replicaHosts" .) (gt (int .Values.api.replicas) 1) (not (include "stator.valkeyHost" .)) -}}
 {{- fail "Reads go to replicas and api.replicas is above 1, so read-your-writes needs a Valkey all api pods share. Set valkey.host, or valkey.bundled for a trial." -}}
+{{- end -}}
+{{- if and (gt (int .Values.api.replicas) 1) (not (include "stator.valkeyHost" .)) -}}
+{{- fail "api.replicas is above 1, so people editing a page together need a Valkey all api pods share to pass each other's changes. Set valkey.host, or valkey.bundled for a trial, or run one api pod." -}}
 {{- end -}}
 {{- end -}}
 

@@ -129,7 +129,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     await expect(draftStatus(page)).toHaveAttribute("data-draft-status", "saved");
   });
 
-  test("a publish over somebody else's is refused until the draft is kept", async ({ page, api, pageAs }, testInfo) => {
+  test("a publish over somebody else's is refused until the draft is kept", async ({ page, api, apiAs }, testInfo) => {
     test.slow();
     const space = await freshSpace(api, testInfo, "Conflict");
     const plans = await createPage(api, space.homePageId, "Plans", doc("Shared words."));
@@ -137,13 +137,9 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     await page.goto(editPath);
     await typeIntoDraft(page, " Alice was here.");
 
-    const bob = await pageAs("bob");
-    await expect(async () => {
-      await bob.goto(editPath);
-      await expect(bob.locator("#page-body")).toContainText("Shared words.", { timeout: 1_000 });
-    }).toPass();
-    await typeIntoDraft(bob, " Bob was here.");
-    await publishFromEditor(bob, "Bob's change.");
+    // Bob publishes from outside the editor, where the shared draft would
+    // have shown him Alice's words, as a script or another tool would.
+    await publishVersion(await apiAs("bob"), plans.id, "Shared words. Bob was here.", "Bob's change.");
 
     await page.locator('[data-action="publish"]').click();
     await page.locator('[data-publish-dialog] [data-action="confirm-publish"]').click();

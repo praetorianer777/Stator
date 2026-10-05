@@ -42,6 +42,8 @@ export default defineConfig({
       "/api": {
         target: process.env.VITE_API_PROXY || "http://localhost:8080",
         changeOrigin: true,
+        // A page's shared draft is a WebSocket under /api too.
+        ws: true,
       },
     },
   },

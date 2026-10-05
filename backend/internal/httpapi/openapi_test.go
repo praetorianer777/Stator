@@ -73,7 +73,7 @@ func TestEveryOperationIsWellFormed(t *testing.T) {
 			t.Errorf("%s takes a body", key)
 		}
 		for status := range op.responses {
-			if status < 200 || status > 599 {
+			if (status < 200 || status > 599) && !(op.upgrade && status == http.StatusSwitchingProtocols) {
 				t.Errorf("%s answers %d", key, status)
 			}
 		}

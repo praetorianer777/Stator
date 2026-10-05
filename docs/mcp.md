@@ -134,4 +134,6 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
 - inline threads, rewriting and resolving comments, file uploads and
   downloads, and the browser's furniture (typeahead, badges, pickers,
   drafts);
+- the shared draft of a page edited together, a WebSocket a browser holds
+  open while its person edits, not a call and an answer;
 - Armature's issues, which Armature's own MCP endpoint serves as the person.

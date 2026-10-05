@@ -57,7 +57,7 @@ describe("Editor", () => {
     act(() => handle!.insertMarkdown("Thanks, **done**."));
     expect(document.getElementById("new-page")?.querySelector("strong")?.textContent).toBe("done");
     act(() => handle!.clear());
-    expect(onChange).toHaveBeenLastCalledWith(null);
+    expect(onChange).toHaveBeenLastCalledWith(null, false);
   });
 });
 

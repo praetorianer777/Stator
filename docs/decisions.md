@@ -3,6 +3,70 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-05: Editing together is a Yjs document the api stores and relays without reading
+
+People who open a page's editor at once (#65) edit one shared draft, a Yjs
+document: the body is its XML fragment, bound to the editor by Tiptap's
+collaboration extensions, and the title a text of its own, changed by its
+common start and end so two people retitling at once both keep their part.
+Yjs merges concurrent and offline changes without conflicts, which the
+editor's per-person drafts never could, and it is what Tiptap supports.
+
+The api never reads the document. There is no Go implementation of Yjs as
+solid as the JavaScript one, and a server that only stores and relays
+cannot get the merge wrong. `GET /pages/{id}/collab` is a WebSocket in
+y-protocols' framing; each update a browser sends is appended to
+`page_collab_update` and passed to everybody else in the room, and an
+opening browser is sent every stored update. Since the server knows no
+state vector, the browser works out what the server lacks from the updates
+it was sent (`Y.encodeStateVectorFromUpdate`) and sends just that, which is
+how a browser that was offline merges what it wrote. Many updates are
+merged by a browser too: a load of 200 or more asks for `Y.mergeUpdates` of
+exactly the rows it carried, and the database swaps them for the merge only
+if they are all still there. The browser keeps each room in IndexedDB, so
+words written offline outlive a closed tab.
+
+Who may join is decided as for any edit: a signed-in session (a token has
+no use for a socket, and a read-only one would be writing), from this
+site's origins (the handshake is a GET, so `sameSite` holds it like a
+write), for a page the person may edit. The connection asks again every 30
+seconds, with the person's own credential and the page's rules, and closes
+with 4401 or 4403 when the answer changed; and every update is an insert
+the database's policy holds to `perm_page_editable`, so a revoked editor is
+refused on their next keystroke even between checks. The tables carry
+row level security like every other, and an update names its sender by a
+trigger.
+
+A room is one life of the shared draft, with an id of its own. The first
+person in is asked to seed it, from their own draft when they have one or
+else the page, with the version that came from, which becomes the room's
+base; nobody else's editor appears until the seed has arrived, so nothing
+is typed into an empty room and doubled later. A publish from the room
+moves its base on (the publisher says so, and the database checks they
+published that version), so the next person's publish is not refused as a
+conflict. When the page was published from elsewhere and the room holds
+nothing past its last publish, the next opener starts a new room from the
+page; a room with unpublished changes is kept, and its publish meets the
+usual conflict. Discarding throws the room away for everybody, who reload
+into a new one seeded from the published page.
+
+Drafts and publishing stay as they were. Each person's own draft is still
+what publishing publishes: the editor saves the shared draft into it after
+the person's own changes and before a publish, so the existing publish,
+conflict and comparison work unchanged, and an editor that cannot reach the
+socket in six seconds edits alone, saving its draft as before. The person
+who seeds a room from their draft does not lose it, and somebody joining a
+room overwrites their own draft with the shared one on their next change.
+
+Several api processes reach one room through Valkey's publish and
+subscribe, one channel per page, each process listening before it serves;
+a frame lost there reaches its browser at the next load. Without Valkey
+everybody editing a page must reach the same process, so the chart refuses
+more than one api pod without it. Limits are constants of
+`internal/collab`: a message of 4 MB, which the database holds an update
+to as well, 50 connections per page per process, a ping every 25 seconds
+to keep proxies from closing a quiet socket, and a slow browser is let go
+to load again rather than buffered without end.
 ## 2026-10-05: Office documents are converted to PDF once, by a service of their own
 
 A PDF and an office document (docx, xlsx, pptx, odt, ods, odp and the older

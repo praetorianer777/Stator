@@ -2000,3 +2000,29 @@
     color: var(--color-ink-muted);
   }
 }
+
+/* Somebody else's caret in a shared draft, in their colour, with their name
+ * above it. The colours are COLLAB_COLORS in config.ts, which a test holds to
+ * a readable contrast with white. */
+@layer components {
+  .collaboration-carets__caret {
+    position: relative;
+    margin-inline: -1px;
+    border-inline: 1px solid;
+    pointer-events: none;
+    word-break: normal;
+  }
+  .collaboration-carets__label {
+    position: absolute;
+    top: -1.4em;
+    left: -1px;
+    padding: 0 0.3rem;
+    border-radius: 3px 3px 3px 0;
+    color: white;
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    line-height: var(--text-2xs--line-height);
+    white-space: nowrap;
+    user-select: none;
+  }
+}

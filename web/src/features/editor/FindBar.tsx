@@ -4,7 +4,7 @@ import type { Transaction } from "@tiptap/pm/state";
 import { Button, Checkbox, IconButton, Input } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
-import { findKey, replaceAll, replaceCurrent, selectCurrent, setFindQuery, stepMatch } from "./findReplace";
+import { endUndoStep, findKey, replaceAll, replaceCurrent, selectCurrent, setFindQuery, stepMatch } from "./findReplace";
 
 /**
  * The find and replace bar over the editor. The editor keeps the matches;
@@ -64,7 +64,9 @@ export function FindBar({ editor, seed, focusToken, onClose }: { editor: Editor;
   }
 
   function replaceOne() {
+    endUndoStep(editor.state);
     run(replaceCurrent(editor.state, replacement));
+    endUndoStep(editor.state);
     run(selectCurrent(editor.state));
     keepFocus();
   }
@@ -72,7 +74,9 @@ export function FindBar({ editor, seed, focusToken, onClose }: { editor: Editor;
   function replaceEvery() {
     const done = replaceAll(editor.state, replacement);
     if (!done) return;
+    endUndoStep(editor.state);
     editor.view.dispatch(done.tr);
+    endUndoStep(editor.state);
     setReplaced(done.count);
     keepFocus();
   }

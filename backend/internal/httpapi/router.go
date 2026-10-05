@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/calendar"
+	"github.com/praetorianer777/stator/backend/internal/collab"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
@@ -112,6 +113,9 @@ type Server struct {
 	// both. AuditRetention is how long the worker keeps an entry, zero forever.
 	Audit          *audit.Service
 	AuditRetention time.Duration
+	// Collab relays the shared drafts of pages being edited together; nil
+	// answers that editing together is off, and the editor edits alone.
+	Collab *collab.Hub
 	// Webhooks keeps where the organization's events are posted; nil answers
 	// that webhooks are not set up.
 	Webhooks *webhook.Service
@@ -155,7 +159,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 	r.Use(securityHeaders)
 	r.Use(cors(allowedOrigins))
 	r.Use(s.sameSite(allowedOrigins))
-	r.Use(middleware.Timeout(timeout))
+	r.Use(unlessUpgrade(middleware.Timeout(timeout)))
 	r.Use(s.authenticate)
 	r.Use(readOnlyToken)
 	r.Use(s.readYourWrites)
@@ -351,6 +355,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/draft", s.handleGetDraft)
 			r.Put("/pages/{pageID}/draft", s.handleSaveDraft)
 			r.Delete("/pages/{pageID}/draft", s.handleDiscardDraft)
+			// A browser holds it open while its person edits, so a token has no use for it.
+			r.With(requireSession).Get("/pages/{pageID}/collab", s.handleCollab)
 			r.Post("/pages/{pageID}/publish", s.handlePublishPage)
 			r.Get("/pages/{pageID}/versions", s.handleListVersions)
 			r.Get("/pages/{pageID}/versions/{versionNumber}", s.handleGetVersion)

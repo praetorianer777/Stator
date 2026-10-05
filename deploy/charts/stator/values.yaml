@@ -114,9 +114,10 @@ database:
   readYourWritesTTL: 30s
 
 valkey:
-  # The store behind read-your-writes, shared by every api pod. Without one
-  # each pod keeps its own, so the chart refuses to send reads to replicas
-  # from more than one api pod without it.
+  # The store behind read-your-writes, shared by every api pod, and the bus
+  # that passes the changes to a page edited together between them. Without
+  # one each pod keeps its own, so the chart refuses more than one api pod
+  # without it.
   #
   # A Valkey or Redis you run. Ignored when the bundled one is on.
   host: ""
