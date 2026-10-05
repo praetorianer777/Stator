@@ -1114,6 +1114,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/collab": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Edit a page together: a WebSocket carrying the page's shared draft, for somebody signed in who may edit the page.
+         * @description Binary frames in y-protocols' framing: a varuint message type, then its payload. Sync (0) and awareness (1) are y-protocols' own; the server stores sync updates and passes them and awareness on without reading them. The server opens with room (100: the room's id as a string, its base version, and 1 when this client is to send its first content), then every stored update as a sync update and an empty sync step 2 when they are all sent; room starts every such load. A client sends updates as sync updates, seed (102: base version, update) when asked for first content, published (101: version) after publishing from the room, discard (103) to throw the room away for everybody, and compacted (105: from, to, count, merged update) when the server asks with compact (104: from, to, count) for the merge of the updates the last load carried. The server says base (107: version) when a publish moves the room on. Close codes: 4401 the session ended, 4403 the person may no longer edit, 4408 the client fell behind, 4409 the room was started afresh; load again for the last two.
+         */
+        get: operations["collab"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/comments": {
         parameters: {
             query?: never;
@@ -7530,6 +7550,71 @@ export interface operations {
                         pages: components["schemas"]["BelowPage"][];
                         truncated: boolean;
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    collab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Switching Protocols: the connection is a WebSocket from here on. */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upgrade Required */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

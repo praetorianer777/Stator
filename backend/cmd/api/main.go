@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/calendar"
+	"github.com/praetorianer777/stator/backend/internal/collab"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/convert"
@@ -160,7 +161,12 @@ func run() error {
 	} else {
 		log.Warn("office documents have no preview: STATOR_CONVERTER_URL is not set")
 	}
+	collabs, err := collabHub(ctx, cluster, cfg, valkey, log)
+	if err != nil {
+		return err
+	}
 	server := &httpapi.Server{
+		Collab:            collabs,
 		DB:                cluster,
 		Fresh:             fresh,
 		Auth:              accounts,
@@ -222,6 +228,10 @@ func run() error {
 		IdleTimeout:       idleTimeout,
 		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
 	}
+
+	// Shutdown does not wait for a WebSocket, so the hub closes each one,
+	// asking its browser to come back to another process.
+	srv.RegisterOnShutdown(collabs.Shutdown)
 
 	// Exactly one value is ever sent on this channel. Closing it instead would
 	// make the select below read a nil and report a clean exit for a failure.
@@ -301,6 +311,23 @@ func openValkey(ctx context.Context, cfg config.Config) (*redis.Client, error) {
 		return nil, fmt.Errorf("connect to Valkey: %w", err)
 	}
 	return client, nil
+}
+
+// collabPrefix keeps the shared drafts' channels apart from anything else in Valkey.
+const collabPrefix = "stator:collab:"
+
+// collabHub relays shared drafts between this process's connections and
+// every other api process's: through Valkey when there is one, else Postgres.
+func collabHub(ctx context.Context, cluster *db.Cluster, cfg config.Config, valkey *redis.Client, log *slog.Logger) (*collab.Hub, error) {
+	if valkey != nil {
+		bus := collab.NewValkeyBus(valkey, collabPrefix)
+		hub := collab.NewHub(bus, log, collab.DefaultOptions())
+		return hub, bus.Listen(ctx, hub)
+	}
+	log.Info("STATOR_VALKEY_URL is not set, so api processes pass shared drafts' changes to each other through Postgres")
+	bus := collab.NewPostgresBus(cluster.Primary(), cfg.DB.PrimaryURL, collab.PostgresChannel, log)
+	hub := collab.NewHub(bus, log, collab.DefaultOptions())
+	return hub, bus.Listen(ctx, hub)
 }
 
 // freshnessTracker keeps read-your-writes positions in Valkey, so they hold

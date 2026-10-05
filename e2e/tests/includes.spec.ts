@@ -90,11 +90,41 @@ test.describe("includes", { tag: ["@auth"] }, () => {
     }).toPass();
 
     const bob = await pageAs("bob");
-    await open(bob, path, "Welcome.");
+    // Bob's reads are not held to the publish, so wait for words only it has.
+    await open(bob, path, "Ten to six.");
     await expect(bob.locator("main [data-doc]").first().getByRole("region", { name: "Included from Support: Hours" })).toContainText("Ten to six.");
     const notice = bob.locator('main [data-include][data-state="unavailable"]');
     await expect(notice).toContainText("This included content is not available to you");
     await expect(bob.locator("main")).not.toContainText("Salaries.");
+  });
+
+  test("a key typed before the browser reports the caret leaving an include goes after it, and the include is published", async ({ page, api }, testInfo) => {
+    const space = await freshSpace(api, testInfo, "Caret");
+    const support = await createPage(api, space.homePageId, "Support", { type: "doc", content: [excerpt(HOURS, "Hours", "Nine to five.")] });
+    const front = await createPage(api, space.homePageId, "Front", {
+      type: "doc",
+      content: [paragraph("Welcome."), { type: "include", attrs: { pageId: support.id, excerptId: HOURS } }, { type: "paragraph" }],
+    });
+    const path = `/s/${space.key}/p/${front.id}/front`;
+
+    await open(page, `${path}/edit`, "Nine to five.");
+    await expect(page.locator("[data-page-editor]")).toHaveAttribute("data-collab", "together");
+    const region = editorBox(page).getByRole("region", { name: "Included from Support: Hours" });
+    await region.getByText("Nine to five.").click();
+    await expect(editorBox(page).locator(".ProseMirror-selectednode")).toHaveCount(1);
+    // End moves the caret at once and reports it in a selectionchange a busy
+    // browser lets the next key overtake; the events here always overtake it.
+    await editorBox(page).evaluate((box) => {
+      document.getSelection()?.collapse(box.lastElementChild as Element, 0);
+      box.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true }));
+      box.dispatchEvent(new KeyboardEvent("keypress", { key: "/", charCode: "/".charCodeAt(0), bubbles: true, cancelable: true }));
+    });
+    await expect(region).toContainText("Nine to five.");
+    await page.keyboard.type("Thanks.");
+    await expect(page.locator("[data-draft-status]")).toHaveAttribute("data-draft-status", "saved");
+    await publishFromEditor(page);
+    await expect(shown(page)).toContainText("Thanks.");
+    await expect(shown(page).getByRole("region", { name: "Included from Support: Hours" })).toContainText("Nine to five.");
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {

@@ -122,14 +122,27 @@ check "the guard lets through what is named, and Armature is reached where it is
         | grep -E 'STATOR_(OUTBOUND_ALLOW|ARMATURE_BACKCHANNEL)' | tr -d ' ' | paste -sd ' ')" \
     'STATOR_OUTBOUND_ALLOW:"armature-api.armature.svc,10.40.0.0/16" STATOR_ARMATURE_BACKCHANNEL:"https://armature.example.com=http://armature-api.armature.svc:8080"'
 
+check "the web's nginx passes a shared draft's WebSocket on" \
+    "$(grep -A4 -F 'location ~ ^/api/v1/pages/[^/]+/collab$' <<<"${RENDERED}" | grep -cE 'proxy_http_version 1.1|proxy_set_header Upgrade \$http_upgrade|proxy_set_header Connection "upgrade"')" \
+    "3"
+
+echo "⎈ One api pod without Valkey"
+render "one api pod, no Valkey" --set database.host=db.example --set api.replicas=1
+check "no Valkey URL" "$(env_value "${RENDERED}" STATOR_VALKEY_URL)" ""
+
+# Editors on different pods pass each other's changes through Postgres then.
+echo "⎈ Several api pods without Valkey or replicas"
+render "three api pods, no Valkey" --set database.host=db.example --set api.replicas=3
+check "no Valkey URL" "$(env_value "${RENDERED}" STATOR_VALKEY_URL)" ""
+
 echo "⎈ CloudNativePG with one instance"
-render "cnpg, 1 instance" --set cnpg.enabled=true --set cnpg.spec.instances=1
+render "cnpg, 1 instance" --set cnpg.enabled=true --set cnpg.spec.instances=1 "${VALKEY[@]}"
 check "writes go to -rw" "$(env_value "${RENDERED}" STATOR_DB_PRIMARY_URL)" "$(app_url "${RW}" require)"
 check "no replica URL, so reads go to -rw" "$(env_value "${RENDERED}" STATOR_DB_REPLICA_URLS)" ""
 check "-ro is named nowhere" "$(grep -c -- "${RO}" <<<"${RENDERED}")" "0"
 
 echo "⎈ CloudNativePG with read replicas turned off"
-render "cnpg, 3 instances, readReplicas off" --set cnpg.enabled=true --set cnpg.readReplicas=false
+render "cnpg, 3 instances, readReplicas off" --set cnpg.enabled=true --set cnpg.readReplicas=false "${VALKEY[@]}"
 check "no replica URL" "$(env_value "${RENDERED}" STATOR_DB_REPLICA_URLS)" ""
 
 echo "⎈ A database of one's own"
@@ -154,11 +167,11 @@ refused "replicas behind several api pods without Valkey" \
     "read-your-writes needs a Valkey all api pods share" \
     --set cnpg.enabled=true
 refused "no database at all" "Set database.host, or enable cnpg or the bundled postgresql" \
-    --set database.host=
+    --set database.host= "${VALKEY[@]}"
 refused "postgres as the owner under cnpg" "database.ownerRole is postgres, which CNPG keeps for its own superuser" \
     --set cnpg.enabled=true --set database.ownerRole=postgres "${VALKEY[@]}"
 refused "the seed in production" "jobs.seed.enabled is true but env is production" \
-    --set database.host=db.example --set jobs.seed.enabled=true
+    --set database.host=db.example --set jobs.seed.enabled=true "${VALKEY[@]}"
 
 if [[ ${FAILED} -ne 0 ]]; then
     echo "❌ chart tests failed"

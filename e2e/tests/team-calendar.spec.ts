@@ -115,7 +115,8 @@ test.describe("team calendars", { tag: ["@auth"] }, () => {
 
     // Bob has no Armature token: he reads the events, and is asked to connect for the issues.
     const bob = await pageAs("bob");
-    await open(bob, path, "Who is where.");
+    // Bob's reads are not held to Alice's writes, so wait for her last one, the event's title.
+    await open(bob, path, "Ann on leave");
     const bobs = bob.locator("main [data-doc]").getByRole("figure", { name: "Team" });
     await expect(bobs.locator(`[data-day="${TODAY}"]`)).toContainText("Ann on leave");
     await expect(bobs).toContainText("Connect your Armature account to see the issues due this month.");

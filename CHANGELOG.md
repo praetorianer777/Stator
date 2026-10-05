@@ -726,6 +726,22 @@ and the versioning [Semantic Versioning](https://semver.org/).
   50 of them (`GET /pages/{id}/contributors`, also the MCP tool
   `list_page_contributors`). The page keeps only the template, the place
   and the words, and which pages to count.
+- Editing together (#65). People who open a page's editor at the same time
+  edit one shared draft: each sees the others' words as they are typed,
+  their carets with their names in their colours, and their avatars in the
+  header. The draft is a Yjs document the api keeps as a log of updates per
+  page (`GET /pages/{id}/collab`, a WebSocket for a signed-in session that
+  may edit the page, checked again every 30 seconds) and passes between api
+  processes through Valkey, or through Postgres's LISTEN and NOTIFY when
+  no Valkey is configured, so several api pods need no Valkey for it. A
+  process that loses the other processes for a while relays what was
+  stored meanwhile once it hears them again. A browser that loses the connection keeps
+  editing, keeps its changes in IndexedDB, and merges them when it is back.
+  Publishing publishes the shared draft as it stands and moves everybody on
+  to the new version; discarding throws it away for everybody. Each person's
+  own draft still holds what they publish, and the editor edits alone, as
+  before, when the shared draft is out of reach. The chart's nginx passes
+  the WebSocket on.
 
 ### Changed
 

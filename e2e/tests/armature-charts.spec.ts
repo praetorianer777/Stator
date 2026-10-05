@@ -72,7 +72,8 @@ test.describe("Armature charts", { tag: ["@auth"] }, () => {
 
     // Bob has no Armature token, so his reading of the same page asks him to connect.
     const bob = await pageAs("bob");
-    await open(bob, path, "Where we are.");
+    // Bob's reads are not held to the publish, so wait for words only it has.
+    await open(bob, path, "Connect your Armature account to see this chart.");
     await expect(bob.locator('main [data-armature-chart="pie"]')).toHaveAttribute("data-state", "connect");
     await expect(bob.locator("main")).toContainText("Connect your Armature account to see this chart.");
   });

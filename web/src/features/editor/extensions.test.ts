@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { Slice } from "@tiptap/pm/model";
+import { NodeSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { DIAGRAM_DEFAULT_SOURCE } from "@/config";
 import { editorExtensions, type ExtensionOptions } from "./extensions";
@@ -477,5 +478,29 @@ describe("markdown", () => {
     e.commands.clearContent();
     type("**strong** ");
     expect(find(e.getJSON() as DocNode, "text")[0]?.marks?.[0]?.type).toBe("bold");
+  });
+});
+
+describe("keys after a caret move", () => {
+  it("land where the browser moved the caret, even before it reported the move", async () => {
+    const e = await make({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome." }] }, { type: "horizontalRule" }, { type: "paragraph" }],
+    });
+    const dom = e.view.dom;
+    dom.setAttribute("tabindex", "0");
+    document.body.append(dom);
+    dom.focus();
+    e.commands.setNodeSelection(10);
+    expect(e.state.selection).toBeInstanceOf(NodeSelection);
+    // End moves the browser's caret at once, but tells of it in a selectionchange
+    // that a busy browser lets the next key overtake, as jsdom does here.
+    const last = dom.lastElementChild as HTMLElement;
+    document.getSelection()?.collapse(last, 0);
+    dom.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true }));
+    dom.dispatchEvent(new KeyboardEvent("keypress", { key: "/", charCode: "/".charCodeAt(0), bubbles: true, cancelable: true }));
+    expect(find(e.getJSON() as DocNode, "horizontalRule")).toHaveLength(1);
+    expect(e.state.selection.from).toBe(e.state.doc.content.size - 1);
+    dom.remove();
   });
 });

@@ -185,6 +185,8 @@ func (c *contract) uncovered() (neverSucceeded, neverRefused []string) {
 				succeeded, refused = true, true
 			case status/100 == 2, status/100 == 3:
 				succeeded = true
+			case status == http.StatusSwitchingProtocols && r.Upgrade:
+				succeeded = true
 			case status/100 == 4:
 				refused = true
 			}

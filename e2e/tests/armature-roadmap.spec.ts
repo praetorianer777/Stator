@@ -101,8 +101,12 @@ test.describe("Armature roadmaps", { tag: ["@auth"] }, () => {
 
     // Bob has no Armature token, so his reading of the same page asks him to connect.
     const bob = await pageAs("bob");
-    await open(bob, path, "Where we are going.");
-    await expect(bob.locator('main [data-armature-roadmap="team"]')).toHaveAttribute("data-state", "connect");
+    // Bob's reads are held to his own writes, not Alice's publish, so a lagging
+    // replica may still answer with the first version, which has the same words.
+    await expect(async () => {
+      await bob.goto(path);
+      await expect(bob.locator('main [data-armature-roadmap="team"]')).toHaveAttribute("data-state", "connect", { timeout: 2_000 });
+    }).toPass();
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {

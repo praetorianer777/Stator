@@ -11,6 +11,11 @@ import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import Mention, { type MentionOptions } from "@tiptap/extension-mention";
 import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 import { Markdown } from "@tiptap/markdown";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import type * as Y from "yjs";
+import type { Awareness } from "y-protocols/awareness";
+import { BODY_FIELD } from "@/features/collab/shared";
 import { t } from "@/i18n";
 import { lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, HEADING_LEVELS, PANEL_KINDS, dedupe, safeHref, slug, type CellBackground, type PanelKind } from "./schema";
@@ -272,6 +277,35 @@ const MarkdownPaste = Extension.create({
   },
 });
 
+/** The part of ProseMirror's view that reads the browser's selection; it is not in its types. */
+interface ObservedView {
+  domObserver?: { flush?: () => void };
+}
+
+/** Reads where the browser put the caret before a key is acted on. */
+const CaretBeforeKeys = Extension.create({
+  name: "caretBeforeKeys",
+  // Ahead of every keymap, which would otherwise act on the old selection too.
+  priority: 1000,
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("caretBeforeKeys"),
+        props: {
+          // A caret key moves the browser's caret at once but tells ProseMirror
+          // by a later selectionchange, which a busy browser lets the next key
+          // overtake. Typed onto a block still selected, that key replaced the
+          // block, so a page lost a block put in just before.
+          handleKeyDown: (view) => {
+            (view as unknown as ObservedView).domObserver?.flush?.();
+            return false;
+          },
+        },
+      }),
+    ];
+  },
+});
+
 export interface SlashMenuOptions {
   suggestion: Omit<SuggestionOptions<SlashItem, SlashItem>, "editor">;
 }
@@ -365,6 +399,15 @@ export interface ExtensionOptions {
   emoji?: Partial<EmojiOptions["suggestion"]>;
   /** Opens the find bar with the selected words; without it Ctrl or Cmd+F is the browser's. */
   find?: (seed: string) => void;
+  /** The shared draft the body is bound to, and who this browser is in it; without it the editor holds its own. */
+  collab?: CollabBinding;
+}
+
+/** A shared draft's document and awareness, and the person editing here. */
+export interface CollabBinding {
+  doc: Y.Doc;
+  awareness: Awareness;
+  user: { id: string; name: string; color: string };
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
@@ -392,9 +435,12 @@ export function editorExtensions({
   editInlineValue,
   emoji,
   find,
+  collab,
 }: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
+      // The shared draft keeps its own undo, of this person's changes only.
+      undoRedo: collab ? false : undefined,
       underline: false,
       codeBlock: false,
       heading: false,
@@ -412,6 +458,7 @@ export function editorExtensions({
       suggestion: { char: "@", items: () => [], ...mention },
     }),
     ...(emoji ? [EmojiSuggestion.configure({ suggestion: emoji })] : []),
+    CaretBeforeKeys,
     Extension.create({
       name: "submitOnModEnter",
       addKeyboardShortcuts() {
@@ -473,5 +520,11 @@ export function editorExtensions({
     Excerpt,
     Include.configure({ pick: pickInclude, pageId }),
     FindReplace.configure({ open: find }),
+    ...(collab
+      ? [
+          Collaboration.configure({ document: collab.doc, field: BODY_FIELD }),
+          CollaborationCaret.configure({ provider: { awareness: collab.awareness }, user: collab.user }),
+        ]
+      : []),
   ];
 }

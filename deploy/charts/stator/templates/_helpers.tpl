@@ -99,6 +99,8 @@ a template can only return a string.
 Valkey: the bundled one, yours, or none. Read-your-writes positions have to be
 shared by every api pod once reads can reach a replica, so more than one api
 pod with replicas and no Valkey is refused rather than quietly inconsistent.
+People editing a page together need no Valkey: without it the api pods pass
+each other's changes through Postgres.
 */}}
 {{- define "stator.valkeyHost" -}}
 {{- if .Values.valkey.bundled -}}

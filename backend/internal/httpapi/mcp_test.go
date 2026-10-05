@@ -30,6 +30,7 @@ const (
 	whyReorganize = "moves, copies, restores or publishes a draft; a person does that in the tree, the trash or the history"
 	whyThreads    = "an inline thread needs the body with a passage marked, and threads are rewritten or resolved where they are read"
 	whyReaders    = "names the people who read a page, which stays with its editors in the page; get_page_views counts them"
+	whyLive       = "a WebSocket a browser holds open while its person edits, not a call and an answer"
 )
 
 // notTools holds the decision for every operation that is not a tool, so a
@@ -43,6 +44,7 @@ var notTools = map[string]string{
 	"GET /auth/oidc/callback":                         whyEdge,
 	"POST /armature/webhook/{orgSlug}":                whyEdge,
 	"POST /mcp":                                       whyEdge,
+	"GET /pages/{pageID}/collab":                      whyLive,
 	"POST /auth/logout":                               whySelf,
 	"PATCH /auth/me":                                  whySelf,
 	"POST /auth/switch-org":                           whySelf,

@@ -223,6 +223,21 @@ export const SHARE_MAX_RECIPIENTS = 20;
 export const SHARE_VIEWERS_SHOWN = 8;
 /** How long the editor waits after the last keystroke before it saves the draft. */
 export const DRAFT_AUTOSAVE_MS = 1000;
+/** How long the editor waits for a page's shared draft before it edits alone, saving to the person's own draft. */
+export const COLLAB_CONNECT_TIMEOUT_MS = 6000;
+/** The first and the longest wait before a lost connection to a shared draft is tried again; each try doubles it. */
+export const COLLAB_RECONNECT_MIN_MS = 500;
+export const COLLAB_RECONNECT_MAX_MS = 10_000;
+/** How long a browser waits for somebody else to send a new shared draft's first content, past the API's page.SeedLease of 15 seconds, before it asks again. */
+export const COLLAB_SEED_WAIT_MS = 20_000;
+/** Where this browser keeps each shared draft's document in IndexedDB, by room, so changes made offline outlive a closed tab. */
+export const COLLAB_LOCAL_PREFIX = "stator.collab.";
+/** The colours people's carets and avatars take in a shared draft, as #rrggbb, which the caret needs; each person gets one by their id. */
+export const COLLAB_COLORS: readonly string[] = ["#1d4ed8", "#b45309", "#047857", "#be185d", "#6d28d9", "#0e7490", "#b91c1c", "#4d7c0f"];
+/** The initials on those colours, which a test holds to a readable contrast with each. */
+export const COLLAB_INK = "#ffffff";
+/** How many other people's avatars the editor shows before it counts the rest. */
+export const COLLAB_AVATARS_SHOWN = 5;
 /** The longest version comment, matching the API's page.MaxCommentLength. */
 export const VERSION_COMMENT_MAX_LENGTH = 500;
 /** How many versions the history shows at a time. */

@@ -76,6 +76,9 @@ type operation struct {
 	binary bool
 	// redirect routes answer with a Location header rather than a body.
 	redirect bool
+	// upgrade routes become a WebSocket, described in description.
+	upgrade     bool
+	description string
 	// pending routes are agreed but not built yet: they answer 501, and the
 	// integration suite does not expect them covered. See docs/architecture.md.
 	pending bool
@@ -92,6 +95,16 @@ type operation struct {
 	// limited to spaces is refused; token_test.go holds the router to it.
 	orgWide bool
 }
+
+// collabProtocol is what a client of handleCollab has to know beyond the handshake.
+const collabProtocol = "Binary frames in y-protocols' framing: a varuint message type, then its payload. " +
+	"Sync (0) and awareness (1) are y-protocols' own; the server stores sync updates and passes them and awareness on without reading them. " +
+	"The server opens with room (100: the room's id as a string, its base version, and 1 when this client is to send its first content), " +
+	"then every stored update as a sync update and an empty sync step 2 when they are all sent; room starts every such load. " +
+	"A client sends updates as sync updates, seed (102: base version, update) when asked for first content, published (101: version) after publishing from the room, " +
+	"discard (103) to throw the room away for everybody, and compacted (105: from, to, count, merged update) when the server asks with compact (104: from, to, count) " +
+	"for the merge of the updates the last load carried. The server says base (107: version) when a publish moves the room on. " +
+	"Close codes: 4401 the session ended, 4403 the person may no longer edit, 4408 the client fell behind, 4409 the room was started afresh; load again for the last two."
 
 // operations is the table. Order is by area, then by path; paths are relative
 // to APIPrefix except the probes, which live at the root.
@@ -281,6 +294,10 @@ var operations = []operation{
 		request: page.DraftInput{}, responses: ok(env{"draft": page.Draft{}})},
 	{method: "DELETE", path: "/pages/{pageID}/draft", handler: "handleDiscardDraft", tag: "drafts", summary: "Throw the caller's draft away; the page stays as last published.",
 		responses: none()},
+	{method: "GET", path: "/pages/{pageID}/collab", handler: "handleCollab", tag: "drafts", upgrade: true,
+		summary:     "Edit a page together: a WebSocket carrying the page's shared draft, for somebody signed in who may edit the page.",
+		description: collabProtocol,
+		responses:   map[int]any{101: nil, 403: errorEnvelope{}, 404: errorEnvelope{}, 426: errorEnvelope{}, 503: errorEnvelope{}}},
 	{method: "POST", path: "/pages/{pageID}/publish", handler: "handlePublishPage", tag: "drafts", summary: "Publish the caller's draft as the next version; refused with publish_conflict when somebody published since the draft began.",
 		request: page.PublishInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
 
@@ -880,6 +897,7 @@ func Spec() *openapi.Document {
 		o := &openapi.Operation{
 			OperationID: op.operationID(),
 			Summary:     op.summary,
+			Description: op.description,
 			Tags:        []string{op.tag},
 			Responses:   map[string]*openapi.Response{},
 		}
@@ -916,6 +934,9 @@ func Spec() *openapi.Document {
 		}
 		for status, body := range op.responses {
 			r := &openapi.Response{Description: http.StatusText(status)}
+			if status == http.StatusSwitchingProtocols {
+				r.Description = "Switching Protocols: the connection is a WebSocket from here on."
+			}
 			switch {
 			case isErrorEnvelope(body):
 				r.Content = map[string]openapi.MediaType{"application/json": {Schema: errorSchema}}
@@ -1008,6 +1029,8 @@ type Route struct {
 	Redirect         bool
 	// Pending operations answer 501 until they are built.
 	Pending bool
+	// Upgrade operations become a WebSocket.
+	Upgrade bool
 	// OrgWide operations are refused a token limited to spaces.
 	OrgWide bool
 }
@@ -1016,7 +1039,7 @@ type Route struct {
 func Catalog() []Route {
 	out := make([]Route, 0, len(operations))
 	for _, op := range operations {
-		out = append(out, Route{Method: op.method, Path: op.path, ID: op.operationID(), Public: op.public, Binary: op.binary, Redirect: op.redirect, Pending: op.pending, OrgWide: op.orgWide})
+		out = append(out, Route{Method: op.method, Path: op.path, ID: op.operationID(), Public: op.public, Binary: op.binary, Redirect: op.redirect, Pending: op.pending, Upgrade: op.upgrade, OrgWide: op.orgWide})
 	}
 	return out
 }

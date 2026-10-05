@@ -18,6 +18,11 @@ const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "te
 const HANDBOOK = "http://web/handbook";
 const VIDEO = "https://youtu.be/dQw4w9WgXcQ";
 const PLAYER = "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ";
+// The api's unfurl.FetchTimeout. An unreachable site's card is drawn plain
+// only once the api gives up on it, which a host whose resolver is slow to
+// deny a name makes the whole timeout; the margin is for the answer's way back.
+const UNFURL_GIVES_UP_MS = 5_000;
+const UNFURL_MARGIN_MS = 5_000;
 
 /** Opens a page's editor until it holds the words given, which a replica may lag behind on. */
 async function openEditor(page: Page, path: string, words: string): Promise<void> {
@@ -117,7 +122,9 @@ test.describe("link previews", { tag: ["@auth"] }, () => {
         await expect(shown(page).locator("[data-link-card-title]").first()).toHaveText("Stator", { timeout: 2_000 });
       }).toPass();
       await expect(shown(page).locator("iframe")).toHaveCount(1);
-      await expect(shown(page).locator('[data-link-card="card"][data-state="plain"]')).toContainText("unreachable.invalid/post");
+      await expect(shown(page).locator('[data-link-card="card"][data-state="plain"]')).toContainText("unreachable.invalid/post", {
+        timeout: UNFURL_GIVES_UP_MS + UNFURL_MARGIN_MS,
+      });
       // The player inside the embed is the video site's own markup (#275), so
       // axe leaves the frame out and its title, which is ours, is checked here.
       await expect(shown(page).locator("iframe")).toHaveAttribute("title", /\S/);
