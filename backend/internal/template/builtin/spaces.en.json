@@ -1,0 +1,1632 @@
+{
+  "templates": [
+    {
+      "key": "knowledge-base",
+      "name": "Knowledge base",
+      "description": "Answers the whole organization can rely on: how-to articles, troubleshooting and frequent questions, found by label.",
+      "home": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "This knowledge base collects answers that hold beyond a single team. Search it first; when an answer is missing or out of date, add it or fix it."
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "attrs": {
+              "kind": "info"
+            },
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Everybody may add articles and comment. ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "Only the administrators of this space move articles to the trash, so a page somebody relies on does not vanish without a word."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "attrs": {
+              "level": 1,
+              "id": "browse"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Browse"
+              }
+            ]
+          },
+          {
+            "type": "childPages",
+            "attrs": {
+              "depth": null,
+              "scope": "children",
+              "sort": "tree"
+            }
+          },
+          {
+            "type": "heading",
+            "attrs": {
+              "level": 1,
+              "id": "how-to-articles"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "How-to articles"
+              }
+            ]
+          },
+          {
+            "type": "labelledPages",
+            "attrs": {
+              "labels": [
+                "how-to"
+              ],
+              "match": "any",
+              "sort": "updated",
+              "limit": 10,
+              "space": null
+            }
+          },
+          {
+            "type": "heading",
+            "attrs": {
+              "level": 1,
+              "id": "troubleshooting"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Troubleshooting"
+              }
+            ]
+          },
+          {
+            "type": "labelledPages",
+            "attrs": {
+              "labels": [
+                "troubleshooting"
+              ],
+              "match": "any",
+              "sort": "updated",
+              "limit": 10,
+              "space": null
+            }
+          },
+          {
+            "type": "heading",
+            "attrs": {
+              "level": 1,
+              "id": "recently-updated"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Recently updated"
+              }
+            ]
+          },
+          {
+            "type": "recentlyUpdated",
+            "attrs": {
+              "limit": 10,
+              "space": null
+            }
+          }
+        ]
+      },
+      "pages": [
+        {
+          "title": "How-to articles",
+          "labels": [
+            "how-to"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Each page below this one walks through one task, step by step. Give it the label how-to, so it is listed on the home page."
+                  }
+                ]
+              },
+              {
+                "type": "childPages",
+                "attrs": {
+                  "depth": null,
+                  "scope": "children",
+                  "sort": "tree"
+                }
+              }
+            ]
+          },
+          "children": [
+            {
+              "title": "How to write a how-to article",
+              "labels": [
+                "how-to",
+                "kb-guide"
+              ],
+              "body": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A good how-to article answers one question a reader would type into search."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "heading",
+                    "attrs": {
+                      "level": 1,
+                      "id": "before-you-start"
+                    },
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Before you start"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "bulletList",
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Name what the reader needs: access, tools or knowledge."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Say which version or setup the steps apply to."
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "heading",
+                    "attrs": {
+                      "level": 1,
+                      "id": "steps"
+                    },
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Steps"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "orderedList",
+                    "attrs": {
+                      "start": 1,
+                      "type": null
+                    },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Write each step as one action, starting with a verb."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Show what the reader should see after a step that changes something."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "End with how the reader knows it worked."
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "heading",
+                    "attrs": {
+                      "level": 1,
+                      "id": "related-articles"
+                    },
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Related articles"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Link the articles a reader is likely to need next."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "title": "Troubleshooting",
+          "labels": [
+            "troubleshooting"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Each page below this one starts from a symptom somebody saw and ends with what fixed it. Give it the label troubleshooting."
+                  }
+                ]
+              },
+              {
+                "type": "table",
+                "content": [
+                  {
+                    "type": "tableRow",
+                    "content": [
+                      {
+                        "type": "tableHeader",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Symptom"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "tableHeader",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Cause"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "tableHeader",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Fix"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "tableRow",
+                    "content": [
+                      {
+                        "type": "tableCell",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "What the reader sees, in their own words"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "tableCell",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Why it happens"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "tableCell",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "What to do about it"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "childPages",
+                "attrs": {
+                  "depth": null,
+                  "scope": "children",
+                  "sort": "tree"
+                }
+              }
+            ]
+          },
+          "children": []
+        },
+        {
+          "title": "Frequently asked questions",
+          "labels": [
+            "faq"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Short answers to the questions people ask most. Open a question to read its answer; add a question when you answered it twice."
+                  }
+                ]
+              },
+              {
+                "type": "expand",
+                "attrs": {
+                  "title": "Where do I start?"
+                },
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Read the pages under How-to articles, or search for the task you have in mind."
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "expand",
+                "attrs": {
+                  "title": "Who keeps this knowledge base up to date?"
+                },
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Everybody who uses it. When an answer is wrong, fix it and say why in the version comment."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "children": []
+        },
+        {
+          "title": "Contributing",
+          "labels": [
+            "kb-guide"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A few habits keep this knowledge base worth searching."
+                  }
+                ]
+              },
+              {
+                "type": "bulletList",
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Search before you write, and improve an article rather than adding a second one."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Title an article by the question it answers."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Label it, so the lists on the home page find it."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Name an owner on the page who keeps it current."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "children": []
+        }
+      ],
+      "permissions": {
+        "everyone": [
+          "view",
+          "addPages",
+          "addComments"
+        ]
+      }
+    },
+    {
+      "key": "team",
+      "name": "Team space",
+      "description": "One team's home: who is on it, how it works, its meeting notes and its decisions. Everybody else reads and comments.",
+      "home": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Welcome to the team's space. Say here in two sentences what the team is responsible for and how to reach it."
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "attrs": {
+              "kind": "note"
+            },
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Only the administrators of this space edit it at first. ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "Give the team's group the permission to add pages under the space's permissions; everybody else reads and comments."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "attrs": {
+              "level": 1,
+              "id": "in-this-space"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "In this space"
+              }
+            ]
+          },
+          {
+            "type": "childPages",
+            "attrs": {
+              "depth": null,
+              "scope": "children",
+              "sort": "tree"
+            }
+          },
+          {
+            "type": "heading",
+            "attrs": {
+              "level": 1,
+              "id": "recently-updated"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Recently updated"
+              }
+            ]
+          },
+          {
+            "type": "recentlyUpdated",
+            "attrs": {
+              "limit": 10,
+              "space": null
+            }
+          }
+        ]
+      },
+      "pages": [
+        {
+          "title": "Team members and roles",
+          "labels": [
+            "team"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Who is on the team, what each person is responsible for and when they are around."
+                  }
+                ]
+              },
+              {
+                "type": "table",
+                "content": [
+                  {
+                    "type": "tableRow",
+                    "content": [
+                      {
+                        "type": "tableHeader",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Name"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "tableHeader",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Role"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "tableHeader",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Responsible for"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "tableRow",
+                    "content": [
+                      {
+                        "type": "tableCell",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "Add a row per person"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "tableCell",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "tableCell",
+                        "attrs": {
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "colwidth": null,
+                          "background": null,
+                          "align": null
+                        },
+                        "content": [
+                          {
+                            "type": "paragraph"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "children": []
+        },
+        {
+          "title": "Ways of working",
+          "labels": [
+            "team"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "heading",
+                "attrs": {
+                  "level": 1,
+                  "id": "how-we-communicate"
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How we communicate"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Where the team talks, how fast it answers and how to reach it in an emergency."
+                  }
+                ]
+              },
+              {
+                "type": "heading",
+                "attrs": {
+                  "level": 1,
+                  "id": "how-we-plan"
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How we plan"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How work reaches the team, how it is prioritized and where it is tracked."
+                  }
+                ]
+              },
+              {
+                "type": "heading",
+                "attrs": {
+                  "level": 1,
+                  "id": "agreements"
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Agreements"
+                  }
+                ]
+              },
+              {
+                "type": "bulletList",
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Write down what the team agreed, one agreement per line."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Review the list at a retrospective now and then."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "children": []
+        },
+        {
+          "title": "Meeting notes",
+          "labels": [
+            "meeting-notes"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One page per meeting, below this one. The meeting notes template gives each the same shape: who met, what was decided and who does what next."
+                  }
+                ]
+              },
+              {
+                "type": "childPages",
+                "attrs": {
+                  "depth": null,
+                  "scope": "children",
+                  "sort": "updated"
+                }
+              }
+            ]
+          },
+          "children": []
+        },
+        {
+          "title": "Decisions",
+          "labels": [
+            "decisions"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One page per decision, below this one, made from the decision record template: the context, the options weighed and what was decided."
+                  }
+                ]
+              },
+              {
+                "type": "childPages",
+                "attrs": {
+                  "depth": null,
+                  "scope": "children",
+                  "sort": "updated"
+                }
+              }
+            ]
+          },
+          "children": []
+        },
+        {
+          "title": "Onboarding",
+          "labels": [
+            "onboarding",
+            "team"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What a new member of the team reads and does in their first weeks."
+                  }
+                ]
+              },
+              {
+                "type": "orderedList",
+                "attrs": {
+                  "start": 1,
+                  "type": null
+                },
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Read Ways of working and Team members and roles."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Get access to the tools the team uses."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Pair with a teammate on a first small task."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "children": []
+        }
+      ],
+      "permissions": {
+        "everyone": [
+          "view",
+          "addComments"
+        ]
+      }
+    },
+    {
+      "key": "documentation",
+      "name": "Documentation",
+      "description": "Documentation of a product or service, from getting started to reference and release notes. Everybody reads it; its maintainers write it.",
+      "home": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "This is the documentation of the product. Start with Getting started, then read the guides for the tasks you have in mind; the reference holds the details."
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "attrs": {
+              "kind": "info"
+            },
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Everybody reads this space. ",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": "Its administrators decide who maintains it, under the space's permissions."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "attrs": {
+              "level": 1,
+              "id": "contents"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Contents"
+              }
+            ]
+          },
+          {
+            "type": "childPages",
+            "attrs": {
+              "depth": 2,
+              "scope": "subtree",
+              "sort": "tree"
+            }
+          },
+          {
+            "type": "heading",
+            "attrs": {
+              "level": 1,
+              "id": "recently-updated"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Recently updated"
+              }
+            ]
+          },
+          {
+            "type": "recentlyUpdated",
+            "attrs": {
+              "limit": 10,
+              "space": null
+            }
+          }
+        ]
+      },
+      "pages": [
+        {
+          "title": "Getting started",
+          "labels": [
+            "getting-started",
+            "docs"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What the product is for, and the shortest way to a first result."
+                  }
+                ]
+              },
+              {
+                "type": "childPages",
+                "attrs": {
+                  "depth": null,
+                  "scope": "children",
+                  "sort": "tree"
+                }
+              }
+            ]
+          },
+          "children": [
+            {
+              "title": "Installation",
+              "labels": [
+                "getting-started",
+                "docs"
+              ],
+              "body": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "heading",
+                    "attrs": {
+                      "level": 1,
+                      "id": "requirements"
+                    },
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Requirements"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "bulletList",
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "What has to be in place before installing."
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "heading",
+                    "attrs": {
+                      "level": 1,
+                      "id": "install"
+                    },
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Install"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "orderedList",
+                    "attrs": {
+                      "start": 1,
+                      "type": null
+                    },
+                    "content": [
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "The first step."
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "listItem",
+                        "content": [
+                          {
+                            "type": "paragraph",
+                            "content": [
+                              {
+                                "type": "text",
+                                "text": "The step after it."
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "heading",
+                    "attrs": {
+                      "level": 1,
+                      "id": "check-the-installation"
+                    },
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Check the installation"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "How the reader can tell everything works."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "children": []
+            },
+            {
+              "title": "First steps",
+              "labels": [
+                "getting-started",
+                "docs"
+              ],
+              "body": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Walk a new reader through one small task from start to finish."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "title": "Guides",
+          "labels": [
+            "guide",
+            "docs"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Each guide below this one explains how to reach one goal with the product."
+                  }
+                ]
+              },
+              {
+                "type": "childPages",
+                "attrs": {
+                  "depth": null,
+                  "scope": "children",
+                  "sort": "tree"
+                }
+              }
+            ]
+          },
+          "children": [
+            {
+              "title": "Configuration",
+              "labels": [
+                "guide",
+                "docs"
+              ],
+              "body": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Every setting, what it does and when to change it."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "table",
+                    "content": [
+                      {
+                        "type": "tableRow",
+                        "content": [
+                          {
+                            "type": "tableHeader",
+                            "attrs": {
+                              "colspan": 1,
+                              "rowspan": 1,
+                              "colwidth": null,
+                              "background": null,
+                              "align": null
+                            },
+                            "content": [
+                              {
+                                "type": "paragraph",
+                                "content": [
+                                  {
+                                    "type": "text",
+                                    "text": "Setting"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "tableHeader",
+                            "attrs": {
+                              "colspan": 1,
+                              "rowspan": 1,
+                              "colwidth": null,
+                              "background": null,
+                              "align": null
+                            },
+                            "content": [
+                              {
+                                "type": "paragraph",
+                                "content": [
+                                  {
+                                    "type": "text",
+                                    "text": "Default"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "tableHeader",
+                            "attrs": {
+                              "colspan": 1,
+                              "rowspan": 1,
+                              "colwidth": null,
+                              "background": null,
+                              "align": null
+                            },
+                            "content": [
+                              {
+                                "type": "paragraph",
+                                "content": [
+                                  {
+                                    "type": "text",
+                                    "text": "What it does"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "tableRow",
+                        "content": [
+                          {
+                            "type": "tableCell",
+                            "attrs": {
+                              "colspan": 1,
+                              "rowspan": 1,
+                              "colwidth": null,
+                              "background": null,
+                              "align": null
+                            },
+                            "content": [
+                              {
+                                "type": "paragraph"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "tableCell",
+                            "attrs": {
+                              "colspan": 1,
+                              "rowspan": 1,
+                              "colwidth": null,
+                              "background": null,
+                              "align": null
+                            },
+                            "content": [
+                              {
+                                "type": "paragraph"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "tableCell",
+                            "attrs": {
+                              "colspan": 1,
+                              "rowspan": 1,
+                              "colwidth": null,
+                              "background": null,
+                              "align": null
+                            },
+                            "content": [
+                              {
+                                "type": "paragraph"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "title": "Reference",
+          "labels": [
+            "reference",
+            "docs"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The details a reader looks up rather than reads: commands, settings, limits and error messages."
+                  }
+                ]
+              }
+            ]
+          },
+          "children": []
+        },
+        {
+          "title": "Release notes",
+          "labels": [
+            "release-notes",
+            "docs"
+          ],
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What changed in each release, newest first, and what a reader has to do about it."
+                  }
+                ]
+              },
+              {
+                "type": "heading",
+                "attrs": {
+                  "level": 1,
+                  "id": "unreleased"
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Unreleased"
+                  }
+                ]
+              },
+              {
+                "type": "bulletList",
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Changes that are not released yet."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "children": []
+        }
+      ],
+      "permissions": {
+        "everyone": [
+          "view"
+        ]
+      }
+    }
+  ]
+}

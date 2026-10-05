@@ -18,6 +18,21 @@ export function useTemplates() {
   });
 }
 
+/** A structure a new space can start from: its home page, the pages below it with their labels, and what everyone may do. */
+export type SpaceTemplate = components["schemas"]["SpaceTemplate"];
+export type SpaceTemplatePage = components["schemas"]["SpacePage"];
+
+export const spaceTemplatesQueryKey = ["space-templates"] as const;
+
+export function useSpaceTemplates() {
+  return useQuery({
+    queryKey: spaceTemplatesQueryKey,
+    queryFn: async (): Promise<SpaceTemplate[]> => (await api.GET("/space-templates")).data!.templates,
+    // Built-ins change only with a release.
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
 /** A template's title for a page made now: the date token becomes the local day, as YYYY-MM-DD. */
 export function templateTitle(pattern: string, now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");

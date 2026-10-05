@@ -330,6 +330,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/pages/{pageID}/import", s.handleImportMarkdown)
 			r.Get("/templates", s.handleListTemplates)
 			r.Get("/templates/{templateKey}", s.handleGetTemplate)
+			r.Get("/space-templates", s.handleListSpaceTemplates)
 			r.Get("/pages/{pageID}/labels", s.handleListPageLabels)
 			r.Post("/pages/{pageID}/labels", s.handleAddPageLabel)
 			r.Delete("/pages/{pageID}/labels/{labelName}", s.handleRemovePageLabel)
