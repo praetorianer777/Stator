@@ -7,6 +7,9 @@ import { renderAt, signedIn, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 import { impliedPermissions } from "./SpacePermissions";
+// The edit route's chunk carries the editor and its shared draft. Loaded inside
+// a test it outlasted the test's time on a busy machine; loaded here it is at hand.
+import "@/routes/page-edit.lazy";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -340,7 +343,6 @@ describe("what a page offers", () => {
   it("sends somebody who may not edit away from the editor with a sentence", async () => {
     stub({ edit: false, delete: false, restrict: false, comment: false, archive: false });
     await renderAt(`/s/DOCS/p/${ids.plans}/plans/edit`);
-    // The editor route arrives in a chunk of its own, which a busy machine loads slowly.
     expect(await screen.findByText(/You can read this page but not edit it\./, undefined, EDITOR_CHUNK_WAIT)).toBeInTheDocument();
   });
 });
