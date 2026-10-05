@@ -273,6 +273,22 @@ func (s *Server) handleArmatureRoadmap(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "roadmap": roadmap})
 }
 
+// A calendar block's Armature source (#60): a project's dated issues in a
+// month, beside the calendar's own events.
+func (s *Server) handleArmatureCalendar(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	q := r.URL.Query()
+	status, month, err := s.Armature.Calendar(r.Context(), q.Get("project"), q.Get("month"))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "month": month})
+}
+
 func (s *Server) handleListArmatureIssueTypes(w http.ResponseWriter, r *http.Request) {
 	if s.Armature == nil {
 		respondError(w, r, errArmatureOff)

@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/hub"
@@ -218,6 +219,14 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &full) {
 		return ErrConflict(full.Error())
 	}
+	var calendarField *calendar.FieldError
+	if errors.As(err, &calendarField) {
+		return ErrValidation(map[string]string{calendarField.Field: calendarField.Message})
+	}
+	var calendarsFull *calendar.FullError
+	if errors.As(err, &calendarsFull) {
+		return ErrConflict(calendarsFull.Error())
+	}
 	var taken *space.PersonalTakenError
 	if errors.As(err, &taken) {
 		return ErrConflict(taken.Error())
@@ -332,6 +341,10 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That task is not on the page any more. Reload the page or your list of tasks.")
 	case errors.Is(err, shortcut.ErrNotFound):
 		return ErrNotFound("That shortcut was not found. Somebody may have removed it already; reload the list.")
+	case errors.Is(err, calendar.ErrNotFound):
+		return ErrNotFound("That calendar was not found. It may have been removed, or you may not read its space; pick another calendar.")
+	case errors.Is(err, calendar.ErrEventNotFound):
+		return ErrNotFound("That event is not in the calendar any more. Somebody may have removed it; reload the calendar.")
 	case errors.Is(err, comment.ErrNotFound), errors.Is(err, reaction.ErrCommentNotFound):
 		return ErrNotFound("That comment was not found. It may have been deleted, or its page moved; reload the page.")
 	case errors.Is(err, comment.ErrUnpublished):

@@ -649,6 +649,18 @@ under the issue's `team`. Answers are kept per token for as long as searches
 and cleared with them. Refusals are the chart's: 422 `bad_query` with its
 position, or a 422 on `project`.
 
+## #60: the calendar block's due issues
+
+A calendar block may name an Armature project beside its calendar. Each
+reader's view asks Stator's `GET /armature/calendar?project&month`, which asks
+Armature's `GET /projects/{projectKey}/calendar?month=YYYY-MM` as that reader
+with their own token. Of the month's items Stator keeps those of kind
+`issue`, each with its `key`, `title`, `from`, `to`, `done` and `category`,
+and draws each on its due day, `to`; sprints, milestones and versions are
+left out. Answers are kept per token for as long as searches and cleared
+with them. A project the reader may not see is a 422 on `project`, and a
+month not written `YYYY-MM` a 422 on `month`.
+
 ## The armature-stub
 
 `cmd/armature-stub` stands in for Armature in the integration suite and in
@@ -679,6 +691,9 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   `parent` by key, `team` by name, empty to clear), and
   `POST /_stub/{tenant}/projects/{projectKey}/issues` (`summary`, `type`)
   files an issue of any type, such as an `Epic`, which Stator never files.
+  For the calendar block of #60, `GET /projects/{projectKey}/calendar`
+  answers the month's issues with a start or a due day in it, each from the
+  one to the other, and no sprints, milestones or versions.
 - **Who asks.** A token `armature_pat_{tenant}_{person}` is `person` in the
   stub's organization `tenant`, made on first use with fixed projects (`CP`
   that everybody may write, `SEC` that only `admin` may see), issue types and

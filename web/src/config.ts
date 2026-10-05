@@ -428,6 +428,18 @@ export const TASK_REPORT_LIMIT_CHOICES: readonly number[] = [10, 20, 50, 100];
 /** The due days and states a task report picks, as document.TaskReportDues and TaskReportStates. */
 export const TASK_REPORT_DUES = ["any", "overdue", "today", "week", "none"] as const;
 export const TASK_REPORT_STATES = ["open", "done", "all"] as const;
+/** The kinds of a calendar's events, as calendar.Kinds. */
+export const CALENDAR_EVENT_KINDS = ["event", "absence"] as const;
+/** How long a calendar's name and an event's title may be, as calendar.MaxNameLength and MaxTitleLength. */
+export const CALENDAR_NAME_MAX_LENGTH = 100;
+export const CALENDAR_EVENT_TITLE_MAX_LENGTH = 200;
+/** How many days one event may last, as calendar.MaxEventDays. */
+export const CALENDAR_EVENT_MAX_DAYS = 366;
+/** The weekday a calendar's weeks start on, 0 for Sunday: Monday, as ISO 8601 counts weeks. */
+export const CALENDAR_WEEK_START = 1;
+/** The hour a new event with times starts at, and how many minutes it lasts. */
+export const CALENDAR_DEFAULT_START_HOUR = 9;
+export const CALENDAR_DEFAULT_EVENT_MINUTES = 60;
 /** What a roadmap block puts its rows under, as armature.RoadmapGroupings. */
 export const ARMATURE_ROADMAP_GROUPINGS = ["epic", "team"] as const;
 export type ArmatureRoadmapGrouping = (typeof ARMATURE_ROADMAP_GROUPINGS)[number];

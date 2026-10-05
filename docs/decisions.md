@@ -3,6 +3,36 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-05: A calendar is rows of its space, and a page draws a month of it
+
+Team calendars (#60) are kept beside the pages rather than in them: an event
+is changed far more often than a page is published, by people who are not
+editing that page, and a page showing a calendar should not gain a version
+for every absence. A space keeps calendars, each a name unique in it, and
+their events are rows of `calendar_event`, read by everybody who reads the
+space and kept by whoever may add pages to it, the same people who keep its
+pages. An archived space freezes them, as it does its pages. The policies
+call `perm_space_holds` and `calendar_writable`, so a statement as
+`stator_app` that forgets whom it is for changes nothing; a calendar never
+moves to another space, nor an event to another calendar, since the app may
+write neither column, and the author of each is stamped by a trigger.
+
+An event lasts whole days or runs between two instants. Whole days are kept
+as midnights in UTC, the last day included, as a date node is read in UTC,
+so an absence falls on the same days for every reader; a meeting is kept as
+instants and shown in each reader's own zone. A month is asked for by the
+reader's own first midnights, and an event that lasts all day counts its last
+day whole, so a reader east or west of UTC still gets every day they see.
+
+The calendar block holds which calendar and, if any, which Armature project;
+never the events. Each reader's view asks for the month and, with their own
+token, Armature's `GET /projects/{key}/calendar`, drawing each dated issue
+on its due day; Armature's sprints, milestones and versions are left out,
+being a project's plan rather than a team's days. Without a token the events
+still show, with a sentence asking the reader to connect. The month is laid
+out in weeks from Monday, as ISO weeks are; on a phone it becomes a list of
+the days that hold something.
+
 ## 2026-10-03: A file's versions are uploads of one name to one page
 
 A file has versions so the files block can say which one a reader sees. An

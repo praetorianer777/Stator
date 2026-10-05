@@ -87,6 +87,8 @@ ask for less.
 | `list_stale_pages` | `GET /stale-pages` (administrators of a space) | yes |
 | `get_page_views` | `GET /pages/{pageID}/views` | yes |
 | `list_my_tasks` | `GET /tasks` | yes |
+| `list_calendars` | `GET /spaces/{spaceKey}/calendars` | yes |
+| `list_calendar_events` | `GET /calendars/{calendarID}/events` | yes |
 | `create_page` | `POST /pages` | no |
 | `update_page` | `PATCH /pages/{pageID}` | no |
 | `replace_page_markdown` | `PUT /pages/{pageID}/markdown` | no |
@@ -95,6 +97,10 @@ ask for less.
 | `add_comment` | `POST /pages/{pageID}/comments` | no |
 | `reply_to_comment` | `POST /comments/{commentID}/replies` | no |
 | `set_task_done` | `PATCH /pages/{pageID}/tasks/{taskID}` | no |
+| `create_calendar` | `POST /spaces/{spaceKey}/calendars` | no |
+| `rename_calendar` | `PATCH /calendars/{calendarID}` | no |
+| `create_calendar_event` | `POST /calendars/{calendarID}/events` | no |
+| `update_calendar_event` | `PUT /calendars/{calendarID}/events/{eventID}` | no |
 
 `tools/list` gives each tool's input schema: path values, query values and
 body fields in one object, every type it refers to carried along in

@@ -192,6 +192,8 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"taskReport","attrs":{"space":null,"assignee":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","due":"none","state":"all","limit":100}}`,
 			`{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"done","limit":1}}`,
 			`{"type":"attachmentList"}`,
+			`{"type":"calendar","attrs":{"calendarId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a77","project":"CP"}}`,
+			`{"type":"calendar","attrs":{"calendarId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a78","project":null}}`,
 			`{"type":"tableOfContents","attrs":{"maxLevel":2}}`,
 			`{"type":"childPages","attrs":{"scope":"subtree","depth":2,"sort":"title"}}`,
 			`{"type":"childPages","attrs":{"scope":"children","depth":null,"sort":"tree"}}`,

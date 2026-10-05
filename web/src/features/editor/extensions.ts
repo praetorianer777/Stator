@@ -33,6 +33,7 @@ import { PropertiesReportNode } from "./propertiesReport";
 import { LabelledPagesNode, RecentlyUpdatedNode } from "./pageLists";
 import { TaskReportNode } from "./taskReport";
 import { AttachmentListNode } from "./attachmentList";
+import { CalendarNode } from "./calendar";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
 import { MathBlock, MathInline } from "./math";
 import { Diagram } from "./diagram";
@@ -345,6 +346,8 @@ export interface ExtensionOptions {
   pickLabelledPages?: () => void;
   /** Opens the settings dialog the slash menu's task report starts with. */
   pickTaskReport?: () => void;
+  /** Opens the settings dialog the slash menu's calendar starts with. */
+  pickCalendar?: () => void;
   /** Opens the dialog the slash menu's link preview asks for an address with. */
   pickLinkCard?: () => void;
   /** Opens the picker the slash menu's include asks what to include with. */
@@ -377,6 +380,7 @@ export function editorExtensions({
   pickPropertiesReport,
   pickLabelledPages,
   pickTaskReport,
+  pickCalendar,
   pickInclude,
   pageId,
   editInlineValue,
@@ -450,6 +454,7 @@ export function editorExtensions({
     RecentlyUpdatedNode,
     TaskReportNode.configure({ pick: pickTaskReport }),
     AttachmentListNode.configure({ pageId }),
+    CalendarNode.configure({ pick: pickCalendar }),
     Status.configure({ edit: editInlineValue }),
     DateNode.configure({ edit: editInlineValue }),
     MathInline.configure({ edit: editInlineValue }),

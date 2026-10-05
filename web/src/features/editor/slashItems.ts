@@ -66,6 +66,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   ),
   item("attachmentList", Icon.Paperclip, ["attachments", "files", "uploads", "documents", "downloads"], (c) => c.insertAttachmentList()),
   item("taskReport", Icon.Task, ["task report", "tasks", "todo", "actions", "assigned", "overdue"], (c) => c.pickTaskReport()),
+  item("calendar", Icon.Calendar, ["calendar", "events", "absences", "holidays", "vacation", "schedule", "month"], (c) => c.pickCalendar()),
   item("mathInline", Icon.Sigma, ["math", "formula", "equation", "latex", "tex", "katex", "inline"], (c) => c.insertMathInline()),
   // The colon opens the emoji list as if typed, so there is one picker to learn.
   item("emoji", Icon.Smile, ["emoji", "smiley", "reaction"], (c) => c.insertContent(":")),

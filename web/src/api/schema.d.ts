@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The issues Armature dates in one month of one project, as the caller may see them, for a calendar block beside its events: each with its first and its due day. */
+        get: operations["armatureCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/armature/chart": {
         parameters: {
             query?: never;
@@ -415,6 +432,60 @@ export interface paths {
         /** Move the session to another organization. */
         post: operations["switchOrg"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/{calendarID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a calendar with every event in it. For whoever may add pages to its space, out of the archive. */
+        delete: operations["deleteCalendar"];
+        options?: never;
+        head?: never;
+        /** Rename a calendar. For whoever may add pages to its space, out of the archive. */
+        patch: operations["renameCalendar"];
+        trace?: never;
+    };
+    "/calendars/{calendarID}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A calendar and its events that fall between from and to, by when they start, the day's whole ones first; an event that lasts all day holds its last day whole. Truncated says more fell there than are answered. */
+        get: operations["listCalendarEvents"];
+        put?: never;
+        /** Add an event or an absence to a calendar. One that lasts all day starts and ends at midnight UTC, its end the last day it covers; at most 366 days. For whoever may add pages to its space, out of the archive. */
+        post: operations["createCalendarEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/{calendarID}/events/{eventID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change all of an event, as a new one is given. For whoever may add pages to its space, out of the archive. */
+        put: operations["updateCalendarEvent"];
+        post?: never;
+        /** Remove an event from its calendar. For whoever may add pages to its space, out of the archive. */
+        delete: operations["deleteCalendarEvent"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1755,6 +1826,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/spaces/{spaceKey}/calendars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The space's calendars by name, and whether the caller may change each one. */
+        get: operations["listCalendars"];
+        put?: never;
+        /** Add a calendar to the space, named as none of its others is, whatever the case; at most 20. For whoever may add pages to the space, out of the archive. */
+        post: operations["createCalendar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces/{spaceKey}/decisions": {
         parameters: {
             query?: never;
@@ -2671,6 +2760,65 @@ export interface components {
         BodyInput: {
             /** @description A JSON value. */
             body: unknown;
+        };
+        Calendar: {
+            canEdit: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            spaceKey: string;
+            spaceName: string;
+        };
+        CalendarEvent: {
+            allDay: boolean;
+            /** Format: uuid */
+            calendarId: string;
+            createdByName: string;
+            /** Format: date-time */
+            end: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "event" | "absence";
+            /** Format: date-time */
+            start: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CalendarEventInput: {
+            allDay: boolean;
+            /** Format: date-time */
+            end: string;
+            /** @enum {string} */
+            kind?: "event" | "absence";
+            /** Format: date-time */
+            start: string;
+            title: string;
+        };
+        CalendarEvents: {
+            calendar: components["schemas"]["Calendar"];
+            events: components["schemas"]["CalendarEvent"][];
+            truncated: boolean;
+        };
+        CalendarInput: {
+            name: string;
+        };
+        CalendarIssue: {
+            category: string;
+            done: boolean;
+            from: string;
+            key: string;
+            summary: string;
+            to: string;
+            url: string;
+        };
+        CalendarMonth: {
+            issues: components["schemas"]["CalendarIssue"][];
+            month: string;
+            truncated: boolean;
         };
         Can: {
             addComments: boolean;
@@ -4245,6 +4393,53 @@ export interface operations {
             };
         };
     };
+    armatureCalendar: {
+        parameters: {
+            query?: {
+                /** @description The project's key, such as CP. */
+                project?: string;
+                /** @description The month as YYYY-MM. */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        month: components["schemas"]["CalendarMonth"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     armatureChart: {
         parameters: {
             query?: {
@@ -5271,6 +5466,249 @@ export interface operations {
                         organization: components["schemas"]["CurrentOrg"];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    renameCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendar: components["schemas"]["Calendar"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listCalendarEvents: {
+        parameters: {
+            query?: {
+                /** @description An RFC 3339 time, the first instant asked for. */
+                from?: string;
+                /** @description An RFC 3339 time after from, at most 62 days later, the first instant not asked for. */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEvents"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        event: components["schemas"]["CalendarEvent"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+                eventID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        event: components["schemas"]["CalendarEvent"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+                eventID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -9037,6 +9475,94 @@ export interface operations {
                     "application/json": {
                         items: components["schemas"]["ArchiveItem"][];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listCalendars: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendars: components["schemas"]["Calendar"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendar: components["schemas"]["Calendar"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

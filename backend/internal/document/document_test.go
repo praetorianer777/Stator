@@ -45,6 +45,8 @@ const richDoc = `{"type":"doc","content":[
  {"type":"taskReport","attrs":{"space":null,"assignee":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","due":"any","state":"all","limit":100}},
  {"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"none","state":"done","limit":1}},
  {"type":"attachmentList"},
+ {"type":"calendar","attrs":{"calendarId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a77","project":"CP"}},
+ {"type":"calendar","attrs":{"calendarId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a78","project":null}},
  {"type":"table","content":[
   {"type":"tableRow","content":[
    {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Name"}]}]},
@@ -160,6 +162,9 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"task report due later", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"later","state":"open","limit":5}}]}`, `due="later"`},
 		{"task report half done", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"half","limit":5}}]}`, `state="half"`},
 		{"task report past the limit", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"open","limit":101}}]}`, `limit=101`},
+		{"calendar without its calendar", `{"type":"doc","content":[{"type":"calendar","attrs":{"calendarId":"team","project":null}}]}`, `calendarId="team"`},
+		{"calendar of a project in lower case", `{"type":"doc","content":[{"type":"calendar","attrs":{"calendarId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a77","project":"cp"}}]}`, `project="cp"`},
+		{"calendar with its events", `{"type":"doc","content":[{"type":"calendar","attrs":{"calendarId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a77","project":null,"events":[]}}]}`, `attribute "events"`},
 		{"attachment list naming files", `{"type":"doc","content":[{"type":"attachmentList","attrs":{"files":[]}}]}`, `attribute "files"`},
 		{"task report with tasks", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"open","limit":5,"tasks":[]}}]}`, `attribute "tasks"`},
 		{"recently updated with pages", `{"type":"doc","content":[{"type":"recentlyUpdated","attrs":{"space":null,"limit":5,"pages":[]}}]}`, `attribute "pages"`},

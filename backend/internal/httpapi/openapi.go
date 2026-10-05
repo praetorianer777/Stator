@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
@@ -201,6 +202,33 @@ var operations = []operation{
 		request: shortcut.ShortcutMove{}, responses: ok(env{"shortcuts": []shortcut.Shortcut{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/shortcuts/{shortcutID}", handler: "handleDeleteShortcut", tag: "shortcuts",
 		summary: "Remove a shortcut; the page it opened stays. For the space's administrators.", responses: none()},
+
+	// Team calendars (#60).
+	{method: "GET", path: "/spaces/{spaceKey}/calendars", handler: "handleListCalendars", tool: "list_calendars", toolHelp: "The calendars a space keeps, by name, with whether the caller may change them.", tag: "calendars",
+		summary:   "The space's calendars by name, and whether the caller may change each one.",
+		responses: ok(env{"calendars": []calendar.Calendar{}})},
+	{method: "POST", path: "/spaces/{spaceKey}/calendars", handler: "handleCreateCalendar", tool: "create_calendar", toolHelp: "Add a calendar to a space, named as no other of its calendars is.", tag: "calendars",
+		summary: "Add a calendar to the space, named as none of its others is, whatever the case; at most 20. For whoever may add pages to the space, out of the archive.",
+		request: calendar.CalendarInput{}, responses: map[int]any{201: env{"calendar": calendar.Calendar{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "PATCH", path: "/calendars/{calendarID}", handler: "handleRenameCalendar", tool: "rename_calendar", toolHelp: "Give a calendar another name.", tag: "calendars",
+		summary: "Rename a calendar. For whoever may add pages to its space, out of the archive.",
+		request: calendar.CalendarInput{}, responses: map[int]any{200: env{"calendar": calendar.Calendar{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/calendars/{calendarID}", handler: "handleDeleteCalendar", tag: "calendars",
+		summary: "Remove a calendar with every event in it. For whoever may add pages to its space, out of the archive.", responses: none()},
+	{method: "GET", path: "/calendars/{calendarID}/events", handler: "handleListCalendarEvents", tool: "list_calendar_events", toolHelp: "A calendar's events between two times, such as a month, by when they start.", tag: "calendars",
+		summary: "A calendar and its events that fall between from and to, by when they start, the day's whole ones first; an event that lasts all day holds its last day whole. Truncated says more fell there than are answered.",
+		query: []param{
+			{name: "from", description: "An RFC 3339 time, the first instant asked for."},
+			{name: "to", description: "An RFC 3339 time after from, at most 62 days later, the first instant not asked for."},
+		}, responses: map[int]any{200: calendar.CalendarEvents{}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/calendars/{calendarID}/events", handler: "handleCreateCalendarEvent", tool: "create_calendar_event", toolHelp: "Add an event or an absence to a calendar, over whole days or between two times.", tag: "calendars",
+		summary: "Add an event or an absence to a calendar. One that lasts all day starts and ends at midnight UTC, its end the last day it covers; at most 366 days. For whoever may add pages to its space, out of the archive.",
+		request: calendar.CalendarEventInput{}, responses: map[int]any{201: env{"event": calendar.CalendarEvent{}}, 422: errorEnvelope{}}},
+	{method: "PUT", path: "/calendars/{calendarID}/events/{eventID}", handler: "handleUpdateCalendarEvent", tool: "update_calendar_event", toolHelp: "Change all of a calendar's event: its title, kind and days or times.", tag: "calendars",
+		summary: "Change all of an event, as a new one is given. For whoever may add pages to its space, out of the archive.",
+		request: calendar.CalendarEventInput{}, responses: map[int]any{200: env{"event": calendar.CalendarEvent{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/calendars/{calendarID}/events/{eventID}", handler: "handleDeleteCalendarEvent", tag: "calendars",
+		summary: "Remove an event from its calendar. For whoever may add pages to its space, out of the archive.", responses: none()},
 	{method: "GET", path: "/spaces/{spaceKey}/trash", handler: "handleListTrash", tag: "trash", summary: "The space's trash, the latest first.", responses: ok(env{"items": []page.TrashItem{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash", handler: "handleEmptyTrash", tag: "trash", summary: "Delete everything in the space's trash for good. For administrators.", responses: none()},
 	{method: "POST", path: "/spaces/{spaceKey}/trash/{pageID}/restore", handler: "handleRestorePage", tag: "trash", summary: "Put a trashed page back where it was, or under the home page when that is gone.", responses: ok(env{"page": page.Page{}})},
@@ -614,6 +642,12 @@ var operations = []operation{
 			{name: "q", description: "An NQL query, at most 2000 characters."},
 			{name: "groupBy", schema: &openapi.Schema{Type: "string", Enum: enumStrings(armature.RoadmapGroupings)}, description: "epic or team."},
 		}, responses: map[int]any{200: env{"status": armature.Status(""), "roadmap": (*armature.Roadmap)(nil)}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/armature/calendar", handler: "handleArmatureCalendar", tag: "armature",
+		summary: "The issues Armature dates in one month of one project, as the caller may see them, for a calendar block beside its events: each with its first and its due day.",
+		query: []param{
+			{name: "project", description: "The project's key, such as CP."},
+			{name: "month", description: "The month as YYYY-MM."},
+		}, responses: map[int]any{200: env{"status": armature.Status(""), "month": (*armature.CalendarMonth)(nil)}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/armature/projects", handler: "handleListArmatureProjects", tag: "armature",
 		summary:   "The Armature projects the caller may see, and whether they may file issues in each.",
 		responses: ok(env{"status": armature.Status(""), "projects": []armature.Project{}})},
@@ -766,6 +800,7 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(armature.Status(""))] = enumStrings(armature.Statuses)
 	b.Enums[reflect.TypeOf(armature.ChartKind(""))] = enumStrings(armature.ChartKinds)
 	b.Enums[reflect.TypeOf(armature.RoadmapGrouping(""))] = enumStrings(armature.RoadmapGroupings)
+	b.Enums[reflect.TypeOf(calendar.Kind(""))] = enumStrings(calendar.Kinds)
 	b.Enums[reflect.TypeOf(armature.LinkState(""))] = enumStrings(armature.LinkStates)
 	b.FieldOverrides["Issue.priority"] = &openapi.Schema{Type: "string", Enum: armature.Priorities}
 	b.FieldOverrides["IssueStatus.category"] = &openapi.Schema{Type: "string", Enum: armature.StatusCategories}
