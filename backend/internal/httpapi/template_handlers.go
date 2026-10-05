@@ -25,3 +25,7 @@ func (s *Server) handleGetTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"template": found})
 }
+
+func (s *Server) handleListSpaceTemplates(w http.ResponseWriter, r *http.Request) {
+	respondJSON(w, r, http.StatusOK, map[string]any{"templates": template.SpaceBuiltIns()})
+}

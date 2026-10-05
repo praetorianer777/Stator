@@ -190,6 +190,10 @@ export const PAGE_TITLE_MAX_LENGTH = 255;
 export const TEMPLATE_DATE_TOKEN = "{date}";
 /** The picker's value for a page that starts empty; no template key can be empty. */
 export const BLANK_TEMPLATE = "";
+/** The picker's value for a space that starts blank; the API takes no template then. */
+export const BLANK_SPACE_TEMPLATE = "";
+/** What everyone may do in a blank space, matching the database's space_default_grants. */
+export const BLANK_SPACE_EVERYONE = ["view", "addPages", "addComments", "delete"] as const;
 /** How far a page's title runs into its address before it is cut. */
 export const PAGE_SLUG_MAX_LENGTH = 60;
 /** The slug of a page whose title leaves nothing usable in an address. */
