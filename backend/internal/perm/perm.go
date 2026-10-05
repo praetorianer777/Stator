@@ -52,6 +52,9 @@ const (
 	// ManageShortcuts adds, orders and removes the links pinned above the
 	// space's page tree.
 	ManageShortcuts Action = "space.shortcuts"
+	// EditCalendars adds, renames and removes the space's calendars and
+	// their events, which whoever may add pages to the space may.
+	EditCalendars Action = "space.calendars"
 )
 
 // Actor is who asks: a person and their standing in the organization the
@@ -115,6 +118,8 @@ func (e *DeniedError) Error() string {
 		return "Only people who may edit this page see who read it. Ask one of its editors, or an administrator of the space, for access."
 	case ManageShortcuts:
 		return "Only an administrator of this space can change its shortcuts. Ask one of them to add, move or remove a shortcut."
+	case EditCalendars:
+		return "You may read this space's calendars but not change them. Ask an administrator of the space to let you add pages, which lets you keep its calendars."
 	}
 	return "You do not have permission to do that. Ask an administrator of the organization."
 }

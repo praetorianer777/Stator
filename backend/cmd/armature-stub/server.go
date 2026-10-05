@@ -62,6 +62,7 @@ var routes = []route{
 	{Method: "DELETE", Path: "/issues/{issueKey}/remote-links/{remoteLinkID}", handler: (*stub).deleteLink},
 	{Method: "GET", Path: "/projects/{projectKey}/reports/{kind}", handler: (*stub).report},
 	{Method: "GET", Path: "/projects/{projectKey}/plan", handler: (*stub).plan},
+	{Method: "GET", Path: "/projects/{projectKey}/calendar", handler: (*stub).calendar},
 	{Method: "GET", Path: "/themes/active", handler: (*stub).activeTheme},
 	{Method: "GET", Path: "/themes/{themeID}/export", handler: (*stub).exportTheme},
 }

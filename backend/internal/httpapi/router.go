@@ -13,6 +13,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
@@ -89,6 +90,8 @@ type Server struct {
 	Shares *share.Service
 	// Shortcuts keeps the links pinned above each space's page tree.
 	Shortcuts *shortcut.Service
+	// Calendars keeps each space's calendars and their events.
+	Calendars *calendar.Service
 	Hub       *hub.Service
 	Unfurl    *unfurl.Service
 	// PageViews reads how often pages were read and by whom;
@@ -259,6 +262,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/armature/search", s.handleSearchArmatureIssues)
 			r.Get("/armature/chart", s.handleArmatureChart)
 			r.Get("/armature/roadmap", s.handleArmatureRoadmap)
+			r.Get("/armature/calendar", s.handleArmatureCalendar)
 			r.Get("/armature/issue-types", s.handleListArmatureIssueTypes)
 			r.Post("/armature/issues", s.handleCreateArmatureIssues)
 			r.Get("/pages/{pageID}/armature-links", s.handleListArmatureLinks)
@@ -297,6 +301,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/spaces/{spaceKey}/shortcuts", s.handleCreateShortcut)
 			r.Post("/spaces/{spaceKey}/shortcuts/{shortcutID}/move", s.handleMoveShortcut)
 			r.Delete("/spaces/{spaceKey}/shortcuts/{shortcutID}", s.handleDeleteShortcut)
+			r.Get("/spaces/{spaceKey}/calendars", s.handleListCalendars)
+			r.Post("/spaces/{spaceKey}/calendars", s.handleCreateCalendar)
+			r.Patch("/calendars/{calendarID}", s.handleRenameCalendar)
+			r.Delete("/calendars/{calendarID}", s.handleDeleteCalendar)
+			r.Get("/calendars/{calendarID}/events", s.handleListCalendarEvents)
+			r.Post("/calendars/{calendarID}/events", s.handleCreateCalendarEvent)
+			r.Put("/calendars/{calendarID}/events/{eventID}", s.handleUpdateCalendarEvent)
+			r.Delete("/calendars/{calendarID}/events/{eventID}", s.handleDeleteCalendarEvent)
 			r.Get("/spaces/{spaceKey}/trash", s.handleListTrash)
 			r.Delete("/spaces/{spaceKey}/trash", s.handleEmptyTrash)
 			r.Post("/spaces/{spaceKey}/trash/{pageID}/restore", s.handleRestorePage)

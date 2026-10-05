@@ -679,6 +679,20 @@ and the versioning [Semantic Versioning](https://semver.org/).
   the chart; readers see the table under it unless the author hides it, and
   can read each category by pointer or keyboard, or open the numbers as a
   table. A chart draws 8 series at most; a pie draws the first.
+- Team calendars (#60). A space keeps calendars, at most 20, each a name and
+  its events: a title, an event or an absence, and whole days or two times
+  (`GET` and `POST /spaces/{key}/calendars`, `PATCH` and `DELETE
+  /calendars/{id}`, `GET` and `POST /calendars/{id}/events`, `PUT` and
+  `DELETE /calendars/{id}/events/{eventId}`, also the MCP tools
+  `list_calendars`, `create_calendar`, `rename_calendar`,
+  `list_calendar_events`, `create_calendar_event` and
+  `update_calendar_event`). Everybody who reads the space reads them, and
+  whoever may add pages to it keeps them while it is not archived, which the
+  database holds too. "Calendar" in the slash menu draws a month of one,
+  week by week, with an Armature project's issues on the days they are due
+  (`GET /armature/calendar`), read with each reader's own token; whoever may
+  change the calendar adds, changes and deletes events from the block. The
+  page keeps only which calendar and which project.
 
 ### Changed
 

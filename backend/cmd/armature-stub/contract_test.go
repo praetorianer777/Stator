@@ -345,6 +345,21 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 		t.Errorf("a plan for two keys matches %v", plan["matched"])
 	}
 	c.expect("GET", "/projects/SEC/plan", alice, nil, 404)
+	// The month a calendar block draws beside its own events (#60): each
+	// issue from its start to its due day, an epic without days of its own left out.
+	month := c.expect("GET", "/projects/CP/calendar?month=2026-10", alice, nil, 200)["month"].(map[string]any)
+	var dated []string
+	for _, it := range month["items"].([]any) {
+		item := it.(map[string]any)
+		dated = append(dated, fmt.Sprint(item["kind"], ":", item["key"], "@", item["from"], "..", item["to"]))
+	}
+	if fmt.Sprint(dated) != "[issue:CP-1@2026-10-01..2026-10-09 issue:CP-4@2026-10-12..2026-10-15]" || month["month"] != float64(10) {
+		t.Errorf("October in CP is %v", month)
+	}
+	if september := c.expect("GET", "/projects/CP-1/calendar?month=2026-09", alice, nil, 200)["month"].(map[string]any); len(september["items"].([]any)) != 0 {
+		t.Errorf("September in CP has %v", september["items"])
+	}
+	c.expect("GET", "/projects/SEC/calendar?month=2026-10", alice, nil, 404)
 	c.expect("POST", stubPrefix+"/acme/issues/CP-3/move", "", map[string]any{"projectKey": "SEC"}, 200)
 	if got := c.expect("GET", "/issues/CP-3", admin, nil, 200)["issue"].(map[string]any); got["key"] != "SEC-3" {
 		t.Errorf("a moved issue answers to %v, want SEC-3", got["key"])

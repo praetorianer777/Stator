@@ -5,7 +5,7 @@ import { expectAccessible, startInScheme } from "../fixtures/shell";
 // The editor on its development page, which pages will replace. Every state
 // the checklist reaches is also checked with axe, contrast included.
 const EDITOR_PATH = "/dev/editor";
-const SLASH_ITEM_COUNT = 38;
+const SLASH_ITEM_COUNT = 39;
 const TABLE_SIZE = 3;
 // Enough paragraphs that the stored document outgrows its box.
 const STORED_LINES = 12;
@@ -121,8 +121,8 @@ test.describe("the editor", { tag: "@desktop" }, () => {
     await expect.poll(() => shownWithin(menu, options.first())).toBe(false);
     await expect(box(page)).toBeFocused();
     await menu.hover();
-    // Far enough for every option, whatever their number.
-    await page.mouse.wheel(0, -100 * SLASH_ITEM_COUNT);
+    // One turn the length of the whole list, so it reaches the top however many blocks there are.
+    await page.mouse.wheel(0, -(await menu.evaluate((list) => list.scrollHeight)));
     await expect.poll(() => shownWithin(menu, options.first())).toBe(true);
     await expectAccessible(page);
 

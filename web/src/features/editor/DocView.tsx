@@ -41,6 +41,8 @@ import { AttachmentList } from "@/features/attachments/AttachmentList";
 import { ATTACHMENT_LIST_NODE } from "./attachmentList";
 import { TableChart } from "@/features/tableChart/TableChart";
 import { TABLE_CHART_NODE, tableChartSettings } from "@/features/tableChart/data";
+import { TeamCalendar } from "@/features/calendar/TeamCalendar";
+import { CALENDAR_NODE, calendarSettings } from "@/features/calendar/calendar";
 import { PROPERTIES_NODE, propertyKey } from "./properties";
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
@@ -330,6 +332,12 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     }
     case ATTACHMENT_LIST_NODE:
       return <AttachmentListBlock copy={copy} />;
+    case CALENDAR_NODE: {
+      const settings = calendarSettings(node.attrs);
+      // A comparison says which project, never the month as it is now.
+      if (!copy) return <p className="doc-block doc-block-summary">{t.calendar.summary(settings.project)}</p>;
+      return <TeamCalendar settings={settings} />;
+    }
     case TASK_REPORT_NODE: {
       const settings = taskReportSettings(node.attrs);
       // Without the person's name, which only the report answers with.
