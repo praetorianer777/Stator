@@ -93,7 +93,7 @@ process, which is only right for a single api process. `/readyz` and
 | `pageview` | page views: each person once a day per page, counted for every reader, named to editors within the retention, pruned into a tally by the worker |
 | `share` | sending a page to people and groups who may view it, with a note |
 | `keyset` | the cursor a list ordered by time hands out for its next window |
-| `template` | page templates |
+| `template` | page templates, and the space templates a new space starts from |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
 | `attachment` | uploads to S3-compatible storage |
 | `markdown` | a document as Markdown and Markdown as a document, held to the allowlist |

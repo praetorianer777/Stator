@@ -101,6 +101,7 @@ var notTools = map[string]string{
 	"POST /pages/{pageID}/share":                      whyAttention,
 	"GET /groups":                                     whyAdmin,
 	"POST /spaces":                                    whyAdmin,
+	"GET /space-templates":                            whyAdmin,
 	"PATCH /spaces/{spaceKey}":                        whyAdmin,
 	"GET /audit/facets":                               whyAdmin,
 	"GET /audit/export":                               whyAdmin,

@@ -795,6 +795,24 @@ export const en = {
     personalName: (name: string) => `${name}'s space`,
     columnOwner: "Owner",
     yours: "You",
+    startFrom: "Start from",
+    blank: "Blank space",
+    blankDescription: "A home page and nothing else, open to everyone.",
+    blankPreview: "Nothing below it yet.",
+    loadingTemplates: "Loading space templates",
+    templatesFailed: "The space templates could not be loaded. You can still create a blank space, or reload the page to try again.",
+    templatePreview: (name: string) => `What ${name} sets up`,
+    templatePages: "Pages",
+    templateHome: "The home page, named like the space",
+    templateLabels: "Labels",
+    templateWho: "Who may do what",
+    everyoneMay: (names: string[]) => {
+      const words = names.map((name) => name.toLowerCase());
+      const list = words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : (words[0] ?? "");
+      return `Everyone in the organization may ${list}.`;
+    },
+    everyoneNothing: "Nobody but the space's administrators sees it until they grant more.",
+    youAdminister: "You administer the space and can change this under its permissions.",
   },
   pageLists: {
     edit: "Edit list",

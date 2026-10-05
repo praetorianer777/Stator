@@ -270,6 +270,9 @@ var operations = []operation{
 		responses: ok(env{"templates": []template.Template{}})},
 	{method: "GET", path: "/templates/{templateKey}", handler: "handleGetTemplate", tool: "get_template", toolHelp: "One template's title and body, to send to create_page.", tag: "templates", summary: "One template by its key.",
 		responses: ok(env{"template": template.Template{}})},
+	// Space templates (#64).
+	{method: "GET", path: "/space-templates", handler: "handleListSpaceTemplates", tag: "templates", summary: "The structures a new space can start from, in the order to offer them: the home page, the pages below it with their labels, and what everyone may do. Send one's key as template with POST /spaces.",
+		responses: ok(env{"templates": []template.SpaceTemplate{}})},
 
 	// Drafts and publishing (#13).
 	{method: "GET", path: "/pages/{pageID}/draft", handler: "handleGetDraft", tag: "drafts", summary: "The caller's own draft of a page, or null when they have none.",

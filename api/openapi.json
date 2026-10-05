@@ -7926,6 +7926,48 @@
         }
       }
     },
+    "/space-templates": {
+      "get": {
+        "operationId": "listSpaceTemplates",
+        "summary": "The structures a new space can start from, in the order to offer them: the home page, the pages below it with their labels, and what everyone may do. Send one's key as template with POST /spaces.",
+        "tags": [
+          "templates"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "templates": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpaceTemplate"
+                      }
+                    }
+                  },
+                  "required": [
+                    "templates"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/spaces": {
       "get": {
         "operationId": "listSpaces",
@@ -12806,6 +12848,9 @@
           },
           "personal": {
             "type": "boolean"
+          },
+          "template": {
+            "type": "string"
           }
         },
         "required": [
@@ -16275,6 +16320,94 @@
         "required": [
           "id",
           "name"
+        ]
+      },
+      "SpacePage": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "A JSON value."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpacePage"
+            }
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "body",
+          "labels",
+          "children"
+        ]
+      },
+      "SpacePermissions": {
+        "type": "object",
+        "properties": {
+          "everyone": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "view",
+                "addPages",
+                "addComments",
+                "delete",
+                "administer"
+              ]
+            }
+          }
+        },
+        "required": [
+          "everyone"
+        ]
+      },
+      "SpaceTemplate": {
+        "type": "object",
+        "properties": {
+          "builtIn": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "home": {
+            "description": "A JSON value."
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpacePage"
+            }
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/SpacePermissions"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "home",
+          "pages",
+          "permissions",
+          "builtIn"
         ]
       },
       "Spec": {

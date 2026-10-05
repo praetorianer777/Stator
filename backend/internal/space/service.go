@@ -152,6 +152,10 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 	if err != nil {
 		return nil, 0, err
 	}
+	tpl, err := chooseTemplate(in)
+	if err != nil {
+		return nil, 0, err
+	}
 	var out *Space
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		action, owner := perm.CreateSpace, (*uuid.UUID)(nil)
@@ -192,19 +196,30 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 			VALUES ($1, current_org_id(), $2, $3, $4, $5, $5)`, home, id, rank.Initial(), name, actor.UserID); err != nil {
 			return fmt.Errorf("make the home page: %w", err)
 		}
-		// Everybody who sees the space sees its home page, so it starts published.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
-			SELECT org_id, id, 1, title, body, created_by FROM page WHERE id = $1`, home); err != nil {
-			return fmt.Errorf("publish the home page: %w", err)
+		if tpl != nil {
+			body, err := forSpace(tpl.Home, key)
+			if err != nil {
+				return fmt.Errorf("fill the home page: %w", err)
+			}
+			if _, err := tx.Exec(ctx, `UPDATE page SET body = $2 WHERE id = $1`, home, body); err != nil {
+				return fmt.Errorf("fill the home page: %w", err)
+			}
 		}
-		if _, err := tx.Exec(ctx, `UPDATE page SET version = 1 WHERE id = $1`, home); err != nil {
+		// Everybody who sees the space sees its home page, so it starts published.
+		if err := publishFirst(ctx, tx, home); err != nil {
 			return fmt.Errorf("publish the home page: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `UPDATE space SET home_page_id = $2 WHERE id = $1`, id, home); err != nil {
 			return fmt.Errorf("name the home page: %w", err)
 		}
-		if err := record(ctx, tx, actor, audit.ActionSpaceCreated, id, map[string]any{"key": key, "name": name, "personal": in.Personal}); err != nil {
+		logged := map[string]any{"key": key, "name": name, "personal": in.Personal}
+		if tpl != nil {
+			if err := seed(ctx, tx, actor, id, home, key, tpl); err != nil {
+				return err
+			}
+			logged["template"] = tpl.Key
+		}
+		if err := record(ctx, tx, actor, audit.ActionSpaceCreated, id, logged); err != nil {
 			return err
 		}
 		out, err = Load(ctx, tx, actor, ByID, id)

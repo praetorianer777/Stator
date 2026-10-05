@@ -693,6 +693,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   (`GET /armature/calendar`), read with each reader's own token; whoever may
   change the calendar adds, changes and deletes events from the block. The
   page keeps only which calendar and which project.
+- Space templates (#64). `GET /space-templates` serves three built-ins, a
+  knowledge base, a team space and documentation, each a home page, a tree
+  of published pages with their labels, and what everyone in the
+  organization may do in the space. `POST /spaces` takes the key of one as
+  `template` and makes the space, its pages, their labels and its
+  permissions in one transaction, logged as `space.created` with the
+  template's key; the creator administers it, as in a blank space. The new
+  space form offers a blank space and every template as a radio group, with
+  the chosen one's pages, labels and permissions beside it. A personal
+  space starts blank.
 
 ### Changed
 

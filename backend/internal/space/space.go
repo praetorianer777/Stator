@@ -74,6 +74,9 @@ type CreateInput struct {
 	// Personal makes the caller's own space, which nobody else sees until
 	// they share it. Everybody may make one; other spaces take createSpace.
 	Personal bool `json:"personal,omitempty"`
+	// Template names a space template to start from, as GET /space-templates
+	// lists them; empty makes a blank space.
+	Template string `json:"template,omitempty"`
 }
 
 // PersonalTakenError refuses a second personal space for the same person.

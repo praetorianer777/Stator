@@ -1754,6 +1754,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/space-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The structures a new space can start from, in the order to offer them: the home page, the pages below it with their labels, and what everyone may do. Send one's key as template with POST /spaces. */
+        get: operations["listSpaceTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces": {
         parameters: {
             query?: never;
@@ -2943,6 +2960,7 @@ export interface components {
             key: string;
             name: string;
             personal?: boolean;
+            template?: string;
         };
         CreateIssuesInput: {
             items: components["schemas"]["CreateItem"][];
@@ -3858,6 +3876,26 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+        };
+        SpacePage: {
+            /** @description A JSON value. */
+            body: unknown;
+            children: components["schemas"]["SpacePage"][];
+            labels: string[];
+            title: string;
+        };
+        SpacePermissions: {
+            everyone: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
+        };
+        SpaceTemplate: {
+            builtIn: boolean;
+            description: string;
+            /** @description A JSON value. */
+            home: unknown;
+            key: string;
+            name: string;
+            pages: components["schemas"]["SpacePage"][];
+            permissions: components["schemas"]["SpacePermissions"];
         };
         Spec: {
             backdrop?: components["schemas"]["Backdrop"];
@@ -9207,6 +9245,37 @@ export interface operations {
                 content: {
                     "application/json": {
                         pages: components["schemas"]["PageHit"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSpaceTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        templates: components["schemas"]["SpaceTemplate"][];
                     };
                 };
             };

@@ -3,6 +3,42 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-05: A space template is data the space's creation reads, in one transaction
+
+Space templates (#64) are built in, like the page templates: one JSON file,
+`backend/internal/template/builtin/spaces.en.json`, compiled into the api
+and served by `GET /space-templates`. Each holds the home page's body, the
+pages below it with their bodies, labels and children, and the permissions
+everyone gets. `POST /spaces` takes a template's key and `space.Create`
+writes the whole space from it in the transaction that makes the space, so
+a space never exists with half its pages, labels or grants; an integration
+test refuses the last label from inside the database and finds nothing
+left. The audit entry is the one a blank space gets, with the template's
+key added, rather than an entry per page: an administrator made one space.
+
+The pages are written the way the home page always was, straight into
+`page` and `page_version` as version 1, rather than through the page
+service's publish. Publishing settles tasks, notifies mentioned people,
+emits events for watchers and syncs Armature links; a new space has none
+of those to settle, and the page service imports the space package, so the
+space package could not call it without a cycle. The unit test holds every
+body to what this path can take: the allowlist, no task lists, mentions,
+inline threads or hints. A hint would be stripped on the way in, as from any
+published page, which is also why the space templates write their own short
+bodies rather than reuse the page templates. A list of pages by label or of
+recent updates in a body names no space and is given the new one's key, so
+it lists that space's pages rather than every space's.
+
+Permissions are a preset for everyone in the organization, the only
+subject a built-in can name: a knowledge base lets everyone add pages and
+comment, a team space lets everyone read and comment while the team's group
+is added by hand, and documentation is read by everyone and written by
+whoever its administrators name. The creator keeps the administer grant the
+database gives every new space, so the creator can widen or narrow any of
+it. A personal space takes no template: its permissions are its owner's
+alone by design. The text is English, like the page templates', and will be
+translated the same way, a file per language.
+
 ## 2026-10-04: A chart from a table holds its table
 
 A chart from a table is a block whose one child is the table, not a chart

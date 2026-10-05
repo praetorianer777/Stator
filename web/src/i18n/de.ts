@@ -818,6 +818,24 @@ export const de: Messages = {
     personalName: (name: string) => `Bereich von ${name}`,
     columnOwner: "Eigentümer",
     yours: "Sie",
+    startFrom: "Ausgangspunkt",
+    blank: "Leerer Bereich",
+    blankDescription: "Eine Startseite und sonst nichts, offen für alle.",
+    blankPreview: "Darunter noch nichts.",
+    loadingTemplates: "Bereichsvorlagen werden geladen",
+    templatesFailed:
+      "Die Bereichsvorlagen konnten nicht geladen werden. Sie können trotzdem einen leeren Bereich anlegen oder die Seite neu laden und es erneut versuchen.",
+    templatePreview: (name: string) => `Was ${name} anlegt`,
+    templatePages: "Seiten",
+    templateHome: "Die Startseite, benannt wie der Bereich",
+    templateLabels: "Schlagwörter",
+    templateWho: "Wer was darf",
+    everyoneMay: (names: string[]) => {
+      const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} und ${names.at(-1)}` : (names[0] ?? "");
+      return `Alle in der Organisation dürfen: ${list}.`;
+    },
+    everyoneNothing: "Nur die Verwalter des Bereichs sehen ihn, bis sie mehr freigeben.",
+    youAdminister: "Sie verwalten den Bereich und können das unter seinen Berechtigungen ändern.",
   },
   pageLists: {
     edit: "Liste bearbeiten",
