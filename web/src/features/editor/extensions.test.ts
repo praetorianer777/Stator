@@ -103,6 +103,10 @@ describe("the slash menu's blocks", () => {
       taskReport: (d) =>
         JSON.stringify(find(d, "taskReport")[0]?.attrs) === JSON.stringify({ space: "DOCS", assignee: "me", due: "week", state: "open", limit: 20 }),
       calendar: (d) => JSON.stringify(find(d, "calendar")[0]?.attrs) === JSON.stringify({ calendarId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a90", project: "CP" }),
+      templateButton: (d) =>
+        JSON.stringify(find(d, "templateButton")[0]?.attrs) ===
+        JSON.stringify({ template: "meeting-notes", space: "DOCS", parent: null, label: "New notes", title: "Notes {date}" }),
+      contributors: (d) => JSON.stringify(find(d, "contributors")[0]?.attrs) === JSON.stringify({ scope: "page", limit: 10 }),
       include: (d) => JSON.stringify(find(d, "include")[0]?.attrs) === JSON.stringify({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null }),
       excerpt: (d) => {
         const e = find(d, "excerpt")[0];
@@ -126,6 +130,10 @@ describe("the slash menu's blocks", () => {
           setTimeout(() => editor?.commands.insertLabelledPages({ labels: ["adr"], match: "any", space: null, sort: "title", limit: 5 })),
         pickTaskReport: () => setTimeout(() => editor?.commands.insertTaskReport({ space: "DOCS", assignee: "me", due: "week", state: "open", limit: 20 })),
         pickCalendar: () => setTimeout(() => editor?.commands.insertCalendar({ calendarId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a90", project: "CP" })),
+        pickTemplateButton: () =>
+          setTimeout(() =>
+            editor?.commands.insertTemplateButton({ template: "meeting-notes", space: "DOCS", parent: null, label: "New notes", title: "Notes {date}" }),
+          ),
         pickInclude: () => setTimeout(() => editor?.commands.insertInclude({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null })),
         pickLinkCard: () => setTimeout(() => editor?.commands.insertLinkCard("https://example.test/post")),
         pickIssueList: () => setTimeout(() => editor?.commands.insertArmatureIssueList({ query: "project = CP", columns: ["key", "due"], limit: 5 })),

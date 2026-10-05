@@ -29,6 +29,8 @@ import { labelledSettings } from "@/features/pageLists/lists";
 import { TaskReportDialog } from "@/features/taskReport/TaskReportDialog";
 import { taskReportSettings } from "@/features/taskReport/report";
 import { CalendarDialog } from "@/features/calendar/CalendarDialog";
+import { TemplateButtonDialog } from "@/features/templateButton/TemplateButtonDialog";
+import { templateButtonSettings } from "@/features/templateButton/button";
 import { calendarSettings } from "@/features/calendar/calendar";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
@@ -137,6 +139,7 @@ export function Editor({
   const [makingLabelled, setMakingLabelled] = useState(false);
   const [makingTasks, setMakingTasks] = useState(false);
   const [makingCalendar, setMakingCalendar] = useState(false);
+  const [makingButton, setMakingButton] = useState(false);
   const [pickingLink, setPickingLink] = useState(false);
   const [pickingInclude, setPickingInclude] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
@@ -168,6 +171,7 @@ export function Editor({
       pickLabelledPages: () => setMakingLabelled(true),
       pickTaskReport: () => setMakingTasks(true),
       pickCalendar: () => setMakingCalendar(true),
+      pickTemplateButton: () => setMakingButton(true),
       pickLinkCard: () => setPickingLink(true),
       pickInclude: () => setPickingInclude(true),
       pageId: page?.id,
@@ -415,6 +419,18 @@ export function Editor({
           onSave={(settings) => {
             setMakingCalendar(false);
             editor.chain().focus().insertCalendar(settings).run();
+          }}
+        />
+      )}
+      {makingButton && editor && (
+        <TemplateButtonDialog
+          initial={templateButtonSettings({})}
+          pageSpace={page?.spaceKey ?? null}
+          isNew
+          onClose={() => setMakingButton(false)}
+          onSave={(settings) => {
+            setMakingButton(false);
+            editor.chain().focus().insertTemplateButton(settings).run();
           }}
         />
       )}

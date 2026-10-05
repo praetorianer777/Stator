@@ -5065,6 +5065,78 @@
         }
       }
     },
+    "/pages/{pageID}/contributors": {
+      "get": {
+        "operationId": "pageContributors",
+        "summary": "The people who published versions of a page, or with scope tree of it and the pages below it the caller may view, for a contributors block: the most versions first, then the latest; truncated says more did.",
+        "tags": [
+          "history"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "page, the default, or tree.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "page",
+                "tree"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 10 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageContributors"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/copy": {
       "post": {
         "operationId": "copyPage",
@@ -9631,6 +9703,74 @@
         }
       }
     },
+    "/template-button": {
+      "get": {
+        "operationId": "templateButton",
+        "summary": "What a template button makes and where, for its view: the template, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found.",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "template",
+            "in": "query",
+            "description": "The template's key, as GET /templates lists it.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceKey",
+            "in": "query",
+            "description": "The space whose top the page goes at; ignored when parentId is given.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "description": "The page the new one goes under, wherever it was moved.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateButton"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/templates": {
       "get": {
         "operationId": "listTemplates",
@@ -9705,6 +9845,75 @@
                   "required": [
                     "template"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/templates/{templateKey}/pages": {
+      "post": {
+        "operationId": "createFromTemplate",
+        "summary": "Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC. For whoever may add pages there.",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "templateKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageFromTemplateInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  },
+                  "required": [
+                    "page"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -12707,6 +12916,34 @@
           "orgSlug"
         ]
       },
+      "Contributor": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "edits": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastEditedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "edits",
+          "lastEditedAt"
+        ]
+      },
       "CopyInput": {
         "type": "object",
         "properties": {
@@ -14764,6 +15001,24 @@
           "archive"
         ]
       },
+      "PageContributors": {
+        "type": "object",
+        "properties": {
+          "contributors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contributor"
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "contributors",
+          "truncated"
+        ]
+      },
       "PageCreateInput": {
         "type": "object",
         "properties": {
@@ -14800,6 +15055,21 @@
           "parentId",
           "title"
         ]
+      },
+      "PageFromTemplateInput": {
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
       },
       "PageHit": {
         "type": "object",
@@ -16766,6 +17036,52 @@
           "title",
           "body",
           "builtIn"
+        ]
+      },
+      "TemplateButton": {
+        "type": "object",
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/Ref"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "template": {
+            "$ref": "#/components/schemas/TemplateRef"
+          }
+        },
+        "required": [
+          "template",
+          "spaceKey",
+          "spaceName",
+          "parent",
+          "canCreate"
+        ]
+      },
+      "TemplateRef": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "title"
         ]
       },
       "Theme": {

@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import type { Doc, DocNode } from "@/features/editor/schema";
 import { HISTORY_PAGE_SIZE } from "@/config";
 import { api } from "./client";
+import { contributorsQueryKey } from "./contributors";
 import { pageQueryKey, type Page, type PageInSpace } from "./pages";
 import type { components } from "./schema";
 import { spaceQueryKey } from "./spaces";
@@ -80,8 +81,9 @@ export function useDiscardDraft(pageId: string) {
   });
 }
 
-// A new version changes the page, its history, every comparison, and, for a
-// first publish or a title change, the tree and the space's home page.
+// A new version changes the page, its history, every comparison, who
+// contributed to it and to the pages above it, and, for a first publish or a
+// title change, the tree and the space's home page.
 function published(queryClient: QueryClient, page: Page) {
   queryClient.setQueryData(draftQueryKey(page.id), null);
   queryClient.setQueryData<PageInSpace>(pageQueryKey(page.id), (current) => (current ? { ...current, page } : current));
@@ -90,6 +92,7 @@ function published(queryClient: QueryClient, page: Page) {
     queryClient.invalidateQueries({ queryKey: [...pageQueryKey(page.id), "compare"] }),
     queryClient.invalidateQueries({ queryKey: treeQueryKey }),
     queryClient.invalidateQueries({ queryKey: spaceQueryKey(page.spaceKey) }),
+    queryClient.invalidateQueries({ queryKey: contributorsQueryKey }),
   ]);
 }
 

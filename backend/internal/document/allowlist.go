@@ -214,6 +214,43 @@ const NodeAttachmentList = "attachmentList"
 // issues of an Armature project beside its events; it holds which, never them.
 const NodeCalendar = "calendar"
 
+// NodeTemplateButton makes a page from a template under a parent, in one
+// click; it holds the template's key, where the page goes and what it is called.
+const NodeTemplateButton = "templateButton"
+
+// TemplateKeyPattern is a template's key: lower case words joined by hyphens.
+const TemplateKeyPattern = `^[a-z0-9]+(?:-[a-z0-9]+)*$`
+
+const (
+	// MaxTemplateKeyLength bounds a template's key, a word or an id.
+	MaxTemplateKeyLength = 64
+	// MaxButtonLabelLength keeps a button's words to one line.
+	MaxButtonLabelLength = 80
+	// MaxButtonTitleLength is a page title's own bound, page.MaxTitleLength.
+	MaxButtonTitleLength = 255
+)
+
+// NodeContributors names the people who published the page it is on, or the
+// page and the pages below it; it holds which and how many, never the people.
+const NodeContributors = "contributors"
+
+// The pages a contributors block counts: the page alone, or the page and
+// every page below it.
+const (
+	ContributorsPage = "page"
+	ContributorsTree = "tree"
+)
+
+// ContributorScopes is what a contributors block may count.
+var ContributorScopes = []string{ContributorsPage, ContributorsTree}
+
+// DefaultContributors and MaxContributors are how many people a contributors
+// block names when it says no number, and the most it may.
+const (
+	DefaultContributors = 10
+	MaxContributors     = 50
+)
+
 // NodeTaskReport lists the tasks of published pages a filter picks; it holds
 // the filter, and each reader's view asks for the tasks they may read.
 const NodeTaskReport = "taskReport"
@@ -294,7 +331,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -520,6 +557,17 @@ var Allowed = Allowlist{
 		NodeCalendar: {Attrs: map[string]Attr{
 			"calendarId": {Kind: KindString, Pattern: UUIDPattern},
 			"project":    {Kind: KindString, Nullable: true, Pattern: armature.ProjectPattern},
+		}},
+		NodeTemplateButton: {Attrs: map[string]Attr{
+			"template": {Kind: KindString, MaxLength: MaxTemplateKeyLength, Pattern: TemplateKeyPattern},
+			"space":    {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},
+			"parent":   {Kind: KindString, Nullable: true, Pattern: UUIDPattern},
+			"label":    {Kind: KindString, MaxLength: MaxButtonLabelLength},
+			"title":    {Kind: KindString, MaxLength: MaxButtonTitleLength},
+		}},
+		NodeContributors: {Attrs: map[string]Attr{
+			"scope": {Kind: KindString, Enum: ContributorScopes},
+			"limit": {Kind: KindInteger, Min: 1, Max: MaxContributors},
 		}},
 		NodeTaskReport: {Attrs: map[string]Attr{
 			"space":    {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},

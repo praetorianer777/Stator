@@ -3,6 +3,34 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-05: A template button names its template by key, and contributors are read from the history
+
+A template button (#62) holds a template's key, where its page goes and its
+words, never a copy of the template: a template that changes later makes
+the next page as it now reads, and the key is what `GET /templates` serves,
+so a template that later answers to a key is found the same way. The place
+is a page by id, which a move does not lose, or the top of a space, which
+is the space's home page; a button that names neither puts its page at the
+top of the space it is in. The page is made by
+`POST /templates/{key}/pages`, the server reading the template, as an
+unpublished page of whoever clicked, as a new page from the tree is, so
+the click checks the same rule as the tree and the database's insert
+policy holds it too. The title is the button's pattern, else the
+template's, else its name; the browser fills `{date}` with the reader's own
+day, as the new page dialog does, and the server fills any left with today
+in UTC. Each reader's view asks `GET /template-button` whether they may add
+a page there, so one who may not sees the button disabled with a sentence
+rather than a click that fails.
+
+A contributors block counts published versions, which the history already
+names to every reader of the page, rather than drafts or the audit log,
+which name work nobody published or are for administrators. It counts the
+page alone or with the pages below it the reader may view, read in one
+query as that reader, so a restricted page below hides its versions as it
+hides itself, and the version policy keeps them from the reader in SQL
+too. The people come by the most versions, then the latest; somebody whose
+account is gone is left out, as their versions name nobody.
+
 ## 2026-10-04: A chart from a table holds its table
 
 A chart from a table is a block whose one child is the table, not a chart

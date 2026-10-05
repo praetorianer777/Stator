@@ -522,6 +522,24 @@ var operations = []operation{
 			{name: "state", schema: &openapi.Schema{Type: "string", Enum: document.TaskReportStates}, description: "open when absent."},
 			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
 		}, responses: map[int]any{200: task.Report{}, 422: errorEnvelope{}}},
+
+	// Template buttons and contributors (#62).
+	{method: "GET", path: "/template-button", handler: "handleTemplateButton", tag: "templates",
+		summary: "What a template button makes and where, for its view: the template, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found.",
+		query: []param{
+			{name: "template", description: "The template's key, as GET /templates lists it."},
+			{name: "spaceKey", description: "The space whose top the page goes at; ignored when parentId is given."},
+			{name: "parentId", schema: &openapi.Schema{Type: "string", Format: "uuid"}, description: "The page the new one goes under, wherever it was moved."},
+		}, responses: map[int]any{200: page.TemplateButton{}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/templates/{templateKey}/pages", handler: "handleCreateFromTemplate", tool: "create_page_from_template", toolHelp: "Make a page from a template, last under parentId or at the top of spaceKey; a title's {date} becomes today. It stays the caller's until published.", tag: "templates",
+		summary: "Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC. For whoever may add pages there.",
+		request: page.FromTemplateInput{}, responses: map[int]any{201: env{"page": page.Page{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/pages/{pageID}/contributors", handler: "handlePageContributors", tool: "list_page_contributors", toolHelp: "Who published versions of a page, or with scope tree of it and the pages below it, the most versions first.", tag: "history",
+		summary: "The people who published versions of a page, or with scope tree of it and the pages below it the caller may view, for a contributors block: the most versions first, then the latest; truncated says more did.",
+		query: []param{
+			{name: "scope", schema: &openapi.Schema{Type: "string", Enum: document.ContributorScopes}, description: "page, the default, or tree."},
+			{name: "limit", schema: intParam, description: "1 to 50; 10 when absent."},
+		}, responses: map[int]any{200: page.Contributors{}, 422: errorEnvelope{}}},
 	{method: "PATCH", path: "/pages/{pageID}/tasks/{taskID}", handler: "handleSetTaskDone", tool: "set_task_done", toolHelp: "Tick a task of a page off, or open it again, which publishes the page as its next version.", tag: "tasks",
 		summary: "Tick a task off or open it again, by publishing the page with its box changed as the next version; its state already is no change. For whoever may edit the page.",
 		request: task.SetDoneInput{}, responses: ok(env{"task": task.Task{}})},
@@ -769,6 +787,8 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(task.PageRef{})] = "TaskPage"
 	b.Names[reflect.TypeOf(task.SetDoneInput{})] = "TaskSetDoneInput"
 	b.Names[reflect.TypeOf(task.Report{})] = "TaskReport"
+	b.Names[reflect.TypeOf(page.FromTemplateInput{})] = "PageFromTemplateInput"
+	b.Names[reflect.TypeOf(page.Contributors{})] = "PageContributors"
 	b.FieldOverrides["LinkEmbed.kind"] = &openapi.Schema{Type: "string", Enum: unfurl.EmbedKinds}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
