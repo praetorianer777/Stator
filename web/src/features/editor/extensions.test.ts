@@ -483,7 +483,10 @@ describe("markdown", () => {
 
 describe("keys after a caret move", () => {
   it("land where the browser moved the caret, even before it reported the move", async () => {
-    const e = await make({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome." }] }, { type: "horizontalRule" }, { type: "paragraph" }] });
+    const e = await make({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome." }] }, { type: "horizontalRule" }, { type: "paragraph" }],
+    });
     const dom = e.view.dom;
     dom.setAttribute("tabindex", "0");
     document.body.append(dom);
