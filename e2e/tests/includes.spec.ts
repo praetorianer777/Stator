@@ -90,7 +90,8 @@ test.describe("includes", { tag: ["@auth"] }, () => {
     }).toPass();
 
     const bob = await pageAs("bob");
-    await open(bob, path, "Welcome.");
+    // Bob's reads are not held to the publish, so wait for words only it has.
+    await open(bob, path, "Ten to six.");
     await expect(bob.locator("main [data-doc]").first().getByRole("region", { name: "Included from Support: Hours" })).toContainText("Ten to six.");
     const notice = bob.locator('main [data-include][data-state="unavailable"]');
     await expect(notice).toContainText("This included content is not available to you");

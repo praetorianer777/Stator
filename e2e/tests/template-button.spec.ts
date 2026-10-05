@@ -91,7 +91,8 @@ test.describe("template button and contributors", { tag: ["@auth"] }, () => {
     await expectAccessible(page);
 
     const bob = await pageAs("bob");
-    await open(bob, path, "Our weekly meetings.");
+    // Bob's reads are not held to the publish, so wait for words only it has.
+    await open(bob, path, "New meeting notes");
     const refused = shown(bob).getByRole("button", { name: "New meeting notes" });
     await expect(refused).toBeDisabled();
     await expect(refused).toHaveAccessibleDescription("You may not add pages under Team meetings. Ask an administrator of the space to let you add pages.");
