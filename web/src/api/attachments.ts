@@ -36,6 +36,26 @@ export function canPreview(contentType: string): boolean {
   return PREVIEWABLE.includes(contentType.split(";")[0]!.trim().toLowerCase());
 }
 
+/** Where a file's PDF preview is: a PDF itself, or an office document converted by the server. */
+export function previewUrl(id: string): string {
+  return `${API_BASE}/attachments/${encodeURIComponent(id)}/preview`;
+}
+
+/** Whether the server can show this file as a PDF in place. */
+export function hasPreview(file: Pick<Attachment, "preview">): boolean {
+  return file.preview === "pdf" || file.preview === "office";
+}
+
+/**
+ * The PDF a preview shows. The first reader of an office document waits for
+ * its conversion; a refusal is an ApiError whose message says what to do.
+ */
+export async function fetchPreview(id: string): Promise<Blob> {
+  const { data } = await api.GET("/attachments/{attachmentID}/preview", { params: { path: { attachmentID: id } }, parseAs: "arrayBuffer" });
+  // Typed here rather than by the answer, so the frame can only ever hold a PDF.
+  return new Blob([data as ArrayBuffer], { type: "application/pdf" });
+}
+
 /** Whether a file is drawn as a picture in a page rather than as a download chip. */
 export function isImage(contentType: string): boolean {
   return canPreview(contentType) && contentType.startsWith("image/");

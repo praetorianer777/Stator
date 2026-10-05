@@ -1242,6 +1242,15 @@ export const en = {
     } as Record<string, string>,
     removeImage: "Remove the image",
   },
+  preview: {
+    open: (name: string) => `Preview ${name}`,
+    title: (name: string) => `Preview of ${name}`,
+    frame: (name: string) => `${name}, shown as a PDF`,
+    loading: (name: string) => `Loading ${name}`,
+    converting: (name: string) => `Converting ${name} for its preview. A large document takes a few seconds the first time.`,
+    newTab: "Open in a new tab",
+    failed: "The preview could not be loaded. Check your connection and open it again, or download the file.",
+  },
   markdown: {
     exportMenu: "Export as Markdown",
     importMenu: "Import Markdown",

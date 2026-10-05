@@ -83,7 +83,10 @@ type Config struct {
 	S3        S3
 	// UploadLimit is the largest file a page takes, in bytes.
 	UploadLimit int64
-	Bootstrap   Bootstrap
+	// ConverterURL is the service that converts office documents to PDF for
+	// previews; blank turns those previews off.
+	ConverterURL string
+	Bootstrap    Bootstrap
 	// TestEndpoints serves the throwaway organizations of the browser suite.
 	TestEndpoints TestEndpoints
 	Mail          Mail
@@ -282,7 +285,8 @@ func Load() (Config, error) {
 			Region:    l.str("STATOR_S3_REGION", DefaultS3Region),
 			UseSSL:    l.boolean("STATOR_S3_USE_SSL", false),
 		},
-		UploadLimit: l.size("STATOR_UPLOAD_LIMIT", DefaultUploadLimit),
+		UploadLimit:  l.size("STATOR_UPLOAD_LIMIT", DefaultUploadLimit),
+		ConverterURL: strings.TrimSuffix(l.str("STATOR_CONVERTER_URL", ""), "/"),
 		Bootstrap: Bootstrap{
 			AdminEmail: l.str("STATOR_BOOTSTRAP_ADMIN_EMAIL", ""),
 			// Not trimmed: a password is exactly what was typed.
@@ -389,6 +393,11 @@ func Load() (Config, error) {
 	}
 	if c.S3.Endpoint != "" && (c.S3.AccessKey == "" || c.S3.SecretKey == "") {
 		l.problem("STATOR_S3_ENDPOINT is set, so set STATOR_S3_ACCESS_KEY and STATOR_S3_SECRET_KEY as well.")
+	}
+	if c.ConverterURL != "" {
+		if u, err := url.Parse(c.ConverterURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			l.problem(fmt.Sprintf("STATOR_CONVERTER_URL is %q; set it to the conversion service's address, such as http://converter:3000, or leave it blank to turn office previews off.", c.ConverterURL))
+		}
 	}
 	if c.Mail.SMTPAddr != "" {
 		if _, err := mail.ParseAddress(c.Mail.From); err != nil {

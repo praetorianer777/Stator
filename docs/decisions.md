@@ -3,6 +3,40 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-05: Office documents are converted to PDF once, by a service of their own
+
+A PDF and an office document (docx, xlsx, pptx, odt, ods, odp and the older
+doc, xls and ppt) are previewed as a PDF in the browser's own viewer, so
+Stator ships no viewer of its own and every kind looks the same.
+`GET /attachments/{id}/preview` answers a PDF with its bytes and an office
+document with its conversion; `preview` on each file says which applies, and
+`none` when the site cannot convert it.
+
+The conversion is a headless office suite in a container of its own, behind
+a small HTTP API (Gotenberg, MIT licensed), which the api calls at
+`STATOR_CONVERTER_URL` and nothing else reaches. Office suites are large and
+read untrusted documents, so the suite runs apart from the api, with its
+browser half off; it is the operator's service, like the bucket, so the call
+does not pass the outbound guard. Without the setting office documents have
+no preview and PDFs still do.
+
+The first reader of a version waits for its conversion, and the PDF is kept in
+the bucket beside the file, recorded in `attachment_preview` keyed by the
+file's row, which is one version: a new version is converted afresh, nothing
+is converted twice. A document the suite refuses is recorded as failed and
+not tried again; a converter that does not answer is not recorded, so the
+next reader tries again. Two readers at once may both convert; the first to
+commit keeps the row. A preview is its file's: whoever may see the file sees
+it and may be the one whose visit makes it, the database holds the row to
+that and to its organization, and it goes with the file by a cascade that
+leaves a tombstone like the file's. Documents over 20 MB are not converted,
+and a conversion gives up after 20 seconds, inside the request timeout, so
+the reader is told in a sentence rather than cut off.
+
+The browser fetches the PDF and shows it in a frame from a blob typed as a
+PDF, rather than framing the API: a refusal then reads as a sentence in the
+dialog instead of an error body in the frame, and the API keeps refusing to
+be framed at all. The app's policy allows `blob:` frames for this alone.
 ## 2026-10-05: A space template is data the space's creation reads, in one transaction
 
 Space templates (#64) are built in, like the page templates: one JSON file,

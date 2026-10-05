@@ -693,6 +693,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
   (`GET /armature/calendar`), read with each reader's own token; whoever may
   change the calendar adds, changes and deletes events from the block. The
   page keeps only which calendar and which project.
+- PDF and office previews (#61). A PDF, and a docx, xlsx, pptx, odt, ods or
+  odp document (or an older doc, xls or ppt), opens in place from the
+  attachments panel and the files block, in the browser's own PDF viewer,
+  with a download beside it. Office documents are converted to PDF by a
+  conversion service in the compose stack (`STATOR_CONVERTER_URL`;
+  `attachments.converterUrl` in the chart), once per version, and the PDF is
+  kept beside the file and goes with it. Each file says its `preview`, and
+  `GET /attachments/{id}/preview` answers the PDF, or a sentence saying why
+  there is none and to download the file. Documents over 20 MB are not
+  converted.
 - Space templates (#64). `GET /space-templates` serves three built-ins, a
   knowledge base, a team space and documentation, each a home page, a tree
   of published pages with their labels, and what everyone in the
