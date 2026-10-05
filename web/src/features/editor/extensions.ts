@@ -277,6 +277,35 @@ const MarkdownPaste = Extension.create({
   },
 });
 
+/** The part of ProseMirror's view that reads the browser's selection; it is not in its types. */
+interface ObservedView {
+  domObserver?: { flush?: () => void };
+}
+
+/** Reads where the browser put the caret before a key is acted on. */
+const CaretBeforeKeys = Extension.create({
+  name: "caretBeforeKeys",
+  // Ahead of every keymap, which would otherwise act on the old selection too.
+  priority: 1000,
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("caretBeforeKeys"),
+        props: {
+          // A caret key moves the browser's caret at once but tells ProseMirror
+          // by a later selectionchange, which a busy browser lets the next key
+          // overtake. Typed onto a block still selected, that key replaced the
+          // block, so a page lost a block put in just before.
+          handleKeyDown: (view) => {
+            (view as unknown as ObservedView).domObserver?.flush?.();
+            return false;
+          },
+        },
+      }),
+    ];
+  },
+});
+
 export interface SlashMenuOptions {
   suggestion: Omit<SuggestionOptions<SlashItem, SlashItem>, "editor">;
 }
@@ -429,6 +458,7 @@ export function editorExtensions({
       suggestion: { char: "@", items: () => [], ...mention },
     }),
     ...(emoji ? [EmojiSuggestion.configure({ suggestion: emoji })] : []),
+    CaretBeforeKeys,
     Extension.create({
       name: "submitOnModEnter",
       addKeyboardShortcuts() {
