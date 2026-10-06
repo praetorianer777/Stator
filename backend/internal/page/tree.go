@@ -199,6 +199,9 @@ func parentFor(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) 
 	if err := p.must(perm.EditPages); err != nil {
 		return nil, nil, err
 	}
+	if p.Kind == KindPost {
+		return nil, nil, ErrPostPlace
+	}
 	return p, sp, nil
 }
 
@@ -405,6 +408,9 @@ func (s *Service) Move(ctx context.Context, actor perm.Actor, id uuid.UUID, in M
 		if err := current.must(perm.EditPages); err != nil {
 			return err
 		}
+		if current.Kind == KindPost {
+			return ErrPostPlace
+		}
 		_, to, err := parentFor(ctx, tx, actor, in.ParentID)
 		if err != nil {
 			return err
@@ -505,8 +511,10 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 	}
 	var out *Page
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, _, err := load(ctx, tx, actor, id, false); err != nil {
+		if original, _, err := load(ctx, tx, actor, id, false); err != nil {
 			return err
+		} else if original.Kind == KindPost {
+			return ErrPostPlace
 		}
 		_, to, err := parentFor(ctx, tx, actor, in.ParentID)
 		if err != nil {

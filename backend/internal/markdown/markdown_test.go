@@ -194,6 +194,8 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"labelledPages","attrs":{"labels":["adr"],"match":"all","space":null,"sort":"updated","limit":10}}`,
 			`{"type":"recentlyUpdated","attrs":{"space":null,"limit":5}}`,
 			`{"type":"recentlyUpdated","attrs":{"space":"DOCS","limit":50}}`,
+			`{"type":"blogPosts","attrs":{"space":null,"limit":5}}`,
+			`{"type":"blogPosts","attrs":{"space":"NEWS","limit":50}}`,
 			`{"type":"taskReport","attrs":{"space":"DOCS","assignee":"me","due":"week","state":"open","limit":20}}`,
 			`{"type":"taskReport","attrs":{"space":null,"assignee":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","due":"none","state":"all","limit":100}}`,
 			`{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"done","limit":1}}`,

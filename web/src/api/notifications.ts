@@ -24,6 +24,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = [
   "resolved",
   "published",
   "created",
+  "posted",
   "expired",
   "failed",
 ];

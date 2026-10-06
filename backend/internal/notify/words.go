@@ -52,6 +52,8 @@ func Sentence(kind Kind, actor, title string, inComment bool) string {
 		return fmt.Sprintf("%s published a new version of %s", actor, quoted)
 	case KindCreated:
 		return fmt.Sprintf("%s created %s", actor, quoted)
+	case KindPosted:
+		return fmt.Sprintf("%s posted %s", actor, quoted)
 	case KindExpired:
 		return fmt.Sprintf("The verification of %s has run out; check the page and verify it again", quoted)
 	case KindFailed:

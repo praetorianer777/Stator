@@ -18,10 +18,12 @@ const (
 	KindSubtree Kind = "subtree"
 	// KindSpace is every page of a space, now and later.
 	KindSpace Kind = "space"
+	// KindBlog is every new post of a space's blog.
+	KindBlog Kind = "blog"
 )
 
 // Kinds lists every Kind, for the API document.
-var Kinds = []Kind{KindPage, KindSubtree, KindSpace}
+var Kinds = []Kind{KindPage, KindSubtree, KindSpace, KindBlog}
 
 // PageTitle names a page a watch is on.
 type PageTitle struct {
@@ -65,7 +67,7 @@ type Watch struct {
 	Kind      Kind   `json:"kind"`
 	SpaceKey  string `json:"spaceKey"`
 	SpaceName string `json:"spaceName"`
-	// Page is null for a watch on the space.
+	// Page is null for a watch on the space or its blog.
 	Page      *PageTitle `json:"page"`
 	CreatedAt time.Time  `json:"createdAt"`
 }

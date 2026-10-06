@@ -138,6 +138,9 @@ const (
 	kindConstraint   = "page_kind_fixed"
 	// A draft of a live page, which page_draft_not_live refuses.
 	liveDraftConstraint = "page_draft_not_live"
+	// A page under a blog post, or a post given a place in the tree.
+	underPostConstraint = "page_under_post"
+	postTreeConstraint  = "page_post_outside_tree"
 )
 
 // toAPIError maps a domain error onto the wire shape. One place for it is what
@@ -155,6 +158,9 @@ func toAPIError(err error) *APIError {
 	}
 	if errors.As(err, &pgErr) && pgErr.ConstraintName == liveDraftConstraint {
 		err = page.ErrLivePage
+	}
+	if errors.As(err, &pgErr) && (pgErr.ConstraintName == underPostConstraint || pgErr.ConstraintName == postTreeConstraint) {
+		err = page.ErrPostPlace
 	}
 	var scheduled *page.ScheduleTakenError
 	if errors.As(err, &scheduled) {
@@ -434,6 +440,8 @@ func toAPIError(err error) *APIError {
 		return ErrConflict(sentence(err.Error()))
 	case errors.Is(err, page.ErrFolder):
 		return &APIError{Status: http.StatusConflict, Code: "folder", Message: sentence(err.Error())}
+	case errors.Is(err, page.ErrPostPlace), errors.Is(err, page.ErrPostLive):
+		return &APIError{Status: http.StatusConflict, Code: "post", Message: sentence(err.Error())}
 	case errors.Is(err, page.ErrBadKind):
 		return ErrValidation(map[string]string{"kind": sentence(err.Error())})
 	case errors.Is(err, page.ErrStale):

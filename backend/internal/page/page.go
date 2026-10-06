@@ -42,7 +42,11 @@ var (
 	// versions, comments and the rest.
 	ErrFolder = errors.New("a folder holds pages and folders, not content of its own; put it on a page inside the folder")
 	// ErrBadKind refuses a kind that is neither a page nor a folder.
-	ErrBadKind = errors.New("choose page or folder")
+	ErrBadKind = errors.New("choose page or folder; a blog post is written in its space's blog")
+	// ErrPostPlace refuses putting a blog post in the tree, or a page under one.
+	ErrPostPlace = errors.New("a blog post stays in its space's blog, outside the page tree; copy its text into a new page instead")
+	// ErrPostLive refuses a live blog post: a post goes out once, on its date.
+	ErrPostLive = errors.New("a blog post is published from drafts, so it cannot be live")
 	// ErrLivePage refuses a draft or a publish of a live page, whose saves
 	// are the page already.
 	ErrLivePage = errors.New("this page is live, so what you type is saved to the page as you go; there is no draft to save or publish")
@@ -58,10 +62,12 @@ type Kind string
 const (
 	KindPage   Kind = "page"
 	KindFolder Kind = "folder"
+	// KindPost is a blog post: a page of its space's blog, outside the tree.
+	KindPost Kind = "post"
 )
 
 // Kinds is every kind, for the API's description.
-var Kinds = []Kind{KindPage, KindFolder}
+var Kinds = []Kind{KindPage, KindFolder, KindPost}
 
 // Mode is how a page's words are edited: through drafts its editors publish,
 // or live, where every save is the page at once.
@@ -91,9 +97,11 @@ type Page struct {
 	SpaceKey string     `json:"spaceKey"`
 	ParentID *uuid.UUID `json:"parentId"`
 	Title    string     `json:"title"`
-	// Kind is page, or folder for a row that only holds others and has no
-	// body, versions, drafts or comments of its own.
+	// Kind is page, folder for a row that only holds others and has no
+	// body, versions, drafts or comments of its own, or post for a blog post.
 	Kind Kind `json:"kind"`
+	// PostedAt is a blog post's date, its first publish; null otherwise.
+	PostedAt *time.Time `json:"postedAt"`
 	// Appearance is the page's emoji, width and cover.
 	Appearance Appearance `json:"appearance"`
 	// Mode is draft, published from drafts, or live, saved as it is typed.

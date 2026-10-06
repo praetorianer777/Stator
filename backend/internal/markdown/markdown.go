@@ -31,6 +31,7 @@ const (
 	kindReport     = "properties-report"
 	kindLabelled   = "labelled-pages"
 	kindUpdated    = "updated-pages"
+	kindPosts      = "blog-posts"
 	kindTasks      = "task-report"
 	kindFiles      = "attachment-list"
 	kindTableChart = "table-chart"

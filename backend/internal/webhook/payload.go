@@ -37,6 +37,8 @@ type PageRef struct {
 	Version int       `json:"version"`
 	URL     string    `json:"url"`
 	Space   SpaceRef  `json:"space"`
+	// Kind is page, or post for a blog post, whose version 1 is its going out.
+	Kind string `json:"kind"`
 }
 
 // Person is who acted; null when they are no longer in the organization.
@@ -183,9 +185,9 @@ func (s *Service) payload(ctx context.Context, tx db.DBTX, topic string, event j
 func (s *Service) page(ctx context.Context, tx db.DBTX, id uuid.UUID) (*PageRef, error) {
 	var p PageRef
 	err := tx.QueryRow(ctx, `
-		SELECT p.id, p.title, p.version, s.key, s.name
+		SELECT p.id, p.title, p.version, s.key, s.name, p.kind
 		FROM page p JOIN space s ON s.org_id = p.org_id AND s.id = p.space_id
-		WHERE p.id = $1 AND p.version > 0`, id).Scan(&p.ID, &p.Title, &p.Version, &p.Space.Key, &p.Space.Name)
+		WHERE p.id = $1 AND p.version > 0`, id).Scan(&p.ID, &p.Title, &p.Version, &p.Space.Key, &p.Space.Name, &p.Kind)
 	if err != nil {
 		return nil, err
 	}

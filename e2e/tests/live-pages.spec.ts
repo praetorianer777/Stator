@@ -29,6 +29,7 @@ test.describe("live pages", { tag: ["@auth", "@desktop"] }, () => {
     api,
     pageAs,
   }, testInfo) => {
+    test.slow();
     const key = uniqueKey(testInfo);
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Live"));

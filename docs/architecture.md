@@ -93,12 +93,12 @@ process, which is only right for a single api process. `/readyz` and
 | `public` | reading without signing in: the organization's switches, the spaces, pages and files anybody may read, and the public links that open one page each, with nobody named in them |
 | `space` | spaces, space settings |
 | `document` | page document allowlist and validation, plain text for search, headings for the table of contents |
-| `page` | page tree (parent plus rank), move, copy, trash, archive, drafts, the shared draft of a page edited together, live pages and the open version their saves amend, published versions, diff, restore, restrictions, owners and verification, pages made from a template, the people who published a page or a tree, publishes scheduled for a time, and the worker's watches on verifications that run out and on scheduled publishes that came due |
+| `page` | page tree (parent plus rank), blog posts outside it by date, move, copy, trash, archive, drafts, the shared draft of a page edited together, live pages and the open version their saves amend, published versions, diff, restore, restrictions, owners and verification, pages made from a template, the people who published a page or a tree, publishes scheduled for a time, and the worker's watches on verifications that run out and on scheduled publishes that came due |
 | `collab` | editing together: the WebSocket of a page's shared draft, in y-protocols' framing, its updates stored and passed on unread, awareness, and the bus between api processes: Valkey when configured, else Postgres's LISTEN and NOTIFY, with catching up after a lost connection |
 | `version` | which build is running |
 | `comment` | page comments, inline comments anchored by mark id |
 | `reaction` | emoji reactions on pages and comments |
-| `label`, `watch`, `notify` | labels, watchers, in-app and email notifications |
+| `label`, `watch`, `notify` | labels, watchers of pages, spaces and blogs, in-app and email notifications |
 | `star`, `home` | starred pages and spaces, the home page's updates and edits |
 | `shortcut` | the links a space's administrators pin above its page tree, to pages or web addresses, each shown only to whoever may view its page |
 | `task` | the tasks of published pages: each person's list, and the worker's reminder on the due day |
@@ -142,6 +142,8 @@ process, which is only right for a single api process. `/readyz` and
   followed by its readers every few seconds; see `docs/decisions.md`.
 - Addresses: a space is `/s/{spaceKey}`, a page `/s/{spaceKey}/p/{pageId}/{slug}`.
   Only the id finds a page; the slug is for people and is put right when stale.
+  A blog post is a page and has a page's address; the space's blog is
+  `/s/{spaceKey}/blog`, a month of it `?year=2026&month=10`.
 - The pages anybody may read are at `/public/{org}`, outside the app's shell
   and its sign-in guard, read through `/api/v1/public/{org}`; the document
   view draws them with every link and file through those reads.

@@ -453,6 +453,12 @@ export const PAGE_LIST_LIMIT_CHOICES: readonly number[] = [5, 10, 20, 50];
 /** How a content by label list matches its labels and orders its pages, as document.ListMatches and ListSorts. */
 export const PAGE_LIST_MATCHES = ["all", "any"] as const;
 export const PAGE_LIST_SORTS = ["updated", "title"] as const;
+/** How many posts a latest blog posts block shows when it names no number; at most PAGE_LIST_MAX_LIMIT, as for any list block. */
+export const BLOG_POSTS_DEFAULT_LIMIT = 5;
+/** How many posts a blog shows at a time, as page.DefaultPostLimit. */
+export const BLOG_PAGE_SIZE = 10;
+/** The most opening characters of a post a block quotes; a blog shows all the API sends. */
+export const BLOG_BLOCK_EXCERPT_LENGTH = 140;
 /** How many tasks a task report shows when it names no number, and the most, as document.DefaultReportedTasks and MaxReportedTasks. */
 export const TASK_REPORT_DEFAULT_LIMIT = 20;
 export const TASK_REPORT_MAX_LIMIT = 100;

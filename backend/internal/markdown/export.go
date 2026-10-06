@@ -171,6 +171,11 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 			{"data-space", stringAttr(n, "space")},
 			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
 		}, ""), true
+	case document.NodeBlogPosts:
+		return div(kindPosts, [][2]string{
+			{"data-space", stringAttr(n, "space")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
+		}, ""), true
 	// Markdown has no charts, so the table stands as a table and a marker
 	// before it says what to draw of it.
 	case document.NodeTableChart:

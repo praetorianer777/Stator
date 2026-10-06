@@ -1846,6 +1846,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Published blog posts the caller may read, newest first, in one space or across the spaces not archived, the trash and the archive left out; year, and month with it, keep a stretch of time in UTC; next is the cursor for the window after, null at the end. For a blog and a latest blog posts block. */
+        get: operations["listPosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/properties-report": {
         parameters: {
             query?: never;
@@ -2157,6 +2174,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/spaces/{spaceKey}/blog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A space's blog: the months with posts the caller may read and how many, newest first, in UTC; the caller's own posts not yet published; whether the caller watches it and may post. */
+        get: operations["getBlog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/blog/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Hear of every post first published in a space's blog; later versions of a post are told to its own watchers. */
+        put: operations["watchBlog"];
+        post?: never;
+        /** Stop hearing of a blog's new posts; a watch on the space or on a post stays. */
+        delete: operations["unwatchBlog"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces/{spaceKey}/calendars": {
         parameters: {
             query?: never;
@@ -2291,6 +2343,23 @@ export interface paths {
         put?: never;
         /** Apply the preview whose fingerprint the request carries, in one step; refused as copy_changed once either space's permissions changed since, and as no_administrator when it would leave this space without one. For whoever administers both spaces. */
         post: operations["copyPermissions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. For whoever may add pages to the space. */
+        post: operations["createPost"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3186,6 +3255,19 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        Blog: {
+            canPost: boolean;
+            months: components["schemas"]["BlogMonth"][];
+            spaceKey: string;
+            spaceName: string;
+            unpublished: components["schemas"]["UnpublishedPost"][];
+            watching: boolean;
+        };
+        BlogMonth: {
+            count: number;
+            month: number;
+            year: number;
+        };
         BodyInput: {
             /** @description A JSON value. */
             body: unknown;
@@ -3658,7 +3740,7 @@ export interface components {
         };
         Inherited: {
             /** @enum {string} */
-            kind: "page" | "subtree" | "space";
+            kind: "page" | "subtree" | "space" | "blog";
             page: components["schemas"]["PageTitle"] | null;
         };
         InheritedRestriction: {
@@ -3775,7 +3857,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "page" | "folder";
+            kind: "page" | "folder" | "post";
             title: string;
             /** Format: date-time */
             updatedAt: string;
@@ -3861,7 +3943,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired" | "failed";
+            kind: "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "posted" | "expired" | "failed";
             page: components["schemas"]["PageLink"];
             /** Format: date-time */
             readAt: string | null;
@@ -3933,13 +4015,15 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "page" | "folder";
+            kind: "page" | "folder" | "post";
             labels: string[];
             /** @enum {string} */
             mode: "draft" | "live";
             owner: components["schemas"]["Owner"] | null;
             /** Format: uuid */
             parentId: string | null;
+            /** Format: date-time */
+            postedAt: string | null;
             reactions: components["schemas"]["Reaction"][];
             restricted: components["schemas"]["Restricted"];
             schedule: components["schemas"]["PageSchedule"] | null;
@@ -3975,7 +4059,7 @@ export interface components {
             /** @description A JSON value. */
             body?: unknown;
             /** @enum {string} */
-            kind?: "page" | "folder";
+            kind?: "page" | "folder" | "post";
             /** Format: uuid */
             parentId: string;
             publish?: boolean;
@@ -4127,6 +4211,24 @@ export interface components {
             id: string;
             name: string;
         };
+        Post: {
+            authorName: string;
+            excerpt: string;
+            icon: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            postedAt: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+        };
+        PostInput: {
+            /** @description A JSON value. */
+            body?: unknown;
+            publish?: boolean;
+            title: string;
+        };
         Preferences: {
             autoWatch: boolean;
             /** @enum {string} */
@@ -4192,7 +4294,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "page" | "folder";
+            kind: "page" | "folder" | "post";
             space: components["schemas"]["PublicSpace"];
             title: string;
             /** Format: date-time */
@@ -4203,7 +4305,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "page" | "folder";
+            kind: "page" | "folder" | "post";
             title: string;
         };
         PublicSite: {
@@ -4224,7 +4326,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "page" | "folder";
+            kind: "page" | "folder" | "post";
             /** Format: uuid */
             parentId: string | null;
             title: string;
@@ -4627,6 +4729,7 @@ export interface components {
             expired: boolean;
             failed: boolean;
             mentioned: boolean;
+            posted: boolean;
             published: boolean;
             replied: boolean;
             resolved: boolean;
@@ -4742,6 +4845,8 @@ export interface components {
         TrashItem: {
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder" | "post";
             pages: number;
             parentInTree: boolean;
             parentTitle: string;
@@ -4757,12 +4862,21 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "page" | "folder";
+            kind: "page" | "folder" | "post";
             /** Format: uuid */
             parentId: string;
             restricted: boolean;
             title: string;
             unpublished: boolean;
+        };
+        UnpublishedPost: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            publishAt: string | null;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         UpdateInput: {
             description?: string;
@@ -4852,7 +4966,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
-            kind: "page" | "subtree" | "space";
+            kind: "page" | "subtree" | "space" | "blog";
             page: components["schemas"]["PageTitle"] | null;
             spaceKey: string;
             spaceName: string;
@@ -4866,7 +4980,7 @@ export interface components {
             /** Format: uuid */
             userId: string;
             /** @enum {string} */
-            via: "page" | "subtree" | "space";
+            via: "page" | "subtree" | "space" | "blog";
             viaPage: components["schemas"]["PageTitle"] | null;
         };
         Watching: {
@@ -10374,6 +10488,58 @@ export interface operations {
             };
         };
     };
+    listPosts: {
+        parameters: {
+            query?: {
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description A year to keep, in UTC. */
+                year?: number;
+                /** @description 1 to 12, a month of the year to keep; needs year. */
+                month?: number;
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        next: string | null;
+                        posts: components["schemas"]["Post"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     propertiesReport: {
         parameters: {
             query?: {
@@ -11286,6 +11452,97 @@ export interface operations {
             };
         };
     };
+    getBlog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        blog: components["schemas"]["Blog"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    watchBlog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unwatchBlog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listCalendars: {
         parameters: {
             query?: never;
@@ -11755,6 +12012,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                    };
                 };
             };
             /** @description Unprocessable Entity */

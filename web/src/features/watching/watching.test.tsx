@@ -182,6 +182,22 @@ describe("the watching list", () => {
     await waitFor(() => expect(screen.queryByRole("link", { name: "Operations" })).toBeNull());
   });
 
+  it("names a watch on a blog, links to the blog, and stops it on its own route", async () => {
+    const blogWatch: Watch = { kind: "blog", spaceKey: "OPS", spaceName: "Operations", page: null, createdAt: "2026-09-29T08:00:00Z" };
+    const sent = stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [aSpace()] } },
+      "GET /watches": { status: 200, body: { watches: [blogWatch], total: 1, limit: 20, offset: 0 } },
+      "DELETE /spaces/OPS/blog/watch": { status: 204 },
+    });
+    await renderAt("/settings/watching");
+    const table = await screen.findByRole("table");
+    expect(within(table).getByRole("link", { name: "Blog of Operations" })).toHaveAttribute("href", "/s/OPS/blog");
+    expect(within(table).getByText("New posts in the blog")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Stop watching Blog of Operations" }));
+    await waitFor(() => expect(sent.some((each) => each.method === "DELETE" && each.path === "/spaces/OPS/blog/watch")).toBe(true));
+    expect(sent.some((each) => each.path === "/spaces/OPS/watch")).toBe(false);
+  });
+
   it("says what to do when the reader watches nothing", async () => {
     stubApi({
       "GET /spaces": { status: 200, body: { spaces: [aSpace()] } },

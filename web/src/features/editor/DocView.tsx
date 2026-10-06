@@ -37,6 +37,8 @@ import { PROPERTIES_REPORT_NODE, reportSettings } from "@/features/properties/re
 import { LabelledPages, UpdatedPages } from "@/features/pageLists/PageLists";
 import { LABELLED_PAGES_NODE, RECENTLY_UPDATED_NODE, labelledSettings, updatedSettings } from "@/features/pageLists/lists";
 import { TaskReport } from "@/features/taskReport/TaskReport";
+import { LatestPosts } from "@/features/blog/LatestPosts";
+import { BLOG_POSTS_NODE, blogPostsSettings } from "@/features/blog/blogPosts";
 import { TASK_REPORT_NODE, taskReportSettings } from "@/features/taskReport/report";
 import { AttachmentList } from "@/features/attachments/AttachmentList";
 import { ATTACHMENT_LIST_NODE } from "./attachmentList";
@@ -329,6 +331,11 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       const settings = updatedSettings(node.attrs);
       if (!live) return <p className="doc-block doc-block-summary">{t.pageLists.updatedTitle(settings.space)}</p>;
       return <UpdatedPages settings={settings} />;
+    }
+    case BLOG_POSTS_NODE: {
+      const settings = blogPostsSettings(node.attrs);
+      if (!live) return <p className="doc-block doc-block-summary">{t.blogPosts.summary(settings.space)}</p>;
+      return <LatestPosts settings={settings} />;
     }
     // The chart is drawn from the table it holds, which readers may see beneath it.
     case TABLE_CHART_NODE: {

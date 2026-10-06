@@ -92,6 +92,7 @@ export function useStopWatching() {
   return useMutation({
     mutationFn: async (watch: Watch) => {
       if (watch.page) await api.DELETE("/pages/{pageID}/watch", { params: { path: { pageID: watch.page.id } } });
+      else if (watch.kind === "blog") await api.DELETE("/spaces/{spaceKey}/blog/watch", { params: { path: { spaceKey: watch.spaceKey } } });
       else await api.DELETE("/spaces/{spaceKey}/watch", { params: { path: { spaceKey: watch.spaceKey } } });
       return watch;
     },

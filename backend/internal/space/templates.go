@@ -17,7 +17,7 @@ import (
 
 // spaceScoped are the blocks a template leaves without a space, meaning the
 // one it makes; they are given its key, since a block reads null as every space.
-var spaceScoped = []string{document.NodeLabelledPages, document.NodeRecentlyUpdated}
+var spaceScoped = []string{document.NodeLabelledPages, document.NodeRecentlyUpdated, document.NodeBlogPosts}
 
 // chooseTemplate finds the template a new space asks for, nil for a blank one.
 func chooseTemplate(in CreateInput) (*template.SpaceTemplate, error) {

@@ -192,6 +192,10 @@ const (
 	NodeRecentlyUpdated = "recentlyUpdated"
 )
 
+// NodeBlogPosts lists the newest blog posts of a space, or of every space;
+// it holds which and how many, and each reader's view asks for the posts they may read.
+const NodeBlogPosts = "blogPosts"
+
 // NodeTableChart draws the one table it holds as a chart, so the chart is
 // always the table's: edit the table and the chart follows.
 const NodeTableChart = "tableChart"
@@ -331,7 +335,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeBlogPosts, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -546,6 +550,11 @@ var Allowed = Allowlist{
 			"limit":  {Kind: KindInteger, Min: 1, Max: MaxListedPages},
 		}},
 		NodeRecentlyUpdated: {Attrs: map[string]Attr{
+			"space": {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},
+			"limit": {Kind: KindInteger, Min: 1, Max: MaxListedPages},
+		}},
+		// A space's key, or null for every space the reader may read.
+		NodeBlogPosts: {Attrs: map[string]Attr{
 			"space": {Kind: KindString, Nullable: true, Pattern: SpaceKeyPattern},
 			"limit": {Kind: KindInteger, Min: 1, Max: MaxListedPages},
 		}},

@@ -71,7 +71,7 @@ func archiveOf(ctx context.Context, tx db.DBTX, id uuid.UUID) (*Archive, error) 
 		pageName, spaceName string
 	)
 	err := tx.QueryRow(ctx, `
-		SELECT a.id, COALESCE(a.title, ''), COALESCE(a.parent_id IS NULL, false),
+		SELECT a.id, COALESCE(a.title, ''), COALESCE(a.parent_id IS NULL AND a.kind <> 'post', false),
 		       p.archived_at, COALESCE(pu.name, ''), s.archived_at, COALESCE(su.name, '')
 		FROM page p
 		JOIN space s ON s.id = p.space_id
