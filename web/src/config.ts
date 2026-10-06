@@ -231,6 +231,10 @@ export const SHARE_VIEWERS_SHOWN = 8;
 export const DRAFT_AUTOSAVE_MS = 1000;
 /** How often a live page's reader asks for the page again, so what its editors type shows without a reload. */
 export const LIVE_PAGE_REFRESH_MS = 3000;
+/** How far ahead the publish dialog first offers a time to publish at, rounded up to the hour. */
+export const SCHEDULE_DEFAULT_LEAD_MINUTES = 60;
+/** How far ahead a publish may be scheduled at most, matching the API's page.MaxScheduleAhead. */
+export const SCHEDULE_MAX_AHEAD_DAYS = 366;
 /** How many minutes of a live page's saves one version of its history takes, matching the API's page.LiveVersionSpan. */
 export const LIVE_VERSION_SPAN_MINUTES = 10;
 /** How long the editor waits for a page's shared draft before it edits alone, saving to the person's own draft. */

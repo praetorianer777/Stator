@@ -105,6 +105,41 @@ export function usePublish(pageId: string) {
   });
 }
 
+/** A publish of somebody's draft set for a time, seen by its author and the page's editors. */
+export type PageSchedule = Wire["PageSchedule"];
+export type ScheduleFailure = NonNullable<PageSchedule["failure"]>;
+export type ScheduleOptions = Wire["PageScheduleInput"];
+
+// The page carries its schedule, and scheduling a page never published may
+// start the caller's draft, so both are read again.
+function rescheduled(queryClient: QueryClient, pageId: string) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId), exact: true }),
+    queryClient.invalidateQueries({ queryKey: draftQueryKey(pageId) }),
+  ]);
+}
+
+/** Sets the caller's draft to be published at a time, in their name; setting it again moves it. */
+export function useSchedulePublish(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (options: ScheduleOptions): Promise<PageSchedule> =>
+      (await api.PUT("/pages/{pageID}/schedule", { params: { path: { pageID: pageId } }, body: options })).data!.schedule,
+    onSuccess: () => rescheduled(queryClient, pageId),
+  });
+}
+
+/** Calls the page's scheduled publish off; the draft stays. */
+export function useCancelSchedule(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await api.DELETE("/pages/{pageID}/schedule", { params: { path: { pageID: pageId } } });
+    },
+    onSuccess: () => rescheduled(queryClient, pageId),
+  });
+}
+
 /** How a page is edited: published from drafts, or saved live as it is typed. */
 export type PageMode = Wire["Page"]["mode"];
 export type LiveSaved = Wire["PageLiveSaved"];
