@@ -114,6 +114,10 @@ func (c *Cluster) inTx(
 					return fmt.Errorf("apply the token's spaces: %w", err)
 				}
 			}
+		} else if AnonymousFrom(ctx) {
+			if _, err := tx.Exec(ctx, setOrgSQL, AnonymousVar, "on"); err != nil {
+				return fmt.Errorf("apply the anonymous reader: %w", err)
+			}
 		}
 	}
 	if err := fn(ctx, tx); err != nil {

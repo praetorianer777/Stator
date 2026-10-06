@@ -260,6 +260,15 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.delete(t, "/api/v1/spaces/AUD/shortcuts/"+cut), http.StatusNoContent, "remove the shortcut")
 	once(audit.ActionShortcutRemoved, me, spaceID)
 
+	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "open the organization to anybody")
+	if data := once(audit.ActionOrgAnonymousAccessSet, me, nil); !strings.Contains(data, `"enabled": true`) {
+		t.Errorf("the switch's record reads %s", data)
+	}
+	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "the same switch again")
+	once(audit.ActionOrgAnonymousAccessSet, me, nil)
+	want(t, owner.put(t, "/api/v1/spaces/AUD/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the space to anybody")
+	once(audit.ActionSpaceAnonymousAccessSet, me, spaceID)
+
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)
 

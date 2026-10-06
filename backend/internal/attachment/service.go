@@ -216,6 +216,31 @@ func (s *Service) Open(ctx context.Context, actor perm.Actor, id uuid.UUID) (*At
 	return &found.Attachment, body, nil
 }
 
+// OpenAnonymous reads a file for somebody who is not signed in: one on a
+// published page anybody may read, else none. The caller closes the reader.
+func (s *Service) OpenAnonymous(ctx context.Context, id uuid.UUID) (*Attachment, io.ReadCloser, error) {
+	if !db.AnonymousFrom(ctx) {
+		return nil, nil, errors.New("a public file is read as an anonymous reader")
+	}
+	var found *stored
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		found, err = scan(tx.QueryRow(ctx, selectAttachment+`
+			JOIN page p ON p.org_id = a.org_id AND p.id = a.page_id
+			WHERE a.id = $1 AND p.trashed_at IS NULL AND p.version > 0 AND perm_page_viewable(p.id, NULL::uuid)`, id))
+		return err
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	body, err := s.store.Get(ctx, found.objectKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	s.describe(&found.Attachment)
+	return &found.Attachment, body, nil
+}
+
 // Delete removes a file for good. The row goes in the transaction, which
 // leaves a tombstone; the object goes after the commit, else the reaper takes it.
 func (s *Service) Delete(ctx context.Context, actor perm.Actor, id uuid.UUID) (db.LSN, error) {

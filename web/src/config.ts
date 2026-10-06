@@ -516,3 +516,10 @@ export const ZIP_FILE_PATTERN = /\.zip$/i;
 export const VERIFY_TERM_DAYS = [30, 90, 180, 365] as const;
 /** The term offered first, as the API's own default. */
 export const VERIFY_DEFAULT_DAYS = 90;
+
+/** Where the pages anybody may read without signing in live, followed by the organization's slug. */
+export const PUBLIC_PATH = "/public";
+/** A public answer is the same for everybody and may be a minute old, as the API lets caches keep it. */
+export const PUBLIC_STALE_MS = 60_000;
+/** Hits a public search shows at a time. */
+export const PUBLIC_SEARCH_LIMIT = 20;

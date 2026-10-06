@@ -75,6 +75,10 @@ const (
 	ActionShortcutAdded   = "space.shortcut_added"
 	ActionShortcutMoved   = "space.shortcut_moved"
 	ActionShortcutRemoved = "space.shortcut_removed"
+	// Reading without signing in: the organization's switch, and a space's
+	// grant to anybody.
+	ActionOrgAnonymousAccessSet   = "org.anonymous_access_set"
+	ActionSpaceAnonymousAccessSet = "space.anonymous_access_set"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -93,6 +97,7 @@ var Actions = []string{
 	ActionWebhookCreated, ActionWebhookUpdated, ActionWebhookDeleted, ActionWebhookSecretRotated, ActionWebhookDisabled,
 	ActionPageShared,
 	ActionShortcutAdded, ActionShortcutMoved, ActionShortcutRemoved,
+	ActionOrgAnonymousAccessSet, ActionSpaceAnonymousAccessSet,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

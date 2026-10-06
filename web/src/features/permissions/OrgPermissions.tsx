@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMe } from "@/api/auth";
 import { subjectKey, subjectRef, useOrgPermissions, useSetOrgPermission, type GlobalGrant, type Subject } from "@/api/permissions";
 import { Button, Card, ErrorBanner, PageHeader, Skeleton } from "@/components/ui";
+import { OrgAnonymousAccess } from "@/features/public/AnonymousAccess";
 import { t } from "@/i18n";
 import { SubjectList } from "./SubjectList";
 import { SubjectPicker } from "./SubjectPicker";
@@ -20,6 +21,7 @@ export function OrgPermissions() {
         {(data ?? []).map((grant) => (
           <GrantCard key={grant.permission} grant={grant} />
         ))}
+        <OrgAnonymousAccess />
       </div>
     </div>
   );

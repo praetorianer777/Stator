@@ -21,12 +21,18 @@ const UserVar = "app.user_id"
 // token they act with, read by the permission functions; unset is no limit.
 const TokenSpacesVar = "app.token_spaces"
 
+// AnonymousVar is the setting that makes a transaction read for somebody
+// who is not signed in, read by current_anonymous().
+const AnonymousVar = "app.anonymous"
+
 // acting is whom the transactions act for and, for a token limited to some
-// spaces, which; one value so that naming another person drops the limit.
+// spaces, which; one value so that naming another person drops the limit,
+// and naming anybody drops anonymity.
 type acting struct {
 	user       uuid.UUID
 	spacesOnly bool
 	spaces     []uuid.UUID
+	anonymous  bool
 }
 
 // WithUser names the person the transactions made with ctx act for, so row
@@ -39,6 +45,18 @@ func WithUser(ctx context.Context, id uuid.UUID) context.Context {
 // none when the list is empty.
 func WithUserInSpaces(ctx context.Context, id uuid.UUID, spaces []uuid.UUID) context.Context {
 	return context.WithValue(ctx, userKey{}, acting{user: id, spacesOnly: true, spaces: spaces})
+}
+
+// WithAnonymous makes the transactions made with ctx read for somebody who
+// is not signed in, whom the database holds to the spaces open to anybody.
+func WithAnonymous(ctx context.Context) context.Context {
+	return context.WithValue(ctx, userKey{}, acting{anonymous: true})
+}
+
+// AnonymousFrom says whether WithAnonymous made ctx.
+func AnonymousFrom(ctx context.Context) bool {
+	a, _ := ctx.Value(userKey{}).(acting)
+	return a.anonymous
 }
 
 // UserFrom is the person WithUser named, if any.

@@ -7,6 +7,7 @@ import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH, STALE_PATH } from 
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { SpacePermissions } from "@/features/permissions/SpacePermissions";
+import { SpaceAnonymousAccess } from "@/features/public/AnonymousAccess";
 import { ArchivePanel } from "@/features/archive/ArchivePanel";
 import { SpaceArchive } from "@/features/archive/SpaceArchive";
 import { ShortcutsPanel } from "@/features/shortcuts/ShortcutsPanel";
@@ -76,6 +77,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
         {shown === "details" && <Details key={space.id} space={space} />}
         {shown === "shortcuts" && <ShortcutsPanel space={space} />}
         {shown === "permissions" && <SpacePermissions space={space} />}
+        {shown === "permissions" && <SpaceAnonymousAccess space={space} />}
         {shown === "guests" && <SpaceGuests space={space} />}
         {shown === "trash" && <TrashPanel space={space} />}
         {shown === "archive" && <ArchivePanel space={space} />}

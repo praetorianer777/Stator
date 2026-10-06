@@ -21,6 +21,7 @@ import { DIAGRAM_NODE, DiagramFigure, diagramSource } from "./DiagramViews";
 import { LINK_CARD_NODE, LinkCard, linkCardView, webAddress } from "./LinkCardViews";
 import { INCLUDE_NODE, IncludeBlock, IncludeChain, includeId } from "./IncludeViews";
 import { PassagesContext } from "./passages";
+import { publicHref, publicPagePath, usePublicReading } from "./publicReading";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
@@ -73,7 +74,9 @@ export function DocView({
   const pageId = useContext(DocPageContext)?.id;
   const { copy, status } = useCopyHeadingLink();
   const headings = useMemo(() => headingsOfDoc(doc), [doc]);
-  const keys = useMemo(() => issueKeysOf(doc), [doc]);
+  // Somebody who is not signed in has no Armature account to ask with.
+  const reading = usePublicReading();
+  const keys = useMemo(() => (reading ? [] : issueKeysOf(doc)), [doc, reading]);
   const root = useRef<HTMLDivElement>(null);
   const shown = Boolean(doc);
   // The browser scrolled to the address's heading before the page was drawn,
@@ -187,6 +190,10 @@ function oneOf<T extends string>(values: readonly T[], value: unknown): T | unde
 
 function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPath }): ReactNode {
   const block = usePassages() ? path.join(".") : undefined;
+  // What a generated block lists is asked for as its reader, which somebody
+  // who is not signed in is not, so they read what it lists in words.
+  const org = usePublicReading();
+  const live = org ? null : copy;
   switch (node.type) {
     case "paragraph":
       return <p data-block={block}>{inline(node.content)}</p>;
@@ -302,7 +309,7 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     case PROPERTIES_REPORT_NODE: {
       const settings = reportSettings(node.attrs);
       if (settings.labels.length === 0) return null;
-      if (!copy) {
+      if (!live) {
         return (
           <p className="doc-block doc-block-summary" data-properties-report="">
             {t.properties.report.summary(settings.labels, settings.space)}
@@ -315,12 +322,12 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     case LABELLED_PAGES_NODE: {
       const settings = labelledSettings(node.attrs);
       if (settings.labels.length === 0) return null;
-      if (!copy) return <p className="doc-block doc-block-summary">{t.pageLists.labelledTitle(settings.labels, settings.match, settings.space)}</p>;
+      if (!live) return <p className="doc-block doc-block-summary">{t.pageLists.labelledTitle(settings.labels, settings.match, settings.space)}</p>;
       return <LabelledPages settings={settings} />;
     }
     case RECENTLY_UPDATED_NODE: {
       const settings = updatedSettings(node.attrs);
-      if (!copy) return <p className="doc-block doc-block-summary">{t.pageLists.updatedTitle(settings.space)}</p>;
+      if (!live) return <p className="doc-block doc-block-summary">{t.pageLists.updatedTitle(settings.space)}</p>;
       return <UpdatedPages settings={settings} />;
     }
     // The chart is drawn from the table it holds, which readers may see beneath it.
@@ -335,28 +342,28 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       );
     }
     case ATTACHMENT_LIST_NODE:
-      return <AttachmentListBlock copy={copy} />;
+      return <AttachmentListBlock copy={live} />;
     case CALENDAR_NODE: {
       const settings = calendarSettings(node.attrs);
       // A comparison says which project, never the month as it is now.
-      if (!copy) return <p className="doc-block doc-block-summary">{t.calendar.summary(settings.project)}</p>;
+      if (!live) return <p className="doc-block doc-block-summary">{t.calendar.summary(settings.project)}</p>;
       return <TeamCalendar settings={settings} />;
     }
     case TEMPLATE_BUTTON_NODE: {
       const settings = templateButtonSettings(node.attrs);
       // A comparison says what the button makes; nothing in it makes a page.
-      if (!copy) return <p className="doc-block doc-block-summary">{t.templateButton.summary(settings.template)}</p>;
+      if (!live) return <p className="doc-block doc-block-summary">{t.templateButton.summary(settings.template)}</p>;
       return <TemplateButton settings={settings} />;
     }
     case CONTRIBUTORS_NODE: {
       const settings = contributorsSettings(node.attrs);
-      if (!copy) return <p className="doc-block doc-block-summary">{t.contributors.title(settings.scope)}</p>;
+      if (!live) return <p className="doc-block doc-block-summary">{t.contributors.title(settings.scope)}</p>;
       return <Contributors settings={settings} />;
     }
     case TASK_REPORT_NODE: {
       const settings = taskReportSettings(node.attrs);
       // Without the person's name, which only the report answers with.
-      if (!copy) return <p className="doc-block doc-block-summary">{t.taskReport.title(settings, "")}</p>;
+      if (!live) return <p className="doc-block doc-block-summary">{t.taskReport.title(settings, "")}</p>;
       return <TaskReport settings={settings} />;
     }
     // An excerpt reads as the blocks it marks; its name is for pickers.
@@ -368,10 +375,28 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       );
     case INCLUDE_NODE: {
       const id = includeId(node.attrs?.pageId);
+      if (id && org) {
+        return (
+          <p className="doc-block doc-block-summary" data-include-link="">
+            <a href={publicPagePath(org, id)}>{t.publicReading.included}</a>
+          </p>
+        );
+      }
       return id ? <IncludeBlock pageId={id} excerptId={includeId(node.attrs?.excerptId)} draw={drawIncluded} /> : null;
     }
+    // A card's summary is read by the server for a signed-in reader; anybody
+    // else follows the address itself.
     case LINK_CARD_NODE: {
       const url = webAddress(node.attrs?.url);
+      if (url && org) {
+        return (
+          <p className="doc-block">
+            <a href={url} rel="noopener noreferrer nofollow" target="_blank">
+              {url}
+            </a>
+          </p>
+        );
+      }
       return url ? <LinkCard url={url} view={linkCardView(node.attrs?.view)} /> : null;
     }
     case DIAGRAM_NODE: {
@@ -397,7 +422,7 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       return <DocToc node={node} />;
     case "childPages": {
       const options = childPagesOptions(node.attrs);
-      if (!copy) {
+      if (!live) {
         return (
           <p className="doc-block doc-block-summary" data-child-pages>
             {childPagesSummary(options)}
@@ -413,7 +438,7 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     case ARMATURE_ISSUE_BLOCK_NODE: {
       const key = normalizeKey(node.attrs?.key);
       if (!key) return null;
-      if (!copy) {
+      if (!live) {
         return (
           <p className="doc-block doc-block-summary" data-armature-issue-block={key}>
             {t.armature.block.summary(key)}
@@ -426,7 +451,7 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     case ARMATURE_CHART_NODE: {
       const settings = chartSettings(node.attrs);
       if (!settings.project || !settings.query.trim()) return null;
-      if (!copy) {
+      if (!live) {
         return (
           <p className="doc-block doc-block-summary" data-armature-chart="">
             {t.armature.chart.summary(settings.project, settings.query)}
@@ -438,7 +463,7 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     case ARMATURE_ROADMAP_NODE: {
       const settings = roadmapSettings(node.attrs);
       if (!settings.project || !settings.query.trim()) return null;
-      if (!copy) {
+      if (!live) {
         return (
           <p className="doc-block doc-block-summary" data-armature-roadmap="">
             {t.armature.roadmap.summary(settings.project, settings.query)}
@@ -450,7 +475,7 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     case ARMATURE_ISSUE_LIST_NODE: {
       const settings = listSettings(node.attrs);
       if (!settings.query.trim()) return null;
-      if (!copy) {
+      if (!live) {
         return (
           <p className="doc-block doc-block-summary" data-armature-issue-list="">
             {t.armature.list.summary(settings.query)}
@@ -568,7 +593,8 @@ function inlineNode(node: DocNode): ReactNode {
     case "hardBreak":
       return <br />;
     case "mention":
-      return marked(<span data-mention={String(node.attrs?.id ?? "")}>{`@${String(node.attrs?.label ?? "")}`}</span>, node.marks);
+      // A public page names nobody: the API sends its mentions without a label.
+      return marked(<span data-mention={String(node.attrs?.id ?? "")}>{`@${String(node.attrs?.label ?? "") || t.publicReading.someone}`}</span>, node.marks);
     case "attachment":
       return <DocAttachment node={node} />;
     case ARMATURE_ISSUE_NODE: {
@@ -645,10 +671,12 @@ function marked(content: ReactNode, marks: DocNode["marks"]): ReactNode {
         const href = safeHref(mark.attrs?.href);
         if (href) {
           const external = /^(https?|mailto):/i.test(href);
-          out = (
-            <a href={href} rel={external ? "noopener noreferrer nofollow" : undefined} target={external ? "_blank" : undefined}>
+          out = external ? (
+            <a href={href} rel="noopener noreferrer nofollow" target="_blank">
               {out}
             </a>
+          ) : (
+            <SiteLink href={href}>{out}</SiteLink>
           );
         }
         break;
@@ -656,6 +684,12 @@ function marked(content: ReactNode, marks: DocNode["marks"]): ReactNode {
     }
   }
   return out;
+}
+
+/** A link to an address of this site, which leads somebody who is not signed in to the public page or to signing in. */
+function SiteLink({ href, children }: { href: string; children: ReactNode }) {
+  const org = usePublicReading();
+  return <a href={org ? publicHref(org, href) : href}>{children}</a>;
 }
 
 /** The page's files, with an upload for whoever may edit it; a comparison of versions says only that it is there. */

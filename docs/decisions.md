@@ -3,6 +3,73 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-06: Anybody reads an open space as nobody, through reads of their own
+
+Public documentation (#79) is two switches. The organization's,
+`org.anonymous_access`, is off until an administrator turns it on; while it
+is off nothing is public, whatever a space allows. A space's is a grant of
+view to the subject `anonymous` in `space_grant`, which the database takes
+for view alone and never in a personal space, since that is named after its
+owner and its pages are theirs. It is a grant rather than a column so that
+the rule reads like every other space permission; it is kept out of the
+permission grid, which names people and groups, and set on its own route by
+whoever administers the space. Either switch changing goes to the audit
+log. A second switch of the organization, off by default, says whether
+search engines may list the public pages; until then every public answer
+says `X-Robots-Tag: noindex, nofollow` and the reading view adds the same
+`robots` meta element.
+
+A request without a session knows no organization, so a public address
+names it, `/public/{org}`, as Armature's share links and desk name theirs.
+The api finds the organization by its slug, answers one that is archived,
+closed or unknown alike with `404 not_public`, and from then on reads as
+an anonymous reader: the transaction sets `app.anonymous` and names nobody.
+Authentication leaves these paths alone, so a session riding along neither
+widens nor refuses them. `perm_space_holds` gives that reader view of a
+space the organization and the space both open and nothing else anywhere,
+and `perm_page_viewable` adds that the page and every page above it are
+published and the page is out of the trash; a view restriction, which
+always names people, is never passed, so a restricted page is never
+public. Every table carries a restrictive policy for the anonymous reader:
+closed outright, or for `space`, `page` and `attachment` read only, and a
+test asks every table for one, so a table added later is closed until
+somebody decides otherwise. Straight through SQL as `stator_app` the
+reader finds no person, membership, comment, reaction, view, version,
+grant or audit entry, and every write is refused or reaches no row.
+
+The member routes stay as they are, `401` without a session, and the
+public reads are routes of their own with answers of their own: the
+organization and its open spaces, a space's tree, a page, a file and a
+search, all `GET`. A shape that has no field for a person cannot leak one
+when somebody later adds a name to the member's shape. A page's body is
+sent through `document.ForAnonymous`, which drops the person and label of
+every mention, which the reader shows as "someone", the person a task
+report asks about, and the threads' marks. The search index holds the
+names a page mentions, so each public hit is matched again, and its
+snippet cut, from the words without them; a page found only by a name is
+not found.
+
+What names somebody is left out rather than anonymised: authors and who
+updated a page, the owner and the verification, which name a person by
+their nature, comments, whose discussion is between members and whose
+replies mean little without who wrote them, reactions, readers and the
+counts by person, watchers, contributors, assignees, the history and
+presence. An anonymous read is no view either, since a view is a person on
+a day. The generated blocks (lists of pages, task reports, contributors,
+calendars, Armature's issues, link cards and includes) are each reader's
+own, asked as that reader, so the reading view says in words what they
+list, as a comparison of versions does, and an include links to its page.
+A link into the app leads to the public view of its page or space, which
+says so when it is not public and offers signing in, and any other
+address of the app leads to signing in, back to where it pointed.
+
+A public answer is the same for everybody, so it may be kept by a shared
+cache for a minute (`Cache-Control: public, max-age=60`); a page restricted
+or a switch turned off is refused at once by the api and within that
+minute by any cache in front of it. Drafts, the shared draft's socket,
+MCP, tokens and every write remain for members, and an assistant reads as
+the member it acts for, so no public read is a tool.
+
 ## 2026-10-05: A guest is a member held to one space, as a limited token is
 
 A guest (#69) is a row of `org_member` with the role `guest` and the space

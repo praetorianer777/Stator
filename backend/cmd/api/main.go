@@ -40,6 +40,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/secret"
@@ -193,6 +194,7 @@ func run() error {
 		Shortcuts:         shortcut.NewService(cluster),
 		Calendars:         calendar.NewService(cluster),
 		Guests:            guest.NewService(cluster),
+		Public:            public.NewService(cluster),
 		Hub:               hub.NewService(cluster),
 		Unfurl:            unfurlService(cfg, valkey, log),
 		Home:              home.NewService(cluster),

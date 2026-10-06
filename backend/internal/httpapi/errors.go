@@ -23,6 +23,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
@@ -339,6 +340,11 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusServiceUnavailable, Code: "storage_unavailable", Message: "Files cannot be stored on this server yet. Ask an administrator to set up file storage.", cause: err}
 	case errors.Is(err, theme.ErrNotAThemeFile), errors.Is(err, theme.ErrDefaultNotShared):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
+	case errors.Is(err, public.ErrNotPublic):
+		return &APIError{Status: http.StatusNotFound, Code: "not_public",
+			Message: "That is not open to read without signing in. Sign in to read it, or check the address."}
+	case errors.Is(err, public.ErrNotAdmin):
+		return ErrForbidden("Only an administrator of the organization lets people read without signing in. Ask one of them.")
 	case errors.Is(err, space.ErrNotFound):
 		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
 	case errors.Is(err, guest.ErrNotGuest):
