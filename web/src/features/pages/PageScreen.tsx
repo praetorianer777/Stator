@@ -8,8 +8,7 @@ import { useVisit } from "@/api/search";
 import { useSetTaskDone } from "@/api/tasks";
 import { useTrashPage } from "@/api/trash";
 import { attachmentUrl } from "@/api/attachments";
-import { PAGE_WIDTH_CLASS } from "@/config";
-import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, cx, type Crumb, type MenuItem } from "@/components/ui";
+import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ArchiveBanner, ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { ArmatureLinks } from "@/features/armature/ArmatureLinks";
@@ -37,6 +36,7 @@ import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { NewPageDialog } from "./NewPageDialog";
 import { PageLink } from "./PageLink";
+import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { PlaceDialog } from "./PlaceDialog";
 import { RenameFolderDialog } from "./RenameFolderDialog";
 
@@ -209,9 +209,11 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
     });
   }
 
+  const sheet = pageSheet(page.appearance.width);
   return (
     <article
-      className={cx("mx-auto", page.appearance.width === "full" ? "max-w-none" : PAGE_WIDTH_CLASS)}
+      className={sheet.className}
+      style={sheet.style}
       data-page={page.id}
       data-page-home={page.home || undefined}
       data-page-width={page.appearance.width}
@@ -222,6 +224,8 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         </div>
       )}
       <PageHeader
+        className={PAGE_SHEET_HEADER}
+        style={sheet.style}
         crumbs={pageCrumbs(space, page)}
         title={
           <>
@@ -350,7 +354,10 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
               <PageReactions page={page} />
               <PageLabels page={page} />
               <ArmatureLinks page={page} />
-              <AttachmentPanel pageId={page.id} editable={page.can.edit} />
+              {/* The panel's drop zone reaches past the text with negative margins, which would undo the sheet's centring. */}
+              <div>
+                <AttachmentPanel pageId={page.id} editable={page.can.edit} />
+              </div>
               <CommentsSection page={page} thread={thread} />
             </>
           }

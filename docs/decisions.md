@@ -3,6 +3,31 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-06: Text keeps a measure while wide blocks break out of it
+
+A page is one sheet as wide as the content area, up to 96rem
+(`PAGE_MAX_WIDTH_REM`). Its text, the title, the header and the sections
+below the page are held to 44rem (`PAGE_MEASURE_REM`), centred: at the
+14px root that is about 85 characters of Inter, past which the eye loses
+the next line. Blocks whose content is wide take the whole sheet: tables
+and their charts, diagrams, math blocks, code, columns, link cards and
+embeds, Armature charts, roadmaps and issue lists, calendars and property
+reports. A picture takes its own width, no less than the measure so that
+a small one starts where the text does. 96rem stops there because a row
+longer than that is hard to follow from end to end.
+
+It is done once, in CSS, on the document's top level: every block of
+`.doc-content` keeps the measure unless its class, or its editor node's
+`node-<name>` class, is on the list of wide ones. So the reader, the
+editor, a version, a comparison and the public view lay out alike, and a
+block nobody listed stays at the measure rather than spilling out. The
+widths reach the CSS as custom properties from `pageSheet`, which is the
+only place they are read; outside a page nothing narrows. Blocks inside a
+panel, an expand, an excerpt or an include stay within that frame.
+
+Full width sets the measure to the whole sheet and lifts the maximum, so
+text widens too. A phone is narrower than the measure, so it is unchanged.
+
 ## 2026-10-06: A public link is the anonymous reader holding one page more
 
 A public link (#80) lets anybody read one published page without an
@@ -539,7 +564,8 @@ its page. Its focus is a point in percent of the picture, kept in view by
 a click on the picture or with the arrow keys.
 
 Full width takes the page's reading width limit off, in the reader and the
-editor alike, for tables and diagrams too wide for comfortable lines.
+editor alike, for text as well as wide blocks (see the entry of 2026-10-06
+on the measure).
 
 ## 2026-10-02: An include is read for each reader, and the chain it sits in catches cycles
 

@@ -10,10 +10,11 @@ import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Tag, Td, 
 import { Icon } from "@/components/icons";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocDiffView, DocView } from "@/features/editor/DocView";
-import { HISTORY_PAGE_SIZE, PAGE_WIDTH_CLASS } from "@/config";
+import { HISTORY_PAGE_SIZE } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { PageLink } from "./PageLink";
+import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { pageCrumbs } from "./PageScreen";
 
 /** Where in a page's history the reader is: the list, one version, or two sides compared. */
@@ -258,12 +259,15 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
 }
 
 function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number: number }) {
+  const sheet = pageSheet(page.appearance.width);
   const { data: version, isLoading, error, refetch } = useVersion(page.id, number);
   const restore = useRestore(page);
   const latest = number === page.version;
   return (
-    <article className={cx("mx-auto space-y-4", PAGE_WIDTH_CLASS)} data-page-version={number}>
+    <article className={cx(sheet.className, "space-y-4")} style={sheet.style} data-page-version={number}>
       <PageHeader
+        className={PAGE_SHEET_HEADER}
+        style={sheet.style}
         crumbs={historyCrumbs(space, page, true)}
         title={t.history.viewingTitle(version?.title ?? page.title, number)}
         meta={
@@ -313,12 +317,15 @@ function SideFacts({ label, side }: { label: string; side: CompareSide }) {
 }
 
 function CompareScreen({ page, space, from, to }: ScreenProps & { from?: CompareRef; to?: CompareRef }) {
+  const sheet = pageSheet(page.appearance.width);
   const { data: comparison, isLoading, error, refetch } = useComparison(page.id, from, to);
   const navigate = useNavigate();
   const same = comparison && comparison.from.title === comparison.to.title && comparison.blocks.every((block) => block.change === "equal");
   return (
-    <article className={cx("mx-auto space-y-4", PAGE_WIDTH_CLASS)} data-page-compare="">
+    <article className={cx(sheet.className, "space-y-4")} style={sheet.style} data-page-compare="">
       <PageHeader
+        className={PAGE_SHEET_HEADER}
+        style={sheet.style}
         crumbs={historyCrumbs(space, page, true)}
         title={t.history.compareTitle}
         actions={

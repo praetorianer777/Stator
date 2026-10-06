@@ -350,6 +350,71 @@
     line-height: var(--text-base--line-height);
     overflow-wrap: anywhere;
   }
+  /* A page's sheet: its text, title and sections keep a readable measure,
+   * centred, while the document's wide blocks take the sheet's whole width.
+   * pageSheet sets both; outside a page nothing narrows. A block is wide by
+   * its reader's class or its editor node's, so one list serves both. */
+  .page-sheet {
+    max-width: var(--page-max-width);
+    margin-inline: auto;
+  }
+  .page-sheet > :not(.page-cover, [data-passage-root], [data-doc], [data-editor-frame]),
+  .page-sheet-header,
+  .doc-content > * {
+    max-width: var(--page-measure, none);
+    margin-inline: auto;
+  }
+  .doc-content
+    > :is(
+      pre,
+      table,
+      .tableWrapper,
+      .doc-table-wrap,
+      .doc-table-chart,
+      .doc-diagram,
+      div.doc-math,
+      .doc-columns,
+      .doc-link-card,
+      .doc-chart,
+      .doc-calendar,
+      .doc-properties-report,
+      div[data-armature-issue-list],
+      .node-tableChart,
+      .node-diagram,
+      .node-mathBlock,
+      .node-linkCard,
+      .node-armatureChart,
+      .node-armatureRoadmap,
+      .node-armatureIssueList,
+      .node-calendar,
+      .node-propertiesReport
+    ),
+  .doc-content
+    > .doc-diff-block:has(
+      > :is(
+          pre,
+          .doc-table-wrap,
+          .doc-table-chart,
+          .doc-diagram,
+          div.doc-math,
+          .doc-columns,
+          .doc-link-card,
+          .doc-chart,
+          .doc-calendar,
+          .doc-properties-report,
+          div[data-armature-issue-list],
+          figure[data-image]
+        )
+    ) {
+    max-width: none;
+  }
+  /* A picture takes its own width, no less than the text's so that a small
+   * one starts where the text does, and no more than the sheet's. */
+  .doc-content > figure[data-image] {
+    width: fit-content;
+    min-width: min(100%, var(--page-measure, 100%));
+    max-width: none;
+  }
   .doc-content > * + *,
   .doc-content :is(li, blockquote, td, th, [data-panel], [data-column]) > * + * {
     margin-top: 0.5rem;
@@ -426,7 +491,7 @@
   .doc-content hr {
     border: 0;
     border-top: 1px solid var(--color-border);
-    margin: 1rem 0;
+    margin-block: 1rem;
   }
   .doc-content hr.ProseMirror-selectednode {
     border-top-color: var(--color-focus);
@@ -1186,7 +1251,7 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.375rem;
-    margin: 0.75rem 0;
+    margin-block: 0.75rem;
   }
   .doc-template-button-note {
     margin: 0;

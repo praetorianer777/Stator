@@ -792,9 +792,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- A page's standard width is 72rem rather than 48rem, in the reader, the
-  editor, the history and the public view, so a page uses more of a wide
-  window; Full width is unchanged (#287).
+- A page's text keeps a readable measure of 44rem, about 85 characters,
+  centred, while its wide blocks use the window up to 96rem: tables and
+  their charts, diagrams, math blocks, code, columns, link cards and
+  embeds, Armature charts, roadmaps and issue lists, calendars and
+  property reports; a picture takes its own width between the two. The
+  title, the header and the sections below the page keep to the measure.
+  The layout is the same in the reader, the editor, a version, a
+  comparison and the public view, and a phone is unchanged. Full width now
+  widens the text too (#287).
 
 - The CI gate may run 45 minutes rather than 30, since the suite had grown
   to fill the old limit, and a cancelled run now says it was stopped rather

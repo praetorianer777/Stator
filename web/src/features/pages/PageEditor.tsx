@@ -20,10 +20,11 @@ import { DocPageContext } from "@/features/editor/BlockViews";
 import { Editor } from "@/features/editor/Editor";
 import { emptyDoc, type Doc } from "@/features/editor/schema";
 import { fillSharedDraft, sharedBody } from "@/features/editor/sharedDraft";
-import { DRAFT_AUTOSAVE_MS, PAGE_TITLE_MAX_LENGTH, PAGE_WIDTH_CLASS } from "@/config";
+import { DRAFT_AUTOSAVE_MS, PAGE_TITLE_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { pageCrumbs } from "./PageScreen";
+import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { PublishDialog } from "./PublishDialog";
 
 /**
@@ -95,6 +96,7 @@ type SaveState = "idle" | "pending" | "saving" | "saved" | "error" | "untitled";
 
 function PageForm({ page, space, draft, together }: { page: Page; space: Space; draft: Draft | null; together: Together | null }) {
   const navigate = useNavigate();
+  const sheet = pageSheet(page.appearance.width);
   const queryClient = useQueryClient();
   const save = useSaveDraft(page.id);
   const discard = useDiscardDraft(page.id);
@@ -312,11 +314,14 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
     <form
       id={PAGE_FORM_ID}
       onSubmit={openPublish}
-      className={cx("mx-auto space-y-4", page.appearance.width === "full" ? "max-w-none" : PAGE_WIDTH_CLASS)}
+      className={cx(sheet.className, "space-y-4")}
+      style={sheet.style}
       data-page-editor={page.id}
       data-collab={together ? "together" : "alone"}
     >
       <PageHeader
+        className={PAGE_SHEET_HEADER}
+        style={sheet.style}
         crumbs={pageCrumbs(space, page)}
         title={t.page.editing(page.title)}
         meta={
