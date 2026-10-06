@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DocView } from "@/features/editor/DocView";
-import { PublicReadingContext, publicHref, publicPagePath } from "@/features/editor/publicReading";
+import { PUBLIC_LINK_SEGMENT } from "@/config";
+import { PublicLinkContext, PublicReadingContext, publicHref, publicLinkPath, publicPagePath } from "@/features/editor/publicReading";
+import { linkExpiry } from "@/features/sharing/PublicLinks";
+import { publicLinkRoute } from "@/routes/public";
 import type { Doc } from "@/features/editor/schema";
 import type { PublicPage } from "@/api/public";
 import { t } from "@/i18n";
@@ -82,5 +85,30 @@ describe("a document read without signing in", () => {
   it("says what a generated block lists rather than asking as a reader", () => {
     readAnonymously();
     expect(screen.getByText(t.contributors.title("page"))).toBeTruthy();
+  });
+
+  it("loads its files through the link it is read through, and links other pages to the public view", () => {
+    render(
+      <PublicReadingContext value="acme">
+        <PublicLinkContext value="t0k3n">
+          <DocView doc={doc} />
+        </PublicLinkContext>
+      </PublicReadingContext>,
+    );
+    expect(screen.getByRole("img", { name: "A map" }).getAttribute("src")).toBe(`/api/v1/public/acme/links/t0k3n/attachments/${FILE}?inline=1`);
+    expect(screen.getByRole("link", { name: "the guide" }).getAttribute("href")).toBe(`/public/acme/s/DOCS/p/${PAGE}/guide`);
+  });
+});
+
+describe("a public link", () => {
+  it("names the organization, then the token, as the route and the API do", () => {
+    expect(publicLinkPath("acme", "abc_DEF-123")).toBe("/public/acme/link/abc_DEF-123");
+    expect((publicLinkRoute.options as { path: string }).path).toBe(`/public/$org/${PUBLIC_LINK_SEGMENT}/$token`);
+  });
+
+  it("runs out the days asked for from now, or never", () => {
+    const now = new Date("2026-10-06T12:00:00Z");
+    expect(linkExpiry(7, now)).toBe("2026-10-13T12:00:00.000Z");
+    expect(linkExpiry(0, now)).toBeUndefined();
   });
 });

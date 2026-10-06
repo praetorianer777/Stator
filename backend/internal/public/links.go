@@ -31,9 +31,8 @@ const (
 // padding. Anything else is no token, and costs no query.
 var tokenShape = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 
-// ErrLinkGone answers a token nobody holds, one revoked or run out, one whose
-// page may no longer be opened, and an organization that allows no links,
-// alike: a reader cannot tell which, and needs a new link for any of them.
+// ErrLinkGone answers every link that opens nothing alike, whatever the
+// reason: a reader cannot tell which, and needs a new link for any of them.
 var ErrLinkGone = errors.New("this link does not open anything any more")
 
 // ErrLinkNotFound answers revoking a link the page does not have, or has no

@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { attachmentUrl } from "@/api/attachments";
-import { publicAttachmentUrl } from "@/api/public";
+import { linkedAttachmentUrl, publicAttachmentUrl } from "@/api/public";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { isMissing, useKnownAttachments } from "./attachmentIndex";
 import { ATTACHMENT_ID_PATTERN, imageAlt, imageWidth } from "./attachments";
-import { usePublicReading } from "./publicReading";
+import { usePublicLink, usePublicReading } from "./publicReading";
 import type { DocNode } from "./schema";
 
-/** Where a file downloads from, or shows in place: the public reads for somebody who is not signed in. */
+/** Where a file downloads from, or shows in place: the public reads, or the link's, for somebody who is not signed in. */
 function useFileUrl(): (id: string, inline?: boolean) => string {
   const org = usePublicReading();
+  const token = usePublicLink();
+  if (org && token) return (id, inline) => linkedAttachmentUrl(org, token, id, inline);
   return org ? (id, inline) => publicAttachmentUrl(org, id, inline) : attachmentUrl;
 }
 

@@ -17,8 +17,8 @@ import (
 // after the organization: /public/{org}/links/{token}.
 const linkPathInfix = "/links/"
 
-// redactPath keeps a public link's token out of the access log and the
-// traces, where a path is written whole; the token is the whole of the link.
+// redactPath, adapted from Armature's, keeps a public link's token out of the
+// access log and the traces, where a path is written whole.
 func redactPath(path string) string {
 	if !strings.HasPrefix(path, publicPathPrefix) {
 		return path
@@ -36,12 +36,12 @@ func redactPath(path string) string {
 	return head + "{token}"
 }
 
-// linkReader finds the organization a link's address names, while it allows
-// links, and reads as an anonymous reader holding the token from then on. A
-// token is a secret in the address, so no answer is kept by any cache or
-// sent on as a referrer.
+// linkReader reads as an anonymous reader holding the token, in the organization
+// the address names while it allows links.
 func (s *Server) linkReader(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The token is a secret in the address, so no answer is kept by any
+		// cache or sent on as a referrer, refusals included.
 		h := w.Header()
 		h.Set("Cache-Control", "no-store")
 		h.Set("Referrer-Policy", "no-referrer")

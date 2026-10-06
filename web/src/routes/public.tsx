@@ -1,5 +1,13 @@
 import { Outlet, createRoute } from "@tanstack/react-router";
-import { PublicPageLookup, PublicPageScreen, PublicShell, PublicSearchScreen, PublicSiteScreen, PublicSpaceScreen } from "@/features/public/PublicScreens";
+import {
+  PublicLinkScreen,
+  PublicPageLookup,
+  PublicPageScreen,
+  PublicShell,
+  PublicSearchScreen,
+  PublicSiteScreen,
+  PublicSpaceScreen,
+} from "@/features/public/PublicScreens";
 import { rootRoute } from "./root";
 
 /**
@@ -74,6 +82,19 @@ export const publicSearchRoute = createRoute({
     const { org } = publicSearchRoute.useParams();
     const { q = "", page = 1 } = publicSearchRoute.useSearch();
     return <PublicSearchScreen org={org} q={q} page={page} />;
+  },
+});
+
+/**
+ * The one page a public link opens, outside the public shell: it reads
+ * whether or not the organization opens any space to anybody.
+ */
+export const publicLinkRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/public/$org/link/$token",
+  component: function PublicLink() {
+    const { org, token } = publicLinkRoute.useParams();
+    return <PublicLinkScreen org={org} token={token} />;
   },
 });
 

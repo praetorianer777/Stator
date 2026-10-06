@@ -141,5 +141,9 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
   open while its person edits, not a call and an answer;
 - Armature's issues, which Armature's own MCP endpoint serves as the person;
 - the reading view for people who are not signed in (`/public/{orgSlug}`
-  and below) and the switches that open it: an assistant acts for a member,
-  for whom `get_page` and `search` read the same pages.
+  and below, a public link's page included) and the switches that open it:
+  an assistant acts for a member, for whom `get_page` and `search` read the
+  same pages;
+- a page's public links (`/pages/{pageID}/public-links`), which open the
+  page to anybody outside the organization: a decision its editors make in
+  the share dialog, and a token shown once, to a person.
