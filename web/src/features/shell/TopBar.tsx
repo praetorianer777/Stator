@@ -92,6 +92,12 @@ export function TopBar({
       attrs: { "data-action": "org-hub" },
     });
     items.push({
+      label: t.account.exampleSpace,
+      icon: <Icon.Seal />,
+      onSelect: () => navigate({ to: "/settings/example-space" }),
+      attrs: { "data-action": "example-space-settings" },
+    });
+    items.push({
       label: t.account.armature,
       icon: <Icon.Link />,
       onSelect: () => navigate({ to: "/settings/armature" }),

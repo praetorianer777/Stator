@@ -88,6 +88,7 @@ export const en = {
   },
   account: {
     hub: "Hub page",
+    exampleSpace: "Example space",
     menu: "Your account",
     guest: "Guest",
     profile: "Your profile",
@@ -768,6 +769,16 @@ export const en = {
     unstar: (what: string) => `Unstar ${what}`,
     unstarred: (what: string) => `${what} is no longer starred.`,
     loadFailed: "This list could not be loaded. Try again in a moment.",
+  },
+  exampleSpace: {
+    title: "Example space",
+    create: "Create the example space",
+    creating: "Creating the example space",
+    intro:
+      "A space whose pages explain Stator to your team, with an example of every block a page can hold. It is written in the language you read Stator in now. Everybody in the organization may read it and comment on it.",
+    exists: "The example space exists already:",
+    archived: "It is archived. Take it out of the archive in its space settings to change it again.",
+    notAdmin: "Only administrators of the organization create the example space. Ask one of them to create it.",
   },
   spaces: {
     title: "Spaces",
@@ -2504,6 +2515,7 @@ export const en = {
       "org.public_links_set": "Public links allowed or stopped",
       "space.permissions_copied": "Space permissions copied from another space",
       "page.mode_changed": "Page switched between drafts and live",
+      "space.example_created": "Example space created",
     } satisfies Record<AuditAction, string>,
     targetTypes: {
       user: "Person",

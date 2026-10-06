@@ -75,6 +75,8 @@ func Decide(f Facts, action Action) bool {
 		// A space of one's own is outside every space a limited token or a
 		// guest reaches.
 		return f.HoldsGlobal(UseStator) && !f.SpacesOnly
+	case CreateExampleSpace:
+		return f.OrgAdmin()
 	case ViewSpace:
 		return f.HoldsSpace(SpaceView)
 	case EditPages, EditCalendars:

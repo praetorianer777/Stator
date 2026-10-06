@@ -3,6 +3,56 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-06: The example space is made through the services, from Markdown per language
+
+The example space (#288) is a space whose pages explain Stator, made by an
+administrator of the organization with one click (`POST /example-space`,
+from the spaces overview and from **Example space** in the account menu).
+Unlike a space template it is not written straight into `page` and
+`page_version` in one transaction: its showcase has to show every block,
+and a checklist, a mention, a file or a calendar is only what it claims to
+be when the services that settle tasks, tell the mentioned, store files
+and keep calendars made it. So the example is made the way a person would
+make it, through `space`, `page`, `attachment`, `calendar`, `label`,
+`comment` and `reaction`, as its maker, and every rule and policy holds
+as for them. What fails part way deletes the space again, with its files;
+while it is being made, for a few seconds, its pages are unpublished, as a
+Markdown import's are, so nobody reads half of it.
+
+The pages are Markdown files per language, `backend/internal/example/content/{en,de}`,
+read by the Markdown import (`internal/markdown`), so they are written and
+reviewed as text and translated file by file. What Markdown cannot say is a
+marker paragraph, `%%calendar%%`, `%%columns%%` ... `%%end%%`, which the
+package turns into the block with the space's own ids; fenced `mermaid` and
+`math` are a diagram and a formula, and `` `$x$` `` an inline formula.
+`text/template` fills in what the site knows: the maker, today's dates,
+whether files can be kept, and the Armature project and issue the maker
+sees first. Where the site cannot provide something, files without storage
+or Armature without a connection, the page says so in a sentence instead.
+Unit tests render every file in both languages, hold each to the
+allowlist, demand the same shape in both, and fail when an allowlisted node
+or mark is missing from the showcase; only the hint and the inline comment's
+passage are excused, being neither inserted by a person nor kept in a
+published version. The language is the one the browser asks for, the
+interface's own, else the person's stored one, else English.
+
+The space is an ordinary space marked `space.example`, one per
+organization (`space_one_example`). Its key is `STATOR`, or `STATOR2` to
+`STATOR9` when another space holds it; the mark, not the key, is what a
+second click finds, and then it answers 200 with the space and
+`created: false`, archived or not, so the interface says where it is. A
+deleted example is gone, and the next click makes a new one. Its creator
+administers it, as every creator does, and everyone in the organization may
+view it and comment, so comments and reactions can be tried while the
+guides stay as written; administrators widen that in its permissions as
+anywhere. Only administrators of the organization make it or ask for it
+(`perm.CreateExampleSpace`), and the database holds them to it: the app
+role may insert a space marked as the example only for an administrator
+with a token for the whole organization, nobody may mark or unmark a space
+after it is made, and a second example is refused by the index. Making it
+is audited once as `space.example_created`, with the language, in place of
+`space.created`. It is not an MCP tool, as no space administration is.
+
 ## 2026-10-06: A blog post is a page outside the tree, dated by its first publish
 
 Blog posts (#72) are rows of `page` of the kind `post`, as a folder is a

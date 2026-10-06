@@ -23,6 +23,9 @@ const (
 	CreateSpace Action = "space.create"
 	// CreatePersonalSpace makes the actor's own space, which only they see.
 	CreatePersonalSpace Action = "space.createPersonal"
+	// CreateExampleSpace makes the space that explains Stator, which only the
+	// organization's administrators do.
+	CreateExampleSpace Action = "space.createExample"
 	// ViewSpace reads a space and its pages.
 	ViewSpace Action = "space.view"
 	// AdministerSpace changes a space's details and its permissions.
@@ -97,6 +100,8 @@ func (e *DeniedError) Error() string {
 		return "You may not create spaces. Ask an administrator of the organization to let you, or to make the space for you."
 	case CreatePersonalSpace:
 		return "You may not create a personal space, since you may not use Stator in this organization. Ask an administrator of the organization for access."
+	case CreateExampleSpace:
+		return "Only an administrator of the organization can create the example space. Ask one of them to create it."
 	case AdministerSpace:
 		return "Only an administrator of this space can change its details and permissions. Ask one of them."
 	case DeleteSpace:

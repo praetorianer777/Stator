@@ -1588,7 +1588,8 @@
                 "page.public_link_revoked",
                 "org.public_links_set",
                 "space.permissions_copied",
-                "page.mode_changed"
+                "page.mode_changed",
+                "space.example_created"
               ]
             }
           },
@@ -1757,7 +1758,8 @@
                 "page.public_link_revoked",
                 "org.public_links_set",
                 "space.permissions_copied",
-                "page.mode_changed"
+                "page.mode_changed",
+                "space.example_created"
               ]
             }
           },
@@ -2947,6 +2949,111 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/example-space": {
+      "get": {
+        "operationId": "getExampleSpace",
+        "summary": "The organization's example space, the one whose pages explain Stator, or null while there is none. For administrators.",
+        "tags": [
+          "spaces"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "space": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Space"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "space"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createExampleSpace",
+        "summary": "Make the example space, whose pages explain Stator, in the language asked for, else the caller's own; 200 with created false when the organization has it already. For administrators.",
+        "tags": [
+          "spaces"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExampleSpaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleSpaceResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleSpaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "application/json": {
                 "schema": {
@@ -14388,7 +14495,8 @@
               "page.public_link_revoked",
               "org.public_links_set",
               "space.permissions_copied",
-              "page.mode_changed"
+              "page.mode_changed",
+              "space.example_created"
             ]
           },
           "actorId": {
@@ -14495,7 +14603,8 @@
                 "page.public_link_revoked",
                 "org.public_links_set",
                 "space.permissions_copied",
-                "page.mode_changed"
+                "page.mode_changed",
+                "space.example_created"
               ]
             }
           },
@@ -15917,6 +16026,29 @@
           "name",
           "description",
           "spec"
+        ]
+      },
+      "ExampleSpaceRequest": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          }
+        }
+      },
+      "ExampleSpaceResponse": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "boolean"
+          },
+          "space": {
+            "$ref": "#/components/schemas/Space"
+          }
+        },
+        "required": [
+          "space",
+          "created"
         ]
       },
       "Excerpt": {
