@@ -178,6 +178,16 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 			t.Errorf("the public file = %d %q", resp.StatusCode, body)
 		}
 		want(t, anon.get(t, publicPath(slug, "/attachments/", hidden)), http.StatusNotFound, "a file of a shut page")
+		resp, body = anon.downloadRange(t, publicPath(slug, "/attachments/", file), "bytes=5-8", "")
+		if resp.StatusCode != http.StatusPartialContent || string(body) != "both" || !strings.HasPrefix(resp.Header.Get("Cache-Control"), "public") {
+			t.Errorf("a stretch of the public file = %d %q, caching %q", resp.StatusCode, body, resp.Header.Get("Cache-Control"))
+		}
+		if resp, _ := anon.downloadRange(t, publicPath(slug, "/attachments/", file), "bytes=500-", ""); resp.StatusCode != http.StatusRequestedRangeNotSatisfiable {
+			t.Errorf("a stretch past the public file's end = %d", resp.StatusCode)
+		}
+		if resp, _ := anon.downloadRange(t, publicPath(slug, "/attachments/", hidden), "bytes=0-1", ""); resp.StatusCode != http.StatusNotFound {
+			t.Errorf("a stretch of a file of a shut page = %d", resp.StatusCode)
+		}
 	})
 
 	t.Run("search finds public pages by their words, never by a name", func(t *testing.T) {

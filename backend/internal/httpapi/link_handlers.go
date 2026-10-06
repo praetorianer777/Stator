@@ -2,10 +2,7 @@ package httpapi
 
 import (
 	"context"
-	"io"
-	"mime"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -84,23 +81,13 @@ func (s *Server) handleLinkedAttachment(w http.ResponseWriter, r *http.Request) 
 		respondError(w, r, apiErr)
 		return
 	}
-	found, body, err := s.Attachments.OpenLinked(r.Context(), id)
+	found, err := s.Attachments.LocateLinked(r.Context(), id)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	defer body.Close()
-	disposition := "attachment"
-	if r.URL.Query().Get("inline") == "1" && isSafeInline(found.ContentType) {
-		disposition = "inline"
-	}
-	h := w.Header()
-	h.Set("Content-Type", found.ContentType)
-	h.Set("Content-Length", strconv.FormatInt(found.Size, 10))
-	h.Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": found.FileName}))
-	h.Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, body)
+	// The link's middleware has said no-store already.
+	serveFile(w, r, found, "")
 }
 
 // A page's links, for whoever may edit it, and the organization's switch.

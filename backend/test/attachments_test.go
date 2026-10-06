@@ -288,6 +288,108 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 	})
 }
 
+// downloadRange asks for a stretch of a file, as a video player seeking does.
+func (c *client) downloadRange(t *testing.T, path, wanted, ifRange string) (*http.Response, []byte) {
+	t.Helper()
+	req, _ := http.NewRequest(http.MethodGet, c.api.srv.URL+path, nil)
+	req.Header.Set("Range", wanted)
+	if ifRange != "" {
+		req.Header.Set("If-Range", ifRange)
+	}
+	c.api.handOver(t, c, req.Method)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
+	return resp, data
+}
+
+// clipBytes stands in for a video: the server never reads what is inside.
+var clipBytes = []byte("0123456789abcdefghijklmnopqrstuvwxyz")
+
+func TestAVideoPlaysInPlaceAndSeeksByRanges(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "video")
+	slug := h.slugOf(t, home.org)
+	owner := api.as(t, home.user, home.org, slug)
+	away := h.makeMember(t, "video-away")
+	stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+	nobody := api.anonymous()
+
+	docs := newTree(t, owner, "CLIPS", "Clips")
+	pageID := docs.add(docs.homeID, "Walkthrough")
+	made := obj(t, want(t, owner.uploadAs(t, "/api/v1/pages/"+pageID+"/attachments", "tour.mp4", "video/mp4", clipBytes), http.StatusCreated, "upload a video"), "attachment")
+	id := made["id"].(string)
+	path := "/api/v1/attachments/" + id + "?inline=1"
+	size := len(clipBytes)
+
+	t.Run("it shows in place, says it takes ranges and names its bytes", func(t *testing.T) {
+		resp, data := owner.download(t, path)
+		if resp.StatusCode != http.StatusOK || !bytes.Equal(data, clipBytes) {
+			t.Fatalf("the whole video: %d, %d bytes", resp.StatusCode, len(data))
+		}
+		for header, value := range map[string]string{
+			"Content-Type":        "video/mp4",
+			"Content-Disposition": "inline; filename=tour.mp4",
+			"Accept-Ranges":       "bytes",
+			"ETag":                `"` + id + `"`,
+			"Content-Length":      fmt.Sprint(size),
+		} {
+			if got := resp.Header.Get(header); got != value {
+				t.Errorf("%s is %q, want %q", header, got, value)
+			}
+		}
+	})
+
+	t.Run("a range answers that stretch from the bucket", func(t *testing.T) {
+		for wanted, stretch := range map[string][2]int{"bytes=2-5": {2, 5}, "bytes=30-": {30, size - 1}, "bytes=-4": {size - 4, size - 1}, "bytes=10-999": {10, size - 1}} {
+			resp, data := owner.downloadRange(t, path, wanted, "")
+			from, to := stretch[0], stretch[1]
+			if resp.StatusCode != http.StatusPartialContent || !bytes.Equal(data, clipBytes[from:to+1]) {
+				t.Errorf("%s: %d %q", wanted, resp.StatusCode, data)
+				continue
+			}
+			if got, want := resp.Header.Get("Content-Range"), fmt.Sprintf("bytes %d-%d/%d", from, to, size); got != want {
+				t.Errorf("%s: Content-Range %q, want %q", wanted, got, want)
+			}
+			if got := resp.Header.Get("Content-Length"); got != fmt.Sprint(to-from+1) {
+				t.Errorf("%s: Content-Length %q", wanted, got)
+			}
+		}
+	})
+
+	t.Run("a range past the end is refused in a sentence, a stale one gets everything", func(t *testing.T) {
+		resp, data := owner.downloadRange(t, path, fmt.Sprintf("bytes=%d-", size), "")
+		if resp.StatusCode != http.StatusRequestedRangeNotSatisfiable || resp.Header.Get("Content-Range") != fmt.Sprintf("bytes */%d", size) ||
+			!strings.Contains(string(data), "range_not_satisfiable") || !strings.Contains(string(data), "Ask for a range inside it") {
+			t.Errorf("past the end: %d %q %s", resp.StatusCode, resp.Header.Get("Content-Range"), data)
+		}
+		resp, data = owner.downloadRange(t, path, "bytes=0-3", `"another file"`)
+		if resp.StatusCode != http.StatusOK || !bytes.Equal(data, clipBytes) {
+			t.Errorf("a range for other bytes: %d, %d bytes", resp.StatusCode, len(data))
+		}
+		resp, data = owner.downloadRange(t, path, "bytes=0-1,4-5", "")
+		if resp.StatusCode != http.StatusOK || !bytes.Equal(data, clipBytes) {
+			t.Errorf("two ranges: %d, %d bytes", resp.StatusCode, len(data))
+		}
+	})
+
+	t.Run("a range opens nothing the reader could not download", func(t *testing.T) {
+		if resp, data := stranger.downloadRange(t, path, "bytes=0-3", ""); resp.StatusCode != http.StatusNotFound || bytes.Contains(data, clipBytes[:4]) {
+			t.Errorf("from another organization: %d %q", resp.StatusCode, data)
+		}
+		if resp, _ := nobody.downloadRange(t, path, "bytes=0-3", ""); resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("without a session: %d", resp.StatusCode)
+		}
+		if resp, _ := nobody.downloadRange(t, publicPath(slug, "/attachments/", id), "bytes=0-3", ""); resp.StatusCode != http.StatusNotFound {
+			t.Errorf("through the public reads of a closed space: %d", resp.StatusCode)
+		}
+	})
+}
+
 // publishOver makes body the page's next version behind the policies' back,
 // for documents the editor's nodes are not yet allowed to carry.
 func (h *harness) publishOver(t *testing.T, pageID, body string) {

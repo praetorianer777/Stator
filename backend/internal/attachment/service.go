@@ -197,8 +197,47 @@ func (s *Service) Upload(ctx context.Context, actor perm.Actor, pageID uuid.UUID
 	return created, lsn, nil
 }
 
+// Located is a file its reader may read, found but not fetched yet, so the
+// caller can fetch all of it or the stretch a player asked for.
+type Located struct {
+	Attachment
+	key   string
+	store objectstore.Store
+}
+
+// Bytes fetches the whole file. The caller closes the reader.
+func (l *Located) Bytes(ctx context.Context) (io.ReadCloser, error) {
+	return l.store.Get(ctx, l.key)
+}
+
+// Range fetches length bytes from offset on, which must lie inside the file.
+func (l *Located) Range(ctx context.Context, offset, length int64) (io.ReadCloser, error) {
+	if offset < 0 || length <= 0 || offset+length > l.Size {
+		return nil, fmt.Errorf("bytes %d to %d lie outside the file's %d", offset, offset+length, l.Size)
+	}
+	return l.store.GetRange(ctx, l.key, offset, length)
+}
+
+func (s *Service) located(found *stored) *Located {
+	s.describe(&found.Attachment)
+	return &Located{Attachment: found.Attachment, key: found.objectKey, store: s.store}
+}
+
 // Open reads a file and its bytes. The caller closes the reader.
 func (s *Service) Open(ctx context.Context, actor perm.Actor, id uuid.UUID) (*Attachment, io.ReadCloser, error) {
+	found, err := s.Locate(ctx, actor, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	body, err := found.Bytes(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &found.Attachment, body, nil
+}
+
+// Locate finds a file the actor may read, on a page they may view.
+func (s *Service) Locate(ctx context.Context, actor perm.Actor, id uuid.UUID) (*Located, error) {
 	var found *stored
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
@@ -206,21 +245,16 @@ func (s *Service) Open(ctx context.Context, actor perm.Actor, id uuid.UUID) (*At
 		return err
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	body, err := s.store.Get(ctx, found.objectKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	s.describe(&found.Attachment)
-	return &found.Attachment, body, nil
+	return s.located(found), nil
 }
 
-// OpenAnonymous reads a file for somebody who is not signed in: one on a
-// published page anybody may read, else none. The caller closes the reader.
-func (s *Service) OpenAnonymous(ctx context.Context, id uuid.UUID) (*Attachment, io.ReadCloser, error) {
+// LocateAnonymous finds a file for somebody who is not signed in: one on a
+// published page anybody may read, else none.
+func (s *Service) LocateAnonymous(ctx context.Context, id uuid.UUID) (*Located, error) {
 	if !db.AnonymousFrom(ctx) {
-		return nil, nil, errors.New("a public file is read as an anonymous reader")
+		return nil, errors.New("a public file is read as an anonymous reader")
 	}
 	var found *stored
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -231,21 +265,16 @@ func (s *Service) OpenAnonymous(ctx context.Context, id uuid.UUID) (*Attachment,
 		return err
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	body, err := s.store.Get(ctx, found.objectKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	s.describe(&found.Attachment)
-	return &found.Attachment, body, nil
+	return s.located(found), nil
 }
 
-// OpenLinked reads a file for a reader holding a public link: one of the page
-// the link opens, else none, whatever else is open. The caller closes the reader.
-func (s *Service) OpenLinked(ctx context.Context, id uuid.UUID) (*Attachment, io.ReadCloser, error) {
+// LocateLinked finds a file for a reader holding a public link: one of the
+// page the link opens, else none, whatever else is open.
+func (s *Service) LocateLinked(ctx context.Context, id uuid.UUID) (*Located, error) {
 	if !db.LinkFrom(ctx) {
-		return nil, nil, errors.New("a file is read through a link by a reader holding one")
+		return nil, errors.New("a file is read through a link by a reader holding one")
 	}
 	var found *stored
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -256,14 +285,9 @@ func (s *Service) OpenLinked(ctx context.Context, id uuid.UUID) (*Attachment, io
 		return err
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	body, err := s.store.Get(ctx, found.objectKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	s.describe(&found.Attachment)
-	return &found.Attachment, body, nil
+	return s.located(found), nil
 }
 
 // Delete removes a file for good. The row goes in the transaction, which

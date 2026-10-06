@@ -272,7 +272,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The bytes of a file, as a download. */
+        /** The bytes of a file, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416. */
         get: operations["downloadAttachment"];
         put?: never;
         post?: never;
@@ -1922,7 +1922,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The bytes of a file on a page anybody may read, as a download. */
+        /** The bytes of a file on a page anybody may read, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416. */
         get: operations["publicAttachment"];
         put?: never;
         post?: never;
@@ -1956,7 +1956,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached. */
+        /** The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416. */
         get: operations["linkedAttachment"];
         put?: never;
         post?: never;
@@ -5904,7 +5904,7 @@ export interface operations {
     downloadAttachment: {
         parameters: {
             query?: {
-                /** @description 1 to show images, PDFs and text in place. */
+                /** @description 1 to show images, videos, PDFs and text in place. */
                 inline?: string;
             };
             header?: never;
@@ -5922,6 +5922,24 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+            /** @description Partial Content */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Requested Range Not Satisfiable */
+            416: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -10738,7 +10756,7 @@ export interface operations {
     publicAttachment: {
         parameters: {
             query?: {
-                /** @description 1 to show images, PDFs and text in place. */
+                /** @description 1 to show images, videos, PDFs and text in place. */
                 inline?: string;
             };
             header?: never;
@@ -10759,8 +10777,26 @@ export interface operations {
                     "*/*": string;
                 };
             };
+            /** @description Partial Content */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested Range Not Satisfiable */
+            416: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10826,7 +10862,7 @@ export interface operations {
     linkedAttachment: {
         parameters: {
             query?: {
-                /** @description 1 to show images, PDFs and text in place. */
+                /** @description 1 to show images, videos, PDFs and text in place. */
                 inline?: string;
             };
             header?: never;
@@ -10848,8 +10884,26 @@ export interface operations {
                     "*/*": string;
                 };
             };
+            /** @description Partial Content */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested Range Not Satisfiable */
+            416: {
                 headers: {
                     [name: string]: unknown;
                 };

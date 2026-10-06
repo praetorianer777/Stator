@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"path"
 	"sort"
@@ -21,6 +22,9 @@ import (
 type Store interface {
 	Put(ctx context.Context, key string, body io.Reader, size int64, contentType string) error
 	Get(ctx context.Context, key string) (io.ReadCloser, error)
+	// GetRange reads length bytes of an object from offset on, which the
+	// caller has checked lie inside it.
+	GetRange(ctx context.Context, key string, offset, length int64) (io.ReadCloser, error)
 	Delete(ctx context.Context, key string) error
 	// List names every object whose key starts with prefix.
 	List(ctx context.Context, prefix string) ([]string, error)
@@ -117,6 +121,19 @@ func (m *Memory) Get(_ context.Context, key string) (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
+func (m *Memory) GetRange(_ context.Context, key string, offset, length int64) (io.ReadCloser, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	data, ok := m.objects[key]
+	if !ok {
+		return nil, ErrNoObject
+	}
+	if offset < 0 || length < 0 || offset+length > int64(len(data)) {
+		return nil, fmt.Errorf("fetch object: bytes %d to %d lie outside its %d", offset, offset+length, len(data))
+	}
+	return io.NopCloser(bytes.NewReader(data[offset : offset+length])), nil
+}
+
 func (m *Memory) Delete(_ context.Context, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -152,8 +169,11 @@ func (Unavailable) Put(context.Context, string, io.Reader, int64, string) error 
 	return ErrUnavailable
 }
 func (Unavailable) Get(context.Context, string) (io.ReadCloser, error) { return nil, ErrUnavailable }
-func (Unavailable) Delete(context.Context, string) error               { return ErrUnavailable }
-func (Unavailable) List(context.Context, string) ([]string, error)     { return nil, ErrUnavailable }
+func (Unavailable) GetRange(context.Context, string, int64, int64) (io.ReadCloser, error) {
+	return nil, ErrUnavailable
+}
+func (Unavailable) Delete(context.Context, string) error           { return ErrUnavailable }
+func (Unavailable) List(context.Context, string) ([]string, error) { return nil, ErrUnavailable }
 
 // MaxNameLength keeps a file name short enough for a header and a listing.
 const MaxNameLength = 200

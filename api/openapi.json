@@ -1393,7 +1393,7 @@
       },
       "get": {
         "operationId": "downloadAttachment",
-        "summary": "The bytes of a file, as a download.",
+        "summary": "The bytes of a file, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.",
         "tags": [
           "attachments"
         ],
@@ -1410,7 +1410,7 @@
           {
             "name": "inline",
             "in": "query",
-            "description": "1 to show images, PDFs and text in place.",
+            "description": "1 to show images, videos, PDFs and text in place.",
             "schema": {
               "type": "string"
             }
@@ -1424,6 +1424,27 @@
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial Content",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Requested Range Not Satisfiable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -8785,7 +8806,7 @@
     "/public/{orgSlug}/attachments/{attachmentID}": {
       "get": {
         "operationId": "publicAttachment",
-        "summary": "The bytes of a file on a page anybody may read, as a download.",
+        "summary": "The bytes of a file on a page anybody may read, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.",
         "tags": [
           "public"
         ],
@@ -8810,7 +8831,7 @@
           {
             "name": "inline",
             "in": "query",
-            "description": "1 to show images, PDFs and text in place.",
+            "description": "1 to show images, videos, PDFs and text in place.",
             "schema": {
               "type": "string"
             }
@@ -8828,8 +8849,29 @@
               }
             }
           },
+          "206": {
+            "description": "Partial Content",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Requested Range Not Satisfiable",
             "content": {
               "application/json": {
                 "schema": {
@@ -8925,7 +8967,7 @@
     "/public/{orgSlug}/links/{token}/attachments/{attachmentID}": {
       "get": {
         "operationId": "linkedAttachment",
-        "summary": "The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached.",
+        "summary": "The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.",
         "tags": [
           "public"
         ],
@@ -8958,7 +9000,7 @@
           {
             "name": "inline",
             "in": "query",
-            "description": "1 to show images, PDFs and text in place.",
+            "description": "1 to show images, videos, PDFs and text in place.",
             "schema": {
               "type": "string"
             }
@@ -8976,8 +9018,29 @@
               }
             }
           },
+          "206": {
+            "description": "Partial Content",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Requested Range Not Satisfiable",
             "content": {
               "application/json": {
                 "schema": {

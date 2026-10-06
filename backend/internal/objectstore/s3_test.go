@@ -2,6 +2,7 @@ package objectstore
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -49,6 +50,8 @@ type fakeS3 struct {
 	bucket  string
 	objects map[string][]byte
 	seen    []string
+	// ignoreRanges answers every read whole, as some stores do.
+	ignoreRanges bool
 }
 
 func (f *fakeS3) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +89,20 @@ func (f *fakeS3) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		data, ok := f.objects[key]
 		if !ok {
 			http.Error(w, "<Error><Code>NoSuchKey</Code><Message>gone</Message></Error>", http.StatusNotFound)
+			return
+		}
+		if want := r.Header.Get("Range"); want != "" && !f.ignoreRanges {
+			if !strings.Contains(r.Header.Get("Authorization"), "range;") {
+				http.Error(w, "<Error><Code>AccessDenied</Code><Message>range unsigned</Message></Error>", http.StatusForbidden)
+				return
+			}
+			var from, to int
+			if _, err := fmt.Sscanf(want, "bytes=%d-%d", &from, &to); err != nil || to >= len(data) {
+				w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+				return
+			}
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write(data[from : to+1])
 			return
 		}
 		_, _ = w.Write(data)
@@ -217,5 +234,52 @@ func TestEndpointForms(t *testing.T) {
 	}
 	if _, err := NewS3(Config{Endpoint: "seaweedfs:8333"}); err == nil {
 		t.Error("a missing bucket should be refused")
+	}
+}
+
+func TestARangeIsAskedOfTheBucketAndCutWhenItIgnoresIt(t *testing.T) {
+	for _, ignore := range []bool{false, true} {
+		fake := &fakeS3{bucket: "att", ignoreRanges: ignore}
+		server := httptest.NewServer(fake)
+		store, err := NewS3(Config{Endpoint: server.URL, Bucket: "att", AccessKey: "k", SecretKey: "s"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx := context.Background()
+		if err := store.EnsureBucket(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := store.Put(ctx, "clip.mp4", strings.NewReader("0123456789"), 10, "video/mp4"); err != nil {
+			t.Fatal(err)
+		}
+		body, err := store.GetRange(ctx, "clip.mp4", 3, 4)
+		if err != nil {
+			t.Fatalf("ignoring ranges %v: %v", ignore, err)
+		}
+		data, _ := io.ReadAll(body)
+		body.Close()
+		if string(data) != "3456" {
+			t.Errorf("ignoring ranges %v: got %q, want 3456", ignore, data)
+		}
+		if _, err := store.GetRange(ctx, "gone.mp4", 0, 1); err != ErrNoObject {
+			t.Errorf("a missing object: %v", err)
+		}
+		server.Close()
+	}
+}
+
+func TestTheMemoryStoreReadsARangeAndRefusesOneOutside(t *testing.T) {
+	m := NewMemory()
+	ctx := context.Background()
+	_ = m.Put(ctx, "k", strings.NewReader("abcdef"), 6, "text/plain")
+	body, err := m.GetRange(ctx, "k", 2, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data, _ := io.ReadAll(body); string(data) != "cde" {
+		t.Fatalf("got %q", data)
+	}
+	if _, err := m.GetRange(ctx, "k", 4, 3); err == nil {
+		t.Fatal("a range past the end was read")
 	}
 }
