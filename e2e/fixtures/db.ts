@@ -142,6 +142,17 @@ export async function lapseVerification(pageId: string): Promise<void> {
 }
 
 /**
+ * Brings a page's scheduled publish due now, as if its time came; the
+ * stack's worker looks every second and publishes it.
+ */
+export async function bringScheduleDue(pageId: string): Promise<void> {
+  await withDatabase(async (db) => {
+    const { rowCount } = await db.query("UPDATE page_schedule SET publish_at = now() WHERE page_id = $1", [pageId]);
+    if (rowCount !== 1) throw new Error(`The page ${pageId} has no scheduled publish to bring due.`);
+  });
+}
+
+/**
  * Says a page was last published days ago and nobody opened it since. The
  * database stamps every publish with the moment it happens, so its triggers are held off.
  */
