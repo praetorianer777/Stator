@@ -139,4 +139,7 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
   drafts);
 - the shared draft of a page edited together, a WebSocket a browser holds
   open while its person edits, not a call and an answer;
-- Armature's issues, which Armature's own MCP endpoint serves as the person.
+- Armature's issues, which Armature's own MCP endpoint serves as the person;
+- the reading view for people who are not signed in (`/public/{orgSlug}`
+  and below) and the switches that open it: an assistant acts for a member,
+  for whom `get_page` and `search` read the same pages.

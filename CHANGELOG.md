@@ -757,6 +757,21 @@ and the versioning [Semantic Versioning](https://semver.org/).
   removals go to the audit log, and deleting the space takes its guests
   with it. An assistant acting for a guest is offered only what the guest
   may do.
+- Reading without signing in (#79). An administrator of the organization
+  lets anybody read the spaces that allow it (`PUT /org/anonymous-access`,
+  under Settings, Permissions), and a space's administrators allow it in
+  the space's permissions tab (`PUT /spaces/{key}/anonymous-access`); a
+  personal space never does. Anybody then reads the published pages of
+  those spaces at `/public/{org}`, with their files and a search, in a
+  reading view with a header and a way to sign in and nothing else of the
+  app. A restricted page, a draft and everything of other spaces is not
+  found, and a link to it leads to signing in. Nobody is named: no authors,
+  comments, reactions, readers, watchers, contributors, assignees or
+  history, and a mention reads as someone, in the API's answers as on the
+  page. The database holds an anonymous reader to reading those spaces,
+  pages and files and to writing nothing. Search engines are asked to stay
+  away unless the organization lets them in, and both switches go to the
+  audit log.
 
 ### Changed
 
