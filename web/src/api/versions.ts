@@ -105,6 +105,60 @@ export function usePublish(pageId: string) {
   });
 }
 
+/** How a page is edited: published from drafts, or saved live as it is typed. */
+export type PageMode = Wire["Page"]["mode"];
+export type LiveSaved = Wire["PageLiveSaved"];
+export type ModeChange = Wire["PageModeChange"];
+
+export interface LiveInput {
+  title: string;
+  body: Doc;
+  /** The shared draft saved from; absent when editing alone. */
+  room?: string;
+}
+
+/** Saves a live page as the editor holds it; readers see it at once. */
+export function useSaveLive(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: LiveInput): Promise<LiveSaved> =>
+      (await api.PUT("/pages/{pageID}/live", { params: { path: { pageID: pageId } }, body: input })).data!,
+    onSuccess: (saved, input) => {
+      let retitled = false;
+      queryClient.setQueryData<PageInSpace>(pageQueryKey(pageId), (current) => {
+        if (!current) return current;
+        retitled = current.page.title !== saved.version.title || current.page.unpublished;
+        return {
+          ...current,
+          page: { ...current.page, title: saved.version.title, body: input.body, version: saved.version.number, unpublished: false },
+        };
+      });
+      // Every save changes the history and who contributed; the tree and the
+      // space only hear of a new title or a first version.
+      const asked = [
+        queryClient.invalidateQueries({ queryKey: versionsQueryKey(pageId) }),
+        queryClient.invalidateQueries({ queryKey: [...pageQueryKey(pageId), "compare"] }),
+        queryClient.invalidateQueries({ queryKey: contributorsQueryKey }),
+      ];
+      if (retitled) asked.push(queryClient.invalidateQueries({ queryKey: treeQueryKey }));
+      return Promise.all(asked);
+    },
+  });
+}
+
+/** Chooses between drafts and live; making a page live may first ask to throw drafts away. */
+export function useSetPageMode(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { mode: PageMode; discardDrafts?: boolean }): Promise<ModeChange> =>
+      (await api.PUT("/pages/{pageID}/mode", { params: { path: { pageID: pageId } }, body: input })).data!,
+    onSuccess: () => {
+      queryClient.setQueryData(draftQueryKey(pageId), null);
+      return queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) });
+    },
+  });
+}
+
 export function useVersions(pageId: string, offset: number) {
   return useQuery({
     queryKey: [...versionsQueryKey(pageId), "list", offset],

@@ -31,7 +31,7 @@ func NewService(cluster *db.Cluster) *Service {
 const selectPages = `
 SELECT p.id, p.space_id, s.key, p.parent_id, p.title, p.kind, p.body, p.version, p.parent_id IS NULL,
        COALESCE(cu.name, ''), p.created_at, COALESCE(uu.name, ''), p.updated_at,
-       p.icon, p.width, p.cover_attachment_id, p.cover_focus_x, p.cover_focus_y
+       p.icon, p.width, p.cover_attachment_id, p.cover_focus_x, p.cover_focus_y, p.mode
 FROM page p
 JOIN space s ON s.id = p.space_id
 LEFT JOIN app_user cu ON cu.id = p.created_by
@@ -45,7 +45,7 @@ func scan(row pgx.Row) (*Page, error) {
 	)
 	err := row.Scan(&p.ID, &p.SpaceID, &p.SpaceKey, &p.ParentID, &p.Title, &p.Kind, &p.Body, &p.Version, &p.Home,
 		&p.CreatedByName, &p.CreatedAt, &p.UpdatedByName, &p.UpdatedAt,
-		&p.Appearance.Icon, &p.Appearance.Width, &cover, &x, &y)
+		&p.Appearance.Icon, &p.Appearance.Width, &cover, &x, &y, &p.Mode)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}

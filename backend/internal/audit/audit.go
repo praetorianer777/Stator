@@ -86,6 +86,9 @@ const (
 	ActionPageLinkCreated   = "page.public_link_created"
 	ActionPageLinkRevoked   = "page.public_link_revoked"
 	ActionOrgPublicLinksSet = "org.public_links_set"
+	// ActionPageModeChanged is a page switched between drafts and live, with
+	// whose unpublished drafts going live threw away.
+	ActionPageModeChanged = "page.mode_changed"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -107,6 +110,7 @@ var Actions = []string{
 	ActionOrgAnonymousAccessSet, ActionSpaceAnonymousAccessSet,
 	ActionPageLinkCreated, ActionPageLinkRevoked, ActionOrgPublicLinksSet,
 	ActionSpacePermissionsCopied,
+	ActionPageModeChanged,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

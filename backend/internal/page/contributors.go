@@ -19,9 +19,9 @@ type Contributor struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
 	AvatarURL string    `json:"avatarUrl,omitempty"`
-	// Edits counts the versions they published.
+	// Edits counts the versions they published or saved into live.
 	Edits int `json:"edits"`
-	// LastEditedAt is when they last published one.
+	// LastEditedAt is when the latest of those versions was last saved.
 	LastEditedAt time.Time `json:"lastEditedAt"`
 }
 
@@ -77,10 +77,19 @@ func (s *Service) Contributors(ctx context.Context, actor perm.Actor, id uuid.UU
 				SELECT p.id FROM page p JOIN counted c ON p.parent_id = c.id
 				WHERE $3 AND`+live+` AND (p.archived_at IS NULL OR $4) AND `+perm.ViewablePage("p", 2)+`
 			)
-			SELECT u.id, u.name, COALESCE(u.avatar_url, ''), count(*)::int, max(v.created_at)
-			FROM page_version v JOIN counted c ON c.id = v.page_id JOIN app_user u ON u.id = v.created_by
+			-- A live version counts for everybody who saved into it, once each.
+			, edits (page_id, number, user_id, at) AS (
+				SELECT v.page_id, v.number, v.created_by, v.updated_at
+				FROM page_version v JOIN counted c ON c.id = v.page_id
+				UNION
+				SELECT v.page_id, v.number, e.user_id, v.updated_at
+				FROM page_version_editor e JOIN counted c ON c.id = e.page_id
+				JOIN page_version v ON v.org_id = e.org_id AND v.page_id = e.page_id AND v.number = e.number
+			)
+			SELECT u.id, u.name, COALESCE(u.avatar_url, ''), count(*)::int, max(x.at)
+			FROM edits x JOIN app_user u ON u.id = x.user_id
 			GROUP BY u.id, u.name, u.avatar_url
-			ORDER BY count(*) DESC, max(v.created_at) DESC, lower(u.name), u.id
+			ORDER BY count(*) DESC, max(x.at) DESC, lower(u.name), u.id
 			LIMIT $5`, id, actor.UserID, q.Scope == document.ContributorsTree, *archived, q.Limit+1)
 		if err != nil {
 			return fmt.Errorf("count the contributors: %w", err)

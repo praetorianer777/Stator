@@ -1584,7 +1584,8 @@
                 "page.public_link_created",
                 "page.public_link_revoked",
                 "org.public_links_set",
-                "space.permissions_copied"
+                "space.permissions_copied",
+                "page.mode_changed"
               ]
             }
           },
@@ -1752,7 +1753,8 @@
                 "page.public_link_created",
                 "page.public_link_revoked",
                 "org.public_links_set",
-                "space.permissions_copied"
+                "space.permissions_copied",
+                "page.mode_changed"
               ]
             }
           },
@@ -6184,6 +6186,78 @@
         }
       }
     },
+    "/pages/{pageID}/live": {
+      "put": {
+        "operationId": "saveLive",
+        "summary": "Save a live page as its editor holds it, visible to every reader at once: into the open version while it lasts, else as the next version. room names the shared draft saved from; page_not_live refuses a page edited through drafts, room_gone a shared draft started afresh.",
+        "tags": [
+          "drafts"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageLiveInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageLiveSaved"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/markdown": {
       "get": {
         "operationId": "getPageMarkdown",
@@ -6381,6 +6455,78 @@
                   "required": [
                     "people"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/mode": {
+      "put": {
+        "operationId": "setPageMode",
+        "summary": "Choose whether a page is published from drafts or saved live as it is typed. Making it live throws away the drafts nobody published, so it is refused with drafts_pending naming whose they are unless discardDrafts confirms it. For the page's editors.",
+        "tags": [
+          "drafts"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageModeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageModeChange"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -13830,7 +13976,8 @@
               "page.public_link_created",
               "page.public_link_revoked",
               "org.public_links_set",
-              "space.permissions_copied"
+              "space.permissions_copied",
+              "page.mode_changed"
             ]
           },
           "actorId": {
@@ -13936,7 +14083,8 @@
                 "page.public_link_created",
                 "page.public_link_revoked",
                 "org.public_links_set",
-                "space.permissions_copied"
+                "space.permissions_copied",
+                "page.mode_changed"
               ]
             }
           },
@@ -16856,6 +17004,13 @@
               "type": "string"
             }
           },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "live"
+            ]
+          },
           "owner": {
             "oneOf": [
               {
@@ -16930,6 +17085,7 @@
           "title",
           "kind",
           "appearance",
+          "mode",
           "body",
           "version",
           "home",
@@ -17098,6 +17254,80 @@
           "id",
           "title",
           "spaceKey"
+        ]
+      },
+      "PageLiveInput": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "A JSON value."
+          },
+          "room": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ]
+      },
+      "PageLiveSaved": {
+        "type": "object",
+        "properties": {
+          "amended": {
+            "type": "boolean"
+          },
+          "version": {
+            "$ref": "#/components/schemas/VersionEntry"
+          }
+        },
+        "required": [
+          "version",
+          "amended"
+        ]
+      },
+      "PageModeChange": {
+        "type": "object",
+        "properties": {
+          "discardedDrafts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "live"
+            ]
+          }
+        },
+        "required": [
+          "mode",
+          "discardedDrafts"
+        ]
+      },
+      "PageModeInput": {
+        "type": "object",
+        "properties": {
+          "discardDrafts": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "live"
+            ]
+          }
+        },
+        "required": [
+          "mode"
         ]
       },
       "PagePublicLinks": {
@@ -20005,12 +20235,21 @@
           "body": {
             "description": "A JSON value."
           },
+          "coEditors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "comment": {
             "type": "string"
           },
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "live": {
+            "type": "boolean"
           },
           "number": {
             "type": "integer"
@@ -20023,6 +20262,10 @@
           },
           "title": {
             "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -20033,6 +20276,9 @@
           "authorName",
           "createdAt",
           "restoredFrom",
+          "live",
+          "updatedAt",
+          "coEditors",
           "body"
         ]
       },
@@ -20049,12 +20295,21 @@
           "authorName": {
             "type": "string"
           },
+          "coEditors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "comment": {
             "type": "string"
           },
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "live": {
+            "type": "boolean"
           },
           "number": {
             "type": "integer"
@@ -20067,6 +20322,10 @@
           },
           "title": {
             "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -20076,7 +20335,10 @@
           "authorId",
           "authorName",
           "createdAt",
-          "restoredFrom"
+          "restoredFrom",
+          "live",
+          "updatedAt",
+          "coEditors"
         ]
       },
       "ViewCounts": {

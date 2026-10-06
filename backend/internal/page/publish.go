@@ -36,27 +36,22 @@ type release struct {
 	comment      string
 	notify       bool
 	restoredFrom *int
+	// live marks a version saved as its editors type, which later saves amend.
+	live bool
 }
 
 // publish writes the page's next version, copies it onto the page, makes the
 // actor watch it and tells the outbox. The caller has checked the actor may edit it.
 func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r release) (*VersionEntry, error) {
 	number := p.Version + 1
-	body, err := comment.SettleAnchors(ctx, tx, p.ID, r.body)
-	if err != nil {
-		return nil, err
-	}
-	var previous []document.Task
-	if p.Version > 0 {
-		previous = document.TasksIn(p.Body)
-	}
-	if r.body, err = document.SettleTasksIn(body, previous); err != nil {
+	var err error
+	if r.body, err = settleBody(ctx, tx, p, r.body); err != nil {
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_version (org_id, page_id, number, title, body, comment, notify_watchers, restored_from, created_by)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8)`,
-		p.ID, number, r.title, r.body, r.comment, r.notify, r.restoredFrom, actor.UserID); err != nil {
+		INSERT INTO page_version (org_id, page_id, number, title, body, comment, notify_watchers, restored_from, created_by, live)
+		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		p.ID, number, r.title, r.body, r.comment, r.notify, r.restoredFrom, actor.UserID, r.live); err != nil {
 		return nil, fmt.Errorf("write version %d: %w", number, err)
 	}
 	if _, err := tx.Exec(ctx, `
@@ -90,8 +85,25 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 	return versionEntry(ctx, tx, p.ID, number)
 }
 
+// settleBody is a body as the page will hold it: inline threads settled, and
+// every checklist item with the id of its task.
+func settleBody(ctx context.Context, tx db.DBTX, p *Page, body json.RawMessage) (json.RawMessage, error) {
+	body, err := comment.SettleAnchors(ctx, tx, p.ID, body)
+	if err != nil {
+		return nil, err
+	}
+	var previous []document.Task
+	if p.Version > 0 {
+		previous = document.TasksIn(p.Body)
+	}
+	return document.SettleTasksIn(body, previous)
+}
+
 const selectVersions = `
-SELECT v.number, v.title, v.comment, u.id, COALESCE(u.name, ''), v.created_at, v.restored_from
+SELECT v.number, v.title, v.comment, u.id, COALESCE(u.name, ''), v.created_at, v.restored_from, v.live, v.updated_at,
+       ARRAY(SELECT e.name FROM page_version_editor pe JOIN app_user e ON e.id = pe.user_id
+             WHERE pe.page_id = v.page_id AND pe.number = v.number AND pe.user_id IS DISTINCT FROM v.created_by
+             ORDER BY pe.created_at, e.id)
 FROM page_version v
 LEFT JOIN app_user u ON u.id = v.created_by`
 
@@ -171,6 +183,9 @@ func (s *Service) SaveDraft(ctx context.Context, actor perm.Actor, id uuid.UUID,
 		if p.Kind == KindFolder {
 			return ErrFolder
 		}
+		if p.Mode == ModeLive {
+			return ErrLivePage
+		}
 		if in.BaseVersion < 0 || in.BaseVersion > p.Version {
 			return &FieldError{Field: "baseVersion", Message: fmt.Sprintf("The page is at version %d, so a draft cannot start from version %d. Reload the page and edit again.", p.Version, in.BaseVersion)}
 		}
@@ -220,6 +235,9 @@ func (s *Service) Publish(ctx context.Context, actor perm.Actor, id uuid.UUID, i
 		}
 		if p.Kind == KindFolder {
 			return ErrFolder
+		}
+		if p.Mode == ModeLive {
+			return ErrLivePage
 		}
 		draft, err := draftOf(ctx, tx, actor, id, true)
 		if err != nil {

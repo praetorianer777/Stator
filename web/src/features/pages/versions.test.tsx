@@ -408,6 +408,9 @@ const entry = (number: number, over: Partial<VersionEntry> = {}): VersionEntry =
   authorName: "Ada Lovelace",
   createdAt: `2026-09-2${number}T09:00:00Z`,
   restoredFrom: null,
+  live: false,
+  updatedAt: `2026-09-2${number}T09:00:00Z`,
+  coEditors: [],
   ...over,
 });
 const versions = [

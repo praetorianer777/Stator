@@ -190,10 +190,21 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
                       {entry?.number === page.version && <Tag className="ml-2">{t.history.latest}</Tag>}
                       {entry && entry.title !== page.title && <span className="block text-xs text-ink-muted">{entry.title}</span>}
                     </Td>
-                    <Td className="text-ink-muted">{entry ? t.history.published(entry.authorName, when(entry.createdAt)) : ""}</Td>
+                    <Td className="text-ink-muted">
+                      {entry ? t.history.published(entry.authorName, when(entry.createdAt)) : ""}
+                      {entry?.live && (
+                        <span className="block text-xs" data-live-version="">
+                          {t.live.versionSaved(when(entry.updatedAt), entry.coEditors.join(", "))}
+                        </span>
+                      )}
+                    </Td>
                     <Td>
                       {entry &&
-                        (entry.comment ? <span className="text-ink">{entry.comment}</span> : <span className="text-ink-subtle">{t.history.noComment}</span>)}
+                        (entry.comment ? (
+                          <span className="text-ink">{entry.comment}</span>
+                        ) : (
+                          <span className="text-ink-subtle">{entry.live ? t.live.savedAsTyped : t.history.noComment}</span>
+                        ))}
                       {entry?.restoredFrom != null && <span className="block text-xs text-ink-muted">{t.history.restoredFrom(entry.restoredFrom)}</span>}
                     </Td>
                     <Td>

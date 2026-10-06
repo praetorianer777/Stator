@@ -6,8 +6,8 @@ import { useMe } from "@/api/auth";
 import { useMentionSource } from "@/api/mentions";
 import { pageQuery, usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
-import { useDiscardDraft, useDraft, usePublish, useSaveDraft, type Draft, type PublishOptions } from "@/api/versions";
-import { Button, ErrorBanner, Field, PageHeader, Skeleton, cx } from "@/components/ui";
+import { useDiscardDraft, useDraft, usePublish, useSaveDraft, useSaveLive, type Draft, type PublishOptions } from "@/api/versions";
+import { Button, ErrorBanner, Field, PageHeader, Skeleton, Tag, cx } from "@/components/ui";
 import { useEditorAttachments } from "@/features/attachments/hooks";
 import { ArmatureIssuesProvider } from "@/features/armature/IssueChip";
 import { issueKeysOf } from "@/features/armature/issueKeys";
@@ -29,8 +29,8 @@ import { PublishDialog } from "./PublishDialog";
 
 /**
  * Edits a page, together with everybody else editing it when the shared
- * draft is in reach and alone otherwise. Either way what is typed is saved
- * into the caller's own draft, which is what publishing publishes.
+ * draft is in reach and alone otherwise. What is typed is saved into the
+ * caller's own draft, which publishing publishes, or for a live page into the page.
  */
 export function PageEditor({ pageId }: { pageId: string }) {
   const page = usePage(pageId);
@@ -70,11 +70,12 @@ function PageSession({ page, space, draft }: { page: Page; space: Space; draft: 
   const user = useMemo<CollabUser | null>(() => (me ? { id: me.id, name: me.name, color: colorFor(me.id) } : null), [me]);
   // The first person in seeds the shared draft with their own draft, as
   // editing alone would open it; after the draft was thrown away, with the
-  // page as it now stands.
+  // page as it now stands. A live page has no drafts, only itself.
   const seed = useCallback(
     async (afresh: boolean): Promise<SeedContent> => {
-      let from = { title: draft?.title ?? page.title, body: draft?.body ?? page.body, base: draft?.baseVersion ?? page.version };
-      if (afresh) {
+      const own = page.mode === "live" ? null : draft;
+      let from = { title: own?.title ?? page.title, body: own?.body ?? page.body, base: own?.baseVersion ?? page.version };
+      if (afresh || page.mode === "live") {
         const fresh = await queryClient.fetchQuery({ ...pageQuery(page.id), staleTime: 0 });
         from = { title: fresh.page.title, body: fresh.page.body, base: fresh.page.version };
       }
@@ -99,6 +100,8 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   const sheet = pageSheet(page.appearance.width);
   const queryClient = useQueryClient();
   const save = useSaveDraft(page.id);
+  const saveLive = useSaveLive(page.id);
+  const liveMode = page.mode === "live";
   const discard = useDiscardDraft(page.id);
   const publish = usePublish(page.id);
   const doc = together?.snapshot.doc ?? null;
@@ -121,10 +124,13 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
 
   // The timer and the save chain outlive renders, and the last save has to
   // run even as the editor goes, so they live in refs and read the latest.
-  const latest = useRef({ title, body, base });
-  latest.current = { title, body, base };
+  const room = together?.snapshot.room ?? undefined;
+  const latest = useRef({ title, body, base, room });
+  latest.current = { title, body, base, room };
   const saveRef = useRef(save.mutateAsync);
   saveRef.current = save.mutateAsync;
+  const saveLiveRef = useRef(saveLive.mutateAsync);
+  saveLiveRef.current = saveLive.mutateAsync;
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Offline, a save would only fail; the shared draft keeps the words until
@@ -155,11 +161,14 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
     dirty.current = false;
     report(() => setState("saving"));
     const turn = ++queued.current;
+    const write = liveMode
+      ? () => saveLiveRef.current({ title: input.title, body: input.body ?? emptyDoc, room: input.room })
+      : () => saveRef.current({ title: input.title, body: input.body ?? emptyDoc, baseVersion: input.base });
     const run = chain.current.then(() =>
-      saveRef.current({ title: input.title, body: input.body ?? emptyDoc, baseVersion: input.base }).then(
+      write().then(
         () => {
           report(() => {
-            setHasDraft(true);
+            if (!liveMode) setHasDraft(true);
             if (turn === queued.current && !dirty.current) setState("saved");
           });
           return true;
@@ -240,6 +249,10 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
 
   function openPublish(event?: FormEvent) {
     event?.preventDefault();
+    if (liveMode) {
+      void flush();
+      return;
+    }
     if (!title.trim()) {
       setTitleError(t.page.emptyTitle);
       return;
@@ -300,10 +313,10 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   }
 
   const status = {
-    idle: canPublish ? "" : t.draft.nothingToPublish,
+    idle: canPublish || liveMode ? "" : t.draft.nothingToPublish,
     pending: "",
-    saving: t.draft.saving,
-    saved: together ? t.collab.saved : t.draft.saved,
+    saving: liveMode ? t.live.saving : t.draft.saving,
+    saved: liveMode ? t.live.saved : together ? t.collab.saved : t.draft.saved,
     error: "",
     untitled: t.draft.titleNeeded,
   }[state];
@@ -318,6 +331,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
       style={sheet.style}
       data-page-editor={page.id}
       data-collab={together ? "together" : "alone"}
+      data-page-mode={page.mode}
     >
       <PageHeader
         className={PAGE_SHEET_HEADER}
@@ -326,6 +340,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
         title={t.page.editing(page.title)}
         meta={
           <span className="inline-flex flex-wrap items-center gap-3">
+            {liveMode && <Tag data-live-badge="">{t.live.badge}</Tag>}
             {together && <Presence awareness={together.snapshot.awareness} selfId={together.user.id} status={together.snapshot.status} />}
             <span role="status" data-draft-status={state}>
               {status}
@@ -333,23 +348,29 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
           </span>
         }
         actions={
-          <>
-            {(hasDraft || unsaved || together) && (
-              <Button type="button" variant="ghost" onClick={() => void discardDraft()} loading={discard.isPending} data-action="discard-draft">
-                {t.draft.discard}
+          liveMode ? (
+            <Button type="button" onClick={() => void view(page)} data-action="close-editor">
+              {t.live.done}
+            </Button>
+          ) : (
+            <>
+              {(hasDraft || unsaved || together) && (
+                <Button type="button" variant="ghost" onClick={() => void discardDraft()} loading={discard.isPending} data-action="discard-draft">
+                  {t.draft.discard}
+                </Button>
+              )}
+              <Button type="button" variant="secondary" onClick={() => void view(page)} data-action="close-editor">
+                {t.draft.close}
               </Button>
-            )}
-            <Button type="button" variant="secondary" onClick={() => void view(page)} data-action="close-editor">
-              {t.draft.close}
-            </Button>
-            <Button type="submit" form={PAGE_FORM_ID} disabled={!canPublish || stopped !== null} loading={publish.isPending} data-action="publish">
-              {t.draft.publish}
-            </Button>
-          </>
+              <Button type="submit" form={PAGE_FORM_ID} disabled={!canPublish || stopped !== null} loading={publish.isPending} data-action="publish">
+                {t.draft.publish}
+              </Button>
+            </>
+          )
         }
       />
       {stopped && <ErrorBanner>{stopped === "signedOut" ? t.collab.signedOut : t.collab.refused}</ErrorBanner>}
-      {state === "error" && <ErrorBanner>{t.draft.notSaved(saveError)}</ErrorBanner>}
+      {state === "error" && <ErrorBanner>{liveMode ? t.live.notSaved(saveError) : t.draft.notSaved(saveError)}</ErrorBanner>}
       {error && <ErrorBanner>{error.message}</ErrorBanner>}
       {conflict && (
         <div role="alert" className="space-y-2 rounded-control border border-warning bg-warning-subtle px-3 py-2 text-sm text-ink" data-publish-conflict="">
@@ -407,6 +428,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
               value={together ? null : initialBody}
               collab={together && doc && together.snapshot.awareness ? { doc, awareness: together.snapshot.awareness, user: together.user } : undefined}
               readOnly={stopped !== null}
+              taskIds={liveMode}
               onChange={(next, remote) => {
                 setBody(next);
                 if (!remote) changed();

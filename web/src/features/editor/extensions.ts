@@ -11,7 +11,7 @@ import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import Mention, { type MentionOptions } from "@tiptap/extension-mention";
 import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 import { Markdown } from "@tiptap/markdown";
-import Collaboration from "@tiptap/extension-collaboration";
+import Collaboration, { isChangeOrigin } from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import type * as Y from "yjs";
 import type { Awareness } from "y-protocols/awareness";
@@ -121,6 +121,40 @@ export const Task = TaskItem.extend({
         renderHTML: (attrs: Record<string, unknown>) => (typeof attrs.taskId === "string" ? { "data-task-id": attrs.taskId } : {}),
       },
     };
+  },
+});
+
+/**
+ * Gives every checklist item without an id of its own a new one. A live page
+ * is saved every few keystrokes, and the server, which matches an item
+ * without an id to its task by its words, would make a new task of an item
+ * being retyped at each save.
+ */
+export const TaskIds = Extension.create({
+  name: "taskIds",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("taskIds"),
+        appendTransaction: (transactions, _old, state) => {
+          // Another browser's item is that browser's to number.
+          if (!transactions.some((tr) => tr.docChanged && !isChangeOrigin(tr))) return null;
+          const seen = new Set<string>();
+          let tr: Transaction | null = null;
+          state.doc.descendants((node, pos) => {
+            if (node.type.name !== "taskItem") return;
+            const id: unknown = node.attrs.taskId;
+            if (typeof id === "string" && !seen.has(id)) {
+              seen.add(id);
+              return;
+            }
+            tr ??= state.tr;
+            tr.setNodeMarkup(pos, undefined, { ...node.attrs, taskId: crypto.randomUUID() });
+          });
+          return tr;
+        },
+      }),
+    ];
   },
 });
 
@@ -401,6 +435,8 @@ export interface ExtensionOptions {
   find?: (seed: string) => void;
   /** The shared draft the body is bound to, and who this browser is in it; without it the editor holds its own. */
   collab?: CollabBinding;
+  /** Gives each checklist item an id of its own as it is made. */
+  taskIds?: boolean;
 }
 
 /** A shared draft's document and awareness, and the person editing here. */
@@ -436,6 +472,7 @@ export function editorExtensions({
   emoji,
   find,
   collab,
+  taskIds = false,
 }: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
@@ -477,6 +514,7 @@ export function editorExtensions({
     ...shared,
     TaskList,
     Task.configure({ nested: true, a11y: { checkboxLabel: () => t.editor.taskDone } }),
+    ...(taskIds ? [TaskIds] : []),
     Table.configure({ resizable: false }),
     TableRow,
     HeaderCell,

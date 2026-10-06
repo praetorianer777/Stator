@@ -3,6 +3,79 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-06: A live page is its open version, amended by every save for ten minutes
+
+Live pages (#70) are a mode of the page, `page.mode`, draft or live, not a
+kind and not a space setting: a team keeps working notes live beside
+pages it publishes with care. Whoever may edit the page chooses the mode,
+in a dialog of the page's menu, as with how it looks; editors can already
+publish anything and throw the shared draft away, so the mode asks no
+more. A trigger holds the app's role to edit, which also freezes the mode
+of an archived page, and a folder cannot be live.
+
+A live save (`PUT /pages/{id}/live`) is the whole title and body as the
+editor holds it, sent about a second after the last keystroke as a draft's
+autosave is. It goes into the page's open version: its latest, saved live,
+and begun less than `live_version_span()` ago, ten minutes, which
+`page.LiveVersionSpan` and a test hold to the same. When there is none it
+publishes the next version, marked live, which then stays open. So the
+history reads in steps of work and every version is still a full,
+comparable, restorable body, while one per save would bury it. The span is
+counted from the version's start rather than from the last save, so a long
+session still leaves a version every ten minutes. Everybody who saves into
+a version is a row of `page_version_editor`, shown in the history beside
+its author and counted by the contributors block, since two people typing
+together would otherwise either take turns opening versions or lose one of
+their names. A save that changes nothing writes nothing.
+
+History stays append only except for that one version. The app role may
+update only the title and body of `page_version` (a column grant), only
+where a policy finds the row live, the page's latest and live, the span
+not over and the actor an editor of the page; inserting a live version
+into a page of drafts is refused, and nobody names anybody else as an
+editor, or names themselves on a closed version. Integration tests try
+each of these as `stator_app` straight through SQL.
+
+A live page has no drafts: `page_draft_not_live` refuses one, and drafts
+and publishing answer `page_live`. Going live throws every draft of the
+page away, by a trigger that runs as the table's owner since row level
+security hides other people's drafts from the person switching. So the
+switch first asks `page_pending_drafts`, which tells only an editor of the
+page whose drafts differ from it, and refuses with `drafts_pending`
+naming them unless `discardDrafts` confirms; drafts that say what the page
+says go without asking. A draft is the only place unpublished work lives:
+everybody in a shared draft saves it into their own draft as they type, so
+the shared draft needs no question of its own. Going back to drafts keeps
+the history and starts nobody's draft. Either switch throws the shared
+draft away, so editors open in the mode the page is in, and is recorded in
+the audit log with the names of the drafts that went.
+
+Editing together carries on as before: the shared draft is seeded from the
+page, never from a draft, and each editor saves the shared document live
+after their own changes, naming the room. Since a save goes over the page,
+something else that wrote the page meanwhile, a restore, a Markdown import
+or a script's update, would be undone by the room's next save; so a save
+from a room whose base the page has moved past throws the room away,
+answers `room_gone`, and its editors load the page afresh. That write wins
+over the room's last unsaved second. A save from an editor working alone
+throws a room away too, so the room's editors load what it saved.
+
+What a save tells: a new live version is announced as a quiet publish
+(`page.published` without the watchers), so webhooks and the newly
+mentioned hear of each version; a save into the open version emits
+`page.amended`, which tells only whom that save newly mentioned or
+assigned, read by the version's body before the save and by the tasks
+stamped in its transaction, and which webhooks do not carry. Armature's
+links follow a save only when the issues it names changed. Checklist
+items get an id in a live editor as they are made, since the server
+matches an item without one to its task by its words and a task retyped
+over several saves would otherwise become a new task each time.
+
+Readers see the page as it stands, the latest save included, and a reader
+with a live page open asks for it again every three seconds
+(`LIVE_PAGE_REFRESH_MS`), so new words arrive without a reload and a
+replica short of a save is answered by the next ask.
+
 ## 2026-10-06: A copy of space permissions applies the preview its caller saw
 
 Copying permissions (#82) takes the source space's table onto the target

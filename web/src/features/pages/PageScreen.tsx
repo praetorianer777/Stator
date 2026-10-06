@@ -23,6 +23,7 @@ import { ChildPagesList, DocPageContext } from "@/features/editor/BlockViews";
 import { defaultChildPages } from "@/features/editor/childPages";
 import { DocView } from "@/features/editor/DocView";
 import { AppearanceDialog, coverPosition } from "./AppearanceDialog";
+import { ModeDialog } from "./ModeDialog";
 import { PageLabels } from "@/features/labels/PageLabels";
 import { PageReactions } from "@/features/reactions/Reactions";
 import { AccessDialog } from "@/features/permissions/AccessDialog";
@@ -60,6 +61,7 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
 
 type Dialog =
   | "appearance"
+  | "mode"
   | "new"
   | "newFolder"
   | "rename"
@@ -113,7 +115,7 @@ function CommentCount({ count }: { count: number }) {
 
 /** A page as a reader sees it: its place, its title, who last changed it, and its document. */
 export function PageScreen({ pageId, thread, reviewing = false }: { pageId: string; thread?: string; reviewing?: boolean }) {
-  const { data, isLoading, error, refetch } = usePage(pageId);
+  const { data, isLoading, error, refetch } = usePage(pageId, { follow: true });
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
   const [watchFailed, setWatchFailed] = useState(false);
@@ -173,6 +175,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   }
   if (page.can.edit) {
     actions.push({ label: t.appearance.menu, icon: <Icon.Smile />, onSelect: () => setDialog("appearance"), attrs: { "data-action": "page-appearance" } });
+    if (!folder) actions.push({ label: t.live.menu, icon: <Icon.Edit />, onSelect: () => setDialog("mode"), attrs: { "data-action": "page-mode" } });
   }
   if (page.can.edit && !page.unpublished && !folder) {
     actions.push({ label: t.stewardship.menu, icon: <Icon.Seal />, onSelect: () => setDialog("stewardship"), attrs: { "data-action": "page-stewardship" } });
@@ -238,6 +241,14 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
             )}
             <span data-page-title>{page.title}</span>
             {page.unpublished && <Tag data-unpublished="">{t.page.unpublished}</Tag>}
+            {page.mode === "live" && (
+              <>
+                {" "}
+                <Tooltip text={t.live.badgeHint}>
+                  <Tag data-live-badge="">{t.live.badge}</Tag>
+                </Tooltip>
+              </>
+            )}
             {page.archived && (
               <>
                 {" "}
@@ -370,6 +381,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         </InlineComments>
       )}
       {dialog === "appearance" && <AppearanceDialog page={page} onClose={() => setDialog(undefined)} />}
+      {dialog === "mode" && <ModeDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "stewardship" && <StewardshipDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "share" && <ShareDialog page={page} onClose={() => setDialog(undefined)} />}

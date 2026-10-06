@@ -59,6 +59,13 @@ type VersionEntry struct {
 	CreatedAt  time.Time  `json:"createdAt"`
 	// RestoredFrom names the version this one brought back, if it did.
 	RestoredFrom *int `json:"restoredFrom"`
+	// Live says the version was saved as its editors typed, not published
+	// from a draft; it took every save within its span.
+	Live bool `json:"live"`
+	// UpdatedAt is the last save a live version took, else when it was published.
+	UpdatedAt time.Time `json:"updatedAt"`
+	// CoEditors names the others who saved into a live version, by name.
+	CoEditors []string `json:"coEditors"`
 }
 
 // Version is one published version with its body, for reading it.
