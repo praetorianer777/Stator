@@ -136,6 +136,8 @@ var (
 const (
 	folderConstraint = "page_is_folder"
 	kindConstraint   = "page_kind_fixed"
+	// A draft of a live page, which page_draft_not_live refuses.
+	liveDraftConstraint = "page_draft_not_live"
 )
 
 // toAPIError maps a domain error onto the wire shape. One place for it is what
@@ -150,6 +152,13 @@ func toAPIError(err error) *APIError {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && (pgErr.ConstraintName == folderConstraint || pgErr.ConstraintName == kindConstraint) {
 		err = page.ErrFolder
+	}
+	if errors.As(err, &pgErr) && pgErr.ConstraintName == liveDraftConstraint {
+		err = page.ErrLivePage
+	}
+	var pending *page.DraftsPendingError
+	if errors.As(err, &pending) {
+		return &APIError{Status: http.StatusConflict, Code: "drafts_pending", Message: pending.Error()}
 	}
 	var invalid *oidc.ValidationError
 	if errors.As(err, &invalid) {
@@ -451,6 +460,15 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, page.ErrPublishConflict):
 		return &APIError{Status: http.StatusConflict, Code: "publish_conflict",
 			Message: "Somebody published this page after you began your draft. Compare the two, then discard your draft or save it again over theirs and publish."}
+	case errors.Is(err, page.ErrLivePage):
+		return &APIError{Status: http.StatusConflict, Code: "page_live",
+			Message: "This page is live, so what you type is saved to the page as you go and there is no draft to publish. Open the editor again to edit it live."}
+	case errors.Is(err, page.ErrNotLive):
+		return &APIError{Status: http.StatusConflict, Code: "page_not_live",
+			Message: "This page is published from drafts now, so it is not saved as you type. Open the editor again; your changes there are kept as your draft."}
+	case errors.Is(err, page.ErrRoomGone):
+		return &APIError{Status: http.StatusConflict, Code: "room_gone",
+			Message: "The page was changed from elsewhere, so the editor starts again from it. Wait for the editor to reload, then carry on."}
 	case errors.Is(err, page.ErrNoDraft):
 		return &APIError{Status: http.StatusConflict, Code: "no_draft",
 			Message: "You have no draft of this page to publish. Edit the page first; your changes are saved as a draft."}

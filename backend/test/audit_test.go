@@ -289,6 +289,11 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusOK, "the same links switch again")
 	once(audit.ActionOrgPublicLinksSet, me, nil)
 
+	want(t, owner.put(t, pagePath(notes, "/mode"), map[string]any{"mode": "live", "discardDrafts": true}), http.StatusOK, "make Notes live")
+	if data := once(audit.ActionPageModeChanged, me, notes); !strings.Contains(data, `"mode": "live"`) || !strings.Contains(data, `"from": "draft"`) {
+		t.Errorf("the mode's record reads %s", data)
+	}
+
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)
 

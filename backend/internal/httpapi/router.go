@@ -389,6 +389,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			// A browser holds it open while its person edits, so a token has no use for it.
 			r.With(requireSession).Get("/pages/{pageID}/collab", s.handleCollab)
 			r.Post("/pages/{pageID}/publish", s.handlePublishPage)
+			r.Put("/pages/{pageID}/live", s.handleSaveLive)
+			r.Put("/pages/{pageID}/mode", s.handleSetPageMode)
 			r.Get("/pages/{pageID}/versions", s.handleListVersions)
 			r.Get("/pages/{pageID}/versions/{versionNumber}", s.handleGetVersion)
 			r.Post("/pages/{pageID}/versions/{versionNumber}/restore", s.handleRestoreVersion)

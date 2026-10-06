@@ -30,10 +30,13 @@ const (
 	TopicPageShared         = "page.shared"
 	// TopicTaskDue is written by the worker when a task's day comes.
 	TopicTaskDue = "task.due"
+	// TopicPageAmended is a save into the open version of a live page, which
+	// tells only whom the save newly mentioned or assigned.
+	TopicPageAmended = "page.amended"
 )
 
 // Topics lists every topic the product emits.
-var Topics = []string{TopicPagePublished, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared, TopicTaskDue}
+var Topics = []string{TopicPagePublished, TopicPageAmended, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared, TopicTaskDue}
 
 // Event is one committed domain event.
 type Event struct {
@@ -60,6 +63,17 @@ type PagePublished struct {
 	// Mentioned are the people mentioned in this version and not the one
 	// before.
 	Mentioned []uuid.UUID `json:"mentioned"`
+}
+
+// PageAmended is a live page's open version saved again.
+type PageAmended struct {
+	PageID  uuid.UUID `json:"pageId"`
+	Version int       `json:"version"`
+	ActorID uuid.UUID `json:"actorId"`
+	// Mentioned are the people this save mentioned and the version did not.
+	Mentioned []uuid.UUID `json:"mentioned"`
+	// At is the save's transaction time, which stamps the tasks it assigned.
+	At time.Time `json:"at"`
 }
 
 // CommentCreated is a new thread or a reply.

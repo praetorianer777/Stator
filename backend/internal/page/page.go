@@ -43,6 +43,13 @@ var (
 	ErrFolder = errors.New("a folder holds pages and folders, not content of its own; put it on a page inside the folder")
 	// ErrBadKind refuses a kind that is neither a page nor a folder.
 	ErrBadKind = errors.New("choose page or folder")
+	// ErrLivePage refuses a draft or a publish of a live page, whose saves
+	// are the page already.
+	ErrLivePage = errors.New("this page is live, so what you type is saved to the page as you go; there is no draft to save or publish")
+	// ErrNotLive refuses a live save of a page edited through drafts.
+	ErrNotLive = errors.New("this page is published from drafts now, not saved as you type; open the editor again")
+	// ErrBadMode refuses a mode that is neither draft nor live.
+	ErrBadMode = errors.New("choose draft or live")
 )
 
 // Kind is what a row of a page tree is.
@@ -55,6 +62,18 @@ const (
 
 // Kinds is every kind, for the API's description.
 var Kinds = []Kind{KindPage, KindFolder}
+
+// Mode is how a page's words are edited: through drafts its editors publish,
+// or live, where every save is the page at once.
+type Mode string
+
+const (
+	ModeDraft Mode = "draft"
+	ModeLive  Mode = "live"
+)
+
+// Modes is every mode, for the API's description.
+var Modes = []Mode{ModeDraft, ModeLive}
 
 // FieldError is a refusal of one field of the request, which the client
 // shows next to it.
@@ -77,6 +96,8 @@ type Page struct {
 	Kind Kind `json:"kind"`
 	// Appearance is the page's emoji, width and cover.
 	Appearance Appearance `json:"appearance"`
+	// Mode is draft, published from drafts, or live, saved as it is typed.
+	Mode Mode `json:"mode"`
 	// Body is the document, ProseMirror JSON the allowlist accepts.
 	Body json.RawMessage `json:"body"`
 	// Version is the number of the published version the title and body

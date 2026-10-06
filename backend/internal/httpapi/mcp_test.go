@@ -23,7 +23,7 @@ const (
 	whySelf       = "the caller's own session, settings, tokens, themes or Armature account, changed by a person at the keyboard"
 	whyAdmin      = "administration or who may do what: the provider, members, tokens, permissions, restrictions, spaces themselves and their shortcuts, archiving, webhooks"
 	whyRemoves    = "deletes or takes something away; no tool removes anything, as in Armature"
-	whyBrowser    = "furniture of the browser client: typeahead, badges, pickers, visits and drafts"
+	whyBrowser    = "furniture of the browser client: typeahead, badges, pickers, visits, drafts and live saves"
 	whyFiles      = "moves files rather than words; get_page_markdown and replace_page_markdown carry a page's words"
 	whyArmature   = "Armature's own MCP endpoint serves its issues as the person, without Stator in between"
 	whyAttention  = "reaches other people or a page's standing: shares, reactions, watches, stars, owners and verification"
@@ -166,6 +166,8 @@ var notTools = map[string]string{
 	"GET /pages/{pageID}/watchers":                                 whyBrowser,
 	"GET /pages/{pageID}/draft":                                    whyBrowser,
 	"PUT /pages/{pageID}/draft":                                    whyBrowser,
+	"PUT /pages/{pageID}/live":                                     whyBrowser,
+	"PUT /pages/{pageID}/mode":                                     whyBrowser,
 	"DELETE /pages/{pageID}/draft":                                 whyBrowser,
 	"GET /pages/{pageID}/export":                                   whyFiles,
 	"POST /pages/{pageID}/attachments":                             whyFiles,

@@ -302,6 +302,11 @@ var operations = []operation{
 		responses:   map[int]any{101: nil, 403: errorEnvelope{}, 404: errorEnvelope{}, 426: errorEnvelope{}, 503: errorEnvelope{}}},
 	{method: "POST", path: "/pages/{pageID}/publish", handler: "handlePublishPage", tag: "drafts", summary: "Publish the caller's draft as the next version; refused with publish_conflict when somebody published since the draft began.",
 		request: page.PublishInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
+	// Live pages (#70).
+	{method: "PUT", path: "/pages/{pageID}/live", handler: "handleSaveLive", tag: "drafts", summary: "Save a live page as its editor holds it, visible to every reader at once: into the open version while it lasts, else as the next version. room names the shared draft saved from; page_not_live refuses a page edited through drafts, room_gone a shared draft started afresh.",
+		request: page.LiveInput{}, responses: map[int]any{200: page.LiveSaved{}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "PUT", path: "/pages/{pageID}/mode", handler: "handleSetPageMode", tag: "drafts", summary: "Choose whether a page is published from drafts or saved live as it is typed. Making it live throws away the drafts nobody published, so it is refused with drafts_pending naming whose they are unless discardDrafts confirms it. For the page's editors.",
+		request: page.ModeInput{}, responses: map[int]any{200: page.ModeChange{}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
 
 	// History (#14).
 	{method: "GET", path: "/pages/{pageID}/versions", handler: "handleListVersions", tool: "list_versions", toolHelp: "A page's published versions, the latest first.", tag: "history", summary: "A page's published versions, the latest first.",
@@ -873,6 +878,10 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(task.Report{})] = "TaskReport"
 	b.Names[reflect.TypeOf(page.FromTemplateInput{})] = "PageFromTemplateInput"
 	b.Names[reflect.TypeOf(page.Contributors{})] = "PageContributors"
+	b.Names[reflect.TypeOf(page.ModeInput{})] = "PageModeInput"
+	b.Names[reflect.TypeOf(page.ModeChange{})] = "PageModeChange"
+	b.Names[reflect.TypeOf(page.LiveInput{})] = "PageLiveInput"
+	b.Names[reflect.TypeOf(page.LiveSaved{})] = "PageLiveSaved"
 	b.FieldOverrides["LinkEmbed.kind"] = &openapi.Schema{Type: "string", Enum: unfurl.EmbedKinds}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
@@ -882,6 +891,7 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(auth.OrgRole(""))] = enumStrings(auth.OrgRoles)
 	b.Enums[reflect.TypeOf(page.Kind(""))] = enumStrings(page.Kinds)
 	b.Enums[reflect.TypeOf(page.Width(""))] = enumStrings(page.Widths)
+	b.Enums[reflect.TypeOf(page.Mode(""))] = enumStrings(page.Modes)
 	b.Enums[reflect.TypeOf(auth.RoleSource(""))] = enumStrings(auth.RoleSources)
 	b.Enums[reflect.TypeOf(auth.Locale(""))] = enumStrings(auth.Locales)
 	b.Enums[reflect.TypeOf(perm.SubjectType(""))] = enumStrings(perm.SubjectTypes)
