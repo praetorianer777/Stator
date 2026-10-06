@@ -745,7 +745,7 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 			level = document.MaxHeadingLevel
 		}
 		return document.Node{Type: "tableOfContents", Attrs: map[string]any{"maxLevel": level}}, true
-	case kindLabelled, kindUpdated:
+	case kindLabelled, kindUpdated, kindPosts:
 		limit, err := strconv.Atoi(attrs["data-limit"])
 		if err != nil {
 			return document.Node{}, false
@@ -756,6 +756,9 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 		}
 		if kind == kindUpdated {
 			return document.Node{Type: document.NodeRecentlyUpdated, Attrs: map[string]any{"space": space, "limit": limit}}, true
+		}
+		if kind == kindPosts {
+			return document.Node{Type: document.NodeBlogPosts, Attrs: map[string]any{"space": space, "limit": limit}}, true
 		}
 		labels := []string{}
 		for name := range strings.SplitSeq(attrs["data-labels"], ",") {

@@ -142,6 +142,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
@@ -156,6 +157,20 @@
         "armatureChart",
         "armatureRoadmap"
       ]
+    },
+    "blogPosts": {
+      "attrs": {
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 50
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
     },
     "bulletList": {
       "content": [
@@ -245,6 +260,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
@@ -348,6 +364,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
@@ -398,6 +415,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
@@ -443,6 +461,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
@@ -595,6 +614,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
@@ -708,6 +728,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
@@ -883,6 +904,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
@@ -980,6 +1002,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
@@ -1044,6 +1067,7 @@
         "propertiesReport",
         "labelledPages",
         "recentlyUpdated",
+        "blogPosts",
         "taskReport",
         "attachmentList",
         "tableChart",
