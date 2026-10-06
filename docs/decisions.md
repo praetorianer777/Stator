@@ -3,6 +3,81 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-06: A blog post is a page outside the tree, dated by its first publish
+
+Blog posts (#72) are rows of `page` of the kind `post`, as a folder is a
+row of another kind, not a content type of their own. A post then has
+drafts, publishing and scheduled publishing, versions and comparisons,
+comments, reactions, labels, restrictions, sharing, search, the trash, the
+archive and reading without signing in exactly as a page has them, through
+the same rows, rules and screens, and a later feature of pages reaches
+posts without anybody remembering them. Its address is a page's address,
+so every link, mention, notification and search hit leads to it as it is.
+
+A post has no parent: it lives in its space's blog, beside the tree rather
+than in it, and no page hangs under it. The database holds both
+(`page_post_outside_tree`, and a trigger refusing a post as anybody's
+parent); the one root of a space is its home page whatever kind has no
+parent, and a post goes to the trash, the archive and under a view
+restriction as any page below the home page does. Moving, copying,
+importing Markdown under one and making one live answer `409 post`: a post
+goes out once, on its date, which a live page amending itself every few
+seconds would make meaningless.
+
+Its date, `page.posted_at`, is stamped by the database when its first
+version is published and never moves after; the app role cannot set it. A
+date set by hand would let a post be filed under a month in which nobody
+could have read it, and watchers would be told of something "posted" a
+year ago. A post wanted for later is scheduled, and its date is then the
+time it goes out. So a post is written unpublished, at version 0, which the
+insert policy demands of the app role, and its first version is a real
+publish with a row in the history. Whoever may add pages to a space may
+post in it, while the space is not archived (`perm_post_insertable`); the
+author a list names is whoever published the first version.
+
+The blog is `/s/{key}/blog`, and its date navigation is by year and month
+with the count of posts the reader may read in each, newest first, from
+`GET /spaces/{key}/blog`, which also lists the caller's own posts still to
+go out and whether they watch the blog and may post. Months are counted in
+UTC, as a date node and a task's day are, so every reader files a post
+under the same month. `GET /posts` lists the posts a reader may read,
+newest first, in one blog or across the spaces not archived, a year or a
+month at a time, a window at a time by keyset; posts in the trash or the
+archive are left out, as the lists of pages leave them out. Each carries
+its opening words, cut after a whole word, read from the published body.
+
+Watching gains a kind, `blog`, on a space beside the watch on the whole
+space. It hears of a post when it is first published and of nothing after,
+as a watch on a page hears of a new page published under it; whoever wants
+a post's later versions watches the post, which its author does by their
+own publish. A watch on the space still hears of everything in it, posts
+included. Either hears a new post as the notification kind `posted`, with
+its own switch in the preferences, since a team announcement and a new
+page somewhere in the tree are told apart. Whom it reaches is decided as
+for every publish, per person as that person, so a post restricted to a
+few is told to those few. A post written and published at once, as an
+assistant may, tells the watchers, while a page made published at once
+does not: a post sent out is an announcement. Webhooks keep their topics:
+`page.published` now says the page's `kind`, and version 1 of a post is
+its going out.
+
+The latest blog posts block stores a space's key, or null for every space,
+and how many posts to list, never the posts. "This space" in its dialog
+stores the page's own key, as a recently updated list does, so a copy or a
+move of the page keeps listing the blog it was made for. Each reader's
+view asks `GET /posts` as that reader, so a restricted post, a space they
+may not read and an unpublished post stay out wherever the block is shown,
+in an include or an excerpt too; a comparison and the reading view of
+somebody not signed in say in words what it lists, as for every block
+whose content is each reader's own.
+
+Reading the blog and writing a post are MCP tools (`get_blog`,
+`list_posts`, `create_post`), as reading and writing pages are; watching a
+blog is not, as no watch is. Two things are left for later: the reading
+view for people not signed in has no blog of its own, so a public post is
+found by its address and the public search, and the home page's watched
+updates do not take blog watches into account.
+
 ## 2026-10-06: A scheduled publish is the author's own publish, made by the worker at its time
 
 Scheduled publishing (#71) sets a time at which an editor's draft of a page

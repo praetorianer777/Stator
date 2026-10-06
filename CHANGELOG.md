@@ -829,6 +829,20 @@ and the versioning [Semantic Versioning](https://semver.org/).
   seconds; `publishing.scheduleCheckInterval` in the chart). The database
   holds a schedule to its author's own draft, set by an editor for a time
   ahead, and lets only the worker mark it failed.
+- Blog posts (#72). Each space has a blog at `/s/{key}/blog`: dated posts
+  outside the page tree, written by whoever may add pages there
+  (`POST /spaces/{key}/posts`) and published, scheduled, versioned,
+  commented, labelled, restricted and searched as pages are. A post's date
+  is its first publish. The blog lists the posts a reader may read newest
+  first, by year and month with counts (`GET /spaces/{key}/blog`,
+  `GET /posts`), and each writer's own posts still to go out. Watching a
+  blog (`PUT /spaces/{key}/blog/watch`) hears of its new posts as the
+  notification kind `posted`, which a watch on the space hears too; a
+  webhook's page now says its `kind`. A latest blog posts block lists the
+  newest posts of this space, another or every space, as each reader may
+  read them. `get_blog`, `list_posts` and `create_post` are MCP tools. The
+  database holds a post outside the tree, unpublished when written, to
+  whoever may add pages to a space not archived, and keeps its date.
 
 ### Changed
 
