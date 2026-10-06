@@ -88,7 +88,7 @@ process, which is only right for a single api process. `/readyz` and
 |---|---|
 | `auth` | sessions, argon2 passwords, personal access tokens |
 | `oidc` | OIDC relying party per organisation, group sync |
-| `perm` | global, space and page permissions |
+| `perm` | global, space and page permissions, and the plan of copying one space's permissions onto another |
 | `guest` | guests: people from outside invited into one space, and taken out again |
 | `public` | reading without signing in: the organization's switches, the spaces, pages and files anybody may read, and the public links that open one page each, with nobody named in them |
 | `space` | spaces, space settings |

@@ -3,6 +3,69 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-06: A copy of space permissions applies the preview its caller saw
+
+Copying permissions (#82) takes the source space's table onto the target
+in one of two modes. Replace makes the target's grants the source's.
+Merge adds, per subject, every permission the source grants and the target
+does not: a subject the target lacks is added, one it names is widened,
+and nothing is narrowed or removed. Merge widens rather than only adding
+subjects, since a subject named in both with less here is the commonest
+reason to merge, and a merge that might still leave somebody short of the
+source would need a third explanation. Reading without signing in, the
+grant to `anonymous`, is copied like any other subject, so a replace makes
+the target as open as the source; it is shown as its own row.
+
+The plan is `perm.PlanCopy`, a plain function of both tables, and the
+preview (`GET /spaces/{key}/permissions/copy`) and the copy
+(`POST`) both call it, so the diff the person reads is the one applied. The
+preview lists per subject what is added, widened, narrowed, changed (some
+gained, some lost) or removed, with before and after, and what is left
+behind and why. A guest of the source is never copied, since a guest
+belongs to the one space they were invited to and the database refuses
+them anywhere else; a replace keeps the target's own guests as they are,
+since the source cannot name them and they come and go by invitation.
+Subjects that no longer exist cannot appear: a grant goes with its person
+or group by cascade. The preview carries a fingerprint, a SHA-256 of the
+mode, both spaces' ids and both tables (subjects, guest marks and
+permissions, not names), and the copy recomputes it under a lock of the
+target's row and a share lock of the source's, which every rewrite of a
+table takes too, and answers `409 copy_changed` with a sentence when it
+differs, so a change made between looking and applying is shown before it
+is applied. The copy is one transaction and one audit entry,
+`space.permissions_copied`, naming both spaces, the mode and the counts; a
+copy that changes nothing writes nothing.
+
+Who may: whoever administers the target and may read the source's
+permissions, which only its administrators may, as the space's own reads
+already decide; the database's policies hold both, so a target
+administrator who does not administer the source reads none of its grants
+through SQL either. Personal spaces are neither source nor target: copying
+from one would make its owner an administrator of a team space by side
+effect, and copying into one would rewrite its owner's private sharing,
+which they keep in its own table; reading without signing in, which a
+personal space never allows, is then never offered to one. Page
+restrictions are not copied: they belong to pages, which a space's
+permissions do not name.
+
+A copy that would leave the target without an administrator of its own
+where it had one is refused (`409 no_administrator`), and the preview says
+so beforehand. The database now holds the same for every rewrite of a
+table: a deferred constraint trigger refuses a transaction that takes
+administer from the last subject holding it in a space, unless the
+subject or the space went with it, or the actor administers the
+organization. Organization administrators keep the power of 2026-09-30 to
+close a space down to themselves, since they hold every space anyway; a
+space administrator who is not one can hand the space on but no longer
+give it away to nobody, which used to leave it to whoever administers the
+organization without anybody choosing that. The copy refuses even an
+organization administrator, since a copy that ends with nobody
+administering is a mistake rather than a choice.
+
+Neither operation is an MCP tool: permission reads and writes are
+administration (2026-10-01), and a preview is only worth something to the
+person who then applies it.
+
 ## 2026-10-06: Text keeps a measure while wide blocks break out of it
 
 A page is one sheet as wide as the content area, up to 96rem

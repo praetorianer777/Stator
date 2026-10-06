@@ -113,6 +113,8 @@ var notTools = map[string]string{
 	"PUT /org/permissions/{permission}":                            whyAdmin,
 	"GET /spaces/{spaceKey}/permissions":                           whyAdmin,
 	"PUT /spaces/{spaceKey}/permissions":                           whyAdmin,
+	"GET /spaces/{spaceKey}/permissions/copy":                      whyAdmin,
+	"POST /spaces/{spaceKey}/permissions/copy":                     whyAdmin,
 	"GET /spaces/{spaceKey}/guests":                                whyAdmin,
 	"POST /spaces/{spaceKey}/guests":                               whyAdmin,
 	"DELETE /spaces/{spaceKey}/guests/{userID}":                    whyAdmin,

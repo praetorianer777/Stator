@@ -325,6 +325,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/spaces/{spaceKey}/decisions", s.handleListDecisions)
 			r.Get("/spaces/{spaceKey}/permissions", s.handleListSpacePermissions)
 			r.Put("/spaces/{spaceKey}/permissions", s.handleSetSpacePermissions)
+			r.Get("/spaces/{spaceKey}/permissions/copy", s.handlePreviewPermissionCopy)
+			r.Post("/spaces/{spaceKey}/permissions/copy", s.handleCopyPermissions)
 			r.Get("/spaces/{spaceKey}/anonymous-access", s.handleGetSpaceAnonymousAccess)
 			r.Put("/spaces/{spaceKey}/anonymous-access", s.handleSetSpaceAnonymousAccess)
 			r.Put("/spaces/{spaceKey}/archive", s.handleArchiveSpace)

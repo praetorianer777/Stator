@@ -2,10 +2,12 @@ package space
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
@@ -160,6 +162,10 @@ func (s *Service) SetPermissions(ctx context.Context, actor perm.Actor, key stri
 	})
 	if msg, ok := perm.GuestRefusal(err); ok {
 		return nil, lsn, &FieldError{Field: "grants", Message: msg}
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.ConstraintName == keepsAdministrator {
+		return nil, lsn, ErrNoAdministrator
 	}
 	return out, lsn, err
 }

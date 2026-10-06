@@ -235,6 +235,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &calendarsFull) {
 		return ErrConflict(calendarsFull.Error())
 	}
+	var copyConflict *space.CopyConflictError
+	if errors.As(err, &copyConflict) {
+		return &APIError{Status: http.StatusConflict, Code: copyConflict.Code, Message: copyConflict.Message}
+	}
 	var taken *space.PersonalTakenError
 	if errors.As(err, &taken) {
 		return ErrConflict(taken.Error())

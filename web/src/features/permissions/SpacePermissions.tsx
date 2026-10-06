@@ -5,6 +5,7 @@ import type { Space } from "@/api/spaces";
 import { Button, ErrorBanner, IconButton, Skeleton, Table, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
+import { CopyPermissions } from "./CopyPermissions";
 import { SubjectGlyph, SubjectPicker } from "./SubjectPicker";
 
 /** The permissions a set of ticks amounts to: administering holds all, and anything held holds viewing. */
@@ -27,17 +28,31 @@ const shape = (grants: SpaceGrant[]) => JSON.stringify(grants.map((grant) => [su
 export function SpacePermissions({ space }: { space: Space }) {
   const allowed = space.can.administer;
   const { data, error, refetch } = useSpacePermissions(space.key, allowed);
+  // A copy rewrites the saved table, so the grid starts again from it.
+  const [copies, setCopies] = useState(0);
+  const [copied, setCopied] = useState("");
   if (!allowed) return <p className="text-sm text-ink-muted">{t.permissions.notSpaceAdmin}</p>;
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (!data) return <Skeleton />;
-  return <Grid key={space.key} space={space} saved={data} />;
+  return (
+    <Grid
+      key={`${space.key}:${copies}`}
+      space={space}
+      saved={data}
+      copied={copied}
+      onCopied={(from) => {
+        setCopied(t.permissionCopy.copied(from));
+        setCopies((n) => n + 1);
+      }}
+    />
+  );
 }
 
-function Grid({ space, saved }: { space: Space; saved: SpaceGrant[] }) {
+function Grid({ space, saved, copied, onCopied }: { space: Space; saved: SpaceGrant[]; copied: string; onCopied: (from: string) => void }) {
   const { data: me } = useMe();
   const save = useSetSpacePermissions(space.key);
   const [grants, setGrants] = useState<SpaceGrant[]>(saved);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(copied);
   const dirty = shape(grants) !== shape(saved);
   const hasEmpty = grants.some((grant) => grant.permissions.length === 0);
 
@@ -165,6 +180,7 @@ function Grid({ space, saved }: { space: Space; saved: SpaceGrant[] }) {
           {notice || (dirty ? t.permissions.unsaved : "")}
         </span>
       </div>
+      {!space.owner && <CopyPermissions space={space} blocked={dirty || save.isPending} onCopied={onCopied} />}
     </div>
   );
 }

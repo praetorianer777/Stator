@@ -41,6 +41,9 @@ const (
 	ActionOrgPermissionSet    = "org.permission_set"
 	ActionSpacePermissionsSet = "space.permissions_set"
 	ActionPageRestrictionsSet = "page.restrictions_set"
+	// ActionSpacePermissionsCopied is another space's table copied onto a
+	// space, as one entry naming both, the mode and the counts.
+	ActionSpacePermissionsCopied = "space.permissions_copied"
 	// ActionCommentDeleted is somebody else's comment deleted with the
 	// space's delete permission; one's own is not recorded.
 	ActionCommentDeleted  = "comment.deleted"
@@ -103,6 +106,7 @@ var Actions = []string{
 	ActionShortcutAdded, ActionShortcutMoved, ActionShortcutRemoved,
 	ActionOrgAnonymousAccessSet, ActionSpaceAnonymousAccessSet,
 	ActionPageLinkCreated, ActionPageLinkRevoked, ActionOrgPublicLinksSet,
+	ActionSpacePermissionsCopied,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

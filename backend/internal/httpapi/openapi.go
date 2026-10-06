@@ -423,7 +423,16 @@ var operations = []operation{
 	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
 		responses: ok(env{"grants": []perm.SpaceGrant{}})},
 	{method: "PUT", path: "/spaces/{spaceKey}/permissions", handler: "handleSetSpacePermissions", tag: "permissions", summary: "Replace a space's whole permission table. For the space's administrators.",
-		request: perm.SpaceGrantsInput{}, responses: ok(env{"grants": []perm.SpaceGrant{}})},
+		request: perm.SpaceGrantsInput{}, responses: map[int]any{200: env{"grants": []perm.SpaceGrant{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/spaces/{spaceKey}/permissions/copy", handler: "handlePreviewPermissionCopy", tag: "permissions",
+		summary: "What copying another space's permissions onto this one would add, widen, narrow and remove, and what it cannot copy, without changing anything. Replace makes this space's grants the other's, keeping this space's guests; merge only adds. For whoever administers both spaces.",
+		query: []param{
+			{name: "from", description: "The key of the space to copy from: a team space other than this one."},
+			{name: "mode", schema: &openapi.Schema{Type: "string", Enum: enumStrings(perm.CopyModes)}, description: "replace or merge."},
+		}, responses: map[int]any{200: env{"preview": space.CopyPreview{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/spaces/{spaceKey}/permissions/copy", handler: "handleCopyPermissions", tag: "permissions",
+		summary: "Apply the preview whose fingerprint the request carries, in one step; refused as copy_changed once either space's permissions changed since, and as no_administrator when it would leave this space without one. For whoever administers both spaces.",
+		request: space.CopyInput{}, responses: map[int]any{200: env{"grants": []perm.SpaceGrant{}, "copy": space.CopyPreview{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/spaces/{spaceKey}/guests", handler: "handleListGuests", orgWide: true, tag: "permissions", summary: "The people from outside let into this space alone, with what they may do there. For administrators of the organization.",
 		responses: ok(env{"guests": []guest.Guest{}})},
 	{method: "POST", path: "/spaces/{spaceKey}/guests", handler: "handleInviteGuest", orgWide: true, tag: "permissions", summary: "Let somebody from outside into this space alone, as a viewer, commenter or editor; they sign in through the organization's provider with the address given. For administrators of the organization.",
@@ -878,6 +887,13 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(perm.SubjectType(""))] = enumStrings(perm.SubjectTypes)
 	b.Enums[reflect.TypeOf(perm.GlobalPermission(""))] = enumStrings(perm.GlobalPermissions)
 	b.Enums[reflect.TypeOf(perm.SpacePermission(""))] = enumStrings(perm.SpacePermissions)
+	b.Enums[reflect.TypeOf(perm.CopyMode(""))] = enumStrings(perm.CopyModes)
+	b.Enums[reflect.TypeOf(perm.CopyChangeKind(""))] = enumStrings(perm.CopyChangeKinds)
+	b.Enums[reflect.TypeOf(perm.CopySkipReason(""))] = enumStrings(perm.CopySkipReasons)
+	b.FieldOverrides["CopySubject.type"] = &openapi.Schema{Type: "string", Enum: enumStrings(perm.CopySubjectTypes)}
+	b.Names[reflect.TypeOf(space.CopyInput{})] = "PermissionCopyInput"
+	b.Names[reflect.TypeOf(space.CopyPreview{})] = "PermissionCopyPreview"
+	b.Names[reflect.TypeOf(space.CopySpace{})] = "PermissionCopySpace"
 	b.Enums[reflect.TypeOf(perm.Right(""))] = enumStrings(perm.Rights)
 	b.Enums[reflect.TypeOf(perm.StepKind(""))] = enumStrings(perm.StepKinds)
 	b.Enums[reflect.TypeOf(perm.ListKind(""))] = enumStrings(perm.ListKinds)
