@@ -1881,7 +1881,10 @@ export const de: Messages = {
     findIcon: "Emoji suchen",
     useIcon: (name: string) => `${name} verwenden`,
     width: "Breite",
-    widths: { fixed: "Fest, für gut lesbare Zeilen", full: "Voll, für breite Tabellen und Diagramme" } as Record<string, string>,
+    widths: { fixed: "Fest, gut lesbare Zeilen neben breiten Tabellen und Diagrammen", full: "Voll, auch der Text so breit wie das Fenster" } as Record<
+      string,
+      string
+    >,
     cover: "Titelbild",
     noCover: "Kein Titelbild",
     upload: "Bild hochladen",

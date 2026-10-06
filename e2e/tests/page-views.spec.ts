@@ -142,8 +142,11 @@ test.describe("page views", { tag: ["@auth"] }, () => {
     }).toPass();
     expect((await bobApi.GET("/pages/{pageID}/readers", { params: { path: { pageID: guide.id } } })).response.status).toBe(404);
     const bob = await pageAs("bob");
-    await bob.goto(`/s/${space.key}/p/${guide.id}/page`);
-    await expect(bob.locator("main")).not.toContainText(guide.title);
+    // His browser's reads are not held to Alice's restriction, so a lagging replica may still show the page.
+    await expect(async () => {
+      await bob.goto(`/s/${space.key}/p/${guide.id}/page`);
+      await expect(bob.locator("main")).not.toContainText(guide.title, { timeout: 2_000 });
+    }).toPass();
     await expect(viewsButton(bob)).toHaveCount(0);
   });
 
