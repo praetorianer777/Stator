@@ -112,7 +112,7 @@ func logging(base *slog.Logger) func(http.Handler) http.Handler {
 			}
 			attrs := []any{
 				"method", r.Method,
-				"path", r.URL.Path,
+				"path", redactPath(r.URL.Path),
 				"status", rec.status,
 				"duration_ms", time.Since(start).Milliseconds(),
 				"bytes", rec.bytes,
@@ -132,7 +132,7 @@ func recovery(next http.Handler) http.Handler {
 				if v == http.ErrAbortHandler {
 					panic(v)
 				}
-				loggerFrom(r.Context()).Error("panic in handler", "panic", v, "path", r.URL.Path)
+				loggerFrom(r.Context()).Error("panic in handler", "panic", v, "path", redactPath(r.URL.Path))
 				respondError(w, r, ErrInternal(nil))
 			}
 		}()

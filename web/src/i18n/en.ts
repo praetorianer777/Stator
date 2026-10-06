@@ -2297,6 +2297,9 @@ export const en = {
       "space.shortcut_removed": "Shortcut removed",
       "org.anonymous_access_set": "Reading without signing in changed",
       "space.anonymous_access_set": "Space opened or closed to anybody",
+      "page.public_link_created": "Public link made",
+      "page.public_link_revoked": "Public link revoked",
+      "org.public_links_set": "Public links allowed or stopped",
     } satisfies Record<AuditAction, string>,
     targetTypes: {
       user: "Person",

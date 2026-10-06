@@ -32,7 +32,7 @@ func observe(metrics *observability.Metrics) func(http.Handler) http.Handler {
 			ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 			ctx, span := observability.Tracer().Start(ctx, r.Method, trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(
 				semconv.HTTPRequestMethodKey.String(r.Method),
-				semconv.URLPath(r.URL.Path),
+				semconv.URLPath(redactPath(r.URL.Path)),
 				attribute.String("stator.request_id", RequestIDFrom(r.Context())),
 			))
 			defer span.End()

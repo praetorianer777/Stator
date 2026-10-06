@@ -2364,6 +2364,9 @@ export const de: Messages = {
       "space.shortcut_removed": "Verknüpfung entfernt",
       "org.anonymous_access_set": "Lesen ohne Anmeldung geändert",
       "space.anonymous_access_set": "Bereich für alle geöffnet oder geschlossen",
+      "page.public_link_created": "Öffentlicher Link erstellt",
+      "page.public_link_revoked": "Öffentlicher Link widerrufen",
+      "org.public_links_set": "Öffentliche Links erlaubt oder gestoppt",
     },
     targetTypes: {
       user: "Person",

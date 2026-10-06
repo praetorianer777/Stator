@@ -241,6 +241,31 @@ func (s *Service) OpenAnonymous(ctx context.Context, id uuid.UUID) (*Attachment,
 	return &found.Attachment, body, nil
 }
 
+// OpenLinked reads a file for a reader holding a public link: one of the page
+// the link opens, else none, whatever else is open. The caller closes the reader.
+func (s *Service) OpenLinked(ctx context.Context, id uuid.UUID) (*Attachment, io.ReadCloser, error) {
+	if !db.LinkFrom(ctx) {
+		return nil, nil, errors.New("a file is read through a link by a reader holding one")
+	}
+	var found *stored
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		found, err = scan(tx.QueryRow(ctx, selectAttachment+`
+			JOIN page p ON p.org_id = a.org_id AND p.id = a.page_id
+			WHERE a.id = $1 AND p.id = perm_link_page() AND p.trashed_at IS NULL AND p.version > 0 AND perm_page_viewable(p.id, NULL::uuid)`, id))
+		return err
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	body, err := s.store.Get(ctx, found.objectKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	s.describe(&found.Attachment)
+	return &found.Attachment, body, nil
+}
+
 // Delete removes a file for good. The row goes in the transaction, which
 // leaves a tombstone; the object goes after the commit, else the reaper takes it.
 func (s *Service) Delete(ctx context.Context, actor perm.Actor, id uuid.UUID) (db.LSN, error) {

@@ -243,6 +243,17 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &closed) {
 		return &APIError{Status: http.StatusConflict, Code: "cannot_view", Message: closed.Error()}
 	}
+	var linkField *public.FieldError
+	if errors.As(err, &linkField) {
+		return ErrValidation(map[string]string{linkField.Field: linkField.Message})
+	}
+	var linkRefused *public.RefusedError
+	if errors.As(err, &linkRefused) {
+		if linkRefused.Reason == public.RefusalCannotManage {
+			return ErrForbidden(linkRefused.Error())
+		}
+		return &APIError{Status: http.StatusConflict, Code: "link_refused", Message: linkRefused.Error()}
+	}
 	var braked *share.RateLimitedError
 	if errors.As(err, &braked) {
 		return &APIError{Status: http.StatusTooManyRequests, Code: "rate_limited", Message: braked.Error()}
@@ -343,6 +354,11 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, public.ErrNotPublic):
 		return &APIError{Status: http.StatusNotFound, Code: "not_public",
 			Message: "That is not open to read without signing in. Sign in to read it, or check the address."}
+	case errors.Is(err, public.ErrLinkGone):
+		return &APIError{Status: http.StatusNotFound, Code: "link_gone",
+			Message: "This link does not open anything any more: it was revoked, it ran out, or the page is no longer shared this way. Ask whoever sent it for a new one."}
+	case errors.Is(err, public.ErrLinkNotFound):
+		return ErrNotFound("That public link was not found. Somebody may have revoked it already; reload the list.")
 	case errors.Is(err, public.ErrNotAdmin):
 		return ErrForbidden("Only an administrator of the organization lets people read without signing in. Ask one of them.")
 	case errors.Is(err, space.ErrNotFound):
@@ -352,7 +368,7 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, guest.ErrPersonalSpace):
 		return ErrConflict("A personal space belongs to its owner alone. Invite the guest to another space.")
 	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound), errors.Is(err, reaction.ErrPageNotFound),
-		errors.Is(err, share.ErrPageNotFound):
+		errors.Is(err, share.ErrPageNotFound), errors.Is(err, public.ErrPageNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
 	case errors.Is(err, task.ErrNotFound):
 		return ErrNotFound("That task is not on the page any more. Reload the page or your list of tasks.")

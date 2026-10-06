@@ -7,6 +7,22 @@ import (
 	"github.com/google/uuid"
 )
 
+func TestAReaderWithALinkIsAnonymousAndNamingSomebodyEndsIt(t *testing.T) {
+	linked := WithLink(context.Background(), []byte{0xab, 0x01})
+	if !AnonymousFrom(linked) || !LinkFrom(linked) {
+		t.Fatal("a reader with a link is not an anonymous reader holding one")
+	}
+	if a, _ := linked.Value(userKey{}).(acting); a.link != "ab01" {
+		t.Errorf("the link's digest is set as %q, want hex", a.link)
+	}
+	if LinkFrom(WithAnonymous(context.Background())) {
+		t.Error("an anonymous reader without a link holds one")
+	}
+	if LinkFrom(WithUser(linked, uuid.New())) || AnonymousFrom(WithUser(linked, uuid.New())) {
+		t.Error("naming a person kept the link")
+	}
+}
+
 func TestATokensSpacesFollowItsPersonAndNoOther(t *testing.T) {
 	person, other := uuid.New(), uuid.New()
 	a, b := uuid.MustParse("019a0000-0000-7000-8000-00000000000a"), uuid.MustParse("019a0000-0000-7000-8000-00000000000b")
