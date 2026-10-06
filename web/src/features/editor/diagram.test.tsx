@@ -7,6 +7,9 @@ import { DocView } from "./DocView";
 import { Editor } from "./Editor";
 import { diagramSource, diagramTheme, drawDiagram } from "./DiagramViews";
 import type { Doc, DocNode } from "./schema";
+// Mermaid is large. Loaded inside a test it outlasted the test's time on a busy
+// machine; loaded here it is at hand.
+import "mermaid";
 
 afterEach(cleanup);
 
