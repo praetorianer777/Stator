@@ -342,14 +342,16 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
     discard.mutate(undefined, { onSuccess: () => void view(page) });
   }
 
-  const status = {
+  const statuses: Record<SaveState, string> = {
     idle: canPublish || liveMode ? "" : t.draft.nothingToPublish,
     pending: "",
     saving: liveMode ? t.live.saving : t.draft.saving,
     saved: liveMode ? t.live.saved : together ? t.collab.saved : t.draft.saved,
     error: "",
     untitled: t.draft.titleNeeded,
-  }[state];
+  };
+  const status = statuses[state];
+  const statusMessages = [...new Set([liveMode ? "" : t.draft.nothingToPublish, ...Object.values(statuses)])].filter(Boolean);
 
   const error =
     (publish.error && !(publish.error instanceof ApiError && publish.error.code === "publish_conflict") ? publish.error : null) ??
@@ -377,8 +379,16 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
             {liveMode && <Tag data-live-badge="">{t.live.badge}</Tag>}
             {mySchedule && !mySchedule.failure && <Tag data-schedule-tag="">{t.schedule.tag(scheduleTimeFormat.format(new Date(mySchedule.publishAt)))}</Tag>}
             {together && <Presence awareness={together.snapshot.awareness} selfId={together.user.id} status={together.snapshot.status} />}
-            <span role="status" data-draft-status={state}>
-              {status}
+            {/* Every message shares one cell, so the header keeps the longest one's size and the page below does not jump as saves come and go. */}
+            <span className="inline-grid" data-draft-status-cell="">
+              {statusMessages.map((message) => (
+                <span key={message} aria-hidden="true" className="invisible col-start-1 row-start-1">
+                  {message}
+                </span>
+              ))}
+              <span role="status" data-draft-status={state} className="col-start-1 row-start-1">
+                {status}
+              </span>
             </span>
           </span>
         }
