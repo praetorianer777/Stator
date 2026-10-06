@@ -36,6 +36,9 @@ export function SpaceNav({ open, onToggle, onNavigate }: { open: boolean; onTogg
         <div className="my-1">
           <PageTree space={space} currentId={pageId} openPath={openPath} onMove={setMoving} />
         </div>
+        <NavItem to={`/s/${space.key}/blog`} icon="Megaphone" rail={false} onNavigate={onNavigate}>
+          {t.space.blog}
+        </NavItem>
         <NavItem to={`/s/${space.key}/decisions`} icon="Decision" rail={false} onNavigate={onNavigate}>
           {t.space.decisions}
         </NavItem>

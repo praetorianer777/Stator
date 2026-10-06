@@ -41,6 +41,7 @@ import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { PlaceDialog } from "./PlaceDialog";
 import { RenameFolderDialog } from "./RenameFolderDialog";
 import { ScheduleNote } from "./ScheduleNote";
+import { postDay } from "@/features/blog/blogPosts";
 
 const updatedAt = localDateFormat({ dateStyle: "medium" });
 
@@ -56,6 +57,27 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
         </PageLink>
       ),
     });
+  }
+  // A post hangs from no page; it sits in its space's blog.
+  if (page.kind === "post") {
+    crumbs.push(
+      {
+        label: space.name,
+        render: (label) => (
+          <Link to="/s/$spaceKey" params={{ spaceKey: space.key }}>
+            {label}
+          </Link>
+        ),
+      },
+      {
+        label: t.blog.title,
+        render: (label) => (
+          <Link to="/s/$spaceKey/blog" params={{ spaceKey: space.key }} data-blog-crumb="">
+            {label}
+          </Link>
+        ),
+      },
+    );
   }
   return crumbs;
 }
@@ -151,6 +173,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         }
       : undefined;
   const folder = page.kind === "folder";
+  const post = page.kind === "post";
   const edit = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
   const history = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/history", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
   const open = (placed: Page, editing = false) => {
@@ -161,14 +184,15 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
 
   const actions: MenuItem[] = [];
   if (folder && page.can.edit) actions.push({ label: t.page.rename, onSelect: () => setDialog("rename"), attrs: { "data-action": "rename-folder" } });
-  if (!folder && page.can.edit)
+  // A post stays in its blog: nothing goes under it, and it is neither moved nor copied into the tree.
+  if (!folder && !post && page.can.edit)
     actions.push({ label: t.page.newFolder, icon: <Icon.Folder />, onSelect: () => setDialog("newFolder"), attrs: { "data-action": "new-folder" } });
-  if (!page.home && page.can.edit) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
-  if (space.can.editPages) actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
+  if (!page.home && !post && page.can.edit) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
+  if (!post && space.can.editPages) actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
   if (!folder) {
     actions.push({ label: t.markdown.exportMenu, icon: <Icon.Download />, onSelect: () => setDialog("export"), attrs: { "data-action": "export-markdown" } });
   }
-  if (page.can.edit && !folder) {
+  if (page.can.edit && !folder && !post) {
     actions.push({ label: t.markdown.importMenu, icon: <Icon.Upload />, onSelect: () => setDialog("import"), attrs: { "data-action": "import-markdown" } });
   }
   if (page.can.restrict) {
@@ -176,7 +200,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   }
   if (page.can.edit) {
     actions.push({ label: t.appearance.menu, icon: <Icon.Smile />, onSelect: () => setDialog("appearance"), attrs: { "data-action": "page-appearance" } });
-    if (!folder) actions.push({ label: t.live.menu, icon: <Icon.Edit />, onSelect: () => setDialog("mode"), attrs: { "data-action": "page-mode" } });
+    if (!folder && !post) actions.push({ label: t.live.menu, icon: <Icon.Edit />, onSelect: () => setDialog("mode"), attrs: { "data-action": "page-mode" } });
   }
   if (page.can.edit && !page.unpublished && !folder) {
     actions.push({ label: t.stewardship.menu, icon: <Icon.Seal />, onSelect: () => setDialog("stewardship"), attrs: { "data-action": "page-stewardship" } });
@@ -204,9 +228,11 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         const above = page.ancestors[page.ancestors.length - 1];
         trash.mutate(page.id, {
           onSuccess: () =>
-            void (above && !above.home
-              ? navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: above.id, slug: pageSlug(above.title) } })
-              : navigate({ to: "/s/$spaceKey", params: { spaceKey: space.key } })),
+            void (post
+              ? navigate({ to: "/s/$spaceKey/blog", params: { spaceKey: space.key } })
+              : above && !above.home
+                ? navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: above.id, slug: pageSlug(above.title) } })
+                : navigate({ to: "/s/$spaceKey", params: { spaceKey: space.key } })),
         });
       },
       attrs: { "data-action": "trash-page" },
@@ -261,6 +287,11 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         meta={
           <span className="flex flex-wrap items-center gap-2">
             {folder && <Tag data-folder="">{t.page.folder}</Tag>}
+            {post && (
+              <span data-post-date={page.postedAt ?? ""}>
+                {page.postedAt ? t.blog.posted(postDay.format(new Date(page.postedAt))) : t.blog.unpublishedPost}
+              </span>
+            )}
             {t.page.updated(page.updatedByName, updatedAt.format(new Date(page.updatedAt)))}
             {page.verification && <VerificationBadge verification={page.verification} onOpen={() => setDialog("stewardship")} />}
             {page.owner && (
@@ -290,9 +321,11 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
             )}
             {page.can.edit && (
               <>
-                <Button variant="secondary" icon={<Icon.Plus />} onClick={() => setDialog("new")} data-action="new-page">
-                  {t.page.newPage}
-                </Button>
+                {!post && (
+                  <Button variant="secondary" icon={<Icon.Plus />} onClick={() => setDialog("new")} data-action="new-page">
+                    {t.page.newPage}
+                  </Button>
+                )}
                 {folder ? (
                   <Button variant="secondary" icon={<Icon.Folder />} onClick={() => setDialog("newFolder")} data-action="new-folder">
                     {t.page.newFolder}

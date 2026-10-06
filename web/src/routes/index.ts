@@ -20,6 +20,7 @@ import { profileRoute } from "./profile";
 import { publicLinkRoute, publicRoutes } from "./public";
 import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
 import { spaceDecisionsRoute } from "./decisions";
+import { spaceBlogRoute } from "./blog";
 import { personalSpaceNewRoute, spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
 import { searchRoute } from "./search";
@@ -50,6 +51,7 @@ const routeTree = rootRoute.addChildren([
       spaceSettingsRoute,
       spaceLabelRoute,
       spaceDecisionsRoute,
+      spaceBlogRoute,
     ]),
     searchRoute,
     tasksRoute,

@@ -27,6 +27,8 @@ import { newRoadmapSettings } from "@/features/armature/roadmap";
 import { PropertiesReportDialog } from "@/features/properties/PropertiesReportDialog";
 import { PageListDialog } from "@/features/pageLists/PageListDialog";
 import { labelledSettings } from "@/features/pageLists/lists";
+import { BlogPostsDialog } from "@/features/blog/BlogPostsDialog";
+import { blogPostsSettings } from "@/features/blog/blogPosts";
 import { TaskReportDialog } from "@/features/taskReport/TaskReportDialog";
 import { taskReportSettings } from "@/features/taskReport/report";
 import { CalendarDialog } from "@/features/calendar/CalendarDialog";
@@ -147,6 +149,7 @@ export function Editor({
   const [makingRoadmap, setMakingRoadmap] = useState(false);
   const [makingReport, setMakingReport] = useState(false);
   const [makingLabelled, setMakingLabelled] = useState(false);
+  const [makingPosts, setMakingPosts] = useState(false);
   const [makingTasks, setMakingTasks] = useState(false);
   const [makingCalendar, setMakingCalendar] = useState(false);
   const [makingButton, setMakingButton] = useState(false);
@@ -179,6 +182,7 @@ export function Editor({
       pickRoadmap: () => setMakingRoadmap(true),
       pickPropertiesReport: () => setMakingReport(true),
       pickLabelledPages: () => setMakingLabelled(true),
+      pickBlogPosts: () => setMakingPosts(true),
       pickTaskReport: () => setMakingTasks(true),
       pickCalendar: () => setMakingCalendar(true),
       pickTemplateButton: () => setMakingButton(true),
@@ -422,6 +426,18 @@ export function Editor({
           onSave={(settings) => {
             setMakingLabelled(false);
             editor.chain().focus().insertLabelledPages(settings).run();
+          }}
+        />
+      )}
+      {makingPosts && editor && (
+        <BlogPostsDialog
+          initial={blogPostsSettings({ space: page?.spaceKey })}
+          currentSpace={page?.spaceKey}
+          isNew
+          onClose={() => setMakingPosts(false)}
+          onSave={(settings) => {
+            setMakingPosts(false);
+            editor.chain().focus().insertBlogPosts(settings).run();
           }}
         />
       )}

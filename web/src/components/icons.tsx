@@ -72,6 +72,7 @@ export const Icon = {
   X: makeIcon("x", ["m4 4 8 8", "m12 4-8 8"]),
   Folder: makeIcon("folder", ["M2 4.5A1 1 0 0 1 3 3.5h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"]),
   Flag: makeIcon("flag", ["M3.5 14V2.5", "M3.5 3h8.5l-2 3 2 3H3.5"]),
+  Megaphone: makeIcon("megaphone", ["M2.5 6.5h2.5L11 3.5v9L5 9.5H2.5z", "M5.5 9.5 6.5 13.5", "M13 6.5v3"]),
   Decision: makeIcon("decision", ["M8 14.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z", "m5.5 8 2 2 3-4"]),
   // A summation sign, the shape most people know a formula by.
   Sigma: makeIcon("sigma", ["M12.5 3.5v-1h-9L8 8l-4.5 5.5h9v-1"]),

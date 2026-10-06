@@ -30,6 +30,7 @@ export function aPage(over: Partial<Page> = {}): Page {
     parentId: null,
     title: "Handbook",
     kind: "page",
+    postedAt: null,
     appearance: { icon: null, width: "fixed", cover: null },
     mode: "draft",
     body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome to the handbook." }] }] },

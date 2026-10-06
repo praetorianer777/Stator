@@ -99,6 +99,7 @@ describe("the slash menu's blocks", () => {
       labelledPages: (d) =>
         JSON.stringify(find(d, "labelledPages")[0]?.attrs) === JSON.stringify({ labels: ["adr"], match: "any", space: null, sort: "title", limit: 5 }),
       recentlyUpdated: (d) => JSON.stringify(find(d, "recentlyUpdated")[0]?.attrs) === JSON.stringify({ space: null, limit: 10 }),
+      blogPosts: (d) => JSON.stringify(find(d, "blogPosts")[0]?.attrs) === JSON.stringify({ space: "NEWS", limit: 5 }),
       tableChart: (d) => find(d, "tableChart")[0]?.attrs?.chart === "bar" && find(d, "tableRow").length === 4,
       attachmentList: (d) => JSON.stringify(find(d, "attachmentList")[0]) === JSON.stringify({ type: "attachmentList" }),
       taskReport: (d) =>
@@ -129,6 +130,7 @@ describe("the slash menu's blocks", () => {
         pickPropertiesReport: () => setTimeout(() => editor?.commands.insertPropertiesReport({ labels: ["adr"], space: null, columns: ["Owner"] })),
         pickLabelledPages: () =>
           setTimeout(() => editor?.commands.insertLabelledPages({ labels: ["adr"], match: "any", space: null, sort: "title", limit: 5 })),
+        pickBlogPosts: () => setTimeout(() => editor?.commands.insertBlogPosts({ space: "NEWS", limit: 5 })),
         pickTaskReport: () => setTimeout(() => editor?.commands.insertTaskReport({ space: "DOCS", assignee: "me", due: "week", state: "open", limit: 20 })),
         pickCalendar: () => setTimeout(() => editor?.commands.insertCalendar({ calendarId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a90", project: "CP" })),
         pickTemplateButton: () =>

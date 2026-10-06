@@ -1113,6 +1113,61 @@ export const de: Messages = {
       save: "Speichern",
     },
   },
+  blog: {
+    title: "Blog",
+    post: "Blogbeitrag",
+    newPost: "Neuer Beitrag",
+    newPostTitle: "Einen Blogbeitrag schreiben",
+    postTitle: "Titel",
+    create: "Mit dem Schreiben beginnen",
+    createFailed: "Der Beitrag konnte nicht angelegt werden. Versuchen Sie es gleich noch einmal.",
+    emptyTitle: "Ein Beitrag braucht einen Titel.",
+    watch: "Blog beobachten",
+    watching: "Blog wird beobachtet",
+    watchHint: "Über jeden neuen Beitrag in diesem Blog informiert werden.",
+    unwatchHint: "Nicht mehr über neue Beiträge in diesem Blog informiert werden.",
+    watchFailed: "Das Beobachten des Blogs konnte nicht geändert werden. Versuchen Sie es gleich noch einmal.",
+    dates: "Beiträge nach Datum",
+    allPosts: "Alle Beiträge",
+    jump: "Beiträge zeigen aus",
+    count: (label: string, n: number) => `${label} (${n})`,
+    empty: "Hier gibt es noch keine Beiträge. Schreiben Sie den ersten über Neuer Beitrag.",
+    emptyReader: "Hier gibt es noch keine Beiträge.",
+    emptyFiltered: "In dieser Zeit ist kein Beitrag erschienen, den Sie lesen dürfen.",
+    loading: "Die Beiträge werden geladen",
+    failed: "Die Beiträge konnten nicht geladen werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+    more: "Ältere Beiträge anzeigen",
+    by: (name: string) => `von ${name}`,
+    posted: (when: string) => `Veröffentlicht am ${when}`,
+    unpublishedPost: "Unveröffentlichter Beitrag",
+    unpublished: "Ihre unveröffentlichten Beiträge",
+    unpublishedHint: "Nur Sie sehen diese, bis Sie sie veröffentlichen.",
+    scheduled: (when: string) => `Erscheint am ${when}`,
+    edited: (when: string) => `Zuletzt bearbeitet ${when}`,
+  },
+  blogPosts: {
+    edit: "Liste bearbeiten",
+    title: (space: string | null) => (space ? `Neueste Blogbeiträge in ${space}` : "Neueste Blogbeiträge"),
+    summary: (space: string | null) => (space ? `Die neuesten Blogbeiträge in ${space}` : "Die neuesten Blogbeiträge aller Bereiche"),
+    loading: "Die Beiträge werden gesucht",
+    failed: "Die Beiträge konnten nicht aufgelistet werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+    empty: "Es ist noch kein Beitrag erschienen, den Sie lesen dürfen.",
+    dialog: {
+      new: "Die neuesten Blogbeiträge einfügen",
+      edit: "Die neuesten Blogbeiträge bearbeiten",
+      scope: "Beiträge aus",
+      thisSpace: (key: string) => `Diesem Bereich (${key})`,
+      otherSpace: "Einem anderen Bereich",
+      everySpace: "Allen Bereichen",
+      space: "Bereich",
+      spaceNone: "Wählen Sie den Bereich, dessen Beiträge aufgelistet werden.",
+      limit: "Anzeigen",
+      limitChoice: (n: number) => (n === 1 ? "1 Beitrag" : `${n} Beiträge`),
+      cancel: "Abbrechen",
+      insert: "Einfügen",
+      save: "Speichern",
+    },
+  },
   decisions: {
     title: "Entscheidungen",
     filter: "Anzeigen",
@@ -1125,6 +1180,7 @@ export const de: Messages = {
     truncated: "Nur die neuesten Entscheidungen sind aufgeführt. Grenzen Sie die Liste nach Zustand ein.",
   },
   space: {
+    blog: "Blog",
     decisions: "Entscheidungen",
     home: "Startseite des Bereichs",
     settings: "Bereichseinstellungen",
@@ -1467,6 +1523,7 @@ export const de: Messages = {
     deleted: (who: string, when: string) => (who ? `${when} von ${who}` : when),
     backUnder: (title: string) => `Unter ${title}`,
     underHome: "Unter die Startseite, der alte Platz ist weg",
+    toBlog: "Zurück in den Blog",
     notTrasher:
       "Nur wer in diesem Bereich Seiten löschen darf, sieht seinen Papierkorb. Fragen Sie einen Administrator des Bereichs, wenn Sie eine Seite zurück brauchen.",
     notPurger: "Nur ein Administrator dieses Bereichs kann Seiten endgültig löschen.",
@@ -1846,6 +1903,7 @@ export const de: Messages = {
       },
       labelledPages: { label: "Inhalte nach Schlagwort", description: "Eine Liste der Seiten mit bestimmten Schlagwörtern, immer aktuell." },
       recentlyUpdated: { label: "Zuletzt aktualisiert", description: "Die zuletzt veröffentlichten Seiten, in einem Bereich oder überall." },
+      blogPosts: { label: "Neueste Blogbeiträge", description: "Die neuesten Beiträge aus dem Blog eines Bereichs oder aller Bereiche." },
       tableChart: { label: "Diagramm aus Tabelle", description: "Eine Tabelle als Balken, Linien oder Kreis, die beim Bearbeiten der Tabelle folgt." },
       attachmentList: { label: "Dateien", description: "Die Dateien dieser Seite mit ihren Versionen, und ein Ort, weitere hochzuladen." },
       taskReport: { label: "Aufgabenbericht", description: "Eine Liste von Aufgaben nach Bereich, zugewiesener Person, Fälligkeit und Status, stets aktuell." },
@@ -2224,7 +2282,11 @@ export const de: Messages = {
     columnKind: "Umfasst",
     columnSince: "Seit",
     columnActions: "Aktionen",
-    kind: { page: "Diese Seite", subtree: "Diese Seite und die Seiten darunter", space: "Den ganzen Bereich" } as Record<"page" | "subtree" | "space", string>,
+    kind: { page: "Diese Seite", subtree: "Diese Seite und die Seiten darunter", space: "Den ganzen Bereich", blog: "Neue Beiträge im Blog" } as Record<
+      "page" | "subtree" | "space" | "blog",
+      string
+    >,
+    blogNamed: (name: string) => `Blog von ${name}`,
     stop: "Nicht mehr beobachten",
     stopNamed: (what: string) => `${what} nicht mehr beobachten`,
     stopped: (what: string) => `Sie beobachten ${what} nicht mehr.`,
@@ -2293,6 +2355,8 @@ export const de: Messages = {
           return version ? `${who} hat Version ${version} von ${title} veröffentlicht` : `${who} hat ${title} veröffentlicht`;
         case "created":
           return `${who} hat ${title} angelegt`;
+        case "posted":
+          return `${who} hat den Beitrag ${title} veröffentlicht`;
         case "expired":
           return `Die Bestätigung von ${title} ist abgelaufen. Prüfen Sie die Seite und bestätigen Sie sie erneut.`;
         case "failed":
@@ -2317,9 +2381,13 @@ export const de: Messages = {
       resolved: "Eine Diskussion, in der Sie geschrieben haben, wird als erledigt markiert oder wieder geöffnet",
       published: "Eine Seite, die Sie beobachten, wird mit Benachrichtigung veröffentlicht",
       created: "Unter einer Seite oder einem Bereich, die Sie beobachten, wird erstmals eine Seite veröffentlicht",
+      posted: "In einem Blog oder Bereich, den Sie beobachten, erscheint ein Beitrag",
       expired: "Die Bestätigung einer Seite, die Ihnen gehört, läuft ab",
       failed: "Eine von Ihnen geplante Veröffentlichung kann nicht hinausgehen",
-    } as Record<"assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired" | "failed", string>,
+    } as Record<
+      "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "posted" | "expired" | "failed",
+      string
+    >,
     inAppFor: (kind: string) => `In der App: ${kind}`,
     emailFor: (kind: string) => `Per E-Mail: ${kind}`,
     digest: "Wann E-Mails verschickt werden",

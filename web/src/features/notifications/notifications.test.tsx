@@ -45,6 +45,7 @@ const allOn = {
   resolved: true,
   published: true,
   created: true,
+  posted: true,
   expired: true,
   failed: true,
 };

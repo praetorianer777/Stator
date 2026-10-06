@@ -1080,6 +1080,61 @@ export const en = {
       save: "Save",
     },
   },
+  blog: {
+    title: "Blog",
+    post: "Blog post",
+    newPost: "New post",
+    newPostTitle: "Write a blog post",
+    postTitle: "Title",
+    create: "Start writing",
+    createFailed: "The post could not be started. Try again in a moment.",
+    emptyTitle: "A post needs a title.",
+    watch: "Watch blog",
+    watching: "Watching blog",
+    watchHint: "Hear about every new post in this blog.",
+    unwatchHint: "Stop hearing about new posts in this blog.",
+    watchFailed: "Watching the blog could not be changed. Try again in a moment.",
+    dates: "Posts by date",
+    allPosts: "All posts",
+    jump: "Show posts from",
+    count: (label: string, n: number) => `${label} (${n})`,
+    empty: "No posts here yet. Write the first one with New post.",
+    emptyReader: "No posts here yet.",
+    emptyFiltered: "No post you can read went out in this time.",
+    loading: "Loading the posts",
+    failed: "The posts could not be loaded. Reload the page to try again.",
+    more: "Show older posts",
+    by: (name: string) => `by ${name}`,
+    posted: (when: string) => `Posted on ${when}`,
+    unpublishedPost: "Unpublished post",
+    unpublished: "Your unpublished posts",
+    unpublishedHint: "Only you see these until you publish them.",
+    scheduled: (when: string) => `Goes out on ${when}`,
+    edited: (when: string) => `Last edited ${when}`,
+  },
+  blogPosts: {
+    edit: "Edit list",
+    title: (space: string | null) => (space ? `Latest blog posts in ${space}` : "Latest blog posts"),
+    summary: (space: string | null) => (space ? `The latest blog posts in ${space}` : "The latest blog posts of every space"),
+    loading: "Finding the posts",
+    failed: "The posts could not be listed. Reload the page to try again.",
+    empty: "No post you can read has gone out yet.",
+    dialog: {
+      new: "Insert the latest blog posts",
+      edit: "Edit the latest blog posts",
+      scope: "Posts from",
+      thisSpace: (key: string) => `This space (${key})`,
+      otherSpace: "Another space",
+      everySpace: "Every space",
+      space: "Space",
+      spaceNone: "Choose the space whose posts to list.",
+      limit: "Show",
+      limitChoice: (n: number) => (n === 1 ? "1 post" : `${n} posts`),
+      cancel: "Cancel",
+      insert: "Insert",
+      save: "Save",
+    },
+  },
   decisions: {
     title: "Decisions",
     filter: "Show",
@@ -1092,6 +1147,7 @@ export const en = {
     truncated: "Only the most recent decisions are listed. Narrow the list by state.",
   },
   space: {
+    blog: "Blog",
     decisions: "Decisions",
     home: "Space home",
     settings: "Space settings",
@@ -1425,6 +1481,7 @@ export const en = {
     deleted: (who: string, when: string) => (who ? `${when} by ${who}` : when),
     backUnder: (title: string) => `Under ${title}`,
     underHome: "Under the home page, where it was is gone",
+    toBlog: "Back in the blog",
     notTrasher: "Only people who may delete pages in this space can see its trash. Ask an administrator of the space if you need a page back.",
     notPurger: "Only an administrator of this space can delete pages for good.",
     guests: "Guests",
@@ -1798,6 +1855,7 @@ export const en = {
       properties: { label: "Properties", description: "A table of names and values, such as owner and status, which a properties report gathers." },
       labelledPages: { label: "Content by label", description: "A list of the pages carrying some labels, kept up to date." },
       recentlyUpdated: { label: "Recently updated", description: "The pages published last, in a space or everywhere." },
+      blogPosts: { label: "Latest blog posts", description: "The newest posts of a space's blog, or of every space." },
       tableChart: { label: "Chart from table", description: "A table drawn as bars, lines or a pie, which follows the table as you edit it." },
       attachmentList: { label: "Files", description: "The files on this page with their versions, and a place to upload more." },
       taskReport: { label: "Task report", description: "A list of tasks picked by space, assignee, due date and state, kept up to date." },
@@ -2156,7 +2214,11 @@ export const en = {
     columnKind: "Covers",
     columnSince: "Since",
     columnActions: "Actions",
-    kind: { page: "This page", subtree: "This page and the pages below", space: "The whole space" } as Record<"page" | "subtree" | "space", string>,
+    kind: { page: "This page", subtree: "This page and the pages below", space: "The whole space", blog: "New posts in the blog" } as Record<
+      "page" | "subtree" | "space" | "blog",
+      string
+    >,
+    blogNamed: (name: string) => `Blog of ${name}`,
     stop: "Stop watching",
     stopNamed: (what: string) => `Stop watching ${what}`,
     stopped: (what: string) => `You no longer watch ${what}.`,
@@ -2225,6 +2287,8 @@ export const en = {
           return version ? `${who} published version ${version} of ${title}` : `${who} published ${title}`;
         case "created":
           return `${who} created ${title}`;
+        case "posted":
+          return `${who} posted ${title}`;
         case "expired":
           return `The verification of ${title} has run out. Check the page and verify it again.`;
         case "failed":
@@ -2249,9 +2313,13 @@ export const en = {
       resolved: "A thread you wrote in is resolved or reopened",
       published: "A page you watch is published with a notice",
       created: "A page is first published below a page or space you watch",
+      posted: "A post goes out in a blog or space you watch",
       expired: "The verification of a page you own runs out",
       failed: "A publish you scheduled cannot go out",
-    } as Record<"assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired" | "failed", string>,
+    } as Record<
+      "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "posted" | "expired" | "failed",
+      string
+    >,
     inAppFor: (kind: string) => `In the app: ${kind}`,
     emailFor: (kind: string) => `By email: ${kind}`,
     digest: "When emails go out",

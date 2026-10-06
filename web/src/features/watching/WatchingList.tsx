@@ -11,7 +11,8 @@ import { t } from "@/i18n";
 const since = localDateFormat({ dateStyle: "medium" });
 
 function named(watch: Watch): string {
-  return watch.page ? watch.page.title : t.watch.spaceNamed(watch.spaceName);
+  if (watch.page) return watch.page.title;
+  return watch.kind === "blog" ? t.watch.blogNamed(watch.spaceName) : t.watch.spaceNamed(watch.spaceName);
 }
 
 /** The pages and spaces the caller watches, the latest first, each with a way to stop. */
@@ -59,6 +60,10 @@ export function WatchingList() {
                       <PageLink spaceKey={watch.spaceKey} id={watch.page.id} title={watch.page.title} className="font-medium text-accent hover:underline">
                         {watch.page.title}
                       </PageLink>
+                    ) : watch.kind === "blog" ? (
+                      <Link to="/s/$spaceKey/blog" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
+                        {t.watch.blogNamed(watch.spaceName)}
+                      </Link>
                     ) : (
                       <Link to="/s/$spaceKey" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
                         {watch.spaceName}

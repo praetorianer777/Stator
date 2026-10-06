@@ -68,7 +68,7 @@ export function TrashPanel({ space }: { space: Space }) {
                   <span className="block text-xs text-ink-muted">{s.pages(item.pages)}</span>
                 </Td>
                 <Td className="text-ink-muted">{s.deleted(item.trashedByName, deletedAt.format(new Date(item.trashedAt)))}</Td>
-                <Td className="text-ink-muted">{item.parentInTree ? s.backUnder(item.parentTitle) : s.underHome}</Td>
+                <Td className="text-ink-muted">{item.kind === "post" ? s.toBlog : item.parentInTree ? s.backUnder(item.parentTitle) : s.underHome}</Td>
                 <Td>
                   <div className="flex justify-end gap-2">
                     {space.can.deletePages && (

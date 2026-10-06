@@ -36,6 +36,7 @@ import { ArmatureRoadmap } from "./armatureRoadmap";
 import { Properties, PropertyRow } from "./properties";
 import { PropertiesReportNode } from "./propertiesReport";
 import { LabelledPagesNode, RecentlyUpdatedNode } from "./pageLists";
+import { BlogPostsNode } from "./blogPosts";
 import { TaskReportNode } from "./taskReport";
 import { AttachmentListNode } from "./attachmentList";
 import { TableChartNode } from "./tableChart";
@@ -415,6 +416,8 @@ export interface ExtensionOptions {
   pickPropertiesReport?: () => void;
   /** Opens the settings dialog the slash menu's content by label starts with. */
   pickLabelledPages?: () => void;
+  /** Opens the settings dialog the slash menu's latest blog posts starts with. */
+  pickBlogPosts?: () => void;
   /** Opens the settings dialog the slash menu's task report starts with. */
   pickTaskReport?: () => void;
   /** Opens the settings dialog the slash menu's calendar starts with. */
@@ -463,6 +466,7 @@ export function editorExtensions({
   pickRoadmap,
   pickPropertiesReport,
   pickLabelledPages,
+  pickBlogPosts,
   pickTaskReport,
   pickCalendar,
   pickTemplateButton,
@@ -543,6 +547,7 @@ export function editorExtensions({
     PropertiesReportNode.configure({ pick: pickPropertiesReport }),
     LabelledPagesNode.configure({ pick: pickLabelledPages }),
     RecentlyUpdatedNode,
+    BlogPostsNode.configure({ pick: pickBlogPosts }),
     TaskReportNode.configure({ pick: pickTaskReport }),
     AttachmentListNode.configure({ pageId }),
     TableChartNode,
