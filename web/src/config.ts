@@ -212,6 +212,23 @@ export const IMAGE_ALT_MAX_LENGTH = 500;
 /** The widest an image's width attribute may be, matching the API's MaxImageWidth. */
 export const IMAGE_MAX_WIDTH_PX = 4000;
 
+/** The lightbox's zoom: from the picture fitted to the screen up to this many times that. */
+export const LIGHTBOX_MAX_ZOOM = 8;
+/** How much one press of zoom in or out, or of + and -, multiplies the zoom by. */
+export const LIGHTBOX_ZOOM_STEP = 1.5;
+/** What a double click or double tap zooms an unzoomed picture to. */
+export const LIGHTBOX_DOUBLE_ZOOM = 2.5;
+/** How fast the wheel zooms: the zoom is multiplied by e to this times the pixels scrolled. */
+export const LIGHTBOX_WHEEL_ZOOM_PER_PX = 0.0015;
+/** How far one arrow key press moves a zoomed picture. */
+export const LIGHTBOX_PAN_STEP_PX = 64;
+/** How far a finger must sweep sideways across an unzoomed picture to go to the next or previous one. */
+export const LIGHTBOX_SWIPE_PX = 48;
+/** The videos the API shows in place, which a browser's own player plays. */
+export const VIDEO_TYPES: readonly string[] = ["video/mp4", "video/webm", "video/ogg"];
+/** The names a file chip offers to play by, since a chip does not carry the file's type. */
+export const VIDEO_FILE_PATTERN = /\.(mp4|webm|ogv)$/i;
+
 /** How far each level of the page tree is indented. */
 export const TREE_INDENT_PX = 12;
 /** The share of a tree row at its top and bottom where a dropped page goes beside it rather than under it. */

@@ -3,6 +3,66 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: Pictures and videos open in a lightbox of our own, and files are served by the range
+
+A reader looks at a picture or a video of a page without downloading it
+(#93). The lightbox is a component of some three hundred and fifty lines in
+`web/src/features/attachments`, with no library behind it: what it needs is
+a transform, pointer events and the browser's own video player, and every
+gallery package weighs more than that and brings a look of its own to theme.
+It takes a list of items and a place to start, so the gallery block (#96)
+hands it its pictures and gets next and previous, by buttons, the arrow keys
+and a sideways swipe, going round at either end.
+
+Where it opens:
+
+- A picture in a page's words, in the app, in a public space and through a
+  public link: the picture is a button. Not in the editor, where a click
+  selects the picture for its tools.
+- The files below a page and the files block: the preview button of a
+  picture or a video opens the lightbox with the list's other pictures and
+  videos to step through (in the files block the latest version of each
+  name); the button of a PDF or an office document still opens the PDF
+  preview. The file's name stays a link to it in a new tab.
+- A file chip in a page's words whose name ends in `.mp4`, `.webm` or
+  `.ogv` gets a play button beside it. A chip stores a name and no type, and
+  a public reader has no list of files to look the type up in, so the name
+  decides and a file that does not play says so in a sentence.
+
+Each item's address is the reader's own read of the file: the app's
+`/attachments/{id}`, the public reads, or the link's. The lightbox shows only
+what that reader may download, by the same rule and the same row level
+policies, and a refusal shows as the sentence a broken picture gets.
+
+A picture is fitted to the window, never enlarged past its own size, and
+zooms from there to eight times by the buttons, `+`, `-` and `0`, the wheel
+around the pointer, a double click, and two fingers around their middle.
+Zoomed, it pans by dragging, one finger or the arrow keys, and no edge is
+pulled into the window; unzoomed, the arrow keys and a swipe go to the next.
+The zoom is a pure module (`zoom.ts`) the unit tests drive. On a phone the
+lightbox is the whole screen and takes the touches, so the page under it
+neither scrolls nor zooms.
+
+It is a labelled modal dialog: focus moves to the picture, which is a group
+named for it with its keys described, or to the player, is held inside, and
+goes back to what opened it on Escape or Close. A status line says the
+position, the name and the zoom. It is drawn in the theme's surface tokens,
+so it passes axe in light and dark like the rest. A video plays in the
+browser's `<video controls>`, without captions: an uploaded file brings none.
+
+Videos are `video/mp4`, `video/webm` and `video/ogg`. They join the types
+`inline=1` shows in place, since a video cannot run script against the
+origin; `video/quicktime` and the rest still download. A player asks for a
+video by ranges to start quickly and to seek, and browsers seek badly or
+not at all in a file served whole, so the three file reads now answer one
+byte range in a `Range` header with 206 and that stretch, fetched from the
+bucket by a ranged GET rather than read whole and cut. Several ranges, a
+malformed header or an `If-Range` naming other bytes get the whole file, as
+RFC 9110 allows; a range starting past the end is refused with 416 and a
+sentence. The ETag is the file's id: a new version is a row of its own, so
+an id never names other bytes. The permission check is the one a whole
+download makes, before a byte is fetched.
+
 ## 2026-10-06: The example space is made through the services, from Markdown per language
 
 The example space (#288) is a space whose pages explain Stator, made by an

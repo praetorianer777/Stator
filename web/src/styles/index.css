@@ -587,6 +587,20 @@
     height: auto;
     border-radius: var(--radius-control);
   }
+  /* The picture is its own button into the lightbox, drawn as nothing but the picture. */
+  .doc-content figure[data-image] .doc-image-open {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    border-radius: var(--radius-control);
+    cursor: zoom-in;
+  }
+  .doc-content figure[data-image] .doc-image-open:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
   .doc-content figure[data-image].ProseMirror-selectednode img,
   .doc-content figure[data-image].ProseMirror-selectednode [data-image-missing] {
     outline: 2px solid var(--color-focus);
