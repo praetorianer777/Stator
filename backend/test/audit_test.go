@@ -268,6 +268,12 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	once(audit.ActionOrgAnonymousAccessSet, me, nil)
 	want(t, owner.put(t, "/api/v1/spaces/AUD/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the space to anybody")
 	once(audit.ActionSpaceAnonymousAccessSet, me, spaceID)
+	copyID := idOf(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "AUDC", "name": "Copied"}), http.StatusCreated, "make a space to copy into"), "space")
+	copyPreview := obj(t, want(t, owner.get(t, "/api/v1/spaces/AUDC/permissions/copy?from=AUD&mode=replace"), http.StatusOK, "preview a copy"), "preview")
+	want(t, owner.post(t, "/api/v1/spaces/AUDC/permissions/copy", map[string]any{"from": "AUD", "mode": "replace", "fingerprint": copyPreview["fingerprint"]}), http.StatusOK, "copy AUD's permissions")
+	if data := once(audit.ActionSpacePermissionsCopied, me, copyID); !strings.Contains(data, `"key": "AUD"`) || !strings.Contains(data, `"mode": "replace"`) {
+		t.Errorf("the copy's record reads %s", data)
+	}
 
 	link := want(t, owner.post(t, pagePath(notes, "/public-links"), map[string]any{"label": "Auditors"}), http.StatusCreated, "make a public link")
 	linkID := idOf(t, link, "link")
