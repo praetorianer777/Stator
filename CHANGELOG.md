@@ -760,6 +760,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The CI gate may run 45 minutes rather than 30, since the suite had grown
+  to fill the old limit, and a cancelled run now says it was stopped rather
+  than failed (#283).
+
 - Renaming and deleting a space and purging its trash are for the space's
   administrators, and making spaces for whoever holds `createSpace`, rather
   than for the organization's administrators alone.
