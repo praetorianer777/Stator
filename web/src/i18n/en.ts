@@ -1823,7 +1823,10 @@ export const en = {
     findIcon: "Find an emoji",
     useIcon: (name: string) => `Use ${name}`,
     width: "Width",
-    widths: { fixed: "Fixed, for comfortable lines of text", full: "Full, for wide tables and diagrams" } as Record<string, string>,
+    widths: { fixed: "Fixed, comfortable lines of text beside wide tables and diagrams", full: "Full, text as wide as the window too" } as Record<
+      string,
+      string
+    >,
     cover: "Cover picture",
     noCover: "No cover",
     upload: "Upload a picture",

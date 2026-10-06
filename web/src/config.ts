@@ -186,6 +186,10 @@ export const SHORTCUT_URL_MAX_LENGTH = 2000;
 export const SHORTCUT_URL_SCHEMES: readonly string[] = ["http:", "https:"];
 /** What an address somebody typed opens with: its own tab, no hold on this one, no word for it from us. */
 export const EXTERNAL_LINK_REL = "noopener noreferrer nofollow";
+/** A page's text measure, 44rem (616px at the app's 14px root): about 85 characters of Inter to a line. */
+export const PAGE_MEASURE_REM = 44;
+/** How wide a page's wide blocks grow, 96rem (1344px): past that a table's rows are too long to follow. */
+export const PAGE_MAX_WIDTH_REM = 96;
 /** The longest page title, matching the API's MaxTitleLength. */
 export const PAGE_TITLE_MAX_LENGTH = 255;
 /** Where a template's title takes the day the page is made, matching the API's template.DateToken. */

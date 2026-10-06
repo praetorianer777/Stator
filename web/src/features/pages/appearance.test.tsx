@@ -94,7 +94,7 @@ describe("a page's appearance", () => {
     const dialog = await screen.findByRole("dialog", { name: "Page appearance" });
     await user.type(within(dialog).getByLabelText("Find an emoji"), "rocket");
     await user.click(await within(dialog).findByRole("button", { name: "Use rocket" }));
-    await user.click(within(dialog).getByRole("radio", { name: /Full, for wide tables/ }));
+    await user.click(within(dialog).getByRole("radio", { name: /Full, text as wide as the window/ }));
     await user.click(await within(dialog).findByRole("radio", { name: "harbour.png" }));
     const focus = within(dialog).getByRole("button", { name: /Cover focus, 50% from the left/ });
     focus.focus();
