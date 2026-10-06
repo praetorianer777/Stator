@@ -46,9 +46,8 @@ const (
 	meetingHours = 1
 )
 
-// Maker makes the example space through the services that make every space,
-// page, file and calendar. Attachments and Armature may be nil, which leaves
-// out what needs them.
+// Maker makes the example space through the services every space and page
+// goes through; nil Attachments or Armature leave out what needs them.
 type Maker struct {
 	Spaces      *space.Service
 	Pages       *page.Service

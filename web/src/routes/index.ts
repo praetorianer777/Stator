@@ -8,6 +8,7 @@ import { appRoute } from "./app";
 import { armatureSettingsRoute } from "./armature";
 import { auditRoute } from "./audit";
 import { devEditorRoute } from "./dev-editor";
+import { exampleSpaceRoute } from "./example-space";
 import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
 import { notificationSettingsRoute, watchingRoute } from "./notifications";
@@ -66,6 +67,7 @@ const routeTree = rootRoute.addChildren([
     ssoRoute,
     orgPermissionsRoute,
     hubSettingsRoute,
+    exampleSpaceRoute,
     armatureSettingsRoute,
     auditRoute,
     webhooksRoute,

@@ -108,6 +108,7 @@ process, which is only right for a single api process. `/readyz` and
 | `share` | sending a page to people and groups who may view it, with a note |
 | `keyset` | the cursor a list ordered by time hands out for its next window |
 | `template` | page templates, and the space templates a new space starts from |
+| `example` | the example space that explains Stator: its pages as Markdown per language, made through the other services |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
 | `attachment` | uploads to S3-compatible storage, and their PDF previews, converted once and kept |
 | `convert` | the client of the conversion service that turns office documents into PDF |

@@ -83,6 +83,7 @@ export const de: Messages = {
   },
   account: {
     hub: "Hub-Seite",
+    exampleSpace: "Beispielbereich",
     menu: "Ihr Konto",
     guest: "Gast",
     profile: "Ihr Profil",
@@ -789,6 +790,16 @@ export const de: Messages = {
     unstar: (what: string) => `Stern von ${what} entfernen`,
     unstarred: (what: string) => `${what} trägt keinen Stern mehr.`,
     loadFailed: "Diese Liste konnte nicht geladen werden. Versuchen Sie es gleich noch einmal.",
+  },
+  exampleSpace: {
+    title: "Beispielbereich",
+    create: "Beispielbereich anlegen",
+    creating: "Beispielbereich wird angelegt",
+    intro:
+      "Ein Bereich, dessen Seiten Ihrem Team Stator erklären, mit einem Beispiel für jeden Block, den eine Seite enthalten kann. Er ist in der Sprache geschrieben, in der Sie Stator gerade lesen. Alle in der Organisation dürfen ihn lesen und kommentieren.",
+    exists: "Den Beispielbereich gibt es schon:",
+    archived: "Er ist archiviert. Holen Sie ihn in seinen Bereichseinstellungen aus dem Archiv, um ihn wieder zu ändern.",
+    notAdmin: "Nur Administratoren der Organisation legen den Beispielbereich an. Bitten Sie eine dieser Personen, ihn anzulegen.",
   },
   spaces: {
     title: "Bereiche",

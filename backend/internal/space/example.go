@@ -62,9 +62,8 @@ func exampleOf(ctx context.Context, tx db.DBTX, actor perm.Actor) (*Space, error
 	return found, err
 }
 
-// CreateExample makes the example space with its home page, published, in
-// one transaction. A key taken by another space is a FieldError on key, and
-// an example the organization has already is ErrExampleExists.
+// CreateExample makes the example space and its published home page; a taken
+// key is a FieldError on key, an existing example ErrExampleExists.
 func (s *Service) CreateExample(ctx context.Context, actor perm.Actor, in ExampleInput) (*Space, db.LSN, error) {
 	key := NormalizeKey(in.Key)
 	if err := checkKey(key); err != nil {

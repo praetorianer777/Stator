@@ -1,12 +1,5 @@
-// Package example makes the example space: a space whose pages explain
-// Stator, in English or German, made through the services every person's
-// pages go through, so every rule and guard holds for it as for them.
-//
-// The pages are Markdown files per language under content/, read as the
-// Markdown import reads a page. What Markdown cannot say is a marker
-// paragraph, %%name%%, which this package turns into the block it names,
-// with the space's own ids; text/template fills in the rest, such as whom
-// a task mentions or whether Armature is there to show.
+// Package example makes the example space, whose pages explain Stator, from
+// Markdown per language under content/; docs/decisions.md says how.
 package example
 
 import (
@@ -46,9 +39,8 @@ type Entry struct {
 	Children []Entry
 }
 
-// Home, Showcase and Excerpted name the files the code refers to: the
-// space's home page, the page of every block, and the page whose excerpt
-// the showcase includes.
+// The files the code names: the home page, the page of every block, and the
+// page whose excerpt the showcase includes.
 const (
 	Home      = "home"
 	Showcase  = "showcase"
@@ -199,9 +191,8 @@ func frontMatter(src []byte) (map[string]string, []byte) {
 	return out, bytes.TrimLeft(rest, "\n")
 }
 
-// Render makes one file of the content into a page, with facts filled in
-// and every marker made the block it names. Warnings are what the Markdown
-// import would have told a person; the content has none.
+// Render makes one file of the content into a page, with every marker made
+// its block; warnings are what the Markdown import would tell a person.
 func Render(name string, f Facts) (*Doc, []string, error) {
 	src, err := Source(f.Lang, name)
 	if err != nil {

@@ -213,7 +213,7 @@ func (b builder) container(name, arg string, inner []Node) (Node, error) {
 			}
 			rows = append(rows, Node{
 				Type:    document.NodePropertyRow,
-				Attrs:   map[string]any{"key": document.InlineText(row.Content[0])},
+				Attrs:   map[string]any{"key": strings.TrimSpace(document.PlainText(row.Content[0]))},
 				Content: row.Content[1].Content[0].Content,
 			})
 		}

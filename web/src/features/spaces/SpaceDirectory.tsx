@@ -5,6 +5,7 @@ import { useSpaces, type Space } from "@/api/spaces";
 import { ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { useCanCreateSpace } from "@/features/permissions/access";
 import { SpaceStar } from "@/features/stars/StarButton";
+import { ExampleSpaceButton } from "./ExampleSpace";
 import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Switch, Table, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
@@ -40,6 +41,7 @@ export function SpaceDirectory() {
         <Switch label={t.archive.showArchived} checked={showArchived} onChange={setShowArchived} data-show-archived="" />
         <span aria-hidden="true">{t.archive.showArchived}</span>
       </span>
+      <ExampleSpaceButton />
       {createOwn}
       {create}
     </>

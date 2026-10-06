@@ -131,6 +131,30 @@ func TestASiteWithoutFilesOrArmatureGetsSentencesInstead(t *testing.T) {
 	}
 }
 
+// Every guide names its audience and reading time, which the home page's
+// report gathers by those names.
+func TestEveryGuideHasItsProperties(t *testing.T) {
+	want := map[string][]string{example.English: {"Audience", "Reading time"}, example.German: {"Zielgruppe", "Lesezeit"}}
+	for _, lang := range example.Languages {
+		example.Walk(func(e example.Entry) {
+			if e.Kind == page.KindFolder {
+				return
+			}
+			_, root := render(t, e.Name, facts(lang))
+			var keys []string
+			for _, p := range document.Properties(root) {
+				if strings.TrimSpace(p.Text) == "" {
+					t.Errorf("%s in %s leaves %q empty", e.Name, lang, p.Key)
+				}
+				keys = append(keys, p.Key)
+			}
+			if !slices.Equal(keys, want[lang]) {
+				t.Errorf("%s in %s has the properties %v, want %v", e.Name, lang, keys, want[lang])
+			}
+		})
+	}
+}
+
 func TestEveryPageIsAPageStatorTakesInBothLanguages(t *testing.T) {
 	for _, lang := range example.Languages {
 		for _, f := range []example.Facts{facts(lang), bare(lang)} {
@@ -228,9 +252,9 @@ func TestTheContentIsEveryFileAndNoOther(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, banned := range []string{"–", "—", "“", "”", "„", "‘", "’", "‚"} {
-				if bytes.Contains(src, []byte(banned)) {
-					t.Errorf("content/%s/%s holds %q; write ASCII dashes and quotes", lang, e.Name(), banned)
+			for _, banned := range []rune{0x2013, 0x2014, 0x201c, 0x201d, 0x201e, 0x2018, 0x2019, 0x201a} {
+				if bytes.ContainsRune(src, banned) {
+					t.Errorf("content/%s/%s holds %U; write ASCII dashes and quotes", lang, e.Name(), banned)
 				}
 			}
 		}
