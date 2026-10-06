@@ -3,7 +3,7 @@ import { HomeNavItem, HubNavItem } from "@/features/hub/HubNav";
 import { Icon } from "@/components/icons";
 import { SIDEBAR_RAIL_WIDTH } from "@/config";
 import { t } from "@/i18n";
-import { NavItem } from "./nav";
+import { NavItem, SpacesNavItem } from "./nav";
 import { SIDEBAR_ID } from "./state";
 import { ThemeButton } from "./ThemeButton";
 
@@ -28,9 +28,7 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
       <nav aria-label={t.nav.everywhere} className="flex flex-1 flex-col items-center gap-1 py-3">
         <HomeNavItem rail />
         <HubNavItem rail />
-        <NavItem to="/spaces" icon="Space" rail>
-          {t.nav.spaces}
-        </NavItem>
+        <SpacesNavItem rail />
         <NavItem to="/tasks" icon="Checklist" rail>
           {t.nav.tasks}
         </NavItem>

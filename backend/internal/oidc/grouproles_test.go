@@ -69,6 +69,9 @@ func TestASignInFollowsTheMapping(t *testing.T) {
 		{"the owner in a member group stays owner", manual(auth.RoleOwner), auth.RoleMember, manual(auth.RoleOwner)},
 		{"the owner in an admin group stays owner", manual(auth.RoleOwner), auth.RoleAdmin, manual(auth.RoleOwner)},
 		{"the owner in no group stays owner", manual(auth.RoleOwner), "", manual(auth.RoleOwner)},
+		{"a guest in an admin group stays a guest", manual(auth.RoleGuest), auth.RoleAdmin, manual(auth.RoleGuest)},
+		{"a guest in a member group stays a guest", manual(auth.RoleGuest), auth.RoleMember, manual(auth.RoleGuest)},
+		{"a guest in no group stays a guest", manual(auth.RoleGuest), "", manual(auth.RoleGuest)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := nextStanding(tc.current, tc.granted)

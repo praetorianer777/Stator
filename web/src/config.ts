@@ -176,6 +176,8 @@ export const CODE_LANGUAGES = [
 export const SPACE_KEY_MAX_LENGTH = 10;
 export const SPACE_NAME_MAX_LENGTH = 100;
 export const SPACE_DESCRIPTION_MAX_LENGTH = 1000;
+/** The longest address a guest is invited by, as the mail standards and the API allow. */
+export const GUEST_EMAIL_MAX_LENGTH = 254;
 /** How many shortcuts a space holds, and the longest label and address, matching the API's limits. */
 export const SHORTCUTS_MAX = 30;
 export const SHORTCUT_LABEL_MAX_LENGTH = 100;

@@ -1538,6 +1538,7 @@
                 "member.removed",
                 "member.joined",
                 "member.role_changed",
+                "member.guest_invited",
                 "sso.provider_saved",
                 "sso.group_role_set",
                 "sso.group_role_removed",
@@ -1699,6 +1700,7 @@
                 "member.removed",
                 "member.joined",
                 "member.role_changed",
+                "member.guest_invited",
                 "sso.provider_saved",
                 "sso.group_role_set",
                 "sso.group_role_removed",
@@ -8766,6 +8768,168 @@
         }
       }
     },
+    "/spaces/{spaceKey}/guests": {
+      "get": {
+        "operationId": "listGuests",
+        "summary": "The people from outside let into this space alone, with what they may do there. For administrators of the organization.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "guests": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Guest"
+                      }
+                    }
+                  },
+                  "required": [
+                    "guests"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "inviteGuest",
+        "summary": "Let somebody from outside into this space alone, as a viewer, commenter or editor; they sign in through the organization's provider with the address given. For administrators of the organization.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuestInviteInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "guest": {
+                      "$ref": "#/components/schemas/Guest"
+                    }
+                  },
+                  "required": [
+                    "guest"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/guests/{userID}": {
+      "delete": {
+        "operationId": "removeGuest",
+        "summary": "Take a guest out of this space, and so out of the organization. For administrators of the organization.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/spaces/{spaceKey}/outline": {
       "get": {
         "operationId": "spaceOutline",
@@ -11867,7 +12031,8 @@
             "enum": [
               "owner",
               "admin",
-              "member"
+              "member",
+              "guest"
             ]
           },
           "roleSource": {
@@ -12062,7 +12227,6 @@
           "role": {
             "type": "string",
             "enum": [
-              "owner",
               "admin",
               "member"
             ]
@@ -12346,6 +12510,7 @@
               "member.removed",
               "member.joined",
               "member.role_changed",
+              "member.guest_invited",
               "sso.provider_saved",
               "sso.group_role_set",
               "sso.group_role_removed",
@@ -12445,6 +12610,7 @@
                 "member.removed",
                 "member.joined",
                 "member.role_changed",
+                "member.guest_invited",
                 "sso.provider_saved",
                 "sso.group_role_set",
                 "sso.group_role_removed",
@@ -13334,6 +13500,16 @@
       "CurrentOrg": {
         "type": "object",
         "properties": {
+          "guestSpace": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SpaceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -13346,7 +13522,8 @@
             "enum": [
               "owner",
               "admin",
-              "member"
+              "member",
+              "guest"
             ]
           },
           "slug": {
@@ -13357,7 +13534,8 @@
           "id",
           "slug",
           "name",
-          "role"
+          "role",
+          "guestSpace"
         ]
       },
       "Cursor": {
@@ -13818,6 +13996,75 @@
           "group",
           "role",
           "updatedAt"
+        ]
+      },
+      "Guest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "invitedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "view",
+                "addPages",
+                "addComments",
+                "delete",
+                "administer"
+              ]
+            }
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "viewer",
+              "commenter",
+              "editor",
+              "none"
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "name",
+          "role",
+          "permissions",
+          "invitedAt"
+        ]
+      },
+      "GuestInviteInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "viewer",
+              "commenter",
+              "editor"
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "role"
         ]
       },
       "Hit": {
@@ -14612,6 +14859,16 @@
           "email": {
             "type": "string"
           },
+          "guestSpace": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SpaceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "joinedAt": {
             "type": "string",
             "format": "date-time"
@@ -14624,7 +14881,8 @@
             "enum": [
               "owner",
               "admin",
-              "member"
+              "member",
+              "guest"
             ]
           },
           "roleSource": {
@@ -14645,7 +14903,8 @@
           "name",
           "role",
           "roleSource",
-          "joinedAt"
+          "joinedAt",
+          "guestSpace"
         ]
       },
       "Membership": {
@@ -14666,7 +14925,8 @@
             "enum": [
               "owner",
               "admin",
-              "member"
+              "member",
+              "guest"
             ]
           }
         },
@@ -16808,6 +17068,26 @@
         },
         "required": [
           "everyone"
+        ]
+      },
+      "SpaceRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name"
         ]
       },
       "SpaceTemplate": {

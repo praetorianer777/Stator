@@ -120,7 +120,7 @@ func (s *Server) dispatchMCP(r *http.Request, req rpcRequest) (any, *rpcError) {
 		return map[string]any{}, nil
 	case "tools/list":
 		p := PrincipalFrom(r.Context())
-		return map[string]any{"tools": listTools(p.ReadOnly(), p.InSpacesOnly())}, nil
+		return map[string]any{"tools": listTools(p.ReadOnly(), p.InSpacesOnly() || p.Guest())}, nil
 	case "tools/call":
 		var params toolCallParams
 		if err := json.Unmarshal(req.Params, &params); err != nil || params.Name == "" {
@@ -149,8 +149,8 @@ func (s *Server) dispatchMCP(r *http.Request, req rpcRequest) (any, *rpcError) {
 }
 
 // listTools leaves the writing tools out for a token made to read, and the
-// organization-wide ones for a token limited to spaces, so an assistant is
-// never offered what it would only be refused.
+// organization-wide ones for a token limited to spaces and for a guest, so an
+// assistant is never offered what it would only be refused.
 func listTools(readOnly, spacesOnly bool) []map[string]any {
 	out := []map[string]any{}
 	for _, t := range toolCatalog() {
@@ -176,6 +176,9 @@ func (s *Server) callTool(r *http.Request, params toolCallParams) (any, *rpcErro
 	}
 	if !tool.ReadOnly && PrincipalFrom(r.Context()).ReadOnly() {
 		return refusal(errReadOnlyToken.Message), nil
+	}
+	if tool.OrgWide && PrincipalFrom(r.Context()).Guest() {
+		return refusal(errGuest.Message), nil
 	}
 	if tool.OrgWide && PrincipalFrom(r.Context()).InSpacesOnly() {
 		return refusal(errSpacesToken.Message), nil

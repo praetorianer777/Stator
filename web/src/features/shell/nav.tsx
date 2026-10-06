@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Tooltip, cx } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
+import { guestSpaceOf, useMe } from "@/api/auth";
+import { t } from "@/i18n";
 
 /** A destination in the rail or the sidebar: an icon with its word, or the icon alone with the word in a tooltip. */
 export function NavItem({
@@ -50,5 +52,16 @@ export function NavItem({
     </Tooltip>
   ) : (
     link
+  );
+}
+
+/** The space directory, which a guest goes without: their one space is all they reach. */
+export function SpacesNavItem({ rail, onNavigate }: { rail: boolean; onNavigate?: () => void }) {
+  const { data: me } = useMe();
+  if (guestSpaceOf(me)) return null;
+  return (
+    <NavItem to="/spaces" icon="Space" rail={rail} onNavigate={onNavigate}>
+      {t.nav.spaces}
+    </NavItem>
   );
 }

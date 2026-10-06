@@ -95,6 +95,15 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	}}), http.StatusOK, "set the space's table")
 	once(audit.ActionSpacePermissionsSet, me, spaceID)
 
+	guestEmail := fmt.Sprintf("guest-%s@example.test", uuid.NewString()[:8])
+	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, guestEmail) })
+	guestID := obj(t, want(t, owner.post(t, "/api/v1/spaces/AUD/guests", map[string]any{"email": guestEmail, "role": "viewer"}), http.StatusCreated, "invite a guest"), "guest")["userId"].(string)
+	if data := once(audit.ActionGuestInvited, me, guestID); !strings.Contains(data, "AUD") {
+		t.Errorf("the invitation's record does not name the space: %s", data)
+	}
+	want(t, owner.delete(t, "/api/v1/spaces/AUD/guests/"+guestID), http.StatusNoContent, "remove the guest")
+	once(audit.ActionMemberRemoved, me, guestID)
+
 	plans := docs.add(homeID, "Plans")
 	want(t, restrict(t, owner, plans, []any{user(home.user), user(annID)}, nil), http.StatusOK, "restrict Plans")
 	once(audit.ActionPageRestrictionsSet, me, plans)

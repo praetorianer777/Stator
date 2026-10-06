@@ -68,7 +68,8 @@ func nextStanding(current *standing, granted auth.OrgRole) *standing {
 		return nil
 	case current == nil:
 		return &standing{Role: granted, Source: auth.RoleSourceProvider}
-	case current.Role == auth.RoleOwner:
+	case current.Role == auth.RoleOwner, current.Role == auth.RoleGuest:
+		// A guest's standing is their invitation's, as an owner's is their own.
 		return current
 	case granted != "":
 		return &standing{Role: granted, Source: auth.RoleSourceProvider}

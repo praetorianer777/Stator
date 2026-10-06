@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useMe, useMembers, useRemoveMember, type Member } from "@/api/auth";
 import { Button, Card, ErrorBanner, Table, Tag, Td, Th } from "@/components/ui";
 import { t } from "@/i18n";
@@ -61,6 +62,16 @@ export function Members() {
                       {t.sso.roleNames[member.role]}
                     </span>
                     {member.roleSource === "oidc" && <Tag data-role-source="oidc">{t.sso.fromProvider}</Tag>}
+                    {member.guestSpace && (
+                      <Link
+                        to="/s/$spaceKey/settings"
+                        params={{ spaceKey: member.guestSpace.key }}
+                        search={{ tab: "guests" }}
+                        data-guest-space={member.guestSpace.key}
+                      >
+                        <Tag>{t.guests.guestOf(member.guestSpace.name)}</Tag>
+                      </Link>
+                    )}
                   </div>
                 </Td>
                 <Td className="text-right">

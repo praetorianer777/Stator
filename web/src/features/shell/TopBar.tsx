@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { administers, useJoinRequests, useLogout, useMe } from "@/api/auth";
+import { administers, guestSpaceOf, useJoinRequests, useLogout, useMe } from "@/api/auth";
 import { Avatar, Button, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { AUDIT_PATH, STALE_PATH, WEBHOOKS_PATH } from "@/config";
@@ -48,7 +48,10 @@ export function TopBar({
   const items: MenuItem[] = [
     { label: t.account.profile, icon: <Icon.User />, onSelect: () => navigate({ to: "/settings/profile" }), attrs: { "data-action": "profile" } },
     { label: t.account.themes, icon: <Icon.Palette />, onSelect: () => navigate({ to: "/settings/themes" }), attrs: { "data-action": "themes" } },
-    { label: t.account.tokens, icon: <Icon.Key />, onSelect: () => navigate({ to: "/settings/tokens" }), attrs: { "data-action": "tokens" } },
+    // A token reaches the organization as a whole, which a guest does not.
+    ...(guestSpaceOf(me)
+      ? []
+      : [{ label: t.account.tokens, icon: <Icon.Key />, onSelect: () => navigate({ to: "/settings/tokens" }), attrs: { "data-action": "tokens" } }]),
     {
       label: t.account.notifications,
       icon: <Icon.Bell />,

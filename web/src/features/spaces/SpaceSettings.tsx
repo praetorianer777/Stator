@@ -10,17 +10,23 @@ import { SpacePermissions } from "@/features/permissions/SpacePermissions";
 import { ArchivePanel } from "@/features/archive/ArchivePanel";
 import { SpaceArchive } from "@/features/archive/SpaceArchive";
 import { ShortcutsPanel } from "@/features/shortcuts/ShortcutsPanel";
+import { useCanAdministerOrg } from "@/features/permissions/access";
+import { SpaceGuests } from "./SpaceGuests";
 import { TrashPanel } from "./TrashPanel";
 
-export type SettingsTab = "details" | "shortcuts" | "permissions" | "trash" | "archive";
+export type SettingsTab = "details" | "shortcuts" | "permissions" | "guests" | "trash" | "archive";
 
 const SETTINGS_PANEL_ID = "space-settings-panel";
 
 /** A space's details, who may do what in it, and deleting it; changing anything is an administrator's. */
 export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab: SettingsTab; onTab: (tab: SettingsTab) => void }) {
   const { data: space, error, refetch } = useSpace(spaceKey);
+  const orgAdmin = useCanAdministerOrg();
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (!space) return <Skeleton />;
+  // Guests are let into team spaces, by the organization's administrators.
+  const guests = orgAdmin && !space.owner;
+  const shown = tab === "guests" && !guests ? "details" : tab;
   return (
     <div className="mx-auto max-w-3xl" data-space-settings={space.key}>
       <PageHeader
@@ -52,25 +58,27 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
         tabs={
           <Tabs<SettingsTab>
             label={t.spaceSettings.tabs}
-            value={tab}
+            value={shown}
             onChange={onTab}
             panelId={SETTINGS_PANEL_ID}
             tabs={[
               { value: "details", label: t.spaceSettings.details, attrs: { "data-settings-tab": "details" } },
               { value: "shortcuts", label: t.spaceSettings.shortcuts, attrs: { "data-settings-tab": "shortcuts" } },
               { value: "permissions", label: t.spaceSettings.permissions, attrs: { "data-settings-tab": "permissions" } },
+              ...(guests ? [{ value: "guests" as const, label: t.spaceSettings.guests, attrs: { "data-settings-tab": "guests" } }] : []),
               { value: "trash", label: t.spaceSettings.trash, attrs: { "data-settings-tab": "trash" } },
               { value: "archive", label: t.spaceSettings.archive, attrs: { "data-settings-tab": "archive" } },
             ]}
           />
         }
       />
-      <TabPanel id={SETTINGS_PANEL_ID} label={t.spaceSettings[tab]} className="space-y-6">
-        {tab === "details" && <Details key={space.id} space={space} />}
-        {tab === "shortcuts" && <ShortcutsPanel space={space} />}
-        {tab === "permissions" && <SpacePermissions space={space} />}
-        {tab === "trash" && <TrashPanel space={space} />}
-        {tab === "archive" && <ArchivePanel space={space} />}
+      <TabPanel id={SETTINGS_PANEL_ID} label={t.spaceSettings[shown]} className="space-y-6">
+        {shown === "details" && <Details key={space.id} space={space} />}
+        {shown === "shortcuts" && <ShortcutsPanel space={space} />}
+        {shown === "permissions" && <SpacePermissions space={space} />}
+        {shown === "guests" && <SpaceGuests space={space} />}
+        {shown === "trash" && <TrashPanel space={space} />}
+        {shown === "archive" && <ArchivePanel space={space} />}
       </TabPanel>
     </div>
   );

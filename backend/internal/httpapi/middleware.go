@@ -213,11 +213,16 @@ func requireSession(next http.Handler) http.Handler {
 	})
 }
 
-// requireWholeOrg refuses a token limited to spaces what concerns the whole
-// organization, which is outside every space it names.
+// requireWholeOrg refuses a token limited to spaces, and a guest, what
+// concerns the whole organization, which is outside every space they reach.
 func requireWholeOrg(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if PrincipalFrom(r.Context()).InSpacesOnly() {
+		p := PrincipalFrom(r.Context())
+		if p.Guest() {
+			respondError(w, r, errGuest)
+			return
+		}
+		if p.InSpacesOnly() {
 			respondError(w, r, errSpacesToken)
 			return
 		}
