@@ -1250,6 +1250,27 @@ export const de: Messages = {
       "Sie dürfen diese Seite nicht mehr bearbeiten, Ihre Änderungen werden also nicht mehr geteilt. Bitten Sie jemanden, der den Bereich verwaltet, um Bearbeitungsrechte.",
     confirmDiscard: "Den gemeinsamen Entwurf für alle verwerfen, die ihn bearbeiten? Die Seite bleibt, wie sie zuletzt veröffentlicht wurde.",
   },
+  live: {
+    badge: "Live",
+    badgeHint: "Änderungen an dieser Seite erscheinen beim Tippen, ohne Veröffentlichen.",
+    saving: "Wird gespeichert",
+    saved: "Gespeichert. Alle, die die Seite lesen, sehen es.",
+    notSaved: (reason: string) =>
+      `Ihre Änderungen konnten nicht gespeichert werden: ${reason} Lassen Sie dieses Fenster offen und versuchen Sie es gleich noch einmal.`,
+    done: "Fertig",
+    versionSaved: (when: string, others: string) => (others ? `Beim Tippen gespeichert bis ${when}, mit ${others}` : `Beim Tippen gespeichert bis ${when}`),
+    savedAsTyped: "Beim Tippen gespeichert",
+    menu: "Bearbeitungsart",
+    dialog: "Wie diese Seite bearbeitet wird",
+    draftLabel: "Entwürfe und Veröffentlichen",
+    draftHint: "Änderungen bleiben in Entwürfen, bis jemand sie veröffentlicht. Lesende sehen die zuletzt veröffentlichte Version.",
+    liveLabel: "Live",
+    liveHint: (minutes: number) =>
+      `Was Bearbeitende tippen, ist die Seite, sobald es gespeichert ist, ohne Veröffentlichen. Der Verlauf hält für je ${minutes} Minuten Arbeit eine Version fest.`,
+    save: "Speichern",
+    cancel: "Abbrechen",
+    discardAnyway: "Trotzdem live schalten",
+  },
   history: {
     title: (title: string) => `Verlauf von ${title}`,
     crumb: "Verlauf",
@@ -2454,6 +2475,7 @@ export const de: Messages = {
       "page.public_link_revoked": "Öffentlicher Link widerrufen",
       "org.public_links_set": "Öffentliche Links erlaubt oder gestoppt",
       "space.permissions_copied": "Bereichsberechtigungen aus einem anderen Bereich kopiert",
+      "page.mode_changed": "Seite zwischen Entwürfen und live umgestellt",
     },
     targetTypes: {
       user: "Person",

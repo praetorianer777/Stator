@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Doc } from "@/features/editor/schema";
+import { LIVE_PAGE_REFRESH_MS } from "@/config";
 import { api } from "./client";
 import type { components } from "./schema";
 import { spaceQueryKey, type Space } from "./spaces";
@@ -31,8 +32,13 @@ export function pageQuery(id: string) {
   };
 }
 
-export function usePage(id: string | undefined) {
-  return useQuery({ ...pageQuery(id ?? ""), enabled: Boolean(id) });
+/** A page; follow asks a live page again every so often, as its reader does to see edits arrive. */
+export function usePage(id: string | undefined, { follow = false }: { follow?: boolean } = {}) {
+  return useQuery({
+    ...pageQuery(id ?? ""),
+    enabled: Boolean(id),
+    refetchInterval: follow ? (query) => (query.state.data?.page.mode === "live" ? LIVE_PAGE_REFRESH_MS : false) : false,
+  });
 }
 
 export interface PageChanges {

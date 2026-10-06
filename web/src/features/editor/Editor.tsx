@@ -96,6 +96,8 @@ export interface EditorProps {
   collab?: CollabBinding;
   /** Shows the document without letting anybody change it. */
   readOnly?: boolean;
+  /** Gives each checklist item its task's id as it is made, as a live page's saves need. */
+  taskIds?: boolean;
 }
 
 /**
@@ -120,6 +122,7 @@ export function Editor({
   armature,
   collab,
   readOnly = false,
+  taskIds = false,
 }: EditorProps) {
   // The page being edited, so an include starts in its space and never shows the page itself.
   const page = useContext(DocPageContext);
@@ -186,6 +189,7 @@ export function Editor({
       emoji: { render: emoji.renderer },
       find: openFind,
       collab,
+      taskIds,
       slash: { items: ({ query }) => filterSlashItems(query, slashItemsFor(Boolean(armatureRef.current?.baseUrl()))), render: slash.renderer },
       mention: {
         items: ({ query }) => mentionMatches(searchesRef.current ? foundRef.current : peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
