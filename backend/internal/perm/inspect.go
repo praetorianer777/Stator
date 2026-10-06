@@ -283,7 +283,7 @@ func Inspect(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (*AccessRe
 func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (InspectFacts, error) {
 	f := InspectFacts{Space: map[SpacePermission]bool{}, Verdict: map[Right]bool{}}
 	rows, err := tx.Query(ctx, `
-		SELECT l.id, l.space_id, COALESCE(p.title, ''), COALESCE(p.parent_id IS NULL, false), COALESCE(p.version > 0, false),
+		SELECT l.id, l.space_id, COALESCE(p.title, ''), COALESCE(p.parent_id IS NULL AND p.kind <> 'post', false), COALESCE(p.version > 0, false),
 		       l.hidden, l.on_view_list, l.on_edit_list
 		FROM perm_page_lists($1, $2) WITH ORDINALITY AS l (id, space_id, hidden, view_listed, on_view_list, edit_listed, on_edit_list, n)
 		LEFT JOIN page p ON p.id = l.id
@@ -319,7 +319,7 @@ func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (Insp
 		       perm_space_holds($1, $3, 'view'), perm_space_holds($1, $3, 'addPages'), perm_space_holds($1, $3, 'addComments'),
 		       perm_space_holds($1, $3, 'delete'), perm_space_holds($1, $3, 'administer'),
 		       perm_page_viewable($2, $1), perm_page_editable($2, $1), perm_page_deletable($2, $1), perm_page_commentable($2, $1),
-		       COALESCE((SELECT page_trashable(parent_id) FROM page WHERE id = $2), false)`,
+		       COALESCE((SELECT page_trashable(parent_id, kind) FROM page WHERE id = $2), false)`,
 		person, page, space).Scan(&f.OrgAdmin, &f.Use, &held[0], &held[1], &held[2], &held[3], &held[4], &view, &edit, &del, &comment, &f.Trashable)
 	if err != nil {
 		return f, fmt.Errorf("ask the database: %w", err)
@@ -333,7 +333,7 @@ func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (Insp
 	)
 	err = tx.QueryRow(ctx, `
 		SELECT CASE WHEN s.archived_at IS NOT NULL THEN 'space' WHEN p.archived_at IS NOT NULL THEN 'page' ELSE '' END,
-		       a.id, COALESCE(a.title, ''), COALESCE(a.parent_id IS NULL, false)
+		       a.id, COALESCE(a.title, ''), COALESCE(a.parent_id IS NULL AND a.kind <> 'post', false)
 		FROM page p JOIN space s ON s.id = p.space_id LEFT JOIN page a ON a.id = p.archive_id
 		WHERE p.id = $1`, page).Scan(&f.Archived, &withID, &with.Title, &with.Home)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {

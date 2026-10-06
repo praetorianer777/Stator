@@ -29,7 +29,7 @@ func NewService(cluster *db.Cluster) *Service {
 const selectSpaces = `
 SELECT s.id, s.key, s.name, s.description, s.home_page_id, s.created_at, s.updated_at,
        s.archived_at, COALESCE((SELECT u.name FROM app_user u WHERE u.id = s.archived_by), ''),
-       EXISTS (SELECT 1 FROM watch w WHERE w.space_id = s.id AND w.user_id = current_actor_id()),
+       EXISTS (SELECT 1 FROM watch w WHERE w.space_id = s.id AND w.user_id = current_actor_id() AND w.kind = 'space'),
        EXISTS (SELECT 1 FROM star st WHERE st.space_id = s.id AND st.user_id = current_actor_id()),
        s.owner_id, COALESCE((SELECT u.name FROM app_user u WHERE u.id = s.owner_id), '')
 FROM space s`

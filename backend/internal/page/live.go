@@ -103,6 +103,9 @@ func (s *Service) SetMode(ctx context.Context, actor perm.Actor, id uuid.UUID, i
 		if p.Kind == KindFolder {
 			return ErrFolder
 		}
+		if p.Kind == KindPost && in.Mode == ModeLive {
+			return ErrPostLive
+		}
 		out = &ModeChange{Mode: in.Mode, DiscardedDrafts: []string{}}
 		if p.Mode == in.Mode {
 			return nil

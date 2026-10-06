@@ -195,6 +195,8 @@ var notTools = map[string]string{
 	"DELETE /pages/{pageID}/watch":                                 whyAttention,
 	"PUT /spaces/{spaceKey}/watch":                                 whyAttention,
 	"DELETE /spaces/{spaceKey}/watch":                              whyAttention,
+	"PUT /spaces/{spaceKey}/blog/watch":                            whyAttention,
+	"DELETE /spaces/{spaceKey}/blog/watch":                         whyAttention,
 	"PUT /pages/{pageID}/star":                                     whyAttention,
 	"DELETE /pages/{pageID}/star":                                  whyAttention,
 	"PUT /spaces/{spaceKey}/star":                                  whyAttention,

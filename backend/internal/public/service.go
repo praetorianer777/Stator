@@ -195,7 +195,7 @@ func (s *Service) Page(ctx context.Context, id uuid.UUID) (*Page, error) {
 			width   string
 		)
 		err := tx.QueryRow(ctx, `
-			SELECT p.id, p.title, p.kind, p.body, p.version, p.parent_id IS NULL, COALESCE(p.published_at, p.updated_at),
+			SELECT p.id, p.title, p.kind, p.body, p.version, p.parent_id IS NULL AND p.kind <> 'post', COALESCE(p.published_at, p.updated_at),
 			       p.icon, p.width, p.cover_attachment_id, p.cover_focus_x, p.cover_focus_y,
 			       s.key, s.name, s.description, s.home_page_id
 			FROM page p JOIN space s ON s.id = p.space_id

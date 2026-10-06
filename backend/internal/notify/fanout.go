@@ -164,6 +164,13 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 	kind := KindPublished
 	if in.First {
 		kind = KindCreated
+		var post bool
+		if err := tx.QueryRow(ctx, `SELECT kind = 'post' FROM page WHERE id = $1`, in.PageID).Scan(&post); err != nil {
+			return nil, err
+		}
+		if post {
+			kind = KindPosted
+		}
 	}
 	rows, err := tx.Query(ctx, `SELECT user_id FROM page_watch_coverage($1, $2)`, in.PageID, in.First)
 	if err != nil {

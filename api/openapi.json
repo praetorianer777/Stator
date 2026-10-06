@@ -73,6 +73,9 @@
       "name": "permissions"
     },
     {
+      "name": "posts"
+    },
+    {
       "name": "public"
     },
     {
@@ -8432,6 +8435,107 @@
         }
       }
     },
+    "/posts": {
+      "get": {
+        "operationId": "listPosts",
+        "summary": "Published blog posts the caller may read, newest first, in one space or across the spaces not archived, the trash and the archive left out; year, and month with it, keep a stretch of time in UTC; next is the cursor for the window after, null at the end. For a blog and a latest blog posts block.",
+        "tags": [
+          "posts"
+        ],
+        "parameters": [
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key to stay inside; a space the caller may not view is not found.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "description": "A year to keep, in UTC.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "description": "1 to 12, a month of the year to keep; needs year.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 50; 10 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The next of the window before; the first window when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "posts": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Post"
+                      }
+                    }
+                  },
+                  "required": [
+                    "next",
+                    "posts"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/properties-report": {
       "get": {
         "operationId": "propertiesReport",
@@ -9909,6 +10013,121 @@
         }
       }
     },
+    "/spaces/{spaceKey}/blog": {
+      "get": {
+        "operationId": "getBlog",
+        "summary": "A space's blog: the months with posts the caller may read and how many, newest first, in UTC; the caller's own posts not yet published; whether the caller watches it and may post.",
+        "tags": [
+          "posts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "blog": {
+                      "$ref": "#/components/schemas/Blog"
+                    }
+                  },
+                  "required": [
+                    "blog"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/blog/watch": {
+      "delete": {
+        "operationId": "unwatchBlog",
+        "summary": "Stop hearing of a blog's new posts; a watch on the space or on a post stays.",
+        "tags": [
+          "watching"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "watchBlog",
+        "summary": "Hear of every post first published in a space's blog; later versions of a post are told to its own watchers.",
+        "tags": [
+          "watching"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/spaces/{spaceKey}/calendars": {
       "get": {
         "operationId": "listCalendars",
@@ -10634,6 +10853,75 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/posts": {
+      "post": {
+        "operationId": "createPost",
+        "summary": "Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. For whoever may add pages to the space.",
+        "tags": [
+          "posts"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  },
+                  "required": [
+                    "page"
+                  ]
                 }
               }
             }
@@ -14288,6 +14576,62 @@
           "updatedAt"
         ]
       },
+      "Blog": {
+        "type": "object",
+        "properties": {
+          "canPost": {
+            "type": "boolean"
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlogMonth"
+            }
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "unpublished": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnpublishedPost"
+            }
+          },
+          "watching": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "spaceKey",
+          "spaceName",
+          "months",
+          "unpublished",
+          "watching",
+          "canPost"
+        ]
+      },
+      "BlogMonth": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "month": {
+            "type": "integer"
+          },
+          "year": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "month",
+          "count"
+        ]
+      },
       "BodyInput": {
         "type": "object",
         "properties": {
@@ -16064,7 +16408,8 @@
             "enum": [
               "page",
               "subtree",
-              "space"
+              "space",
+              "blog"
             ]
           },
           "page": {
@@ -16521,7 +16866,8 @@
             "type": "string",
             "enum": [
               "page",
-              "folder"
+              "folder",
+              "post"
             ]
           },
           "title": {
@@ -16835,6 +17181,7 @@
               "resolved",
               "published",
               "created",
+              "posted",
               "expired",
               "failed"
             ]
@@ -17119,7 +17466,8 @@
             "type": "string",
             "enum": [
               "page",
-              "folder"
+              "folder",
+              "post"
             ]
           },
           "labels": {
@@ -17151,6 +17499,13 @@
               "null"
             ],
             "format": "uuid"
+          },
+          "postedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
           },
           "reactions": {
             "type": "array",
@@ -17218,6 +17573,7 @@
           "parentId",
           "title",
           "kind",
+          "postedAt",
           "appearance",
           "mode",
           "body",
@@ -17306,7 +17662,8 @@
             "type": "string",
             "enum": [
               "page",
-              "folder"
+              "folder",
+              "post"
             ]
           },
           "parentId": {
@@ -17864,6 +18221,67 @@
           "email"
         ]
       },
+      "Post": {
+        "type": "object",
+        "properties": {
+          "authorName": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "postedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "spaceKey",
+          "spaceName",
+          "postedAt",
+          "authorName",
+          "excerpt",
+          "icon"
+        ]
+      },
+      "PostInput": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "description": "A JSON value."
+          },
+          "publish": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
       "Preferences": {
         "type": "object",
         "properties": {
@@ -18115,7 +18533,8 @@
             "type": "string",
             "enum": [
               "page",
-              "folder"
+              "folder",
+              "post"
             ]
           },
           "space": {
@@ -18157,7 +18576,8 @@
             "type": "string",
             "enum": [
               "page",
-              "folder"
+              "folder",
+              "post"
             ]
           },
           "title": {
@@ -18233,7 +18653,8 @@
             "type": "string",
             "enum": [
               "page",
-              "folder"
+              "folder",
+              "post"
             ]
           },
           "parentId": {
@@ -19772,6 +20193,9 @@
           "mentioned": {
             "type": "boolean"
           },
+          "posted": {
+            "type": "boolean"
+          },
           "published": {
             "type": "boolean"
           },
@@ -19795,6 +20219,7 @@
           "resolved",
           "published",
           "created",
+          "posted",
           "expired",
           "failed"
         ]
@@ -20212,6 +20637,14 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder",
+              "post"
+            ]
+          },
           "pages": {
             "type": "integer"
           },
@@ -20239,7 +20672,8 @@
           "trashedByName",
           "pages",
           "parentTitle",
-          "parentInTree"
+          "parentInTree",
+          "kind"
         ]
       },
       "TreeNode": {
@@ -20265,7 +20699,8 @@
             "type": "string",
             "enum": [
               "page",
-              "folder"
+              "folder",
+              "post"
             ]
           },
           "parentId": {
@@ -20292,6 +20727,35 @@
           "restricted",
           "kind",
           "icon"
+        ]
+      },
+      "UnpublishedPost": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publishAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "updatedAt",
+          "publishAt"
         ]
       },
       "UpdateInput": {
@@ -20604,7 +21068,8 @@
             "enum": [
               "page",
               "subtree",
-              "space"
+              "space",
+              "blog"
             ]
           },
           "page": {
@@ -20658,7 +21123,8 @@
             "enum": [
               "page",
               "subtree",
-              "space"
+              "space",
+              "blog"
             ]
           },
           "viaPage": {

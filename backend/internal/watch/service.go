@@ -203,16 +203,48 @@ func (s *Service) WatchSpace(ctx context.Context, actor perm.Actor, key string) 
 	})
 }
 
-// UnwatchSpace stops the caller watching a space; watches on its pages stay.
+// UnwatchSpace stops the caller watching a space; watches on its pages and
+// its blog stay.
 func (s *Service) UnwatchSpace(ctx context.Context, actor perm.Actor, key string) (db.LSN, error) {
+	return s.unwatch(ctx, actor, key, KindSpace)
+}
+
+// WatchBlog makes the caller hear of every post first published in a
+// space's blog; later versions of a post are its own watchers' to hear.
+func (s *Service) WatchBlog(ctx context.Context, actor perm.Actor, key string) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		sp, err := space.Load(ctx, tx, actor, space.ByKey, key)
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `DELETE FROM watch WHERE user_id = $1 AND space_id = $2`, actor.UserID, sp.ID)
+		_, err = tx.Exec(ctx, `
+			INSERT INTO watch (org_id, user_id, kind, space_id) VALUES (current_org_id(), $1, 'blog', $2)
+			ON CONFLICT DO NOTHING`, actor.UserID, sp.ID)
 		return err
 	})
+}
+
+// UnwatchBlog stops the caller hearing of a blog's new posts.
+func (s *Service) UnwatchBlog(ctx context.Context, actor perm.Actor, key string) (db.LSN, error) {
+	return s.unwatch(ctx, actor, key, KindBlog)
+}
+
+func (s *Service) unwatch(ctx context.Context, actor perm.Actor, key string, kind Kind) (db.LSN, error) {
+	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		sp, err := space.Load(ctx, tx, actor, space.ByKey, key)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `DELETE FROM watch WHERE user_id = $1 AND space_id = $2 AND kind = $3`, actor.UserID, sp.ID, kind)
+		return err
+	})
+}
+
+// BlogWatching says whether a person watches a space's blog.
+func BlogWatching(ctx context.Context, tx db.DBTX, userID, spaceID uuid.UUID) (bool, error) {
+	var on bool
+	err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM watch WHERE user_id = $1 AND space_id = $2 AND kind = 'blog')`, userID, spaceID).Scan(&on)
+	return on, err
 }
 
 // listed is the caller's watches on what they may still view, out of the trash.
