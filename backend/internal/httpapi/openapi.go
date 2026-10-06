@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
@@ -385,6 +386,29 @@ var operations = []operation{
 		responses: ok(env{"preview": unfurl.LinkPreview{}})},
 	{method: "GET", path: "/org/hub", handler: "handleGetHub", tool: "get_hub", toolHelp: "The organization's hub page, if there is one the caller may read, and whether everybody lands on it.", tag: "hub", summary: "The organization's hub page as the caller may see it, and whether everybody lands on it.", responses: ok(env{"hub": hub.Hub{}})},
 	{method: "PUT", path: "/org/hub", handler: "handleSetHub", orgWide: true, tag: "hub", summary: "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.", request: hub.HubInput{}, responses: ok(env{"hub": hub.Hub{}})},
+	{method: "GET", path: "/org/anonymous-access", handler: "handleGetAnonymousAccess", orgWide: true, tag: "public", summary: "Whether anybody may read the spaces that allow it without signing in, and whether search engines are asked in. For administrators.",
+		responses: ok(env{"anonymousAccess": public.Settings{}})},
+	{method: "PUT", path: "/org/anonymous-access", handler: "handleSetAnonymousAccess", orgWide: true, tag: "public", summary: "Let anybody read the spaces that allow it without signing in, or stop it, and say whether search engines may list those pages. For administrators.",
+		request: public.Settings{}, responses: ok(env{"anonymousAccess": public.Settings{}})},
+	{method: "GET", path: "/spaces/{spaceKey}/anonymous-access", handler: "handleGetSpaceAnonymousAccess", tag: "public", summary: "Whether anybody may read this space without signing in, and whether the organization allows it at all. For the space's administrators.",
+		responses: ok(env{"anonymousAccess": space.AnonymousAccess{}})},
+	{method: "PUT", path: "/spaces/{spaceKey}/anonymous-access", handler: "handleSetSpaceAnonymousAccess", tag: "public", summary: "Let anybody read this space's published pages without signing in, or stop it; it counts while the organization allows it. A personal space stays private. For the space's administrators.",
+		request: space.AnonymousAccessInput{}, responses: map[int]any{200: env{"anonymousAccess": space.AnonymousAccess{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}", handler: "handlePublicSite", tag: "public", public: true, summary: "The organization and the spaces anybody may read in it without signing in. Not found, as not_public, when it lets nobody in.",
+		responses: map[int]any{200: env{"site": public.Site{}, "spaces": []public.Space{}}, 404: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}/spaces/{spaceKey}", handler: "handlePublicSpace", tag: "public", public: true, summary: "A space anybody may read, with its published pages in reading order.",
+		responses: map[int]any{200: env{"space": public.Space{}, "pages": []public.TreePage{}}, 404: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}/pages/{pageID}", handler: "handlePublicPage", tag: "public", public: true, summary: "A published page anybody may read, with the people it mentions unnamed and nothing about who wrote or read it.",
+		responses: map[int]any{200: env{"page": public.Page{}}, 404: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}/attachments/{attachmentID}", handler: "handlePublicAttachment", tag: "public", public: true, summary: "The bytes of a file on a page anybody may read, as a download.", binary: true,
+		query: []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: map[int]any{200: nil, 404: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}/search", handler: "handlePublicSearch", tag: "public", public: true, summary: "Published pages anybody may read whose words match, the best first.",
+		query: []param{
+			{name: "q", description: "Words, quoted phrases, or and -word."},
+			{name: "space", description: "A space key to stay inside."},
+			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
+			{name: "offset", schema: intParam, description: "How many hits to skip."},
+		}, responses: map[int]any{200: env{"hits": []search.AnonymousHit{}, "more": false, "limit": 0, "offset": 0}, 404: errorEnvelope{}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
 		responses: ok(env{"grants": []perm.SpaceGrant{}})},
 	{method: "PUT", path: "/spaces/{spaceKey}/permissions", handler: "handleSetSpacePermissions", tag: "permissions", summary: "Replace a space's whole permission table. For the space's administrators.",
@@ -871,6 +895,14 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(guest.Role(""))] = enumStrings(guest.Roles)
 	b.Names[reflect.TypeOf(guest.InviteInput{})] = "GuestInviteInput"
 	b.FieldOverrides["GuestInviteInput.role"] = &openapi.Schema{Type: "string", Enum: enumStrings(guest.Invitable)}
+	b.Names[reflect.TypeOf(public.Site{})] = "PublicSite"
+	b.Names[reflect.TypeOf(public.Space{})] = "PublicSpace"
+	b.Names[reflect.TypeOf(public.TreePage{})] = "PublicTreePage"
+	b.Names[reflect.TypeOf(public.Ref{})] = "PublicPageRef"
+	b.Names[reflect.TypeOf(public.Page{})] = "PublicPage"
+	b.Names[reflect.TypeOf(public.Settings{})] = "AnonymousAccessSettings"
+	b.Names[reflect.TypeOf(space.AnonymousAccess{})] = "SpaceAnonymousAccess"
+	b.Names[reflect.TypeOf(space.AnonymousAccessInput{})] = "SpaceAnonymousAccessInput"
 	return b
 }
 

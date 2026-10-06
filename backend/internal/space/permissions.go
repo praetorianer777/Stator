@@ -32,7 +32,7 @@ func (s *Service) Permissions(ctx context.Context, actor perm.Actor, key string)
 
 func grants(ctx context.Context, tx db.DBTX, space uuid.UUID) ([]perm.SpaceGrant, error) {
 	rows, err := tx.Query(ctx, `SELECT `+perm.SubjectColumns+`, g.permission FROM space_grant g`+perm.SubjectJoins+`
-		WHERE g.space_id = $1 ORDER BY `+perm.SubjectOrder, space)
+		WHERE g.space_id = $1 AND g.subject_type <> 'anonymous' ORDER BY `+perm.SubjectOrder, space)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (s *Service) SetPermissions(ctx context.Context, actor perm.Actor, key stri
 			}
 		}
 		if _, err := tx.Exec(ctx, `
-			DELETE FROM space_grant g WHERE g.space_id = $1 AND NOT EXISTS (
+			DELETE FROM space_grant g WHERE g.space_id = $1 AND g.subject_type <> 'anonymous' AND NOT EXISTS (
 				SELECT 1 FROM unnest($2::text[], $3::text[], $4::text[], $5::text[]) AS w (permission, subject_type, user_id, group_id)
 				WHERE w.permission = g.permission AND w.subject_type = g.subject_type
 				  AND NULLIF(w.user_id, '')::uuid IS NOT DISTINCT FROM g.user_id

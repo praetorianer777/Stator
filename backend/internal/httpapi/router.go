@@ -29,6 +29,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
@@ -96,6 +97,9 @@ type Server struct {
 	Calendars *calendar.Service
 	// Guests lets people from outside into one space each.
 	Guests *guest.Service
+	// Public serves the spaces anybody may read without signing in, and the
+	// organization's switch for it; nil answers that nothing is public.
+	Public *public.Service
 	Hub    *hub.Service
 	Unfurl *unfurl.Service
 	// PageViews reads how often pages were read and by whom;
@@ -178,6 +182,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Get("/auth/oidc/{orgSlug}/start", s.handleOIDCStart)
 		r.Get("/auth/oidc/callback", s.handleOIDCCallback)
 		r.Post("/armature/webhook/{orgSlug}", s.handleArmatureWebhook)
+		r.Group(func(r chi.Router) {
+			r.Use(s.anonymousReader)
+			r.Get("/public/{orgSlug}", s.handlePublicSite)
+			r.Get("/public/{orgSlug}/spaces/{spaceKey}", s.handlePublicSpace)
+			r.Get("/public/{orgSlug}/pages/{pageID}", s.handlePublicPage)
+			r.Get("/public/{orgSlug}/attachments/{attachmentID}", s.handlePublicAttachment)
+			r.Get("/public/{orgSlug}/search", s.handlePublicSearch)
+		})
 		mountPending(r, true)
 
 		r.Group(func(r chi.Router) {
@@ -205,6 +217,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/org/permissions", s.handleListGlobalPermissions)
 			r.Put("/org/permissions/{permission}", s.handleSetGlobalPermission)
 			r.Put("/org/hub", s.handleSetHub)
+			r.Get("/org/anonymous-access", s.handleGetAnonymousAccess)
+			r.Put("/org/anonymous-access", s.handleSetAnonymousAccess)
 			r.Get("/spaces/{spaceKey}/guests", s.handleListGuests)
 			r.Post("/spaces/{spaceKey}/guests", s.handleInviteGuest)
 			r.Delete("/spaces/{spaceKey}/guests/{userID}", s.handleRemoveGuest)
@@ -304,6 +318,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/spaces/{spaceKey}/decisions", s.handleListDecisions)
 			r.Get("/spaces/{spaceKey}/permissions", s.handleListSpacePermissions)
 			r.Put("/spaces/{spaceKey}/permissions", s.handleSetSpacePermissions)
+			r.Get("/spaces/{spaceKey}/anonymous-access", s.handleGetSpaceAnonymousAccess)
+			r.Put("/spaces/{spaceKey}/anonymous-access", s.handleSetSpaceAnonymousAccess)
 			r.Put("/spaces/{spaceKey}/archive", s.handleArchiveSpace)
 			r.Delete("/spaces/{spaceKey}/archive", s.handleUnarchiveSpace)
 			r.Get("/spaces/{spaceKey}/archived-pages", s.handleListArchivedPages)

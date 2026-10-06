@@ -36,3 +36,22 @@ func TestATokensSpacesFollowItsPersonAndNoOther(t *testing.T) {
 		t.Errorf("a token without spaces left = %v %q, want limited to none", only, spacesSetting(none))
 	}
 }
+
+func TestAnAnonymousReaderIsNobodyAndNamingSomebodyEndsIt(t *testing.T) {
+	anon := WithAnonymous(context.Background())
+	if !AnonymousFrom(anon) {
+		t.Fatal("the anonymous context is not anonymous")
+	}
+	if id, ok := UserFrom(anon); ok {
+		t.Errorf("the anonymous context acts for %v", id)
+	}
+	if _, only := SpacesFrom(anon); only {
+		t.Error("the anonymous context carries a token's limit")
+	}
+	if AnonymousFrom(WithUser(anon, uuid.New())) {
+		t.Error("naming a person kept the context anonymous")
+	}
+	if AnonymousFrom(context.Background()) || AnonymousFrom(WithUser(context.Background(), uuid.New())) {
+		t.Error("a context nobody made anonymous is")
+	}
+}

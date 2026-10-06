@@ -73,6 +73,9 @@
       "name": "permissions"
     },
     {
+      "name": "public"
+    },
+    {
       "name": "reactions"
     },
     {
@@ -1575,7 +1578,9 @@
                 "page.shared",
                 "space.shortcut_added",
                 "space.shortcut_moved",
-                "space.shortcut_removed"
+                "space.shortcut_removed",
+                "org.anonymous_access_set",
+                "space.anonymous_access_set"
               ]
             }
           },
@@ -1737,7 +1742,9 @@
                 "page.shared",
                 "space.shortcut_added",
                 "space.shortcut_moved",
-                "space.shortcut_removed"
+                "space.shortcut_removed",
+                "org.anonymous_access_set",
+                "space.anonymous_access_set"
               ]
             }
           },
@@ -3985,6 +3992,92 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/anonymous-access": {
+      "get": {
+        "operationId": "getAnonymousAccess",
+        "summary": "Whether anybody may read the spaces that allow it without signing in, and whether search engines are asked in. For administrators.",
+        "tags": [
+          "public"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "anonymousAccess": {
+                      "$ref": "#/components/schemas/AnonymousAccessSettings"
+                    }
+                  },
+                  "required": [
+                    "anonymousAccess"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setAnonymousAccess",
+        "summary": "Let anybody read the spaces that allow it without signing in, or stop it, and say whether search engines may list those pages. For administrators.",
+        "tags": [
+          "public"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnonymousAccessSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "anonymousAccess": {
+                      "$ref": "#/components/schemas/AnonymousAccessSettings"
+                    }
+                  },
+                  "required": [
+                    "anonymousAccess"
+                  ]
                 }
               }
             }
@@ -7839,6 +7932,399 @@
         }
       }
     },
+    "/public/{orgSlug}": {
+      "get": {
+        "operationId": "publicSite",
+        "summary": "The organization and the spaces anybody may read in it without signing in. Not found, as not_public, when it lets nobody in.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "site": {
+                      "$ref": "#/components/schemas/PublicSite"
+                    },
+                    "spaces": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PublicSpace"
+                      }
+                    }
+                  },
+                  "required": [
+                    "site",
+                    "spaces"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/{orgSlug}/attachments/{attachmentID}": {
+      "get": {
+        "operationId": "publicAttachment",
+        "summary": "The bytes of a file on a page anybody may read, as a download.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "inline",
+            "in": "query",
+            "description": "1 to show images, PDFs and text in place.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/{orgSlug}/pages/{pageID}": {
+      "get": {
+        "operationId": "publicPage",
+        "summary": "A published page anybody may read, with the people it mentions unnamed and nothing about who wrote or read it.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/PublicPage"
+                    }
+                  },
+                  "required": [
+                    "page"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/{orgSlug}/search": {
+      "get": {
+        "operationId": "publicSearch",
+        "summary": "Published pages anybody may read whose words match, the best first.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words, quoted phrases, or and -word.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "space",
+            "in": "query",
+            "description": "A space key to stay inside.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1 to 100; 20 when absent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "How many hits to skip.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hits": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AnonymousHit"
+                      }
+                    },
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "more": {
+                      "type": "boolean"
+                    },
+                    "offset": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "hits",
+                    "limit",
+                    "more",
+                    "offset"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/{orgSlug}/spaces/{spaceKey}": {
+      "get": {
+        "operationId": "publicSpace",
+        "summary": "A space anybody may read, with its published pages in reading order.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PublicTreePage"
+                      }
+                    },
+                    "space": {
+                      "$ref": "#/components/schemas/PublicSpace"
+                    }
+                  },
+                  "required": [
+                    "pages",
+                    "space"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/readyz": {
       "get": {
         "operationId": "readiness",
@@ -8421,6 +8907,122 @@
                   "required": [
                     "space"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/anonymous-access": {
+      "get": {
+        "operationId": "getSpaceAnonymousAccess",
+        "summary": "Whether anybody may read this space without signing in, and whether the organization allows it at all. For the space's administrators.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "anonymousAccess": {
+                      "$ref": "#/components/schemas/SpaceAnonymousAccess"
+                    }
+                  },
+                  "required": [
+                    "anonymousAccess"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setSpaceAnonymousAccess",
+        "summary": "Let anybody read this space's published pages without signing in, or stop it; it counts while the organization allows it. A personal space stays private. For the space's administrators.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpaceAnonymousAccessInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "anonymousAccess": {
+                      "$ref": "#/components/schemas/SpaceAnonymousAccess"
+                    }
+                  },
+                  "required": [
+                    "anonymousAccess"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -12255,6 +12857,46 @@
           "quote"
         ]
       },
+      "AnonymousAccessSettings": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "indexable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "indexable"
+        ]
+      },
+      "AnonymousHit": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "$ref": "#/components/schemas/PageRef"
+          },
+          "snippet": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            }
+          },
+          "title": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            }
+          }
+        },
+        "required": [
+          "page",
+          "title",
+          "snippet"
+        ]
+      },
       "Appearance": {
         "type": "object",
         "properties": {
@@ -12547,7 +13189,9 @@
               "page.shared",
               "space.shortcut_added",
               "space.shortcut_moved",
-              "space.shortcut_removed"
+              "space.shortcut_removed",
+              "org.anonymous_access_set",
+              "space.anonymous_access_set"
             ]
           },
           "actorId": {
@@ -12647,7 +13291,9 @@
                 "page.shared",
                 "space.shortcut_added",
                 "space.shortcut_moved",
-                "space.shortcut_removed"
+                "space.shortcut_removed",
+                "org.anonymous_access_set",
+                "space.anonymous_access_set"
               ]
             }
           },
@@ -15941,6 +16587,179 @@
           "callbackUrl"
         ]
       },
+      "PublicPage": {
+        "type": "object",
+        "properties": {
+          "ancestors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicPageRef"
+            }
+          },
+          "appearance": {
+            "$ref": "#/components/schemas/Appearance"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicPageRef"
+            }
+          },
+          "home": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
+          "space": {
+            "$ref": "#/components/schemas/PublicSpace"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "space",
+          "appearance",
+          "body",
+          "version",
+          "home",
+          "updatedAt",
+          "ancestors",
+          "children"
+        ]
+      },
+      "PublicPageRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind"
+        ]
+      },
+      "PublicSite": {
+        "type": "object",
+        "properties": {
+          "indexable": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "indexable"
+        ]
+      },
+      "PublicSpace": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "homePageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "homePageId"
+        ]
+      },
+      "PublicTreePage": {
+        "type": "object",
+        "properties": {
+          "depth": {
+            "type": "integer"
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parentId",
+          "title",
+          "kind",
+          "icon",
+          "depth"
+        ]
+      },
       "PublishInput": {
         "type": "object",
         "properties": {
@@ -16938,6 +17757,36 @@
           "watching",
           "starred",
           "owner"
+        ]
+      },
+      "SpaceAnonymousAccess": {
+        "type": "object",
+        "properties": {
+          "orgEnabled": {
+            "type": "boolean"
+          },
+          "personal": {
+            "type": "boolean"
+          },
+          "view": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "view",
+          "orgEnabled",
+          "personal"
+        ]
+      },
+      "SpaceAnonymousAccessInput": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "view"
         ]
       },
       "SpaceGrant": {
