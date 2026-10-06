@@ -59,6 +59,41 @@ func (s *Server) handleDiscardDraft(w http.ResponseWriter, r *http.Request) {
 	respondNoContent(w)
 }
 
+func (s *Server) handleSchedulePublish(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req page.ScheduleInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	schedule, lsn, err := s.Pages.SchedulePublish(r.Context(), actorFrom(r), id, req)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"schedule": schedule})
+}
+
+func (s *Server) handleCancelSchedule(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	lsn, err := s.Pages.CancelSchedule(r.Context(), actorFrom(r), id)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondNoContent(w)
+}
+
 func (s *Server) handlePublishPage(w http.ResponseWriter, r *http.Request) {
 	id, apiErr := pathUUID(r, "pageID", "page")
 	if apiErr != nil {

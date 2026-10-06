@@ -52,6 +52,9 @@ const (
 	// DefaultTaskDueCheck is task.DefaultDueInterval, which a test holds the
 	// two to.
 	DefaultTaskDueCheck = 10 * time.Minute
+	// DefaultScheduleCheck is page.DefaultScheduleInterval, which a test
+	// holds the two to.
+	DefaultScheduleCheck = 30 * time.Second
 	// DefaultUploadLimit is attachment.DefaultMaxSize, which a test holds
 	// the two to; this package cannot import that one.
 	DefaultUploadLimit int64 = 50 << 20
@@ -103,6 +106,9 @@ type Config struct {
 	// TaskDueCheck is how often the worker looks for tasks whose day came, to
 	// remind their assignees.
 	TaskDueCheck time.Duration
+	// ScheduleCheck is how often the worker looks for scheduled publishes
+	// whose time came; a publish goes out at most this late.
+	ScheduleCheck time.Duration
 
 	// SecretKey encrypts secrets stored in the database, such as an identity
 	// provider's client secret. Nil in development when it is not set.
@@ -308,6 +314,7 @@ func Load() (Config, error) {
 		RetainPageViews:   l.duration("STATOR_RETAIN_PAGE_VIEWS", DefaultRetainPageViews),
 		VerificationCheck: l.duration("STATOR_VERIFICATION_CHECK_INTERVAL", DefaultVerificationCheck),
 		TaskDueCheck:      l.duration("STATOR_TASK_DUE_CHECK_INTERVAL", DefaultTaskDueCheck),
+		ScheduleCheck:     l.duration("STATOR_SCHEDULE_CHECK_INTERVAL", DefaultScheduleCheck),
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
 	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
@@ -387,6 +394,9 @@ func Load() (Config, error) {
 	}
 	if c.TaskDueCheck < time.Second {
 		l.problem(fmt.Sprintf("STATOR_TASK_DUE_CHECK_INTERVAL is %s; set it to a second or more, such as 10m.", c.TaskDueCheck))
+	}
+	if c.ScheduleCheck < time.Second {
+		l.problem(fmt.Sprintf("STATOR_SCHEDULE_CHECK_INTERVAL is %s; set it to a second or more, such as 30s.", c.ScheduleCheck))
 	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		l.problem("STATOR_OTEL_SAMPLE_RATIO must be between 0 and 1.")

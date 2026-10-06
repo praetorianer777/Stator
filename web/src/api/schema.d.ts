@@ -1587,6 +1587,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Publish the caller's draft at a time, in their name, as they would publish it then; setting it again moves it. A page holds one schedule: schedule_taken refuses while somebody else's waits, publish_conflict a draft begun before the latest version. The page's schedule is read with it. */
+        put: operations["schedulePublish"];
+        post?: never;
+        /** Call off the page's scheduled publish: the caller's own, or anybody's for an editor of the page. The draft stays. */
+        delete: operations["cancelSchedule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/share": {
         parameters: {
             query?: never;
@@ -3843,7 +3861,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired";
+            kind: "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired" | "failed";
             page: components["schemas"]["PageLink"];
             /** Format: date-time */
             readAt: string | null;
@@ -3924,6 +3942,7 @@ export interface components {
             parentId: string | null;
             reactions: components["schemas"]["Reaction"][];
             restricted: components["schemas"]["Restricted"];
+            schedule: components["schemas"]["PageSchedule"] | null;
             /** Format: uuid */
             spaceId: string;
             spaceKey: string;
@@ -4019,6 +4038,27 @@ export interface components {
         PageResponse: {
             page: components["schemas"]["Page"];
             space: components["schemas"]["Space"];
+        };
+        PageSchedule: {
+            /** Format: uuid */
+            authorId: string;
+            authorName: string;
+            comment: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            failedAt: string | null;
+            failure: ("gone" | "forbidden" | "archived" | "conflict") | null;
+            mine: boolean;
+            notifyWatchers: boolean;
+            /** Format: date-time */
+            publishAt: string;
+        };
+        PageScheduleInput: {
+            comment?: string;
+            notifyWatchers?: boolean;
+            /** Format: date-time */
+            publishAt: string;
         };
         PageTitle: {
             /** Format: uuid */
@@ -4585,6 +4625,7 @@ export interface components {
             created: boolean;
             due: boolean;
             expired: boolean;
+            failed: boolean;
             mentioned: boolean;
             published: boolean;
             replied: boolean;
@@ -9588,6 +9629,99 @@ export interface operations {
                     "application/json": {
                         restrictions: components["schemas"]["Restrictions"];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    schedulePublish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageScheduleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        schedule: components["schemas"]["PageSchedule"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cancelSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

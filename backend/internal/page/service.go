@@ -116,6 +116,9 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 	if p.Archived, err = archiveOf(ctx, tx, id); err != nil {
 		return nil, nil, err
 	}
+	if p.Schedule, err = scheduleOf(ctx, tx, actor, id); err != nil {
+		return nil, nil, err
+	}
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM star WHERE user_id = $1 AND page_id = $2)`, actor.UserID, id).Scan(&p.Starred); err != nil {
 		return nil, nil, err
 	}

@@ -7289,6 +7289,129 @@
         }
       }
     },
+    "/pages/{pageID}/schedule": {
+      "delete": {
+        "operationId": "cancelSchedule",
+        "summary": "Call off the page's scheduled publish: the caller's own, or anybody's for an editor of the page. The draft stays.",
+        "tags": [
+          "drafts"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "schedulePublish",
+        "summary": "Publish the caller's draft at a time, in their name, as they would publish it then; setting it again moves it. A page holds one schedule: schedule_taken refuses while somebody else's waits, publish_conflict a draft begun before the latest version. The page's schedule is read with it.",
+        "tags": [
+          "drafts"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageScheduleInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schedule": {
+                      "$ref": "#/components/schemas/PageSchedule"
+                    }
+                  },
+                  "required": [
+                    "schedule"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/share": {
       "post": {
         "operationId": "sharePage",
@@ -16712,7 +16835,8 @@
               "resolved",
               "published",
               "created",
-              "expired"
+              "expired",
+              "failed"
             ]
           },
           "page": {
@@ -17037,6 +17161,16 @@
           "restricted": {
             "$ref": "#/components/schemas/Restricted"
           },
+          "schedule": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PageSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "spaceId": {
             "type": "string",
             "format": "uuid"
@@ -17091,6 +17225,7 @@
           "home",
           "unpublished",
           "draft",
+          "schedule",
           "restricted",
           "can",
           "ancestors",
@@ -17402,6 +17537,87 @@
         "required": [
           "page",
           "space"
+        ]
+      },
+      "PageSchedule": {
+        "type": "object",
+        "properties": {
+          "authorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "failedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "gone",
+                  "forbidden",
+                  "archived",
+                  "conflict"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "notifyWatchers": {
+            "type": "boolean"
+          },
+          "publishAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "publishAt",
+          "authorId",
+          "authorName",
+          "mine",
+          "comment",
+          "notifyWatchers",
+          "createdAt",
+          "failure",
+          "failedAt"
+        ]
+      },
+      "PageScheduleInput": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string"
+          },
+          "notifyWatchers": {
+            "type": "boolean"
+          },
+          "publishAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "publishAt"
         ]
       },
       "PageTitle": {
@@ -19550,6 +19766,9 @@
           "expired": {
             "type": "boolean"
           },
+          "failed": {
+            "type": "boolean"
+          },
           "mentioned": {
             "type": "boolean"
           },
@@ -19576,7 +19795,8 @@
           "resolved",
           "published",
           "created",
-          "expired"
+          "expired",
+          "failed"
         ]
       },
       "Tag": {

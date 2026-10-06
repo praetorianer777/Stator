@@ -1200,6 +1200,31 @@ export const en = {
     compareConflict: (latest: number) => `Compare with version ${latest}`,
     keepAndPublish: "Keep my draft and publish",
   },
+  schedule: {
+    when: "When",
+    now: "Now",
+    later: "At a set time",
+    at: "Publish at",
+    atHint: (zone: string) => `In your time zone, ${zone}. Your draft goes out as it stands then, so you can keep editing until then.`,
+    timeNeeded: "Choose a time ahead to publish at, or publish now.",
+    timeTooFar: (days: number) => `Choose a time within ${days} days from now.`,
+    confirm: "Schedule",
+    tag: (when: string) => `Publishes ${when}`,
+    mine: (when: string) => `Your draft is scheduled to publish on ${when}. You can keep editing it until then.`,
+    theirs: (who: string, when: string) => `${who || "Somebody"} scheduled their draft of this page to publish on ${when}.`,
+    failedMine: (when: string, why: string) => `Your draft was scheduled to publish on ${when} but did not go out: ${why}`,
+    failedTheirs: (who: string, when: string, why: string) => `The draft ${who || "somebody"} scheduled to publish on ${when} did not go out: ${why}`,
+    failures: {
+      gone: "the page was deleted, or is no longer one you may read. Restore it from the trash to schedule it again.",
+      forbidden: "you may no longer edit the page. Ask an administrator of the space for edit access.",
+      archived: "the page is archived. Ask an administrator of the space to unarchive it, then schedule it again.",
+      conflict: "somebody published the page after the draft began. Open the editor to compare and schedule it again.",
+    } as Record<"gone" | "forbidden" | "archived" | "conflict", string>,
+    change: "Change",
+    editAgain: "Edit and schedule again",
+    cancel: "Cancel schedule",
+    confirmCancel: "Call this scheduled publish off? The draft stays.",
+  },
   collab: {
     editingNow: (names: string) => `Editing now: ${names}`,
     more: (n: number) => `+${n}`,
@@ -2202,6 +2227,8 @@ export const en = {
           return `${who} created ${title}`;
         case "expired":
           return `The verification of ${title} has run out. Check the page and verify it again.`;
+        case "failed":
+          return `Your scheduled publish of ${title} did not go out. Open the page to see why.`;
         default:
           return `${who} changed ${title}`;
       }
@@ -2223,7 +2250,8 @@ export const en = {
       published: "A page you watch is published with a notice",
       created: "A page is first published below a page or space you watch",
       expired: "The verification of a page you own runs out",
-    } as Record<"assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
+      failed: "A publish you scheduled cannot go out",
+    } as Record<"assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired" | "failed", string>,
     inAppFor: (kind: string) => `In the app: ${kind}`,
     emailFor: (kind: string) => `By email: ${kind}`,
     digest: "When emails go out",

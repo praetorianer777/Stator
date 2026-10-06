@@ -232,6 +232,7 @@ STATOR_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
 STATOR_RETAIN_PAGE_VIEWS: {{ .Values.retention.pageViews | quote }}
 STATOR_VERIFICATION_CHECK_INTERVAL: {{ .Values.verification.checkInterval | quote }}
 STATOR_TASK_DUE_CHECK_INTERVAL: {{ .Values.tasks.dueCheckInterval | quote }}
+STATOR_SCHEDULE_CHECK_INTERVAL: {{ .Values.publishing.scheduleCheckInterval | quote }}
 {{- with .Values.mail.smtpAddr }}
 STATOR_SMTP_ADDR: {{ . | quote }}
 STATOR_MAIL_FROM: {{ $.Values.mail.from | quote }}

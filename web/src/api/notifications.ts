@@ -25,6 +25,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = [
   "published",
   "created",
   "expired",
+  "failed",
 ];
 export const DIGESTS: Digest[] = ["off", "hourly", "daily"];
 

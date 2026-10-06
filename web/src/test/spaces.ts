@@ -37,6 +37,7 @@ export function aPage(over: Partial<Page> = {}): Page {
     home: true,
     unpublished: false,
     draft: null,
+    schedule: null,
     restricted: { view: false, edit: false },
     can: { edit: true, delete: true, restrict: true, comment: true, archive: true },
     ancestors: [],

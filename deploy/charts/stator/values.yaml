@@ -167,6 +167,11 @@ tasks:
   # assignee once. A second or more, such as 10m.
   dueCheckInterval: 10m
 
+publishing:
+  # How often the worker looks for publishes scheduled for a time that came;
+  # a scheduled publish goes out at most this late. A second or more.
+  scheduleCheckInterval: 30s
+
 mail:
   # The SMTP relay the worker sends notifications through, as host:port.
   # Blank turns mail off: notifications are then shown in the app only.

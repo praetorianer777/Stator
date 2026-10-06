@@ -111,6 +111,9 @@ check "verifications are checked every ten minutes, and that can be changed" \
 check "due tasks are looked for every ten minutes, and that can be changed" \
     "$(grep -c 'STATOR_TASK_DUE_CHECK_INTERVAL: "10m"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set tasks.dueCheckInterval=1h 2>&1 | grep -c 'STATOR_TASK_DUE_CHECK_INTERVAL: "1h"')" \
     "1 1"
+check "scheduled publishes are looked for every half minute, and that can be changed" \
+    "$(grep -c 'STATOR_SCHEDULE_CHECK_INTERVAL: "30s"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set publishing.scheduleCheckInterval=5s 2>&1 | grep -c 'STATOR_SCHEDULE_CHECK_INTERVAL: "5s"')" \
+    "1 1"
 check "mail is off until a relay is named, then goes from the sender set" \
     "$(grep -c 'STATOR_SMTP_ADDR' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set mail.smtpAddr=smtp.example:25 --set 'mail.from=Wiki <wiki@example.com>' 2>&1 | grep -E 'STATOR_(SMTP_ADDR|MAIL_FROM)' | tr -d ' ' | paste -sd ' ')" \
     '0 STATOR_SMTP_ADDR:"smtp.example:25" STATOR_MAIL_FROM:"Wiki<wiki@example.com>"'

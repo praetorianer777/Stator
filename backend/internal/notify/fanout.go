@@ -99,6 +99,7 @@ func NewFanOut(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog
 	f.planners[events.TopicVerificationLapsed] = planVerificationLapsed
 	f.planners[events.TopicPageShared] = planShared
 	f.planners[events.TopicTaskDue] = planTaskDue
+	f.planners[events.TopicScheduleFailed] = planScheduleFailed
 	return f
 }
 
@@ -297,6 +298,31 @@ func planTaskDue(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error)
 	return &Plan{
 		Subject: Subject{PageID: in.PageID, Version: &version, Excerpt: Excerpt(summary)},
 		Tells:   []Tell{{UserID: in.AssigneeID, Kind: KindDue}},
+	}, nil
+}
+
+// planScheduleFailed tells the author of a scheduled publish that was refused.
+// A schedule set again, or called off, since tells nobody.
+func planScheduleFailed(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) {
+	var in events.ScheduleFailed
+	if err := json.Unmarshal(e.Payload, &in); err != nil {
+		return nil, nil
+	}
+	var version int
+	err := tx.QueryRow(ctx, `
+		SELECT p.version FROM page_schedule sc JOIN page p ON p.org_id = sc.org_id AND p.id = sc.page_id
+		WHERE sc.org_id = current_org_id() AND sc.page_id = $1 AND sc.user_id = $2
+		  AND sc.failed_at IS NOT NULL AND sc.publish_at = $3`,
+		in.PageID, in.AuthorID, in.PublishAt).Scan(&version)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &Plan{
+		Subject: Subject{PageID: in.PageID, Version: &version},
+		Tells:   []Tell{{UserID: in.AuthorID, Kind: KindFailed}},
 	}, nil
 }
 

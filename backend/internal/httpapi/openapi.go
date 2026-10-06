@@ -302,6 +302,11 @@ var operations = []operation{
 		responses:   map[int]any{101: nil, 403: errorEnvelope{}, 404: errorEnvelope{}, 426: errorEnvelope{}, 503: errorEnvelope{}}},
 	{method: "POST", path: "/pages/{pageID}/publish", handler: "handlePublishPage", tag: "drafts", summary: "Publish the caller's draft as the next version; refused with publish_conflict when somebody published since the draft began.",
 		request: page.PublishInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
+	// Scheduled publishing (#71).
+	{method: "PUT", path: "/pages/{pageID}/schedule", handler: "handleSchedulePublish", tag: "drafts", summary: "Publish the caller's draft at a time, in their name, as they would publish it then; setting it again moves it. A page holds one schedule: schedule_taken refuses while somebody else's waits, publish_conflict a draft begun before the latest version. The page's schedule is read with it.",
+		request: page.ScheduleInput{}, responses: map[int]any{200: env{"schedule": page.Schedule{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/pages/{pageID}/schedule", handler: "handleCancelSchedule", tag: "drafts", summary: "Call off the page's scheduled publish: the caller's own, or anybody's for an editor of the page. The draft stays.",
+		responses: map[int]any{204: nil, 404: errorEnvelope{}}},
 	// Live pages (#70).
 	{method: "PUT", path: "/pages/{pageID}/live", handler: "handleSaveLive", tag: "drafts", summary: "Save a live page as its editor holds it, visible to every reader at once: into the open version while it lasts, else as the next version. room names the shared draft saved from; page_not_live refuses a page edited through drafts, room_gone a shared draft started afresh.",
 		request: page.LiveInput{}, responses: map[int]any{200: page.LiveSaved{}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
@@ -882,6 +887,9 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(page.ModeChange{})] = "PageModeChange"
 	b.Names[reflect.TypeOf(page.LiveInput{})] = "PageLiveInput"
 	b.Names[reflect.TypeOf(page.LiveSaved{})] = "PageLiveSaved"
+	b.Names[reflect.TypeOf(page.Schedule{})] = "PageSchedule"
+	b.Names[reflect.TypeOf(page.ScheduleInput{})] = "PageScheduleInput"
+	b.FieldOverrides["PageSchedule.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(page.ScheduleFailures)}, {Type: "null"}}}
 	b.FieldOverrides["LinkEmbed.kind"] = &openapi.Schema{Type: "string", Enum: unfurl.EmbedKinds}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}

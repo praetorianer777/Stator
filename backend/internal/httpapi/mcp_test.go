@@ -27,7 +27,7 @@ const (
 	whyFiles      = "moves files rather than words; get_page_markdown and replace_page_markdown carry a page's words"
 	whyArmature   = "Armature's own MCP endpoint serves its issues as the person, without Stator in between"
 	whyAttention  = "reaches other people or a page's standing: shares, reactions, watches, stars, owners and verification"
-	whyReorganize = "moves, copies, restores or publishes a draft; a person does that in the tree, the trash or the history"
+	whyReorganize = "moves, copies, restores, publishes or schedules a draft; a person does that in the tree, the trash, the history or the editor"
 	whyThreads    = "an inline thread needs the body with a passage marked, and threads are rewritten or resolved where they are read"
 	whyReaders    = "names the people who read a page, which stays with its editors in the page; get_page_views counts them"
 	whyLive       = "a WebSocket a browser holds open while its person edits, not a call and an answer"
@@ -204,6 +204,8 @@ var notTools = map[string]string{
 	"POST /pages/{pageID}/move":                                    whyReorganize,
 	"POST /pages/{pageID}/copy":                                    whyReorganize,
 	"POST /pages/{pageID}/publish":                                 whyReorganize,
+	"PUT /pages/{pageID}/schedule":                                 whyReorganize,
+	"DELETE /pages/{pageID}/schedule":                              whyRemoves,
 	"POST /pages/{pageID}/versions/{versionNumber}/restore":        whyReorganize,
 	"POST /pages/{pageID}/inline-comments":                         whyThreads,
 	"PATCH /comments/{commentID}":                                  whyThreads,

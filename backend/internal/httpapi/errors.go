@@ -156,6 +156,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &pgErr) && pgErr.ConstraintName == liveDraftConstraint {
 		err = page.ErrLivePage
 	}
+	var scheduled *page.ScheduleTakenError
+	if errors.As(err, &scheduled) {
+		return &APIError{Status: http.StatusConflict, Code: "schedule_taken", Message: scheduled.Error()}
+	}
 	var pending *page.DraftsPendingError
 	if errors.As(err, &pending) {
 		return &APIError{Status: http.StatusConflict, Code: "drafts_pending", Message: pending.Error()}
@@ -472,6 +476,8 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, page.ErrNoDraft):
 		return &APIError{Status: http.StatusConflict, Code: "no_draft",
 			Message: "You have no draft of this page to publish. Edit the page first; your changes are saved as a draft."}
+	case errors.Is(err, page.ErrNoSchedule):
+		return ErrNotFound("Nobody scheduled this page to publish. Reload the page to see where it stands.")
 	case errors.Is(err, page.ErrDraftNotFound):
 		return ErrNotFound("You have no draft of this page. Compare two versions instead, or edit the page to start one.")
 	case errors.Is(err, page.ErrVersionNotFound):
