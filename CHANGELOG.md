@@ -802,6 +802,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
   applied is what was shown; it is one step and one audit entry naming
   both spaces, the mode and the counts. Page restrictions are not copied,
   and personal spaces are neither copied from nor into.
+- Live pages (#70). A page's editors choose, under Editing mode in the
+  page's menu, between drafts and publishing and live
+  (`PUT /pages/{id}/mode`). On a live page what is typed is saved to the
+  page about a second later (`PUT /pages/{id}/live`), with nothing to
+  publish, and a reader with the page open sees it within seconds. The
+  history keeps a version per ten minutes of work, amended by every save in
+  it and naming everybody who saved into it; mentions and assignments added
+  by a save are told once, and webhooks hear of each version as of a
+  publish. Going live throws away the drafts nobody published, so it names
+  whose they are first and goes ahead only when confirmed; the switch goes
+  to the audit log. The database holds a live page to no drafts and lets
+  only its open version be amended, only by the page's editors.
 
 ### Changed
 
