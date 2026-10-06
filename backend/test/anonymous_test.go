@@ -101,6 +101,9 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 				t.Errorf("the audit log has %s = %v (%v)", action, on, err)
 			}
 		}
+		if got := obj(t, want(t, owner.get(t, "/api/v1/org/anonymous-access"), http.StatusOK, "the switch"), "anonymousAccess"); got["enabled"] != true {
+			t.Errorf("the switch reads %v", got)
+		}
 		access := obj(t, want(t, owner.get(t, "/api/v1/spaces/OPEN/anonymous-access"), http.StatusOK, "OPEN's access"), "anonymousAccess")
 		if access["view"] != true || access["orgEnabled"] != true {
 			t.Errorf("OPEN's access reads %v", access)

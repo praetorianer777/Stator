@@ -41,8 +41,9 @@ export function publicSpaceQuery(org: string, spaceKey: string) {
   };
 }
 
+/** A space's tree; an empty key, while the page that names it loads, asks nothing. */
 export function usePublicSpace(org: string, spaceKey: string) {
-  return useQuery(publicSpaceQuery(org, spaceKey));
+  return useQuery({ ...publicSpaceQuery(org, spaceKey), enabled: spaceKey !== "" });
 }
 
 export function publicPageQuery(org: string, pageId: string) {
