@@ -789,9 +789,25 @@ and the versioning [Semantic Versioning](https://semver.org/).
   a link are never cached, send no referrer and keep the token out of the
   logs, search engines are asked to stay away unless the organization lets
   them in, and making, revoking and the switch go to the audit log.
+- Copying space permissions (#82). In a team space's permissions tab, an
+  administrator copies the permissions of another team space they
+  administer: replace makes this space's grants the other's, keeping this
+  space's guests; merge only adds subjects and widens what they hold. A
+  preview (`GET /spaces/{key}/permissions/copy`) lists per person or group
+  what is added, widened, narrowed or removed, what cannot be copied (a
+  guest of the other space) and whether the copy would leave the space
+  without an administrator, which is refused. Applying
+  (`POST /spaces/{key}/permissions/copy`) takes the preview's fingerprint
+  and is refused once either space's permissions changed since, so what is
+  applied is what was shown; it is one step and one audit entry naming
+  both spaces, the mode and the counts. Page restrictions are not copied,
+  and personal spaces are neither copied from nor into.
 
 ### Changed
 
+- A space keeps at least one administrator of its own: taking administer
+  from the last person or group that holds it is refused, by the api and by
+  the database, unless an administrator of the organization does it.
 - A page's text keeps a readable measure of 44rem, about 85 characters,
   centred, while its wide blocks use the window up to 96rem: tables and
   their charts, diagrams, math blocks, code, columns, link cards and

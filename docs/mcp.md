@@ -122,7 +122,8 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
 
 - anything that deletes or takes something away, the trash included;
 - administration and who may do what: the identity provider, members,
-  tokens, permissions, page restrictions, making or changing spaces and the
+  tokens, permissions and copying them between spaces, previews included,
+  page restrictions, making or changing spaces and the
   space templates a new one starts from, and
   archiving or unarchiving pages and spaces and pinning, ordering or
   removing a space's shortcuts, which is for a space's administrators, and
