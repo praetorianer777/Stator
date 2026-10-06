@@ -179,11 +179,16 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 		want(t, dave.get(t, "/api/v1/spaces/SEC/permissions"), http.StatusOK, "a space administrator reads the table")
 
 		// A space administrator who is no organization administrator may give
-		// the space away, and the answer is still the table they wrote.
+		// the space away, though not to nobody, and the answer is still the
+		// table they wrote.
+		fieldError(t, want(t, dave.put(t, "/api/v1/spaces/SEC/permissions", map[string]any{"grants": []any{
+			map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments", "delete"}},
+		}}), http.StatusUnprocessableEntity, "dave leaves the space without an administrator"), "grants")
 		given := want(t, dave.put(t, "/api/v1/spaces/SEC/permissions", map[string]any{"grants": []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments", "delete"}},
+			map[string]any{"subject": group(writers), "permissions": []any{"administer"}},
 		}}), http.StatusOK, "dave gives the space away")
-		if n := len(list(t, given, "grants")); n != 1 {
+		if n := len(list(t, given, "grants")); n != 2 {
 			t.Errorf("the table dave wrote has %d rows", n)
 		}
 		if got := dave.get(t, "/api/v1/spaces/SEC/permissions"); got.Status != http.StatusForbidden {
