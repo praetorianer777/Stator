@@ -3,12 +3,15 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   isNotPublic,
+  linkedAttachmentUrl,
   publicAttachmentUrl,
   publicPageQuery,
   usePublicPage,
   usePublicSearch,
   usePublicSite,
   usePublicSpace,
+  useLinkedPage,
+  type LinkedPage,
   type PublicPage,
   type PublicTreePage,
 } from "@/api/public";
@@ -16,7 +19,7 @@ import { Breadcrumbs, ButtonLink, EmptyState, ErrorBanner, IconButton, Input, Pa
 import { Icon } from "@/components/icons";
 import { APP_NAME, PUBLIC_PATH } from "@/config";
 import { DocView } from "@/features/editor/DocView";
-import { PublicReadingContext, publicPagePath, publicSitePath, publicSpacePath, signInPath } from "@/features/editor/publicReading";
+import { PublicLinkContext, PublicReadingContext, publicPagePath, publicSitePath, publicSpacePath, signInPath } from "@/features/editor/publicReading";
 import type { DocNode } from "@/features/editor/schema";
 import { coverPosition } from "@/features/pages/AppearanceDialog";
 import { t } from "@/i18n";
@@ -132,6 +135,72 @@ export function NotPublic({ org, next }: { org: string; next: string }) {
 function Failed({ error, org, next, retry }: { error: unknown; org: string; next: string; retry: () => void }) {
   if (isNotPublic(error)) return <NotPublic org={org} next={next} />;
   return <ErrorBanner onRetry={retry}>{t.publicReading.failed}</ErrorBanner>;
+}
+
+/**
+ * The one page a public link opens: the organization's name, the page and
+ * the way to sign in, and no tree, search or other page of the app.
+ */
+export function PublicLinkScreen({ org, token }: { org: string; token: string }) {
+  const linked = useLinkedPage(org, token);
+  useRobots(linked.error ? false : linked.data?.site.indexable);
+  return (
+    <PublicReadingContext value={org}>
+      <PublicLinkContext value={token}>
+        <div className="min-h-full bg-backdrop" data-public-link={org}>
+          <header className="border-b border-border bg-surface">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
+              <span className="mr-auto font-semibold text-ink">{linked.data?.site.name ?? APP_NAME}</span>
+              <ButtonLink href={signInPath("/", org)} size="sm" variant="primary" data-action="public-sign-in">
+                {t.publicReading.signIn}
+              </ButtonLink>
+            </div>
+          </header>
+          <main className="mx-auto max-w-6xl px-4 py-6">
+            {linked.error ? (
+              isNotPublic(linked.error) ? (
+                <div data-link-gone="">
+                  <EmptyState icon={<Icon.Lock />} title={t.publicLinks.goneTitle} description={t.publicLinks.goneBody} />
+                </div>
+              ) : (
+                <ErrorBanner onRetry={() => void linked.refetch()}>{t.publicReading.failed}</ErrorBanner>
+              )
+            ) : linked.data ? (
+              <LinkedArticle org={org} token={token} page={linked.data.page} />
+            ) : (
+              <Skeleton />
+            )}
+          </main>
+        </div>
+      </PublicLinkContext>
+    </PublicReadingContext>
+  );
+}
+
+function LinkedArticle({ org, token, page }: { org: string; token: string; page: LinkedPage }) {
+  return (
+    <article className={cx("mx-auto", page.appearance.width === "full" ? "max-w-none" : "max-w-3xl")} data-public-page={page.id}>
+      {page.appearance.cover && (
+        <div className="page-cover">
+          <img
+            src={linkedAttachmentUrl(org, token, page.appearance.cover.attachmentId, true)}
+            alt=""
+            style={{ objectPosition: coverPosition(page.appearance.cover) }}
+          />
+        </div>
+      )}
+      <PageHeader
+        title={
+          <>
+            {page.appearance.icon && <span className="mr-2">{page.appearance.icon}</span>}
+            <span data-page-title>{page.title}</span>
+          </>
+        }
+        meta={<span>{t.publicReading.updated(updatedAt.format(new Date(page.updatedAt)))}</span>}
+      />
+      <DocView doc={page.body as DocNode} />
+    </article>
+  );
 }
 
 /** The organization's public spaces. */

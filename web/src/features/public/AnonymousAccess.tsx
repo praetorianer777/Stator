@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useMe } from "@/api/auth";
-import { useAnonymousAccess, useSetAnonymousAccess, useSetSpaceAnonymousAccess, useSpaceAnonymousAccess, type AnonymousAccessSettings } from "@/api/public";
+import {
+  useAnonymousAccess,
+  usePublicLinkSettings,
+  useSetAnonymousAccess,
+  useSetPublicLinkSettings,
+  useSetSpaceAnonymousAccess,
+  useSpaceAnonymousAccess,
+  type AnonymousAccessSettings,
+} from "@/api/public";
 import type { Space } from "@/api/spaces";
 import { Card, ErrorBanner, Skeleton, Switch } from "@/components/ui";
 import { publicSitePath, publicSpacePath } from "@/features/editor/publicReading";
@@ -58,6 +66,40 @@ export function OrgAnonymousAccess() {
             </p>
           )}
         </div>
+      )}
+      {save.error && <ErrorBanner>{save.error.message}</ErrorBanner>}
+      <span role="status" className="text-sm text-ink-muted">
+        {notice}
+      </span>
+    </Card>
+  );
+}
+
+/** The organization's switch for public links to single pages, apart from its open spaces; saved at once. */
+export function OrgPublicLinks() {
+  const { data, error, refetch } = usePublicLinkSettings();
+  const save = useSetPublicLinkSettings();
+  const [notice, setNotice] = useState("");
+  return (
+    <Card className="space-y-3 p-4" data-public-links-settings="">
+      <h2 className="font-semibold text-ink">{t.publicLinks.settingsTitle}</h2>
+      <p className="text-sm text-ink-muted">{t.publicLinks.settingsIntro}</p>
+      {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
+      {!data && !error && <Skeleton />}
+      {data && (
+        <span className="flex items-center gap-3 text-sm text-ink">
+          <Switch
+            checked={data.enabled}
+            label={t.publicLinks.settingsToggle}
+            disabled={save.isPending}
+            onChange={(enabled) => {
+              setNotice("");
+              save.mutate({ enabled }, { onSuccess: () => setNotice(t.publicLinks.saved) });
+            }}
+            data-action="public-links"
+          />
+          <span aria-hidden="true">{t.publicLinks.settingsToggle}</span>
+        </span>
       )}
       {save.error && <ErrorBanner>{save.error.message}</ErrorBanner>}
       <span role="status" className="text-sm text-ink-muted">

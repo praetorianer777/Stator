@@ -17,7 +17,7 @@ import { pageEditRoute } from "./page-edit";
 import { orgPermissionsRoute } from "./permissions";
 import { pageHistoryRoute } from "./page-history";
 import { profileRoute } from "./profile";
-import { publicRoutes } from "./public";
+import { publicLinkRoute, publicRoutes } from "./public";
 import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
 import { spaceDecisionsRoute } from "./decisions";
 import { personalSpaceNewRoute, spaceNewRoute, spacesRoute } from "./spaces";
@@ -34,6 +34,7 @@ import { webhooksRoute } from "./webhooks";
 const routeTree = rootRoute.addChildren([
   loginRoute,
   publicRoutes,
+  publicLinkRoute,
   appRoute.addChildren([
     homeRoute,
     personalHomeRoute,

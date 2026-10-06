@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Page } from "@/api/pages";
-import { renderAt, stubApi, type Answer } from "@/test/app";
+import { DAY_MS } from "@/config";
+import { renderAt, signedIn, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
@@ -41,6 +42,7 @@ function stubPage({ page = {}, more = {} }: { page?: Partial<Page>; more?: Recor
       body: { viewers: [{ id: ann.id, name: ann.name, email: ann.email }], total: 12, everyone: false, limit: 8, offset: 0 },
     },
     [`GET /pages/${pageId}/share/recipients`]: { status: 200, body: { people: [ann, carl], groups: [team, outsiders] } },
+    [`GET /pages/${pageId}/public-links`]: { status: 200, body: { publicLinks: { links: [], max: 5, refusal: null } } },
     ...more,
   });
 }
@@ -136,6 +138,68 @@ describe("the share dialog", () => {
     const dialog = await openDialog();
     expect(await within(dialog).findByText("Everyone in the organization can view this page.")).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
+  });
+
+  it("makes a public link with a label and a lifetime, shows its address once and lists it", async () => {
+    const link = {
+      id: "0195f000-0000-7000-8000-0000000000e1",
+      label: "Auditors",
+      createdBy: { id: signedIn.user.id, name: signedIn.user.name, email: signedIn.user.email },
+      createdAt: "2026-10-06T08:00:00Z",
+      expiresAt: "2026-10-13T08:00:00Z",
+    };
+    let made = false;
+    const sent = stubPage({
+      more: {
+        [`GET /pages/${pageId}/public-links`]: () => ({ status: 200, body: { publicLinks: { links: made ? [link] : [], max: 5, refusal: null } } }),
+        [`POST /pages/${pageId}/public-links`]: () => {
+          made = true;
+          return { status: 201, body: { link, token: "t0k3n", path: "/public/demo/link/t0k3n" } };
+        },
+      },
+    });
+    await renderAt(PATH);
+    const dialog = await openDialog();
+    const section = within(dialog).getByRole("region", { name: "Public link" });
+    await userEvent.type(await within(section).findByRole("textbox", { name: "Label (optional)" }), " Auditors ");
+    await userEvent.selectOptions(within(section).getByRole("combobox", { name: "Runs out" }), "7");
+    await userEvent.click(within(section).getByRole("button", { name: "Make a public link" }));
+    const address = await within(section).findByRole("textbox", { name: "Public link" });
+    expect((address as HTMLInputElement).value).toBe(`${window.location.origin}/public/demo/link/t0k3n`);
+    const body = sent.find((each) => each.method === "POST" && each.path === `/pages/${pageId}/public-links`)?.body as { label: string; expiresAt: string };
+    expect(body.label).toBe("Auditors");
+    const days = (Date.parse(body.expiresAt) - Date.now()) / DAY_MS;
+    expect(days).toBeGreaterThan(6.9);
+    expect(days).toBeLessThan(7.1);
+    const listed = await within(section).findByRole("list", { name: "Live public links" });
+    expect(within(listed).getByText("Auditors")).toBeInTheDocument();
+    expect(listed).toHaveTextContent(/Made by you on .+\. Runs out on .+\./);
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("revokes a link from the list", async () => {
+    const link = { id: "0195f000-0000-7000-8000-0000000000e2", label: "", createdBy: null, createdAt: "2026-10-06T08:00:00Z", expiresAt: null };
+    const sent = stubPage({
+      more: {
+        [`GET /pages/${pageId}/public-links`]: { status: 200, body: { publicLinks: { links: [link], max: 5, refusal: null } } },
+        [`DELETE /pages/${pageId}/public-links/${link.id}`]: { status: 204 },
+      },
+    });
+    await renderAt(PATH);
+    const dialog = await openDialog();
+    const listed = await within(dialog).findByRole("list", { name: "Live public links" });
+    expect(listed).toHaveTextContent("Made by somebody who has left");
+    expect(listed).toHaveTextContent("Works until it is revoked.");
+    await userEvent.click(within(listed).getByRole("button", { name: "Revoke Public link" }));
+    await waitFor(() => expect(sent.some((each) => each.method === "DELETE" && each.path === `/pages/${pageId}/public-links/${link.id}`)).toBe(true));
+  });
+
+  it("tells somebody who may not make a link why, and offers none", async () => {
+    stubPage({ more: { [`GET /pages/${pageId}/public-links`]: { status: 200, body: { publicLinks: { links: [], max: 5, refusal: "cannotManage" } } } } });
+    await renderAt(PATH);
+    const dialog = await openDialog();
+    expect(await within(dialog).findByText(/^Only people who may edit this page make public links for it\./)).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Make a public link" })).toBeNull();
   });
 
   it("is not offered on a page nobody else can read yet", async () => {

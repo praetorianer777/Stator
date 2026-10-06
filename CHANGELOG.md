@@ -772,6 +772,23 @@ and the versioning [Semantic Versioning](https://semver.org/).
   pages and files and to writing nothing. Search engines are asked to stay
   away unless the organization lets them in, and both switches go to the
   audit log.
+- Public links (#80). Whoever may edit a published page makes a link in
+  the share dialog that lets anybody read that page without an account,
+  with an optional label and a lifetime of a day to three months or none,
+  and sees the page's live links with who made them and when they run out,
+  and revokes them; the address is shown once, when the link is made. A
+  page has at most five live links, and a restricted page, a draft, a
+  folder and a page of a personal space get none. The link opens that page
+  and its files in a reading view with nobody named in it, whether or not
+  the organization opens any space, and nothing else: not the pages below
+  it, its space, comments or history. A link stops when it is revoked or
+  runs out, and while the page is restricted, unpublished or in the trash.
+  An administrator stops every link at once under Settings, Permissions
+  (`PUT /org/public-links`), and allows them again; nothing is deleted.
+  The database holds a reader with a link to that one page. Answers through
+  a link are never cached, send no referrer and keep the token out of the
+  logs, search engines are asked to stay away unless the organization lets
+  them in, and making, revoking and the switch go to the audit log.
 
 ### Changed
 

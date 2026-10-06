@@ -523,3 +523,11 @@ export const PUBLIC_PATH = "/public";
 export const PUBLIC_STALE_MS = 60_000;
 /** Hits a public search shows at a time. */
 export const PUBLIC_SEARCH_LIMIT = 20;
+/** The part of a public address a link's token follows, after the organization, as the API makes it. */
+export const PUBLIC_LINK_SEGMENT = "link";
+/** The lifetimes a public link is offered, in days; it may also work until it is revoked. */
+export const PUBLIC_LINK_EXPIRY_DAYS = [1, 7, 30, 90] as const;
+/** The lifetime offered first: a link nobody remembers stops by itself. */
+export const PUBLIC_LINK_DEFAULT_EXPIRY_DAYS = 30;
+/** The longest label a public link takes, matching the API's limit. */
+export const PUBLIC_LINK_LABEL_MAX_LENGTH = 60;

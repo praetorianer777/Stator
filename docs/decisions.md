@@ -3,6 +3,70 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-06: A public link is the anonymous reader holding one page more
+
+A public link (#80) lets anybody read one published page without an
+account. It is built on #79's anonymous reader rather than beside it: the
+reads run as the same principal, and the transaction also sets
+`app.page_link` to the SHA-256 of the token the address carries.
+`perm_link_page()` turns that digest into the page of a live link (neither
+revoked nor run out, while the organization allows links), and
+`perm_page_viewable` lets an anonymous reader view that page as though its
+space were open: published all the way up, out of the trash, under no view
+list. Every other rule of #79 still holds, so the link reaches that page
+and the files attached to it and nothing else, neither the pages below it,
+its space, versions, comments nor any person. Straight through SQL as
+`stator_app` a token reaches exactly its page and its files, and a token
+revoked, run out, unknown or malformed, a page restricted later, or links
+turned off reach nothing. The digest is a better setting than the link's
+id: an editor who saw the id in the list cannot read through it, and a
+copy of the database opens nothing.
+
+The token follows Armature's share links: 32 random bytes from
+`auth.GenerateToken`, kept only as a digest, shown once in the answer that
+makes it, never in the list; a revoked link keeps its row with who revoked
+it, so who opened what to whom stays on record; the access log and the
+traces write the path with the token blanked. Unlike Armature's, the
+address names the organization, `/public/{org}/link/{token}`, so the
+reading view and its routes stay under #79's prefix and every rule there
+(no session looked at, public `GET`s only, no tool) holds for them. A token
+of another organization's link is gone under this one's name.
+
+Who makes and revokes links is whoever may change the page, or could but
+for its being archived: a link gives access, which a share does not, so it
+takes the right that decides what the page says, not the right to read it.
+Any of the page's editors may revoke any of its links, so a link survives
+its maker leaving and is still somebody's to end. A guest, who is from
+outside, makes and sees none. A page has at most five live links
+(`page_link_max()`, held by a trigger with a lock as the share brake is),
+each with an optional label to tell them apart and an optional expiry; the
+dialog offers a day to three months, thirty days first, or none.
+
+A restricted page gets no link, and a link stops working while a view list
+applies on the page or above it: a view list names who may read a page,
+and a link to anybody would quietly undo it. Lifting the list brings the
+link back. A draft, a folder, which only lists pages the link does not
+open, a page in the trash and a page of a personal space, which is never
+public as in #79, get none either. The answer is the page's words through
+`document.ForAnonymous`, its title, appearance and date, without its
+space, tree or people.
+
+The organization's own switch, `org.public_links`, is apart from #79's
+reading switch, since opening every space and letting editors open single
+pages are different decisions. It is on until an administrator turns it
+off, as the issue asks for an organization that can disable the feature;
+turned off, every link stops and none can be made, and turned on again the
+links work again, since nothing was deleted. Making, revoking and the
+switch go to the audit log.
+
+The token is a secret in the address, so nothing through a link is kept by
+a cache (`Cache-Control: no-store`, as Armature's), the api's answers and
+nginx's reading view send no referrer, nginx writes neither address to its
+log, and search engines are asked to stay away (`X-Robots-Tag` and the
+`robots` element) unless the organization's #79 switch lets them in. Making
+a link is no MCP tool: it opens a page to anybody outside, a decision for
+the person in the share dialog, and the token is shown once, to them.
+
 ## 2026-10-06: Anybody reads an open space as nobody, through reads of their own
 
 Public documentation (#79) is two switches. The organization's,

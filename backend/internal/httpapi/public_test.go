@@ -45,3 +45,37 @@ func TestAPublicReadIgnoresWhateverCredentialRidesAlong(t *testing.T) {
 		t.Errorf("a member's read without a session = %d, want 401", resp.StatusCode)
 	}
 }
+
+// A link's token is the whole of the link, so the access log and the traces
+// write every address that carries one with the token blanked.
+func TestALinksTokenIsBlankedInEveryPathWritten(t *testing.T) {
+	token := strings.Repeat("s", 43)
+	for path, want := range map[string]string{
+		APIPrefix + "/public/acme/links/" + token:                             APIPrefix + "/public/acme/links/{token}",
+		APIPrefix + "/public/acme/links/" + token + "/attachments/x":          APIPrefix + "/public/acme/links/{token}/attachments/x",
+		APIPrefix + "/public/acme/pages/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01": APIPrefix + "/public/acme/pages/0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a01",
+		APIPrefix + "/public/acme":                                            APIPrefix + "/public/acme",
+		APIPrefix + "/pages/links/" + token:                                   APIPrefix + "/pages/links/" + token,
+	} {
+		if got := redactPath(path); got != want {
+			t.Errorf("redactPath(%q) = %q, want %q", path, got, want)
+		}
+	}
+}
+
+// Whatever a link opens or does not, the answer is kept by no cache and the
+// address is sent on to no other site.
+func TestALinksAnswerIsNeverCachedNorSentOn(t *testing.T) {
+	h := newServer(t).Routes(nil)
+	for _, token := range []string{"not-a-token", strings.Repeat("a", 43)} {
+		resp, body := serve(t, h, httptest.NewRequest(http.MethodGet, APIPrefix+"/public/acme/links/"+token, nil))
+		errBody, _ := body["error"].(map[string]any)
+		if resp.StatusCode != http.StatusNotFound || errBody["code"] != "link_gone" {
+			t.Errorf("%s = %d %v, want 404 link_gone", token, resp.StatusCode, body)
+		}
+		if resp.Header.Get("Cache-Control") != "no-store" || resp.Header.Get("Referrer-Policy") != "no-referrer" || resp.Header.Get("X-Robots-Tag") == "" {
+			t.Errorf("%s is served with caching %q, referrer %q and robots %q", token,
+				resp.Header.Get("Cache-Control"), resp.Header.Get("Referrer-Policy"), resp.Header.Get("X-Robots-Tag"))
+		}
+	}
+}

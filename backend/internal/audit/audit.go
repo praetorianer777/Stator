@@ -79,6 +79,10 @@ const (
 	// grant to anybody.
 	ActionOrgAnonymousAccessSet   = "org.anonymous_access_set"
 	ActionSpaceAnonymousAccessSet = "space.anonymous_access_set"
+	// Public links: one made or revoked for a page, and the organization's switch.
+	ActionPageLinkCreated   = "page.public_link_created"
+	ActionPageLinkRevoked   = "page.public_link_revoked"
+	ActionOrgPublicLinksSet = "org.public_links_set"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -98,6 +102,7 @@ var Actions = []string{
 	ActionPageShared,
 	ActionShortcutAdded, ActionShortcutMoved, ActionShortcutRemoved,
 	ActionOrgAnonymousAccessSet, ActionSpaceAnonymousAccessSet,
+	ActionPageLinkCreated, ActionPageLinkRevoked, ActionOrgPublicLinksSet,
 }
 
 // Redacted stands in the record for a value that looked like a credential.
