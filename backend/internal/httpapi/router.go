@@ -190,6 +190,11 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/public/{orgSlug}/attachments/{attachmentID}", s.handlePublicAttachment)
 			r.Get("/public/{orgSlug}/search", s.handlePublicSearch)
 		})
+		r.Group(func(r chi.Router) {
+			r.Use(s.linkReader)
+			r.Get("/public/{orgSlug}/links/{token}", s.handleLinkedPage)
+			r.Get("/public/{orgSlug}/links/{token}/attachments/{attachmentID}", s.handleLinkedAttachment)
+		})
 		mountPending(r, true)
 
 		r.Group(func(r chi.Router) {
@@ -219,6 +224,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/org/hub", s.handleSetHub)
 			r.Get("/org/anonymous-access", s.handleGetAnonymousAccess)
 			r.Put("/org/anonymous-access", s.handleSetAnonymousAccess)
+			r.Get("/org/public-links", s.handleGetPublicLinks)
+			r.Put("/org/public-links", s.handleSetPublicLinks)
 			r.Get("/spaces/{spaceKey}/guests", s.handleListGuests)
 			r.Post("/spaces/{spaceKey}/guests", s.handleInviteGuest)
 			r.Delete("/spaces/{spaceKey}/guests/{userID}", s.handleRemoveGuest)
@@ -412,6 +419,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/mentionable", s.handleListMentionable)
 			r.Post("/pages/{pageID}/share", s.handleSharePage)
 			r.Get("/pages/{pageID}/share/recipients", s.handleShareRecipients)
+			r.Get("/pages/{pageID}/public-links", s.handleListPageLinks)
+			r.Post("/pages/{pageID}/public-links", s.handleCreatePageLink)
+			r.Delete("/pages/{pageID}/public-links/{linkID}", s.handleRevokePageLink)
 			r.Get("/pages/{pageID}/viewers", s.handleListViewers)
 			r.Put("/spaces/{spaceKey}/watch", s.handleWatchSpace)
 			r.Delete("/spaces/{spaceKey}/watch", s.handleUnwatchSpace)

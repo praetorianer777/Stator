@@ -50,7 +50,9 @@ A reader who is not signed in is a principal of its own: a transaction that
 sets `app.anonymous` and names nobody. The same functions give it view of
 the spaces the organization opened to anybody and nothing else, and a
 policy on every table keeps it to reading spaces, pages and files and to
-writing nothing.
+writing nothing. Holding a public link's token, the same reader also views
+the one page a live link opens, through the digest the transaction sets in
+`app.page_link`.
 
 ### Reads, writes and replicas
 
@@ -88,7 +90,7 @@ process, which is only right for a single api process. `/readyz` and
 | `oidc` | OIDC relying party per organisation, group sync |
 | `perm` | global, space and page permissions |
 | `guest` | guests: people from outside invited into one space, and taken out again |
-| `public` | reading without signing in: the organization's switch, and the spaces, pages and files anybody may read, with nobody named in them |
+| `public` | reading without signing in: the organization's switches, the spaces, pages and files anybody may read, and the public links that open one page each, with nobody named in them |
 | `space` | spaces, space settings |
 | `document` | page document allowlist and validation, plain text for search, headings for the table of contents |
 | `page` | page tree (parent plus rank), move, copy, trash, archive, drafts, the shared draft of a page edited together, published versions, diff, restore, restrictions, owners and verification, pages made from a template, the people who published a page or a tree, and the worker's watch on verifications that run out |
@@ -142,6 +144,9 @@ process, which is only right for a single api process. `/readyz` and
 - The pages anybody may read are at `/public/{org}`, outside the app's shell
   and its sign-in guard, read through `/api/v1/public/{org}`; the document
   view draws them with every link and file through those reads.
+- A public link opens `/public/{org}/link/{token}`, the same reading view
+  for that one page without the shell's tree and search, read through
+  `/api/v1/public/{org}/links/{token}`; its files come through the link too.
 
 ## Armature integration
 

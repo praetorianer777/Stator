@@ -1580,7 +1580,10 @@
                 "space.shortcut_moved",
                 "space.shortcut_removed",
                 "org.anonymous_access_set",
-                "space.anonymous_access_set"
+                "space.anonymous_access_set",
+                "page.public_link_created",
+                "page.public_link_revoked",
+                "org.public_links_set"
               ]
             }
           },
@@ -1744,7 +1747,10 @@
                 "space.shortcut_moved",
                 "space.shortcut_removed",
                 "org.anonymous_access_set",
-                "space.anonymous_access_set"
+                "space.anonymous_access_set",
+                "page.public_link_created",
+                "page.public_link_revoked",
+                "org.public_links_set"
               ]
             }
           },
@@ -4287,6 +4293,92 @@
         }
       }
     },
+    "/org/public-links": {
+      "get": {
+        "operationId": "getPublicLinks",
+        "summary": "Whether the editors of a page may open it to anybody through a public link. For administrators.",
+        "tags": [
+          "public"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "publicLinks": {
+                      "$ref": "#/components/schemas/PublicLinkSettings"
+                    }
+                  },
+                  "required": [
+                    "publicLinks"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setPublicLinks",
+        "summary": "Allow public links, or stop every one of them and the making of more; stopped links work again once they are allowed again. For administrators.",
+        "tags": [
+          "public"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicLinkSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "publicLinks": {
+                      "$ref": "#/components/schemas/PublicLinkSettings"
+                    }
+                  },
+                  "required": [
+                    "publicLinks"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/org/tokens": {
       "get": {
         "operationId": "listOrgAPITokens",
@@ -6467,6 +6559,216 @@
         }
       }
     },
+    "/pages/{pageID}/public-links": {
+      "get": {
+        "operationId": "listPageLinks",
+        "summary": "A page's live public links, oldest first, and why another cannot be made now, if it cannot; somebody who may not edit the page is told so and shown none.",
+        "tags": [
+          "sharing"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "publicLinks": {
+                      "$ref": "#/components/schemas/PagePublicLinks"
+                    }
+                  },
+                  "required": [
+                    "publicLinks"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPageLink",
+        "summary": "Make a link that lets anybody read this published page without an account, until it is revoked or runs out. The token and the address are in this answer only. Refused with link_refused, saying why, for a page that may not be opened or has as many links as it may.",
+        "tags": [
+          "sharing"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicLinkInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "link": {
+                      "$ref": "#/components/schemas/PublicLink"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "link",
+                    "path",
+                    "token"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/public-links/{linkID}": {
+      "delete": {
+        "operationId": "revokePageLink",
+        "summary": "Revoke a public link of a page for good. For whoever may edit the page.",
+        "tags": [
+          "sharing"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "linkID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/publish": {
       "post": {
         "operationId": "publishPage",
@@ -8008,6 +8310,154 @@
         "parameters": [
           {
             "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "inline",
+            "in": "query",
+            "description": "1 to show images, PDFs and text in place.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/{orgSlug}/links/{token}": {
+      "get": {
+        "operationId": "linkedPage",
+        "summary": "The one published page a public link opens, with the people it mentions unnamed and nothing of its space, tree or people. Not found, as link_gone, once the link is revoked or ran out, the page may no longer be opened, or the organization allows no links. Never cached.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "$ref": "#/components/schemas/LinkedPage"
+                    },
+                    "site": {
+                      "$ref": "#/components/schemas/PublicSite"
+                    }
+                  },
+                  "required": [
+                    "page",
+                    "site"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/{orgSlug}/links/{token}/attachments/{attachmentID}": {
+      "get": {
+        "operationId": "linkedAttachment",
+        "summary": "The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
             "in": "path",
             "required": true,
             "schema": {
@@ -13191,7 +13641,10 @@
               "space.shortcut_moved",
               "space.shortcut_removed",
               "org.anonymous_access_set",
-              "space.anonymous_access_set"
+              "space.anonymous_access_set",
+              "page.public_link_created",
+              "page.public_link_revoked",
+              "org.public_links_set"
             ]
           },
           "actorId": {
@@ -13293,7 +13746,10 @@
                 "space.shortcut_moved",
                 "space.shortcut_removed",
                 "org.anonymous_access_set",
-                "space.anonymous_access_set"
+                "space.anonymous_access_set",
+                "page.public_link_created",
+                "page.public_link_revoked",
+                "org.public_links_set"
               ]
             }
           },
@@ -15415,6 +15871,47 @@
           "embed"
         ]
       },
+      "LinkedPage": {
+        "type": "object",
+        "properties": {
+          "appearance": {
+            "$ref": "#/components/schemas/Appearance"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "appearance",
+          "body",
+          "version",
+          "updatedAt"
+        ]
+      },
       "LoginRequest": {
         "type": "object",
         "properties": {
@@ -16241,6 +16738,41 @@
           "spaceKey"
         ]
       },
+      "PagePublicLinks": {
+        "type": "object",
+        "properties": {
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicLink"
+            }
+          },
+          "max": {
+            "type": "integer"
+          },
+          "refusal": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "cannotManage",
+              "off",
+              "personal",
+              "folder",
+              "trashed",
+              "unpublished",
+              "restricted",
+              "full"
+            ]
+          }
+        },
+        "required": [
+          "links",
+          "max",
+          "refusal"
+        ]
+      },
       "PageRef": {
         "type": "object",
         "properties": {
@@ -16585,6 +17117,69 @@
         "required": [
           "provider",
           "callbackUrl"
+        ]
+      },
+      "PublicLink": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Person"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "createdBy",
+          "createdAt",
+          "expiresAt"
+        ]
+      },
+      "PublicLinkInput": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicLinkSettings": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
         ]
       },
       "PublicPage": {

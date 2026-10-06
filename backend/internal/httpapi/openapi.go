@@ -409,6 +409,17 @@ var operations = []operation{
 			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
 			{name: "offset", schema: intParam, description: "How many hits to skip."},
 		}, responses: map[int]any{200: env{"hits": []search.AnonymousHit{}, "more": false, "limit": 0, "offset": 0}, 404: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}/links/{token}", handler: "handleLinkedPage", tag: "public", public: true,
+		summary:   "The one published page a public link opens, with the people it mentions unnamed and nothing of its space, tree or people. Not found, as link_gone, once the link is revoked or ran out, the page may no longer be opened, or the organization allows no links. Never cached.",
+		responses: map[int]any{200: env{"site": public.Site{}, "page": public.LinkedPage{}}, 404: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}/links/{token}/attachments/{attachmentID}", handler: "handleLinkedAttachment", tag: "public", public: true, binary: true,
+		summary: "The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached.",
+		query:   []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: map[int]any{200: nil, 404: errorEnvelope{}}},
+	{method: "GET", path: "/org/public-links", handler: "handleGetPublicLinks", orgWide: true, tag: "public", summary: "Whether the editors of a page may open it to anybody through a public link. For administrators.",
+		responses: ok(env{"publicLinks": public.LinkSettings{}})},
+	{method: "PUT", path: "/org/public-links", handler: "handleSetPublicLinks", orgWide: true, tag: "public",
+		summary: "Allow public links, or stop every one of them and the making of more; stopped links work again once they are allowed again. For administrators.",
+		request: public.LinkSettings{}, responses: ok(env{"publicLinks": public.LinkSettings{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
 		responses: ok(env{"grants": []perm.SpaceGrant{}})},
 	{method: "PUT", path: "/spaces/{spaceKey}/permissions", handler: "handleSetSpacePermissions", tag: "permissions", summary: "Replace a space's whole permission table. For the space's administrators.",
@@ -516,6 +527,17 @@ var operations = []operation{
 	{method: "GET", path: "/pages/{pageID}/viewers", handler: "handleListViewers", tag: "sharing",
 		summary: "Who may view a page, by name, and whether that is every member of the organization.",
 		query:   pageQuery, responses: ok(env{"viewers": []perm.Person{}, "total": 0, "everyone": false, "limit": 0, "offset": 0})},
+
+	// Public links (#80).
+	{method: "GET", path: "/pages/{pageID}/public-links", handler: "handleListPageLinks", tag: "sharing",
+		summary:   "A page's live public links, oldest first, and why another cannot be made now, if it cannot; somebody who may not edit the page is told so and shown none.",
+		responses: ok(env{"publicLinks": public.PageLinks{}})},
+	{method: "POST", path: "/pages/{pageID}/public-links", handler: "handleCreatePageLink", tag: "sharing",
+		summary: "Make a link that lets anybody read this published page without an account, until it is revoked or runs out. The token and the address are in this answer only. Refused with link_refused, saying why, for a page that may not be opened or has as many links as it may.",
+		request: public.LinkInput{}, responses: map[int]any{201: env{"link": public.Link{}, "token": "", "path": ""}, 403: errorEnvelope{}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/pages/{pageID}/public-links/{linkID}", handler: "handleRevokePageLink", tag: "sharing",
+		summary:   "Revoke a public link of a page for good. For whoever may edit the page.",
+		responses: map[int]any{204: nil, 403: errorEnvelope{}, 404: errorEnvelope{}}},
 
 	// Watching (#25).
 	{method: "PUT", path: "/pages/{pageID}/watch", handler: "handleWatchPage", tag: "watching",
@@ -903,6 +925,12 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(public.Settings{})] = "AnonymousAccessSettings"
 	b.Names[reflect.TypeOf(space.AnonymousAccess{})] = "SpaceAnonymousAccess"
 	b.Names[reflect.TypeOf(space.AnonymousAccessInput{})] = "SpaceAnonymousAccessInput"
+	b.Names[reflect.TypeOf(public.Link{})] = "PublicLink"
+	b.Names[reflect.TypeOf(public.PageLinks{})] = "PagePublicLinks"
+	b.Names[reflect.TypeOf(public.LinkInput{})] = "PublicLinkInput"
+	b.Names[reflect.TypeOf(public.LinkSettings{})] = "PublicLinkSettings"
+	b.Names[reflect.TypeOf(public.LinkedPage{})] = "LinkedPage"
+	b.Enums[reflect.TypeOf(public.Refusal(""))] = enumStrings(public.Refusals)
 	return b
 }
 

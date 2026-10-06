@@ -118,3 +118,78 @@ export function useSetSpaceAnonymousAccess(spaceKey: string) {
     onSuccess: (saved) => queryClient.setQueryData(spaceAnonymousAccessQueryKey(spaceKey), saved),
   });
 }
+
+/** A page read through a public link: its words with nobody named, and nothing of its space. */
+export type LinkedPage = Wire["LinkedPage"];
+/** A live public link of a page, as its editors see it; the token is shown once, when it is made. */
+export type PublicLink = Wire["PublicLink"];
+export type PagePublicLinks = Wire["PagePublicLinks"];
+/** Why no public link can be made for a page now. */
+export type PublicLinkRefusal = NonNullable<PagePublicLinks["refusal"]>;
+export type PublicLinkSettings = Wire["PublicLinkSettings"];
+
+/** A page through a link, and the organization it is read in; refused as gone once the link no longer opens it. */
+export function useLinkedPage(org: string, token: string) {
+  return useQuery({
+    queryKey: ["public", org, "link", token] as const,
+    queryFn: async () => (await api.GET("/public/{orgSlug}/links/{token}", { params: { path: { orgSlug: org, token } } })).data!,
+    retry: false,
+  });
+}
+
+/** Where a file of the page a link opens downloads from, or shows in place. */
+export function linkedAttachmentUrl(org: string, token: string, id: string, inline = false): string {
+  return `${API_BASE}/public/${encodeURIComponent(org)}/links/${encodeURIComponent(token)}/attachments/${encodeURIComponent(id)}${inline ? "?inline=1" : ""}`;
+}
+
+export function pageLinksQueryKey(pageId: string) {
+  return ["page-public-links", pageId] as const;
+}
+
+/** A page's live public links and why another cannot be made, if it cannot. */
+export function usePageLinks(pageId: string) {
+  return useQuery({
+    queryKey: pageLinksQueryKey(pageId),
+    queryFn: async (): Promise<PagePublicLinks> => (await api.GET("/pages/{pageID}/public-links", { params: { path: { pageID: pageId } } })).data!.publicLinks,
+  });
+}
+
+/** Makes a public link; the answer carries its token and address, which are never shown again. */
+export function useCreatePageLink(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { label?: string; expiresAt?: string }) =>
+      (await api.POST("/pages/{pageID}/public-links", { params: { path: { pageID: pageId } }, body })).data!,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: pageLinksQueryKey(pageId) }),
+  });
+}
+
+export function useRevokePageLink(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (linkId: string) => {
+      await api.DELETE("/pages/{pageID}/public-links/{linkID}", { params: { path: { pageID: pageId, linkID: linkId } } });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: pageLinksQueryKey(pageId) }),
+  });
+}
+
+export const publicLinkSettingsQueryKey = ["org", "public-links"] as const;
+
+export function usePublicLinkSettings() {
+  return useQuery({
+    queryKey: publicLinkSettingsQueryKey,
+    queryFn: async (): Promise<PublicLinkSettings> => (await api.GET("/org/public-links")).data!.publicLinks,
+  });
+}
+
+export function useSetPublicLinkSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: PublicLinkSettings): Promise<PublicLinkSettings> => (await api.PUT("/org/public-links", { body })).data!.publicLinks,
+    onSuccess: (saved) => {
+      queryClient.setQueryData(publicLinkSettingsQueryKey, saved);
+      return queryClient.invalidateQueries({ queryKey: ["page-public-links"] });
+    },
+  });
+}

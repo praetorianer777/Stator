@@ -1,11 +1,23 @@
 import { createContext, useContext } from "react";
-import { LOGIN_PATH, PAGE_SLUG_FALLBACK, PUBLIC_PATH } from "@/config";
+import { LOGIN_PATH, PAGE_SLUG_FALLBACK, PUBLIC_LINK_SEGMENT, PUBLIC_PATH } from "@/config";
 
 /** The organization whose public pages a document is read in, by somebody who is not signed in; null inside the app. */
 export const PublicReadingContext = createContext<string | null>(null);
 
 export function usePublicReading(): string | null {
   return useContext(PublicReadingContext);
+}
+
+/** The token of the public link a page is read through, inside PublicReadingContext; null for every other reading. */
+export const PublicLinkContext = createContext<string | null>(null);
+
+export function usePublicLink(): string | null {
+  return useContext(PublicLinkContext);
+}
+
+/** The reading view of the one page a public link opens. */
+export function publicLinkPath(org: string, token: string): string {
+  return `${publicSitePath(org)}/${PUBLIC_LINK_SEGMENT}/${encodeURIComponent(token)}`;
 }
 
 const SPACE_ADDRESS = /^\/s\/([A-Za-z0-9]+)\/?$/;

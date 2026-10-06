@@ -269,6 +269,20 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.put(t, "/api/v1/spaces/AUD/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the space to anybody")
 	once(audit.ActionSpaceAnonymousAccessSet, me, spaceID)
 
+	link := want(t, owner.post(t, pagePath(notes, "/public-links"), map[string]any{"label": "Auditors"}), http.StatusCreated, "make a public link")
+	linkID := idOf(t, link, "link")
+	if data := once(audit.ActionPageLinkCreated, me, notes); !strings.Contains(data, linkID) || strings.Contains(data, link.Body["token"].(string)) {
+		t.Errorf("the link's record reads %s", data)
+	}
+	want(t, owner.delete(t, pagePath(notes, "/public-links/", linkID)), http.StatusNoContent, "revoke the link")
+	once(audit.ActionPageLinkRevoked, me, notes)
+	want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusOK, "stop public links")
+	if data := once(audit.ActionOrgPublicLinksSet, me, nil); !strings.Contains(data, `"enabled": false`) {
+		t.Errorf("the links switch's record reads %s", data)
+	}
+	want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusOK, "the same links switch again")
+	once(audit.ActionOrgPublicLinksSet, me, nil)
+
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)
 
