@@ -14,7 +14,7 @@ import {
 } from "@/api/public";
 import { Breadcrumbs, ButtonLink, EmptyState, ErrorBanner, IconButton, Input, PageHeader, Skeleton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { APP_NAME, PUBLIC_PATH } from "@/config";
+import { APP_NAME, PAGE_WIDTH_CLASS, PUBLIC_PATH } from "@/config";
 import { DocView } from "@/features/editor/DocView";
 import { PublicReadingContext, publicPagePath, publicSitePath, publicSpacePath, signInPath } from "@/features/editor/publicReading";
 import type { DocNode } from "@/features/editor/schema";
@@ -236,7 +236,7 @@ function PageArticle({ org, pageId }: { org: string; pageId: string }) {
       .map((ancestor) => ({ label: ancestor.title, render: (label: ReactNode) => <a href={pageHref(org, ancestor, page.space.key)}>{label}</a> })),
   ];
   return (
-    <article className={cx("mx-auto", page.appearance.width === "full" ? "max-w-none" : "max-w-3xl")} data-public-page={page.id}>
+    <article className={cx("mx-auto", page.appearance.width === "full" ? "max-w-none" : PAGE_WIDTH_CLASS)} data-public-page={page.id}>
       {page.appearance.cover && (
         <div className="page-cover">
           <img

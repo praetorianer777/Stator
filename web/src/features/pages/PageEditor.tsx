@@ -20,7 +20,7 @@ import { DocPageContext } from "@/features/editor/BlockViews";
 import { Editor } from "@/features/editor/Editor";
 import { emptyDoc, type Doc } from "@/features/editor/schema";
 import { fillSharedDraft, sharedBody } from "@/features/editor/sharedDraft";
-import { DRAFT_AUTOSAVE_MS, PAGE_TITLE_MAX_LENGTH } from "@/config";
+import { DRAFT_AUTOSAVE_MS, PAGE_TITLE_MAX_LENGTH, PAGE_WIDTH_CLASS } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { pageCrumbs } from "./PageScreen";
@@ -312,7 +312,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
     <form
       id={PAGE_FORM_ID}
       onSubmit={openPublish}
-      className={cx("mx-auto space-y-4", page.appearance.width === "full" ? "max-w-none" : "max-w-3xl")}
+      className={cx("mx-auto space-y-4", page.appearance.width === "full" ? "max-w-none" : PAGE_WIDTH_CLASS)}
       data-page-editor={page.id}
       data-collab={together ? "together" : "alone"}
     >

@@ -775,6 +775,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- A page's standard width is 72rem rather than 48rem, in the reader, the
+  editor, the history and the public view, so a page uses more of a wide
+  window; Full width is unchanged (#287).
+
 - The CI gate may run 45 minutes rather than 30, since the suite had grown
   to fill the old limit, and a cancelled run now says it was stopped rather
   than failed (#283).

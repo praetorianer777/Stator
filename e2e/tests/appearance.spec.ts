@@ -8,6 +8,9 @@ import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../
 
 const PIXEL_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
+// The standard column is 72rem, and this window is wide enough to show all of it beside the tree.
+const STANDARD_WIDTH_REM = 72;
+const WIDE_WINDOW_PX = 1800;
 const article = (page: Page) => page.locator("article[data-page]");
 const tree = (page: Page) => page.locator("[data-page-tree]");
 
@@ -70,6 +73,22 @@ test.describe("page appearance", { tag: ["@auth"] }, () => {
       // The tree sits in a drawer on a phone; on a desk it is beside the page.
       await expect(tree(page).locator(`[data-tree-icon="🚀"]`)).toBeVisible();
     }
+  });
+
+  test("on a wide window a page with the standard width reads in a column of 72rem, in the reader and the editor", async ({ page, api }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile", "A phone is narrower than the column.");
+    await page.setViewportSize({ width: WIDE_WINDOW_PX, height: 900 });
+    const space = await freshSpace(api, testInfo, "Width");
+    const notes = await createPage(api, space.homePageId, "Notes", { type: "doc", content: [paragraph("A line of notes.")] });
+    const path = `/s/${space.key}/p/${notes.id}/notes`;
+    await open(page, path, "A line of notes.");
+    await expect(article(page)).toHaveAttribute("data-page-width", "fixed");
+    const rootPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
+    expect((await article(page).boundingBox())!.width).toBe(STANDARD_WIDTH_REM * rootPx);
+    await page.goto(`${path}/edit`);
+    const editor = page.locator("form[data-page-editor]");
+    await expect(editor).toBeVisible();
+    expect((await editor.boundingBox())!.width).toBe(STANDARD_WIDTH_REM * rootPx);
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {

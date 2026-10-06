@@ -6,11 +6,11 @@ import { ApiError } from "@/api/client";
 import { pageQueryKey, usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useComparison, useRestoreVersion, useVersion, useVersions, type CompareRef, type CompareSide, type VersionEntry } from "@/api/versions";
-import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Tag, Td, Th, type Crumb } from "@/components/ui";
+import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Tag, Td, Th, cx, type Crumb } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocDiffView, DocView } from "@/features/editor/DocView";
-import { HISTORY_PAGE_SIZE } from "@/config";
+import { HISTORY_PAGE_SIZE, PAGE_WIDTH_CLASS } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { PageLink } from "./PageLink";
@@ -262,7 +262,7 @@ function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number
   const restore = useRestore(page);
   const latest = number === page.version;
   return (
-    <article className="mx-auto max-w-3xl space-y-4" data-page-version={number}>
+    <article className={cx("mx-auto space-y-4", PAGE_WIDTH_CLASS)} data-page-version={number}>
       <PageHeader
         crumbs={historyCrumbs(space, page, true)}
         title={t.history.viewingTitle(version?.title ?? page.title, number)}
@@ -317,7 +317,7 @@ function CompareScreen({ page, space, from, to }: ScreenProps & { from?: Compare
   const navigate = useNavigate();
   const same = comparison && comparison.from.title === comparison.to.title && comparison.blocks.every((block) => block.change === "equal");
   return (
-    <article className="mx-auto max-w-3xl space-y-4" data-page-compare="">
+    <article className={cx("mx-auto space-y-4", PAGE_WIDTH_CLASS)} data-page-compare="">
       <PageHeader
         crumbs={historyCrumbs(space, page, true)}
         title={t.history.compareTitle}

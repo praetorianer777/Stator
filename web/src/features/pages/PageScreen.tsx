@@ -8,6 +8,7 @@ import { useVisit } from "@/api/search";
 import { useSetTaskDone } from "@/api/tasks";
 import { useTrashPage } from "@/api/trash";
 import { attachmentUrl } from "@/api/attachments";
+import { PAGE_WIDTH_CLASS } from "@/config";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, cx, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ArchiveBanner, ArchivedMark } from "@/features/archive/ArchiveBanner";
@@ -210,7 +211,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
 
   return (
     <article
-      className={cx("mx-auto", page.appearance.width === "full" ? "max-w-none" : "max-w-3xl")}
+      className={cx("mx-auto", page.appearance.width === "full" ? "max-w-none" : PAGE_WIDTH_CLASS)}
       data-page={page.id}
       data-page-home={page.home || undefined}
       data-page-width={page.appearance.width}
