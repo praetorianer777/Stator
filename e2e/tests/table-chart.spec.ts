@@ -2,6 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -19,14 +20,6 @@ function table(...rows: string[][]) {
   };
 }
 const sales = table(["Quarter", "North", "South"], ["Q1", "12", "9"], ["Q2", "18", "11"], ["Q3", "15", "14"]);
-
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 test.describe("chart from table", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -48,7 +41,7 @@ test.describe("chart from table", { tag: ["@auth"] }, () => {
     });
     const path = `/s/${space.key}/p/${report.id}/report`;
 
-    await open(page, `${path}/edit`, "By quarter.");
+    await openShowing(page, `${path}/edit`, "By quarter.");
     await editorBox(page).getByRole("cell", { name: "Q3" }).click();
     await page.locator('[data-editor-action="chart-table"]').click();
     const chart = editorBox(page).locator("[data-table-chart]").first();
@@ -91,7 +84,7 @@ test.describe("chart from table", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${target.id}/charts`, "North, South");
+      await openShowing(page, `/s/${space.key}/p/${target.id}/charts`, "North, South");
       await expect(shown(page).locator('[data-table-chart="pie"] figcaption')).toHaveText("North");
       await expect(shown(page).locator('[data-table-chart][data-state="chart"]')).toHaveCount(2);
       await page.screenshot({ path: testInfo.outputPath(`table-charts-${scheme}.png`), fullPage: true });

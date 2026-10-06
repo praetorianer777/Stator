@@ -3,6 +3,7 @@ import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openEditor, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -23,14 +24,6 @@ const PLAYER = "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ";
 // deny a name makes the whole timeout; the margin is for the answer's way back.
 const UNFURL_GIVES_UP_MS = 5_000;
 const UNFURL_MARGIN_MS = 5_000;
-
-/** Opens a page's editor until it holds the words given, which a replica may lag behind on. */
-async function openEditor(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(`${path}/edit`);
-    await expect(editorBox(page)).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 /** Pastes text into the focused editor the way a browser does, as plain text alone. */
 async function paste(box: Locator, value: string) {
@@ -117,10 +110,9 @@ test.describe("link previews", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await expect(async () => {
-        await page.goto(`/s/${space.key}/p/${notes.id}/cards`);
-        await expect(shown(page).locator("[data-link-card-title]").first()).toHaveText("Stator", { timeout: 2_000 });
-      }).toPass();
+      await openUntil(page, `/s/${space.key}/p/${notes.id}/cards`, () =>
+        expect(shown(page).locator("[data-link-card-title]").first()).toHaveText("Stator", ONE_LOOK),
+      );
       await expect(shown(page).locator("iframe")).toHaveCount(1);
       await expect(shown(page).locator('[data-link-card="card"][data-state="plain"]')).toContainText("unreachable.invalid/post", {
         timeout: UNFURL_GIVES_UP_MS + UNFURL_MARGIN_MS,

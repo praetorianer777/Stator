@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -35,14 +36,6 @@ function checklist(lead: string, ...items: Inline[][]) {
   };
 }
 
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, text: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(text, { timeout: 2_000 });
-  }).toPass();
-}
-
 test.describe("task report", { tag: ["@auth"] }, () => {
   const made: string[] = [];
   test.afterEach(async ({ api }) => {
@@ -67,7 +60,7 @@ test.describe("task report", { tag: ["@auth"] }, () => {
     const status = await createPage(api, space.homePageId, "Status", { type: "doc", content: [{ type: "paragraph", content: [words("Where we are.")] }] });
     const path = `/s/${space.key}/p/${status.id}/status`;
 
-    await open(page, `${path}/edit`, "Where we are.");
+    await openShowing(page, `${path}/edit`, "Where we are.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.press("Enter");
     await page.keyboard.type("/overdue");
@@ -113,7 +106,7 @@ test.describe("task report", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${overview.id}/reports`, "Overdue thing");
+      await openShowing(page, `/s/${space.key}/p/${overview.id}/reports`, "Overdue thing");
       await expect(shown(page).locator('[data-task-report][data-state="empty"]')).toHaveCount(1);
       await expect(shown(page).locator("[data-task-due]")).toHaveText([/Overdue/]);
       await page.screenshot({ path: testInfo.outputPath(`task-report-${scheme}.png`), fullPage: true });

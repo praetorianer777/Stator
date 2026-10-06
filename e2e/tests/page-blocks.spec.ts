@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo, focusEditor } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -20,12 +21,8 @@ const paragraph = (value?: string) => (value ? { type: "paragraph", content: tex
 const h = (level: number, value: string, id: string) => ({ type: "heading", attrs: { level, id }, content: text(value) });
 const filler = () => Array.from({ length: FILLER_PARAGRAPHS }, (_, i) => paragraph(`Line ${i + 1} of the notes that sit between the two sections.`));
 
-/** Opens a page until the child pages block lists a title, which a replica may lag behind on. */
 async function openListing(page: Page, path: string, title: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(children(page).getByRole("link", { name: title })).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+  await openShowing(page, path, children(page).getByRole("link", { name: title }));
 }
 
 async function userId(api: StatorApi): Promise<string> {
@@ -67,10 +64,7 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
     const setup = await createPage(api, guide.id, "Setup");
     await createPage(api, setup.id, "Linux");
 
-    await expect(async () => {
-      await page.goto(`/s/${space.key}/p/${guide.id}/guide/edit`);
-      await expect(editorBox(page)).toContainText("Troubleshooting", { timeout: 2_000 });
-    }).toPass();
+    await openUntil(page, `/s/${space.key}/p/${guide.id}/guide/edit`, () => expect(editorBox(page)).toContainText("Troubleshooting", ONE_LOOK));
     await caretTo(editorBox(page), "start");
     await insert(page, "contents");
     const contents = toc(editorBox(page));
@@ -128,8 +122,7 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
     const bobApi = await apiAs("bob");
     await expect.poll(async () => (await bobApi.GET("/pages/{pageID}", { params: { path: { pageID: secret.id } } })).response.status).toBe(404);
     const bob = await pageAs("bob");
-    await openListing(bob, `/s/${space.key}/p/${guide.id}/team`, "Open notes");
-    await expect(children(bob).getByRole("link")).toHaveText(["Open notes"]);
+    await openUntil(bob, `/s/${space.key}/p/${guide.id}/team`, () => expect(children(bob).getByRole("link")).toHaveText(["Open notes"], ONE_LOOK));
     await expect(bob.getByText("Salar")).toHaveCount(0);
   });
 

@@ -2617,6 +2617,19 @@ written, and even for a refused request, because the caller's next request
 can arrive before the handler returns and a refused import has already
 written and undone a theme.
 
+The browser suite lives with what this leaves out (#291). A read by anybody
+but the writer, bob after alice, an anonymous reader, a token, a session
+signed in afresh, or any read after a write by the Armature stub or by a job,
+may reach a replica that has not replayed the write. Such a read retries,
+through `e2e/fixtures/replica.ts`, until it sees what only the newest write
+shows, and an absence only once the page has shown it loaded. One retry does
+not cover the reads after it, since a read can reach the primary and the next
+one a replica still behind. Rows a spec writes straight in the database are
+waited for once, as the integration suite's `settle` does: `withDatabase`
+returns when every replica has replayed them. Timeouts stay as they are, and
+the app's consistency does not bend to the tests: a person who misses their
+own write is a bug.
+
 ## 2026-09-29: The test stack keeps the streaming replica
 
 The compose stack runs Postgres as a primary and a real streaming replica, as

@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -15,14 +16,6 @@ const patFor = (tenant: string, person: string) => `armature_pat_${tenant}_${per
 const editorBox = (page: Page) => page.locator("#page-body");
 const shown = (page: Page) => page.locator("main [data-doc]");
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
-
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 /**
  * Plans CP in the stub: an epic over two issues, a third issue of another
@@ -70,7 +63,7 @@ test.describe("Armature roadmaps", { tag: ["@auth"] }, () => {
     const notes = await createPage(api, space.homePageId, "Plan", { type: "doc", content: [paragraph("Where we are going."), { type: "paragraph" }] });
     const path = `/s/${space.key}/p/${notes.id}/plan`;
 
-    await open(page, `${path}/edit`, "Where we are going.");
+    await openShowing(page, `${path}/edit`, "Where we are going.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/roadmap");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -101,12 +94,8 @@ test.describe("Armature roadmaps", { tag: ["@auth"] }, () => {
 
     // Bob has no Armature token, so his reading of the same page asks him to connect.
     const bob = await pageAs("bob");
-    // Bob's reads are held to his own writes, not Alice's publish, so a lagging
-    // replica may still answer with the first version, which has the same words.
-    await expect(async () => {
-      await bob.goto(path);
-      await expect(bob.locator('main [data-armature-roadmap="team"]')).toHaveAttribute("data-state", "connect", { timeout: 2_000 });
-    }).toPass();
+    // The first version has the same words, so wait for the block only the publish has.
+    await openUntil(bob, path, () => expect(bob.locator('main [data-armature-roadmap="team"]')).toHaveAttribute("data-state", "connect", ONE_LOOK));
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
@@ -117,7 +106,7 @@ test.describe("Armature roadmaps", { tag: ["@auth"] }, () => {
         content: [{ type: "armatureRoadmap", attrs: { project: "CP", query: "project = CP", groupBy: "epic" } }],
       });
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${notes.id}/roadmap`, "Roadmap");
+      await openShowing(page, `/s/${space.key}/p/${notes.id}/roadmap`, "Roadmap");
       const roadmap = shown(page).locator('[data-armature-roadmap="epic"]');
       await expect(roadmap).toHaveAttribute("data-state", "roadmap");
       await expect(roadmap.locator('[data-roadmap-group="CP-6"] .doc-roadmap-head .doc-roadmap-bar')).toHaveAttribute("data-derived", "true");

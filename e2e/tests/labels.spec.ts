@@ -2,6 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../fixtures/spaces";
@@ -14,12 +15,8 @@ async function addLabel(api: StatorApi, pageId: string, name: string): Promise<v
   must(await api.POST("/pages/{pageID}/labels", { params: { path: { pageID: pageId } }, body: { name } }));
 }
 
-/** Opens a page and waits until it shows a label written through the API, which a replica may lag behind on. */
 async function openWithLabel(page: Page, path: string, name: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(chip(page, name)).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+  await openShowing(page, path, chip(page, name));
 }
 
 test.describe("labels", { tag: ["@auth"] }, () => {
@@ -47,7 +44,7 @@ test.describe("labels", { tag: ["@auth"] }, () => {
     await expect(async () => {
       await box.fill("");
       await box.fill(word.slice(0, 10));
-      await expect(page.locator(`[data-label-option="${word}"]`)).toBeVisible({ timeout: 1_000 });
+      await expect(page.locator(`[data-label-option="${word}"]`)).toBeVisible(ONE_LOOK);
     }).toPass();
     // The first option is what was typed; the one other pages carry is next.
     await expect(page.locator("[data-label-option]").first()).toHaveAttribute("aria-selected", "true");
@@ -61,10 +58,7 @@ test.describe("labels", { tag: ["@auth"] }, () => {
     await chip(page, word).getByRole("link", { name: word }).click();
     await expect(page).toHaveURL(new RegExp(`/s/${space.key}/labels/${word}$`));
     await expect(page.locator("[data-label-heading]")).toHaveText(word);
-    await expect(async () => {
-      await page.reload();
-      await expect(page.locator('[data-labeled-page="Rollout retro"]')).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openShowing(page, `/s/${space.key}/labels/${word}`, page.locator('[data-labeled-page="Rollout retro"]'));
     await expect(page.locator('[data-labeled-page="Rollout checklist"]')).toBeVisible();
 
     await page.locator('[data-action="label-everywhere"]').click();
@@ -100,15 +94,12 @@ test.describe("labels", { tag: ["@auth"] }, () => {
     await createPage(api, space.homePageId, "Gannet census plain");
     await addLabel(api, labeled.id, word);
 
-    await expect(async () => {
-      await page.goto("/search?q=gannet");
-      await expect(page.locator('[data-search-hit="Gannet census plain"]')).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openShowing(page, "/search?q=gannet", page.locator('[data-search-hit="Gannet census plain"]'));
     const box = page.locator('[data-filter="label"]').getByRole("combobox", { name: "Labels" });
     await expect(async () => {
       await box.fill("");
       await box.fill(word);
-      await expect(page.locator(`[data-label-option="${word}"]`)).toBeVisible({ timeout: 1_000 });
+      await expect(page.locator(`[data-label-option="${word}"]`)).toBeVisible(ONE_LOOK);
     }).toPass();
     await box.press("Enter");
     await expect(page).toHaveURL(new RegExp(`label=${word}`));

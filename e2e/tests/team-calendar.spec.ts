@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -22,14 +23,6 @@ const now = new Date();
 const TODAY = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 // Today's day in UTC, which is how an event that lasts all day is kept.
 const TODAY_UTC = now.toISOString().slice(0, 10);
-
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 /** Makes CP-1 due today in the stub, so this month's calendar shows it. */
 async function dueToday(request: APIRequestContext, tenant: string): Promise<void> {
@@ -63,7 +56,7 @@ test.describe("team calendars", { tag: ["@auth"] }, () => {
     const notes = await createPage(api, space.homePageId, "Team", { type: "doc", content: [paragraph("Who is where."), { type: "paragraph" }] });
     const path = `/s/${space.key}/p/${notes.id}/team`;
 
-    await open(page, `${path}/edit`, "Who is where.");
+    await openShowing(page, `${path}/edit`, "Who is where.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/calendar");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -116,7 +109,7 @@ test.describe("team calendars", { tag: ["@auth"] }, () => {
     // Bob has no Armature token: he reads the events, and is asked to connect for the issues.
     const bob = await pageAs("bob");
     // Bob's reads are not held to Alice's writes, so wait for her last one, the event's title.
-    await open(bob, path, "Ann on leave");
+    await openShowing(bob, path, "Ann on leave");
     const bobs = bob.locator("main [data-doc]").getByRole("figure", { name: "Team" });
     await expect(bobs.locator(`[data-day="${TODAY}"]`)).toContainText("Ann on leave");
     await expect(bobs).toContainText("Connect your Armature account to see the issues due this month.");
@@ -146,7 +139,7 @@ test.describe("team calendars", { tag: ["@auth"] }, () => {
         content: [paragraph("This month."), { type: "calendar", attrs: { calendarId: team.id, project: "CP" } }],
       });
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${notes.id}/calendar`, "This month.");
+      await openShowing(page, `/s/${space.key}/p/${notes.id}/calendar`, "This month.");
       const calendar = shown(page).getByRole("figure", { name: "Team" });
       await expect(calendar).toHaveAttribute("data-state", "month");
       await expect(calendar.locator('[data-calendar-issue="CP-1"]')).toBeVisible();

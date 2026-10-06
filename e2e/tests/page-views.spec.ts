@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { throwawayPerson } from "../fixtures/db";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openUntil, openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
@@ -17,22 +18,24 @@ const viewsButton = (page: Page) => page.locator("[data-page-views]");
 const dialog = (page: Page) => page.locator("[data-page-views-dialog]");
 const reader = (page: Page, name: string) => dialog(page).locator(`[data-reader="${name}"]`);
 
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
+const pathOf = (spaceKey: string, target: WikiPage) => `/s/${spaceKey}/p/${target.id}/page`;
+
+/** Opens the page until its line under the title counts the views wanted. */
+async function openCounted(page: Page, spaceKey: string, target: WikiPage, views: number, then?: () => Promise<unknown>) {
+  await openUntil(page, pathOf(spaceKey, target), async () => {
+    await expect(heading(page)).toHaveText(target.title, ONE_LOOK);
+    await expect(viewsButton(page)).toHaveAttribute("data-page-views", String(views), ONE_LOOK);
+    await then?.();
+  });
 }
 
-/** Opens the page until its line under the title counts the views wanted, then opens them. */
-async function openViews(page: Page, spaceKey: string, target: WikiPage, views: number) {
-  await expect(async () => {
-    await openPage(page, spaceKey, target);
-    await expect(viewsButton(page)).toHaveAttribute("data-page-views", String(views), { timeout: 2_000 });
-  }).toPass();
-  await viewsButton(page).click();
-  await expect(dialog(page).getByRole("heading", { name: "Page views" })).toBeVisible();
+/** Opens the page until it counts the views wanted, then opens them, until `inDialog` holds. */
+async function openViews(page: Page, spaceKey: string, target: WikiPage, views: number, inDialog?: () => Promise<unknown>) {
+  await openCounted(page, spaceKey, target, views, async () => {
+    await viewsButton(page).click();
+    await expect(dialog(page).getByRole("heading", { name: "Page views" })).toBeVisible(ONE_LOOK);
+    await inDialog?.();
+  });
 }
 
 /** Presses Tab until the control has focus, as a person working the page by keyboard would. */
@@ -113,10 +116,9 @@ test.describe("page views", { tag: ["@auth"] }, () => {
       expect(await scrollsSideways(them)).toBe(false);
       await context.close();
 
-      await expect(async () => {
-        await openViews(page, space.key, guide, 2);
-        await expect(dialog(page).locator("[data-readers-unnamed]")).toHaveText("1 more person chose not to be named.", { timeout: 1_000 });
-      }).toPass();
+      await openViews(page, space.key, guide, 2, () =>
+        expect(dialog(page).locator("[data-readers-unnamed]")).toHaveText("1 more person chose not to be named.", ONE_LOOK),
+      );
       await expect(reader(page, person.name)).toHaveCount(0);
       await expect(dialog(page).locator("[data-reader]")).toHaveCount(1);
       await expect(dialog(page).locator("[data-views-in-all]")).toContainText("2 views");
@@ -142,11 +144,7 @@ test.describe("page views", { tag: ["@auth"] }, () => {
     }).toPass();
     expect((await bobApi.GET("/pages/{pageID}/readers", { params: { path: { pageID: guide.id } } })).response.status).toBe(404);
     const bob = await pageAs("bob");
-    // His browser's reads are not held to Alice's restriction, so a lagging replica may still show the page.
-    await expect(async () => {
-      await bob.goto(`/s/${space.key}/p/${guide.id}/page`);
-      await expect(bob.locator("main")).not.toContainText(guide.title, { timeout: 2_000 });
-    }).toPass();
+    await openWithout(bob, pathOf(space.key, guide), bob.locator("main").filter({ hasText: guide.title }), bob.getByText(/not found/i).first());
     await expect(viewsButton(bob)).toHaveCount(0);
   });
 
@@ -154,10 +152,7 @@ test.describe("page views", { tag: ["@auth"] }, () => {
     test(`the views open from the keyboard and are accessible in ${scheme}`, async ({ page, api }, testInfo) => {
       const { space, guide } = await readOnlySpace(api, testInfo);
       await startInScheme(page, scheme);
-      await expect(async () => {
-        await openPage(page, space.key, guide);
-        await expect(viewsButton(page)).toHaveAttribute("data-page-views", "1", { timeout: 2_000 });
-      }).toPass();
+      await openCounted(page, space.key, guide, 1);
       await expectAccessible(page);
 
       await tabTo(page, viewsButton(page));

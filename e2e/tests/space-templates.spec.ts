@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
 import { childTitles, deleteSpace, uniqueKey } from "../fixtures/spaces";
@@ -47,11 +48,8 @@ test.describe("space templates", { tag: ["@auth"] }, () => {
     const { grants } = must(await api.GET("/spaces/{spaceKey}/permissions", { params: { path: { spaceKey: key } } }));
     expect(grants.find((g) => g.subject.type === "everyone")?.permissions).toEqual(["view", "addPages", "addComments"]);
 
-    // Everybody in the organization reads it, which a replica may not have yet.
+    // Everybody in the organization reads it.
     const bob = await pageAs("bob");
-    await expect(async () => {
-      await bob.goto(`/s/${key}`);
-      await expect(bob.locator("[data-doc]")).toContainText("This knowledge base collects answers", { timeout: 1_000 });
-    }).toPass();
+    await openUntil(bob, `/s/${key}`, () => expect(bob.locator("[data-doc]")).toContainText("This knowledge base collects answers", ONE_LOOK));
   });
 });

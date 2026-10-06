@@ -2,9 +2,10 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 // The title alone; the heading also carries the archived mark.
 const heading = (page: Page) => page.locator("main [data-page-title]");
@@ -12,15 +13,6 @@ const banner = (page: Page) => page.locator("main [data-archived-banner]");
 const archiveRow = (page: Page, title: string) => page.locator(`[data-archive-item="${title}"]`);
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
-
-/** Opens a page until it shows what a test waits for, which a replica may lag behind. */
-async function openShowing(page: Page, key: string, target: WikiPage, shown: (page: Page) => ReturnType<Page["locator"]>) {
-  await expect(async () => {
-    await page.goto(`/s/${key}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-    await expect(shown(page)).toBeVisible({ timeout: 1_000 });
-  }).toPass();
-}
 
 test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -57,7 +49,10 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     expect(await scrollsSideways(page)).toBe(false);
 
     const bob = await pageAs("bob");
-    await openShowing(bob, key, old, banner);
+    await openUntil(bob, `/s/${key}/p/${old.id}/page`, async () => {
+      await expect(heading(bob)).toHaveText(old.title, ONE_LOOK);
+      await expect(banner(bob)).toBeVisible(ONE_LOOK);
+    });
     await expect(banner(bob)).toHaveAttribute("data-archived-banner", "with");
     await expect(banner(bob).getByRole("link", { name: `Go to ${plans.title}` })).toBeVisible();
     await expect(bob.locator('[data-action="edit-page"]')).toHaveCount(0);
@@ -73,10 +68,7 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     });
 
     const hit = bob.locator(`[data-search-hit="${old.title}"]`);
-    await expect(async () => {
-      await bob.goto(`/search?q=${encodeURIComponent("Mothballed")}&space=${key}`);
-      await expect(bob.getByText("Nothing matches")).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openShowing(bob, `/search?q=${encodeURIComponent("Mothballed")}&space=${key}`, bob.getByText("Nothing matches"));
     await bob.getByRole("checkbox", { name: "Include archived pages" }).check();
     await expect(hit.locator("[data-archived-mark]")).toBeVisible();
     await expect(bob).toHaveURL(/archived=true/);

@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { deleteSpace, uniqueKey } from "../fixtures/spaces";
 
@@ -48,11 +49,7 @@ test.describe("personal spaces", { tag: ["@auth"] }, () => {
         body: { grants: [{ subject: { type: "everyone" }, permissions: ["view"] }] },
       }),
     );
-    // Bob reads what alice shared, which a replica may not have yet.
-    await expect(async () => {
-      await bob.goto("/spaces");
-      await expect(personal(bob).locator(`[data-space-row="${key}"]`)).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openShowing(bob, "/spaces", personal(bob).locator(`[data-space-row="${key}"]`));
     await expect(personal(bob).locator(`[data-space-row="${key}"]`)).not.toContainText("You");
     await bob.goto(`/s/${key}`);
     await expect(heading(bob)).toHaveText(name ?? "");

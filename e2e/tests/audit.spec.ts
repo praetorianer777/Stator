@@ -3,6 +3,7 @@ import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { withDatabase } from "../fixtures/db";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
@@ -51,13 +52,16 @@ async function tabTo(page: Page, control: Locator): Promise<void> {
   await expect(control).toBeFocused();
 }
 
-/** Opens the log and waits for the rows, which the replica may still be catching up on. */
-async function openLog(page: Page): Promise<void> {
-  await expect(async () => {
-    await page.goto(AUDIT_PATH);
-    await expect(page.locator('[data-audit-row="space.updated"]').first()).toBeVisible({ timeout: 1_000 });
-    await expect(page.locator(FACET_PLANTED)).toBeAttached({ timeout: 1_000 });
-  }).toPass();
+// Earlier tests of the file planted the same action in the same organization,
+// so only a row naming this space shows that its changes have arrived.
+const plantedRow = (page: Page, name: string) => page.locator('[data-audit-row="space.updated"]').filter({ hasText: name }).first();
+
+/** Opens the log and waits for the changes planted on the space named. */
+async function openLog(page: Page, name: string): Promise<void> {
+  await openUntil(page, AUDIT_PATH, async () => {
+    await expect(plantedRow(page, name)).toBeVisible(ONE_LOOK);
+    await expect(page.locator(FACET_PLANTED)).toBeAttached(ONE_LOOK);
+  });
 }
 
 test.describe("the audit log", { tag: ["@auth"] }, () => {
@@ -71,14 +75,13 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     made.push(key);
     const space = await busySpace(api, freshOrg.id, key, uniqueName(testInfo, "Busy"));
 
-    await expect(async () => {
-      await page.goto("/");
+    await openUntil(page, "/", async () => {
       await page.locator('[data-action="account"]').click();
       await page.locator('[role="menu"] [data-action="audit-log"]').click();
       await expect(page).toHaveURL(/\/settings\/audit$/);
-      await expect(page.locator('[data-audit-row="space.updated"]').first()).toBeVisible({ timeout: 1_000 });
-      await expect(page.locator(FACET_PLANTED)).toBeAttached({ timeout: 1_000 });
-    }).toPass();
+      await expect(plantedRow(page, space.name)).toBeVisible(ONE_LOOK);
+      await expect(page.locator(FACET_PLANTED)).toBeAttached(ONE_LOOK);
+    });
     await expect(page.locator("main").getByRole("heading", { level: 1 })).toHaveText("Audit log");
 
     await page.getByLabel("Action").selectOption("space.updated");
@@ -138,7 +141,7 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     const key = uniqueKey(testInfo);
     made.push(key);
     const space = await busySpace(api, freshOrg.id, key, uniqueName(testInfo, "Keys"));
-    await openLog(page);
+    await openLog(page, space.name);
 
     await page.getByLabel("Action").focus();
     await tabTo(page, page.getByRole("button", { name: `Show only entries about ${space.name}` }).first());
@@ -155,9 +158,9 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     test(`it passes axe in ${scheme}`, async ({ page, api, freshOrg }, testInfo) => {
       const key = uniqueKey(testInfo);
       made.push(key);
-      await busySpace(api, freshOrg.id, key, uniqueName(testInfo, `Axe ${scheme}`));
+      const space = await busySpace(api, freshOrg.id, key, uniqueName(testInfo, `Axe ${scheme}`));
       await startInScheme(page, scheme);
-      await openLog(page);
+      await openLog(page, space.name);
       await expectAccessible(page);
     });
   }
@@ -165,8 +168,8 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
   test("on a phone the filters stack and the page never scrolls sideways", { tag: ["@mobile"] }, async ({ page, api, freshOrg }, testInfo) => {
     const key = uniqueKey(testInfo);
     made.push(key);
-    await busySpace(api, freshOrg.id, key, uniqueName(testInfo, "Phone"));
-    await openLog(page);
+    const space = await busySpace(api, freshOrg.id, key, uniqueName(testInfo, "Phone"));
+    await openLog(page, space.name);
     await expect(page.getByLabel("Action")).toBeVisible();
     await expect(page.getByLabel("From")).toBeVisible();
     await expect(page.locator('[data-action="export-audit"]')).toBeVisible();

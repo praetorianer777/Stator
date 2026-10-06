@@ -3,6 +3,7 @@ import type { APIRequestContext, Page, TestInfo } from "@playwright/test";
 import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
@@ -50,12 +51,8 @@ async function deleteWebhooks(api: StatorApi): Promise<void> {
   }
 }
 
-/** Opens the page and waits for a webhook's row, which a replica may still be catching up on. */
 async function openWith(page: Page, name: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(WEBHOOKS_PATH);
-    await expect(page.locator(`[data-webhook="${name}"]`)).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+  await openShowing(page, WEBHOOKS_PATH, page.locator(`[data-webhook="${name}"]`));
 }
 
 test.describe("outbound webhooks", { tag: ["@auth"] }, () => {

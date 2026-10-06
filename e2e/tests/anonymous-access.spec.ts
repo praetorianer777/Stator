@@ -1,6 +1,7 @@
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { expectAccessible } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { WEB_URL } from "../fixtures/stack";
@@ -60,10 +61,7 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
       // The reader is not alice, so a replica may not have her switches yet.
       const reader = await context.newPage();
       const tree = reader.locator("[data-public-tree]");
-      await expect(async () => {
-        await reader.goto(`/public/${freshOrg.slug}/s/${key}`);
-        await expect(tree.getByRole("link", { name: guide.title })).toBeVisible({ timeout: 2_000 });
-      }).toPass();
+      await openShowing(reader, `/public/${freshOrg.slug}/s/${key}`, tree.getByRole("link", { name: guide.title }));
       await expect(reader.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, nofollow");
       await expect(tree.getByRole("link", { name: secret.title })).toHaveCount(0);
       await expect(reader.locator("[data-rail], [data-sidebar]")).toHaveCount(0);
@@ -80,11 +78,12 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
       const signIn = reader.locator("[data-not-public]").getByRole("link", { name: "Sign in to read it" });
       await expect(signIn).toHaveAttribute("href", new RegExp(`^/login\\?next=.*&org=${freshOrg.slug}$`));
 
-      await reader.goto(`/public/${freshOrg.slug}/s/${key}`);
-      await reader.getByRole("searchbox", { name: "Search the public pages" }).fill(word);
-      await reader.getByRole("button", { name: "Search" }).click();
       const hits = reader.locator("[data-public-hit]");
-      await expect(hits).toHaveCount(1);
+      await openUntil(reader, `/public/${freshOrg.slug}/s/${key}`, async () => {
+        await reader.getByRole("searchbox", { name: "Search the public pages" }).fill(word);
+        await reader.getByRole("button", { name: "Search" }).click();
+        await expect(hits).toHaveCount(1, ONE_LOOK);
+      });
       await expect(hits.first()).toHaveAttribute("data-public-hit", guide.title);
       await expect(reader.locator("[data-public-results]")).not.toContainText(BOB);
 

@@ -3,6 +3,7 @@ import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 
@@ -47,8 +48,7 @@ test.describe("editing a page together", { tag: ["@auth", "@desktop"] }, () => {
     await page.goto(path);
     await expect(page.locator("[data-page-editor]")).toHaveAttribute("data-collab", "together");
     const bob = await pageAs("bob");
-    await bob.goto(path);
-    await expect(bob.locator("[data-page-editor]")).toHaveAttribute("data-collab", "together");
+    await openUntil(bob, path, () => expect(bob.locator("[data-page-editor]")).toHaveAttribute("data-collab", "together", ONE_LOOK));
     await expect.poll(() => words(bob)).toContain("First words.");
 
     // Each sees the other in the header.
