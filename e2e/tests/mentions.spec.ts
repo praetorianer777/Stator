@@ -3,28 +3,20 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 // Delivery goes through the outbox and the worker.
 const DELIVERY_MS = 30_000;
 const BOB = "Bob Builder";
 
-const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const bell = (page: Page) => page.locator('[data-action="notifications"]');
 const panel = (page: Page) => page.locator("[data-notification-panel]");
 const mentionList = (page: Page) => page.getByRole("listbox", { name: "People to mention" });
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
-
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
 
 /** Opens the page's editor with the caret at the end of its words. */
 async function editPage(page: Page) {
@@ -53,7 +45,7 @@ async function toldAbout(page: Page, title: string) {
   await expect(async () => {
     await page.reload();
     await bell(page).click();
-    await expect(told).toBeVisible({ timeout: 2_000 });
+    await expect(told).toBeVisible(ONE_LOOK);
   }).toPass({ timeout: DELIVERY_MS });
   return told;
 }

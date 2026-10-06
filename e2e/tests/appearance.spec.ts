@@ -2,6 +2,7 @@ import type { Locator, Page, TestInfo } from "@playwright/test";
 import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../fixtures/spaces";
@@ -38,14 +39,6 @@ const wideDoc = {
 const article = (page: Page) => page.locator("article[data-page]");
 const tree = (page: Page) => page.locator("[data-page-tree]");
 
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
-
 test.describe("page appearance", { tag: ["@auth"] }, () => {
   const made: string[] = [];
   test.afterEach(async ({ api }) => {
@@ -81,7 +74,7 @@ test.describe("page appearance", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Looks");
     const plans = await createPage(api, space.homePageId, "Plans", { type: "doc", content: [paragraph("What we will do.")] });
     const path = `/s/${space.key}/p/${plans.id}/plans`;
-    await open(page, path, "What we will do.");
+    await openShowing(page, path, "What we will do.");
     await chooseAppearance(page);
 
     await expect(page.locator("[data-page-icon]")).toHaveText("🚀");
@@ -108,7 +101,7 @@ test.describe("page appearance", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Width");
     const notes = await createPage(api, space.homePageId, "Notes", wideDoc);
     const path = `/s/${space.key}/p/${notes.id}/notes`;
-    await open(page, path, "A line of notes");
+    await openShowing(page, path, "A line of notes");
     await expect(article(page)).toHaveAttribute("data-page-width", "fixed");
     const rootPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
     const width = async (locator: Locator) => (await locator.boundingBox())!.width;
@@ -149,7 +142,7 @@ test.describe("page appearance", { tag: ["@auth"] }, () => {
     const notes = await createPage(api, space.homePageId, "Notes", wideDoc);
     const path = `/s/${space.key}/p/${notes.id}/notes`;
     const sideways = () => page.evaluate(() => [document.documentElement, document.querySelector("main")!].some((el) => el.scrollWidth > el.clientWidth));
-    await open(page, path, "A line of notes");
+    await openShowing(page, path, "A line of notes");
     await expect(page.locator("main [data-doc] > .doc-diagram")).toBeVisible();
     expect(await sideways()).toBe(false);
     await page.goto(`${path}/edit`);
@@ -163,7 +156,7 @@ test.describe("page appearance", { tag: ["@auth"] }, () => {
       const space = await freshSpace(api, testInfo, "Axe");
       const plans = await createPage(api, space.homePageId, "Plans", { type: "doc", content: [paragraph("Seen in a frame.")] });
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${plans.id}/plans`, "Seen in a frame.");
+      await openShowing(page, `/s/${space.key}/p/${plans.id}/plans`, "Seen in a frame.");
       await chooseAppearance(page);
       await expect(article(page).locator("[data-page-cover] img")).toBeVisible();
       await expectAccessible(page);

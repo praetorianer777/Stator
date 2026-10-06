@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
 import { childTitles, createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -15,14 +16,6 @@ function today(): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, text: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(text, { timeout: 2_000 });
-  }).toPass();
 }
 
 async function insertBlock(page: Page, typed: string): Promise<void> {
@@ -66,7 +59,7 @@ test.describe("template button and contributors", { tag: ["@auth"] }, () => {
     });
     const path = `/s/${space.key}/p/${meetings.id}/team-meetings`;
 
-    await open(page, `${path}/edit`, "Our weekly meetings.");
+    await openShowing(page, `${path}/edit`, "Our weekly meetings.");
     await insertBlock(page, "/template");
     const dialog = page.getByRole("dialog", { name: "Insert a template button" });
     await dialog.getByLabel("Template", { exact: true }).selectOption({ label: "Meeting notes" });
@@ -92,7 +85,7 @@ test.describe("template button and contributors", { tag: ["@auth"] }, () => {
 
     const bob = await pageAs("bob");
     // Bob's reads are not held to the publish, so wait for words only it has.
-    await open(bob, path, "New meeting notes");
+    await openShowing(bob, path, "New meeting notes");
     const refused = shown(bob).getByRole("button", { name: "New meeting notes" });
     await expect(refused).toBeDisabled();
     await expect(refused).toHaveAccessibleDescription("You may not add pages under Team meetings. Ask an administrator of the space to let you add pages.");

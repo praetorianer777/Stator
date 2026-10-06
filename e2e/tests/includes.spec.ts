@@ -4,6 +4,7 @@ import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -14,14 +15,6 @@ const shown = (page: Page) => page.locator("main [data-doc]").first();
 const HOURS = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a71";
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
 const excerpt = (id: string, name: string, value: string) => ({ type: "excerpt", attrs: { id, name }, content: [paragraph(value)] });
-
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 test.describe("includes", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -51,7 +44,7 @@ test.describe("includes", { tag: ["@auth"] }, () => {
     const front = await createPage(api, space.homePageId, "Front", { type: "doc", content: [paragraph("Welcome."), { type: "paragraph" }] });
     const path = `/s/${space.key}/p/${front.id}/front`;
 
-    await open(page, `${path}/edit`, "Welcome.");
+    await openShowing(page, `${path}/edit`, "Welcome.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/include");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -84,14 +77,11 @@ test.describe("includes", { tag: ["@auth"] }, () => {
         body: { version: 1, body: { type: "doc", content: [paragraph("About support."), excerpt(HOURS, "Hours", "Ten to six.")] } },
       }),
     );
-    await expect(async () => {
-      await page.reload();
-      await expect(hours).toContainText("Ten to six.", { timeout: 2_000 });
-    }).toPass();
+    await openUntil(page, path, () => expect(hours).toContainText("Ten to six.", ONE_LOOK));
 
     const bob = await pageAs("bob");
     // Bob's reads are not held to the publish, so wait for words only it has.
-    await open(bob, path, "Ten to six.");
+    await openShowing(bob, path, "Ten to six.");
     await expect(bob.locator("main [data-doc]").first().getByRole("region", { name: "Included from Support: Hours" })).toContainText("Ten to six.");
     const notice = bob.locator('main [data-include][data-state="unavailable"]');
     await expect(notice).toContainText("This included content is not available to you");
@@ -107,7 +97,7 @@ test.describe("includes", { tag: ["@auth"] }, () => {
     });
     const path = `/s/${space.key}/p/${front.id}/front`;
 
-    await open(page, `${path}/edit`, "Nine to five.");
+    await openShowing(page, `${path}/edit`, "Nine to five.");
     await expect(page.locator("[data-page-editor]")).toHaveAttribute("data-collab", "together");
     const region = editorBox(page).getByRole("region", { name: "Included from Support: Hours" });
     await region.getByText("Nine to five.").click();
@@ -139,7 +129,7 @@ test.describe("includes", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${front.id}/front`, "Nine to five.");
+      await openShowing(page, `/s/${space.key}/p/${front.id}/front`, "Nine to five.");
       await expect(page.locator('main [data-include][data-state="unavailable"]')).toHaveCount(1);
       await expectAccessible(page);
     });

@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { authTest as test, expect, ME_PATH, USERS } from "../fixtures/auth";
+import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { expectAccessible, openShell } from "../fixtures/shell";
 import { uniqueName } from "../fixtures/seed";
 import { WEB_URL } from "../fixtures/stack";
@@ -7,11 +8,6 @@ import { WEB_URL } from "../fixtures/stack";
 const TOKENS_PATH = "/settings/tokens";
 const TOKEN_PREFIX = "stator_pat_";
 const row = (page: Page, name: string) => page.locator(`[data-token-row="${name}"]`);
-
-// The last use is written on the primary as the token is used, and the page
-// may read from a replica, so it reloads until the replica has it.
-const REPLICA_CATCH_UP_MS = 10_000;
-const RECHECK_MS = 1_000;
 
 /** Calls the API the way a script would: Node's own fetch, the token as a bearer, no cookies. */
 function asScript(secret: string, path = ME_PATH): Promise<Response> {
@@ -78,10 +74,11 @@ test.describe("personal access tokens", { tag: ["@auth", "@desktop"] }, () => {
 
     await page.locator('[data-action="token-done"]').click();
     await expect(shown).toHaveCount(0);
-    await expect(async () => {
-      await page.reload();
-      await expect(row(page, name).locator("[data-token-last-used]")).not.toHaveText("Never used", { timeout: RECHECK_MS });
-    }).toPass({ timeout: REPLICA_CATCH_UP_MS, intervals: [RECHECK_MS] });
+    // The last use is written as the script calls, not by this session, so this read is not held to it.
+    await openUntil(page, TOKENS_PATH, async () => {
+      await expect(row(page, name)).toBeVisible(ONE_LOOK);
+      await expect(row(page, name).locator("[data-token-last-used]")).not.toHaveText("Never used", ONE_LOOK);
+    });
     await expect(page.locator("body")).not.toContainText(secret);
     await expect(row(page, name).locator("[data-token-expires]")).not.toHaveText("Never");
 

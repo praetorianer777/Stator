@@ -3,9 +3,10 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openPage, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Page as WikiPage, type Space } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
 
 // Delivery goes through the outbox and the worker.
 const DELIVERY_MS = 30_000;
@@ -14,7 +15,6 @@ const BOB = "Bob Builder";
 const TODAY = new Date().toISOString().slice(0, 10);
 const LONG_AGO = "2020-01-06";
 
-const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const editorBox = (page: Page) => page.locator("#page-body");
 const bell = (page: Page) => page.locator('[data-action="notifications"]');
 const panel = (page: Page) => page.locator("[data-notification-panel]");
@@ -40,19 +40,11 @@ const words = (text: string): Inline => ({ type: "text", text });
 const mention = (id: string, label: string): Inline => ({ type: "mention", attrs: { id, label } });
 const day = (date: string): Inline => ({ type: "date", attrs: { date } });
 
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
-
 /** Opens the list of one's tasks until a task shows up there, as a returning reader would. */
 async function listed(page: Page, text: string) {
   await expect(async () => {
     await page.goto("/tasks");
-    await expect(taskRow(page, text)).toBeVisible({ timeout: 2_000 });
+    await expect(taskRow(page, text)).toBeVisible(ONE_LOOK);
   }).toPass({ timeout: DELIVERY_MS });
   return taskRow(page, text);
 }
@@ -123,7 +115,7 @@ test.describe("tasks", { tag: ["@auth"] }, () => {
       await expect(async () => {
         await bob.reload();
         await bell(bob).click();
-        await expect(told).toBeVisible({ timeout: 2_000 });
+        await expect(told).toBeVisible(ONE_LOOK);
       }).toPass({ timeout: DELIVERY_MS });
       await expect(told).toContainText(`assigned you a task on ${minutes.title}`);
       await expect(told).toContainText("Send the notes");
@@ -148,7 +140,7 @@ test.describe("tasks", { tag: ["@auth"] }, () => {
 
       await expect(async () => {
         await page.reload();
-        await expect(page.locator("[data-doc] li[data-task-id] input")).toBeChecked({ timeout: 2_000 });
+        await expect(page.locator("[data-doc] li[data-task-id] input")).toBeChecked(ONE_LOOK);
       }).toPass();
       await expect(page.locator("[data-doc] li[data-task-id] [data-task-due]")).toHaveCount(0);
     },
@@ -177,11 +169,10 @@ test.describe("tasks", { tag: ["@auth"] }, () => {
         body: { view: view.map((id) => ({ type: "user" as const, id })), edit: [] },
       });
     must(await restrict([aliceId]));
-    await expect(async () => {
-      await bob.goto("/tasks");
-      await expect(bob.locator("[data-my-tasks] [role=tabpanel]")).toBeVisible({ timeout: 2_000 });
-      await expect(bob.getByText("No open tasks.", { exact: false })).toBeVisible({ timeout: 2_000 });
-    }).toPass();
+    await openUntil(bob, "/tasks", async () => {
+      await expect(bob.locator("[data-my-tasks] [role=tabpanel]")).toBeVisible(ONE_LOOK);
+      await expect(bob.getByText("No open tasks.", { exact: false })).toBeVisible(ONE_LOOK);
+    });
     await expect(taskRow(bob, text)).toHaveCount(0);
 
     must(await restrict([]));

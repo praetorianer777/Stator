@@ -4,25 +4,17 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
 
-const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const passage = (page: Page, id?: string) => page.locator(id ? `mark[data-passage="${id}"]` : "mark[data-passage]");
 const panel = (page: Page) => page.locator("[data-passage-panel]");
 const listed = (page: Page) => page.locator("[data-passages]");
 const draftStatus = (page: Page) => page.locator("[data-draft-status]");
 
 const doc = (...lines: string[]) => ({ type: "doc" as const, content: lines.map((text) => ({ type: "paragraph", content: [{ type: "text", text }] })) });
-
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
 
 /** Selects words of the page's first paragraph, as dragging over them would. */
 async function select(page: Page, words: string) {
@@ -101,10 +93,7 @@ test.describe("comments on passages", { tag: ["@auth"] }, () => {
     const threadId = await passage(page).getAttribute("data-passage");
 
     const bob = await pageAs("bob");
-    await expect(async () => {
-      await openPage(bob, space.key, plan);
-      await expect(passage(bob)).toHaveCount(1, { timeout: 1_000 });
-    }).toPass();
+    await openPage(bob, space.key, plan, () => expect(passage(bob)).toHaveCount(1, ONE_LOOK));
     await passage(bob).click();
     await expect(panel(bob)).toBeFocused();
     await panel(bob).locator('[data-action="reply"]').click();
@@ -150,10 +139,7 @@ test.describe("comments on passages", { tag: ["@auth"] }, () => {
       const plan = await createPage(api, space.homePageId, uniqueName(testInfo, "Checked"), doc("We ship on Friday after the review."));
       const threadId = await startInline(api, plan, "We ", "ship on Friday", " after the review.", "Why Friday?");
       await startInScheme(page, scheme);
-      await expect(async () => {
-        await openPage(page, space.key, plan);
-        await expect(passage(page, threadId)).toBeVisible({ timeout: 1_000 });
-      }).toPass();
+      await openPage(page, space.key, plan, () => expect(passage(page, threadId)).toBeVisible(ONE_LOOK));
       await expectAccessible(page);
 
       const opener = listed(page).locator(`[data-open-passage="${threadId}"]`);

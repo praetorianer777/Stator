@@ -3,6 +3,7 @@ import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openEditor, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -13,14 +14,6 @@ const log = (page: Page) => page.locator("[data-decision-log]");
 
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
 const decision = (state: string, value: string) => ({ type: "decision", attrs: { state }, content: [{ type: "text", text: value }] });
-
-/** Opens a page's editor until it holds the words given, which a replica may lag behind on. */
-async function openEditor(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(`${path}/edit`);
-    await expect(editorBox(page)).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 test.describe("decision items", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -78,10 +71,7 @@ test.describe("decision items", { tag: ["@auth"] }, () => {
         content: [decision("decided", "Use Postgres."), decision("undecided", "Which region first.")],
       });
       await startInScheme(page, scheme);
-      await expect(async () => {
-        await page.goto(`/s/${space.key}/p/${notes.id}/notes`);
-        await expect(shown(page)).toContainText("Which region first.", { timeout: 2_000 });
-      }).toPass();
+      await openUntil(page, `/s/${space.key}/p/${notes.id}/notes`, () => expect(shown(page)).toContainText("Which region first.", ONE_LOOK));
       await expectAccessible(page);
       await page.goto(`/s/${space.key}/decisions`);
       await expect(log(page).locator("[data-decision-row]")).toHaveCount(2);

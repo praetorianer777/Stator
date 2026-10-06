@@ -2,6 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
@@ -19,13 +20,12 @@ async function sidebarShortcuts(page: Page, testInfo: TestInfo) {
   return page.getByRole("list", { name: "Shortcuts", exact: true });
 }
 
-/** Opens a space until its sidebar lists the shortcuts named, which a replica may lag behind. */
+/** Opens a space until its sidebar lists the shortcuts named. */
 async function expectSidebar(page: Page, testInfo: TestInfo, key: string, names: string[]) {
-  await expect(async () => {
-    await page.goto(`/s/${key}`);
+  await openUntil(page, `/s/${key}`, async () => {
     const list = await sidebarShortcuts(page, testInfo);
-    await expect(list.getByRole("listitem")).toHaveText(names, { timeout: 1_000 });
-  }).toPass();
+    await expect(list.getByRole("listitem")).toHaveText(names, ONE_LOOK);
+  });
 }
 
 test.describe("space shortcuts", { tag: ["@auth"] }, () => {
@@ -115,11 +115,12 @@ test.describe("space shortcuts", { tag: ["@auth"] }, () => {
     const salaries = await createPage(api, space.homePageId, uniqueName(testInfo, "Salaries"), doc("Numbers."));
     const me = must(await api.GET("/auth/me")).user.id;
     must(await api.PUT("/pages/{pageID}/restrictions", { params: { path: { pageID: salaries.id } }, body: { view: [{ type: "user", id: me }], edit: [] } }));
-    for (const target of [runbook, salaries]) {
+    // Runbook's comes last, so the list bob waits for is one only the newest write gives him.
+    for (const target of [salaries, runbook]) {
       must(await api.POST("/spaces/{spaceKey}/shortcuts", { params: { path: { spaceKey: key } }, body: { pageId: target.id } }));
     }
 
-    await expectSidebar(page, testInfo, key, [runbook.title, salaries.title]);
+    await expectSidebar(page, testInfo, key, [salaries.title, runbook.title]);
     const bob = await pageAs("bob");
     await expectSidebar(bob, testInfo, key, [runbook.title]);
     await expect(bob.getByText(salaries.title)).toHaveCount(0);

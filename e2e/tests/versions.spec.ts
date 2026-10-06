@@ -53,6 +53,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     const params = { params: { path: { pageID: plans.id } } };
     expect(JSON.stringify(must(await api.GET("/pages/{pageID}/draft", params)).draft?.body)).toContain("More words.");
     const bob = await apiAs("bob");
+    await expect.poll(async () => (await bob.GET("/pages/{pageID}", params)).response.status).toBe(200);
     expect(must(await bob.GET("/pages/{pageID}/draft", params)).draft).toBeNull();
     expect(JSON.stringify(must(await bob.GET("/pages/{pageID}", params)).page.body)).not.toContain("More words.");
 
@@ -139,7 +140,9 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
 
     // Bob publishes from outside the editor, where the shared draft would
     // have shown him Alice's words, as a script or another tool would.
-    await publishVersion(await apiAs("bob"), plans.id, "Shared words. Bob was here.", "Bob's change.");
+    const bob = await apiAs("bob");
+    await expect.poll(async () => (await bob.GET("/pages/{pageID}", { params: { path: { pageID: plans.id } } })).response.status).toBe(200);
+    await publishVersion(bob, plans.id, "Shared words. Bob was here.", "Bob's change.");
 
     await page.locator('[data-action="publish"]').click();
     await page.locator('[data-publish-dialog] [data-action="confirm-publish"]').click();

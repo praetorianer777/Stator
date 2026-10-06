@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { expectAccessible } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { WEB_URL } from "../fixtures/stack";
@@ -12,6 +13,7 @@ const BOB = "Bob Builder";
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const dialog = (page: Page) => page.locator("[data-share-dialog]");
 const links = (page: Page) => dialog(page).locator("[data-public-links]");
+const openTitled = (page: Page, path: string, title: string) => openUntil(page, path, () => expect(heading(page)).toHaveText(title, ONE_LOOK));
 
 test.describe("public links", { tag: ["@auth"] }, () => {
   test("alice opens one page to anybody through a link, who reads it alone with nobody named, until she revokes it", async ({
@@ -40,10 +42,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
     await createPage(api, guide.id, `Below ${word}`);
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
     try {
-      await expect(async () => {
-        await page.goto(`/s/${key}/p/${guide.id}/guide`);
-        await expect(heading(page)).toHaveText(guide.title, { timeout: 1_000 });
-      }).toPass();
+      await openTitled(page, `/s/${key}/p/${guide.id}/guide`, guide.title);
       await page.locator('[data-action="share-page"]').click();
       await links(page).getByRole("textbox", { name: "Label (optional)" }).fill("For the auditors");
       await links(page).getByRole("combobox", { name: "Runs out" }).selectOption("7");
@@ -55,12 +54,8 @@ test.describe("public links", { tag: ["@auth"] }, () => {
       await expect(listed).toContainText("Runs out on");
       await expectAccessible(page);
 
-      // The reader is not alice, so a replica may not have her link yet.
       const reader = await context.newPage();
-      await expect(async () => {
-        await reader.goto(address);
-        await expect(heading(reader)).toHaveText(guide.title, { timeout: 2_000 });
-      }).toPass();
+      await openTitled(reader, address, guide.title);
       const shell = await context.request.get(address);
       expect(shell.headers()["cache-control"]).toBe("no-store");
       expect(shell.headers()["referrer-policy"]).toBe("no-referrer");
@@ -74,10 +69,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
 
       await listed.getByRole("button", { name: "Revoke For the auditors" }).click();
       await expect(listed).toHaveCount(0);
-      await expect(async () => {
-        await reader.goto(address);
-        await expect(reader.locator("[data-link-gone]")).toBeVisible({ timeout: 2_000 });
-      }).toPass();
+      await openShowing(reader, address, reader.locator("[data-link-gone]"));
       await expect(reader.locator("[data-link-gone]")).toContainText("This link does not work any more");
       await expect(reader.locator("main")).not.toContainText(word);
     } finally {
@@ -102,15 +94,9 @@ test.describe("public links", { tag: ["@auth"] }, () => {
       await page.goto("/settings/permissions");
       await settings.locator('[data-action="public-links"]').click();
       await expect(settings.getByRole("status")).toHaveText("Saved.");
-      await expect(async () => {
-        await reader.goto(made.path);
-        await expect(reader.locator("[data-link-gone]")).toBeVisible({ timeout: 2_000 });
-      }).toPass();
+      await openShowing(reader, made.path, reader.locator("[data-link-gone]"));
 
-      await expect(async () => {
-        await page.goto(`/s/${key}/p/${plan.id}/plan`);
-        await expect(heading(page)).toHaveText(plan.title, { timeout: 1_000 });
-      }).toPass();
+      await openTitled(page, `/s/${key}/p/${plan.id}/plan`, plan.title);
       await page.locator('[data-action="share-page"]').click();
       await expect(links(page).locator('[data-public-links-refusal="off"]')).toContainText("Your organization does not allow public links.");
       await expect(links(page).locator('[data-action="create-public-link"]')).toHaveCount(0);
@@ -118,10 +104,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
       await page.goto("/settings/permissions");
       await settings.locator('[data-action="public-links"]').click();
       await expect(settings.getByRole("status")).toHaveText("Saved.");
-      await expect(async () => {
-        await reader.goto(made.path);
-        await expect(heading(reader)).toHaveText(plan.title, { timeout: 2_000 });
-      }).toPass();
+      await openTitled(reader, made.path, plan.title);
     } finally {
       await context.close();
       must(await api.PUT("/org/public-links", { body: { enabled: true } }));

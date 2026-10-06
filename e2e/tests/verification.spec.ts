@@ -1,13 +1,13 @@
-import type { Page, TestInfo } from "@playwright/test";
+import type { Locator, Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { lapseVerification } from "../fixtures/db";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openPage, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
 
-const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const badge = (page: Page, state: "verified" | "expired") => page.locator(`main button[data-verification-badge="${state}"]`);
 const list = (page: Page, name: string) => page.locator(`[data-home-list="${name}"]`);
 const dialogOf = (page: Page, target: WikiPage) => page.getByRole("dialog", { name: `Owner and verification of ${target.title}` });
@@ -20,20 +20,8 @@ const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragr
 // replica that lags come on top.
 const LAPSE_TOLD_MS = 60_000;
 
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
-
-/** Opens a page until it shows what a test waits for, which a replica may lag behind. */
-async function openPageShowing(page: Page, spaceKey: string, target: WikiPage, shown: (page: Page) => ReturnType<Page["locator"]>) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(shown(page)).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+async function openPageShowing(page: Page, spaceKey: string, target: WikiPage, shown: (page: Page) => Locator) {
+  await openShowing(page, `/s/${spaceKey}/p/${target.id}/page`, shown(page));
 }
 
 async function publishAs(api: StatorApi, target: WikiPage, text: string) {
@@ -89,16 +77,10 @@ test.describe("owners and verified pages", { tag: ["@auth"] }, () => {
 
     const bob = await pageAs("bob");
     const hit = bob.locator(`[data-search-hit="${target.title}"]`);
-    await expect(async () => {
-      await bob.goto(`/search?q=${encodeURIComponent(target.title)}`);
-      await expect(hit.locator('[data-verification-badge="verified"]')).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openShowing(bob, `/search?q=${encodeURIComponent(target.title)}`, hit.locator('[data-verification-badge="verified"]'));
     expect(await scrollsSideways(bob)).toBe(false);
     const update = list(bob, "updates").locator("li").filter({ hasText: target.title });
-    await expect(async () => {
-      await bob.goto("/");
-      await expect(update.locator('[data-verification-badge="verified"]')).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openShowing(bob, "/", update.locator('[data-verification-badge="verified"]'));
 
     await expect(async () => publishAs(api, target, "Changed after the check.")).toPass();
     await openPageShowing(page, space.key, target, (p) => p.getByText("Changed after the check."));
@@ -148,7 +130,7 @@ test.describe("owners and verified pages", { tag: ["@auth"] }, () => {
     await expect(async () => {
       await bob.goto("/");
       await bell(bob).click();
-      await expect(told).toContainText(`The verification of ${target.title} has run out.`, { timeout: 1_000 });
+      await expect(told).toContainText(`The verification of ${target.title} has run out.`, ONE_LOOK);
     }).toPass({ timeout: LAPSE_TOLD_MS });
     await told.click();
     await expect(bob).toHaveURL(new RegExp(`/s/${space.key}/p/${target.id}/`));
@@ -182,7 +164,11 @@ test.describe("owners and verified pages", { tag: ["@auth"] }, () => {
       await term.selectOption("180");
       await page.keyboard.press("Tab");
       await expect(dialog.getByRole("button", { name: "Verify again" })).toBeFocused();
+      // The dialog says verified before and after, and a verification landing
+      // after the lapse below would undo it, so the answer is waited for.
+      const reverified = page.waitForResponse((res) => res.url().endsWith(`/pages/${target.id}/verification`) && res.request().method() === "PUT");
       await page.keyboard.press("Enter");
+      expect((await reverified).ok()).toBe(true);
       await expect(dialog.locator('[data-verification-state="verified"]')).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);

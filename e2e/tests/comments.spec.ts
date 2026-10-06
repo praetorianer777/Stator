@@ -3,14 +3,14 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 // Delivery goes through the outbox and the worker.
 const DELIVERY_MS = 30_000;
 
-const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const comments = (page: Page) => page.locator("[data-comments]");
 const threads = (page: Page) => comments(page).locator("[data-thread]");
 const bell = (page: Page) => page.locator('[data-action="notifications"]');
@@ -18,14 +18,6 @@ const badge = (page: Page) => page.locator("[data-unread-badge]");
 const panel = (page: Page) => page.locator("[data-notification-panel]");
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
-
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
 
 /** Writes in the comment editor that opened last and posts it. */
 async function post(page: Page, editor: string, text: string) {
@@ -62,10 +54,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(page.locator("[data-comment-count]")).toHaveText("1 comment");
 
     const bob = await pageAs("bob");
-    await expect(async () => {
-      await openPage(bob, space.key, plan);
-      await expect(threads(bob)).toHaveCount(1, { timeout: 1_000 });
-    }).toPass();
+    await openPage(bob, space.key, plan, () => expect(threads(bob)).toHaveCount(1, ONE_LOOK));
     const thread = threads(bob).first();
     const threadId = await thread.getAttribute("data-thread");
     await thread.locator('[data-action="reply"]').click();
@@ -77,9 +66,9 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     const told = panel(page).locator('[data-notification="replied"]', { hasText: plan.title });
     await expect(async () => {
       await page.reload();
-      await expect(badge(page)).toBeVisible({ timeout: 2_000 });
+      await expect(badge(page)).toBeVisible(ONE_LOOK);
       await bell(page).click();
-      await expect(told).toBeVisible({ timeout: 2_000 });
+      await expect(told).toBeVisible(ONE_LOOK);
     }).toPass({ timeout: DELIVERY_MS });
     await expect(told).toContainText(`replied in a thread on ${plan.title}`);
     await expect(told).toContainText("Monday is safer.");
@@ -104,7 +93,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
       )
       .toBe(201);
 
-    await openPage(page, space.key, plan);
+    await openPage(page, space.key, plan, () => expect(comments(page)).toContainText("Bob agrees.", ONE_LOOK));
     const first = comments(page).locator(`[data-comment="${started.id}"]`);
     await expect(first).toContainText("First thought.");
     await first.locator('[data-action="edit-comment"]').click();
@@ -144,10 +133,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     );
 
     const bob = await pageAs("bob");
-    await expect(async () => {
-      await openPage(bob, space.key, plan);
-      await expect(comments(bob).locator("[data-comments-read-only]").first()).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openPage(bob, space.key, plan, () => expect(comments(bob).locator("[data-comments-read-only]").first()).toBeVisible(ONE_LOOK));
     await expect(comments(bob)).toContainText("Alice was here.");
     await expect(comments(bob).locator('[data-action="add-comment"]')).toHaveCount(0);
     await expect(comments(bob).locator('[data-action="reply"]')).toHaveCount(0);
@@ -166,10 +152,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
 
     const bob = await pageAs("bob");
     const alices = comments(bob).locator(`[data-comment="${started.id}"]`);
-    await expect(async () => {
-      await openPage(bob, space.key, plan);
-      await expect(alices).toContainText("Alice's thought.", { timeout: 1_000 });
-    }).toPass();
+    await openPage(bob, space.key, plan, () => expect(alices).toContainText("Alice's thought.", ONE_LOOK));
     await expect(comments(bob).locator('[data-action="reply"]')).toBeVisible();
     await expect(alices.locator('[data-action="delete-comment"]')).toHaveCount(0);
 
@@ -179,10 +162,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
         body: { grants: [everyoneMay, { subject: { type: "user", id: bobId }, permissions: ["administer"] }] },
       }),
     );
-    await expect(async () => {
-      await bob.reload();
-      await expect(alices.locator('[data-action="delete-comment"]')).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openPage(bob, space.key, plan, () => expect(alices.locator('[data-action="delete-comment"]')).toBeVisible(ONE_LOOK));
     await expectAccessible(bob);
     bob.once("dialog", (dialog) => void dialog.accept());
     await alices.locator('[data-action="delete-comment"]').click();
@@ -196,10 +176,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
       const started = must(await api.POST("/pages/{pageID}/comments", { params: { path: { pageID: plan.id } }, body: { body: doc("A thought.") } })).thread;
       must(await api.POST("/comments/{commentID}/replies", { params: { path: { commentID: started.id } }, body: { body: doc("A reply.") } }));
       await startInScheme(page, scheme);
-      await expect(async () => {
-        await openPage(page, space.key, plan);
-        await expect(threads(page).locator("[data-comment]")).toHaveCount(2, { timeout: 1_000 });
-      }).toPass();
+      await openPage(page, space.key, plan, () => expect(threads(page).locator("[data-comment]")).toHaveCount(2, ONE_LOOK));
       await expectAccessible(page);
 
       const reply = threads(page).first().locator('[data-action="reply"]');

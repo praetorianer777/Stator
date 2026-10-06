@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -15,14 +16,6 @@ const patFor = (tenant: string, person: string) => `armature_pat_${tenant}_${per
 const editorBox = (page: Page) => page.locator("#page-body");
 const shown = (page: Page) => page.locator("main [data-doc]");
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
-
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 test.describe("Armature charts", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -49,7 +42,7 @@ test.describe("Armature charts", { tag: ["@auth"] }, () => {
     const report = await createPage(api, space.homePageId, "Status report", { type: "doc", content: [paragraph("Where we are."), { type: "paragraph" }] });
     const path = `/s/${space.key}/p/${report.id}/status-report`;
 
-    await open(page, `${path}/edit`, "Where we are.");
+    await openShowing(page, `${path}/edit`, "Where we are.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/pie");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -73,7 +66,7 @@ test.describe("Armature charts", { tag: ["@auth"] }, () => {
     // Bob has no Armature token, so his reading of the same page asks him to connect.
     const bob = await pageAs("bob");
     // Bob's reads are not held to the publish, so wait for words only it has.
-    await open(bob, path, "Connect your Armature account to see this chart.");
+    await openShowing(bob, path, "Connect your Armature account to see this chart.");
     await expect(bob.locator('main [data-armature-chart="pie"]')).toHaveAttribute("data-state", "connect");
     await expect(bob.locator("main")).toContainText("Connect your Armature account to see this chart.");
   });
@@ -92,7 +85,7 @@ test.describe("Armature charts", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${report.id}/charts`, "Charts");
+      await openShowing(page, `/s/${space.key}/p/${report.id}/charts`, "Charts");
       await expect(shown(page).locator('[data-armature-chart="pie"]')).toHaveAttribute("data-state", "chart");
       const flow = shown(page).locator('[data-armature-chart="createdResolved"]');
       await expect(flow).toHaveAttribute("data-state", "chart");

@@ -3,6 +3,7 @@ import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -23,12 +24,8 @@ async function insert(page: Page, query: string): Promise<void> {
   await page.keyboard.press("Enter");
 }
 
-/** Opens a page's editor, waiting out a replica that has not seen the page yet. */
 async function openEditor(page: Page, path: string, text: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(`${path}/edit`);
-    await expect(editorBox(page)).toContainText(text, { timeout: 2_000 });
-  }).toPass();
+  await openShowing(page, `${path}/edit`, editorBox(page).filter({ hasText: text }));
 }
 
 test.use({ locale: LOCALE });
@@ -174,10 +171,7 @@ test.describe("status labels, dates and emoji", { tag: ["@auth", "@desktop"] }, 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
     test(`every status colour and a date pass axe in ${scheme} when read`, async ({ page, api }, testInfo) => {
       const path = await board(page, api, testInfo, scheme);
-      await expect(async () => {
-        await page.goto(path);
-        await expect(readView(page).locator(".doc-status")).toHaveCount(COLOURS.length, { timeout: 1_000 });
-      }).toPass();
+      await openUntil(page, path, () => expect(readView(page).locator(".doc-status")).toHaveCount(COLOURS.length, ONE_LOOK));
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
       await expectAccessible(page);
     });

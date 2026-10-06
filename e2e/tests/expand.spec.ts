@@ -3,6 +3,7 @@ import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openEditor, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -17,14 +18,6 @@ async function insert(page: Page, query: string): Promise<void> {
   await page.keyboard.type(`/${query}`);
   await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
   await page.keyboard.press("Enter");
-}
-
-/** Opens a page's editor until it holds the words given, which a replica may lag behind on. */
-async function openEditor(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(`${path}/edit`);
-    await expect(editorBox(page)).toContainText(words, { timeout: 2_000 });
-  }).toPass();
 }
 
 test.describe("expand blocks", { tag: ["@auth", "@desktop"] }, () => {
@@ -98,10 +91,7 @@ test.describe("expand blocks", { tag: ["@auth", "@desktop"] }, () => {
       await startInScheme(page, scheme);
       const path = `/s/${space.key}/p/${notes.id}/notes`;
 
-      await expect(async () => {
-        await page.goto(path);
-        await expect(shown(page).getByRole("button", { name: "The long version" })).toBeVisible({ timeout: 2_000 });
-      }).toPass();
+      await openShowing(page, path, shown(page).getByRole("button", { name: "The long version" }));
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
       await expect(shown(page).getByRole("button", { name: "Details" })).toHaveAttribute("aria-expanded", "false");
       await expectAccessible(page);

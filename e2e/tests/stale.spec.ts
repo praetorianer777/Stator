@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { ageQuietly, lapseVerification } from "../fixtures/db";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
@@ -26,12 +27,8 @@ async function tabTo(page: Page, control: Locator): Promise<void> {
   await expect(control).toBeFocused();
 }
 
-/** Opens the report on one space until it lists the page, which the replica may still be catching up on. */
 async function openReport(page: Page, spaceKey: string, title: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(`${STALE_PATH}?space=${spaceKey}`);
-    await expect(row(page, title)).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+  await openShowing(page, `${STALE_PATH}?space=${spaceKey}`, row(page, title));
 }
 
 test.describe("the stale content report", { tag: ["@auth"] }, () => {
@@ -66,14 +63,13 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     const bob = must(await (await apiAs("bob")).GET("/auth/me")).user;
     const { space, guide, notes, fresh } = await quietSpace(api, testInfo, bob.id);
 
-    await expect(async () => {
-      await page.goto("/");
+    await openUntil(page, "/", async () => {
       await page.locator('[data-action="account"]').click();
       await page.locator('[role="menu"] [data-action="stale-pages"]').click();
       await expect(page).toHaveURL(/\/settings\/stale$/);
-      await page.locator("#stale-space").selectOption(space.key, { timeout: 1_000 });
-      await expect(row(page, guide.title)).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+      await page.locator("#stale-space").selectOption(space.key, ONE_LOOK);
+      await expect(row(page, guide.title)).toBeVisible(ONE_LOOK);
+    });
     await expect(heading(page)).toHaveText("Stale pages");
     await expect(row(page, notes.title)).toHaveCount(0);
     await expect(row(page, fresh.title)).toHaveCount(0);
