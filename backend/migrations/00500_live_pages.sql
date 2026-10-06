@@ -71,6 +71,10 @@ ALTER TABLE page_version_editor FORCE  ROW LEVEL SECURITY;
 CREATE POLICY page_version_editor_tenant_isolation ON page_version_editor
     USING (org_id = current_org_id()) WITH CHECK (org_id = current_org_id());
 CREATE POLICY page_version_editor_admin_bypass ON page_version_editor TO stator_admin USING (true) WITH CHECK (true);
+-- Who saved what is the members' to read; a reader who is not signed in
+-- reads the page alone.
+CREATE POLICY page_version_editor_not_anonymous ON page_version_editor AS RESTRICTIVE FOR ALL TO stator_app
+    USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
 CREATE POLICY page_version_editor_viewers ON page_version_editor AS RESTRICTIVE FOR SELECT TO stator_app
     USING (perm_page_viewable(page_id, current_actor_id()));
 -- Only oneself, only into the open version, only as an editor of the page.
