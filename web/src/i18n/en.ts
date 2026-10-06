@@ -2504,6 +2504,7 @@ export const en = {
       "org.public_links_set": "Public links allowed or stopped",
       "space.permissions_copied": "Space permissions copied from another space",
       "page.mode_changed": "Page switched between drafts and live",
+      "space.example_created": "Example space created",
     } satisfies Record<AuditAction, string>,
     targetTypes: {
       user: "Person",

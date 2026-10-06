@@ -2572,6 +2572,7 @@ export const de: Messages = {
       "org.public_links_set": "Öffentliche Links erlaubt oder gestoppt",
       "space.permissions_copied": "Bereichsberechtigungen aus einem anderen Bereich kopiert",
       "page.mode_changed": "Seite zwischen Entwürfen und live umgestellt",
+      "space.example_created": "Beispielbereich angelegt",
     },
     targetTypes: {
       user: "Person",

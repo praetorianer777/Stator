@@ -297,6 +297,11 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)
 
+	exampleID := idOf(t, want(t, owner.post(t, "/api/v1/example-space", map[string]any{"language": "en"}), http.StatusCreated, "make the example space"), "space")
+	if data := once(audit.ActionExampleSpaceCreated, me, exampleID); !strings.Contains(data, `"language": "en"`) {
+		t.Errorf("the example's record reads %s", data)
+	}
+
 	_, hookAddress := hookBin(t)
 	hookID := idOf(t, want(t, owner.post(t, "/api/v1/webhooks", map[string]any{"name": "Audited", "url": hookAddress, "topics": []string{"*"}}), http.StatusCreated, "add a webhook"), "webhook")
 	if data := once(audit.ActionWebhookCreated, me, hookID); !strings.Contains(data, `"secret": "set"`) || strings.Contains(data, "/_hooks/") {

@@ -127,6 +127,8 @@ var notTools = map[string]string{
 	"GET /groups":                                                  whyAdmin,
 	"POST /spaces":                                                 whyAdmin,
 	"GET /space-templates":                                         whyAdmin,
+	"GET /example-space":                                           whyAdmin,
+	"POST /example-space":                                          whyAdmin,
 	"PATCH /spaces/{spaceKey}":                                     whyAdmin,
 	"GET /audit/facets":                                            whyAdmin,
 	"GET /audit/export":                                            whyAdmin,

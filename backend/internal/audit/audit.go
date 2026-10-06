@@ -34,8 +34,11 @@ const (
 	ActionSpaceCreated     = "space.created"
 	ActionSpaceUpdated     = "space.updated"
 	ActionSpaceDeleted     = "space.deleted"
-	ActionPagePurged       = "page.purged"
-	ActionTrashEmptied     = "trash.emptied"
+	// ActionExampleSpaceCreated is the space that explains Stator made, in
+	// place of space.created for it.
+	ActionExampleSpaceCreated = "space.example_created"
+	ActionPagePurged          = "page.purged"
+	ActionTrashEmptied        = "trash.emptied"
 	// Permissions: whom a global permission is granted to, a space's table,
 	// and a page's own restrictions.
 	ActionOrgPermissionSet    = "org.permission_set"
@@ -111,6 +114,7 @@ var Actions = []string{
 	ActionPageLinkCreated, ActionPageLinkRevoked, ActionOrgPublicLinksSet,
 	ActionSpacePermissionsCopied,
 	ActionPageModeChanged,
+	ActionExampleSpaceCreated,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

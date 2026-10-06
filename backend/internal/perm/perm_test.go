@@ -62,6 +62,9 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"every member creates a personal space", member(), CreatePersonalSpace, true},
 		{"a personal space takes use", Facts{Member: true, Role: auth.RoleMember}, CreatePersonalSpace, false},
 		{"a stranger creates no personal space", Facts{Global: []GlobalPermission{UseStator}}, CreatePersonalSpace, false},
+		{"admins create the example space", admin, CreateExampleSpace, true},
+		{"owners create the example space", owner, CreateExampleSpace, true},
+		{"a member granted createSpace makes no example space", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateExampleSpace, false},
 		{"an unknown action is refused", admin, Action("space.unknown"), false},
 	} {
 		if got := Decide(tt.facts, tt.action); got != tt.want {
@@ -159,7 +162,7 @@ func TestASaveMayNotLockItsSaverOut(t *testing.T) {
 }
 
 func TestRefusalsAreSentences(t *testing.T) {
-	for _, a := range []Action{CreateSpace, CreatePersonalSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, EditCalendars, CopyPermissionsFrom, Action("x")} {
+	for _, a := range []Action{CreateSpace, CreatePersonalSpace, CreateExampleSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, EditCalendars, CopyPermissionsFrom, Action("x")} {
 		err := error(&DeniedError{Action: a})
 		if !errors.Is(err, ErrDenied) {
 			t.Errorf("the refusal of %s does not wrap ErrDenied", a)
@@ -205,6 +208,7 @@ func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
 		{"an admin's token still purges in a space it reaches", admin, PurgeTrash, true},
 		{"an admin's token creates no space", admin, CreateSpace, false},
 		{"a creator's token creates no space", creator, CreateSpace, false},
+		{"an admin's token creates no example space", admin, CreateExampleSpace, false},
 		{"a member's token edits where the member may", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator}, Space: openSpace, SpacesOnly: true}, EditPages, true},
 		{"a space it does not reach comes as no facts at all", Facts{}, ViewSpace, false},
 	} {

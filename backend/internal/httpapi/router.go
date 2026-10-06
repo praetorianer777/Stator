@@ -317,6 +317,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/spaces", s.handleListSpaces)
 			// A new space is outside every space a limited token names.
 			r.With(requireWholeOrg).Post("/spaces", s.handleCreateSpace)
+			r.With(requireWholeOrg).Get("/example-space", s.handleGetExampleSpace)
+			r.With(requireWholeOrg).Post("/example-space", s.handleCreateExampleSpace)
 			r.Get("/spaces/{spaceKey}", s.handleGetSpace)
 			r.Patch("/spaces/{spaceKey}", s.handleUpdateSpace)
 			r.Delete("/spaces/{spaceKey}", s.handleDeleteSpace)
