@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
@@ -32,11 +33,7 @@ test.describe("the organization's hub", { tag: ["@auth"] }, () => {
     await expect(page.locator("[data-hub-current]")).toContainText("Front page");
 
     const bob = await pageAs("bob");
-    // Bob reads what alice chose, which a replica may not have yet.
-    await expect(async () => {
-      await bob.goto("/");
-      await expect(heading(bob)).toHaveText("Front page", { timeout: 2_000 });
-    }).toPass();
+    await openUntil(bob, "/", () => expect(heading(bob)).toHaveText("Front page", ONE_LOOK));
     await expect(bob).toHaveURL(new RegExp(`/p/${front.id}/front-page$`));
     await expect(everywhere(bob).getByRole("link", { name: "Hub" })).toBeVisible();
     await everywhere(bob).getByRole("link", { name: "Home" }).click();

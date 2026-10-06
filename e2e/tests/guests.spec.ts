@@ -2,6 +2,7 @@ import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { ME_PATH, expect, startSSO, submitKeycloak } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { expectAccessible } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { WEB_URL } from "../fixtures/stack";
@@ -63,7 +64,7 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
       carol = await signInAsCarol(browser, freshOrg.slug);
       const guest = carol.page;
       await expect(guest).toHaveURL(new RegExp(`/s/${key}$`));
-      await expect(guest.locator("main").getByRole("heading", { level: 1 })).toHaveText("Contractor work");
+      await openShowing(guest, `/s/${key}`, guest.locator("main").getByRole("heading", { level: 1, name: "Contractor work", exact: true }));
       const me = (await (await guest.request.get(ME_PATH)).json()) as { organization: { role: string; guestSpace: { key: string } } };
       expect(me.organization.role).toBe("guest");
       expect(me.organization.guestSpace.key).toBe(key);

@@ -2,6 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createSpace, uniqueKey } from "../fixtures/spaces";
@@ -28,17 +29,15 @@ async function twoSpaces(api: StatorApi, testInfo: TestInfo): Promise<{ near: st
   const stem = uniqueKey(testInfo).slice(0, 9);
   const near = `${stem}N`;
   const far = `${stem}F`;
-  await createSpace(api, near, `Near ${stem}`);
+  // The far one first: the replica replays in commit order, so once a token
+  // reads the near one, its refusal of the far one is not merely lag.
   await createSpace(api, far, `Far ${stem}`);
+  await createSpace(api, near, `Near ${stem}`);
   return { near, far };
 }
 
-/** Opens the tokens page once the spaces are there to pick. */
 async function openWith(page: Page, key: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(TOKENS_PATH);
-    await expect(chip(page, key)).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+  await openShowing(page, TOKENS_PATH, chip(page, key));
 }
 
 test.describe("tokens limited to spaces", { tag: ["@auth"] }, () => {

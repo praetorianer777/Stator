@@ -4,6 +4,7 @@ import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openEditor } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -12,14 +13,6 @@ const editorBox = (page: Page) => page.locator("#page-body");
 const shown = (page: Page) => page.locator("[data-doc]");
 
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
-
-/** Opens a page's editor until it holds the words given, which a replica may lag behind on. */
-async function openEditor(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(`${path}/edit`);
-    await expect(editorBox(page)).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 test.describe("excerpts", { tag: ["@auth"] }, () => {
   const made: string[] = [];

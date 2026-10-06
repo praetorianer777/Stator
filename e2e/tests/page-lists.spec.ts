@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -10,14 +11,6 @@ import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, typ
 const editorBox = (page: Page) => page.locator("#page-body");
 const shown = (page: Page) => page.locator("main [data-doc]");
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
-
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 async function label(api: StatorApi, pageId: string, name: string): Promise<void> {
   must(await api.POST("/pages/{pageID}/labels", { params: { path: { pageID: pageId } }, body: { name } }));
@@ -46,7 +39,7 @@ test.describe("page lists", { tag: ["@auth"] }, () => {
     const overview = await createPage(api, space.homePageId, "Overview", { type: "doc", content: [paragraph("Start here."), { type: "paragraph" }] });
     const path = `/s/${space.key}/p/${overview.id}/overview`;
 
-    await open(page, `${path}/edit`, "Start here.");
+    await openShowing(page, `${path}/edit`, "Start here.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/tagged");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -80,10 +73,9 @@ test.describe("page lists", { tag: ["@auth"] }, () => {
 
     // Somebody revises the guide elsewhere; the overview shows it without being edited.
     must(await api.PATCH("/pages/{pageID}", { params: { path: { pageID: guide.id } }, body: { title: "Install guide, revised", version: 1 } }));
-    await expect(async () => {
-      await page.reload();
-      await expect(latest.locator("[data-listed-page]").first()).toHaveAttribute("data-listed-page", "Install guide, revised", { timeout: 2_000 });
-    }).toPass();
+    await openUntil(page, path, () =>
+      expect(latest.locator("[data-listed-page]").first()).toHaveAttribute("data-listed-page", "Install guide, revised", ONE_LOOK),
+    );
     await byLabel.getByRole("link", { name: "Runbook" }).click();
     await expect(page).toHaveURL(new RegExp(`/p/${runbook.id}/`));
   });
@@ -103,7 +95,7 @@ test.describe("page lists", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${overview.id}/lists`, "Labelled one");
+      await openShowing(page, `/s/${space.key}/p/${overview.id}/lists`, "Labelled one");
       await expect(shown(page).locator('[data-page-list][data-state="empty"]')).toHaveCount(1);
       await page.screenshot({ path: testInfo.outputPath(`lists-${scheme}.png`), fullPage: true });
       await expectAccessible(page);

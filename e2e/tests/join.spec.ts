@@ -1,6 +1,7 @@
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { ME_PATH, authTest as test, expect, startSSO, submitKeycloak } from "../fixtures/auth";
+import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { expectAccessible } from "../fixtures/shell";
 import { uniqueName } from "../fixtures/seed";
 import { WEB_URL } from "../fixtures/stack";
@@ -15,17 +16,6 @@ const BOB = { username: "bob", password: "bob password", email: "bob@stator.test
 // member changes who decides his role and never the role itself, which keeps
 // every other spec that signs him in unaffected.
 const BOB_GROUP = "marketing";
-
-// Reads may come from a replica, and alice sees somebody else's sign-in only
-// once the replica has it, so her page reloads until it has.
-const REPLICA_CATCH_UP_MS = 10_000;
-const RECHECK_MS = 1_000;
-async function afterReplication(page: Page, check: () => Promise<void>) {
-  await expect(async () => {
-    await page.reload();
-    await check();
-  }).toPass({ timeout: REPLICA_CATCH_UP_MS, intervals: [RECHECK_MS] });
-}
 
 const accountItem = (page: Page, action: string) => page.locator(`[role="menu"] [data-action="${action}"]`);
 const member = (page: Page, email: string) => page.locator(`[data-member="${email}"]`);
@@ -105,8 +95,8 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     expect(me.status()).toBe(200);
     expect((await me.json()).organization.role).toBe("member");
 
-    await afterReplication(page, async () => {
-      await expect(member(page, CAROL.email).locator("[data-member-role]")).toHaveText("Member", { timeout: RECHECK_MS });
+    await openUntil(page, SSO_PATH, async () => {
+      await expect(member(page, CAROL.email).locator("[data-member-role]")).toHaveText("Member", ONE_LOOK);
     });
     await expect(member(page, CAROL.email).locator("[data-role-source]")).toHaveCount(0);
     await member(page, CAROL.email)
@@ -132,8 +122,8 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     const bob = await signInFresh(browser, BOB.username, BOB.password);
     await expect(bob.page).not.toHaveURL(/\/login/);
     await bob.context.close();
-    await afterReplication(page, async () => {
-      await expect(member(page, BOB.email).locator("[data-role-source]")).toHaveText("From identity provider", { timeout: RECHECK_MS });
+    await openUntil(page, SSO_PATH, async () => {
+      await expect(member(page, BOB.email).locator("[data-role-source]")).toHaveText("From identity provider", ONE_LOOK);
     });
     await expect(member(page, BOB.email).locator("[data-member-role]")).toHaveText("Member");
 
@@ -145,9 +135,9 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     // His next sign-in hands the role back to the administrators, as it was.
     const again = await signInFresh(browser, BOB.username, BOB.password);
     await again.context.close();
-    await afterReplication(page, async () => {
-      await expect(member(page, BOB.email).locator("[data-member-role]")).toHaveText("Member", { timeout: RECHECK_MS });
-      await expect(member(page, BOB.email).locator("[data-role-source]")).toHaveCount(0, { timeout: RECHECK_MS });
+    await openUntil(page, SSO_PATH, async () => {
+      await expect(member(page, BOB.email).locator("[data-member-role]")).toHaveText("Member", ONE_LOOK);
+      await expect(member(page, BOB.email).locator("[data-role-source]")).toHaveCount(0, ONE_LOOK);
     });
   });
 });

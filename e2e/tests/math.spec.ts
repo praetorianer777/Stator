@@ -3,6 +3,7 @@ import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openEditor, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -12,14 +13,6 @@ const shown = (page: Page) => page.locator("[data-doc]");
 const dialog = (page: Page) => page.getByRole("dialog", { name: "Formula" });
 
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
-
-/** Opens a page's editor until it holds the words given, which a replica may lag behind on. */
-async function openEditor(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(`${path}/edit`);
-    await expect(editorBox(page)).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 /** Writes a formula's source in the open dialog and saves it. */
 async function writeFormula(page: Page, latex: string): Promise<void> {
@@ -98,10 +91,7 @@ test.describe("math formulas", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await expect(async () => {
-        await page.goto(`/s/${space.key}/p/${notes.id}/notes`);
-        await expect(shown(page).locator(".katex-display")).toBeVisible({ timeout: 2_000 });
-      }).toPass();
+      await openShowing(page, `/s/${space.key}/p/${notes.id}/notes`, shown(page).locator(".katex-display"));
       await expect(shown(page).locator("[data-math-error]")).toContainText("\\frac{a");
       await expectAccessible(page);
     });

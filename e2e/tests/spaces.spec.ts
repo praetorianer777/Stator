@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
@@ -59,11 +60,7 @@ test.describe("spaces", { tag: ["@auth"] }, () => {
     await createSpace(api, key, uniqueName(testInfo, "Shared"));
     const bob = await pageAs("bob");
 
-    // Bob reads what alice wrote, which a replica may not have yet.
-    await expect(async () => {
-      await bob.goto("/spaces");
-      await expect(bob.locator(`[data-space-row="${key}"]`)).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openShowing(bob, "/spaces", bob.locator(`[data-space-row="${key}"]`));
     await expect(bob.locator('[data-action="new-space"]')).toHaveCount(0);
     await bob.goto(`/s/${key}/settings`);
     await expect(

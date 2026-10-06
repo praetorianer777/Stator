@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -11,14 +12,6 @@ const editorBox = (page: Page) => page.locator("#page-body");
 const shown = (page: Page) => page.locator("main [data-doc]");
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
 const csv = (body: string) => ({ name: "budget.csv", mimeType: "text/csv", buffer: Buffer.from(body) });
-
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 test.describe("files block", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -37,7 +30,7 @@ test.describe("files block", { tag: ["@auth"] }, () => {
     const plan = await createPage(api, space.homePageId, "Budget", { type: "doc", content: [paragraph("This year's numbers."), { type: "paragraph" }] });
     const path = `/s/${space.key}/p/${plan.id}/budget`;
 
-    await open(page, `${path}/edit`, "This year's numbers.");
+    await openShowing(page, `${path}/edit`, "This year's numbers.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/files");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -77,7 +70,7 @@ test.describe("files block", { tag: ["@auth"] }, () => {
         must(await api.POST("/pages/{pageID}/attachments", { params: { path: { pageID: target.id } }, body }));
       }
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${target.id}/files`, "notes.txt");
+      await openShowing(page, `/s/${space.key}/p/${target.id}/files`, "notes.txt");
       await shown(page).getByText("1 earlier version").click();
       await page.screenshot({ path: testInfo.outputPath(`files-${scheme}.png`), fullPage: true });
       await expectAccessible(page);

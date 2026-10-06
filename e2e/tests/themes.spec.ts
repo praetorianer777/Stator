@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { chooseTheme, createTheme, listThemes, themeSpec, uniqueName, updateTheme, uploadThemeAsset } from "../fixtures/seed";
 
 const MINECRAFT = resolve(dirname(fileURLToPath(import.meta.url)), "../../backend/internal/theme/testdata/minecraft.armature-theme.json");
@@ -23,19 +24,6 @@ const rootVar = (page: Page, name: string) => page.evaluate((n) => getComputedSt
 async function rowAction(page: Page, name: string, action: string) {
   await row(page, name).locator('[data-action="theme-menu"]').click();
   await page.locator(`[role="menu"] [data-action="${action}"]`).click();
-}
-
-// A person reads their own writes at once, the session pinning their reads to
-// them. Another person's write reaches a reader only once the replica has it,
-// so where one person looks at what another wrote, the page reloads until it
-// has arrived.
-const REPLICA_CATCH_UP_MS = 10_000;
-const RECHECK_MS = 1_000;
-async function afterReplication(page: Page, check: () => Promise<void>) {
-  await expect(async () => {
-    await page.reload();
-    await check();
-  }).toPass({ timeout: REPLICA_CATCH_UP_MS, intervals: [RECHECK_MS] });
 }
 
 const styleText = (page: Page) => customStyle(page).evaluate((el) => el.textContent ?? "");
@@ -229,15 +217,14 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await expect(row(page, name)).toContainText("0 people");
 
     const bob = await pageAs("bob");
-    await bob.goto(THEMES_PATH);
-    await afterReplication(bob, async () => {
+    await openUntil(bob, THEMES_PATH, async () => {
       await bob.locator('[data-themes-view="shared"]').click();
-      await expect(row(bob, name)).toBeVisible({ timeout: RECHECK_MS });
+      await expect(row(bob, name)).toBeVisible(ONE_LOOK);
     });
     await rowAction(bob, name, "use-theme");
     await expect(bob.locator("[data-themes-notice]")).toHaveText(`Now using ${name}.`);
 
-    await afterReplication(page, () => expect(row(page, name)).toContainText("1 person", { timeout: RECHECK_MS }));
+    await openUntil(page, THEMES_PATH, () => expect(row(page, name)).toContainText("1 person", ONE_LOOK));
   });
 
   test("the organisation default reaches a member without a choice, who can go back, and unsharing removes it", async ({ page, api, pageAs }, testInfo) => {
@@ -250,8 +237,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await expect(row(page, name)).toHaveAttribute("data-theme-default", "true");
 
     const bob = await pageAs("bob");
-    await bob.goto(THEMES_PATH);
-    await afterReplication(bob, () => expect(bob.getByText(`You are using ${name}, the organization's default.`)).toBeVisible({ timeout: RECHECK_MS }));
+    await openShowing(bob, THEMES_PATH, bob.getByText(`You are using ${name}, the organization's default.`));
     await expect(customStyle(bob)).toBeAttached();
 
     await bob.locator('[data-action="built-in-theme"]').click();
@@ -261,7 +247,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await rowAction(page, name, "share-theme");
     await expect(page.locator("[data-themes-notice]")).toHaveText(`${name} is yours alone again.`);
     await expect(row(page, name)).toHaveAttribute("data-theme-default", "false");
-    await afterReplication(bob, () => expect(bob.getByText("You are using the built-in theme.")).toBeVisible({ timeout: RECHECK_MS }));
+    await openShowing(bob, THEMES_PATH, bob.getByText("You are using the built-in theme."));
   });
 
   test("deleting a theme in use sends its users back to the built-in theme", async ({ page, api, apiAs, pageAs }, testInfo) => {
@@ -278,8 +264,10 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await expect(page.locator("[data-themes-notice]")).toContainText(name);
     await expect(row(page, name)).toHaveCount(0);
 
-    await bob.goto(THEMES_PATH);
-    await afterReplication(bob, () => expect(bob.getByText("You are using the built-in theme.")).toBeVisible({ timeout: RECHECK_MS }));
-    await expect(customStyle(bob)).toHaveCount(0);
+    // The notice and the style come from requests of their own, either of which a replica may answer.
+    await openUntil(bob, THEMES_PATH, async () => {
+      await expect(bob.getByText("You are using the built-in theme.")).toBeVisible(ONE_LOOK);
+      await expect(customStyle(bob)).toHaveCount(0, ONE_LOOK);
+    });
   });
 });

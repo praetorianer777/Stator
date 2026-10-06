@@ -4,6 +4,7 @@ import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openEditor, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -12,14 +13,6 @@ const editorBox = (page: Page) => page.locator("#page-body");
 const shown = (page: Page) => page.locator("[data-doc]");
 
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
-
-/** Opens a page's editor until it holds the words given, which a replica may lag behind on. */
-async function openEditor(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(`${path}/edit`);
-    await expect(editorBox(page)).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 test.describe("diagrams", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -87,10 +80,9 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
       alerted = true;
       await dialog.dismiss();
     });
-    await expect(async () => {
-      await page.goto(`/s/${space.key}/p/${notes.id}/hostile`);
-      await expect(shown(page).locator("[data-diagram-svg] > svg")).toContainText("Plain", { timeout: 2_000 });
-    }).toPass();
+    await openUntil(page, `/s/${space.key}/p/${notes.id}/hostile`, () =>
+      expect(shown(page).locator("[data-diagram-svg] > svg")).toContainText("Plain", ONE_LOOK),
+    );
     // A click on a node does nothing in strict mode, so its anchor has no address.
     await expect(
       shown(page).locator("[data-diagram-svg] img, [data-diagram-svg] foreignObject, [data-diagram-svg] [href], [data-diagram-svg] [onerror]"),
@@ -109,10 +101,9 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await expect(async () => {
-        await page.goto(`/s/${space.key}/p/${notes.id}/notes`);
-        await expect(shown(page).locator("[data-diagram-svg] > svg")).toContainText("Save the page", { timeout: 2_000 });
-      }).toPass();
+      await openUntil(page, `/s/${space.key}/p/${notes.id}/notes`, () =>
+        expect(shown(page).locator("[data-diagram-svg] > svg")).toContainText("Save the page", ONE_LOOK),
+      );
       await expect(shown(page).locator("[data-diagram-error]")).toContainText("This diagram cannot be drawn");
       await expectAccessible(page);
     });

@@ -4,9 +4,10 @@ import { expect } from "../fixtures/auth";
 import { withDatabase } from "../fixtures/db";
 import { mailsTo, mailText } from "../fixtures/mail";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 const BOB = "Bob Builder";
 const BOB_EMAIL = "bob@stator.test";
@@ -15,7 +16,6 @@ const DELIVERY_MS = 30_000;
 // How long a notice that should not come is given to come anyway.
 const QUIET_MS = 3_000;
 
-const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const shareButton = (page: Page) => page.locator('[data-action="share-page"]');
 const dialog = (page: Page) => page.locator("[data-share-dialog]");
 const picker = (page: Page) => dialog(page).getByRole("combobox", { name: "Send to" });
@@ -24,14 +24,6 @@ const badge = (page: Page) => page.locator("[data-unread-badge]");
 const panel = (page: Page) => page.locator("[data-notification-panel]");
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
-
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
 
 /** Types into the picker until the option shows, and picks it. */
 async function pick(page: Page, typed: string, name: string) {
@@ -77,7 +69,7 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     await pick(page, "bob", BOB);
     await expect(async () => {
       await picker(page).fill(groupName.slice(0, -3));
-      await expect(dialog(page).getByRole("option", { name: new RegExp(`^${groupName}`) })).toBeVisible({ timeout: 1_000 });
+      await expect(dialog(page).getByRole("option", { name: new RegExp(`^${groupName}`) })).toBeVisible(ONE_LOOK);
     }).toPass();
     await dialog(page)
       .getByRole("option", { name: new RegExp(`^${groupName}`) })
@@ -95,7 +87,7 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     await openPage(bob, space.key, runbook);
     await expect(async () => {
       await bob.reload();
-      await expect(badge(bob)).toHaveText("1", { timeout: 2_000 });
+      await expect(badge(bob)).toHaveText("1", ONE_LOOK);
     }).toPass({ timeout: DELIVERY_MS });
     await bell(bob).click();
     const told = panel(bob).locator('[data-notification="shared"]');

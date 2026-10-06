@@ -3,6 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -14,14 +15,6 @@ const properties = (rows: [string, string][]) => ({
   type: "properties",
   content: rows.map(([key, value]) => ({ type: "propertyRow", attrs: { key }, content: value ? [{ type: "text", text: value }] : undefined })),
 });
-
-/** Opens a page until it holds the words given, which a replica may lag behind on. */
-async function open(page: Page, path: string, words: string): Promise<void> {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(page.locator("main")).toContainText(words, { timeout: 2_000 });
-  }).toPass();
-}
 
 async function label(api: StatorApi, pageId: string, name: string): Promise<void> {
   must(await api.POST("/pages/{pageID}/labels", { params: { path: { pageID: pageId } }, body: { name } }));
@@ -56,7 +49,7 @@ test.describe("page properties", { tag: ["@auth"] }, () => {
     const decision = await createPage(api, space.homePageId, "Drop the cache", { type: "doc", content: [paragraph("Why we drop it."), { type: "paragraph" }] });
     await label(api, decision.id, tag);
 
-    await open(page, `/s/${space.key}/p/${decision.id}/drop-the-cache/edit`, "Why we drop it.");
+    await openShowing(page, `/s/${space.key}/p/${decision.id}/drop-the-cache/edit`, "Why we drop it.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/properties");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -84,7 +77,7 @@ test.describe("page properties", { tag: ["@auth"] }, () => {
       type: "doc",
       content: [paragraph("All our decisions."), { type: "paragraph" }],
     });
-    await open(page, `/s/${space.key}/p/${register.id}/decision-register/edit`, "All our decisions.");
+    await openShowing(page, `/s/${space.key}/p/${register.id}/decision-register/edit`, "All our decisions.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/report");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -130,13 +123,13 @@ test.describe("page properties", { tag: ["@auth"] }, () => {
         content: [{ type: "propertiesReport", attrs: { labels: [tag], space: null, columns: [] } }],
       });
       await startInScheme(page, scheme);
-      await open(page, `/s/${space.key}/p/${register.id}/releases`, "Releases");
+      await openShowing(page, `/s/${space.key}/p/${register.id}/releases`, "Releases");
       await expect(shown(page).locator("[data-properties-report]")).toHaveAttribute("data-state", "report");
       await expectAccessible(page);
-      await open(page, `/s/${space.key}/p/${one.id}/release-1`, "Shipped");
+      await openShowing(page, `/s/${space.key}/p/${one.id}/release-1`, "Shipped");
       await page.screenshot({ path: testInfo.outputPath(`properties-${scheme}.png`), fullPage: true });
       await expectAccessible(page);
-      await open(page, `/s/${space.key}/p/${one.id}/release-1/edit`, "Shipped");
+      await openShowing(page, `/s/${space.key}/p/${one.id}/release-1/edit`, "Shipped");
       await expect(editorBox(page).getByRole("textbox", { name: "Property name" })).toHaveCount(3);
       await page.screenshot({ path: testInfo.outputPath(`properties-edit-${scheme}.png`), fullPage: true });
       await expectAccessible(page);

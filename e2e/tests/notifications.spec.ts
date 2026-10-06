@@ -4,9 +4,10 @@ import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { mailsTo, mailText } from "../fixtures/mail";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 const BOB_EMAIL = "bob@stator.test";
 // Delivery goes through the outbox and the worker, and mail through Mailpit.
@@ -22,14 +23,6 @@ const panel = (page: Page) => page.locator("[data-notification-panel]");
 
 const doc = (text: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
-
 /** Publishes a new version through the API, as the editor does, telling the watchers. */
 async function publishWithNotice(api: StatorApi, id: string, text: string): Promise<void> {
   const params = { path: { pageID: id } };
@@ -42,7 +35,7 @@ async function publishWithNotice(api: StatorApi, id: string, text: string): Prom
 async function expectBadge(page: Page, count: number) {
   await expect(async () => {
     await page.reload();
-    await expect(badge(page)).toHaveText(String(count), { timeout: 2_000 });
+    await expect(badge(page)).toHaveText(String(count), ONE_LOOK);
   }).toPass({ timeout: DELIVERY_MS });
 }
 
