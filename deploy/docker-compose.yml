@@ -337,6 +337,8 @@ services:
       STATOR_VERIFICATION_CHECK_INTERVAL: 10s
       # So is a task whose day a test sets to today.
       STATOR_TASK_DUE_CHECK_INTERVAL: 10s
+      # A publish a test schedules a few seconds ahead goes out within them.
+      STATOR_SCHEDULE_CHECK_INTERVAL: 1s
     healthcheck:
       # The worker serves nothing but its metrics, so they are its sign of life.
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/metrics"]

@@ -33,10 +33,13 @@ const (
 	// TopicPageAmended is a save into the open version of a live page, which
 	// tells only whom the save newly mentioned or assigned.
 	TopicPageAmended = "page.amended"
+	// TopicScheduleFailed is written by the worker when a scheduled publish
+	// was refused at its time.
+	TopicScheduleFailed = "page.schedule_failed"
 )
 
 // Topics lists every topic the product emits.
-var Topics = []string{TopicPagePublished, TopicPageAmended, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared, TopicTaskDue}
+var Topics = []string{TopicPagePublished, TopicPageAmended, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared, TopicTaskDue, TopicScheduleFailed}
 
 // Event is one committed domain event.
 type Event struct {
@@ -152,6 +155,15 @@ type TaskDue struct {
 	TaskID     uuid.UUID `json:"taskId"`
 	AssigneeID uuid.UUID `json:"assigneeId"`
 	DueOn      string    `json:"dueOn"`
+}
+
+// ScheduleFailed is a scheduled publish the worker could not make, for its
+// author; the time lets a schedule set again since tell nobody.
+type ScheduleFailed struct {
+	PageID    uuid.UUID `json:"pageId"`
+	AuthorID  uuid.UUID `json:"authorId"`
+	PublishAt time.Time `json:"publishAt"`
+	Failure   string    `json:"failure"`
 }
 
 // Emit writes an event in the caller's transaction, the one that makes the

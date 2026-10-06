@@ -814,6 +814,21 @@ and the versioning [Semantic Versioning](https://semver.org/).
   whose they are first and goes ahead only when confirmed; the switch goes
   to the audit log. The database holds a live page to no drafts and lets
   only its open version be amended, only by the page's editors.
+- Scheduled publishing (#71). The publish dialog offers "At a set time",
+  in the person's own time zone (`PUT /pages/{id}/schedule`): at that time
+  the worker publishes the author's draft as it then stands, in their name,
+  with the comment and notice they chose, and the watchers hear of it as of
+  any publish. A time missed while the worker was down goes out once when
+  it returns, and any number of workers publish it exactly once. A page
+  holds one schedule, shown to its author and editors, who may call it off
+  (`DELETE /pages/{id}/schedule`); discarding or publishing the draft, or
+  making the page live, takes it too. A publish refused at its time, since
+  the author lost edit, the page was archived or deleted, or somebody
+  published after the draft began, is kept with why and its author is told
+  once. The worker looks every `STATOR_SCHEDULE_CHECK_INTERVAL` (30
+  seconds; `publishing.scheduleCheckInterval` in the chart). The database
+  holds a schedule to its author's own draft, set by an editor for a time
+  ahead, and lets only the worker mark it failed.
 
 ### Changed
 

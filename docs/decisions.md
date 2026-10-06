@@ -3,6 +3,69 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-06: A scheduled publish is the author's own publish, made by the worker at its time
+
+Scheduled publishing (#71) sets a time at which an editor's draft of a page
+is published (`PUT /pages/{id}/schedule`, from the publish dialog's "At a
+set time"). The worker then does what the author's own publish would do at
+that moment, acting for them through the app role: the draft as it stands
+then goes out, not a copy taken when it was scheduled, so the author keeps
+editing until the time; the version carries their name and the comment and
+notice they chose; the watchers, the newly mentioned, webhooks and
+Armature's links hear of it as of any publish. A page nobody edited yet
+gets a draft of itself when its first publish is scheduled.
+
+A schedule is a row of `page_schedule` hanging off the draft it publishes,
+by a foreign key that cascades. Whatever takes the draft takes the
+schedule: publishing it by hand, discarding it, the page going live, the
+page purged, the author leaving the organization. One per page, by its key:
+two drafts scheduled over each other would leave the second to fail on the
+first, and editors should see one plan. While one waits, scheduling is
+refused with `schedule_taken` naming its author; any editor may call it off
+(`DELETE /pages/{id}/schedule`), as any editor may publish over it, and the
+draft stays. Moving it is its author's, by setting it again. Calling off
+somebody else's schedule is not audited, as no page edit is.
+
+The page answers its schedule to its author and its editors only; a reader
+learns of a publish when it happens. The page shows a note: when the
+caller's draft goes out, with Change and Cancel, or whose publish is
+scheduled for when. Times are instants, stored as `timestamptz`; the
+browser sends the time the person chose in their zone with its offset, and
+shows it back in their zone, naming it. A time must be ahead and within
+`page.MaxScheduleAhead`, a year.
+
+When the time comes and the page refuses the publish, nothing is published
+and the schedule stays, marked with why (`gone`, `forbidden`, `archived`,
+`conflict`): its author lost edit, the page was archived, trashed or is no
+longer theirs to read, or somebody published after the draft began. The
+author is told once, with the notification kind `failed`, and the note says
+why to them and to the editors. Setting it again clears the mark; an
+editor may schedule their own over a failed one. Since publishing over
+another publish is the conflict a person resolves by comparing, the worker
+does not publish over it.
+
+The database holds the rules a request could skip. As `stator_app`: a
+schedule is inserted only for one's own draft (the key reaches the draft),
+only by an editor of the page, only for a time ahead, never marked failed;
+it is moved only by its author while an editor, read by its author and the
+page's editors, called off by either. Only the worker, as the admin role,
+records a failure. The integration suite tries each of these through SQL.
+
+The worker's part, `page.ScheduleWatch`, looks every
+`STATOR_SCHEDULE_CHECK_INTERVAL` (30 seconds; a second in the compose
+stack) for schedules due across organizations, as the verification watch
+does, and publishes each in a transaction acting for its author that first
+takes the schedule's row with `FOR UPDATE SKIP LOCKED`. The publish deletes
+the draft and with it the schedule in that same transaction, so any number
+of workers, on any number of replicas, publish it exactly once: a second
+worker skips the locked row, or finds it gone once the first commits. The
+row's update policy names its author alone, so the lock is taken even for
+an author who lost edit, whose publish is then refused and recorded. A
+refusal rolls the publish back and records the failure in a transaction of
+its own, once however many workers were refused. Due means
+`publish_at <= now()`, so a time that passed while no worker ran goes out
+when one returns, once, late rather than never.
+
 ## 2026-10-06: A live page is its open version, amended by every save for ten minutes
 
 Live pages (#70) are a mode of the page, `page.mode`, draft or live, not a

@@ -6,7 +6,17 @@ import { useMe } from "@/api/auth";
 import { useMentionSource } from "@/api/mentions";
 import { pageQuery, usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
-import { useDiscardDraft, useDraft, usePublish, useSaveDraft, useSaveLive, type Draft, type PublishOptions } from "@/api/versions";
+import {
+  useDiscardDraft,
+  useDraft,
+  usePublish,
+  useSaveDraft,
+  useSaveLive,
+  useSchedulePublish,
+  type Draft,
+  type PublishOptions,
+  type ScheduleOptions,
+} from "@/api/versions";
 import { Button, ErrorBanner, Field, PageHeader, Skeleton, Tag, cx } from "@/components/ui";
 import { useEditorAttachments } from "@/features/attachments/hooks";
 import { ArmatureIssuesProvider } from "@/features/armature/IssueChip";
@@ -26,6 +36,7 @@ import { pageSlug } from "@/lib/slug";
 import { pageCrumbs } from "./PageScreen";
 import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { PublishDialog } from "./PublishDialog";
+import { scheduleTimeFormat } from "./schedule";
 
 /**
  * Edits a page, together with everybody else editing it when the shared
@@ -104,6 +115,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   const liveMode = page.mode === "live";
   const discard = useDiscardDraft(page.id);
   const publish = usePublish(page.id);
+  const scheduling = useSchedulePublish(page.id);
   const doc = together?.snapshot.doc ?? null;
   const live = together?.snapshot.status === "live";
   const stopped = together?.snapshot.stopped ?? null;
@@ -287,6 +299,24 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
     else setDialog(false);
   }
 
+  // What goes out at the time is the draft as it stands then, so it is saved
+  // first and the editor may be opened again until then.
+  async function onSchedule(options: ScheduleOptions) {
+    setConflict(null);
+    if (together) dirty.current = true;
+    if (!(await flush())) {
+      setDialog(false);
+      return;
+    }
+    scheduling.mutate(options, {
+      onSuccess: () => {
+        setDialog(false);
+        void view(page);
+      },
+      onError: () => setDialog(false),
+    });
+  }
+
   // Taking the other publish as the base is what lets the draft go over it.
   async function keepAndPublish() {
     if (!conflict) return;
@@ -321,7 +351,11 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
     untitled: t.draft.titleNeeded,
   }[state];
 
-  const error = publish.error && !(publish.error instanceof ApiError && publish.error.code === "publish_conflict") ? publish.error : discard.error;
+  const error =
+    (publish.error && !(publish.error instanceof ApiError && publish.error.code === "publish_conflict") ? publish.error : null) ??
+    scheduling.error ??
+    discard.error;
+  const mySchedule = page.schedule?.mine ? page.schedule : null;
 
   return (
     <form
@@ -341,6 +375,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
         meta={
           <span className="inline-flex flex-wrap items-center gap-3">
             {liveMode && <Tag data-live-badge="">{t.live.badge}</Tag>}
+            {mySchedule && !mySchedule.failure && <Tag data-schedule-tag="">{t.schedule.tag(scheduleTimeFormat.format(new Date(mySchedule.publishAt)))}</Tag>}
             {together && <Presence awareness={together.snapshot.awareness} selfId={together.user.id} status={together.snapshot.status} />}
             <span role="status" data-draft-status={state}>
               {status}
@@ -362,7 +397,13 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
               <Button type="button" variant="secondary" onClick={() => void view(page)} data-action="close-editor">
                 {t.draft.close}
               </Button>
-              <Button type="submit" form={PAGE_FORM_ID} disabled={!canPublish || stopped !== null} loading={publish.isPending} data-action="publish">
+              <Button
+                type="submit"
+                form={PAGE_FORM_ID}
+                disabled={!canPublish || stopped !== null}
+                loading={publish.isPending || scheduling.isPending}
+                data-action="publish"
+              >
                 {t.draft.publish}
               </Button>
             </>
@@ -442,7 +483,16 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
           )}
         </ArmatureIssuesProvider>
       </DocPageContext>
-      {dialog && <PublishDialog title={title} busy={publish.isPending} onClose={() => setDialog(false)} onPublish={(options) => void onPublish(options)} />}
+      {dialog && (
+        <PublishDialog
+          title={title}
+          busy={publish.isPending || scheduling.isPending}
+          schedule={mySchedule}
+          onClose={() => setDialog(false)}
+          onPublish={(options) => void onPublish(options)}
+          onSchedule={(options) => void onSchedule(options)}
+        />
+      )}
     </form>
   );
 }

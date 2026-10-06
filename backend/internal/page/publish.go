@@ -226,42 +226,52 @@ func (s *Service) Publish(ctx context.Context, actor perm.Actor, id uuid.UUID, i
 		version *VersionEntry
 	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		p, _, err := load(ctx, tx, actor, id, true)
-		if err != nil {
-			return err
-		}
-		if err := p.must(perm.EditPages); err != nil {
-			return err
-		}
-		if p.Kind == KindFolder {
-			return ErrFolder
-		}
-		if p.Mode == ModeLive {
-			return ErrLivePage
-		}
-		draft, err := draftOf(ctx, tx, actor, id, true)
-		if err != nil {
-			return err
-		}
-		r := release{title: p.Title, body: p.Body, comment: comment, notify: in.NotifyWatchers}
-		switch {
-		case draft != nil && draft.BaseVersion != p.Version:
-			return ErrPublishConflict
-		case draft != nil:
-			r.title, r.body = draft.Title, draft.Body
-		case !p.Unpublished:
-			return ErrNoDraft
-		}
-		if version, err = publish(ctx, tx, actor, p, r); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `DELETE FROM page_draft WHERE page_id = $1 AND user_id = $2`, id, actor.UserID); err != nil {
-			return err
-		}
-		out, _, err = load(ctx, tx, actor, id, false)
+		var err error
+		out, version, err = publishDraft(ctx, tx, actor, id, comment, in.NotifyWatchers)
 		return err
 	})
 	return out, version, lsn, err
+}
+
+// publishDraft makes the actor's draft the page's next version, or, for a
+// page never published, the content it was made with when there is no draft.
+func publishDraft(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, comment string, notify bool) (*Page, *VersionEntry, error) {
+	p, _, err := load(ctx, tx, actor, id, true)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := p.must(perm.EditPages); err != nil {
+		return nil, nil, err
+	}
+	if p.Kind == KindFolder {
+		return nil, nil, ErrFolder
+	}
+	if p.Mode == ModeLive {
+		return nil, nil, ErrLivePage
+	}
+	draft, err := draftOf(ctx, tx, actor, id, true)
+	if err != nil {
+		return nil, nil, err
+	}
+	r := release{title: p.Title, body: p.Body, comment: comment, notify: notify}
+	switch {
+	case draft != nil && draft.BaseVersion != p.Version:
+		return nil, nil, ErrPublishConflict
+	case draft != nil:
+		r.title, r.body = draft.Title, draft.Body
+	case !p.Unpublished:
+		return nil, nil, ErrNoDraft
+	}
+	version, err := publish(ctx, tx, actor, p, r)
+	if err != nil {
+		return nil, nil, err
+	}
+	// The draft takes its schedule with it, whoever publishes it.
+	if _, err := tx.Exec(ctx, `DELETE FROM page_draft WHERE page_id = $1 AND user_id = $2`, id, actor.UserID); err != nil {
+		return nil, nil, err
+	}
+	out, _, err := load(ctx, tx, actor, id, false)
+	return out, version, err
 }
 
 // Versions lists a page's published versions, the latest first, and how

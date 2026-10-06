@@ -1,7 +1,8 @@
 // Command worker runs everything that happens outside a request: the outbox
 // with the notifications it fans out and the page links it syncs to Armature,
 // the notifications' digests, the file reaper, the audit log's retention,
-// the watch on page verifications that run out, and the outbound webhooks.
+// the watch on page verifications that run out, the publishes scheduled for a
+// time, and the outbound webhooks.
 package main
 
 import (
@@ -123,6 +124,7 @@ func run() error {
 	go events.NewWorker(cluster, handlers, log).Run(ctx)
 	go page.NewLapseWatch(cluster, log, cfg.VerificationCheck).Run(ctx)
 	go task.NewDueWatch(cluster, log, cfg.TaskDueCheck).Run(ctx)
+	go page.NewScheduleWatch(cluster, log, cfg.ScheduleCheck).Run(ctx)
 	if mailer != nil {
 		go notify.NewDigester(cluster, mailer, cfg.AppBaseURL, log).Run(ctx)
 	}

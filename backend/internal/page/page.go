@@ -108,6 +108,9 @@ type Page struct {
 	Unpublished bool `json:"unpublished"`
 	// Draft is the caller's own unpublished edit of the page, if any.
 	Draft *DraftRef `json:"draft"`
+	// Schedule is the publish set for a time, null when there is none or the
+	// caller is neither its author nor an editor of the page.
+	Schedule *Schedule `json:"schedule"`
 	// Restricted says whether a view or edit restriction on the page or
 	// above it narrows who may do so.
 	Restricted Restricted `json:"restricted"`

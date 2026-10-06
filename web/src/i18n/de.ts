@@ -1238,6 +1238,31 @@ export const de: Messages = {
     compareConflict: (latest: number) => `Mit Version ${latest} vergleichen`,
     keepAndPublish: "Meinen Entwurf behalten und veröffentlichen",
   },
+  schedule: {
+    when: "Wann",
+    now: "Jetzt",
+    later: "Zu einer festen Zeit",
+    at: "Veröffentlichen am",
+    atHint: (zone: string) => `In Ihrer Zeitzone, ${zone}. Ihr Entwurf geht so hinaus, wie er dann ist; Sie können ihn also bis dahin weiter bearbeiten.`,
+    timeNeeded: "Wählen Sie eine Zeit in der Zukunft, oder veröffentlichen Sie jetzt.",
+    timeTooFar: (days: number) => `Wählen Sie eine Zeit innerhalb von ${days} Tagen ab jetzt.`,
+    confirm: "Planen",
+    tag: (when: string) => `Erscheint ${when}`,
+    mine: (when: string) => `Ihr Entwurf wird am ${when} veröffentlicht. Bis dahin können Sie ihn weiter bearbeiten.`,
+    theirs: (who: string, when: string) => `${who || "Jemand"} hat einen Entwurf dieser Seite zur Veröffentlichung am ${when} geplant.`,
+    failedMine: (when: string, why: string) => `Ihr Entwurf sollte am ${when} veröffentlicht werden, ging aber nicht hinaus: ${why}`,
+    failedTheirs: (who: string, when: string, why: string) => `Der Entwurf, den ${who || "jemand"} für den ${when} geplant hat, ging nicht hinaus: ${why}`,
+    failures: {
+      gone: "Die Seite wurde gelöscht oder ist keine mehr, die Sie lesen dürfen. Stellen Sie sie aus dem Papierkorb wieder her, um sie erneut zu planen.",
+      forbidden: "Sie dürfen die Seite nicht mehr bearbeiten. Bitten Sie eine Administration des Bereichs um Bearbeitungsrechte.",
+      archived: "Die Seite ist archiviert. Bitten Sie eine Administration des Bereichs, sie aus dem Archiv zu holen, und planen Sie sie dann erneut.",
+      conflict: "Jemand hat die Seite veröffentlicht, nachdem der Entwurf begonnen wurde. Öffnen Sie den Editor, um zu vergleichen und erneut zu planen.",
+    },
+    change: "Ändern",
+    editAgain: "Bearbeiten und erneut planen",
+    cancel: "Planung aufheben",
+    confirmCancel: "Diese geplante Veröffentlichung aufheben? Der Entwurf bleibt.",
+  },
   collab: {
     editingNow: (names: string) => `Bearbeiten gerade: ${names}`,
     more: (n: number) => `+${n}`,
@@ -2270,6 +2295,8 @@ export const de: Messages = {
           return `${who} hat ${title} angelegt`;
         case "expired":
           return `Die Bestätigung von ${title} ist abgelaufen. Prüfen Sie die Seite und bestätigen Sie sie erneut.`;
+        case "failed":
+          return `Ihre geplante Veröffentlichung von ${title} ging nicht hinaus. Öffnen Sie die Seite, um zu sehen, warum.`;
         default:
           return `${who} hat ${title} geändert`;
       }
@@ -2291,7 +2318,8 @@ export const de: Messages = {
       published: "Eine Seite, die Sie beobachten, wird mit Benachrichtigung veröffentlicht",
       created: "Unter einer Seite oder einem Bereich, die Sie beobachten, wird erstmals eine Seite veröffentlicht",
       expired: "Die Bestätigung einer Seite, die Ihnen gehört, läuft ab",
-    } as Record<"assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired", string>,
+      failed: "Eine von Ihnen geplante Veröffentlichung kann nicht hinausgehen",
+    } as Record<"assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired" | "failed", string>,
     inAppFor: (kind: string) => `In der App: ${kind}`,
     emailFor: (kind: string) => `Per E-Mail: ${kind}`,
     digest: "Wann E-Mails verschickt werden",

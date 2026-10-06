@@ -133,8 +133,8 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
 - the caller's own session, settings, tokens, themes and Armature account;
 - what reaches other people or a page's standing: shares, reactions,
   watches, stars, owners and verification;
-- moving, copying, restoring and publishing drafts, which a person does in
-  the tree, the trash or the history;
+- moving, copying, restoring, publishing and scheduling drafts, which a
+  person does in the tree, the trash, the history or the editor;
 - inline threads, rewriting and resolving comments, file uploads and
   downloads, and the browser's furniture (typeahead, badges, pickers,
   drafts, a live page's saves and the choice between drafts and live);

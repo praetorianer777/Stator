@@ -40,6 +40,7 @@ import { PageLink } from "./PageLink";
 import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { PlaceDialog } from "./PlaceDialog";
 import { RenameFolderDialog } from "./RenameFolderDialog";
+import { ScheduleNote } from "./ScheduleNote";
 
 const updatedAt = localDateFormat({ dateStyle: "medium" });
 
@@ -336,7 +337,8 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
           {t.page.unpublishedNote}
         </p>
       )}
-      {page.draft && page.can.edit && (
+      <ScheduleNote page={page} onEdit={edit} />
+      {page.draft && page.can.edit && !page.schedule?.mine && (
         <div
           className="mb-4 flex flex-wrap items-center gap-3 rounded-control border border-border bg-surface-raised px-3 py-2 text-sm text-ink"
           data-draft-note=""
