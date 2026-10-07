@@ -9,6 +9,7 @@ import (
 )
 
 // The example space (#288): one per organization, made by its administrators.
+// The worker makes it (#306), and the page follows the job until it is done.
 
 type exampleSpaceRequest struct {
 	// Language is en or de; empty takes the caller's own, else English.
@@ -16,25 +17,33 @@ type exampleSpaceRequest struct {
 }
 
 type exampleSpaceResponse struct {
-	Space space.Space `json:"space"`
-	// Created says this call made it; false is the one made before.
-	Created bool `json:"created"`
-}
-
-func (s *Server) exampleMaker() *example.Maker {
-	return &example.Maker{
-		Spaces: s.Spaces, Pages: s.Pages, Labels: s.Labels, Calendars: s.Calendars,
-		Comments: s.Comments, Reactions: s.Reactions, Attachments: s.Attachments, Armature: s.Armature,
-	}
+	// Space is the example once it is made; null while there is none, and
+	// while it is being made.
+	Space *space.Space `json:"space"`
+	// Job is the latest making of it, followed while queued or running;
+	// null when nobody asked for one, or the example exists already.
+	Job *example.Job `json:"job"`
 }
 
 func (s *Server) handleGetExampleSpace(w http.ResponseWriter, r *http.Request) {
-	found, err := s.Spaces.Example(r.Context(), actorFrom(r))
+	actor := actorFrom(r)
+	job, err := s.ExampleJobs.Latest(r.Context(), actor)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"space": found})
+	out := exampleSpaceResponse{Job: job}
+	if job == nil || !job.State.Open() {
+		if out.Space, err = s.Spaces.Example(r.Context(), actor); err != nil {
+			respondError(w, r, err)
+			return
+		}
+	}
+	// What the worker wrote is read next, from wherever the caller reads.
+	if job != nil && job.State == example.StateDone {
+		noteWrite(r.Context(), job.Written)
+	}
+	respondJSON(w, r, http.StatusOK, out)
 }
 
 func (s *Server) handleCreateExampleSpace(w http.ResponseWriter, r *http.Request) {
@@ -49,15 +58,21 @@ func (s *Server) handleCreateExampleSpace(w http.ResponseWriter, r *http.Request
 		respondError(w, r, ErrValidation(map[string]string{"language": "The example space is written in English (en) and German (de). Choose one of them."}))
 		return
 	}
-	made, created, lsn, err := s.exampleMaker().Make(r.Context(), actorFrom(r), example.Person{ID: p.UserID, Name: p.Name}, lang)
+	actor := actorFrom(r)
+	job, lsn, err := s.ExampleJobs.Queue(r.Context(), actor, lang)
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	status := http.StatusOK
-	if created {
-		status = http.StatusCreated
+	if job != nil {
+		respondJSON(w, r, http.StatusAccepted, exampleSpaceResponse{Job: job})
+		return
 	}
-	respondJSON(w, r, status, exampleSpaceResponse{Space: *made, Created: created})
+	found, err := s.Spaces.Example(r.Context(), actor)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, exampleSpaceResponse{Space: found})
 }

@@ -913,6 +913,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The example space no longer fails on a busy machine. Making it took
+  longer than a request may last, answered 500 and could leave half a space
+  behind. The worker now makes it (`STATOR_EXAMPLE_CHECK_INTERVAL`):
+  `POST /example-space` answers 202 with the job at once, the same job for
+  every click while it runs, and the page follows it until the space is
+  ready. A making that fails deletes what it made and says what to do.
+
 - Generating the OpenAPI document fails, naming both Go types, when two
   types from different packages would be documented under one schema name,
   rather than picking a name by the order the routes happen to be read in.

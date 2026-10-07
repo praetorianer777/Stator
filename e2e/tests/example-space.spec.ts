@@ -7,8 +7,8 @@ import { deleteSpace } from "../fixtures/spaces";
 
 const KEY = "STATOR";
 const SHOWCASE = "Every block a page can hold";
-// Making the space publishes some twenty pages, files and posts through the
-// services one by one, which takes seconds on a machine running the suite.
+// The worker makes the space, publishing some twenty pages, files and posts
+// through the services one by one, which takes seconds on a busy machine.
 const MAKING = { timeout: 30_000 } as const;
 
 // Blocks the showcase draws without asking anybody but Stator, by the mark each view sets.

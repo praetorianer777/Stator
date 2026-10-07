@@ -3160,7 +3160,7 @@
     "/example-space": {
       "get": {
         "operationId": "getExampleSpace",
-        "summary": "The organization's example space, the one whose pages explain Stator, or null while there is none. For administrators.",
+        "summary": "The organization's example space, the one whose pages explain Stator, null while there is none or it is being made, and the latest making of it. For administrators.",
         "tags": [
           "spaces"
         ],
@@ -3170,22 +3170,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "space": {
-                      "oneOf": [
-                        {
-                          "$ref": "#/components/schemas/Space"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
-                  },
-                  "required": [
-                    "space"
-                  ]
+                  "$ref": "#/components/schemas/ExampleSpaceResponse"
                 }
               }
             }
@@ -3204,7 +3189,7 @@
       },
       "post": {
         "operationId": "createExampleSpace",
-        "summary": "Make the example space, whose pages explain Stator, in the language asked for, else the caller's own; 200 with created false when the organization has it already. For administrators.",
+        "summary": "Ask the worker to make the example space, whose pages explain Stator, in the language asked for, else the caller's own: 202 with the job, the same one while it is queued or running, or 200 with the space when the organization has it already. For administrators.",
         "tags": [
           "spaces"
         ],
@@ -3229,8 +3214,8 @@
               }
             }
           },
-          "201": {
-            "description": "Created",
+          "202": {
+            "description": "Accepted",
             "content": {
               "application/json": {
                 "schema": {
@@ -16520,6 +16505,87 @@
           "spec"
         ]
       },
+      "ExampleSpaceJob": {
+        "type": "object",
+        "properties": {
+          "failure": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "keys_taken",
+                  "forbidden",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "de"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "spaceKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "language",
+          "spaceKey",
+          "failure",
+          "message",
+          "requestedAt",
+          "startedAt",
+          "finishedAt"
+        ]
+      },
       "ExampleSpaceRequest": {
         "type": "object",
         "properties": {
@@ -16531,16 +16597,30 @@
       "ExampleSpaceResponse": {
         "type": "object",
         "properties": {
-          "created": {
-            "type": "boolean"
+          "job": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ExampleSpaceJob"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "space": {
-            "$ref": "#/components/schemas/Space"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Space"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "space",
-          "created"
+          "job"
         ]
       },
       "Excerpt": {

@@ -25,6 +25,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/convert"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/example"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
@@ -201,6 +202,7 @@ func run() error {
 		Home:              home.NewService(cluster),
 		Stale:             stale.NewService(cluster),
 		Templates:         template.NewService(cluster),
+		ExampleJobs:       example.NewJobs(cluster),
 		Tasks:             task.NewService(cluster),
 		PageViews:         pageview.NewService(cluster),
 		PageViewRetention: cfg.RetainPageViews,
