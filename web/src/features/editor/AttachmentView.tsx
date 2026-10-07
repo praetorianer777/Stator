@@ -4,6 +4,8 @@ import { VIDEO_FILE_PATTERN } from "@/config";
 import { IconButton } from "@/components/ui";
 import { Lightbox } from "@/features/attachments/Lightbox";
 import type { LightboxItem } from "@/features/attachments/lightboxItems";
+import { Gallery } from "@/features/gallery/Gallery";
+import { galleryOf } from "@/features/gallery/gallery";
 import { linkedAttachmentUrl, publicAttachmentUrl } from "@/api/public";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
@@ -13,7 +15,7 @@ import { usePublicLink, usePublicReading } from "./publicReading";
 import type { DocNode } from "./schema";
 
 /** Where a file downloads from, or shows in place: the public reads, or the link's, for somebody who is not signed in. */
-function useFileUrl(): (id: string, inline?: boolean) => string {
+export function useFileUrl(): (id: string, inline?: boolean) => string {
   const org = usePublicReading();
   const token = usePublicLink();
   if (org && token) return (id, inline) => linkedAttachmentUrl(org, token, id, inline);
@@ -53,6 +55,11 @@ export function DocImage({ node }: { node: DocNode }) {
       {open && <Lightbox items={[item]} onClose={() => setOpen(false)} />}
     </figure>
   );
+}
+
+/** A page's gallery as the reader sees it, each picture through the reader's own read of its file. */
+export function DocGallery({ node }: { node: DocNode }) {
+  return <Gallery settings={galleryOf(node)} url={useFileUrl()} known={useKnownAttachments()} />;
 }
 
 /** A file in a line of text: a link that downloads it, or its name marked as deleted. */

@@ -39,6 +39,7 @@ import { LabelledPagesNode, RecentlyUpdatedNode } from "./pageLists";
 import { BlogPostsNode } from "./blogPosts";
 import { TaskReportNode } from "./taskReport";
 import { AttachmentListNode } from "./attachmentList";
+import { GalleryImage, GalleryNode } from "./gallery";
 import { TableChartNode } from "./tableChart";
 import { CalendarNode } from "./calendar";
 import { TemplateButtonNode } from "./templateButton";
@@ -420,6 +421,8 @@ export interface ExtensionOptions {
   pickBlogPosts?: () => void;
   /** Opens the settings dialog the slash menu's task report starts with. */
   pickTaskReport?: () => void;
+  /** Opens the dialog the slash menu's gallery starts with. */
+  pickGallery?: () => void;
   /** Opens the settings dialog the slash menu's calendar starts with. */
   pickCalendar?: () => void;
   /** Opens the settings dialog the slash menu's template button starts with. */
@@ -469,6 +472,7 @@ export function editorExtensions({
   pickBlogPosts,
   pickTaskReport,
   pickCalendar,
+  pickGallery,
   pickTemplateButton,
   pickInclude,
   pageId,
@@ -550,6 +554,8 @@ export function editorExtensions({
     BlogPostsNode.configure({ pick: pickBlogPosts }),
     TaskReportNode.configure({ pick: pickTaskReport }),
     AttachmentListNode.configure({ pageId }),
+    GalleryNode.configure({ pick: pickGallery, index: attachments }),
+    GalleryImage,
     TableChartNode,
     CalendarNode.configure({ pick: pickCalendar }),
     TemplateButtonNode.configure({ pick: pickTemplateButton }),

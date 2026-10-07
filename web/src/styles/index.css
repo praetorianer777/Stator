@@ -378,6 +378,8 @@
       .doc-chart,
       .doc-calendar,
       .doc-properties-report,
+      .doc-gallery,
+      .node-gallery,
       div[data-armature-issue-list],
       .node-tableChart,
       .node-diagram,
@@ -403,7 +405,8 @@
           .doc-calendar,
           .doc-properties-report,
           div[data-armature-issue-list],
-          figure[data-image]
+          figure[data-image],
+          .doc-gallery
         )
     ) {
     max-width: none;
@@ -616,6 +619,70 @@
     border-radius: var(--radius-control);
     padding: 0.75rem;
     font-size: var(--text-sm);
+  }
+  /* A gallery holds its stored number of pictures in a row, two under the
+   * shell breakpoint (48rem). Each is cropped to one shape so the rows line
+   * up; the lightbox shows the whole picture. */
+  .doc-content .doc-gallery {
+    display: grid;
+    grid-template-columns: repeat(var(--gallery-columns, 3), minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-block: 0;
+    padding: 0;
+    list-style: none;
+  }
+  @media (width < 48rem) {
+    .doc-content .doc-gallery {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .doc-content .doc-gallery-item {
+    min-width: 0;
+    margin: 0;
+  }
+  .doc-content .doc-gallery-item figure {
+    margin: 0;
+  }
+  .doc-content .doc-gallery-frame {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-surface-sunken);
+  }
+  .doc-content .doc-gallery-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .doc-content .doc-gallery-open {
+    cursor: zoom-in;
+  }
+  .doc-content .doc-gallery-open:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  .doc-content .doc-gallery-caption {
+    margin-top: 0.25rem;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    overflow-wrap: anywhere;
+  }
+  .doc-content .doc-gallery-gap {
+    display: flex;
+    align-items: center;
+    aspect-ratio: 4 / 3;
+    margin: 0;
+    padding: 0.5rem;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-control);
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    overflow: hidden;
   }
   .doc-content [data-attachment-chip] {
     display: inline-flex;

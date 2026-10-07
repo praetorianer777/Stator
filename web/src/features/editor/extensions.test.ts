@@ -102,6 +102,13 @@ describe("the slash menu's blocks", () => {
       blogPosts: (d) => JSON.stringify(find(d, "blogPosts")[0]?.attrs) === JSON.stringify({ space: "NEWS", limit: 5 }),
       tableChart: (d) => find(d, "tableChart")[0]?.attrs?.chart === "bar" && find(d, "tableRow").length === 4,
       attachmentList: (d) => JSON.stringify(find(d, "attachmentList")[0]) === JSON.stringify({ type: "attachmentList" }),
+      gallery: (d) =>
+        JSON.stringify(find(d, "gallery")[0]) ===
+        JSON.stringify({
+          type: "gallery",
+          attrs: { columns: 2 },
+          content: [{ type: "galleryImage", attrs: { attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a91", caption: "Dock" } }],
+        }),
       taskReport: (d) =>
         JSON.stringify(find(d, "taskReport")[0]?.attrs) === JSON.stringify({ space: "DOCS", assignee: "me", due: "week", state: "open", limit: 20 }),
       calendar: (d) => JSON.stringify(find(d, "calendar")[0]?.attrs) === JSON.stringify({ calendarId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a90", project: "CP" }),
@@ -133,6 +140,10 @@ describe("the slash menu's blocks", () => {
         pickBlogPosts: () => setTimeout(() => editor?.commands.insertBlogPosts({ space: "NEWS", limit: 5 })),
         pickTaskReport: () => setTimeout(() => editor?.commands.insertTaskReport({ space: "DOCS", assignee: "me", due: "week", state: "open", limit: 20 })),
         pickCalendar: () => setTimeout(() => editor?.commands.insertCalendar({ calendarId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a90", project: "CP" })),
+        pickGallery: () =>
+          setTimeout(() =>
+            editor?.commands.insertGallery({ columns: 2, pictures: [{ attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a91", caption: "Dock" }] }),
+          ),
         pickTemplateButton: () =>
           setTimeout(() =>
             editor?.commands.insertTemplateButton({ template: "meeting-notes", space: "DOCS", parent: null, label: "New notes", title: "Notes {date}" }),

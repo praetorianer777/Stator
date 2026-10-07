@@ -4,7 +4,8 @@ import type { Element as HastElement, ElementContent, Root } from "hast";
 import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
-import { DocAttachment, DocImage } from "./AttachmentView";
+import { DocAttachment, DocGallery, DocImage } from "./AttachmentView";
+import { GALLERY_NODE } from "@/features/gallery/gallery";
 import { ChildPagesList, DocPageContext, TocList, childPagesSummary, tocSummary } from "./BlockViews";
 import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
@@ -416,6 +417,8 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     }
     case "image":
       return <DocImage node={node} />;
+    case GALLERY_NODE:
+      return <DocGallery node={node} />;
     // A comparison says what the block asks for rather than drawing it: its
     // headings and pages are the page's now, not the version's.
     case "tableOfContents":

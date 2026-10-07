@@ -72,6 +72,7 @@ describe("the web editor against the server's allowlist", () => {
       .focus("end")
       .insertContent([
         { type: "image", attrs: { attachmentId, alt: "A picture", width: 480 } },
+        { type: "gallery", attrs: { columns: 4 }, content: [{ type: "galleryImage", attrs: { attachmentId, caption: "A caption" } }] },
         { type: "paragraph", content: [{ type: "attachment", attrs: { attachmentId, fileName: "plan.pdf" } }] },
         { type: "paragraph", content: [{ type: "text", text: "Say more", marks: [{ type: "hint" }] }] },
         { type: "expand", attrs: { title: "More" }, content: [{ type: "paragraph", content: [{ type: "text", text: "Hidden" }] }] },
@@ -101,6 +102,8 @@ describe("the web editor against the server's allowlist", () => {
       '"language":"go"',
       '"type":"image"',
       '"width":480',
+      '"type":"gallery","attrs":{"columns":4}',
+      '"caption":"A caption"',
       '"type":"attachment"',
       '"type":"hint"',
       '"type":"armatureIssueBlock"',
