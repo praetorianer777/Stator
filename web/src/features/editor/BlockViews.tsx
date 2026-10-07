@@ -13,8 +13,12 @@ import type { TocEntry } from "./toc";
 export interface DocPage {
   id: string;
   spaceKey: string;
+  /** Whether the reader may edit the page, which a list of its files lets them upload to. */
+  canEdit?: boolean;
   /** Opens the page to edit, for a reader who may; a block that needs fixing offers it. */
   onEdit?: () => void;
+  /** Ticks a published task off or opens it again, for a reader who may edit the page. */
+  toggleTask?: (taskId: string, done: boolean) => void;
 }
 
 export const DocPageContext = createContext<DocPage | null>(null);

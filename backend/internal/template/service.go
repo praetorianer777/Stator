@@ -130,7 +130,7 @@ func spaceID(ctx context.Context, tx db.DBTX, key string) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := tx.QueryRow(ctx, `SELECT id FROM space WHERE key = $1`, key).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return id, ErrUnknownSpace
+		return id, ErrNoSpace
 	}
 	return id, err
 }
@@ -369,8 +369,13 @@ func record(ctx context.Context, tx db.DBTX, actor perm.Actor, action string, t 
 // Instantiate fills a template in for a page made in space, in its transaction:
 // the body held to the page allowlist, and the title, empty taking the template's.
 func Instantiate(ctx context.Context, tx db.DBTX, space uuid.UUID, key string, values map[string]string, title string) (string, json.RawMessage, error) {
-	tpl, err := forSpace(ctx, tx, space, key)
-	if err != nil {
+	tpl, err := ForSpace(ctx, tx, space, key)
+	switch {
+	case errors.Is(err, ErrUnknown):
+		return "", nil, fieldError("template", "There is no such template; pick one from the list of templates.")
+	case errors.Is(err, ErrOtherSpace):
+		return "", nil, fieldError("template", "That template belongs to another space; pick one this space offers.")
+	case err != nil:
 		return "", nil, err
 	}
 	today := time.Now().UTC().Format(time.DateOnly)
@@ -399,25 +404,19 @@ func Instantiate(ctx context.Context, tx db.DBTX, space uuid.UUID, key string, v
 	return FillTitle(title, tpl.Variables, resolved, people), body, nil
 }
 
-func forSpace(ctx context.Context, tx db.DBTX, space uuid.UUID, key string) (Template, error) {
-	unknown := fieldError("template", "There is no such template; pick one from the list of templates.")
+// ForSpace finds a template a page in space may start from, as the caller
+// may read it: a built-in, the organization's, or that space's own.
+func ForSpace(ctx context.Context, tx db.DBTX, space uuid.UUID, key string) (Template, error) {
 	id, err := uuid.Parse(key)
 	if err != nil {
-		tpl, err := ByKey(key)
-		if errors.Is(err, ErrUnknown) {
-			return tpl, unknown
-		}
-		return tpl, err
+		return ByKey(key)
 	}
 	tpl, err := load(ctx, tx, id)
-	if errors.Is(err, ErrUnknown) {
-		return tpl, unknown
-	}
 	if err != nil {
 		return tpl, err
 	}
 	if tpl.spaceID != nil && *tpl.spaceID != space {
-		return tpl, fieldError("template", "That template belongs to another space; pick one this space offers.")
+		return tpl, ErrOtherSpace
 	}
 	return tpl, nil
 }

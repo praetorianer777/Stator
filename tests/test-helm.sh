@@ -96,6 +96,9 @@ check "the Valkey URL reaches every workload" "$(env_value "${RENDERED}" STATOR_
 check "the upload limit is set, and can be changed" \
     "$(grep -c 'STATOR_UPLOAD_LIMIT: "50MB"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set attachments.uploadLimit=2GB 2>&1 | grep -c 'STATOR_UPLOAD_LIMIT: "2GB"')" \
     "1 1"
+check "office previews are off until a converter is named" \
+    "$(grep -c 'STATOR_CONVERTER_URL' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set attachments.converterUrl=http://converter:3000 2>&1 | grep -c 'STATOR_CONVERTER_URL: "http://converter:3000"')" \
+    "0 1"
 check "the audit log is kept a year, and that can be changed" \
     "$(grep -c 'STATOR_RETAIN_AUDIT: "8760h"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set retention.audit=2160h 2>&1 | grep -c 'STATOR_RETAIN_AUDIT: "2160h"')" \
     "1 1"
@@ -104,6 +107,12 @@ check "page views are named for a season, and that can be changed" \
     "1 1"
 check "verifications are checked every ten minutes, and that can be changed" \
     "$(grep -c 'STATOR_VERIFICATION_CHECK_INTERVAL: "10m"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set verification.checkInterval=1h 2>&1 | grep -c 'STATOR_VERIFICATION_CHECK_INTERVAL: "1h"')" \
+    "1 1"
+check "due tasks are looked for every ten minutes, and that can be changed" \
+    "$(grep -c 'STATOR_TASK_DUE_CHECK_INTERVAL: "10m"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set tasks.dueCheckInterval=1h 2>&1 | grep -c 'STATOR_TASK_DUE_CHECK_INTERVAL: "1h"')" \
+    "1 1"
+check "scheduled publishes are looked for every half minute, and that can be changed" \
+    "$(grep -c 'STATOR_SCHEDULE_CHECK_INTERVAL: "30s"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set publishing.scheduleCheckInterval=5s 2>&1 | grep -c 'STATOR_SCHEDULE_CHECK_INTERVAL: "5s"')" \
     "1 1"
 check "mail is off until a relay is named, then goes from the sender set" \
     "$(grep -c 'STATOR_SMTP_ADDR' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set mail.smtpAddr=smtp.example:25 --set 'mail.from=Wiki <wiki@example.com>' 2>&1 | grep -E 'STATOR_(SMTP_ADDR|MAIL_FROM)' | tr -d ' ' | paste -sd ' ')" \
@@ -116,14 +125,27 @@ check "the guard lets through what is named, and Armature is reached where it is
         | grep -E 'STATOR_(OUTBOUND_ALLOW|ARMATURE_BACKCHANNEL)' | tr -d ' ' | paste -sd ' ')" \
     'STATOR_OUTBOUND_ALLOW:"armature-api.armature.svc,10.40.0.0/16" STATOR_ARMATURE_BACKCHANNEL:"https://armature.example.com=http://armature-api.armature.svc:8080"'
 
+check "the web's nginx passes a shared draft's WebSocket on" \
+    "$(grep -A4 -F 'location ~ ^/api/v1/pages/[^/]+/collab$' <<<"${RENDERED}" | grep -cE 'proxy_http_version 1.1|proxy_set_header Upgrade \$http_upgrade|proxy_set_header Connection "upgrade"')" \
+    "3"
+
+echo "⎈ One api pod without Valkey"
+render "one api pod, no Valkey" --set database.host=db.example --set api.replicas=1
+check "no Valkey URL" "$(env_value "${RENDERED}" STATOR_VALKEY_URL)" ""
+
+# Editors on different pods pass each other's changes through Postgres then.
+echo "⎈ Several api pods without Valkey or replicas"
+render "three api pods, no Valkey" --set database.host=db.example --set api.replicas=3
+check "no Valkey URL" "$(env_value "${RENDERED}" STATOR_VALKEY_URL)" ""
+
 echo "⎈ CloudNativePG with one instance"
-render "cnpg, 1 instance" --set cnpg.enabled=true --set cnpg.spec.instances=1
+render "cnpg, 1 instance" --set cnpg.enabled=true --set cnpg.spec.instances=1 "${VALKEY[@]}"
 check "writes go to -rw" "$(env_value "${RENDERED}" STATOR_DB_PRIMARY_URL)" "$(app_url "${RW}" require)"
 check "no replica URL, so reads go to -rw" "$(env_value "${RENDERED}" STATOR_DB_REPLICA_URLS)" ""
 check "-ro is named nowhere" "$(grep -c -- "${RO}" <<<"${RENDERED}")" "0"
 
 echo "⎈ CloudNativePG with read replicas turned off"
-render "cnpg, 3 instances, readReplicas off" --set cnpg.enabled=true --set cnpg.readReplicas=false
+render "cnpg, 3 instances, readReplicas off" --set cnpg.enabled=true --set cnpg.readReplicas=false "${VALKEY[@]}"
 check "no replica URL" "$(env_value "${RENDERED}" STATOR_DB_REPLICA_URLS)" ""
 
 echo "⎈ A database of one's own"
@@ -148,11 +170,11 @@ refused "replicas behind several api pods without Valkey" \
     "read-your-writes needs a Valkey all api pods share" \
     --set cnpg.enabled=true
 refused "no database at all" "Set database.host, or enable cnpg or the bundled postgresql" \
-    --set database.host=
+    --set database.host= "${VALKEY[@]}"
 refused "postgres as the owner under cnpg" "database.ownerRole is postgres, which CNPG keeps for its own superuser" \
     --set cnpg.enabled=true --set database.ownerRole=postgres "${VALKEY[@]}"
 refused "the seed in production" "jobs.seed.enabled is true but env is production" \
-    --set database.host=db.example --set jobs.seed.enabled=true
+    --set database.host=db.example --set jobs.seed.enabled=true "${VALKEY[@]}"
 
 if [[ ${FAILED} -ne 0 ]]; then
     echo "❌ chart tests failed"

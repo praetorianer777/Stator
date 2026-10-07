@@ -6,7 +6,7 @@ import { ApiError } from "@/api/client";
 import { pageQueryKey, usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useComparison, useRestoreVersion, useVersion, useVersions, type CompareRef, type CompareSide, type VersionEntry } from "@/api/versions";
-import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Tag, Td, Th, type Crumb } from "@/components/ui";
+import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Tag, Td, Th, cx, type Crumb } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocDiffView, DocView } from "@/features/editor/DocView";
@@ -14,6 +14,7 @@ import { HISTORY_PAGE_SIZE } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { PageLink } from "./PageLink";
+import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { pageCrumbs } from "./PageScreen";
 
 /** Where in a page's history the reader is: the list, one version, or two sides compared. */
@@ -189,10 +190,21 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
                       {entry?.number === page.version && <Tag className="ml-2">{t.history.latest}</Tag>}
                       {entry && entry.title !== page.title && <span className="block text-xs text-ink-muted">{entry.title}</span>}
                     </Td>
-                    <Td className="text-ink-muted">{entry ? t.history.published(entry.authorName, when(entry.createdAt)) : ""}</Td>
+                    <Td className="text-ink-muted">
+                      {entry ? t.history.published(entry.authorName, when(entry.createdAt)) : ""}
+                      {entry?.live && (
+                        <span className="block text-xs" data-live-version="">
+                          {t.live.versionSaved(when(entry.updatedAt), entry.coEditors.join(", "))}
+                        </span>
+                      )}
+                    </Td>
                     <Td>
                       {entry &&
-                        (entry.comment ? <span className="text-ink">{entry.comment}</span> : <span className="text-ink-subtle">{t.history.noComment}</span>)}
+                        (entry.comment ? (
+                          <span className="text-ink">{entry.comment}</span>
+                        ) : (
+                          <span className="text-ink-subtle">{entry.live ? t.live.savedAsTyped : t.history.noComment}</span>
+                        ))}
                       {entry?.restoredFrom != null && <span className="block text-xs text-ink-muted">{t.history.restoredFrom(entry.restoredFrom)}</span>}
                     </Td>
                     <Td>
@@ -258,12 +270,15 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
 }
 
 function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number: number }) {
+  const sheet = pageSheet(page.appearance.width);
   const { data: version, isLoading, error, refetch } = useVersion(page.id, number);
   const restore = useRestore(page);
   const latest = number === page.version;
   return (
-    <article className="mx-auto max-w-3xl space-y-4" data-page-version={number}>
+    <article className={cx(sheet.className, "space-y-4")} style={sheet.style} data-page-version={number}>
       <PageHeader
+        className={PAGE_SHEET_HEADER}
+        style={sheet.style}
         crumbs={historyCrumbs(space, page, true)}
         title={t.history.viewingTitle(version?.title ?? page.title, number)}
         meta={
@@ -313,12 +328,15 @@ function SideFacts({ label, side }: { label: string; side: CompareSide }) {
 }
 
 function CompareScreen({ page, space, from, to }: ScreenProps & { from?: CompareRef; to?: CompareRef }) {
+  const sheet = pageSheet(page.appearance.width);
   const { data: comparison, isLoading, error, refetch } = useComparison(page.id, from, to);
   const navigate = useNavigate();
   const same = comparison && comparison.from.title === comparison.to.title && comparison.blocks.every((block) => block.change === "equal");
   return (
-    <article className="mx-auto max-w-3xl space-y-4" data-page-compare="">
+    <article className={cx(sheet.className, "space-y-4")} style={sheet.style} data-page-compare="">
       <PageHeader
+        className={PAGE_SHEET_HEADER}
+        style={sheet.style}
         crumbs={historyCrumbs(space, page, true)}
         title={t.history.compareTitle}
         actions={

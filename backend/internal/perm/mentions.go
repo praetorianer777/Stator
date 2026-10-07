@@ -30,14 +30,15 @@ func MentionablePeople(ctx context.Context, tx db.DBTX, pageID uuid.UUID, q stri
 }
 
 // MentionsToTell narrows the people a page or comment names to those a
-// mention tells: members who may view the page now, in the order given.
+// mention tells: members the writer may see who may view the page now, in
+// the order given. A guest writer sees only the people of their space.
 func MentionsToTell(ctx context.Context, tx db.DBTX, pageID uuid.UUID, ids []uuid.UUID) ([]uuid.UUID, error) {
 	if len(ids) == 0 {
 		return []uuid.UUID{}, nil
 	}
 	rows, err := tx.Query(ctx, `
 		SELECT m.id FROM unnest($2::uuid[]) WITH ORDINALITY AS m (id, n)
-		WHERE perm_is_member(m.id) AND perm_page_viewable($1, m.id)
+		WHERE perm_is_member(m.id) AND perm_person_seen(current_actor_id(), m.id) AND perm_page_viewable($1, m.id)
 		ORDER BY m.n`, pageID, ids)
 	if err != nil {
 		return nil, err

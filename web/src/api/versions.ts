@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import type { Doc, DocNode } from "@/features/editor/schema";
 import { HISTORY_PAGE_SIZE } from "@/config";
 import { api } from "./client";
+import { contributorsQueryKey } from "./contributors";
 import { pageQueryKey, type Page, type PageInSpace } from "./pages";
 import type { components } from "./schema";
 import { spaceQueryKey } from "./spaces";
@@ -80,8 +81,9 @@ export function useDiscardDraft(pageId: string) {
   });
 }
 
-// A new version changes the page, its history, every comparison, and, for a
-// first publish or a title change, the tree and the space's home page.
+// A new version changes the page, its history, every comparison, who
+// contributed to it and to the pages above it, and, for a first publish or a
+// title change, the tree and the space's home page.
 function published(queryClient: QueryClient, page: Page) {
   queryClient.setQueryData(draftQueryKey(page.id), null);
   queryClient.setQueryData<PageInSpace>(pageQueryKey(page.id), (current) => (current ? { ...current, page } : current));
@@ -90,6 +92,7 @@ function published(queryClient: QueryClient, page: Page) {
     queryClient.invalidateQueries({ queryKey: [...pageQueryKey(page.id), "compare"] }),
     queryClient.invalidateQueries({ queryKey: treeQueryKey }),
     queryClient.invalidateQueries({ queryKey: spaceQueryKey(page.spaceKey) }),
+    queryClient.invalidateQueries({ queryKey: contributorsQueryKey }),
   ]);
 }
 
@@ -99,6 +102,95 @@ export function usePublish(pageId: string) {
     mutationFn: async (options: PublishOptions): Promise<Page> =>
       (await api.POST("/pages/{pageID}/publish", { params: { path: { pageID: pageId } }, body: options })).data!.page as Page,
     onSuccess: (page) => published(queryClient, page),
+  });
+}
+
+/** A publish of somebody's draft set for a time, seen by its author and the page's editors. */
+export type PageSchedule = Wire["PageSchedule"];
+export type ScheduleFailure = NonNullable<PageSchedule["failure"]>;
+export type ScheduleOptions = Wire["PageScheduleInput"];
+
+// The page carries its schedule, and scheduling a page never published may
+// start the caller's draft, so both are read again.
+function rescheduled(queryClient: QueryClient, pageId: string) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId), exact: true }),
+    queryClient.invalidateQueries({ queryKey: draftQueryKey(pageId) }),
+  ]);
+}
+
+/** Sets the caller's draft to be published at a time, in their name; setting it again moves it. */
+export function useSchedulePublish(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (options: ScheduleOptions): Promise<PageSchedule> =>
+      (await api.PUT("/pages/{pageID}/schedule", { params: { path: { pageID: pageId } }, body: options })).data!.schedule,
+    onSuccess: () => rescheduled(queryClient, pageId),
+  });
+}
+
+/** Calls the page's scheduled publish off; the draft stays. */
+export function useCancelSchedule(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await api.DELETE("/pages/{pageID}/schedule", { params: { path: { pageID: pageId } } });
+    },
+    onSuccess: () => rescheduled(queryClient, pageId),
+  });
+}
+
+/** How a page is edited: published from drafts, or saved live as it is typed. */
+export type PageMode = Wire["Page"]["mode"];
+export type LiveSaved = Wire["PageLiveSaved"];
+export type ModeChange = Wire["PageModeChange"];
+
+export interface LiveInput {
+  title: string;
+  body: Doc;
+  /** The shared draft saved from; absent when editing alone. */
+  room?: string;
+}
+
+/** Saves a live page as the editor holds it; readers see it at once. */
+export function useSaveLive(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: LiveInput): Promise<LiveSaved> =>
+      (await api.PUT("/pages/{pageID}/live", { params: { path: { pageID: pageId } }, body: input })).data!,
+    onSuccess: (saved, input) => {
+      let retitled = false;
+      queryClient.setQueryData<PageInSpace>(pageQueryKey(pageId), (current) => {
+        if (!current) return current;
+        retitled = current.page.title !== saved.version.title || current.page.unpublished;
+        return {
+          ...current,
+          page: { ...current.page, title: saved.version.title, body: input.body, version: saved.version.number, unpublished: false },
+        };
+      });
+      // Every save changes the history and who contributed; the tree and the
+      // space only hear of a new title or a first version.
+      const asked = [
+        queryClient.invalidateQueries({ queryKey: versionsQueryKey(pageId) }),
+        queryClient.invalidateQueries({ queryKey: [...pageQueryKey(pageId), "compare"] }),
+        queryClient.invalidateQueries({ queryKey: contributorsQueryKey }),
+      ];
+      if (retitled) asked.push(queryClient.invalidateQueries({ queryKey: treeQueryKey }));
+      return Promise.all(asked);
+    },
+  });
+}
+
+/** Chooses between drafts and live; making a page live may first ask to throw drafts away. */
+export function useSetPageMode(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { mode: PageMode; discardDrafts?: boolean }): Promise<ModeChange> =>
+      (await api.PUT("/pages/{pageID}/mode", { params: { path: { pageID: pageId } }, body: input })).data!,
+    onSuccess: () => {
+      queryClient.setQueryData(draftQueryKey(pageId), null);
+      return queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) });
+    },
   });
 }
 

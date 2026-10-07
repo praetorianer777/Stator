@@ -49,6 +49,12 @@ const (
 	// DefaultVerificationCheck is page.DefaultLapseInterval, which a test
 	// holds the two to.
 	DefaultVerificationCheck = 10 * time.Minute
+	// DefaultTaskDueCheck is task.DefaultDueInterval, which a test holds the
+	// two to.
+	DefaultTaskDueCheck = 10 * time.Minute
+	// DefaultScheduleCheck is page.DefaultScheduleInterval, which a test
+	// holds the two to.
+	DefaultScheduleCheck = 30 * time.Second
 	// DefaultUploadLimit is attachment.DefaultMaxSize, which a test holds
 	// the two to; this package cannot import that one.
 	DefaultUploadLimit int64 = 50 << 20
@@ -80,7 +86,10 @@ type Config struct {
 	S3        S3
 	// UploadLimit is the largest file a page takes, in bytes.
 	UploadLimit int64
-	Bootstrap   Bootstrap
+	// ConverterURL is the service that converts office documents to PDF for
+	// previews; blank turns those previews off.
+	ConverterURL string
+	Bootstrap    Bootstrap
 	// TestEndpoints serves the throwaway organizations of the browser suite.
 	TestEndpoints TestEndpoints
 	Mail          Mail
@@ -94,6 +103,12 @@ type Config struct {
 	// VerificationCheck is how often the worker looks for page verifications
 	// that ran out, to tell their owners.
 	VerificationCheck time.Duration
+	// TaskDueCheck is how often the worker looks for tasks whose day came, to
+	// remind their assignees.
+	TaskDueCheck time.Duration
+	// ScheduleCheck is how often the worker looks for scheduled publishes
+	// whose time came; a publish goes out at most this late.
+	ScheduleCheck time.Duration
 
 	// SecretKey encrypts secrets stored in the database, such as an identity
 	// provider's client secret. Nil in development when it is not set.
@@ -276,7 +291,8 @@ func Load() (Config, error) {
 			Region:    l.str("STATOR_S3_REGION", DefaultS3Region),
 			UseSSL:    l.boolean("STATOR_S3_USE_SSL", false),
 		},
-		UploadLimit: l.size("STATOR_UPLOAD_LIMIT", DefaultUploadLimit),
+		UploadLimit:  l.size("STATOR_UPLOAD_LIMIT", DefaultUploadLimit),
+		ConverterURL: strings.TrimSuffix(l.str("STATOR_CONVERTER_URL", ""), "/"),
 		Bootstrap: Bootstrap{
 			AdminEmail: l.str("STATOR_BOOTSTRAP_ADMIN_EMAIL", ""),
 			// Not trimmed: a password is exactly what was typed.
@@ -297,6 +313,8 @@ func Load() (Config, error) {
 		RetainAudit:       l.duration("STATOR_RETAIN_AUDIT", DefaultRetainAudit),
 		RetainPageViews:   l.duration("STATOR_RETAIN_PAGE_VIEWS", DefaultRetainPageViews),
 		VerificationCheck: l.duration("STATOR_VERIFICATION_CHECK_INTERVAL", DefaultVerificationCheck),
+		TaskDueCheck:      l.duration("STATOR_TASK_DUE_CHECK_INTERVAL", DefaultTaskDueCheck),
+		ScheduleCheck:     l.duration("STATOR_SCHEDULE_CHECK_INTERVAL", DefaultScheduleCheck),
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
 	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
@@ -374,11 +392,22 @@ func Load() (Config, error) {
 	if c.VerificationCheck < time.Second {
 		l.problem(fmt.Sprintf("STATOR_VERIFICATION_CHECK_INTERVAL is %s; set it to a second or more, such as 10m.", c.VerificationCheck))
 	}
+	if c.TaskDueCheck < time.Second {
+		l.problem(fmt.Sprintf("STATOR_TASK_DUE_CHECK_INTERVAL is %s; set it to a second or more, such as 10m.", c.TaskDueCheck))
+	}
+	if c.ScheduleCheck < time.Second {
+		l.problem(fmt.Sprintf("STATOR_SCHEDULE_CHECK_INTERVAL is %s; set it to a second or more, such as 30s.", c.ScheduleCheck))
+	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		l.problem("STATOR_OTEL_SAMPLE_RATIO must be between 0 and 1.")
 	}
 	if c.S3.Endpoint != "" && (c.S3.AccessKey == "" || c.S3.SecretKey == "") {
 		l.problem("STATOR_S3_ENDPOINT is set, so set STATOR_S3_ACCESS_KEY and STATOR_S3_SECRET_KEY as well.")
+	}
+	if c.ConverterURL != "" {
+		if u, err := url.Parse(c.ConverterURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			l.problem(fmt.Sprintf("STATOR_CONVERTER_URL is %q; set it to the conversion service's address, such as http://converter:3000, or leave it blank to turn office previews off.", c.ConverterURL))
+		}
 	}
 	if c.Mail.SMTPAddr != "" {
 		if _, err := mail.ParseAddress(c.Mail.From); err != nil {

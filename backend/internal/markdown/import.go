@@ -279,7 +279,30 @@ func (c *converter) blocks(nodes []ast.Node, depth int) ([]document.Node, error)
 		}
 		out = append(out, made...)
 	}
-	return out, nil
+	return c.chartTables(out), nil
+}
+
+// chartTables gives each chart marker the table that follows it, as the
+// export writes them; a marker with no table after it is left out.
+func (c *converter) chartTables(nodes []document.Node) []document.Node {
+	out := nodes[:0]
+	for i := 0; i < len(nodes); i++ {
+		n := nodes[i]
+		if n.Type != document.NodeTableChart || len(n.Content) > 0 {
+			out = append(out, n)
+			continue
+		}
+		if i+1 < len(nodes) && nodes[i+1].Type == "table" {
+			n.Content = []document.Node{nodes[i+1]}
+			if validates(n, false) {
+				out = append(out, n)
+				i++
+				continue
+			}
+		}
+		c.warn("A %s block had no table after it and was left out.", kindTableChart)
+	}
+	return out
 }
 
 // detailsCloses pairs each details start in a run with the block that
@@ -427,6 +450,16 @@ func (c *converter) block(n ast.Node, depth int) ([]document.Node, error) {
 		if n.Info != nil {
 			if fields := strings.Fields(string(n.Language(c.src))); len(fields) > 0 {
 				lang := strings.ToLower(decode(fields[0]))
+				if lang == mathLanguage {
+					if n, ok := mathBlock(c.lines(n)); ok {
+						return []document.Node{n}, nil
+					}
+				}
+				if lang == diagramLanguage {
+					if n, ok := diagram(c.lines(n)); ok {
+						return []document.Node{n}, nil
+					}
+				}
 				if languagePattern.MatchString(lang) && len(lang) <= maxLanguageLength {
 					language = lang
 				}
@@ -458,6 +491,28 @@ func codeBlock(code string, language any) document.Node {
 	}
 	return n
 }
+
+// mathBlock reads a math fence as a formula on its own line; one too long
+// or empty to be a formula stays a code block.
+func mathBlock(code string) (document.Node, bool) {
+	latex := strings.TrimSpace(code)
+	if latex == "" || utf8.RuneCountInString(latex) > document.MaxMathLength {
+		return document.Node{}, false
+	}
+	return document.Node{Type: document.NodeMathBlock, Attrs: map[string]any{"latex": latex}}, true
+}
+
+// diagram reads a mermaid fence as a diagram; one too long or empty to be a
+// diagram stays a code block.
+func diagram(code string) (document.Node, bool) {
+	source := strings.TrimSuffix(code, "\n")
+	if strings.TrimSpace(source) == "" || utf8.RuneCountInString(source) > document.MaxDiagramLength {
+		return document.Node{}, false
+	}
+	return document.Node{Type: document.NodeDiagram, Attrs: map[string]any{"source": source}}, true
+}
+
+var uuidText = regexp.MustCompile(document.UUIDPattern)
 
 var alertLine = regexp.MustCompile(`^\s*\[!([A-Za-z]+)\]\s*$`)
 
@@ -610,6 +665,9 @@ func (c *converter) htmlBlock(raw string) []document.Node {
 	if trimmed == "" || (strings.HasPrefix(trimmed, "<!--") && strings.HasSuffix(trimmed, "-->")) || detailsClose.MatchString(trimmed) {
 		return nil
 	}
+	if made, ok := c.galleryDiv(trimmed); ok {
+		return made
+	}
 	if made, ok := c.statorDiv(trimmed); ok {
 		return made
 	}
@@ -661,6 +719,10 @@ func (c *converter) statorDiv(raw string) ([]document.Node, bool) {
 					return nil, false
 				}
 				n, ok := divNode(kind, e.attrs, strings.TrimSpace(words.String()))
+				// A chart's marker holds no table yet; blocks gives it the one after it.
+				if ok && kind == kindTableChart {
+					return []document.Node{n}, true
+				}
 				if !ok || !validates(n, false) {
 					c.warn("A %s block could not be read and was left out.", kind)
 					return nil, true
@@ -669,6 +731,65 @@ func (c *converter) statorDiv(raw string) ([]document.Node, bool) {
 			}
 		}
 		return nil, false
+	}
+}
+
+// galleryDiv reads the div Render writes for a gallery: its start tag, img
+// tags with nothing but spaces between them, and its end tag. A picture that
+// is not a file of the import is left out, as the warning it gets says.
+func (c *converter) galleryDiv(raw string) ([]document.Node, bool) {
+	tok := nethtml.NewTokenizer(strings.NewReader(raw))
+	if tok.Next() != nethtml.StartTagToken {
+		return nil, false
+	}
+	e := startTag(tok)
+	if e.name != "div" || e.attrs[statorAttr] != kindGallery {
+		return nil, false
+	}
+	columns, err := strconv.Atoi(e.attrs["data-columns"])
+	if err != nil {
+		columns = document.DefaultGalleryColumns
+	}
+	columns = min(max(columns, document.MinGalleryColumns), document.MaxGalleryColumns)
+	var pictures []document.Node
+	for {
+		switch tok.Next() {
+		case nethtml.TextToken:
+			if strings.TrimSpace(string(tok.Text())) != "" {
+				return nil, false
+			}
+		case nethtml.StartTagToken, nethtml.SelfClosingTagToken:
+			img := startTag(tok)
+			if img.name != "img" {
+				return nil, false
+			}
+			src := img.attrs["src"]
+			var target Target
+			if relative(src) {
+				target = c.resolve(src)
+			}
+			if target.Kind != TargetFile {
+				c.warn("The gallery's picture %s is not in the import, so the gallery leaves it out.", src)
+				continue
+			}
+			var caption any
+			if alt := img.attrs["alt"]; alt != "" {
+				caption = alt
+			}
+			pictures = append(pictures, document.Node{Type: document.NodeGalleryImage, Attrs: map[string]any{"attachmentId": target.AttachmentID, "caption": caption}})
+		case nethtml.EndTagToken:
+			if name, _ := tok.TagName(); string(name) != "div" || tok.Next() != nethtml.ErrorToken {
+				return nil, false
+			}
+			n := document.Node{Type: document.NodeGallery, Attrs: map[string]any{"columns": columns}, Content: pictures}
+			if len(pictures) == 0 || !validates(n, false) {
+				c.warn("A %s block could not be read and was left out.", kindGallery)
+				return nil, true
+			}
+			return []document.Node{n}, true
+		default:
+			return nil, false
+		}
 	}
 }
 
@@ -698,6 +819,114 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 			level = document.MaxHeadingLevel
 		}
 		return document.Node{Type: "tableOfContents", Attrs: map[string]any{"maxLevel": level}}, true
+	case kindLabelled, kindUpdated, kindPosts:
+		limit, err := strconv.Atoi(attrs["data-limit"])
+		if err != nil {
+			return document.Node{}, false
+		}
+		var space any
+		if key := attrs["data-space"]; key != "" {
+			space = key
+		}
+		if kind == kindUpdated {
+			return document.Node{Type: document.NodeRecentlyUpdated, Attrs: map[string]any{"space": space, "limit": limit}}, true
+		}
+		if kind == kindPosts {
+			return document.Node{Type: document.NodeBlogPosts, Attrs: map[string]any{"space": space, "limit": limit}}, true
+		}
+		labels := []string{}
+		for name := range strings.SplitSeq(attrs["data-labels"], ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				labels = append(labels, name)
+			}
+		}
+		return document.Node{Type: document.NodeLabelledPages, Attrs: map[string]any{
+			"labels": labels, "match": attrs["data-match"], "space": space, "sort": attrs["data-sort"], "limit": limit,
+		}}, true
+	case kindTableChart:
+		chart := attrs["data-chart"]
+		if !slices.Contains(document.TableCharts, chart) {
+			return document.Node{}, false
+		}
+		return document.Node{Type: document.NodeTableChart, Attrs: map[string]any{"chart": chart, "showTable": attrs["data-show-table"] == "true"}}, true
+	case kindFiles:
+		return document.Node{Type: document.NodeAttachmentList}, true
+	case kindCalendar:
+		var project any
+		if key := attrs["data-project"]; key != "" {
+			project = key
+		}
+		return document.Node{Type: document.NodeCalendar, Attrs: map[string]any{"calendarId": attrs["data-calendar-id"], "project": project}}, true
+	case kindButton:
+		node := document.Node{Type: document.NodeTemplateButton, Attrs: map[string]any{
+			"template": attrs["data-template"], "space": nil, "parent": nil, "label": words, "title": attrs["data-title"],
+		}}
+		for _, name := range []string{"space", "parent"} {
+			if v := attrs["data-"+name]; v != "" {
+				node.Attrs[name] = v
+			}
+		}
+		return node, true
+	case kindPeople:
+		limit, err := strconv.Atoi(attrs["data-limit"])
+		if err != nil {
+			return document.Node{}, false
+		}
+		return document.Node{Type: document.NodeContributors, Attrs: map[string]any{"scope": attrs["data-scope"], "limit": limit}}, true
+	case kindTasks:
+		limit, err := strconv.Atoi(attrs["data-limit"])
+		if err != nil {
+			return document.Node{}, false
+		}
+		node := document.Node{Type: document.NodeTaskReport, Attrs: map[string]any{
+			"space": nil, "assignee": nil, "due": attrs["data-due"], "state": attrs["data-state"], "limit": limit,
+		}}
+		for _, name := range []string{"space", "assignee"} {
+			if v := attrs["data-"+name]; v != "" {
+				node.Attrs[name] = v
+			}
+		}
+		return node, true
+	case kindReport:
+		labels := []string{}
+		for name := range strings.SplitSeq(attrs["data-labels"], ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				labels = append(labels, name)
+			}
+		}
+		columns := []string{}
+		if raw := attrs["data-columns"]; raw != "" && json.Unmarshal([]byte(raw), &columns) != nil {
+			return document.Node{}, false
+		}
+		var space any
+		if key := attrs["data-space"]; key != "" {
+			space = key
+		}
+		return document.Node{Type: document.NodePropertiesReport, Attrs: map[string]any{"labels": labels, "space": space, "columns": columns}}, true
+	case kindChart:
+		days, err := strconv.Atoi(attrs["data-days"])
+		if err != nil {
+			return document.Node{}, false
+		}
+		return document.Node{Type: armature.NodeChart, Attrs: map[string]any{
+			"project": attrs["data-project"], "query": words, "chart": attrs["data-chart"], "groupBy": attrs["data-group-by"], "days": days,
+		}}, true
+	case kindRoadmap:
+		return document.Node{Type: armature.NodeRoadmap, Attrs: map[string]any{
+			"project": attrs["data-project"], "query": words, "groupBy": attrs["data-group-by"],
+		}}, true
+	case kindInclude:
+		if !uuidText.MatchString(attrs["data-page"]) {
+			return document.Node{}, false
+		}
+		n := document.Node{Type: document.NodeInclude, Attrs: map[string]any{"pageId": attrs["data-page"], "excerptId": nil}}
+		if excerpt, ok := attrs["data-excerpt"]; ok {
+			if !uuidText.MatchString(excerpt) {
+				return document.Node{}, false
+			}
+			n.Attrs["excerptId"] = excerpt
+		}
+		return n, true
 	case kindChildPages:
 		n := document.Node{Type: "childPages", Attrs: map[string]any{"scope": attrs["data-scope"], "sort": attrs["data-sort"], "depth": nil}}
 		if v, ok := attrs["data-depth"]; ok {

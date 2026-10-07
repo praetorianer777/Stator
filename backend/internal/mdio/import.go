@@ -261,6 +261,9 @@ func (s *Service) Import(ctx context.Context, actor perm.Actor, parentID uuid.UU
 	if !parent.Can.Edit {
 		return nil, 0, parent.Refusal(perm.EditPages)
 	}
+	if parent.Kind == page.KindPost {
+		return nil, 0, page.ErrPostPlace
+	}
 	if err := s.checkFiles(u, roots); err != nil {
 		return nil, 0, err
 	}

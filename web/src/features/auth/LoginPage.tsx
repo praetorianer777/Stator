@@ -34,11 +34,11 @@ export function ssoFailure(reason: string | undefined): string | null {
 }
 
 /** The way in: the organization's identity provider for everybody, a password for the bootstrap administrator. */
-export function LoginPage({ next, sso }: { next?: string; sso?: string }) {
+export function LoginPage({ next, sso, org: named }: { next?: string; sso?: string; org?: string }) {
   const navigate = useNavigate();
   const router = useRouter();
   const login = useLogin();
-  const [org, setOrg] = useState(readLastOrg);
+  const [org, setOrg] = useState(() => named ?? readLastOrg());
   const [orgError, setOrgError] = useState<string>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

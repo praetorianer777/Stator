@@ -1,11 +1,12 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useContext, useEffect, useId, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { isChangeOrigin } from "@tiptap/extension-collaboration";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { MentionNodeAttrs } from "@tiptap/extension-mention";
 import { EDITOR_LINE_HEIGHT_PX, EDITOR_MIN_ROWS, MENTION_MAX_SUGGESTIONS, MENTION_SEARCH_DEBOUNCE_MS } from "@/config";
 import { t } from "@/i18n";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
-import { editorExtensions, fitSchema, sanitizePasted, type EditorVariant } from "./extensions";
+import { editorExtensions, fitSchema, sanitizePasted, type CollabBinding, type EditorVariant } from "./extensions";
 import { MentionList, mentionMatches } from "./MentionList";
 import { emptyDoc, isEmptyDoc, type Doc, type Mentionable, type MentionSource } from "./schema";
 import { SlashMenu } from "./SlashMenu";
@@ -19,28 +20,48 @@ import type { UploadFile } from "./attachments";
 import type { IssueSource } from "./armatureIssue";
 import { IssuePicker } from "@/features/armature/IssuePicker";
 import { IssueListDialog } from "@/features/armature/IssueListDialog";
+import { IssueChartDialog } from "@/features/armature/IssueChartDialog";
+import { newChartSettings } from "@/features/armature/chart";
+import { IssueRoadmapDialog } from "@/features/armature/IssueRoadmapDialog";
+import { newRoadmapSettings } from "@/features/armature/roadmap";
+import { PropertiesReportDialog } from "@/features/properties/PropertiesReportDialog";
+import { PageListDialog } from "@/features/pageLists/PageListDialog";
+import { labelledSettings } from "@/features/pageLists/lists";
+import { BlogPostsDialog } from "@/features/blog/BlogPostsDialog";
+import { blogPostsSettings } from "@/features/blog/blogPosts";
+import { TaskReportDialog } from "@/features/taskReport/TaskReportDialog";
+import { taskReportSettings } from "@/features/taskReport/report";
+import { CalendarDialog } from "@/features/calendar/CalendarDialog";
+import { TemplateButtonDialog } from "@/features/templateButton/TemplateButtonDialog";
+import { templateButtonSettings } from "@/features/templateButton/button";
+import { calendarSettings } from "@/features/calendar/calendar";
+import { GalleryDialog } from "@/features/gallery/GalleryDialog";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
-import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
+import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT, GALLERY_DEFAULT_COLUMNS } from "@/config";
 import type { InlineValueTarget } from "./inlineValues";
-import { DateDialog, StatusDialog } from "./InlineValueDialogs";
+import { DateDialog, MathDialog, StatusDialog } from "./InlineValueDialogs";
+import { LinkCardDialog } from "./LinkCardDialog";
+import { ExcerptPicker } from "@/features/pages/ExcerptPicker";
+import { DocPageContext } from "./BlockViews";
 import type { Emoji } from "./emoji";
 import { EmojiList } from "./EmojiList";
 
 // The dialog held the page still, but a node that is no longer where it was
-// opened is left as it is rather than changing whatever is there now.
+// opened is left as it is rather than changing whatever is there now. The
+// caret goes on after an inline node; a block, with no text to put it in,
+// stays selected.
 function changeInlineValue(editor: TiptapEditor, target: InlineValueTarget, attrs: InlineValueTarget["attrs"]) {
   const node = editor.state.doc.nodeAt(target.pos);
   if (node?.type.name !== target.kind) return;
-  editor
+  const chain = editor
     .chain()
     .focus()
     .command(({ tr }) => {
       tr.setNodeMarkup(target.pos, undefined, { ...node.attrs, ...attrs });
       return true;
-    })
-    .setTextSelection(target.pos + node.nodeSize)
-    .run();
+    });
+  (node.isInline ? chain.setTextSelection(target.pos + node.nodeSize) : chain.setNodeSelection(target.pos)).run();
 }
 
 /** What a form may do to the editor from outside: put words or a template's blank in, or empty it. */
@@ -55,8 +76,8 @@ export interface EditorProps {
   /** The id the suite types into: the editable element's. */
   id: string;
   value: Doc | null;
-  /** Null when the document says nothing, so a blank page stores nothing. */
-  onChange: (doc: Doc | null) => void;
+  /** Null when the document says nothing, so a blank page stores nothing; remote when the change came from somebody else's browser. */
+  onChange: (doc: Doc | null, remote?: boolean) => void;
   /** Who an at sign can name, when they are known up front. */
   people?: Mentionable[];
   /** Looks up who an at sign can name as the person types; it takes the place of people. */
@@ -76,6 +97,12 @@ export interface EditorProps {
   variant?: EditorVariant;
   /** What turns typed keys and pasted issue addresses into Armature chips. */
   armature?: IssueSource;
+  /** The shared draft the body is bound to, in place of value. */
+  collab?: CollabBinding;
+  /** Shows the document without letting anybody change it. */
+  readOnly?: boolean;
+  /** Gives each checklist item its task's id as it is made, as a live page's saves need. */
+  taskIds?: boolean;
 }
 
 /**
@@ -98,7 +125,12 @@ export function Editor({
   attachments,
   variant = "page",
   armature,
+  collab,
+  readOnly = false,
+  taskIds = false,
 }: EditorProps) {
+  // The page being edited, so an include starts in its space and never shows the page itself.
+  const page = useContext(DocPageContext);
   const slashId = useId();
   const mentionId = useId();
   const submitRef = useRef(onSubmit);
@@ -116,6 +148,17 @@ export function Editor({
   armatureRef.current = armature;
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
+  const [makingChart, setMakingChart] = useState(false);
+  const [makingRoadmap, setMakingRoadmap] = useState(false);
+  const [makingReport, setMakingReport] = useState(false);
+  const [makingLabelled, setMakingLabelled] = useState(false);
+  const [makingPosts, setMakingPosts] = useState(false);
+  const [makingTasks, setMakingTasks] = useState(false);
+  const [makingCalendar, setMakingCalendar] = useState(false);
+  const [makingGallery, setMakingGallery] = useState(false);
+  const [makingButton, setMakingButton] = useState(false);
+  const [pickingLink, setPickingLink] = useState(false);
+  const [pickingInclude, setPickingInclude] = useState(false);
   const [filing, setFiling] = useState<SelectionPlan | null>(null);
   const [editingValue, setEditingValue] = useState<InlineValueTarget | null>(null);
   const emojiId = useId();
@@ -139,16 +182,31 @@ export function Editor({
       armature,
       pickIssue: () => setPickingIssue(true),
       pickIssueList: () => setMakingList(true),
+      pickChart: () => setMakingChart(true),
+      pickRoadmap: () => setMakingRoadmap(true),
+      pickPropertiesReport: () => setMakingReport(true),
+      pickLabelledPages: () => setMakingLabelled(true),
+      pickBlogPosts: () => setMakingPosts(true),
+      pickTaskReport: () => setMakingTasks(true),
+      pickCalendar: () => setMakingCalendar(true),
+      pickGallery: () => setMakingGallery(true),
+      pickTemplateButton: () => setMakingButton(true),
+      pickLinkCard: () => setPickingLink(true),
+      pickInclude: () => setPickingInclude(true),
+      pageId: page?.id,
       editInlineValue: setEditingValue,
       emoji: { render: emoji.renderer },
       find: openFind,
+      collab,
+      taskIds,
       slash: { items: ({ query }) => filterSlashItems(query, slashItemsFor(Boolean(armatureRef.current?.baseUrl()))), render: slash.renderer },
       mention: {
         items: ({ query }) => mentionMatches(searchesRef.current ? foundRef.current : peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
         render: mention.renderer,
       },
     }),
-    content: (value ?? emptyDoc) as JSONContent,
+    // A shared draft brings its own content; set here too, it would be added twice.
+    content: collab ? undefined : ((value ?? emptyDoc) as JSONContent),
     editorProps: {
       attributes: {
         id,
@@ -160,9 +218,18 @@ export function Editor({
         style: `min-height: ${rows * EDITOR_LINE_HEIGHT_PX}px`,
       },
     },
-    onUpdate: ({ editor: e }) => {
-      const json = e.getJSON() as Doc;
-      onChangeRef.current(isEmptyDoc(json) ? null : json);
+    onUpdate: ({ editor: e, transaction }) => {
+      const tell = () => {
+        const json = e.getJSON() as Doc;
+        onChangeRef.current(isEmptyDoc(json) ? null : json, isChangeOrigin(transaction));
+      };
+      // A shared draft draws its first content while the editor is being
+      // made, inside a render, where the page may not be told yet.
+      if (isChangeOrigin(transaction))
+        queueMicrotask(() => {
+          if (!e.isDestroyed) tell();
+        });
+      else tell();
     },
   });
 
@@ -173,6 +240,10 @@ export function Editor({
   useEffect(() => {
     if (autoFocus && editor && !editor.isDestroyed) editor.commands.focus("end");
   }, [autoFocus, editor]);
+
+  useEffect(() => {
+    if (editor && !editor.isDestroyed && editor.isEditable === readOnly) editor.setEditable(!readOnly, false);
+  }, [editor, readOnly]);
 
   const mentionQuery = mention.open ? mention.open.query : null;
   const replaceMentions = mention.replace;
@@ -292,12 +363,147 @@ export function Editor({
           }}
         />
       )}
+      {(editingValue?.kind === "mathInline" || editingValue?.kind === "mathBlock") && editor && (
+        <MathDialog
+          initial={editingValue.attrs.latex}
+          display={editingValue.kind === "mathBlock"}
+          onClose={() => setEditingValue(null)}
+          onSave={(latex) => {
+            setEditingValue(null);
+            changeInlineValue(editor, editingValue, { latex });
+          }}
+        />
+      )}
       {pickingIssue && editor && (
         <IssuePicker
           onClose={() => setPickingIssue(false)}
           onInsert={(key) => {
             setPickingIssue(false);
             editor.chain().focus().insertArmatureIssueBlock(key).run();
+          }}
+        />
+      )}
+      {pickingInclude && editor && (
+        <ExcerptPicker
+          initialSpaceKey={page?.spaceKey}
+          excludePageId={page?.id}
+          onClose={() => setPickingInclude(false)}
+          onPick={(choice) => {
+            setPickingInclude(false);
+            editor.chain().focus().insertInclude({ pageId: choice.pageId, excerptId: choice.excerptId }).run();
+          }}
+        />
+      )}
+      {pickingLink && editor && (
+        <LinkCardDialog
+          onClose={() => setPickingLink(false)}
+          onInsert={(url) => {
+            setPickingLink(false);
+            editor.chain().focus().insertLinkCard(url).run();
+          }}
+        />
+      )}
+      {makingChart && editor && (
+        <IssueChartDialog
+          initial={newChartSettings()}
+          isNew
+          onClose={() => setMakingChart(false)}
+          onSave={(settings) => {
+            setMakingChart(false);
+            editor.chain().focus().insertArmatureChart(settings).run();
+          }}
+        />
+      )}
+      {makingRoadmap && editor && (
+        <IssueRoadmapDialog
+          initial={newRoadmapSettings()}
+          isNew
+          onClose={() => setMakingRoadmap(false)}
+          onSave={(settings) => {
+            setMakingRoadmap(false);
+            editor.chain().focus().insertArmatureRoadmap(settings).run();
+          }}
+        />
+      )}
+      {makingLabelled && editor && (
+        <PageListDialog
+          kind="labelled"
+          initial={labelledSettings({})}
+          isNew
+          onClose={() => setMakingLabelled(false)}
+          onSave={(settings) => {
+            setMakingLabelled(false);
+            editor.chain().focus().insertLabelledPages(settings).run();
+          }}
+        />
+      )}
+      {makingPosts && editor && (
+        <BlogPostsDialog
+          initial={blogPostsSettings({ space: page?.spaceKey })}
+          currentSpace={page?.spaceKey}
+          isNew
+          onClose={() => setMakingPosts(false)}
+          onSave={(settings) => {
+            setMakingPosts(false);
+            editor.chain().focus().insertBlogPosts(settings).run();
+          }}
+        />
+      )}
+      {makingTasks && editor && (
+        <TaskReportDialog
+          initial={taskReportSettings({})}
+          isNew
+          onClose={() => setMakingTasks(false)}
+          onSave={(settings) => {
+            setMakingTasks(false);
+            editor.chain().focus().insertTaskReport(settings).run();
+          }}
+        />
+      )}
+      {makingCalendar && editor && (
+        <CalendarDialog
+          initial={calendarSettings({})}
+          spaceKey={page?.spaceKey ?? null}
+          isNew
+          onClose={() => setMakingCalendar(false)}
+          onSave={(settings) => {
+            setMakingCalendar(false);
+            editor.chain().focus().insertCalendar(settings).run();
+          }}
+        />
+      )}
+      {makingGallery && editor && (
+        <GalleryDialog
+          initial={{ columns: GALLERY_DEFAULT_COLUMNS, pictures: [] }}
+          pageId={page?.id}
+          isNew
+          onClose={() => setMakingGallery(false)}
+          onSave={(settings) => {
+            setMakingGallery(false);
+            editor.chain().focus().insertGallery(settings).run();
+          }}
+        />
+      )}
+      {makingButton && editor && (
+        <TemplateButtonDialog
+          initial={templateButtonSettings({})}
+          pageSpace={page?.spaceKey ?? null}
+          isNew
+          onClose={() => setMakingButton(false)}
+          onSave={(settings) => {
+            setMakingButton(false);
+            editor.chain().focus().insertTemplateButton(settings).run();
+          }}
+        />
+      )}
+      {makingReport && editor && (
+        <PropertiesReportDialog
+          initial={{ labels: [], space: null, columns: [] }}
+          isNew
+          onClose={() => setMakingReport(false)}
+          onSave={(settings) => {
+            setMakingReport(false);
+            editor.chain().focus().insertPropertiesReport(settings).run();
           }}
         />
       )}

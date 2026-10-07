@@ -20,6 +20,8 @@
     "@tanstack/react-router": "^1.87.0",
     "@tiptap/core": "^3.31.3",
     "@tiptap/extension-code-block-lowlight": "^3.31.3",
+    "@tiptap/extension-collaboration": "^3.31.3",
+    "@tiptap/extension-collaboration-caret": "^3.31.3",
     "@tiptap/extension-heading": "^3.31.3",
     "@tiptap/extension-list": "^3.31.3",
     "@tiptap/extension-mention": "^3.31.3",
@@ -30,11 +32,18 @@
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
     "@tiptap/suggestion": "^3.31.3",
+    "@tiptap/y-tiptap": "^3.0.9",
     "gemoji": "^8.1.0",
+    "katex": "^0.16.47",
+    "lib0": "^0.2.119",
     "lowlight": "^3.3.0",
+    "mermaid": "^11.17.2",
     "openapi-fetch": "^0.17.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "y-indexeddb": "^9.0.12",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

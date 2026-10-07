@@ -2,24 +2,16 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openPage, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
 
-const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const list = (page: Page, name: string) => page.locator(`[data-home-list="${name}"]`);
 const starPage = (page: Page) => page.locator('[data-action="star-page"]');
 const starSpace = (page: Page) => page.locator('main [data-action="star-space"]');
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
-
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
 
 type HomeList = "updates" | "starred" | "recent" | "edited";
 
@@ -28,18 +20,17 @@ type HomeList = "updates" | "starred" | "recent" | "edited";
  * list asks on its own, so a lagging replica can answer one before it has seen what another has.
  */
 async function homeShows(page: Page, title: string, want: Partial<Record<HomeList, boolean>>) {
-  await expect(async () => {
-    await page.goto("/");
+  await openUntil(page, "/", async () => {
     for (const [name, shown] of Object.entries(want)) {
       const link = list(page, name).getByRole("link", { name: title, exact: true });
-      if (shown) await expect(link).toBeVisible({ timeout: 1_000 });
+      if (shown) await expect(link).toBeVisible(ONE_LOOK);
       else {
         // A list still loading shows no link either, so its answer is waited for first.
-        await expect(list(page, name).locator("ul, p").first()).toBeVisible({ timeout: 1_000 });
-        await expect(link).toHaveCount(0, { timeout: 1_000 });
+        await expect(list(page, name).locator("ul, p").first()).toBeVisible(ONE_LOOK);
+        await expect(link).toHaveCount(0, ONE_LOOK);
       }
     }
-  }).toPass();
+  });
 }
 
 /** Publishes a new version of a page as whoever the client acts for. */
@@ -76,10 +67,7 @@ test.describe("stars and the home page", { tag: ["@auth"] }, () => {
     await starPage(page).click();
     await expect(starPage(page)).toHaveAttribute("aria-pressed", "true");
 
-    await expect(async () => {
-      await page.goto(`/s/${space.key}`);
-      await expect(starSpace(page)).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openShowing(page, `/s/${space.key}`, starSpace(page));
     await starSpace(page).click();
     await expect(starSpace(page)).toHaveAttribute("aria-pressed", "true");
 
@@ -126,10 +114,7 @@ test.describe("stars and the home page", { tag: ["@auth"] }, () => {
   test("a space is starred from the directory", { tag: "@desktop" }, async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Directory");
     const row = page.locator(`[data-space-row="${space.key}"]`);
-    await expect(async () => {
-      await page.goto("/spaces");
-      await expect(row).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openShowing(page, "/spaces", row);
     await row.locator('[data-action="star-space"]').click();
     await expect(row.locator('[data-action="star-space"]')).toHaveAttribute("aria-pressed", "true");
     await homeShows(page, space.name, { starred: true });

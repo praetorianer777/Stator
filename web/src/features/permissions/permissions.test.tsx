@@ -7,6 +7,9 @@ import { renderAt, signedIn, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 import { impliedPermissions } from "./SpacePermissions";
+// The edit route's chunk carries the editor and its shared draft. Loaded inside
+// a test it outlasted the test's time on a busy machine; loaded here it is at hand.
+import "@/routes/page-edit.lazy";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -201,6 +204,138 @@ describe("a space's permissions", () => {
   });
 });
 
+describe("copying another space's permissions", () => {
+  const table: SpaceGrant[] = [
+    { subject: everyone, permissions: ["view", "addPages", "addComments", "delete"] },
+    { subject: ada, permissions: ["view", "addPages", "addComments", "delete", "administer"] },
+  ];
+  const ops = aSpace({ id: "0195f000-0000-7000-8000-0000000000f5", key: "OPS", name: "Operations" });
+  const mine = aSpace({ id: "0195f000-0000-7000-8000-0000000000f6", key: "ADA", name: "Ada's notes", owner: { id: ada.id!, name: ada.name } });
+  const closed = aSpace({ id: "0195f000-0000-7000-8000-0000000000f7", key: "HR", name: "People", can: { ...space.can, administer: false } });
+  const subject = (s: typeof everyone | typeof bob | typeof eng, guest = false) => ({ ...s, guest });
+  const preview = (mode: "merge" | "replace", over: Record<string, unknown> = {}) => ({
+    source: { key: "OPS", name: "Operations" },
+    target: { key: "DOCS", name: "Handbook" },
+    mode,
+    changes:
+      mode === "merge"
+        ? [{ subject: subject(eng), kind: "added", before: [], after: ["view", "addPages"] }]
+        : [
+            { subject: subject(everyone), kind: "narrowed", before: ["view", "addPages", "addComments", "delete"], after: ["view"] },
+            { subject: subject(eng), kind: "added", before: [], after: ["view", "addPages"] },
+            { subject: { type: "anonymous", id: null, name: "Anybody", guest: false }, kind: "added", before: [], after: ["view"] },
+          ],
+    skipped: [{ subject: { type: "user", id: ids.bob, name: "Gwen Guest", guest: true }, permissions: ["view"], reason: "guest" }],
+    kept: [],
+    counts: { added: 1, widened: 0, narrowed: 0, changed: 0, removed: 0, skipped: 1, unchanged: 2 },
+    leavesNoAdministrator: false,
+    fingerprint: `print-${mode}`,
+    ...over,
+  });
+  const base = {
+    "GET /spaces/DOCS": { status: 200, body: { space } },
+    "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
+    "GET /spaces": { status: 200, body: { spaces: [space, ops, mine, closed] } },
+    ...pickers,
+  };
+
+  it("previews the changes and applies exactly the preview shown", async () => {
+    const copied: SpaceGrant[] = [...table, { subject: eng, permissions: ["view", "addPages"] }];
+    let saved = table;
+    const sent = stubApi({
+      ...base,
+      "GET /spaces/DOCS/permissions": () => ({ status: 200, body: { grants: saved } }),
+      "GET /spaces/DOCS/permissions/copy": (request) => {
+        const mode = new URL(request.url, "http://app.test").searchParams.get("mode") as "merge" | "replace";
+        return { status: 200, body: { preview: preview(mode) } };
+      },
+      "GET /spaces/DOCS/anonymous-access": { status: 200, body: { anonymousAccess: { view: false, orgEnabled: false, personal: false } } },
+      "POST /spaces/DOCS/permissions/copy": () => {
+        saved = copied;
+        return { status: 200, body: { grants: copied, copy: preview("merge") } };
+      },
+    });
+    await renderAt("/s/DOCS/settings?tab=permissions");
+    await userEvent.click(await screen.findByRole("button", { name: "Copy from another space" }));
+    const dialog = await screen.findByRole("dialog", { name: "Copy permissions into Handbook" });
+    const source = within(dialog).getByRole("combobox", { name: "Copy from" });
+    expect(
+      within(source)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["Choose a space", "Operations (OPS)"]);
+    expect(within(dialog).getByRole("button", { name: "Copy permissions" })).toBeDisabled();
+
+    await userEvent.selectOptions(source, "OPS");
+    const diff = await within(dialog).findByRole("table", { name: "Changes to this space's permissions" });
+    expect(within(diff).getByText("Engineering").closest("tr")).toHaveAttribute("data-copy-kind", "added");
+    expect(within(dialog).getByText(/Gwen Guest is a guest of the other space/)).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Replace" }));
+    expect(await within(dialog).findByText("Anybody without signing in")).toBeInTheDocument();
+    const replaced = within(dialog).getByRole("table", { name: "Changes to this space's permissions" });
+    expect(within(replaced).getByText("Everyone").closest("tr")).toHaveAttribute("data-copy-kind", "narrowed");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Merge" }));
+    await waitFor(() => expect(within(dialog).queryByText("Anybody without signing in")).toBeNull());
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Copy permissions" }));
+    expect(await screen.findByText("Copied the permissions of Operations.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(sent.find((r) => r.method === "POST")?.body).toEqual({ from: "OPS", mode: "merge", fingerprint: "print-merge" });
+    const grid = screen.getByRole("table", { name: "Permissions in this space" });
+    expect(within(grid).getByText("Engineering")).toBeInTheDocument();
+  });
+
+  it("refuses a copy that leaves nobody administering, and shows a stale preview afresh", async () => {
+    let looks = 0;
+    stubApi({
+      ...base,
+      "GET /spaces/DOCS/permissions": { status: 200, body: { grants: table } },
+      "GET /spaces/DOCS/permissions/copy": (request) => {
+        looks += 1;
+        const mode = new URL(request.url, "http://app.test").searchParams.get("mode");
+        return {
+          status: 200,
+          body: { preview: mode === "replace" ? preview("replace", { leavesNoAdministrator: true }) : preview("merge", { fingerprint: `print-${looks}` }) },
+        };
+      },
+      "POST /spaces/DOCS/permissions/copy": {
+        status: 409,
+        body: {
+          error: {
+            code: "copy_changed",
+            message: "The permissions of OPS or DOCS changed since the preview was made. Look at the new preview, then copy again.",
+          },
+        },
+      },
+    });
+    await renderAt("/s/DOCS/settings?tab=permissions");
+    await userEvent.click(await screen.findByRole("button", { name: "Copy from another space" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.selectOptions(within(dialog).getByRole("combobox", { name: "Copy from" }), "OPS");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Replace" }));
+    expect(await within(dialog).findByText(/would leave the space without an administrator/)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Copy permissions" })).toBeDisabled();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Merge" }));
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Copy permissions" })).toBeEnabled());
+    const before = looks;
+    await userEvent.click(within(dialog).getByRole("button", { name: "Copy permissions" }));
+    expect(await within(dialog).findByText(/changed since the preview was made/)).toBeInTheDocument();
+    await waitFor(() => expect(looks).toBeGreaterThan(before));
+  });
+
+  it("is offered only once the grid's own changes are saved", async () => {
+    stubApi({ ...base, "GET /spaces/DOCS/permissions": { status: 200, body: { grants: table } } });
+    await renderAt("/s/DOCS/settings?tab=permissions");
+    const offer = await screen.findByRole("button", { name: "Copy from another space" });
+    await userEvent.click(screen.getByRole("button", { name: "Remove Everyone" }));
+    expect(offer).toBeDisabled();
+    expect(screen.getByText("Save or discard your changes above before you copy.")).toBeInTheDocument();
+  });
+});
+
 describe("a page's restrictions", () => {
   const plans = { id: ids.plans, title: "Plans", home: false };
   const secret = aPage({
@@ -213,8 +348,22 @@ describe("a page's restrictions", () => {
   });
   const inherited: Restrictions = { view: [], edit: [], inherited: [{ page: plans, view: [eng], edit: [] }] };
   const tree: Record<string, TreeNode[]> = {
-    home: [{ id: ids.plans, parentId: home.id, title: "Plans", hasChildren: true, unpublished: false, restricted: true, archived: false }],
-    [ids.plans]: [{ id: ids.secret, parentId: ids.plans, title: "Secret", hasChildren: false, unpublished: false, restricted: true, archived: false }],
+    home: [
+      { id: ids.plans, parentId: home.id, title: "Plans", hasChildren: true, unpublished: false, restricted: true, archived: false, kind: "page", icon: null },
+    ],
+    [ids.plans]: [
+      {
+        id: ids.secret,
+        parentId: ids.plans,
+        title: "Secret",
+        hasChildren: false,
+        unpublished: false,
+        restricted: true,
+        archived: false,
+        kind: "page",
+        icon: null,
+      },
+    ],
   };
   const stubPage = (page = secret, more: Record<string, Answer | ((request: Request) => Answer)> = {}) =>
     stubApi({
@@ -326,7 +475,6 @@ describe("what a page offers", () => {
   it("sends somebody who may not edit away from the editor with a sentence", async () => {
     stub({ edit: false, delete: false, restrict: false, comment: false, archive: false });
     await renderAt(`/s/DOCS/p/${ids.plans}/plans/edit`);
-    // The editor route arrives in a chunk of its own, which a busy machine loads slowly.
     expect(await screen.findByText(/You can read this page but not edit it\./, undefined, EDITOR_CHUNK_WAIT)).toBeInTheDocument();
   });
 });

@@ -3,6 +3,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import { closeHistory } from "@tiptap/pm/history";
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { yUndoPluginKey } from "@tiptap/y-tiptap";
 
 /** One place the query was found, as document positions. */
 export interface Match {
@@ -129,6 +130,14 @@ export function selectCurrent(state: EditorState): Transaction | null {
 
 function selectMatch(tr: Transaction, match: Match): Transaction {
   return tr.setSelection(TextSelection.create(tr.doc, match.from, match.to));
+}
+
+/**
+ * Ends the shared draft's undo step, which otherwise takes in every change
+ * made within half a second, so a replace undoes on its own as it does alone.
+ */
+export function endUndoStep(state: EditorState) {
+  (yUndoPluginKey.getState(state) as { undoManager?: { stopCapturing: () => void } } | undefined)?.undoManager?.stopCapturing();
 }
 
 /** Replaces the match the bar is on and moves to the one after it; the replaced text keeps its marks. */

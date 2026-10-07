@@ -26,9 +26,14 @@ const file = (over: Partial<Attachment>): Attachment => ({
   height: null,
   uploadedByName: "Ada Lovelace",
   createdAt: "2026-09-29T09:00:00Z",
+  version: 1,
+  versions: 1,
+  restoredFrom: null,
+  editedFrom: null,
+  preview: "none",
   ...over,
 });
-const plan = file({});
+const plan = file({ preview: "pdf" });
 const shot = file({ id: "0195f000-0000-7000-8000-0000000000f2", fileName: "screen.png", contentType: "image/png", size: 2048, width: 800, height: 600 });
 const archive = file({ id: "0195f000-0000-7000-8000-0000000000f3", fileName: "logs.zip", contentType: "application/zip", size: 512 });
 const gone = "0195f000-0000-7000-8000-0000000000ff";
@@ -198,6 +203,72 @@ describe("the attachments of a page", () => {
     expect(await screen.findByText("Deleted logs.zip.")).toBeInTheDocument();
   });
 
+  it("lists a file's earlier versions under its latest, restores one as the next, and deletes a version or all of them", async () => {
+    const csv = { fileName: "budget.csv", contentType: "text/csv", size: 100 };
+    const v1 = file({ ...csv, id: "0195f000-0000-7000-8000-0000000000e1", version: 1, versions: 2 });
+    const v2 = file({ ...csv, id: "0195f000-0000-7000-8000-0000000000e2", version: 2, versions: 2, uploadedByName: "Grace Hopper" });
+    const v3 = file({ ...csv, id: "0195f000-0000-7000-8000-0000000000e3", version: 3, versions: 3, restoredFrom: 1 });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const deletes: string[] = [];
+    const { setList } = stubPage({
+      attachments: [v2, v1],
+      more: {
+        [`POST /attachments/${v1.id}/restore`]: () => {
+          setList([v3, v2, v1]);
+          return { status: 201, body: { attachment: v3 } };
+        },
+        [`DELETE /attachments/${v1.id}`]: (request) => {
+          deletes.push(new URL(request.url).search);
+          setList([v3, v2]);
+          return { status: 204 };
+        },
+        [`DELETE /attachments/${v3.id}`]: (request) => {
+          deletes.push(new URL(request.url).search);
+          setList([plan]);
+          return { status: 204 };
+        },
+      },
+    });
+    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    const list = await panel();
+    expect(await list.findByRole("heading", { name: "Attachments (1)" })).toBeInTheDocument();
+    const latest = () => list.getByText("budget.csv").closest("li")!;
+    expect(latest()).toHaveTextContent("Version 2");
+    expect(list.queryByRole("button", { name: "Restore budget.csv, version 2" })).toBeNull();
+
+    await userEvent.click(list.getByText("1 earlier version"));
+    expect(list.getAllByRole("link", { name: "Download budget.csv, version 1" })[0]).toBeVisible();
+    await userEvent.click(list.getByRole("button", { name: "Restore budget.csv, version 1" }));
+    expect(await screen.findByText("Restored version 1 of budget.csv as version 3.")).toBeInTheDocument();
+    await waitFor(() => expect(latest()).toHaveTextContent("Version 3, restored from version 1"));
+    expect(confirm).not.toHaveBeenCalled();
+
+    await userEvent.click(list.getByText("2 earlier versions"));
+    await userEvent.click(list.getByRole("button", { name: "Delete budget.csv, version 1" }));
+    expect(confirm).toHaveBeenLastCalledWith(
+      "Delete version 1 of budget.csv for good? The other versions stay, and wherever the page shows this version it will show a missing file.",
+    );
+    expect(await screen.findByText("Deleted version 1 of budget.csv.")).toBeInTheDocument();
+    await waitFor(() => expect(list.getByText("1 earlier version")).toBeInTheDocument());
+
+    await userEvent.click(list.getByRole("button", { name: "Delete budget.csv" }));
+    expect(confirm).toHaveBeenLastCalledWith(
+      "Delete budget.csv and all 2 of its versions for good? None of them can be restored, and the page and its older versions will show them as missing files.",
+    );
+    await waitFor(() => expect(list.queryByText("budget.csv")).toBeNull());
+    expect(deletes).toEqual(["", "?versions=all"]);
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("offers its editors to annotate the pictures, and no other file", async () => {
+    stubPage();
+    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    const list = await panel();
+    expect(await list.findByRole("button", { name: "Annotate screen.png" })).toBeInTheDocument();
+    expect(list.queryByRole("button", { name: "Annotate plan.pdf" })).toBeNull();
+    expect(list.queryByRole("button", { name: "Annotate logs.zip" })).toBeNull();
+  });
+
   it("shows a reader who may not edit the files, but no way to add or delete them", async () => {
     stubPage({ edit: false });
     await renderAt(`/s/DOCS/p/${pageId}/notes`);
@@ -206,6 +277,7 @@ describe("the attachments of a page", () => {
     expect(list.queryByRole("button", { name: "Attach files" })).toBeNull();
     expect(list.queryByRole("button", { name: /Delete/ })).toBeNull();
     expect(document.querySelector("[data-attachment-input]")).toBeNull();
+    expect(list.queryByRole("button", { name: /^Annotate/ })).toBeNull();
     const region = await screen.findByRole("region", { name: /Attachments/ });
     fireEvent.drop(region, { dataTransfer: { types: ["Files"], files: [new File(["x"], "x.txt")] } });
     expect(list.queryByRole("progressbar")).toBeNull();

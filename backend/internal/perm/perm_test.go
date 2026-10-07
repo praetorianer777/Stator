@@ -45,6 +45,14 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"an administrator of the space keeps its templates", member(SpaceAdminister), KeepTemplates, true},
 		{"an administrator of a space does not keep the organization's templates", member(SpaceAdminister), KeepOrgTemplates, false},
 		{"an organization admin keeps the organization's templates", admin, KeepOrgTemplates, true},
+		{"a member of an open space does not change its shortcuts", member(openSpace...), ManageShortcuts, false},
+		{"an administrator of the space changes its shortcuts", member(SpaceAdminister), ManageShortcuts, true},
+		{"an organization admin changes every space's shortcuts", admin, ManageShortcuts, true},
+		{"a member of an open space does not copy its permissions", member(openSpace...), CopyPermissionsFrom, false},
+		{"an administrator of the space copies its permissions", member(SpaceAdminister), CopyPermissionsFrom, true},
+		{"an organization admin copies every space's permissions", admin, CopyPermissionsFrom, true},
+		{"a member of an open space keeps its calendars", member(openSpace...), EditCalendars, true},
+		{"a reader of a space does not change its calendars", member(SpaceView, SpaceAddComments), EditCalendars, false},
 		{"no grant is no view", member(), ViewSpace, false},
 		{"without use nothing holds", Facts{Member: true, Role: auth.RoleMember, Space: openSpace}, ViewSpace, false},
 		{"a stranger holds nothing", Facts{Space: openSpace, Global: []GlobalPermission{UseStator}}, ViewSpace, false},
@@ -55,6 +63,12 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"a member granted createSpace creates", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateSpace, true},
 		{"createSpace without use is nothing", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{CreateSpaces}}, CreateSpace, false},
 		{"admins create spaces", admin, CreateSpace, true},
+		{"every member creates a personal space", member(), CreatePersonalSpace, true},
+		{"a personal space takes use", Facts{Member: true, Role: auth.RoleMember}, CreatePersonalSpace, false},
+		{"a stranger creates no personal space", Facts{Global: []GlobalPermission{UseStator}}, CreatePersonalSpace, false},
+		{"admins create the example space", admin, CreateExampleSpace, true},
+		{"owners create the example space", owner, CreateExampleSpace, true},
+		{"a member granted createSpace makes no example space", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateExampleSpace, false},
 		{"an unknown action is refused", admin, Action("space.unknown"), false},
 	} {
 		if got := Decide(tt.facts, tt.action); got != tt.want {
@@ -152,7 +166,7 @@ func TestASaveMayNotLockItsSaverOut(t *testing.T) {
 }
 
 func TestRefusalsAreSentences(t *testing.T) {
-	for _, a := range []Action{CreateSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, Action("x")} {
+	for _, a := range []Action{CreateSpace, CreatePersonalSpace, CreateExampleSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, EditCalendars, CopyPermissionsFrom, Action("x")} {
 		err := error(&DeniedError{Action: a})
 		if !errors.Is(err, ErrDenied) {
 			t.Errorf("the refusal of %s does not wrap ErrDenied", a)
@@ -198,6 +212,7 @@ func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
 		{"an admin's token still purges in a space it reaches", admin, PurgeTrash, true},
 		{"an admin's token creates no space", admin, CreateSpace, false},
 		{"a creator's token creates no space", creator, CreateSpace, false},
+		{"an admin's token creates no example space", admin, CreateExampleSpace, false},
 		{"a member's token edits where the member may", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator}, Space: openSpace, SpacesOnly: true}, EditPages, true},
 		{"a space it does not reach comes as no facts at all", Facts{}, ViewSpace, false},
 	} {
@@ -210,5 +225,45 @@ func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
 	}
 	if !(Facts{Member: true, Role: auth.RoleAdmin}).OrgAdmin() {
 		t.Error("an admin without a limited token stopped administering the organization")
+	}
+	if Decide(admin, CreatePersonalSpace) {
+		t.Error("an admin's limited token makes a personal space")
+	}
+}
+
+// A guest's facts are what the database hands them: the grants naming them in
+// their one space, use from the organization, and nothing of the organization
+// as a whole, which the database marks as for a limited token.
+func TestAGuestHoldsTheirGrantsAndNothingOfTheOrganization(t *testing.T) {
+	guest := func(space ...SpacePermission) Facts {
+		return Facts{Member: true, Role: auth.RoleGuest, Global: []GlobalPermission{UseStator, CreateSpaces}, Space: space, SpacesOnly: true}
+	}
+	for _, tt := range []struct {
+		name   string
+		facts  Facts
+		action Action
+		want   bool
+	}{
+		{"a viewer views", guest(SpaceView), ViewSpace, true},
+		{"a viewer does not comment", guest(SpaceView), AddComments, false},
+		{"a viewer does not edit", guest(SpaceView), EditPages, false},
+		{"a commenter comments", guest(SpaceView, SpaceAddComments), AddComments, true},
+		{"a commenter does not edit", guest(SpaceView, SpaceAddComments), EditPages, false},
+		{"an editor edits", guest(SpaceView, SpaceAddComments, SpaceAddPages, SpaceDelete), EditPages, true},
+		{"an editor trashes", guest(SpaceView, SpaceAddComments, SpaceAddPages, SpaceDelete), DeletePages, true},
+		{"an editor does not administer", guest(SpaceView, SpaceAddComments, SpaceAddPages, SpaceDelete), AdministerSpace, false},
+		{"createSpace for everyone does not reach a guest", guest(SpaceView), CreateSpace, false},
+		{"a guest makes no personal space", guest(SpaceView), CreatePersonalSpace, false},
+		{"another space comes as no facts at all", Facts{}, ViewSpace, false},
+	} {
+		if got := Decide(tt.facts, tt.action); got != tt.want {
+			t.Errorf("%s: %s = %v, want %v", tt.name, tt.action, got, tt.want)
+		}
+	}
+	if got := guest(SpaceView).GlobalCan(); got != (GlobalCan{Use: true}) {
+		t.Errorf("a guest is offered %+v across the organization, want use alone", got)
+	}
+	if guest(SpaceView).OrgAdmin() {
+		t.Error("a guest administers the organization")
 	}
 }

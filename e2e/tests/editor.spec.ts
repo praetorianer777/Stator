@@ -5,7 +5,7 @@ import { expectAccessible, startInScheme } from "../fixtures/shell";
 // The editor on its development page, which pages will replace. Every state
 // the checklist reaches is also checked with axe, contrast included.
 const EDITOR_PATH = "/dev/editor";
-const SLASH_ITEM_COUNT = 22;
+const SLASH_ITEM_COUNT = 43;
 const TABLE_SIZE = 3;
 // Enough paragraphs that the stored document outgrows its box.
 const STORED_LINES = 12;
@@ -15,8 +15,8 @@ const SWIPE_PX = 400;
 const SWIPE_STEPS = 10;
 const SWIPE_INSET_PX = 12;
 // The slash menu's options wrap on a narrow screen, so reaching its end takes
-// a few swipes, as it would take a thumb.
-const MAX_SWIPES = 4;
+// a few swipes, as it would take a thumb; one per few blocks, so it grows with the menu.
+const MAX_SWIPES = Math.ceil(SLASH_ITEM_COUNT / 4);
 // The development page offers eight people, which never outgrow the mention
 // list, so the swipe test gives the list less room to have something to scroll.
 const SHORT_LIST_CSS = "[data-mention-list] { max-height: 6rem; }";
@@ -121,7 +121,8 @@ test.describe("the editor", { tag: "@desktop" }, () => {
     await expect.poll(() => shownWithin(menu, options.first())).toBe(false);
     await expect(box(page)).toBeFocused();
     await menu.hover();
-    await page.mouse.wheel(0, -2000);
+    // One turn the length of the whole list, so it reaches the top however many blocks there are.
+    await page.mouse.wheel(0, -(await menu.evaluate((list) => list.scrollHeight)));
     await expect.poll(() => shownWithin(menu, options.first())).toBe(true);
     await expectAccessible(page);
 

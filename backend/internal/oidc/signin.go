@@ -95,9 +95,13 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 		if out.Role, err = followMapping(ctx, tx, orgID, userID, identity.Groups); err != nil {
 			return err
 		}
-		out.Joined, out.Left, err = syncGroups(ctx, tx, orgID, userID, identity.Groups, create)
-		if err != nil {
-			return err
+		// A guest is in no group, whatever the provider says: a group would
+		// carry them into every space it is granted.
+		if out.Role != auth.RoleGuest {
+			out.Joined, out.Left, err = syncGroups(ctx, tx, orgID, userID, identity.Groups, create)
+			if err != nil {
+				return err
+			}
 		}
 
 		id, secret, err := auth.OpenSession(ctx, tx, userID, &orgID, auth.ProofOIDC, out.ExpiresAt, userAgent, ip)

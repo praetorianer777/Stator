@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { COLLAB_INK } from "@/config";
 import { t } from "@/i18n";
 import { cx } from "./cx";
 
@@ -13,7 +14,8 @@ const sizes: Record<AvatarSize, string> = {
 
 // A person's picture when they have one, their initials when they do not, and
 // the initials again if the picture fails, so a row never shows a broken image.
-export function Avatar({ name, src, size = "md", className }: { name?: string; src?: string; size?: AvatarSize; className?: string }) {
+// A colour, as a shared draft gives each person, takes the place of the primary one.
+export function Avatar({ name, src, size = "md", className, color }: { name?: string; src?: string; size?: AvatarSize; className?: string; color?: string }) {
   const [broken, setBroken] = useState(false);
   if (!name) {
     return (
@@ -49,6 +51,7 @@ export function Avatar({ name, src, size = "md", className }: { name?: string; s
   return (
     <span
       title={name}
+      style={color ? { backgroundColor: color, color: COLLAB_INK } : undefined}
       className={cx("inline-flex shrink-0 items-center justify-center rounded-full bg-primary font-medium text-on-primary", sizes[size], className)}
     >
       <span aria-hidden="true">{initials}</span>

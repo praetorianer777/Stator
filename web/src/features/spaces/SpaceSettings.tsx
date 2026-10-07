@@ -7,20 +7,28 @@ import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH, STALE_PATH } from 
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { SpacePermissions } from "@/features/permissions/SpacePermissions";
+import { SpaceAnonymousAccess } from "@/features/public/AnonymousAccess";
 import { ArchivePanel } from "@/features/archive/ArchivePanel";
 import { SpaceArchive } from "@/features/archive/SpaceArchive";
 import { TemplateList } from "@/features/templates/TemplateList";
+import { ShortcutsPanel } from "@/features/shortcuts/ShortcutsPanel";
+import { useCanAdministerOrg } from "@/features/permissions/access";
+import { SpaceGuests } from "./SpaceGuests";
 import { TrashPanel } from "./TrashPanel";
 
-export type SettingsTab = "details" | "permissions" | "templates" | "trash" | "archive";
+export type SettingsTab = "details" | "shortcuts" | "permissions" | "templates" | "guests" | "trash" | "archive";
 
 const SETTINGS_PANEL_ID = "space-settings-panel";
 
 /** A space's details, who may do what in it, and deleting it; changing anything is an administrator's. */
 export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab: SettingsTab; onTab: (tab: SettingsTab) => void }) {
   const { data: space, error, refetch } = useSpace(spaceKey);
+  const orgAdmin = useCanAdministerOrg();
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (!space) return <Skeleton />;
+  // Guests are let into team spaces, by the organization's administrators.
+  const guests = orgAdmin && !space.owner;
+  const shown = tab === "guests" && !guests ? "details" : tab;
   return (
     <div className="mx-auto max-w-3xl" data-space-settings={space.key}>
       <PageHeader
@@ -52,25 +60,30 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
         tabs={
           <Tabs<SettingsTab>
             label={t.spaceSettings.tabs}
-            value={tab}
+            value={shown}
             onChange={onTab}
             panelId={SETTINGS_PANEL_ID}
             tabs={[
               { value: "details", label: t.spaceSettings.details, attrs: { "data-settings-tab": "details" } },
+              { value: "shortcuts", label: t.spaceSettings.shortcuts, attrs: { "data-settings-tab": "shortcuts" } },
               { value: "permissions", label: t.spaceSettings.permissions, attrs: { "data-settings-tab": "permissions" } },
               { value: "templates", label: t.spaceSettings.templates, attrs: { "data-settings-tab": "templates" } },
+              ...(guests ? [{ value: "guests" as const, label: t.spaceSettings.guests, attrs: { "data-settings-tab": "guests" } }] : []),
               { value: "trash", label: t.spaceSettings.trash, attrs: { "data-settings-tab": "trash" } },
               { value: "archive", label: t.spaceSettings.archive, attrs: { "data-settings-tab": "archive" } },
             ]}
           />
         }
       />
-      <TabPanel id={SETTINGS_PANEL_ID} label={t.spaceSettings[tab]} className="space-y-6">
-        {tab === "details" && <Details key={space.id} space={space} />}
-        {tab === "permissions" && <SpacePermissions space={space} />}
-        {tab === "templates" && <TemplateList spaceKey={space.key} canEdit={space.can.administer} />}
-        {tab === "trash" && <TrashPanel space={space} />}
-        {tab === "archive" && <ArchivePanel space={space} />}
+      <TabPanel id={SETTINGS_PANEL_ID} label={t.spaceSettings[shown]} className="space-y-6">
+        {shown === "details" && <Details key={space.id} space={space} />}
+        {shown === "shortcuts" && <ShortcutsPanel space={space} />}
+        {shown === "permissions" && <SpacePermissions space={space} />}
+        {shown === "permissions" && <SpaceAnonymousAccess space={space} />}
+        {shown === "templates" && <TemplateList spaceKey={space.key} canEdit={space.can.administer} />}
+        {shown === "guests" && <SpaceGuests space={space} />}
+        {shown === "trash" && <TrashPanel space={space} />}
+        {shown === "archive" && <ArchivePanel space={space} />}
       </TabPanel>
     </div>
   );

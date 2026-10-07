@@ -5,7 +5,9 @@ import { useArchivePage } from "@/api/archive";
 import { usePage, type Page } from "@/api/pages";
 import type { Space } from "@/api/spaces";
 import { useVisit } from "@/api/search";
+import { useSetTaskDone } from "@/api/tasks";
 import { useTrashPage } from "@/api/trash";
+import { attachmentUrl } from "@/api/attachments";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ArchiveBanner, ArchivedMark } from "@/features/archive/ArchiveBanner";
@@ -17,8 +19,11 @@ import { ExportDialog, ImportDialog } from "@/features/markdown/MarkdownDialogs"
 import { PageViewsButton, PageViewsDialog } from "@/features/pageviews/PageViews";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
-import { DocPageContext } from "@/features/editor/BlockViews";
+import { ChildPagesList, DocPageContext } from "@/features/editor/BlockViews";
+import { defaultChildPages } from "@/features/editor/childPages";
 import { DocView } from "@/features/editor/DocView";
+import { AppearanceDialog, coverPosition } from "./AppearanceDialog";
+import { ModeDialog } from "./ModeDialog";
 import { PageLabels } from "@/features/labels/PageLabels";
 import { PageReactions } from "@/features/reactions/Reactions";
 import { AccessDialog } from "@/features/permissions/AccessDialog";
@@ -32,7 +37,11 @@ import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { NewPageDialog } from "./NewPageDialog";
 import { PageLink } from "./PageLink";
+import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { PlaceDialog } from "./PlaceDialog";
+import { RenameFolderDialog } from "./RenameFolderDialog";
+import { ScheduleNote } from "./ScheduleNote";
+import { postDay } from "@/features/blog/blogPosts";
 
 const updatedAt = localDateFormat({ dateStyle: "medium" });
 
@@ -49,10 +58,45 @@ export function pageCrumbs(space: Space, page: Page): Crumb[] {
       ),
     });
   }
+  // A post hangs from no page; it sits in its space's blog.
+  if (page.kind === "post") {
+    crumbs.push(
+      {
+        label: space.name,
+        render: (label) => (
+          <Link to="/s/$spaceKey" params={{ spaceKey: space.key }}>
+            {label}
+          </Link>
+        ),
+      },
+      {
+        label: t.blog.title,
+        render: (label) => (
+          <Link to="/s/$spaceKey/blog" params={{ spaceKey: space.key }} data-blog-crumb="">
+            {label}
+          </Link>
+        ),
+      },
+    );
+  }
   return crumbs;
 }
 
-type Dialog = "new" | "move" | "copy" | "restrictions" | "access" | "export" | "import" | "stewardship" | "share" | "views";
+type Dialog =
+  | "appearance"
+  | "mode"
+  | "new"
+  | "newFolder"
+  | "rename"
+  | "move"
+  | "copy"
+  | "restrictions"
+  | "access"
+  | "export"
+  | "import"
+  | "stewardship"
+  | "share"
+  | "views";
 
 /** Says a page is narrowed to some people, and opens who and why. */
 function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
@@ -94,11 +138,13 @@ function CommentCount({ count }: { count: number }) {
 
 /** A page as a reader sees it: its place, its title, who last changed it, and its document. */
 export function PageScreen({ pageId, thread, reviewing = false }: { pageId: string; thread?: string; reviewing?: boolean }) {
-  const { data, isLoading, error, refetch } = usePage(pageId);
+  const { data, isLoading, error, refetch } = usePage(pageId, { follow: true });
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<Dialog>();
   const [watchFailed, setWatchFailed] = useState(false);
   const [starFailed, setStarFailed] = useState(false);
+  const [taskFailed, setTaskFailed] = useState(false);
+  const setTaskDone = useSetTaskDone();
   // A dialog is about the page it was opened on, so going to another page closes it.
   const [dialogPage, setDialogPage] = useState(pageId);
   if (dialogPage !== pageId) {
@@ -106,16 +152,28 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
     setDialog(undefined);
     setWatchFailed(false);
     setStarFailed(false);
+    setTaskFailed(false);
   }
   // Opening a page from the stale report to review it is not reading it, or
   // reviewing the report would empty it.
-  useVisit(reviewing ? undefined : data?.page.id);
+  // A folder has nothing to read, so opening one is no visit either.
+  useVisit(reviewing || data?.page.kind === "folder" ? undefined : data?.page.id);
   const trash = useTrashPage(data?.space.key ?? "");
   const archive = useArchivePage();
   const attachmentIds = usePageAttachmentIds(pageId);
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (isLoading || !data) return <Skeleton />;
   const { page, space } = data;
+  // Ticking a box publishes the page, so only an editor of a published page out of the archive gets live boxes.
+  const toggleTask =
+    page.can.edit && !page.unpublished && !page.archived
+      ? (taskId: string, done: boolean) => {
+          setTaskFailed(false);
+          setTaskDone.mutate({ pageId: page.id, taskId, done }, { onError: () => setTaskFailed(true) });
+        }
+      : undefined;
+  const folder = page.kind === "folder";
+  const post = page.kind === "post";
   const edit = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
   const history = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/history", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
   const open = (placed: Page, editing = false) => {
@@ -125,16 +183,26 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   };
 
   const actions: MenuItem[] = [];
-  if (!page.home && page.can.edit) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
-  if (space.can.editPages) actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
-  actions.push({ label: t.markdown.exportMenu, icon: <Icon.Download />, onSelect: () => setDialog("export"), attrs: { "data-action": "export-markdown" } });
-  if (page.can.edit) {
+  if (folder && page.can.edit) actions.push({ label: t.page.rename, onSelect: () => setDialog("rename"), attrs: { "data-action": "rename-folder" } });
+  // A post stays in its blog: nothing goes under it, and it is neither moved nor copied into the tree.
+  if (!folder && !post && page.can.edit)
+    actions.push({ label: t.page.newFolder, icon: <Icon.Folder />, onSelect: () => setDialog("newFolder"), attrs: { "data-action": "new-folder" } });
+  if (!page.home && !post && page.can.edit) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
+  if (!post && space.can.editPages) actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
+  if (!folder) {
+    actions.push({ label: t.markdown.exportMenu, icon: <Icon.Download />, onSelect: () => setDialog("export"), attrs: { "data-action": "export-markdown" } });
+  }
+  if (page.can.edit && !folder && !post) {
     actions.push({ label: t.markdown.importMenu, icon: <Icon.Upload />, onSelect: () => setDialog("import"), attrs: { "data-action": "import-markdown" } });
   }
   if (page.can.restrict) {
     actions.push({ label: t.restrictions.menu, icon: <Icon.Lock />, onSelect: () => setDialog("restrictions"), attrs: { "data-action": "page-restrictions" } });
   }
-  if (page.can.edit && !page.unpublished) {
+  if (page.can.edit) {
+    actions.push({ label: t.appearance.menu, icon: <Icon.Smile />, onSelect: () => setDialog("appearance"), attrs: { "data-action": "page-appearance" } });
+    if (!folder && !post) actions.push({ label: t.live.menu, icon: <Icon.Edit />, onSelect: () => setDialog("mode"), attrs: { "data-action": "page-mode" } });
+  }
+  if (page.can.edit && !page.unpublished && !folder) {
     actions.push({ label: t.stewardship.menu, icon: <Icon.Seal />, onSelect: () => setDialog("stewardship"), attrs: { "data-action": "page-stewardship" } });
   }
   if (space.can.administer) {
@@ -160,23 +228,54 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         const above = page.ancestors[page.ancestors.length - 1];
         trash.mutate(page.id, {
           onSuccess: () =>
-            void (above && !above.home
-              ? navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: above.id, slug: pageSlug(above.title) } })
-              : navigate({ to: "/s/$spaceKey", params: { spaceKey: space.key } })),
+            void (post
+              ? navigate({ to: "/s/$spaceKey/blog", params: { spaceKey: space.key } })
+              : above && !above.home
+                ? navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: above.id, slug: pageSlug(above.title) } })
+                : navigate({ to: "/s/$spaceKey", params: { spaceKey: space.key } })),
         });
       },
       attrs: { "data-action": "trash-page" },
     });
   }
 
+  const sheet = pageSheet(page.appearance.width);
   return (
-    <article className="mx-auto max-w-3xl" data-page={page.id} data-page-home={page.home || undefined}>
+    <article
+      className={sheet.className}
+      style={sheet.style}
+      data-page={page.id}
+      data-page-home={page.home || undefined}
+      data-page-width={page.appearance.width}
+    >
+      {page.appearance.cover && (
+        <div className="page-cover" data-page-cover={page.appearance.cover.attachmentId}>
+          <img src={attachmentUrl(page.appearance.cover.attachmentId, true)} alt="" style={{ objectPosition: coverPosition(page.appearance.cover) }} />
+        </div>
+      )}
       <PageHeader
+        className={PAGE_SHEET_HEADER}
+        style={sheet.style}
         crumbs={pageCrumbs(space, page)}
         title={
           <>
+            {page.appearance.icon ? (
+              <span className="mr-2" data-page-icon="">
+                {page.appearance.icon}
+              </span>
+            ) : (
+              folder && <Icon.Folder className="mr-2 inline align-baseline text-ink-muted" aria-hidden="true" />
+            )}
             <span data-page-title>{page.title}</span>
             {page.unpublished && <Tag data-unpublished="">{t.page.unpublished}</Tag>}
+            {page.mode === "live" && (
+              <>
+                {" "}
+                <Tooltip text={t.live.badgeHint}>
+                  <Tag data-live-badge="">{t.live.badge}</Tag>
+                </Tooltip>
+              </>
+            )}
             {page.archived && (
               <>
                 {" "}
@@ -187,6 +286,12 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         }
         meta={
           <span className="flex flex-wrap items-center gap-2">
+            {folder && <Tag data-folder="">{t.page.folder}</Tag>}
+            {post && (
+              <span data-post-date={page.postedAt ?? ""}>
+                {page.postedAt ? t.blog.posted(postDay.format(new Date(page.postedAt))) : t.blog.unpublishedPost}
+              </span>
+            )}
             {t.page.updated(page.updatedByName, updatedAt.format(new Date(page.updatedAt)))}
             {page.verification && <VerificationBadge verification={page.verification} onOpen={() => setDialog("stewardship")} />}
             {page.owner && (
@@ -197,29 +302,39 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
             )}
             {(page.restricted.view || page.restricted.edit) && <RestrictedBadge page={page} onOpen={() => setDialog("restrictions")} />}
             {page.comments.page > 0 && <CommentCount count={page.comments.page} />}
-            {!page.unpublished && <PageViewsButton pageId={page.id} onOpen={() => setDialog("views")} />}
+            {!page.unpublished && !folder && <PageViewsButton pageId={page.id} onOpen={() => setDialog("views")} />}
           </span>
         }
         actions={
           <>
             <PageStar page={page} space={space} onFailure={setStarFailed} />
             {!page.unpublished && <WatchMenu page={page} space={space} onFailure={setWatchFailed} />}
-            {!page.unpublished && (
+            {!page.unpublished && !folder && (
               <Button variant="secondary" icon={<Icon.Share />} onClick={() => setDialog("share")} data-action="share-page">
                 {t.share.button}
               </Button>
             )}
-            <Button variant="secondary" onClick={history} data-action="page-history">
-              {t.page.history}
-            </Button>
+            {!folder && (
+              <Button variant="secondary" onClick={history} data-action="page-history">
+                {t.page.history}
+              </Button>
+            )}
             {page.can.edit && (
               <>
-                <Button variant="secondary" icon={<Icon.Plus />} onClick={() => setDialog("new")} data-action="new-page">
-                  {t.page.newPage}
-                </Button>
-                <Button variant="secondary" icon={<Icon.Edit />} onClick={edit} data-action="edit-page">
-                  {t.page.edit}
-                </Button>
+                {!post && (
+                  <Button variant="secondary" icon={<Icon.Plus />} onClick={() => setDialog("new")} data-action="new-page">
+                    {t.page.newPage}
+                  </Button>
+                )}
+                {folder ? (
+                  <Button variant="secondary" icon={<Icon.Folder />} onClick={() => setDialog("newFolder")} data-action="new-folder">
+                    {t.page.newFolder}
+                  </Button>
+                ) : (
+                  <Button variant="secondary" icon={<Icon.Edit />} onClick={edit} data-action="edit-page">
+                    {t.page.edit}
+                  </Button>
+                )}
               </>
             )}
             {actions.length > 0 && (
@@ -249,12 +364,14 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       <ArchiveBanner page={page} space={space} />
       {watchFailed && <ErrorBanner>{t.watch.failed}</ErrorBanner>}
       {starFailed && <ErrorBanner>{t.star.failed}</ErrorBanner>}
+      {taskFailed && <ErrorBanner>{t.tasks.tickFailed}</ErrorBanner>}
       {page.unpublished && (
         <p className="mb-4 text-sm text-ink-muted" data-unpublished-note="">
           {t.page.unpublishedNote}
         </p>
       )}
-      {page.draft && page.can.edit && (
+      <ScheduleNote page={page} onEdit={edit} />
+      {page.draft && page.can.edit && !page.schedule?.mine && (
         <div
           className="mb-4 flex flex-wrap items-center gap-3 rounded-control border border-border bg-surface-raised px-3 py-2 text-sm text-ink"
           data-draft-note=""
@@ -265,25 +382,41 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
           </Button>
         </div>
       )}
-      <InlineComments
-        page={page}
-        thread={thread}
-        below={
-          <>
-            <PageReactions page={page} />
-            <PageLabels page={page} />
-            <ArmatureLinks page={page} />
-            <AttachmentPanel pageId={page.id} editable={page.can.edit} />
-            <CommentsSection page={page} thread={thread} />
-          </>
-        }
-      >
-        <KnownAttachmentsContext value={attachmentIds}>
-          <DocPageContext value={{ id: page.id, spaceKey: space.key, onEdit: page.can.edit ? edit : undefined }}>
-            <DocView doc={page.body} />
-          </DocPageContext>
-        </KnownAttachmentsContext>
-      </InlineComments>
+      {folder ? (
+        <section data-folder-children="">
+          <p className="mb-3 text-sm text-ink-muted">{t.page.folderNote}</p>
+          <div className="doc-content">
+            <DocPageContext value={{ id: page.id, spaceKey: space.key }}>
+              <ChildPagesList options={defaultChildPages} />
+            </DocPageContext>
+          </div>
+        </section>
+      ) : (
+        <InlineComments
+          page={page}
+          thread={thread}
+          below={
+            <>
+              <PageReactions page={page} />
+              <PageLabels page={page} />
+              <ArmatureLinks page={page} />
+              {/* The panel's drop zone reaches past the text with negative margins, which would undo the sheet's centring. */}
+              <div>
+                <AttachmentPanel pageId={page.id} editable={page.can.edit} />
+              </div>
+              <CommentsSection page={page} thread={thread} />
+            </>
+          }
+        >
+          <KnownAttachmentsContext value={attachmentIds}>
+            <DocPageContext value={{ id: page.id, spaceKey: space.key, canEdit: page.can.edit, onEdit: page.can.edit ? edit : undefined, toggleTask }}>
+              <DocView doc={page.body} />
+            </DocPageContext>
+          </KnownAttachmentsContext>
+        </InlineComments>
+      )}
+      {dialog === "appearance" && <AppearanceDialog page={page} onClose={() => setDialog(undefined)} />}
+      {dialog === "mode" && <ModeDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "stewardship" && <StewardshipDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "share" && <ShareDialog page={page} onClose={() => setDialog(undefined)} />}
@@ -294,6 +427,8 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         <ImportDialog parent={page.home ? { id: page.id, title: space.name } : page} spaceKey={space.key} onClose={() => setDialog(undefined)} />
       )}
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
+      {dialog === "newFolder" && <NewPageDialog parent={page} folder onClose={() => setDialog(undefined)} onDone={(made) => open(made)} />}
+      {dialog === "rename" && <RenameFolderDialog folder={page} onClose={() => setDialog(undefined)} />}
       {(dialog === "move" || dialog === "copy") && (
         <PlaceDialog
           page={{ id: page.id, title: page.title, spaceKey: space.key }}

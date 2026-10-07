@@ -6,11 +6,16 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/guest"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -18,13 +23,17 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
@@ -120,6 +129,19 @@ var (
 		Message: "A token cannot do this. Sign in to Stator and do it there."}
 	errSpacesToken = &APIError{Status: http.StatusForbidden, Code: "spaces_token",
 		Message: "This token is limited to some spaces, and this concerns the whole organization. Use a token without that limit, or sign in."}
+	errGuest = &APIError{Status: http.StatusForbidden, Code: "guest",
+		Message: "Guests reach the one space they were invited to, and this concerns the whole organization. Ask an administrator of the organization if you need more."}
+)
+
+// The database's names for its refusals of a folder's content and of a change of kind.
+const (
+	folderConstraint = "page_is_folder"
+	kindConstraint   = "page_kind_fixed"
+	// A draft of a live page, which page_draft_not_live refuses.
+	liveDraftConstraint = "page_draft_not_live"
+	// A page under a blog post, or a post given a place in the tree.
+	underPostConstraint = "page_under_post"
+	postTreeConstraint  = "page_post_outside_tree"
 )
 
 // toAPIError maps a domain error onto the wire shape. One place for it is what
@@ -128,6 +150,28 @@ func toAPIError(err error) *APIError {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
 		return apiErr
+	}
+	// The database holds what a folder may not have whichever service asks,
+	// so its refusal reads as the service's would.
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && (pgErr.ConstraintName == folderConstraint || pgErr.ConstraintName == kindConstraint) {
+		err = page.ErrFolder
+	}
+	if errors.As(err, &pgErr) && pgErr.ConstraintName == liveDraftConstraint {
+		err = page.ErrLivePage
+	}
+	if errors.As(err, &pgErr) && (pgErr.ConstraintName == underPostConstraint || pgErr.ConstraintName == postTreeConstraint) {
+		err = page.ErrPostPlace
+	}
+	var alreadyLatest *attachment.AlreadyLatestError
+	var editType *attachment.EditTypeError
+	var scheduled *page.ScheduleTakenError
+	if errors.As(err, &scheduled) {
+		return &APIError{Status: http.StatusConflict, Code: "schedule_taken", Message: scheduled.Error()}
+	}
+	var pending *page.DraftsPendingError
+	if errors.As(err, &pending) {
+		return &APIError{Status: http.StatusConflict, Code: "drafts_pending", Message: pending.Error()}
 	}
 	var invalid *oidc.ValidationError
 	if errors.As(err, &invalid) {
@@ -145,9 +189,17 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &permField) {
 		return ErrValidation(map[string]string{permField.Field: permField.Message})
 	}
+	var guestField *guest.FieldError
+	if errors.As(err, &guestField) {
+		return ErrValidation(map[string]string{guestField.Field: guestField.Message})
+	}
 	var labelField *label.FieldError
 	if errors.As(err, &labelField) {
 		return ErrValidation(map[string]string{labelField.Field: sentence(labelField.Message)})
+	}
+	var taskField *task.FieldError
+	if errors.As(err, &taskField) {
+		return ErrValidation(map[string]string{taskField.Field: sentence(taskField.Message)})
 	}
 	var searchField *search.FieldError
 	if errors.As(err, &searchField) {
@@ -177,9 +229,60 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &shareField) {
 		return ErrValidation(map[string]string{shareField.Field: shareField.Message})
 	}
+	if errors.Is(err, unfurl.ErrBadURL) {
+		return ErrValidation(map[string]string{"url": "Give the full address of a web page, starting with https:// or http://."})
+	}
+	if errors.Is(err, page.ErrIncludeCycle) {
+		return &APIError{Status: http.StatusConflict, Code: "include_cycle", Message: sentence(err.Error()) + "."}
+	}
+	if errors.Is(err, page.ErrIncludeTooDeep) {
+		return &APIError{Status: http.StatusConflict, Code: "include_depth", Message: sentence(err.Error()) + "."}
+	}
+	var hubField *hub.FieldError
+	if errors.As(err, &hubField) {
+		return ErrValidation(map[string]string{hubField.Field: hubField.Message})
+	}
+	if errors.Is(err, hub.ErrNotAdmin) {
+		return ErrForbidden("Only an administrator of the organization chooses its hub. Ask one of them to change it.")
+	}
+	var shortcutField *shortcut.FieldError
+	if errors.As(err, &shortcutField) {
+		return ErrValidation(map[string]string{shortcutField.Field: shortcutField.Message})
+	}
+	var full *shortcut.FullError
+	if errors.As(err, &full) {
+		return ErrConflict(full.Error())
+	}
+	var calendarField *calendar.FieldError
+	if errors.As(err, &calendarField) {
+		return ErrValidation(map[string]string{calendarField.Field: calendarField.Message})
+	}
+	var calendarsFull *calendar.FullError
+	if errors.As(err, &calendarsFull) {
+		return ErrConflict(calendarsFull.Error())
+	}
+	var copyConflict *space.CopyConflictError
+	if errors.As(err, &copyConflict) {
+		return &APIError{Status: http.StatusConflict, Code: copyConflict.Code, Message: copyConflict.Message}
+	}
+	var taken *space.PersonalTakenError
+	if errors.As(err, &taken) {
+		return ErrConflict(taken.Error())
+	}
 	var closed *share.CannotViewError
 	if errors.As(err, &closed) {
 		return &APIError{Status: http.StatusConflict, Code: "cannot_view", Message: closed.Error()}
+	}
+	var linkField *public.FieldError
+	if errors.As(err, &linkField) {
+		return ErrValidation(map[string]string{linkField.Field: linkField.Message})
+	}
+	var linkRefused *public.RefusedError
+	if errors.As(err, &linkRefused) {
+		if linkRefused.Reason == public.RefusalCannotManage {
+			return ErrForbidden(linkRefused.Error())
+		}
+		return &APIError{Status: http.StatusConflict, Code: "link_refused", Message: linkRefused.Error()}
 	}
 	var braked *share.RateLimitedError
 	if errors.As(err, &braked) {
@@ -221,7 +324,7 @@ func toAPIError(err error) *APIError {
 	switch {
 	case errors.Is(err, template.ErrUnknown):
 		return ErrNotFound("There is no such template. Pick one from the list of templates.")
-	case errors.Is(err, template.ErrUnknownSpace):
+	case errors.Is(err, template.ErrNoSpace):
 		return ErrNotFound("There is no such space, or you may not view it. Check the space key.")
 	case errors.Is(err, template.ErrBuiltIn):
 		return ErrForbidden(sentence(template.ErrBuiltIn.Error()))
@@ -284,11 +387,33 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusServiceUnavailable, Code: "storage_unavailable", Message: "Files cannot be stored on this server yet. Ask an administrator to set up file storage.", cause: err}
 	case errors.Is(err, theme.ErrNotAThemeFile), errors.Is(err, theme.ErrDefaultNotShared):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
+	case errors.Is(err, public.ErrNotPublic):
+		return &APIError{Status: http.StatusNotFound, Code: "not_public",
+			Message: "That is not open to read without signing in. Sign in to read it, or check the address."}
+	case errors.Is(err, public.ErrLinkGone):
+		return &APIError{Status: http.StatusNotFound, Code: "link_gone",
+			Message: "This link does not open anything any more: it was revoked, it ran out, or the page is no longer shared this way. Ask whoever sent it for a new one."}
+	case errors.Is(err, public.ErrLinkNotFound):
+		return ErrNotFound("That public link was not found. Somebody may have revoked it already; reload the list.")
+	case errors.Is(err, public.ErrNotAdmin):
+		return ErrForbidden("Only an administrator of the organization lets people read without signing in. Ask one of them.")
 	case errors.Is(err, space.ErrNotFound):
 		return ErrNotFound("That space was not found. Check the key in the address; the space may have been deleted.")
+	case errors.Is(err, guest.ErrNotGuest):
+		return ErrNotFound("That person is not a guest of this space. Reload the list of its guests.")
+	case errors.Is(err, guest.ErrPersonalSpace):
+		return ErrConflict("A personal space belongs to its owner alone. Invite the guest to another space.")
 	case errors.Is(err, page.ErrNotFound), errors.Is(err, watch.ErrPageNotFound), errors.Is(err, comment.ErrPageNotFound), errors.Is(err, reaction.ErrPageNotFound),
-		errors.Is(err, share.ErrPageNotFound):
+		errors.Is(err, share.ErrPageNotFound), errors.Is(err, public.ErrPageNotFound):
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
+	case errors.Is(err, task.ErrNotFound):
+		return ErrNotFound("That task is not on the page any more. Reload the page or your list of tasks.")
+	case errors.Is(err, shortcut.ErrNotFound):
+		return ErrNotFound("That shortcut was not found. Somebody may have removed it already; reload the list.")
+	case errors.Is(err, calendar.ErrNotFound):
+		return ErrNotFound("That calendar was not found. It may have been removed, or you may not read its space; pick another calendar.")
+	case errors.Is(err, calendar.ErrEventNotFound):
+		return ErrNotFound("That event is not in the calendar any more. Somebody may have removed it; reload the calendar.")
 	case errors.Is(err, comment.ErrNotFound), errors.Is(err, reaction.ErrCommentNotFound):
 		return ErrNotFound("That comment was not found. It may have been deleted, or its page moved; reload the page.")
 	case errors.Is(err, comment.ErrUnpublished):
@@ -326,22 +451,60 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusConflict, Code: "archived", Message: sentence(err.Error())}
 	case errors.Is(err, page.ErrHomeNotTrashed), errors.Is(err, page.ErrCycle), errors.Is(err, page.ErrHomeFixed), errors.Is(err, page.ErrNotASibling):
 		return ErrConflict(sentence(err.Error()))
+	case errors.Is(err, page.ErrFolder):
+		return &APIError{Status: http.StatusConflict, Code: "folder", Message: sentence(err.Error())}
+	case errors.Is(err, page.ErrPostPlace), errors.Is(err, page.ErrPostLive):
+		return &APIError{Status: http.StatusConflict, Code: "post", Message: sentence(err.Error())}
+	case errors.Is(err, page.ErrBadKind):
+		return ErrValidation(map[string]string{"kind": sentence(err.Error())})
 	case errors.Is(err, page.ErrStale):
 		return ErrConflict("Somebody else saved this page after you opened it. Copy your changes, reload the page and make them again.")
 	case errors.Is(err, attachment.ErrNotFound):
 		return ErrNotFound("That file was not found. It may have been deleted, or its page moved to the trash.")
+	case errors.As(err, &alreadyLatest):
+		return &APIError{Status: http.StatusConflict, Code: "already_latest", Message: sentence(alreadyLatest.Error())}
+	case errors.Is(err, attachment.ErrNotEditable):
+		return &APIError{Status: http.StatusUnsupportedMediaType, Code: "not_editable", Message: sentence(err.Error())}
+	case errors.As(err, &editType):
+		return &APIError{Status: http.StatusUnsupportedMediaType, Code: "wrong_type", Message: sentence(editType.Error())}
 	case errors.Is(err, attachment.ErrTooLarge):
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(err.Error())}
 	case errors.Is(err, attachment.ErrEmpty):
 		return ErrValidation(map[string]string{"file": sentence(attachment.ErrEmpty.Error())})
+	case errors.Is(err, attachment.ErrNoPreview):
+		return &APIError{Status: http.StatusUnsupportedMediaType, Code: "no_preview",
+			Message: "This kind of file has no preview. Download it to open it."}
+	case errors.Is(err, attachment.ErrPreviewTooLarge):
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "preview_too_large",
+			Message: sentence(attachment.ErrPreviewTooLarge.Error()) + " Download it to open it."}
+	case errors.Is(err, attachment.ErrPreviewFailed):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "preview_failed",
+			Message: "This file could not be converted for a preview. Download it to open it, or upload it again saved in another format."}
+	case errors.Is(err, attachment.ErrPreviewOff):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "preview_off",
+			Message: "Previews of office documents are turned off on this site. Download the file to open it, or ask an administrator to set up the conversion service."}
+	case errors.Is(err, attachment.ErrConverterUnavailable):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "preview_unavailable",
+			Message: "The preview could not be made just now. Try again in a minute, or download the file to open it.", cause: err}
 	case errors.Is(err, objectstore.ErrNoObject):
 		return &APIError{Status: http.StatusNotFound, Code: "file_missing", Message: "The file's contents are missing from storage. Upload it again, or ask an administrator to check the file storage.", cause: err}
 	case errors.Is(err, page.ErrPublishConflict):
 		return &APIError{Status: http.StatusConflict, Code: "publish_conflict",
 			Message: "Somebody published this page after you began your draft. Compare the two, then discard your draft or save it again over theirs and publish."}
+	case errors.Is(err, page.ErrLivePage):
+		return &APIError{Status: http.StatusConflict, Code: "page_live",
+			Message: "This page is live, so what you type is saved to the page as you go and there is no draft to publish. Open the editor again to edit it live."}
+	case errors.Is(err, page.ErrNotLive):
+		return &APIError{Status: http.StatusConflict, Code: "page_not_live",
+			Message: "This page is published from drafts now, so it is not saved as you type. Open the editor again; your changes there are kept as your draft."}
+	case errors.Is(err, page.ErrRoomGone):
+		return &APIError{Status: http.StatusConflict, Code: "room_gone",
+			Message: "The page was changed from elsewhere, so the editor starts again from it. Wait for the editor to reload, then carry on."}
 	case errors.Is(err, page.ErrNoDraft):
 		return &APIError{Status: http.StatusConflict, Code: "no_draft",
 			Message: "You have no draft of this page to publish. Edit the page first; your changes are saved as a draft."}
+	case errors.Is(err, page.ErrNoSchedule):
+		return ErrNotFound("Nobody scheduled this page to publish. Reload the page to see where it stands.")
 	case errors.Is(err, page.ErrDraftNotFound):
 		return ErrNotFound("You have no draft of this page. Compare two versions instead, or edit the page to start one.")
 	case errors.Is(err, page.ErrVersionNotFound):

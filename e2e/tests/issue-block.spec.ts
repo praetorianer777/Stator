@@ -3,9 +3,10 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 import { armatureURL } from "../fixtures/stack";
 
 // The stub makes a person of any name on first use, in the Armature
@@ -26,13 +27,6 @@ const blocks = (...keys: string[]): Body =>
       ...keys.map((key) => ({ type: "armatureIssueBlock", attrs: { key } })),
     ],
   }) as Body;
-
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
 
 async function connect(api: StatorApi, token: string) {
   must(await api.PUT("/armature/account/token", { body: { token } }));

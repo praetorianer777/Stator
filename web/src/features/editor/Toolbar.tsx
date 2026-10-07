@@ -2,8 +2,9 @@ import { useState, type ReactNode } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
 import { Button, Field, IconButton, Menu, SelectInput } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { CODE_LANGUAGES, FIND_SHORTCUT, TABLE_DEFAULT_COLS, TABLE_DEFAULT_ROWS } from "@/config";
+import { CODE_LANGUAGES, COLUMN_LAYOUTS, FIND_SHORTCUT, TABLE_DEFAULT_COLS, TABLE_DEFAULT_ROWS } from "@/config";
 import { t } from "@/i18n";
+import { layoutAround, type ColumnLayoutKey } from "./columns";
 import { languageLabel } from "./languages";
 import type { EditorVariant } from "./extensions";
 import { RovingToolbar } from "./RovingToolbar";
@@ -58,9 +59,12 @@ export function EditorToolbar({
       codeBlock: e.isActive("codeBlock"),
       language: (e.getAttributes("codeBlock").language as string | null | undefined) ?? "",
       table: e.isActive("table"),
+      // A chart's table goes with its chart; there is no chart without one.
+      charted: variant !== "comment" && e.isActive("tableChart"),
       panel: e.isActive("panel"),
       panelKind: (e.getAttributes("panel").kind as PanelKind | undefined) ?? "info",
       expand: variant !== "comment" && e.isActive("expand"),
+      columnLayout: variant !== "comment" ? layoutAround(e.state) : null,
       // A comment's editor has no tables, and so neither command.
       canMerge: variant !== "comment" && e.can().mergeCells(),
       canSplit: variant !== "comment" && e.can().splitCell(),
@@ -239,7 +243,17 @@ export function EditorToolbar({
             )}
           />
           <Separator />
-          <ToolButton label={t.editor.deleteTable} action="delete-table" run={() => chain().deleteTable().run()} />
+          {variant !== "comment" &&
+            (state.charted ? (
+              <ToolButton label={t.tableChart.unchart} action="unchart-table" run={() => chain().unchartTable().run()} />
+            ) : (
+              <ToolButton label={t.tableChart.chart} action="chart-table" run={() => chain().chartTable().run()} />
+            ))}
+          <ToolButton
+            label={state.charted ? t.tableChart.deleteChart : t.editor.deleteTable}
+            action="delete-table"
+            run={() => (state.charted ? chain().unchartTable().deleteTable().run() : chain().deleteTable().run())}
+          />
         </RovingToolbar>
       )}
       {state.codeBlock && (
@@ -292,6 +306,33 @@ export function EditorToolbar({
       {state.expand && (
         <RovingToolbar label={t.editor.expandTools} data-editor-tools="expand">
           <ToolButton label={t.editor.removeExpand} action="remove-expand" run={() => chain().unsetExpand().run()} />
+        </RovingToolbar>
+      )}
+      {state.columnLayout && (
+        <RovingToolbar label={t.editor.columnTools} data-editor-tools="columns">
+          <SelectInput
+            controlSize="sm"
+            aria-label={t.editor.columnLayout}
+            value={state.columnLayout}
+            onChange={(e) =>
+              chain()
+                .setColumnLayout(e.target.value as ColumnLayoutKey)
+                .run()
+            }
+            data-editor-action="column-layout"
+          >
+            {COLUMN_LAYOUTS.map((layout) => (
+              <option key={layout.key} value={layout.key}>
+                {t.editor.columnLayouts[layout.key]}
+              </option>
+            ))}
+            {state.columnLayout === "custom" && (
+              <option value="custom" disabled>
+                {t.editor.columnLayouts.custom}
+              </option>
+            )}
+          </SelectInput>
+          <ToolButton label={t.editor.removeColumns} action="remove-columns" run={() => chain().unsetColumns().run()} />
         </RovingToolbar>
       )}
       {onCreateIssues && state.issueItems > 0 && (

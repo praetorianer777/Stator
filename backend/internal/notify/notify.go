@@ -22,6 +22,11 @@ const (
 type Kind string
 
 const (
+	// KindAssigned is a task on a page newly assigned to the person. It comes
+	// first, so a person both mentioned and assigned in one publish hears the latter.
+	KindAssigned Kind = "assigned"
+	// KindDue is a task assigned to the person whose day came.
+	KindDue       Kind = "due"
 	KindMentioned Kind = "mentioned"
 	// KindShared is a page somebody sent the person, with their note.
 	KindShared Kind = "shared"
@@ -35,12 +40,16 @@ const (
 	KindPublished Kind = "published"
 	// KindCreated is a page first published under a watched page or space.
 	KindCreated Kind = "created"
+	// KindPosted is a blog post first published in a watched blog or space.
+	KindPosted Kind = "posted"
 	// KindExpired is a verification of a page the person owns that ran out.
 	KindExpired Kind = "expired"
+	// KindFailed is a publish the person scheduled that was refused at its time.
+	KindFailed Kind = "failed"
 )
 
 // Kinds lists every Kind, in the order the preferences show them.
-var Kinds = []Kind{KindMentioned, KindShared, KindReplied, KindCommented, KindResolved, KindPublished, KindCreated, KindExpired}
+var Kinds = []Kind{KindAssigned, KindDue, KindMentioned, KindShared, KindReplied, KindCommented, KindResolved, KindPublished, KindCreated, KindPosted, KindExpired, KindFailed}
 
 // Digest is when mail goes out: one per notification, or bundled.
 type Digest string
@@ -83,6 +92,8 @@ type Notification struct {
 
 // Switches turn each kind on or off for one channel.
 type Switches struct {
+	Assigned  bool `json:"assigned"`
+	Due       bool `json:"due"`
 	Mentioned bool `json:"mentioned"`
 	Shared    bool `json:"shared"`
 	Replied   bool `json:"replied"`
@@ -90,7 +101,9 @@ type Switches struct {
 	Resolved  bool `json:"resolved"`
 	Published bool `json:"published"`
 	Created   bool `json:"created"`
+	Posted    bool `json:"posted"`
 	Expired   bool `json:"expired"`
+	Failed    bool `json:"failed"`
 }
 
 // Preferences say how a person hears.

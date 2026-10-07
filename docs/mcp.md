@@ -51,8 +51,11 @@ writing tool called anyway is refused with the read-only sentence before the
 call is made. A token limited to spaces sees those spaces alone, as it does
 over HTTP, and is not offered the tools the route table marks `orgWide`,
 such as `list_audit_log`; one called anyway is refused with the
-`spaces_token` sentence. A result longer than 64 KiB is cut and says how to
-ask for less.
+`spaces_token` sentence. A guest of a space, who has no tokens and reaches
+the tools with their session, is held the same way: their space and the
+people in it alone, no `orgWide` tool offered, and one called anyway refused
+with the `guest` sentence. A result longer than 64 KiB is cut and says how
+to ask for less.
 
 ## Tools
 
@@ -66,10 +69,12 @@ ask for less.
 | `get_page` | `GET /pages/{pageID}` | yes |
 | `get_page_markdown` | `GET /pages/{pageID}/markdown` | yes |
 | `list_archived_pages` | `GET /spaces/{spaceKey}/archived-pages` | yes |
+| `list_space_shortcuts` | `GET /spaces/{spaceKey}/shortcuts` | yes |
 | `list_pages_below` | `GET /pages/{pageID}/below` | yes |
 | `list_templates` | `GET /templates`, with a space's own | yes |
 | `get_template` | `GET /templates/{templateKey}` | yes |
 | `list_versions` | `GET /pages/{pageID}/versions` | yes |
+| `list_page_contributors` | `GET /pages/{pageID}/contributors` | yes |
 | `get_version` | `GET /pages/{pageID}/versions/{versionNumber}` | yes |
 | `compare_versions` | `GET /pages/{pageID}/compare` | yes |
 | `search` | `GET /search` | yes |
@@ -85,13 +90,25 @@ ask for less.
 | `list_audit_log` | `GET /audit` (administrators) | yes |
 | `list_stale_pages` | `GET /stale-pages` (administrators of a space) | yes |
 | `get_page_views` | `GET /pages/{pageID}/views` | yes |
+| `list_my_tasks` | `GET /tasks` | yes |
+| `list_calendars` | `GET /spaces/{spaceKey}/calendars` | yes |
+| `list_calendar_events` | `GET /calendars/{calendarID}/events` | yes |
+| `get_blog` | `GET /spaces/{spaceKey}/blog` | yes |
+| `list_posts` | `GET /posts` | yes |
 | `create_page` | `POST /pages` | no |
+| `create_page_from_template` | `POST /templates/{templateKey}/pages` | no |
+| `create_post` | `POST /spaces/{spaceKey}/posts` | no |
 | `update_page` | `PATCH /pages/{pageID}` | no |
 | `replace_page_markdown` | `PUT /pages/{pageID}/markdown` | no |
 | `import_markdown` | `POST /pages/{pageID}/import` | no |
 | `add_page_label` | `POST /pages/{pageID}/labels` | no |
 | `add_comment` | `POST /pages/{pageID}/comments` | no |
 | `reply_to_comment` | `POST /comments/{commentID}/replies` | no |
+| `set_task_done` | `PATCH /pages/{pageID}/tasks/{taskID}` | no |
+| `create_calendar` | `POST /spaces/{spaceKey}/calendars` | no |
+| `rename_calendar` | `PATCH /calendars/{calendarID}` | no |
+| `create_calendar_event` | `POST /calendars/{calendarID}/events` | no |
+| `update_calendar_event` | `PUT /calendars/{calendarID}/events/{eventID}` | no |
 
 `tools/list` gives each tool's input schema: path values, query values and
 body fields in one object, every type it refers to carried along in
@@ -108,17 +125,29 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
 
 - anything that deletes or takes something away, the trash included;
 - administration and who may do what: the identity provider, members,
-  tokens, permissions, page restrictions, making or changing spaces, and
-  archiving or unarchiving pages and spaces, which is for a space's
-  administrators, the organization's webhooks, and keeping templates;
+  tokens, permissions and copying them between spaces, previews included,
+  page restrictions, making or changing spaces and the
+  space templates a new one starts from, and
+  archiving or unarchiving pages and spaces and pinning, ordering or
+  removing a space's shortcuts, which is for a space's administrators, the
+  organization's webhooks, and keeping templates;
 - who read a page (`GET /pages/{pageID}/readers`), which stays with its
   editors in the page; `get_page_views` counts them;
 - the caller's own session, settings, tokens, themes and Armature account;
 - what reaches other people or a page's standing: shares, reactions,
   watches, stars, owners and verification;
-- moving, copying, restoring and publishing drafts, which a person does in
-  the tree, the trash or the history;
+- moving, copying, restoring, publishing and scheduling drafts, which a
+  person does in the tree, the trash, the history or the editor;
 - inline threads, rewriting and resolving comments, file uploads and
   downloads, and the browser's furniture (typeahead, badges, pickers,
-  drafts);
-- Armature's issues, which Armature's own MCP endpoint serves as the person.
+  drafts, a live page's saves and the choice between drafts and live);
+- the shared draft of a page edited together, a WebSocket a browser holds
+  open while its person edits, not a call and an answer;
+- Armature's issues, which Armature's own MCP endpoint serves as the person;
+- the reading view for people who are not signed in (`/public/{orgSlug}`
+  and below, a public link's page included) and the switches that open it:
+  an assistant acts for a member, for whom `get_page` and `search` read the
+  same pages;
+- a page's public links (`/pages/{pageID}/public-links`), which open the
+  page to anybody outside the organization: a decision its editors make in
+  the share dialog, and a token shown once, to a person.

@@ -71,7 +71,8 @@ export const Image = Node.create<AttachmentOptions>({
   // Only pictures of this site's own pages; a pasted picture from elsewhere
   // has no attachment behind it and is dropped rather than hotlinked.
   parseHTML() {
-    return [{ tag: "img[data-attachment-id]", getAttrs: (el) => (attachmentId(el) ? null : false) }];
+    // A gallery's picture is marked as one and is the gallery's to read.
+    return [{ tag: "img[data-attachment-id]:not([data-gallery-image])", getAttrs: (el) => (attachmentId(el) ? null : false) }];
   },
   renderHTML({ node, HTMLAttributes }) {
     const id = String(node.attrs.attachmentId);

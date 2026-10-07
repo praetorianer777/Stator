@@ -7,6 +7,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/space"
 )
 
 // Permissions: the caller's own, the organization's, a space's and a page's,
@@ -90,6 +91,31 @@ func (s *Server) handleSetSpacePermissions(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"grants": grants})
+}
+
+func (s *Server) handlePreviewPermissionCopy(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	preview, err := s.Spaces.PreviewCopy(r.Context(), actorFrom(r), spaceKey(r), space.CopyInput{From: q.Get("from"), Mode: perm.CopyMode(q.Get("mode"))})
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"preview": preview})
+}
+
+func (s *Server) handleCopyPermissions(w http.ResponseWriter, r *http.Request) {
+	var req space.CopyInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	grants, applied, lsn, err := s.Spaces.CopyPermissions(r.Context(), actorFrom(r), spaceKey(r), req)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"grants": grants, "copy": applied})
 }
 
 func (s *Server) handleGetPageRestrictions(w http.ResponseWriter, r *http.Request) {

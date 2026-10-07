@@ -75,12 +75,16 @@ ALTER TABLE page_template FORCE  ROW LEVEL SECURITY;
 CREATE POLICY page_template_tenant_isolation ON page_template
     USING (org_id = current_org_id()) WITH CHECK (org_id = current_org_id());
 CREATE POLICY page_template_admin_bypass ON page_template TO stator_admin USING (true) WITH CHECK (true);
+CREATE POLICY page_template_not_anonymous ON page_template AS RESTRICTIVE FOR ALL TO stator_app
+    USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
 
 -- Everybody who uses the organization reads its templates, and a space's
--- templates are read by whoever may view the space. The organization's are
+-- templates are read by whoever may view the space. A guest reads only their
+-- space's, since the organization's are of the organization as a whole, and
+-- somebody reading without signing in reads none. The organization's are
 -- kept by its administrators and a space's by the space's.
 CREATE POLICY page_template_readers ON page_template AS RESTRICTIVE FOR SELECT TO stator_app
-    USING (CASE WHEN space_id IS NULL THEN perm_global_holds(current_actor_id(), 'use')
+    USING (CASE WHEN space_id IS NULL THEN perm_global_holds(current_actor_id(), 'use') AND perm_guest_space(current_actor_id()) IS NULL
                 ELSE perm_space_holds(current_actor_id(), space_id, 'view') END);
 CREATE POLICY page_template_adders ON page_template AS RESTRICTIVE FOR INSERT TO stator_app
     WITH CHECK (CASE WHEN space_id IS NULL THEN perm_is_admin(current_actor_id())

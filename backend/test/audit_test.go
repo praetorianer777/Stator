@@ -95,6 +95,15 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	}}), http.StatusOK, "set the space's table")
 	once(audit.ActionSpacePermissionsSet, me, spaceID)
 
+	guestEmail := fmt.Sprintf("guest-%s@example.test", uuid.NewString()[:8])
+	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, guestEmail) })
+	guestID := obj(t, want(t, owner.post(t, "/api/v1/spaces/AUD/guests", map[string]any{"email": guestEmail, "role": "viewer"}), http.StatusCreated, "invite a guest"), "guest")["userId"].(string)
+	if data := once(audit.ActionGuestInvited, me, guestID); !strings.Contains(data, "AUD") {
+		t.Errorf("the invitation's record does not name the space: %s", data)
+	}
+	want(t, owner.delete(t, "/api/v1/spaces/AUD/guests/"+guestID), http.StatusNoContent, "remove the guest")
+	once(audit.ActionMemberRemoved, me, guestID)
+
 	plans := docs.add(homeID, "Plans")
 	want(t, restrict(t, owner, plans, []any{user(home.user), user(annID)}, nil), http.StatusOK, "restrict Plans")
 	once(audit.ActionPageRestrictionsSet, me, plans)
@@ -132,6 +141,13 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	}
 	want(t, owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": nil}), http.StatusOK, "back to the built-in theme")
 	once(audit.ActionThemeDefaultSet, me, nil)
+
+	want(t, owner.put(t, "/api/v1/org/hub", map[string]any{"pageId": plans, "landing": true}), http.StatusOK, "choose the hub")
+	if data := once(audit.ActionOrgHubSet, me, plans); !strings.Contains(data, "Plans") {
+		t.Errorf("the hub's entry holds %s", data)
+	}
+	want(t, owner.put(t, "/api/v1/org/hub", map[string]any{"pageId": nil, "landing": false}), http.StatusOK, "clear the hub")
+	once(audit.ActionOrgHubSet, me, nil)
 	var ip *string
 	if err := h.super.QueryRow(context.Background(), `SELECT host(ip) FROM audit_log WHERE org_id = $1 AND action = $2 AND target_id = $3`, home.org, audit.ActionThemeDefaultSet, themeID).Scan(&ip); err != nil || ip == nil {
 		t.Errorf("the caller's address is not recorded: %v %v", ip, err)
@@ -235,6 +251,49 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.delete(t, "/api/v1/spaces/AUD/archive"), http.StatusOK, "unarchive the space")
 	once(audit.ActionSpaceUnarchived, me, spaceID)
 
+	cut := idOf(t, want(t, owner.post(t, "/api/v1/spaces/AUD/shortcuts", map[string]any{"url": "https://status.example.com"}), http.StatusCreated, "pin a shortcut"), "shortcut")
+	if data := once(audit.ActionShortcutAdded, me, spaceID); !strings.Contains(data, "status.example.com") || !strings.Contains(data, cut) {
+		t.Errorf("the shortcut's record reads %s", data)
+	}
+	want(t, owner.post(t, "/api/v1/spaces/AUD/shortcuts/"+cut+"/move", map[string]any{"after": nil}), http.StatusOK, "move the shortcut")
+	once(audit.ActionShortcutMoved, me, spaceID)
+	want(t, owner.delete(t, "/api/v1/spaces/AUD/shortcuts/"+cut), http.StatusNoContent, "remove the shortcut")
+	once(audit.ActionShortcutRemoved, me, spaceID)
+
+	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "open the organization to anybody")
+	if data := once(audit.ActionOrgAnonymousAccessSet, me, nil); !strings.Contains(data, `"enabled": true`) {
+		t.Errorf("the switch's record reads %s", data)
+	}
+	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "the same switch again")
+	once(audit.ActionOrgAnonymousAccessSet, me, nil)
+	want(t, owner.put(t, "/api/v1/spaces/AUD/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the space to anybody")
+	once(audit.ActionSpaceAnonymousAccessSet, me, spaceID)
+	copyID := idOf(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "AUDC", "name": "Copied"}), http.StatusCreated, "make a space to copy into"), "space")
+	copyPreview := obj(t, want(t, owner.get(t, "/api/v1/spaces/AUDC/permissions/copy?from=AUD&mode=replace"), http.StatusOK, "preview a copy"), "preview")
+	want(t, owner.post(t, "/api/v1/spaces/AUDC/permissions/copy", map[string]any{"from": "AUD", "mode": "replace", "fingerprint": copyPreview["fingerprint"]}), http.StatusOK, "copy AUD's permissions")
+	if data := once(audit.ActionSpacePermissionsCopied, me, copyID); !strings.Contains(data, `"key": "AUD"`) || !strings.Contains(data, `"mode": "replace"`) {
+		t.Errorf("the copy's record reads %s", data)
+	}
+
+	link := want(t, owner.post(t, pagePath(notes, "/public-links"), map[string]any{"label": "Auditors"}), http.StatusCreated, "make a public link")
+	linkID := idOf(t, link, "link")
+	if data := once(audit.ActionPageLinkCreated, me, notes); !strings.Contains(data, linkID) || strings.Contains(data, link.Body["token"].(string)) {
+		t.Errorf("the link's record reads %s", data)
+	}
+	want(t, owner.delete(t, pagePath(notes, "/public-links/", linkID)), http.StatusNoContent, "revoke the link")
+	once(audit.ActionPageLinkRevoked, me, notes)
+	want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusOK, "stop public links")
+	if data := once(audit.ActionOrgPublicLinksSet, me, nil); !strings.Contains(data, `"enabled": false`) {
+		t.Errorf("the links switch's record reads %s", data)
+	}
+	want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusOK, "the same links switch again")
+	once(audit.ActionOrgPublicLinksSet, me, nil)
+
+	want(t, owner.put(t, pagePath(notes, "/mode"), map[string]any{"mode": "live", "discardDrafts": true}), http.StatusOK, "make Notes live")
+	if data := once(audit.ActionPageModeChanged, me, notes); !strings.Contains(data, `"mode": "live"`) || !strings.Contains(data, `"from": "draft"`) {
+		t.Errorf("the mode's record reads %s", data)
+	}
+
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)
 
@@ -248,6 +307,10 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	once(audit.ActionTemplateUpdated, me, tplID)
 	want(t, owner.delete(t, "/api/v1/templates/"+tplID), http.StatusNoContent, "delete the template")
 	once(audit.ActionTemplateDeleted, me, tplID)
+	exampleID := idOf(t, want(t, owner.post(t, "/api/v1/example-space", map[string]any{"language": "en"}), http.StatusCreated, "make the example space"), "space")
+	if data := once(audit.ActionExampleSpaceCreated, me, exampleID); !strings.Contains(data, `"language": "en"`) {
+		t.Errorf("the example's record reads %s", data)
+	}
 
 	_, hookAddress := hookBin(t)
 	hookID := idOf(t, want(t, owner.post(t, "/api/v1/webhooks", map[string]any{"name": "Audited", "url": hookAddress, "topics": []string{"*"}}), http.StatusCreated, "add a webhook"), "webhook")

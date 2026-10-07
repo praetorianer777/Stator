@@ -1,6 +1,7 @@
 package page
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -56,6 +57,10 @@ type TreeNode struct {
 	// view is narrowed here or above.
 	Unpublished bool `json:"unpublished"`
 	Restricted  bool `json:"restricted"`
+	// Kind is page or folder.
+	Kind Kind `json:"kind"`
+	// Icon is the emoji before the page's title, null when it has none.
+	Icon *string `json:"icon"`
 }
 
 // OutlineEntry is one page of a whole space in reading order, for choosing
@@ -84,6 +89,9 @@ type CreateInput struct {
 	// Publish makes the page version 1 at once, seen by everybody who may see
 	// the space; otherwise it stays an unpublished page of its creator's.
 	Publish bool `json:"publish,omitempty"`
+	// Kind folder makes a folder, which takes no body and is seen at once by
+	// everybody who may see where it is; empty or page makes a page.
+	Kind Kind `json:"kind,omitempty"`
 	// Template starts the page from a template's key in place of a body; the
 	// server fills its variables, and the title's names in braces, from Values.
 	Template string            `json:"template,omitempty"`
@@ -196,6 +204,9 @@ func parentFor(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) 
 	if err := p.must(perm.EditPages); err != nil {
 		return nil, nil, err
 	}
+	if p.Kind == KindPost {
+		return nil, nil, ErrPostPlace
+	}
 	return p, sp, nil
 }
 
@@ -264,7 +275,8 @@ func (s *Service) Children(ctx context.Context, actor perm.Actor, spaceKey strin
 			               AND `+perm.ViewablePage("c", 2)+`),
 			       p.archived_at IS NOT NULL,
 			       p.version = 0,
-			       $3 OR EXISTS (SELECT 1 FROM page_restriction r WHERE r.page_id = p.id AND r.kind = 'view')
+			       $3 OR EXISTS (SELECT 1 FROM page_restriction r WHERE r.page_id = p.id AND r.kind = 'view'),
+			       p.kind, p.icon
 			FROM page p WHERE p.parent_id = $1 AND`+live+` AND (p.archived_at IS NULL OR $4) AND `+perm.ViewablePage("p", 2)+`
 			ORDER BY p.rank, p.id`, under, actor.UserID, above.ViewRestricted, *archived)
 		if err != nil {
@@ -316,22 +328,22 @@ func (s *Service) Outline(ctx context.Context, actor perm.Actor, spaceKey string
 
 // Create adds a page under a parent, last unless a place is named.
 func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) (*Page, db.LSN, error) {
-	var title string
-	switch {
-	case in.Template != "" && in.Body != nil:
-		return nil, 0, &FieldError{Field: "body", Message: "Send either a body or a template, not both."}
-	case in.Template == "" && len(in.Values) > 0:
-		return nil, 0, &FieldError{Field: "values", Message: "Values fill a template's variables; name the template too."}
-	case in.Template == "":
-		var err error
-		if title, err = cleanTitle(in.Title); err != nil {
-			return nil, 0, err
-		}
-		if in.Body != nil {
-			if err := document.Validate(in.Body); err != nil {
-				return nil, 0, err
-			}
-		}
+	kind := cmp.Or(in.Kind, KindPage)
+	if kind != KindPage && kind != KindFolder {
+		return nil, 0, ErrBadKind
+	}
+	if kind == KindFolder && (in.Body != nil || in.Template != "") {
+		return nil, 0, ErrFolder
+	}
+	title, err := startOf(in.Title, in.Body, in.Template, in.Values)
+	if err != nil {
+		return nil, 0, err
+	}
+	// A folder has nothing to publish, but it is version 1 from the start: an
+	// unpublished row is its creator's alone, and so would be all below it.
+	version := 0
+	if kind == KindFolder {
+		version = 1
 	}
 	var out *Page
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -340,15 +352,9 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 			return err
 		}
 		if in.Template != "" {
-			filled, body, err := template.Instantiate(ctx, tx, sp.ID, in.Template, in.Values, in.Title)
-			if err != nil {
+			if title, in.Body, err = fromTemplate(ctx, tx, sp.ID, in.Template, in.Values, in.Title); err != nil {
 				return err
 			}
-			if title, err = cleanTitle(filled); err != nil {
-				return &FieldError{Field: "title", Message: fmt.Sprintf(
-					"Give the page a title of at most %d characters once the template's values are filled in.", MaxTitleLength)}
-			}
-			in.Body = body
 		}
 		r, err := rankAt(ctx, tx, in.Placement, uuid.Nil)
 		if err != nil {
@@ -358,15 +364,15 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		// the statement's own snapshot does not hold the row it writes.
 		id := uuid.Must(uuid.NewV7())
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, COALESCE($6::jsonb, '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb), $7, $7)`,
-			id, sp.ID, in.ParentID, r, title, nullJSON(in.Body), actor.UserID); err != nil {
+			INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by, kind, version)
+			VALUES ($1, current_org_id(), $2, $3, $4, $5, COALESCE($6::jsonb, '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb), $7, $7, $8, $9)`,
+			id, sp.ID, in.ParentID, r, title, nullJSON(in.Body), actor.UserID, kind, version); err != nil {
 			return fmt.Errorf("save the page: %w", err)
 		}
 		if err := watch.Auto(ctx, tx, actor.UserID, id); err != nil {
 			return fmt.Errorf("watch the page: %w", err)
 		}
-		if in.Publish {
+		if in.Publish && kind == KindPage {
 			made, _, err := load(ctx, tx, actor, id, true)
 			if err != nil {
 				return err
@@ -379,6 +385,43 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		return err
 	})
 	return out, lsn, err
+}
+
+// startOf checks what a new page starts with before anything is written: its
+// title and body, or a template and its values in their place.
+func startOf(title string, body json.RawMessage, tpl string, values map[string]string) (string, error) {
+	switch {
+	case tpl != "" && body != nil:
+		return "", &FieldError{Field: "body", Message: "Send either a body or a template, not both."}
+	case tpl == "" && len(values) > 0:
+		return "", &FieldError{Field: "values", Message: "Values fill a template's variables; name the template too."}
+	case tpl != "":
+		return "", nil
+	}
+	title, err := cleanTitle(title)
+	if err != nil {
+		return "", err
+	}
+	if body != nil {
+		if err := document.Validate(body); err != nil {
+			return "", err
+		}
+	}
+	return title, nil
+}
+
+// fromTemplate fills a template in for a page of the space, in the
+// transaction that makes it: its title and body.
+func fromTemplate(ctx context.Context, tx db.DBTX, space uuid.UUID, tpl string, values map[string]string, title string) (string, json.RawMessage, error) {
+	filled, body, err := template.Instantiate(ctx, tx, space, tpl, values, title)
+	if err != nil {
+		return "", nil, err
+	}
+	if filled, err = cleanTitle(filled); err != nil {
+		return "", nil, &FieldError{Field: "title", Message: fmt.Sprintf(
+			"Give the page a title of at most %d characters once the template's values are filled in.", MaxTitleLength)}
+	}
+	return filled, body, nil
 }
 
 func nullJSON(raw json.RawMessage) any {
@@ -406,6 +449,9 @@ func (s *Service) Move(ctx context.Context, actor perm.Actor, id uuid.UUID, in M
 		}
 		if err := current.must(perm.EditPages); err != nil {
 			return err
+		}
+		if current.Kind == KindPost {
+			return ErrPostPlace
 		}
 		_, to, err := parentFor(ctx, tx, actor, in.ParentID)
 		if err != nil {
@@ -507,8 +553,10 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 	}
 	var out *Page
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, _, err := load(ctx, tx, actor, id, false); err != nil {
+		if original, _, err := load(ctx, tx, actor, id, false); err != nil {
 			return err
+		} else if original.Kind == KindPost {
+			return ErrPostPlace
 		}
 		_, to, err := parentFor(ctx, tx, actor, in.ParentID)
 		if err != nil {
@@ -529,12 +577,12 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			), fresh AS MATERIALIZED (
 				SELECT id AS old_id, uuidv7() AS new_id, parent_id, depth FROM below
 			), made AS (
-				INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by)
+				INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by, kind)
 				SELECT f.new_id, p.org_id, $3,
 				       CASE WHEN f.depth = 0 THEN $4 ELSE up.new_id END,
 				       CASE WHEN f.depth = 0 THEN $5 ELSE p.rank END,
 				       CASE WHEN f.depth = 0 THEN COALESCE($6, p.title) ELSE p.title END,
-				       document_unanchored(p.body), $7, $7
+				       document_unanchored(p.body), $7, $7, p.kind
 				FROM fresh f JOIN page p ON p.id = f.old_id LEFT JOIN fresh up ON up.old_id = f.parent_id
 				ORDER BY f.depth
 			)
@@ -571,7 +619,8 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 				SELECT p.id FROM page p JOIN copied c ON p.parent_id = c.id
 			)
 			INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
-			SELECT p.org_id, p.id, 1, p.title, p.body, $2 FROM page p JOIN copied c ON c.id = p.id`, made, actor.UserID); err != nil {
+			SELECT p.org_id, p.id, 1, p.title, p.body, $2 FROM page p JOIN copied c ON c.id = p.id
+			WHERE p.kind = 'page'`, made, actor.UserID); err != nil {
 			return fmt.Errorf("publish the copy: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `
@@ -590,6 +639,22 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			SELECT r.org_id, m.new_id, r.kind, r.subject_type, r.user_id, r.group_id
 			FROM page_restriction r JOIN unnest($1::uuid[], $2::uuid[]) AS m (old_id, new_id) ON r.page_id = m.old_id`, olds, news); err != nil {
 			return fmt.Errorf("copy the restrictions: %w", err)
+		}
+		// A copy is published, so its checklists are tasks too. Nobody chose
+		// whom they name here, so a copy somebody may not view leaves them
+		// unassigned, and no event tells anybody, as with mentions. A copy whose
+		// lists leave the copier out gets its rows when an editor publishes it.
+		for _, id := range news {
+			var editable bool
+			if err := tx.QueryRow(ctx, `SELECT page_stewardable($1, $2)`, id, actor.UserID).Scan(&editable); err != nil {
+				return err
+			}
+			if !editable {
+				continue
+			}
+			if err := syncTasks(ctx, tx, id, false); err != nil {
+				return err
+			}
 		}
 		if err := watch.Auto(ctx, tx, actor.UserID, made); err != nil {
 			return fmt.Errorf("watch the copy: %w", err)

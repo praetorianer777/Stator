@@ -1,9 +1,10 @@
-import type { APIRequestContext, Page } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { apiFromStubURL, armatureURL } from "../fixtures/stack";
 
 // The stub signs and sends the webhook exactly as Armature does, to the api as
@@ -11,19 +12,10 @@ import { apiFromStubURL, armatureURL } from "../fixtures/stack";
 const patFor = (tenant: string, person: string) => `armature_pat_${tenant}_${person}`;
 const SECRET = "armature_whs_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG";
 
-const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
-
 async function stub(request: APIRequestContext, method: "POST" | "PATCH" | "DELETE", path: string, data?: unknown) {
   const answer = await request.fetch(`${armatureURL()}/_stub/${path}`, { method, data });
   expect(answer.ok(), `the stub answered ${method} ${path} with ${answer.status()}`).toBe(true);
   return answer.status() === 204 ? null : ((await answer.json()) as Record<string, unknown>);
-}
-
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
 }
 
 test.describe("Armature webhooks", { tag: ["@auth"] }, () => {

@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { openShowing } from "../fixtures/replica";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
@@ -84,14 +85,12 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
 
   test("a member is told to ask an administrator until Armature is connected", async ({ pageAs, freshOrg, api }) => {
     const bob = await pageAs("bob");
-    await bob.goto(PROFILE_PATH);
+    // The beforeEach took away a connection an earlier test may have left.
+    await openShowing(bob, PROFILE_PATH, bob.locator('[data-armature-status="not_configured"]'));
     await expect(bob.locator('[data-armature-status="not_configured"]')).toContainText("Ask an administrator to connect it under Settings, Armature.");
 
     expect((await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug } })).response.status).toBe(200);
-    await expect(async () => {
-      await bob.reload();
-      await expect(bob.getByLabel("Armature token", { exact: true })).toBeVisible({ timeout: 1_000 });
-    }).toPass({ timeout: 10_000, intervals: [1_000] });
+    await openShowing(bob, PROFILE_PATH, bob.getByLabel("Armature token", { exact: true }));
     await bob.goto(SETTINGS_PATH);
     await expect(bob.getByText("Only an administrator of this organization can connect Armature.")).toBeVisible();
   });

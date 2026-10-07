@@ -1,7 +1,8 @@
-import type { Locator, Page, TestInfo } from "@playwright/test";
+import type { Page, TestInfo } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
 import type { StatorApi } from "../fixtures/api";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../fixtures/spaces";
@@ -10,16 +11,6 @@ const hit = (page: Page, title: string) => page.locator(`[data-search-hit="${tit
 const palette = (page: Page) => page.getByRole("dialog", { name: "Quick search" });
 const option = (page: Page, title: string) => palette(page).locator(`[data-quick-search-option="${title}"]`);
 const paragraph = (text: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
-
-// A script's writes can reach the index a moment after they answer, and the
-// browser reads from a replica of its own, so a search is asked again until
-// what it should find is there.
-async function searchUntil(page: Page, path: string, found: (page: Page) => Locator) {
-  await expect(async () => {
-    await page.goto(path);
-    await expect(found(page)).toBeVisible({ timeout: 1_000 });
-  }).toPass();
-}
 
 test.describe("search", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -37,7 +28,7 @@ test.describe("search", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Find");
     await createPage(api, space.homePageId, "Zephyr quarterly report", paragraph("The flamingo budget grew this quarter."));
 
-    await searchUntil(page, "/search?q=zephyr", (p) => hit(p, "Zephyr quarterly report"));
+    await openShowing(page, "/search?q=zephyr", hit(page, "Zephyr quarterly report"));
     await expect(hit(page, "Zephyr quarterly report").locator("mark").first()).toHaveText("Zephyr");
 
     await page.locator("[data-search-query]").fill("flamingo");
@@ -55,7 +46,7 @@ test.describe("search", { tag: ["@auth"] }, () => {
     await createPage(api, here.homePageId, "Nebula notes here");
     await createPage(api, there.homePageId, "Nebula notes there");
 
-    await searchUntil(page, "/search?q=nebula", (p) => hit(p, "Nebula notes there"));
+    await openShowing(page, "/search?q=nebula", hit(page, "Nebula notes there"));
     await expect(hit(page, "Nebula notes here")).toBeVisible();
     await page.locator('[data-filter="space"]').selectOption(here.key);
     await expect(page).toHaveURL(new RegExp(`space=${here.key}`));
@@ -76,7 +67,7 @@ test.describe("search", { tag: ["@auth"] }, () => {
     await expect(async () => {
       await page.keyboard.press("Control+k");
       await palette(page).getByRole("combobox").fill("kestrel ru");
-      await expect(option(page, "Kestrel runbook")).toBeVisible({ timeout: 1_000 });
+      await expect(option(page, "Kestrel runbook")).toBeVisible(ONE_LOOK);
     }).toPass();
     const input = palette(page).getByRole("combobox");
     await expect(input).toBeFocused();
@@ -103,13 +94,12 @@ test.describe("search", { tag: ["@auth"] }, () => {
       await page.goto(`/s/${space.key}/p/${each.id}/${each.title.toLowerCase().replace(" ", "-")}`);
       await expect(page.locator("main").getByRole("heading", { level: 1 })).toHaveText(each.title);
     }
-    await expect(async () => {
-      await page.goto("/");
+    await openUntil(page, "/", async () => {
       await page.keyboard.press("Control+k");
       const recent = palette(page).locator('[data-quick-search-list="recent"] [role="option"]');
-      await expect(recent.nth(1)).toBeVisible({ timeout: 1_000 });
+      await expect(recent.nth(1)).toBeVisible(ONE_LOOK);
       expect((await recent.allTextContents()).slice(0, 2).map((text) => text.split(space.name)[0])).toEqual(["Osprey minutes", "Heron minutes"]);
-    }).toPass();
+    });
   });
 
   test("a page in the trash is not found", async ({ page, api }, testInfo) => {
@@ -118,7 +108,7 @@ test.describe("search", { tag: ["@auth"] }, () => {
     const gone = await createPage(api, space.homePageId, "Walrus handover gone");
     await api.DELETE("/pages/{pageID}", { params: { path: { pageID: gone.id } } });
 
-    await searchUntil(page, "/search?q=walrus", (p) => hit(p, "Walrus handover kept"));
+    await openShowing(page, "/search?q=walrus", hit(page, "Walrus handover kept"));
     await expect(hit(page, "Walrus handover gone")).toHaveCount(0);
 
     await page.keyboard.press("Control+k");
@@ -133,7 +123,7 @@ test.describe("search", { tag: ["@auth"] }, () => {
       await createPage(api, space.homePageId, "Puffin guide", paragraph("Where the puffin nests."));
       await startInScheme(page, scheme);
 
-      await searchUntil(page, "/search?q=puffin", (p) => hit(p, "Puffin guide"));
+      await openShowing(page, "/search?q=puffin", hit(page, "Puffin guide"));
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
       await expectAccessible(page);
 

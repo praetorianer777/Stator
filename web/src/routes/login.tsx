@@ -7,6 +7,7 @@ import { rootRoute } from "./root";
 interface LoginSearch {
   next?: string;
   sso?: string;
+  org?: string;
 }
 
 export const loginRoute = createRoute({
@@ -15,6 +16,7 @@ export const loginRoute = createRoute({
   validateSearch: (search: Record<string, unknown>): LoginSearch => ({
     ...(typeof search.next === "string" ? { next: search.next } : {}),
     ...(typeof search.sso === "string" ? { sso: search.sso } : {}),
+    ...(typeof search.org === "string" ? { org: search.org } : {}),
   }),
   // Somebody already signed in has nothing to do here. The answer is settled
   // before the redirect is thrown, so the catch cannot swallow the redirect.
@@ -29,7 +31,7 @@ export const loginRoute = createRoute({
     }
   },
   component: function Login() {
-    const { next, sso } = loginRoute.useSearch();
-    return <LoginPage next={next} sso={sso} />;
+    const { next, sso, org } = loginRoute.useSearch();
+    return <LoginPage next={next} sso={sso} org={org} />;
   },
 });

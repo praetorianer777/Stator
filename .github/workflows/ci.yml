@@ -29,7 +29,10 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.runs > 1 && 150 || 30 }}
+    # One gate takes 22 to 30 minutes on a hosted runner and grows with every
+    # feature, so a run gets 45 and a run by hand of up to 5 gates gets 5 times
+    # that. Expressions here cannot multiply, nor read env.
+    timeout-minutes: ${{ inputs.runs > 1 && 225 || 45 }}
     steps:
       # The release tests read tags, which a shallow checkout does not carry.
       - uses: actions/checkout@v4
@@ -45,6 +48,12 @@ jobs:
             ./run-tests.sh
             echo "::endgroup::"
           done
+
+      # A cancelled run otherwise ends in the middle of a passing test, which
+      # reads like a failure of that test.
+      - name: Say why the gate stopped
+        if: cancelled()
+        run: echo "::error title=Gate stopped::The gate was cancelled before it finished, by the job's time limit or by a newer push to this branch. No test failed; look at the run's duration, and if it reached the limit, raise timeout-minutes or make the suite faster."
 
       - name: Keep Playwright traces
         if: failure()

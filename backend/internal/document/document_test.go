@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -27,10 +28,35 @@ const richDoc = `{"type":"doc","content":[
  {"type":"horizontalRule"},
  {"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","alt":"The plan","width":480}},
  {"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c","alt":null,"width":null}},
+ {"type":"gallery","attrs":{"columns":3},"content":[
+  {"type":"galleryImage","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","caption":"The board"}},
+  {"type":"galleryImage","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c","caption":null}}]},
  {"type":"paragraph","content":[{"type":"text","text":"See "},{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5d","fileName":"report.pdf"}}]},
  {"type":"paragraph","content":[{"type":"text","text":"Fixed in "},{"type":"armatureIssue","attrs":{"key":"CP-12"}}]},
  {"type":"armatureIssueBlock","attrs":{"key":"CP-7"}},
  {"type":"armatureIssueList","attrs":{"query":"project = CP AND statusCategory != done","columns":["key","summary","due"],"limit":20}},
+ {"type":"armatureChart","attrs":{"project":"CP","query":"project = CP","chart":"pie","groupBy":"statusCategory","days":30}},
+ {"type":"armatureRoadmap","attrs":{"project":"CP","query":"project = CP","groupBy":"epic"}},
+ {"type":"properties","content":[
+  {"type":"propertyRow","attrs":{"key":"Owner"},"content":[{"type":"mention","attrs":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","label":"Ada"}}]},
+  {"type":"propertyRow","attrs":{"key":""},"content":[{"type":"text","text":"Final","marks":[{"type":"bold"}]}]},
+  {"type":"propertyRow","attrs":{"key":"Due"}}]},
+ {"type":"propertiesReport","attrs":{"labels":["release-notes","übersicht"],"space":null,"columns":[]}},
+ {"type":"propertiesReport","attrs":{"labels":["v1.2"],"space":"DOCS","columns":["Owner","Review date"]}},
+ {"type":"labelledPages","attrs":{"labels":["adr","v1.2"],"match":"any","space":null,"sort":"title","limit":50}},
+ {"type":"recentlyUpdated","attrs":{"space":"DOCS","limit":1}},
+ {"type":"blogPosts","attrs":{"space":null,"limit":5}},
+ {"type":"taskReport","attrs":{"space":"DOCS","assignee":"me","due":"week","state":"open","limit":20}},
+ {"type":"taskReport","attrs":{"space":null,"assignee":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","due":"any","state":"all","limit":100}},
+ {"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"none","state":"done","limit":1}},
+ {"type":"attachmentList"},
+ {"type":"tableChart","attrs":{"chart":"bar","showTable":true},"content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Q1"}]}]}]}]}]},
+ {"type":"calendar","attrs":{"calendarId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a77","project":"CP"}},
+ {"type":"calendar","attrs":{"calendarId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a78","project":null}},
+ {"type":"templateButton","attrs":{"template":"meeting-notes","space":"DOCS","parent":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a79","label":"New meeting notes","title":"Weekly {date}"}},
+ {"type":"templateButton","attrs":{"template":"how-to","space":null,"parent":null,"label":"","title":""}},
+ {"type":"contributors","attrs":{"scope":"page","limit":10}},
+ {"type":"contributors","attrs":{"scope":"tree","limit":50}},
  {"type":"table","content":[
   {"type":"tableRow","content":[
    {"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"background":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"Name"}]}]},
@@ -44,6 +70,23 @@ const richDoc = `{"type":"doc","content":[
   {"type":"paragraph","content":[{"type":"text","text":"Revert the release"}]},
   {"type":"expand","attrs":{"title":""},"content":[{"type":"paragraph","content":[{"type":"text","text":"Nested detail"}]}]}]},
  {"type":"expand","content":[{"type":"paragraph"}]},
+ {"type":"columns","content":[
+  {"type":"column","attrs":{"width":33},"content":[{"type":"paragraph","content":[{"type":"text","text":"Left side"}]}]},
+  {"type":"column","attrs":{"width":67},"content":[{"type":"paragraph","content":[{"type":"text","text":"Right side"}]},
+   {"type":"columns","content":[
+    {"type":"column","attrs":{"width":null},"content":[{"type":"paragraph"}]},
+    {"type":"column","content":[{"type":"paragraph"}]},
+    {"type":"column","content":[{"type":"paragraph"}]}]}]}]},
+ {"type":"decision","attrs":{"state":"decided"},"content":[{"type":"text","text":"Ship weekly","marks":[{"type":"bold"}]}]},
+ {"type":"decision","attrs":{"state":"undecided"}},
+ {"type":"paragraph","content":[{"type":"text","text":"Energy is "},{"type":"mathInline","attrs":{"latex":"E = mc^2"},"marks":[{"type":"bold"}]}]},
+ {"type":"mathBlock","attrs":{"latex":"\\int_0^1 x\\,dx = \\frac{1}{2}"}},
+ {"type":"diagram","attrs":{"source":"flowchart LR\n  A[Draft] --> B[Published]"}},
+ {"type":"linkCard","attrs":{"url":"https://example.test/post","view":"card"}},
+ {"type":"include","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80","excerptId":null}},
+ {"type":"include","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80","excerptId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a81"}},
+ {"type":"excerpt","attrs":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a70","name":"Support hours"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Nine to five"}]}]},
+ {"type":"linkCard","attrs":{"url":"HTTPS://youtu.be/dQw4w9WgXcQ","view":"embed"}},
  {"type":"heading","attrs":{"level":3,"id":null},"content":[{"type":"text","text":"Plan"}]},
  {"type":"tableOfContents","attrs":{"maxLevel":2}},
  {"type":"childPages","attrs":{"scope":"subtree","depth":3,"sort":"updated"}},
@@ -100,7 +143,78 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"expand title not text", `{"type":"doc","content":[{"type":"expand","attrs":{"title":3},"content":[{"type":"paragraph"}]}]}`, `title=3`},
 		{"expand title null", `{"type":"doc","content":[{"type":"expand","attrs":{"title":null},"content":[{"type":"paragraph"}]}]}`, `title=null`},
 		{"expand stored open", `{"type":"doc","content":[{"type":"expand","attrs":{"title":"More","open":true},"content":[{"type":"paragraph"}]}]}`, `attribute "open"`},
+		{"decision state", `{"type":"doc","content":[{"type":"decision","attrs":{"state":"maybe"}}]}`, `state="maybe"`},
+		{"decision holding a block", `{"type":"doc","content":[{"type":"decision","attrs":{"state":"decided"},"content":[{"type":"paragraph"}]}]}`, `puts a "paragraph"`},
+		{"link card to a page of the site", `{"type":"doc","content":[{"type":"linkCard","attrs":{"url":"/spaces/x","view":"card"}}]}`, `url="/spaces/x"`},
+		{"link card to a script", `{"type":"doc","content":[{"type":"linkCard","attrs":{"url":"javascript:alert(1)","view":"card"}}]}`, `url="javascript`},
+		{"link card to mail", `{"type":"doc","content":[{"type":"linkCard","attrs":{"url":"mailto:a@example.test","view":"card"}}]}`, `url="mailto`},
+		{"link card view", `{"type":"doc","content":[{"type":"linkCard","attrs":{"url":"https://example.test","view":"frame"}}]}`, `view="frame"`},
+		{"link card in a line", para(`{"type":"linkCard","attrs":{"url":"https://example.test","view":"card"}}`), `puts a "linkCard"`},
+		{"chart of a project in lower case", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"cp","query":"x","chart":"pie","groupBy":"type","days":30}}]}`, `project="cp"`},
+		{"chart of a bar", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"CP","query":"x","chart":"bar","groupBy":"type","days":30}}]}`, `chart="bar"`},
+		{"chart a year and a day back", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"CP","query":"x","chart":"createdResolved","groupBy":"type","days":366}}]}`, `days=366`},
+		{"roadmap by sprint", `{"type":"doc","content":[{"type":"armatureRoadmap","attrs":{"project":"CP","query":"x","groupBy":"sprint"}}]}`, `groupBy="sprint"`},
+		{"roadmap without a query", `{"type":"doc","content":[{"type":"armatureRoadmap","attrs":{"project":"CP","query":" ","groupBy":"team"}}]}`, `query`},
+		{"properties without rows", `{"type":"doc","content":[{"type":"properties","content":[]}]}`, `properties`},
+		{"properties holding a paragraph", `{"type":"doc","content":[{"type":"properties","content":[{"type":"paragraph"}]}]}`, `"paragraph"`},
+		{"property row alone", `{"type":"doc","content":[{"type":"propertyRow","attrs":{"key":"Owner"}}]}`, `"propertyRow"`},
+		{"property name too long", `{"type":"doc","content":[{"type":"properties","content":[{"type":"propertyRow","attrs":{"key":"` + strings.Repeat("x", MaxPropertyKeyLength+1) + `"}}]}]}`, `key=`},
+		{"report without labels", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":[],"space":null,"columns":[]}}]}`, `labels`},
+		{"report of an upper case label", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":["Release"],"space":null,"columns":[]}}]}`, `labels`},
+		{"report of a lower case space", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":["a"],"space":"docs","columns":[]}}]}`, `space="docs"`},
+		{"report of a padded column", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":["a"],"space":null,"columns":[" Owner"]}}]}`, `columns`},
+		{"labelled pages matching some", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":["a"],"match":"some","space":null,"sort":"title","limit":5}}]}`, `match="some"`},
+		{"labelled pages by views", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":["a"],"match":"all","space":null,"sort":"views","limit":5}}]}`, `sort="views"`},
+		{"labelled pages without labels", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":[],"match":"all","space":null,"sort":"title","limit":5}}]}`, `labels`},
+		{"labelled pages past the limit", `{"type":"doc","content":[{"type":"labelledPages","attrs":{"labels":["a"],"match":"all","space":null,"sort":"title","limit":51}}]}`, `limit=51`},
+		{"recently updated none", `{"type":"doc","content":[{"type":"recentlyUpdated","attrs":{"space":null,"limit":0}}]}`, `limit=0`},
+		{"task report for somebody", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":"ann","due":"any","state":"open","limit":5}}]}`, `assignee="ann"`},
+		{"task report due later", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"later","state":"open","limit":5}}]}`, `due="later"`},
+		{"task report half done", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"half","limit":5}}]}`, `state="half"`},
+		{"task report past the limit", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"open","limit":101}}]}`, `limit=101`},
+		{"table chart of a donut", `{"type":"doc","content":[{"type":"tableChart","attrs":{"chart":"donut","showTable":true},"content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph"}]}]}]}]}]}`, `chart="donut"`},
+		{"table chart without a table", `{"type":"doc","content":[{"type":"tableChart","attrs":{"chart":"bar","showTable":true}}]}`, `tableChart`},
+		{"table chart of a paragraph", `{"type":"doc","content":[{"type":"tableChart","attrs":{"chart":"bar","showTable":true},"content":[{"type":"paragraph"}]}]}`, `paragraph`},
+		{"calendar without its calendar", `{"type":"doc","content":[{"type":"calendar","attrs":{"calendarId":"team","project":null}}]}`, `calendarId="team"`},
+		{"calendar of a project in lower case", `{"type":"doc","content":[{"type":"calendar","attrs":{"calendarId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a77","project":"cp"}}]}`, `project="cp"`},
+		{"template button of no template", `{"type":"doc","content":[{"type":"templateButton","attrs":{"template":"Meeting Notes","space":null,"parent":null,"label":"","title":""}}]}`, `template="Meeting Notes"`},
+		{"template button under a page by name", `{"type":"doc","content":[{"type":"templateButton","attrs":{"template":"how-to","space":null,"parent":"Plans","label":"","title":""}}]}`, `parent="Plans"`},
+		{"template button with a long label", `{"type":"doc","content":[{"type":"templateButton","attrs":{"template":"how-to","space":null,"parent":null,"label":"` + strings.Repeat("a", MaxButtonLabelLength+1) + `","title":""}}]}`, `label=`},
+		{"template button with its page", `{"type":"doc","content":[{"type":"templateButton","attrs":{"template":"how-to","space":null,"parent":null,"label":"","title":"","pageId":null}}]}`, `attribute "pageId"`},
+		{"contributors of the space", `{"type":"doc","content":[{"type":"contributors","attrs":{"scope":"space","limit":10}}]}`, `scope="space"`},
+		{"contributors past the limit", `{"type":"doc","content":[{"type":"contributors","attrs":{"scope":"page","limit":51}}]}`, `limit=51`},
+		{"contributors with their people", `{"type":"doc","content":[{"type":"contributors","attrs":{"scope":"page","limit":5,"people":[]}}]}`, `attribute "people"`},
+		{"calendar with its events", `{"type":"doc","content":[{"type":"calendar","attrs":{"calendarId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a77","project":null,"events":[]}}]}`, `attribute "events"`},
+		{"attachment list naming files", `{"type":"doc","content":[{"type":"attachmentList","attrs":{"files":[]}}]}`, `attribute "files"`},
+		{"task report with tasks", `{"type":"doc","content":[{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"open","limit":5,"tasks":[]}}]}`, `attribute "tasks"`},
+		{"recently updated with pages", `{"type":"doc","content":[{"type":"recentlyUpdated","attrs":{"space":null,"limit":5,"pages":[]}}]}`, `attribute "pages"`},
+		{"blog posts with posts", `{"type":"doc","content":[{"type":"blogPosts","attrs":{"space":null,"limit":5,"posts":[]}}]}`, `attribute "posts"`},
+		{"blog posts in a space of no key", `{"type":"doc","content":[{"type":"blogPosts","attrs":{"space":"news","limit":5}}]}`, `space="news"`},
+		{"blog posts beyond the limit", `{"type":"doc","content":[{"type":"blogPosts","attrs":{"space":null,"limit":51}}]}`, `limit=51`},
+		{"report with its rows", `{"type":"doc","content":[{"type":"propertiesReport","attrs":{"labels":["a"],"space":null,"columns":[],"rows":[]}}]}`, `attribute "rows"`},
+		{"chart with counts", `{"type":"doc","content":[{"type":"armatureChart","attrs":{"project":"CP","query":"x","chart":"pie","groupBy":"type","days":30,"total":5}}]}`, `attribute "total"`},
+		{"include of no page", `{"type":"doc","content":[{"type":"include","attrs":{"pageId":"HOME","excerptId":null}}]}`, `pageId="HOME"`},
+		{"include in a line", para(`{"type":"include","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80"}}`), `puts a "include"`},
+		{"include with words", `{"type":"doc","content":[{"type":"include","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80","title":"Stale"}}]}`, `attribute "title"`},
+		{"diagram without source", `{"type":"doc","content":[{"type":"diagram","attrs":{"source":"\n "}}]}`, `source="\n "`},
+		{"diagram too long", `{"type":"doc","content":[{"type":"diagram","attrs":{"source":"` + strings.Repeat("x", MaxDiagramLength+1) + `"}}]}`, `source="xxx`},
+		{"diagram in a line", para(`{"type":"diagram","attrs":{"source":"x"}}`), `puts a "diagram"`},
+		{"formula without source", para(`{"type":"mathInline","attrs":{"latex":" "}}`), `latex=" "`},
+		{"formula not text", `{"type":"doc","content":[{"type":"mathBlock","attrs":{"latex":42}}]}`, `latex=42`},
+		{"formula too long", `{"type":"doc","content":[{"type":"mathBlock","attrs":{"latex":"` + strings.Repeat("x", MaxMathLength+1) + `"}}]}`, `latex="xxx`},
+		{"formula holding text", `{"type":"doc","content":[{"type":"mathBlock","attrs":{"latex":"x"},"content":[{"type":"text","text":"x"}]}]}`, `puts content inside a "mathBlock"`},
+		{"block formula in a line", para(`{"type":"mathBlock","attrs":{"latex":"x"}}`), `puts a "mathBlock"`},
+		{"inline formula as a block", `{"type":"doc","content":[{"type":"mathInline","attrs":{"latex":"x"}}]}`, `puts a "mathInline"`},
 		{"expand inline", para(`{"type":"expand","attrs":{"title":"More"}}`), `puts a "expand"`},
+		{"one column", columns(column(`null`)), `a "columns" holding 1,`},
+		{"four columns", columns(column(`null`), column(`null`), column(`null`), column(`null`)), `a "columns" holding 4,`},
+		{"no columns", `{"type":"doc","content":[{"type":"columns","content":[]}]}`, `a "columns" holding 0,`},
+		{"column too narrow", columns(column(`9`), column(`91`)), `width=9`},
+		{"column too wide", columns(column(`81`), column(`19`)), `width=81`},
+		{"column width not whole", columns(column(`50.5`), column(`49.5`)), `width=50.5`},
+		{"column width as text", columns(column(`"50%"`), column(`50`)), `width="50%"`},
+		{"column outside columns", `{"type":"doc","content":[{"type":"column","content":[{"type":"paragraph"}]}]}`, `puts a "column"`},
+		{"paragraph in columns", `{"type":"doc","content":[{"type":"columns","content":[{"type":"paragraph"},{"type":"paragraph"}]}]}`, `puts a "paragraph"`},
 		{"cell background colour", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"background":"#ff0000"},"content":[{"type":"paragraph"}]}]}]}]}`, `background=`},
 		{"cell align", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"align":"justify;color:red"},"content":[{"type":"paragraph"}]}]}]}]}`, `align=`},
 		{"huge colspan", `{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":100000},"content":[{"type":"paragraph"}]}]}]}]}`, `colspan=`},
@@ -126,6 +240,15 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"image width zero", `{"type":"doc","content":[{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","width":0}}]}`, `width=0`},
 		{"image src", `{"type":"doc","content":[{"type":"image","attrs":{"src":"https://evil.test/x.png"}}]}`, `attribute "src"`},
 		{"image inline", para(`{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}`), `puts a "image"`},
+		{"gallery without pictures", gallery(`3`), `a "gallery" holding 0,`},
+		{"gallery of too many pictures", gallery(`3`, slices.Repeat([]string{galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `null`)}, MaxGalleryImages+1)...), `a "gallery" holding 61,`},
+		{"gallery of one column", gallery(`1`, galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `null`)), `columns=1`},
+		{"gallery of five columns", gallery(`5`, galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `null`)), `columns=5`},
+		{"gallery holding an image", gallery(`3`, `{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}`), `puts a "image"`},
+		{"gallery picture alone", `{"type":"doc","content":[` + galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `null`) + `]}`, `puts a "galleryImage"`},
+		{"gallery picture of no file", gallery(`3`, galleryImage(`"../x"`, `null`)), `attachmentId=`},
+		{"gallery picture from elsewhere", gallery(`3`, `{"type":"galleryImage","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","src":"https://evil.test/x.png"}}`), `attribute "src"`},
+		{"gallery caption too long", gallery(`3`, galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `"`+strings.Repeat("a", MaxAltLength+1)+`"`)), `caption=`},
 		{"attachment at the top", `{"type":"doc","content":[{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":"a"}}]}`, `puts a "attachment"`},
 		{"attachment without name", para(`{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":" "}}`), `fileName=`},
 		{"issue key lower case", para(`{"type":"armatureIssue","attrs":{"key":"cp-12"}}`), `key="cp-12"`},
@@ -234,6 +357,10 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		"See report.pdf",
 		"Fixed in CP-12",
 		"CP-7",
+		"Owner\t@Ada",
+		"\tFinal",
+		"Due",
+		"Q1",
 		"Name\tRole",
 		"Ada",
 		"Careful",
@@ -241,6 +368,14 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		"Rollback steps",
 		"Revert the release",
 		"Nested detail",
+		"Left side",
+		"Right side",
+		"Ship weekly",
+		"Energy is E = mc^2",
+		`\int_0^1 x\,dx = \frac{1}{2}`,
+		"flowchart LR",
+		"  A[Draft] --> B[Published]",
+		"Nine to five",
 		"Plan",
 	}, "\n")
 	if got := PlainText(root); got != want {
@@ -301,4 +436,20 @@ func TestAllowlistFileIsCurrent(t *testing.T) {
 	if string(committed) != string(fresh) {
 		t.Fatal("api/document-allowlist.json is out of date; run make document-allowlist and commit it.")
 	}
+}
+
+func columns(cols ...string) string {
+	return `{"type":"doc","content":[{"type":"columns","content":[` + strings.Join(cols, ",") + `]}]}`
+}
+
+func column(width string) string {
+	return `{"type":"column","attrs":{"width":` + width + `},"content":[{"type":"paragraph"}]}`
+}
+
+func gallery(columns string, pictures ...string) string {
+	return `{"type":"doc","content":[{"type":"gallery","attrs":{"columns":` + columns + `},"content":[` + strings.Join(pictures, ",") + `]}]}`
+}
+
+func galleryImage(id, caption string) string {
+	return `{"type":"galleryImage","attrs":{"attachmentId":` + id + `,"caption":` + caption + `}}`
 }

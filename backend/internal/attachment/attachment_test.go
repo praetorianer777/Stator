@@ -98,19 +98,23 @@ func TestImagesReportTheirSize(t *testing.T) {
 }
 
 func TestRewriteReferencesPointsCopiesAtTheirOwnFiles(t *testing.T) {
-	old1, old2, other := uuid.New(), uuid.New(), uuid.New()
-	new1, new2 := uuid.New(), uuid.New()
+	old1, old2, old3, other := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	new1, new2, new3 := uuid.New(), uuid.New(), uuid.New()
 	body := `{"type":"doc","content":[
 		{"type":"image","attrs":{"attachmentId":"` + old1.String() + `","alt":"x","width":480}},
 		{"type":"paragraph","content":[{"type":"text","text":"see "},{"type":"attachment","attrs":{"attachmentId":"` + old2.String() + `","fileName":"a.pdf"}}]},
 		{"type":"image","attrs":{"attachmentId":"` + other.String() + `","alt":null,"width":null}},
+		{"type":"gallery","attrs":{"columns":3},"content":[{"type":"galleryImage","attrs":{"attachmentId":"` + old3.String() + `","caption":"y"}}]},
 		{"type":"mention","attrs":{"attachmentId":"` + old1.String() + `"}}]}`
-	out, changed, err := RewriteReferences([]byte(body), map[uuid.UUID]uuid.UUID{old1: new1, old2: new2})
+	out, changed, err := RewriteReferences([]byte(body), map[uuid.UUID]uuid.UUID{old1: new1, old2: new2, old3: new3})
 	if err != nil || !changed {
 		t.Fatalf("changed=%v err=%v", changed, err)
 	}
 	text := string(out)
-	for _, want := range []string{new1.String(), new2.String(), other.String(), `"width":480`} {
+	if strings.Contains(text, old3.String()) {
+		t.Errorf("a gallery's picture still names the original's file: %s", text)
+	}
+	for _, want := range []string{new1.String(), new2.String(), new3.String(), other.String(), `"width":480`} {
 		if !strings.Contains(text, want) {
 			t.Errorf("%s lacks %s", text, want)
 		}
@@ -126,5 +130,30 @@ func TestRewriteReferencesPointsCopiesAtTheirOwnFiles(t *testing.T) {
 	out, changed, err = RewriteReferences([]byte(same), map[uuid.UUID]uuid.UUID{old1: new1})
 	if err != nil || changed || string(out) != same {
 		t.Fatalf("a body without files changed: %s %v %v", out, changed, err)
+	}
+}
+
+func TestOnlyPicturesTheBrowserRedrawsAreEditable(t *testing.T) {
+	for contentType, want := range map[string]bool{
+		"image/png": true, "image/jpeg": true, "IMAGE/WEBP": true, "image/png; charset=binary": true,
+		"image/gif": false, "image/svg+xml": false, "application/pdf": false, "": false,
+	} {
+		if got := Editable(contentType); got != want {
+			t.Errorf("Editable(%q) = %v, want %v", contentType, got, want)
+		}
+	}
+}
+
+func TestAnEditOfAnotherTypeNamesTheTypeToSend(t *testing.T) {
+	for _, c := range []struct {
+		err  EditTypeError
+		want string
+	}{
+		{EditTypeError{Name: "shot.png", Want: "image/png", Got: "image/jpeg"}, "the file shot.png is a PNG picture and the edited one is a JPEG; send it as a PNG picture, or upload it under a new name"},
+		{EditTypeError{Name: "shot.webp", Want: "image/webp"}, "the edited picture could not be read as a picture; send shot.webp as a WebP picture"},
+	} {
+		if got := c.err.Error(); got != c.want {
+			t.Errorf("got %q, want %q", got, c.want)
+		}
 	}
 }

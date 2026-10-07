@@ -3,6 +3,1496 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: An annotated picture is flattened in the browser and saved as its file's next version
+
+An author crops a screenshot and draws on it so that it shows what
+matters (#94).
+
+- **Drawn in the browser, on a canvas.** The annotation editor
+  (`web/src/features/annotate`) draws the picture and its shapes on one
+  canvas at the picture's own size, scaled to the window by CSS, and
+  writes the result with `toBlob`. The geometry, the picking of shapes,
+  undo and redo are a pure module (`annotation.ts`) the unit tests drive.
+  No drawing library: what it needs is a few strokes, a text line and
+  pointer events, and every canvas package weighs more than the editor
+  and brings a look of its own to theme. The server does not draw, so it
+  needs no image library past reading a header for the size.
+- **Tools.** Crop, arrow, box and text, in six colours (red, yellow,
+  green, blue, black, white). The picture is the same in either theme
+  once saved, so the colours are fixed rather than theme tokens, chosen
+  strong on a light or a dark screenshot; each shape is drawn edged in
+  black or white, whichever stands further from its colour, so it reads
+  on whatever part of the picture it crosses. Lines and text grow with
+  the picture's shorter side and keep a floor, so a large screenshot
+  scaled down still shows them. A crop dims what it leaves out while
+  editing and is applied only on saving, so it can be moved, resized,
+  undone or taken off like a shape.
+- **Hands, fingers and keys.** Dragging draws with the chosen tool, Select
+  picks a shape by its line (a box by its edge, so the picture inside it
+  stays free to draw on) and moves it, and the canvas takes no touch
+  gestures of the page. The canvas is focusable as an application with
+  its keys described: Enter puts the tool's shape in the middle, or with
+  Select picks the next shape; the arrow keys move the selection, with
+  Shift resize it; Delete removes it; Ctrl+Z and Ctrl+Shift+Z undo and
+  redo, as the buttons do. Text is typed into a field below the picture,
+  which also changes a label once selected. The dialog fills the window,
+  as the lightbox does, so a phone has the whole screen to draw on.
+- **Flattened, not editable later.** The new version is the picture with
+  the shapes drawn into it; the shapes are not kept. Keeping them would
+  mean a second object or a JSON column beside each version for copies,
+  deletes and the reaper to keep right, and an editor that reopens them;
+  annotating the earlier version again does what reopening would for the
+  common mistake, since every version stays.
+- **Its own type, its own name.** PNG, JPEG and WebP are annotated, and
+  the edit is saved in the file's own type under its own name, so the
+  name, the readers' expectation and the lightbox stay right. A GIF may
+  move and a canvas would keep one frame, so it is not offered; SVG and
+  the rest are no pictures a canvas writes. A browser that cannot write
+  the type hands back a PNG instead, which the dialog refuses with a
+  sentence rather than saving a PNG under a WebP's name. A picture over
+  16.7 million pixels, what a phone's browser draws on one canvas, is
+  refused with a sentence too.
+- **Saved as the next version.** `POST /attachments/{id}/edit` takes the
+  picture as a multipart part named `file`, as an upload does, and adds
+  it through the same `add` as an upload and a restore, so the upload
+  limit, the size read from the header and the insert policy apply as
+  they do there. Its type is judged from the bytes, never from what the
+  part claims: anything but a picture of the file's type is refused with
+  `wrong_type`, and a file that cannot be annotated with `not_editable`,
+  both 415. An earlier version can be annotated too; its edit is the
+  name's next version all the same. Nothing is overwritten.
+- **The row says what it was drawn on.** `edited_from` holds the version
+  annotated, as `restored_from` holds the one restored, and the panel and
+  the files block say "edited from version N". The stamping trigger
+  refuses a row whose `edited_from` is not a PNG, JPEG or WebP version of
+  the same name on the same page of the same type as the row, and a row
+  cannot be both a restore and an edit, so a raw INSERT as the app role
+  cannot claim an edit that never was. Who may annotate is who may upload
+  to the page, held by the same insert policy. A copy of a page carries
+  no `edited_from`, as it carries no `restored_from`.
+- **Where it opens, and what the page then shows.** For whoever may edit
+  the page: from a picture selected in the editor, from a picture's row in
+  the attachments below the page, and from the files block. A picture in
+  the words names one version by id (#95), so annotating from the
+  attachments or the files block leaves every page showing what it
+  showed, and the files block, which follows each name's latest, shows
+  the edit. Opened from a picture in the editor, the dialog offers, ticked,
+  to show the edited picture there: saving then points that picture of the
+  draft at the new version, which a publish makes the page's. Other
+  pictures of the same file, other pages, galleries and older versions of
+  the page keep the version they name, since an author annotating one
+  place has not looked at the others.
+- **Not audited, and not an MCP tool.** As uploads and restores are not:
+  it moves files rather than words.
+
+## 2026-10-07: A gallery names one version of each picture, and each reader sees what they may download
+
+A gallery (#96) shows several pictures of a page side by side, and the
+lightbox of #93 steps through them.
+
+- **Its shape.** A `gallery` block holds one to sixty `galleryImage`
+  nodes, each an `attachmentId` and an optional `caption`, and stores how
+  many pictures go in a row, two to four. The pictures are child nodes
+  rather than a list in an attribute: the allowlist has no list of
+  objects, and as nodes every walk of a document reaches them, the
+  validator's checks of an id, a copy's rewrite of its files' ids
+  (`attachment.ReferenceNodes`) and the anonymous reader's pass among them.
+- **A fixed version, not the latest of a name.** Each picture names one
+  version of a file by id, as a picture in the words does (#95). A
+  gallery is pictures an author chose and placed; following a name would
+  change a published page without a publish, and the page's history would
+  stop showing what was published. A reader through a public link has no
+  list of files to find a name's latest in. The files block remains the
+  one place that follows each name's latest. To show a newer upload, the
+  author edits the gallery, whose dialog offers the latest of each name.
+- **Who sees what.** The body names ids only, and each picture is fetched
+  through the reader's own read of the file: the app's, the public one or
+  the link's, so the rules and row level policies of a download decide.
+  `document.ForAnonymous` passes a gallery on as it does an image, since an
+  id names nobody. In the app a picture that is not a file of the page is
+  left out without a request, as a picture in the words is drawn missing,
+  and one whose read is refused is left out when it fails. Readers see the
+  pictures that are left, numbered among themselves in the lightbox, and a
+  sentence when none is; an author editing sees each gap with a sentence,
+  to remove it. An include shows another page's words, whose pictures are
+  that page's files, so inside an include the reads alone decide; until
+  now a picture in an included page was drawn as deleted.
+- **No thumbnails.** Nothing makes smaller copies of uploads, so a gallery
+  shows the picture itself, loaded lazily and cropped by CSS to one shape
+  so the rows line up; the lightbox shows it whole. A thumbnail would be a
+  second object per version for copies, deletes and the reaper to keep
+  right; that is worth it once pages carry many large pictures, not before.
+- **Layout.** The stored row holds on a wide screen; under the shell's
+  breakpoint (48rem) a gallery shows two in a row whatever it stores.
+- **Making one.** The slash menu's **Gallery** opens a dialog that offers
+  the latest version of each picture on the page, uploads more by the
+  page's upload, orders them by buttons that a keyboard reaches as well,
+  and takes a caption each. The caption is the picture's words for a
+  screen reader too, so it shares the image description's bound, and the
+  picture is not described twice. A page not saved yet says to save it
+  first, as the files block does.
+- **Markdown.** A gallery is written as `<div data-stator="gallery"
+  data-columns="N">` holding an `<img>` per picture with its caption as
+  `alt`, so a Markdown reader that shows HTML shows the pictures, and the
+  import reads it back. A picture whose file is not in the export or the
+  import is left out with a warning; a row out of bounds is brought within
+  them. In a table cell, which is one line, the pictures stand side by
+  side as Markdown images.
+- **Not searched.** Captions are not in a page's search text, as an
+  image's description is not.
+- **Compared whole.** A picture holds no text a comparison of versions
+  could mark, so a gallery that changed at all is shown taken out and put
+  in again, as a table whose shape changed is.
+- No new API operation, so the MCP tools are unchanged. The example
+  showcase shows a gallery of its picture and a second one drawn in code,
+  written as a `%%gallery N%%` container of pictures.
+
+## 2026-10-07: Restoring a file's version uploads it again, and a file is deleted with all its versions
+
+Re-uploads were versions already (#58): each upload of a name to a page is
+its own row with its own bytes, numbered by a trigger. #95 adds the list of
+a name's versions below the page and the way back to an earlier one.
+
+- **A restore is a new version.** `POST /attachments/{id}/restore` reads
+  that version's bytes and writes them as the name's next version, by the
+  same path an upload takes (`add` in the service, which an edited picture
+  of #94 will take too). Nothing moves and nothing is overwritten: the app
+  role has no UPDATE on `attachment`, and a pointer to the "current"
+  version would be a column the database had to keep right on every
+  upload, delete and copy. The history only grows, as a page's does.
+- **The new row says where it came from.** `restored_from` holds the
+  version it brought back, and the stamping trigger refuses a row whose
+  `restored_from` is not an earlier version of the same name on the same
+  page, the latest included, so a raw INSERT cannot claim a restore that
+  never was. It is a number, not a reference: deleting the version later
+  leaves the restore's word for where it came from. A copy of a page
+  renumbers its versions, so its rows carry no `restored_from`.
+- **The latest is not restored.** It would add a copy of what is already
+  shown; the API answers 409 `already_latest` with a sentence naming the
+  version.
+- **Who restores** is who may upload to the page: the page's edit rule,
+  checked by the service and held by the insert policy that every upload
+  meets. The restore is that person's upload, dated when they made it.
+- **Not audited.** Uploads, deletes and restores of a page's versions are
+  not in the audit log, and neither is a file's; both are the page's own
+  history, which its editors read.
+- **What pages show after a restore.** A picture or a chip names one
+  version by id, so it goes on showing exactly that version, as an older
+  page version does. The files block shows each name's latest, so it
+  shows the restored one. Nothing names a file by its name alone.
+- **Deleting.** The panel's delete on a name removes every version of it
+  (`DELETE /attachments/{id}?versions=all`), in one transaction, with
+  their previews, and each object goes after the commit or to the reaper.
+  An earlier version is deleted on its own from its row in the list, and
+  the others keep their numbers. Deleting only the latest from the name's
+  row would have quietly made the previous version current, which a
+  restore does openly.
+- **No quota.** Files are limited per upload (`STATOR_UPLOAD_LIMIT`) and
+  not per page or organization; a restore weighs what the version did,
+  and the same limit already held it.
+
+The panel below a page now lists each name once, latest first, with its
+earlier versions in a disclosure to download, preview, restore or delete;
+the files block offers the restore too. Both read the one list the API
+already served.
+
+## 2026-10-07: Pictures and videos open in a lightbox of our own, and files are served by the range
+
+A reader looks at a picture or a video of a page without downloading it
+(#93). The lightbox is a component of some three hundred and fifty lines in
+`web/src/features/attachments`, with no library behind it: what it needs is
+a transform, pointer events and the browser's own video player, and every
+gallery package weighs more than that and brings a look of its own to theme.
+It takes a list of items and a place to start, so the gallery block (#96)
+hands it its pictures and gets next and previous, by buttons, the arrow keys
+and a sideways swipe, going round at either end.
+
+Where it opens:
+
+- A picture in a page's words, in the app, in a public space and through a
+  public link: the picture is a button. Not in the editor, where a click
+  selects the picture for its tools.
+- The files below a page and the files block: the preview button of a
+  picture or a video opens the lightbox with the list's other pictures and
+  videos to step through (in the files block the latest version of each
+  name); the button of a PDF or an office document still opens the PDF
+  preview. The file's name stays a link to it in a new tab.
+- A file chip in a page's words whose name ends in `.mp4`, `.webm` or
+  `.ogv` gets a play button beside it. A chip stores a name and no type, and
+  a public reader has no list of files to look the type up in, so the name
+  decides and a file that does not play says so in a sentence.
+
+Each item's address is the reader's own read of the file: the app's
+`/attachments/{id}`, the public reads, or the link's. The lightbox shows only
+what that reader may download, by the same rule and the same row level
+policies, and a refusal shows as the sentence a broken picture gets.
+
+A picture is fitted to the window, never enlarged past its own size, and
+zooms from there to eight times by the buttons, `+`, `-` and `0`, the wheel
+around the pointer, a double click, and two fingers around their middle.
+Zoomed, it pans by dragging, one finger or the arrow keys, and no edge is
+pulled into the window; unzoomed, the arrow keys and a swipe go to the next.
+The zoom is a pure module (`zoom.ts`) the unit tests drive. On a phone the
+lightbox is the whole screen and takes the touches, so the page under it
+neither scrolls nor zooms.
+
+It is a labelled modal dialog: focus moves to the picture, which is a group
+named for it with its keys described, or to the player, is held inside, and
+goes back to what opened it on Escape or Close. A status line says the
+position, the name and the zoom. It is drawn in the theme's surface tokens,
+so it passes axe in light and dark like the rest. A video plays in the
+browser's `<video controls>`, without captions: an uploaded file brings none.
+
+Videos are `video/mp4`, `video/webm` and `video/ogg`. They join the types
+`inline=1` shows in place, since a video cannot run script against the
+origin; `video/quicktime` and the rest still download. A player asks for a
+video by ranges to start quickly and to seek, and browsers seek badly or
+not at all in a file served whole, so the three file reads now answer one
+byte range in a `Range` header with 206 and that stretch, fetched from the
+bucket by a ranged GET rather than read whole and cut. Several ranges, a
+malformed header or an `If-Range` naming other bytes get the whole file, as
+RFC 9110 allows; a range starting past the end is refused with 416 and a
+sentence. The ETag is the file's id: a new version is a row of its own, so
+an id never names other bytes. The permission check is the one a whole
+download makes, before a byte is fetched.
+
+## 2026-10-06: The example space is made through the services, from Markdown per language
+
+The example space (#288) is a space whose pages explain Stator, made by an
+administrator of the organization with one click (`POST /example-space`,
+from the spaces overview and from **Example space** in the account menu).
+Unlike a space template it is not written straight into `page` and
+`page_version` in one transaction: its showcase has to show every block,
+and a checklist, a mention, a file or a calendar is only what it claims to
+be when the services that settle tasks, tell the mentioned, store files
+and keep calendars made it. So the example is made the way a person would
+make it, through `space`, `page`, `attachment`, `calendar`, `label`,
+`comment` and `reaction`, as its maker, and every rule and policy holds
+as for them. What fails part way deletes the space again, with its files;
+while it is being made, for a few seconds, its pages are unpublished, as a
+Markdown import's are, so nobody reads half of it.
+
+The pages are Markdown files per language, `backend/internal/example/content/{en,de}`,
+read by the Markdown import (`internal/markdown`), so they are written and
+reviewed as text and translated file by file. What Markdown cannot say is a
+marker paragraph, `%%calendar%%`, `%%columns%%` ... `%%end%%`, which the
+package turns into the block with the space's own ids; fenced `mermaid` and
+`math` are a diagram and a formula, and `` `$x$` `` an inline formula.
+`text/template` fills in what the site knows: the maker, today's dates,
+whether files can be kept, and the Armature project and issue the maker
+sees first. Where the site cannot provide something, files without storage
+or Armature without a connection, the page says so in a sentence instead.
+Unit tests render every file in both languages, hold each to the
+allowlist, demand the same shape in both, and fail when an allowlisted node
+or mark is missing from the showcase; only the hint and the inline comment's
+passage are excused, being neither inserted by a person nor kept in a
+published version. The language is the one the browser asks for, the
+interface's own, else the person's stored one, else English.
+
+The space is an ordinary space marked `space.example`, one per
+organization (`space_one_example`). Its key is `STATOR`, or `STATOR2` to
+`STATOR9` when another space holds it; the mark, not the key, is what a
+second click finds, and then it answers 200 with the space and
+`created: false`, archived or not, so the interface says where it is. A
+deleted example is gone, and the next click makes a new one. Its creator
+administers it, as every creator does, and everyone in the organization may
+view it and comment, so comments and reactions can be tried while the
+guides stay as written; administrators widen that in its permissions as
+anywhere. Only administrators of the organization make it or ask for it
+(`perm.CreateExampleSpace`), and the database holds them to it: the app
+role may insert a space marked as the example only for an administrator
+with a token for the whole organization, nobody may mark or unmark a space
+after it is made, and a second example is refused by the index. Making it
+is audited once as `space.example_created`, with the language, in place of
+`space.created`. It is not an MCP tool, as no space administration is.
+
+## 2026-10-06: A blog post is a page outside the tree, dated by its first publish
+
+Blog posts (#72) are rows of `page` of the kind `post`, as a folder is a
+row of another kind, not a content type of their own. A post then has
+drafts, publishing and scheduled publishing, versions and comparisons,
+comments, reactions, labels, restrictions, sharing, search, the trash, the
+archive and reading without signing in exactly as a page has them, through
+the same rows, rules and screens, and a later feature of pages reaches
+posts without anybody remembering them. Its address is a page's address,
+so every link, mention, notification and search hit leads to it as it is.
+
+A post has no parent: it lives in its space's blog, beside the tree rather
+than in it, and no page hangs under it. The database holds both
+(`page_post_outside_tree`, and a trigger refusing a post as anybody's
+parent); the one root of a space is its home page whatever kind has no
+parent, and a post goes to the trash, the archive and under a view
+restriction as any page below the home page does. Moving, copying,
+importing Markdown under one and making one live answer `409 post`: a post
+goes out once, on its date, which a live page amending itself every few
+seconds would make meaningless.
+
+Its date, `page.posted_at`, is stamped by the database when its first
+version is published and never moves after; the app role cannot set it. A
+date set by hand would let a post be filed under a month in which nobody
+could have read it, and watchers would be told of something "posted" a
+year ago. A post wanted for later is scheduled, and its date is then the
+time it goes out. So a post is written unpublished, at version 0, which the
+insert policy demands of the app role, and its first version is a real
+publish with a row in the history. Whoever may add pages to a space may
+post in it, while the space is not archived (`perm_post_insertable`); the
+author a list names is whoever published the first version.
+
+The blog is `/s/{key}/blog`, and its date navigation is by year and month
+with the count of posts the reader may read in each, newest first, from
+`GET /spaces/{key}/blog`, which also lists the caller's own posts still to
+go out and whether they watch the blog and may post. Months are counted in
+UTC, as a date node and a task's day are, so every reader files a post
+under the same month. `GET /posts` lists the posts a reader may read,
+newest first, in one blog or across the spaces not archived, a year or a
+month at a time, a window at a time by keyset; posts in the trash or the
+archive are left out, as the lists of pages leave them out. Each carries
+its opening words, cut after a whole word, read from the published body.
+
+Watching gains a kind, `blog`, on a space beside the watch on the whole
+space. It hears of a post when it is first published and of nothing after,
+as a watch on a page hears of a new page published under it; whoever wants
+a post's later versions watches the post, which its author does by their
+own publish. A watch on the space still hears of everything in it, posts
+included. Either hears a new post as the notification kind `posted`, with
+its own switch in the preferences, since a team announcement and a new
+page somewhere in the tree are told apart. Whom it reaches is decided as
+for every publish, per person as that person, so a post restricted to a
+few is told to those few. A post written and published at once, as an
+assistant may, tells the watchers, while a page made published at once
+does not: a post sent out is an announcement. Webhooks keep their topics:
+`page.published` now says the page's `kind`, and version 1 of a post is
+its going out.
+
+The latest blog posts block stores a space's key, or null for every space,
+and how many posts to list, never the posts. "This space" in its dialog
+stores the page's own key, as a recently updated list does, so a copy or a
+move of the page keeps listing the blog it was made for. Each reader's
+view asks `GET /posts` as that reader, so a restricted post, a space they
+may not read and an unpublished post stay out wherever the block is shown,
+in an include or an excerpt too; a comparison and the reading view of
+somebody not signed in say in words what it lists, as for every block
+whose content is each reader's own.
+
+Reading the blog and writing a post are MCP tools (`get_blog`,
+`list_posts`, `create_post`), as reading and writing pages are; watching a
+blog is not, as no watch is. Two things are left for later: the reading
+view for people not signed in has no blog of its own, so a public post is
+found by its address and the public search, and the home page's watched
+updates do not take blog watches into account.
+
+## 2026-10-06: A scheduled publish is the author's own publish, made by the worker at its time
+
+Scheduled publishing (#71) sets a time at which an editor's draft of a page
+is published (`PUT /pages/{id}/schedule`, from the publish dialog's "At a
+set time"). The worker then does what the author's own publish would do at
+that moment, acting for them through the app role: the draft as it stands
+then goes out, not a copy taken when it was scheduled, so the author keeps
+editing until the time; the version carries their name and the comment and
+notice they chose; the watchers, the newly mentioned, webhooks and
+Armature's links hear of it as of any publish. A page nobody edited yet
+gets a draft of itself when its first publish is scheduled.
+
+A schedule is a row of `page_schedule` hanging off the draft it publishes,
+by a foreign key that cascades. Whatever takes the draft takes the
+schedule: publishing it by hand, discarding it, the page going live, the
+page purged, the author leaving the organization. One per page, by its key:
+two drafts scheduled over each other would leave the second to fail on the
+first, and editors should see one plan. While one waits, scheduling is
+refused with `schedule_taken` naming its author; any editor may call it off
+(`DELETE /pages/{id}/schedule`), as any editor may publish over it, and the
+draft stays. Moving it is its author's, by setting it again. Calling off
+somebody else's schedule is not audited, as no page edit is.
+
+The page answers its schedule to its author and its editors only; a reader
+learns of a publish when it happens. The page shows a note: when the
+caller's draft goes out, with Change and Cancel, or whose publish is
+scheduled for when. Times are instants, stored as `timestamptz`; the
+browser sends the time the person chose in their zone with its offset, and
+shows it back in their zone, naming it. A time must be ahead and within
+`page.MaxScheduleAhead`, a year.
+
+When the time comes and the page refuses the publish, nothing is published
+and the schedule stays, marked with why (`gone`, `forbidden`, `archived`,
+`conflict`): its author lost edit, the page was archived, trashed or is no
+longer theirs to read, or somebody published after the draft began. The
+author is told once, with the notification kind `failed`, and the note says
+why to them and to the editors. Setting it again clears the mark; an
+editor may schedule their own over a failed one. Since publishing over
+another publish is the conflict a person resolves by comparing, the worker
+does not publish over it.
+
+The database holds the rules a request could skip. As `stator_app`: a
+schedule is inserted only for one's own draft (the key reaches the draft),
+only by an editor of the page, only for a time ahead, never marked failed;
+it is moved only by its author while an editor, read by its author and the
+page's editors, called off by either. Only the worker, as the admin role,
+records a failure. The integration suite tries each of these through SQL.
+
+The worker's part, `page.ScheduleWatch`, looks every
+`STATOR_SCHEDULE_CHECK_INTERVAL` (30 seconds; a second in the compose
+stack) for schedules due across organizations, as the verification watch
+does, and publishes each in a transaction acting for its author that first
+takes the schedule's row with `FOR UPDATE SKIP LOCKED`. The publish deletes
+the draft and with it the schedule in that same transaction, so any number
+of workers, on any number of replicas, publish it exactly once: a second
+worker skips the locked row, or finds it gone once the first commits. The
+row's update policy names its author alone, so the lock is taken even for
+an author who lost edit, whose publish is then refused and recorded. A
+refusal rolls the publish back and records the failure in a transaction of
+its own, once however many workers were refused. Due means
+`publish_at <= now()`, so a time that passed while no worker ran goes out
+when one returns, once, late rather than never.
+
+## 2026-10-06: A live page is its open version, amended by every save for ten minutes
+
+Live pages (#70) are a mode of the page, `page.mode`, draft or live, not a
+kind and not a space setting: a team keeps working notes live beside
+pages it publishes with care. Whoever may edit the page chooses the mode,
+in a dialog of the page's menu, as with how it looks; editors can already
+publish anything and throw the shared draft away, so the mode asks no
+more. A trigger holds the app's role to edit, which also freezes the mode
+of an archived page, and a folder cannot be live.
+
+A live save (`PUT /pages/{id}/live`) is the whole title and body as the
+editor holds it, sent about a second after the last keystroke as a draft's
+autosave is. It goes into the page's open version: its latest, saved live,
+and begun less than `live_version_span()` ago, ten minutes, which
+`page.LiveVersionSpan` and a test hold to the same. When there is none it
+publishes the next version, marked live, which then stays open. So the
+history reads in steps of work and every version is still a full,
+comparable, restorable body, while one per save would bury it. The span is
+counted from the version's start rather than from the last save, so a long
+session still leaves a version every ten minutes. Everybody who saves into
+a version is a row of `page_version_editor`, shown in the history beside
+its author and counted by the contributors block, since two people typing
+together would otherwise either take turns opening versions or lose one of
+their names. A save that changes nothing writes nothing.
+
+History stays append only except for that one version. The app role may
+update only the title and body of `page_version` (a column grant), only
+where a policy finds the row live, the page's latest and live, the span
+not over and the actor an editor of the page; inserting a live version
+into a page of drafts is refused, and nobody names anybody else as an
+editor, or names themselves on a closed version. Integration tests try
+each of these as `stator_app` straight through SQL.
+
+A live page has no drafts: `page_draft_not_live` refuses one, and drafts
+and publishing answer `page_live`. Going live throws every draft of the
+page away, by a trigger that runs as the table's owner since row level
+security hides other people's drafts from the person switching. So the
+switch first asks `page_pending_drafts`, which tells only an editor of the
+page whose drafts differ from it, and refuses with `drafts_pending`
+naming them unless `discardDrafts` confirms; drafts that say what the page
+says go without asking. A draft is the only place unpublished work lives:
+everybody in a shared draft saves it into their own draft as they type, so
+the shared draft needs no question of its own. Going back to drafts keeps
+the history and starts nobody's draft. Either switch throws the shared
+draft away, so editors open in the mode the page is in, and is recorded in
+the audit log with the names of the drafts that went.
+
+Editing together carries on as before: the shared draft is seeded from the
+page, never from a draft, and each editor saves the shared document live
+after their own changes, naming the room. Since a save goes over the page,
+something else that wrote the page meanwhile, a restore, a Markdown import
+or a script's update, would be undone by the room's next save; so a save
+from a room whose base the page has moved past throws the room away,
+answers `room_gone`, and its editors load the page afresh. That write wins
+over the room's last unsaved second. A save from an editor working alone
+throws a room away too, so the room's editors load what it saved.
+
+What a save tells: a new live version is announced as a quiet publish
+(`page.published` without the watchers), so webhooks and the newly
+mentioned hear of each version; a save into the open version emits
+`page.amended`, which tells only whom that save newly mentioned or
+assigned, read by the version's body before the save and by the tasks
+stamped in its transaction, and which webhooks do not carry. Armature's
+links follow a save only when the issues it names changed. Checklist
+items get an id in a live editor as they are made, since the server
+matches an item without one to its task by its words and a task retyped
+over several saves would otherwise become a new task each time.
+
+Readers see the page as it stands, the latest save included, and a reader
+with a live page open asks for it again every three seconds
+(`LIVE_PAGE_REFRESH_MS`), so new words arrive without a reload and a
+replica short of a save is answered by the next ask.
+
+## 2026-10-06: A copy of space permissions applies the preview its caller saw
+
+Copying permissions (#82) takes the source space's table onto the target
+in one of two modes. Replace makes the target's grants the source's.
+Merge adds, per subject, every permission the source grants and the target
+does not: a subject the target lacks is added, one it names is widened,
+and nothing is narrowed or removed. Merge widens rather than only adding
+subjects, since a subject named in both with less here is the commonest
+reason to merge, and a merge that might still leave somebody short of the
+source would need a third explanation. Reading without signing in, the
+grant to `anonymous`, is copied like any other subject, so a replace makes
+the target as open as the source; it is shown as its own row.
+
+The plan is `perm.PlanCopy`, a plain function of both tables, and the
+preview (`GET /spaces/{key}/permissions/copy`) and the copy
+(`POST`) both call it, so the diff the person reads is the one applied. The
+preview lists per subject what is added, widened, narrowed, changed (some
+gained, some lost) or removed, with before and after, and what is left
+behind and why. A guest of the source is never copied, since a guest
+belongs to the one space they were invited to and the database refuses
+them anywhere else; a replace keeps the target's own guests as they are,
+since the source cannot name them and they come and go by invitation.
+Subjects that no longer exist cannot appear: a grant goes with its person
+or group by cascade. The preview carries a fingerprint, a SHA-256 of the
+mode, both spaces' ids and both tables (subjects, guest marks and
+permissions, not names), and the copy recomputes it under a lock of the
+target's row and a share lock of the source's, which every rewrite of a
+table takes too, and answers `409 copy_changed` with a sentence when it
+differs, so a change made between looking and applying is shown before it
+is applied. The copy is one transaction and one audit entry,
+`space.permissions_copied`, naming both spaces, the mode and the counts; a
+copy that changes nothing writes nothing.
+
+Who may: whoever administers the target and may read the source's
+permissions, which only its administrators may, as the space's own reads
+already decide; the database's policies hold both, so a target
+administrator who does not administer the source reads none of its grants
+through SQL either. Personal spaces are neither source nor target: copying
+from one would make its owner an administrator of a team space by side
+effect, and copying into one would rewrite its owner's private sharing,
+which they keep in its own table; reading without signing in, which a
+personal space never allows, is then never offered to one. Page
+restrictions are not copied: they belong to pages, which a space's
+permissions do not name.
+
+A copy that would leave the target without an administrator of its own
+where it had one is refused (`409 no_administrator`), and the preview says
+so beforehand. The database now holds the same for every rewrite of a
+table: a deferred constraint trigger refuses a transaction that takes
+administer from the last subject holding it in a space, unless the
+subject or the space went with it, or the actor administers the
+organization. Organization administrators keep the power of 2026-09-30 to
+close a space down to themselves, since they hold every space anyway; a
+space administrator who is not one can hand the space on but no longer
+give it away to nobody, which used to leave it to whoever administers the
+organization without anybody choosing that. The copy refuses even an
+organization administrator, since a copy that ends with nobody
+administering is a mistake rather than a choice.
+
+Neither operation is an MCP tool: permission reads and writes are
+administration (2026-10-01), and a preview is only worth something to the
+person who then applies it.
+
+## 2026-10-06: Text keeps a measure while wide blocks break out of it
+
+A page is one sheet as wide as the content area, up to 96rem
+(`PAGE_MAX_WIDTH_REM`). Its text, the title, the header and the sections
+below the page are held to 44rem (`PAGE_MEASURE_REM`), centred: at the
+14px root that is about 85 characters of Inter, past which the eye loses
+the next line. Blocks whose content is wide take the whole sheet: tables
+and their charts, diagrams, math blocks, code, columns, link cards and
+embeds, Armature charts, roadmaps and issue lists, calendars and property
+reports. A picture takes its own width, no less than the measure so that
+a small one starts where the text does. 96rem stops there because a row
+longer than that is hard to follow from end to end.
+
+It is done once, in CSS, on the document's top level: every block of
+`.doc-content` keeps the measure unless its class, or its editor node's
+`node-<name>` class, is on the list of wide ones. So the reader, the
+editor, a version, a comparison and the public view lay out alike, and a
+block nobody listed stays at the measure rather than spilling out. The
+widths reach the CSS as custom properties from `pageSheet`, which is the
+only place they are read; outside a page nothing narrows. Blocks inside a
+panel, an expand, an excerpt or an include stay within that frame.
+
+Full width sets the measure to the whole sheet and lifts the maximum, so
+text widens too. A phone is narrower than the measure, so it is unchanged.
+
+## 2026-10-06: A public link is the anonymous reader holding one page more
+
+A public link (#80) lets anybody read one published page without an
+account. It is built on #79's anonymous reader rather than beside it: the
+reads run as the same principal, and the transaction also sets
+`app.page_link` to the SHA-256 of the token the address carries.
+`perm_link_page()` turns that digest into the page of a live link (neither
+revoked nor run out, while the organization allows links), and
+`perm_page_viewable` lets an anonymous reader view that page as though its
+space were open: published all the way up, out of the trash, under no view
+list. Every other rule of #79 still holds, so the link reaches that page
+and the files attached to it and nothing else, neither the pages below it,
+its space, versions, comments nor any person. Straight through SQL as
+`stator_app` a token reaches exactly its page and its files, and a token
+revoked, run out, unknown or malformed, a page restricted later, or links
+turned off reach nothing. The digest is a better setting than the link's
+id: an editor who saw the id in the list cannot read through it, and a
+copy of the database opens nothing.
+
+The token follows Armature's share links: 32 random bytes from
+`auth.GenerateToken`, kept only as a digest, shown once in the answer that
+makes it, never in the list; a revoked link keeps its row with who revoked
+it, so who opened what to whom stays on record; the access log and the
+traces write the path with the token blanked. Unlike Armature's, the
+address names the organization, `/public/{org}/link/{token}`, so the
+reading view and its routes stay under #79's prefix and every rule there
+(no session looked at, public `GET`s only, no tool) holds for them. A token
+of another organization's link is gone under this one's name.
+
+Who makes and revokes links is whoever may change the page, or could but
+for its being archived: a link gives access, which a share does not, so it
+takes the right that decides what the page says, not the right to read it.
+Any of the page's editors may revoke any of its links, so a link survives
+its maker leaving and is still somebody's to end. A guest, who is from
+outside, makes and sees none. A page has at most five live links
+(`page_link_max()`, held by a trigger with a lock as the share brake is),
+each with an optional label to tell them apart and an optional expiry; the
+dialog offers a day to three months, thirty days first, or none.
+
+A restricted page gets no link, and a link stops working while a view list
+applies on the page or above it: a view list names who may read a page,
+and a link to anybody would quietly undo it. Lifting the list brings the
+link back. A draft, a folder, which only lists pages the link does not
+open, a page in the trash and a page of a personal space, which is never
+public as in #79, get none either. The answer is the page's words through
+`document.ForAnonymous`, its title, appearance and date, without its
+space, tree or people.
+
+The organization's own switch, `org.public_links`, is apart from #79's
+reading switch, since opening every space and letting editors open single
+pages are different decisions. It is on until an administrator turns it
+off, as the issue asks for an organization that can disable the feature;
+turned off, every link stops and none can be made, and turned on again the
+links work again, since nothing was deleted. Making, revoking and the
+switch go to the audit log.
+
+The token is a secret in the address, so nothing through a link is kept by
+a cache (`Cache-Control: no-store`, as Armature's), the api's answers and
+nginx's reading view send no referrer, nginx writes neither address to its
+log, and search engines are asked to stay away (`X-Robots-Tag` and the
+`robots` element) unless the organization's #79 switch lets them in. Making
+a link is no MCP tool: it opens a page to anybody outside, a decision for
+the person in the share dialog, and the token is shown once, to them.
+
+## 2026-10-06: Anybody reads an open space as nobody, through reads of their own
+
+Public documentation (#79) is two switches. The organization's,
+`org.anonymous_access`, is off until an administrator turns it on; while it
+is off nothing is public, whatever a space allows. A space's is a grant of
+view to the subject `anonymous` in `space_grant`, which the database takes
+for view alone and never in a personal space, since that is named after its
+owner and its pages are theirs. It is a grant rather than a column so that
+the rule reads like every other space permission; it is kept out of the
+permission grid, which names people and groups, and set on its own route by
+whoever administers the space. Either switch changing goes to the audit
+log. A second switch of the organization, off by default, says whether
+search engines may list the public pages; until then every public answer
+says `X-Robots-Tag: noindex, nofollow` and the reading view adds the same
+`robots` meta element.
+
+A request without a session knows no organization, so a public address
+names it, `/public/{org}`, as Armature's share links and desk name theirs.
+The api finds the organization by its slug, answers one that is archived,
+closed or unknown alike with `404 not_public`, and from then on reads as
+an anonymous reader: the transaction sets `app.anonymous` and names nobody.
+Authentication leaves these paths alone, so a session riding along neither
+widens nor refuses them. `perm_space_holds` gives that reader view of a
+space the organization and the space both open and nothing else anywhere,
+and `perm_page_viewable` adds that the page and every page above it are
+published and the page is out of the trash; a view restriction, which
+always names people, is never passed, so a restricted page is never
+public. Every table carries a restrictive policy for the anonymous reader:
+closed outright, or for `space`, `page` and `attachment` read only, and a
+test asks every table for one, so a table added later is closed until
+somebody decides otherwise. Straight through SQL as `stator_app` the
+reader finds no person, membership, comment, reaction, view, version,
+grant or audit entry, and every write is refused or reaches no row.
+
+The member routes stay as they are, `401` without a session, and the
+public reads are routes of their own with answers of their own: the
+organization and its open spaces, a space's tree, a page, a file and a
+search, all `GET`. A shape that has no field for a person cannot leak one
+when somebody later adds a name to the member's shape. A page's body is
+sent through `document.ForAnonymous`, which drops the person and label of
+every mention, which the reader shows as "someone", the person a task
+report asks about, and the threads' marks. The search index holds the
+names a page mentions, so each public hit is matched again, and its
+snippet cut, from the words without them; a page found only by a name is
+not found.
+
+What names somebody is left out rather than anonymised: authors and who
+updated a page, the owner and the verification, which name a person by
+their nature, comments, whose discussion is between members and whose
+replies mean little without who wrote them, reactions, readers and the
+counts by person, watchers, contributors, assignees, the history and
+presence. An anonymous read is no view either, since a view is a person on
+a day. The generated blocks (lists of pages, task reports, contributors,
+calendars, Armature's issues, link cards and includes) are each reader's
+own, asked as that reader, so the reading view says in words what they
+list, as a comparison of versions does, and an include links to its page.
+A link into the app leads to the public view of its page or space, which
+says so when it is not public and offers signing in, and any other
+address of the app leads to signing in, back to where it pointed.
+
+A public answer is the same for everybody, so it may be kept by a shared
+cache for a minute (`Cache-Control: public, max-age=60`); a page restricted
+or a switch turned off is refused at once by the api and within that
+minute by any cache in front of it. Drafts, the shared draft's socket,
+MCP, tokens and every write remain for members, and an assistant reads as
+the member it acts for, so no public read is a tool.
+
+## 2026-10-05: A guest is a member held to one space, as a limited token is
+
+A guest (#69) is a row of `org_member` with the role `guest` and the space
+they were invited to, not a second kind of principal, as Armature keeps a
+portal customer a member with a role. Signing in, sessions, removal and the
+audit log then work for guests as for anybody, and every rule that already
+asks about members asks about them. An administrator of the organization
+invites one by address into a team space as a viewer, a commenter or an
+editor; the account is made if there is none, the grants naming them are
+written with the membership, and they sign in through the organization's
+provider with that address. A personal space takes no guest. There is no
+link mailed with a token: the provider proves the address, as it does for
+everybody else.
+
+What a guest reaches is what a token limited to their one space reaches, so
+the functions that hold such a token (`perm_token_reaches`,
+`perm_token_whole`) hold a guest too, for every caller who asks about them
+and whether or not the request says so: no other space, no personal space,
+no tokens, no organization grant beyond `use`, nothing the route table marks
+`orgWide`, which answers `403 guest`. Within their space a guest holds only
+the grants that name them: what everyone holds there is for the
+organization's members, and a guest invited to read stays a reader in an
+open space. The database refuses what would widen a guest: a grant in
+another space, administering their own (whose permission table names the
+organization's people and groups), a place in a group, which carries its
+members into every space it is granted, and any change of their role or
+space; the remedy for each is to remove them and invite or let them in
+anew. The provider's groups neither promote a guest nor take them in, as
+they never move an owner. Deleting the space removes its guests.
+
+Of the organization's people a guest sees only themselves and the people
+of their space: whoever a grant of the space names, directly or through a
+group, and whoever published, commented on or owns a page there. That is
+what the space shows by name, its authors, commenters and owners, and whom
+a guest may sensibly mention. It is not everybody who may read the space,
+which for an open space is the whole organization and would make the
+mention picker the directory the guest may not see. `app_user` and
+`org_member` hold a guest to it by policy, so the people picker, the mention
+picker, the search's author filter and every name joined into a page agree;
+groups, join requests and the provider settings are hidden from a guest
+outright. A guest's mention of anybody else is dropped before it is told,
+and refused by the outbox's policy if a request names them anyway. The
+members list is the administrators', and marks each guest with their space.
+
+The guest's interface follows from `organization.guestSpace` in
+`/auth/me`: they land in their space, and the navigation offers no space
+directory, hub, tokens or personal space.
+
+## 2026-10-05: Without Valkey, api processes pass shared drafts' changes through Postgres
+
+Editing together (#65) first needed Valkey for more than one api pod, so the
+chart refused several pods without it. Every deployment has Postgres, and
+its LISTEN and NOTIFY carry small messages between every process connected
+to the primary, so without Valkey the api now uses that instead, chosen at
+startup from the same `STATOR_VALKEY_URL` that turns Valkey on. Each
+process holds one connection of its own to the primary, which it listens
+on and opens again, with a backoff, when it is lost.
+
+A notification holds at most 8000 bytes, while an update may hold 4 MB. An
+update is a row in `page_collab_update` already, so the bus carries only a
+pointer to it (page, room, row number), sent with `pg_notify` inside the
+transaction that inserts the row: Postgres delivers it on commit, so no
+receiver hears of a row it cannot read yet, and none of a row rolled back.
+The receiver reads the row as one of the people it holds in that room, so
+row level security decides as it does for every read. Awareness and the
+small control frames go whole when they fit under
+`collab.MaxNotifyBytes`; awareness that does not is dropped, since browsers
+renew theirs, and anything else that does not fit sends the room's
+browsers on the other processes to load it afresh, so nothing is lost.
+
+Either bus can lose messages while a process cannot hear it. Each process
+therefore remembers, per page it holds connections to, the last update the
+bus brought; once its listener (Postgres) or subscription (Valkey) is back,
+it reads each such room as somebody in it and relays every update past that
+number, and the room's base, or sends its browsers to load afresh when the
+room was thrown away meanwhile. A lost frame no longer waits for its
+browser's next load. Updates are numbered by an identity, so one numbered
+lower can commit after one numbered higher; in the instant around a lost
+connection catching up can miss it, and its browsers get it at their next
+load.
+
+During a rolling update that adds or removes Valkey, pods on different
+buses do not hear each other, so people on them see each other's edits
+when they reconnect rather than live. Nothing is lost, since every edit is
+stored before it is passed on.
+
+## 2026-10-05: Editing together is a Yjs document the api stores and relays without reading
+
+People who open a page's editor at once (#65) edit one shared draft, a Yjs
+document: the body is its XML fragment, bound to the editor by Tiptap's
+collaboration extensions, and the title a text of its own, changed by its
+common start and end so two people retitling at once both keep their part.
+Yjs merges concurrent and offline changes without conflicts, which the
+editor's per-person drafts never could, and it is what Tiptap supports.
+
+The api never reads the document. There is no Go implementation of Yjs as
+solid as the JavaScript one, and a server that only stores and relays
+cannot get the merge wrong. `GET /pages/{id}/collab` is a WebSocket in
+y-protocols' framing; each update a browser sends is appended to
+`page_collab_update` and passed to everybody else in the room, and an
+opening browser is sent every stored update. Since the server knows no
+state vector, the browser works out what the server lacks from the updates
+it was sent (`Y.encodeStateVectorFromUpdate`) and sends just that, which is
+how a browser that was offline merges what it wrote. Many updates are
+merged by a browser too: a load of 200 or more asks for `Y.mergeUpdates` of
+exactly the rows it carried, and the database swaps them for the merge only
+if they are all still there. The browser keeps each room in IndexedDB, so
+words written offline outlive a closed tab.
+
+Who may join is decided as for any edit: a signed-in session (a token has
+no use for a socket, and a read-only one would be writing), from this
+site's origins (the handshake is a GET, so `sameSite` holds it like a
+write), for a page the person may edit. The connection asks again every 30
+seconds, with the person's own credential and the page's rules, and closes
+with 4401 or 4403 when the answer changed; and every update is an insert
+the database's policy holds to `perm_page_editable`, so a revoked editor is
+refused on their next keystroke even between checks. The tables carry
+row level security like every other, and an update names its sender by a
+trigger.
+
+A room is one life of the shared draft, with an id of its own. The first
+person in is asked to seed it, from their own draft when they have one or
+else the page, with the version that came from, which becomes the room's
+base; nobody else's editor appears until the seed has arrived, so nothing
+is typed into an empty room and doubled later. A publish from the room
+moves its base on (the publisher says so, and the database checks they
+published that version), so the next person's publish is not refused as a
+conflict. When the page was published from elsewhere and the room holds
+nothing past its last publish, the next opener starts a new room from the
+page; a room with unpublished changes is kept, and its publish meets the
+usual conflict. Discarding throws the room away for everybody, who reload
+into a new one seeded from the published page.
+
+Drafts and publishing stay as they were. Each person's own draft is still
+what publishing publishes: the editor saves the shared draft into it after
+the person's own changes and before a publish, so the existing publish,
+conflict and comparison work unchanged, and an editor that cannot reach the
+socket in six seconds edits alone, saving its draft as before. The person
+who seeds a room from their draft does not lose it, and somebody joining a
+room overwrites their own draft with the shared one on their next change.
+
+Several api processes reach one room through a bus, each process
+listening before it serves: Valkey's publish and subscribe, one channel per
+page, or without Valkey Postgres's LISTEN and NOTIFY (see the next entry).
+Limits are constants of
+`internal/collab`: a message of 4 MB, which the database holds an update
+to as well, 50 connections per page per process, a ping every 25 seconds
+to keep proxies from closing a quiet socket, and a slow browser is let go
+to load again rather than buffered without end.
+## 2026-10-05: Office documents are converted to PDF once, by a service of their own
+
+A PDF and an office document (docx, xlsx, pptx, odt, ods, odp and the older
+doc, xls and ppt) are previewed as a PDF in the browser's own viewer, so
+Stator ships no viewer of its own and every kind looks the same.
+`GET /attachments/{id}/preview` answers a PDF with its bytes and an office
+document with its conversion; `preview` on each file says which applies, and
+`none` when the site cannot convert it.
+
+The conversion is a headless office suite in a container of its own, behind
+a small HTTP API (Gotenberg, MIT licensed), which the api calls at
+`STATOR_CONVERTER_URL` and nothing else reaches. Office suites are large and
+read untrusted documents, so the suite runs apart from the api, with its
+browser half off; it is the operator's service, like the bucket, so the call
+does not pass the outbound guard. Without the setting office documents have
+no preview and PDFs still do.
+
+The first reader of a version waits for its conversion, and the PDF is kept in
+the bucket beside the file, recorded in `attachment_preview` keyed by the
+file's row, which is one version: a new version is converted afresh, nothing
+is converted twice. A document the suite refuses is recorded as failed and
+not tried again; a converter that does not answer is not recorded, so the
+next reader tries again. Two readers at once may both convert; the first to
+commit keeps the row. A preview is its file's: whoever may see the file sees
+it and may be the one whose visit makes it, the database holds the row to
+that and to its organization, and it goes with the file by a cascade that
+leaves a tombstone like the file's. Documents over 20 MB are not converted,
+and a conversion gives up after 20 seconds, inside the request timeout, so
+the reader is told in a sentence rather than cut off.
+
+The browser fetches the PDF and shows it in a frame from a blob typed as a
+PDF, rather than framing the API: a refusal then reads as a sentence in the
+dialog instead of an error body in the frame, and the API keeps refusing to
+be framed at all. The app's policy allows `blob:` frames for this alone.
+## 2026-10-05: A space template is data the space's creation reads, in one transaction
+
+Space templates (#64) are built in, like the page templates: one JSON file,
+`backend/internal/template/builtin/spaces.en.json`, compiled into the api
+and served by `GET /space-templates`. Each holds the home page's body, the
+pages below it with their bodies, labels and children, and the permissions
+everyone gets. `POST /spaces` takes a template's key and `space.Create`
+writes the whole space from it in the transaction that makes the space, so
+a space never exists with half its pages, labels or grants; an integration
+test refuses the last label from inside the database and finds nothing
+left. The audit entry is the one a blank space gets, with the template's
+key added, rather than an entry per page: an administrator made one space.
+
+The pages are written the way the home page always was, straight into
+`page` and `page_version` as version 1, rather than through the page
+service's publish. Publishing settles tasks, notifies mentioned people,
+emits events for watchers and syncs Armature links; a new space has none
+of those to settle, and the page service imports the space package, so the
+space package could not call it without a cycle. The unit test holds every
+body to what this path can take: the allowlist, no task lists, mentions,
+inline threads or hints. A hint would be stripped on the way in, as from any
+published page, which is also why the space templates write their own short
+bodies rather than reuse the page templates. A list of pages by label or of
+recent updates in a body names no space and is given the new one's key, so
+it lists that space's pages rather than every space's.
+
+Permissions are a preset for everyone in the organization, the only
+subject a built-in can name: a knowledge base lets everyone add pages and
+comment, a team space lets everyone read and comment while the team's group
+is added by hand, and documentation is read by everyone and written by
+whoever its administrators name. The creator keeps the administer grant the
+database gives every new space, so the creator can widen or narrow any of
+it. A personal space takes no template: its permissions are its owner's
+alone by design. The text is English, like the page templates', and will be
+translated the same way, a file per language.
+## 2026-10-05: A template button names its template by key, and contributors are read from the history
+
+A template button (#62) holds a template's key, where its page goes and its
+words, never a copy of the template: a template that changes later makes
+the next page as it now reads, and the key is what `GET /templates` serves,
+so a template that later answers to a key is found the same way. The place
+is a page by id, which a move does not lose, or the top of a space, which
+is the space's home page; a button that names neither puts its page at the
+top of the space it is in. The page is made by
+`POST /templates/{key}/pages`, the server reading the template, as an
+unpublished page of whoever clicked, as a new page from the tree is, so
+the click checks the same rule as the tree and the database's insert
+policy holds it too. The title is the button's pattern, else the
+template's, else its name; the browser fills `{date}` with the reader's own
+day, as the new page dialog does, and the server fills any left with today
+in UTC. Each reader's view asks `GET /template-button` whether they may add
+a page there, so one who may not sees the button disabled with a sentence
+rather than a click that fails.
+
+A contributors block counts published versions, which the history already
+names to every reader of the page, rather than drafts or the audit log,
+which name work nobody published or are for administrators. It counts the
+page alone or with the pages below it the reader may view, read in one
+query as that reader, so a restricted page below hides its versions as it
+hides itself, and the version policy keeps them from the reader in SQL
+too. The people come by the most versions, then the latest; somebody whose
+account is gone is left out, as their versions name nobody.
+
+## 2026-10-04: A chart from a table holds its table
+
+A chart from a table is a block whose one child is the table, not a chart
+that points at a table elsewhere on the page. A pointer would need an id on
+every table and would break when the table is deleted or copied without
+it; holding the table makes "the chart follows the table" true by
+construction, keeps the table searchable and exported as an ordinary
+Markdown table, and lets the author remove the chart and keep the table.
+The numbers are read in the browser on every draw rather than stored, so
+there is nothing to fall out of step. Markdown has no chart, so the export
+writes a marker before the table that the import joins back to it.
+## 2026-10-05: A calendar is rows of its space, and a page draws a month of it
+
+Team calendars (#60) are kept beside the pages rather than in them: an event
+is changed far more often than a page is published, by people who are not
+editing that page, and a page showing a calendar should not gain a version
+for every absence. A space keeps calendars, each a name unique in it, and
+their events are rows of `calendar_event`, read by everybody who reads the
+space and kept by whoever may add pages to it, the same people who keep its
+pages. An archived space freezes them, as it does its pages. The policies
+call `perm_space_holds` and `calendar_writable`, so a statement as
+`stator_app` that forgets whom it is for changes nothing; a calendar never
+moves to another space, nor an event to another calendar, since the app may
+write neither column, and the author of each is stamped by a trigger.
+
+An event lasts whole days or runs between two instants. Whole days are kept
+as midnights in UTC, the last day included, as a date node is read in UTC,
+so an absence falls on the same days for every reader; a meeting is kept as
+instants and shown in each reader's own zone. A month is asked for by the
+reader's own first midnights, and an event that lasts all day counts its last
+day whole, so a reader east or west of UTC still gets every day they see.
+
+The calendar block holds which calendar and, if any, which Armature project;
+never the events. Each reader's view asks for the month and, with their own
+token, Armature's `GET /projects/{key}/calendar`, drawing each dated issue
+on its due day; Armature's sprints, milestones and versions are left out,
+being a project's plan rather than a team's days. Without a token the events
+still show, with a sentence asking the reader to connect. The month is laid
+out in weeks from Monday, as ISO weeks are; on a phone it becomes a list of
+the days that hold something.
+
+## 2026-10-03: A file's versions are uploads of one name to one page
+
+A file has versions so the files block can say which one a reader sees. An
+upload under a name the page already has, compared without case as people
+read names, is that name's next version. Each version stays its own row with
+its own bytes, so a link or picture in an older page version still shows
+what it showed; nothing is overwritten. The number is stamped by a trigger
+under a lock on the name, so two uploads at once cannot take one number and
+the app cannot claim one. Deleting a version leaves the others their
+numbers. A copy of a page is a new page, so its versions count from 1 again
+in the order they were uploaded.
+
+## 2026-10-03: A task report filters by relative days and by the reader
+
+A task report stores its filter in the page, as the lists of pages do, and
+asks for the tasks each time it is read. Its due day choices are relative
+(overdue, today, the next 7 days) rather than fixed dates, because a report
+on a status page is meant to stay true without editing, and they are judged
+by the database's `task_today()` in UTC, the same day the reminders use. The
+assignee may be "whoever reads the page", stored as `me`, so one page shows
+each person their own tasks; a named person is stored by id and named by the
+report's answer, so a renamed person reads right, and one who left, whose
+tasks fall unassigned, leaves an empty report rather than a broken one.
+
+## 2026-10-03: A list of pages holds what to list, and asks each time it is read
+
+Content by label and recently updated store their settings in the page, as
+the chart and the report do, and each reader's view asks for the pages: an
+overview stays current without anybody editing it, and two readers of one
+page rightly see two lists when they may read different pages. Both count a
+page from when it was last published, which only publishing moves, so a
+draft or a move does not bring a page to the top. Folders, the
+trash and the archive stay out, as they do on the home page. A latest blog
+posts block needs blog posts first, so it moved to #72.
+
+## 2026-10-03: Page properties live in the page body and are read when asked
+
+A page's properties are a block of its body, a row per name with the value
+as inline content, not columns of the page or a table of their own. They are
+versioned, compared, exported and searched with the rest of the page, take
+the same mentions, dates and statuses as any line, and need no second place
+to keep in step. The name is an attribute of its row, so a value is one run
+of inline content the editor already knows how to edit.
+
+A properties report reads the published bodies of the pages carrying every
+label given, at most 200, as the decision log reads decision items: on each
+request, as the reader, so restricted pages and drafts stay out without a
+copy to keep current. Names are matched by their words in any case, the
+first value of a name on a page wins, and a row without a name is one still
+being typed, left out of the report and the read view alike. A report takes
+the labels as AND, so a register narrows by adding a label.
+
+## 2026-10-03: A roadmap is Armature's plan, grouped by Stator
+
+A roadmap block holds a project, a query and a grouping, never the dates,
+as a chart holds what to count. Each reader's view asks Armature's
+`GET /projects/{key}/plan` as that reader. The plan is the project's issues
+as a tree, with each issue's start and due dates or, for an epic without its
+own, the span of its children's; it is returned whole, with the keys the
+query matches. Stator groups only the matched issues, so an epic the query
+leaves out still heads the issues it matched, and the epic's span is
+Armature's, not one Stator works out again.
+
+Grouping by epic uses the nearest epic above an issue; an initiative above
+the epics is a row like any issue outside an epic, not a group, so a roadmap
+of epics is not one group holding everything. Grouping by team uses the
+issue's own team. Issues with neither date are counted under the timeline
+rather than drawn at an invented day, and a block stops at 100 rows and says
+how many it left out.
+
+The timeline is rows of labels beside tracks of whole days, laid out in HTML
+rather than one drawing, so it reflows on a phone, label above track. A bar
+takes its status category's board colour, as the board does, with a legend
+naming each, and every bar's dates are also in words for screen readers. An
+epic's span taken from its issues is an outline, its own dates a fill.
+
+## 2026-10-03: Armature counts a chart, with the reader's own token
+
+A chart block holds what to count and how to draw it, never the counts, as
+the issue list holds its query and never its rows. Each reader's view asks
+Armature's reports, `chart` for a pie and `created_vs_resolved` for the
+other, as that reader: Armature counts every issue the query matches that
+the reader may see, which no page of search results could, and two readers
+of one page may rightly see two different charts. The reports take a
+project, so a chart names one; its query narrows within it.
+
+The pie is a donut, as Armature draws it, with every share also in a table
+beside it, so no number hangs on telling colours apart. A status category
+keeps its board colour; any other field takes the chart palette's slots in
+order, a fixed set of eight checked for colour blindness against the light
+and the dark surface, and past eight the smallest shares fold into Other
+rather than take a colour nobody can tell apart. Created against resolved is
+two lines on one axis of whole issues, read a day at a time with the pointer
+or the arrow keys and offered as a table. The drawing is one unit to the
+pixel of the page it is on, so its words keep their size on a phone.
+
+## 2026-10-03: How a page looks is a property of the page, not a version of it
+
+A page's emoji, width and cover are columns of the page row, changed at
+once with `PUT /pages/{id}/appearance`, not part of the body or the
+versions: they say how the page is presented, not what it says, and an
+author choosing a cover should not have to publish to see it or find it in
+the history between two edits of the words. Changing them needs edit on the
+page, as editing the words does; a trigger holds the app's role to that.
+
+The emoji is one emoji, perhaps several code points joined, never words:
+the service checks it against what makes an emoji, and the database keeps
+it to sixteen code points without spaces. The tree shows it in place of
+the folder mark when there is one, so a page is found by sight.
+
+A cover is one of the page's own pictures: the foreign key on
+`(id, cover_attachment_id)` to `attachment (page_id, id)` refuses any other
+file, and deleting the file takes the cover with it, as the hub goes with
+its page. Its focus is a point in percent of the picture, kept in view by
+`object-position` however wide the window cuts it; the dialog sets it with
+a click on the picture or with the arrow keys.
+
+Full width takes the page's reading width limit off, in the reader and the
+editor alike, for text as well as wide blocks (see the entry of 2026-10-06
+on the measure).
+
+## 2026-10-02: An include is read for each reader, and the chain it sits in catches cycles
+
+An include is one block, `include`, holding a `pageId` and, for one
+excerpt, an `excerptId`; never the words. The words are read when the page
+is shown, through `GET /pages/{id}/included`, as the reader: so the included
+page's restrictions hold for every page that includes it, and its next
+version reaches them all without anybody saving them. It shows the
+published body only, as the included page's own readers see it.
+
+Whatever keeps the words from a reader, a restriction, a page never
+published, a folder, an excerpt removed or a page deleted, answers the same
+404 and the same notice, so an include tells a reader nothing about a page
+they may not read, not even that it exists.
+
+Cycles are caught twice. Saving a page that includes itself, at any depth
+of its body, is refused, as a draft and as a version. A longer loop, A
+includes B includes A, cannot be refused on save without reading pages the
+author may not read, so it is caught as it is shown: each include asks with
+`via`, the chain of pages it sits in, starting from the page being read,
+and the server answers 409 for a page already on it, or for a chain five
+deep. The reader then sees the loop's notice once, in place of the page
+showing itself inside itself.
+
+Included words take no anchors and no inline threads of the page they are
+shown in: those belong to the page whose words they are. They are not in
+the including page's search text either, for the same reason; search finds
+them on their own page. The Markdown export writes what the include points
+at, which an import into the same organization reads back.
+
+## 2026-10-02: An excerpt is a frame in the page, found by an id that outlives its name
+
+An excerpt is one block, `excerpt`, around the blocks it names, with an
+`id` and a `name`. It is part of the page rather than a record beside it,
+so it is versioned, restricted, searched and exported with the page, and
+moving text in or out of it is ordinary editing. An include finds it by its
+id, so renaming an excerpt breaks nothing; the name is what a picker shows.
+
+Within a page ids and names are unique, names ignoring case, and an
+excerpt never holds another at any depth: an include of the outer one would
+otherwise carry the inner one twice over. The validator refuses all three
+straight from the body, and the editor keeps to them as it goes: a pasted
+copy gets a new id and a stock name, and an excerpt pasted into another
+gives up its frame and keeps its blocks. The name box may be emptied while
+a name is typed; the page keeps the last name until there is a new one.
+
+`GET /pages/{id}/excerpts` reads the published body a reader may view, so a
+draft's excerpts are its author's until it is published, as an include
+shows published words only. The picker chooses a space, a page from its
+outline, and the whole page or one excerpt, leaving out the page being
+edited; the include block (#53) is what uses it.
+
+## 2026-10-02: A link card keeps its address, and the server reads the page for each reader
+
+A link card is one block, `linkCard`, holding an http or https `url` and a
+`view` of `card` or `embed`. What the linked page says, its title, summary
+and site, is not stored: it would be readable by anybody who reads the page
+whatever the site later says, and would go stale, as an Armature issue's
+summary would. The inline view is no node of its own: it is an ordinary link
+whose text is the page's title, so it reads, exports and searches as any
+link does.
+
+`GET /link-preview` reads the page on the server, not in the reader's
+browser, so a reader's address and cookies never reach the site and the
+browser's policy stays `connect-src 'self'`. The read goes through the same
+outbound guard as webhooks and Armature, `STATOR_OUTBOUND_ALLOW` included,
+so a member cannot make the server read Valkey, Postgres or a cloud metadata
+address. It takes only text/html, reads at most 512 KB looking for the head,
+gives up after 5 seconds and three redirects, and sends no credentials.
+Answers are kept in Valkey for an hour, an unreadable page for five
+minutes, shared by every organization: what a public page says about itself
+is the same for all of them. A page that cannot be read still gets a card,
+named by its host. No picture from the page is shown: it would load from the
+site in the reader's browser, which the policy refuses and the reader did
+not ask for.
+
+Embeds are an allowlist in code, not a setting: YouTube through its privacy
+enhanced player, Vimeo's player and Figma's embed page, each worked out from
+the address alone, without reading the site. The Content-Security-Policy's
+`frame-src` names exactly their origins, a unit test holds the compose and
+chart policies to the list, and the frame is sandboxed to scripts, its own
+origin, popups and presentation. A card whose site has no player shows as a
+card whatever its view says.
+
+An address pasted alone on an empty line becomes a card, and the site's
+player when it has one, without an undo step of its own for the change of
+view; pasted among words it stays a link. The compose stack lets the guard
+read the web container, so the browser suite has a page inside the network
+to preview; the chart allows nothing inside the network, as before.
+
+## 2026-10-02: A diagram is stored as its Mermaid text and drawn in the reader's browser
+
+A diagram is one block, `diagram`, holding its Mermaid text in `source`, up
+to 20000 characters. The text is what is versioned, compared, searched and
+exported, so it is all that is kept; the SVG is drawn from it wherever the
+page is shown. Drawing on the server would take a browser engine in the API
+for every save, and a stored drawing would be markup in the body that goes
+stale when Mermaid or the theme changes.
+
+The editor shows the text in a field with the drawing below it, drawn again
+once typing has paused for 300 ms; a text Mermaid cannot read keeps the last
+drawing's place with the reason and the text. The reader's view draws it
+the same way and offers the drawing as an SVG file to download, which is the
+export of the drawing; the Markdown export writes a `mermaid` fence, drawn
+by Markdown readers that draw them and read as text by the rest, and the
+import reads one back as a diagram.
+
+Mermaid runs in strict mode with labels drawn as SVG text: click handlers
+and scripts are dropped, and a tag in a label reads as its own words rather
+than becoming an element, since strict mode alone keeps an `<img>` that would
+fetch its source. It is capped at the text limit and 500 edges. It takes its
+colours from the theme's tokens when they are hex, and Mermaid's light or
+dark set otherwise. It is large, so it loads with the first diagram on a
+page rather than with the application.
+
+Search reads a diagram's text as lines of the page, in `document.PlainText`
+and in `page_plain_blocks` alike (migration 00380).
+
+## 2026-10-02: A formula is stored as its TeX source and typeset by each reader's browser
+
+A formula is a node holding nothing but its LaTeX source: `mathInline` in
+a line of text, `mathBlock` on a line of its own, each with one `latex`
+attribute of up to 4000 characters. The source is what an author edits and
+what search, an export and a copy read, so it is the one thing kept; the
+typeset markup is drawn from it with KaTeX wherever the page is shown,
+in the editor and in the read-only view alike, and never stored, so no
+body carries markup a reader's browser would run.
+
+KaTeX runs with `trust` off: `\href`, `\url`, `\includegraphics` and the
+`\html...` commands draw as their own names in red rather than as links,
+images or attributes. Expansion stops at 1000 macro steps and a box at 20
+em, so a formula that calls itself or asks for a huge box cannot hold or
+cover the page. KaTeX writes MathML beside its markup for screen readers.
+Its stylesheet and fonts are bundled, as the text fonts are, so a formula
+needs no third party at load time.
+
+The dialog that edits a formula refuses a source KaTeX cannot read, with
+KaTeX's own reason; the server takes any source within the limit, since
+TeX's grammar is KaTeX's to judge, and a reader meets a broken formula as
+its source in red, saying so.
+
+Search reads a formula by its source, in `document.PlainText` and in
+`page_plain_blocks` alike (migration 00370). A Markdown export writes an
+inline formula between dollar signs and a block one as a `math` fence,
+which is how Markdown that typesets formulas writes them; the import reads
+the fence back as a formula. An inline formula comes back as text, since
+reading dollar signs as formulas would turn prices in imported prose into
+mathematics.
+
+## 2026-10-02: A decision is a line of the page, and the log is read from published bodies
+
+A decision item is one node, `decision`, holding a line of text as a
+paragraph does and a `state` of `decided` or `undecided`. It is a block of
+the page rather than a record beside it, so it is written, versioned,
+restricted, searched and moved with the page it is on, and a decision can
+sit in a panel, an expand block or a table like any line. Its state is a
+label in words before the line, so it reads without colour, and in the
+editor that label is the button that changes it.
+
+A space's decision log, `GET /spaces/{key}/decisions`, is read from the
+published bodies of the space's pages the reader may view, out of the trash
+and the archive, newest page first and in reading order within a page; the
+database finds the pages with a JSON path, and the service quotes the
+lines. Nothing is kept beside the pages, so the log cannot drift from them:
+a decision changed in a draft reaches the log when it is published, and a
+restricted page keeps its decisions to those who may read it. It is cut at
+500 decisions, saying so, and filters by state.
+
+Search reads a decision as a line of the page's words, in
+`document.PlainText` and in `page_plain_blocks` alike (migration 00360).
+Markdown has no decision items, so an export writes one as a line that
+begins with its state in bold.
+
+## 2026-10-02: The hub is a page an administrator points at, and landing on it is a redirect
+
+The organization's hub is not a document of its own but one of its pages,
+named by `org.hub_page_id`: a page is already written, published, restricted,
+watched and kept in history, and a hub that needed its own editor and its
+own rules would repeat all of that. Any page of any space may be the hub;
+the foreign key on `(id, hub_page_id)` to `page (org_id, id)` keeps it one of
+the organization's own, and a page deleted for good stops being it.
+
+Only administrators choose it, and the database holds to that: a trigger
+refuses a change of the hub or of landing by anybody else acting through
+the app's role. Everybody else reads it through `GET /org/hub`, which names
+the page only to whoever may view it, out of the trash and the archive. A
+hub the reader may not read is no hub for them: the navigation leaves it
+out and they land on their own home.
+
+`hub_landing` makes `/` a redirect to the hub, decided in the route before
+anything renders, so nobody sees their own home flash first. The reader's
+own home then lives at `/home`, where the navigation's Home leads; a check
+keeps landing off while there is no hub.
+## 2026-10-02: A folder is a page of another kind, version 1 from the start
+
+A folder is a row of `page` with `kind = 'folder'`, not a table of its own:
+it has a parent, a rank, a place in the trash and the archive, restrictions
+that reach what is below it, and moves and copies with its subtree, all as
+the page tree already does them. What it lacks is everything a page holds:
+a CHECK keeps its body the empty document, and one trigger on each table of
+a page's content (versions, drafts, files, labels, threads, comments,
+reactions, shares, owners, verifications) refuses a row for a folder,
+whichever service writes it. The API answers that refusal as a 409 with the
+code `folder`. A row stays the kind it was made as, and a home page is
+never a folder, since a space opens on it.
+
+A folder is made at version 1 with no version row. A row at version 0 is
+its creator's alone until published, and so would be everything put in it,
+but a folder has nothing to publish. It has no history, so renaming it
+changes its title and nothing else. Its `published_at` stays empty, which
+keeps it out of the home page's feeds and the stale report; search finds
+pages by their published version, which a folder has none of.
+
+Opening a folder shows the pages and folders in it, the list a child pages
+block draws, and offers new pages, new folders, renaming, moving and the
+trash. It has no editor, history, comments or watching of its own.
+## 2026-10-02: A personal space is an ordinary space with an owner, and starts closed
+
+A personal space is a row of `space` with `owner_id` set to the person it
+belongs to, not a kind of space of its own: pages, search, trash, archive and
+permissions work in it as in any other, and sharing it is the space's own
+permission table, which its owner administers. A partial unique index on
+`(org_id, owner_id)` keeps it to one each, so the directory and the button
+that offers one can trust there is at most one.
+
+Making a space takes `createSpace`, which members do not hold by default, but
+a personal space takes only `use`, with a token for the whole organization:
+everybody needs somewhere to draft before sharing, and it reaches nobody
+else until they share it. The insert policy says so, and requires the owner
+to be the person making it, so nobody makes one in somebody else's name. The
+grant trigger gives a personal space no `everyone` rows, only its owner's
+`administer`.
+
+The owner is fixed when the space is made; a trigger refuses any other
+owner, since a space handed over would be somebody's without their asking.
+When the owner's account goes, `owner_id` becomes null and what is left is an
+ordinary space that only administrators reach.
+
+Administrators of the organization still reach every personal space, as they
+reach every other space: they hold every permission so that no space is ever
+orphaned (2026-09-30), and a space nobody else can open is the one most at
+risk of that. Private means private from the other members.
+
+## 2026-10-02: A shortcut is a ranked row of the space, read through the page's own view rule
+
+Space shortcuts (#39) are links the administrators of a space pin above its
+page tree. Armature's project sidebar has none, so there was nothing to
+follow. A shortcut is a row of `space_shortcut` naming either a page or an
+address, never both, with a label and a rank from `internal/rank`, the
+ranks sibling pages use: moving one writes that one row, and the move names
+the shortcut it goes after, as a page's place does, rather than resending
+the whole order, which a list a reader sees only part of could not do.
+They are kept under Shortcuts in the space's settings, with move up and
+move down buttons that the keyboard works as it works everything else;
+dragging was left out, since the tree's own drag has the place dialog
+beside it for the keyboard and a list of thirty needs no more than buttons.
+
+Who keeps them is who administers the space, as for its name and its
+archive: they are what everybody reading the space sees first, so one
+editor should not rearrange them for all. Changes are allowed in an
+archived space, as renaming it is, since a shortcut is the space's
+furniture and not a page. Each addition, move and removal is written to the
+audit log on the space, as changes of its details are. Reading them is the `list_space_shortcuts` tool;
+changing them is administration, and not a tool.
+
+A shortcut to a page must never name a page to somebody who may not view
+it, so the list is read through `perm_page_viewable` for the reader, in the
+query and again in a restrictive policy on the table: a restricted page's
+shortcut is simply not in the list, and nothing says one was left out. A
+shortcut to a page in the trash is left out for everybody and comes back
+with the page; a purge takes it along. An archived page stays readable, and
+its shortcut is shown, marked archived, rather than hidden as the tree
+hides it: an administrator pinned it on purpose and may unpin it. The
+database lets an administrator point one only at a page they may view, out
+of the trash, and lets nobody change where a shortcut points or which space
+holds it, only its rank and label.
+
+An address is held to the web's own schemes, `http` and `https`, with a
+host and no name or password before it, by the API and by a check on the
+table, so `javascript:`, `data:` and the like are refused whatever writes
+the row; the client opens one only when it still parses as such, in a new
+tab with `noopener noreferrer nofollow`, as links in pages are. An address
+without a label shows its host, and a page without one shows its title as
+it is now, so a rename needs no second change. A space holds at most 30,
+`shortcut.MaxPerSpace`, which `space_shortcut_max()` repeats in SQL and a
+trigger counts under a lock per space, so two additions at once cannot both
+pass.
+## 2026-10-02: A task is a checklist item of the published page, assigned by its first mention
+
+Tasks (#56) add no node. A checklist item is a task; the first person its
+own words mention is its assignee and the first date in them its due day,
+while an item nested in it is a task of its own. Mentions and dates already
+read, search, diff and convert to Markdown, the editor already offers both
+behind `@` and `/date`, and a person reads at a glance who has a task and
+by when without learning a new block.
+
+The document is the only record anybody writes. On every path that
+publishes (publish, restore, a page made published, an update, Markdown)
+and on a copy, the page's `page_task` rows are written from the body the
+database stored, so nothing a client sends besides the page itself says
+what the tasks are. Each item gets a `taskId`, given by the server at
+publish as inline threads are settled there, and the editor keeps it; an
+id is never read from pasted markup nor kept on Enter, and an item that
+claims an id an earlier item holds gets a new one. An item without an id
+takes the id of a task of the version before with the same words that no
+item claims, so a page written back as Markdown keeps its tasks and does
+not tell everybody again.
+
+An assignee must be a member who may view the page when they are assigned:
+a publish that assigns a member who may not is refused with a sentence
+naming them, and the database refuses the row too. A mention of somebody
+who is no member assigns nobody, as it tells nobody. A copy, which nobody
+wrote the names of, leaves such a task unassigned instead of refusing the
+copy. Somebody who later loses access keeps the task, as an owner is kept,
+and the list and the notifications, which ask `perm_page_viewable` when
+they are read and delivered, leave it out until they may view the page
+again; somebody who leaves the organization leaves it unassigned.
+
+`stator_app` may write a page's rows only as somebody who may edit the
+published page out of the trash (`page_stewardable`), and may not name the
+columns that say who assigned a task, in which version, when it was done
+and whether the reminder went: a trigger stamps them. The assignment
+notification reads the rows assigned in the version its event names, so a
+task given to somebody else before the worker came round tells only the
+new assignee, and a republish tells nobody. The new kind `assigned` comes
+first among the kinds, so a person assigned and mentioned in one publish
+hears once, as assigned, as Armature tells an assignee. The reminder is
+the worker's, as a lapse of verification is: `task.DueWatch` looks every
+`STATOR_TASK_DUE_CHECK_INTERVAL` for open tasks whose day came, in UTC as a
+date node is read, notes each once per day and assignee and writes
+`task.due` for the kind `due`. A day already past when it is set is not
+reminded, since the assignment says it.
+
+Ticking a box changes the page, so it publishes the next version with
+"Ticked off a task" and the task's words, for whoever may edit the page
+and only on a published page out of the archive, without a notice to its
+watchers. A done flag kept beside the document would have been a second
+truth, and a reader who may not edit would change a page they may not
+edit. A draft begun before the tick becomes a conflict as after any other
+publish.
+
+My tasks lists the caller's open tasks by their day and those without one
+last, by keyset on `(day, id)` with no day as 9999-12-31, and their done
+ones the latest first; the trash and the archive leave both. Each row says
+whether the caller may tick it. Overdue and due today are words on a theme
+tint, as Armature marks an overdue milestone, held to AA by the contrast
+test. The rows carry space, assignee, day and state, which is what a report
+of tasks (#57) filters by; it is not built here. Listing one's tasks is a
+read tool for assistants and ticking one a page write like `update_page`.
+
 ## 2026-10-02: A token limited to spaces is limited by the database
 
 A personal access token may name the spaces it reaches when it is made
@@ -779,6 +2269,35 @@ An emoji is a character of the text, not a node: it reads, copies, searches
 and diffs like any other, and needs nothing on the server. The names a colon
 finds it by come from gemoji, bundled with the client under the MIT License
 and loaded with the first colon, so no emoji is ever fetched from elsewhere.
+
+## 2026-10-02: Columns store a share of their row and stack on a narrow screen
+
+A column layout is a `columns` node holding two or three `column` nodes,
+each with any blocks a panel takes. The bound on how many is the
+allowlist's: a node spec now names the fewest and most children it takes,
+which the server and the web editor's check read alike, because one column
+is just the page and a fourth is too narrow to read beside the text. A
+column inside a column is allowed, since a table cell or a panel inside one
+is, but the editor does not make one: the room left would be too little.
+
+Each column stores its `width` as a share of the row, a whole percent from
+10 to 80. The shares are read as proportions, so a body written elsewhere
+whose shares do not add up still lays out, and a column with none stored
+takes an even share. Storing shares rather than pixels keeps a layout the
+same on every screen. The editor offers named layouts, even or with one
+column wider, rather than dragging a border: they work the same from the
+keyboard and on a touch screen, and they give readers the same few shapes
+across pages. A layout with fewer columns folds the blocks of the ones it
+drops into the last column it keeps, so changing the layout loses nothing.
+
+Under 48rem, the shell's own breakpoint, the columns stack in their
+reading order: side by side, each would be a few words wide. Markdown has
+no columns, so an export writes the blocks one column after another, as a
+phone shows them, and an import of that file brings them back as plain blocks.
+
+Search needs no change: `document.PlainText` and the database's
+`page_plain_blocks` already read the blocks inside any node they do not
+name, column by column.
 
 ## 2026-10-01: An expand block stores its title, never whether it is open
 
@@ -1667,6 +3186,19 @@ The position is recorded when the handler notes it, before the response is
 written, and even for a refused request, because the caller's next request
 can arrive before the handler returns and a refused import has already
 written and undone a theme.
+
+The browser suite lives with what this leaves out (#291). A read by anybody
+but the writer, bob after alice, an anonymous reader, a token, a session
+signed in afresh, or any read after a write by the Armature stub or by a job,
+may reach a replica that has not replayed the write. Such a read retries,
+through `e2e/fixtures/replica.ts`, until it sees what only the newest write
+shows, and an absence only once the page has shown it loaded. One retry does
+not cover the reads after it, since a read can reach the primary and the next
+one a replica still behind. Rows a spec writes straight in the database are
+waited for once, as the integration suite's `settle` does: `withDatabase`
+returns when every replica has replayed them. Timeouts stay as they are, and
+the app's consistency does not bend to the tests: a person who misses their
+own write is a bug.
 
 ## 2026-09-29: The test stack keeps the streaming replica
 

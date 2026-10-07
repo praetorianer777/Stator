@@ -48,6 +48,50 @@ describe("the space directory", () => {
   });
 });
 
+describe("personal spaces in the directory", () => {
+  const ada = { id: signedIn.user.id, name: signedIn.user.name };
+  const bob = { id: "u-bob", name: "Bob Bell" };
+
+  it("sit apart from the others, saying whose they are", async () => {
+    stubApi({
+      "GET /spaces": {
+        status: 200,
+        body: {
+          spaces: [space, aSpace({ id: "p1", key: "ADA", name: "Ada's space", owner: ada }), aSpace({ id: "p2", key: "BOB", name: "Bob's notes", owner: bob })],
+        },
+      },
+    });
+    await renderAt("/spaces", { me: member });
+    const section = await screen.findByRole("region", { name: "Personal spaces" });
+    expect(within(section).getByRole("link", { name: "Ada's space" }).closest("tr")).toHaveTextContent("You");
+    expect(within(section).getByRole("link", { name: "Bob's notes" }).closest("tr")).toHaveTextContent("Bob Bell");
+    expect(within(section).queryByRole("link", { name: "Handbook" })).toBeNull();
+    // Ada has one, so nothing offers another.
+    expect(screen.queryByRole("button", { name: "Create your personal space" })).toBeNull();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("offers a member without one their own, named and keyed for them", async () => {
+    const mine = aSpace({ key: "AL", name: "Ada Lovelace's space", owner: ada });
+    const sent = stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [space] } },
+      "POST /spaces": { status: 201, body: { space: mine } },
+      "GET /spaces/AL": { status: 200, body: { space: mine } },
+      [`GET /pages/${home.id}`]: { status: 200, body: { page: home, space: mine } },
+    });
+    await renderAt("/spaces", { me: member });
+    expect(screen.queryByRole("button", { name: "Create space" })).toBeNull();
+    await userEvent.click(await screen.findByRole("button", { name: "Create your personal space" }));
+    expect(await screen.findByLabelText("Name")).toHaveValue("Ada Lovelace's space");
+    expect(screen.getByLabelText("Key")).toHaveValue("AL");
+    expect(screen.getByText(/Only you see it until you share it/)).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Start from" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Create your personal space" }));
+    expect(await screen.findByText("Welcome to the handbook.")).toBeInTheDocument();
+    expect(sent.find((r) => r.method === "POST")?.body).toEqual({ name: "Ada Lovelace's space", key: "AL", description: "", personal: true });
+  });
+});
+
 describe("creating a space", () => {
   it("suggests the key from the name and lands on the new home page", async () => {
     const sent = stubApi({
@@ -89,6 +133,98 @@ describe("creating a space", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create space" }));
     expect(await screen.findByText("The key DOCS is taken by another space. Choose another.")).toBeInTheDocument();
     expect(screen.getByLabelText("Key")).toHaveAttribute("aria-invalid", "true");
+  });
+});
+
+describe("creating a space from a template", () => {
+  const doc = { type: "doc", content: [{ type: "paragraph" }] };
+  const leaf = (title: string, labels: string[] = []) => ({ title, labels, body: doc, children: [] });
+  const templates = [
+    {
+      key: "team",
+      name: "Team space",
+      description: "One team's home.",
+      home: doc,
+      pages: [{ ...leaf("Meeting notes", ["meeting-notes"]), children: [leaf("Kick-off")] }, leaf("Onboarding", ["onboarding", "team"])],
+      permissions: { everyone: ["view", "addComments"] },
+      builtIn: true,
+    },
+    {
+      key: "documentation",
+      name: "Documentation",
+      description: "Read by all.",
+      home: doc,
+      pages: [leaf("Reference", ["docs"])],
+      permissions: { everyone: [] },
+      builtIn: true,
+    },
+  ];
+
+  it("starts blank, shows what a template sets up and sends the one chosen", async () => {
+    const sent = stubApi({
+      "GET /space-templates": { status: 200, body: { templates } },
+      "POST /spaces": { status: 201, body: { space } },
+      "GET /spaces/DOCS": { status: 200, body: { space } },
+      [`GET /pages/${home.id}`]: { status: 200, body: { page: home, space } },
+    });
+    await renderAt("/spaces/new");
+    const group = await screen.findByRole("radiogroup", { name: "Start from" });
+    expect(within(group).getByRole("radio", { name: /Blank space/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("region", { name: "What Blank space sets up" })).toHaveTextContent(
+      "Everyone in the organization may view, add pages, add comments and delete.",
+    );
+
+    await userEvent.click(await within(group).findByRole("radio", { name: /Team space/ }));
+    const preview = screen.getByRole("region", { name: "What Team space sets up" });
+    expect(within(preview).getByText("Kick-off")).toBeInTheDocument();
+    expect(
+      within(preview)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(expect.arrayContaining(["meeting-notes", "onboarding", "team"]));
+    expect(preview).toHaveTextContent("Everyone in the organization may view and add comments.");
+    expect(await axeViolations()).toEqual([]);
+
+    // Arrows move the choice as in any radio group.
+    await userEvent.keyboard("{ArrowDown}");
+    expect(within(group).getByRole("radio", { name: /Documentation/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("region", { name: "What Documentation sets up" })).toHaveTextContent(
+      "Nobody but the space's administrators sees it until they grant more.",
+    );
+    await userEvent.keyboard("{ArrowUp}");
+
+    await userEvent.type(screen.getByLabelText("Name"), "Docs");
+    await userEvent.click(screen.getByRole("button", { name: "Create space" }));
+    expect(await screen.findByText("Welcome to the handbook.")).toBeInTheDocument();
+    expect(sent.find((r) => r.method === "POST")?.body).toEqual({ name: "Docs", key: "DOCS", description: "", template: "team" });
+  });
+
+  it("shows what the API said about the template beside the choice", async () => {
+    stubApi({
+      "GET /space-templates": { status: 200, body: { templates } },
+      "POST /spaces": {
+        status: 422,
+        body: {
+          error: {
+            code: "validation_failed",
+            message: "Some fields need attention.",
+            fields: { template: 'There is no space template "team". Pick one from the list of space templates, or leave it out for a blank space.' },
+          },
+        },
+      },
+    });
+    await renderAt("/spaces/new");
+    await userEvent.click(await screen.findByRole("radio", { name: /Team space/ }));
+    await userEvent.type(screen.getByLabelText("Name"), "Docs");
+    await userEvent.click(screen.getByRole("button", { name: "Create space" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/There is no space template "team"/);
+  });
+
+  it("still makes a blank space when the templates cannot be read", async () => {
+    stubApi({ "GET /space-templates": { status: 500, body: { error: { code: "internal", message: "Something broke." } } } });
+    await renderAt("/spaces/new");
+    expect(await screen.findByText(/You can still create a blank space/)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Blank space/ })).toHaveAttribute("aria-checked", "true");
   });
 });
 

@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { PICKER_LIMIT } from "@/config";
 import { ApiError, api } from "./client";
 import { pagesQueryKey } from "./pages";
+import { spaceAnonymousAccessQueryKey } from "./public";
 import type { components } from "./schema";
 import { spacesQueryKey } from "./spaces";
 import { treeQueryKey } from "./tree";
@@ -109,6 +110,51 @@ export function useSetSpacePermissions(spaceKey: string) {
     onSuccess: (saved) => {
       queryClient.setQueryData(spacePermissionsQueryKey(spaceKey), saved);
       return Promise.all([
+        queryClient.invalidateQueries({ queryKey: spacesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: treeQueryKey }),
+        queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
+      ]);
+    },
+  });
+}
+
+/** What copying another space's permissions onto one would change, with the fingerprint that applies exactly that. */
+export type PermissionCopyPreview = Wire["PermissionCopyPreview"];
+export type PermissionCopyMode = PermissionCopyPreview["mode"];
+export type PermissionCopyChange = Wire["CopyChange"];
+export type CopySubject = Wire["CopySubject"];
+
+export function permissionCopyQueryKey(spaceKey: string, from: string, mode: PermissionCopyMode) {
+  return [...spacePermissionsQueryKey(spaceKey), "copy", from.toUpperCase(), mode] as const;
+}
+
+/** The preview of a copy from another space, asked once a source is chosen; never kept, since applying needs it current. */
+export function usePermissionCopyPreview(spaceKey: string, from: string, mode: PermissionCopyMode) {
+  return useQuery({
+    queryKey: permissionCopyQueryKey(spaceKey, from, mode),
+    queryFn: async (): Promise<PermissionCopyPreview> =>
+      (await api.GET("/spaces/{spaceKey}/permissions/copy", { params: { path: { spaceKey }, query: { from, mode } } })).data!.preview,
+    enabled: Boolean(from),
+    gcTime: 0,
+    retry: false,
+  });
+}
+
+export function useCopyPermissions(spaceKey: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (preview: PermissionCopyPreview): Promise<SpaceGrant[]> =>
+      (
+        await api.POST("/spaces/{spaceKey}/permissions/copy", {
+          params: { path: { spaceKey } },
+          body: { from: preview.source.key, mode: preview.mode, fingerprint: preview.fingerprint },
+        })
+      ).data!.grants,
+    // A copy may open the space to anybody or close it, besides what the grid shows.
+    onSuccess: (saved) => {
+      queryClient.setQueryData(spacePermissionsQueryKey(spaceKey), saved);
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: spaceAnonymousAccessQueryKey(spaceKey) }),
         queryClient.invalidateQueries({ queryKey: spacesQueryKey }),
         queryClient.invalidateQueries({ queryKey: treeQueryKey }),
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),

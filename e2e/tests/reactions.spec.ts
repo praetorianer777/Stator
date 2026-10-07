@@ -2,23 +2,15 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openPage, openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
-const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const pageBar = (page: Page) => page.getByRole("list", { name: "Reactions to this page" });
 const toggle = (page: Page, emoji: string) => pageBar(page).locator(`[data-reaction="${emoji}"]`);
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
-
-/** Opens a page by id, waiting out a replica that has not seen it yet. */
-async function openPage(page: Page, spaceKey: string, target: WikiPage) {
-  await expect(async () => {
-    await page.goto(`/s/${spaceKey}/p/${target.id}/page`);
-    await expect(heading(page)).toHaveText(target.title, { timeout: 1_000 });
-  }).toPass();
-}
 
 test.describe("reactions", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -57,10 +49,11 @@ test.describe("reactions", { tag: ["@auth"] }, () => {
     await expect(toggle(page, "🌮")).toHaveAttribute("aria-pressed", "true");
 
     const bob = await pageAs("bob");
-    await expect(async () => {
-      await openPage(bob, space.key, plan);
-      await expect(toggle(bob, "🎉")).toBeVisible({ timeout: 1_000 });
-    }).toPass();
+    await openPage(bob, space.key, plan, async () => {
+      await expect(toggle(bob, "🌮")).toBeVisible(ONE_LOOK);
+      await expect(toggle(bob, "🎉")).toBeVisible(ONE_LOOK);
+      await expect(bob.locator(`[data-comment="${started.id}"] [data-reaction="👍"] [data-reaction-count]`)).toHaveText("1", ONE_LOOK);
+    });
     await expect(toggle(bob, "🎉")).toHaveAttribute("aria-pressed", "false");
     await toggle(bob, "🎉").click();
     await expect(toggle(bob, "🎉").locator("[data-reaction-count]")).toHaveText("2");
@@ -69,10 +62,7 @@ test.describe("reactions", { tag: ["@auth"] }, () => {
     await expect(bob.getByRole("tooltip")).toHaveText(/^You and .+ reacted with 🎉$/);
     await expect(bob.locator(`[data-comment="${started.id}"] [data-reaction="👍"] [data-reaction-count]`)).toHaveText("1");
 
-    await expect(async () => {
-      await page.reload();
-      await expect(toggle(page, "🎉").locator("[data-reaction-count]")).toHaveText("2", { timeout: 1_000 });
-    }).toPass();
+    await openPage(page, space.key, plan, () => expect(toggle(page, "🎉").locator("[data-reaction-count]")).toHaveText("2", ONE_LOOK));
     await toggle(page, "🎉").hover();
     await expect(page.getByRole("tooltip")).toHaveText(/^You and .+ reacted with 🎉$/);
     await toggle(page, "🎉").click();
@@ -96,10 +86,7 @@ test.describe("reactions", { tag: ["@auth"] }, () => {
     );
 
     const bob = await pageAs("bob");
-    await expect(async () => {
-      await openPage(bob, space.key, plan);
-      await expect(toggle(bob, "👀")).toHaveAttribute("aria-disabled", "true", { timeout: 1_000 });
-    }).toPass();
+    await openPage(bob, space.key, plan, () => expect(toggle(bob, "👀")).toHaveAttribute("aria-disabled", "true", ONE_LOOK));
     await expect(pageBar(bob).locator('[data-action="add-reaction"]')).toHaveCount(0);
     await toggle(bob, "👀").focus();
     await expect(bob.getByRole("tooltip")).toHaveText(/^.+ reacted with 👀$/);
@@ -124,9 +111,7 @@ test.describe("reactions", { tag: ["@auth"] }, () => {
     expect((await bobApi.DELETE("/pages/{pageID}/reactions", { params: { path: { pageID: secret.id }, query: { emoji: "🚀" } } })).response.status).toBe(404);
 
     const bob = await pageAs("bob");
-    await bob.goto(`/s/${space.key}/p/${secret.id}/secret`);
-    await expect(bob.getByText(/not found/i).first()).toBeVisible();
-    await expect(pageBar(bob)).toHaveCount(0);
+    await openWithout(bob, `/s/${space.key}/p/${secret.id}/secret`, pageBar(bob), bob.getByText(/not found/i).first());
     await expect(bob.getByText("🚀")).toHaveCount(0);
   });
 
@@ -136,10 +121,7 @@ test.describe("reactions", { tag: ["@auth"] }, () => {
       const plan = await createPage(api, space.homePageId, uniqueName(testInfo, "Checked"), doc("Words."));
       must(await api.POST("/pages/{pageID}/reactions", { params: { path: { pageID: plan.id } }, body: { emoji: "👍" } }));
       await startInScheme(page, scheme);
-      await expect(async () => {
-        await openPage(page, space.key, plan);
-        await expect(toggle(page, "👍")).toBeVisible({ timeout: 1_000 });
-      }).toPass();
+      await openPage(page, space.key, plan, () => expect(toggle(page, "👍")).toBeVisible(ONE_LOOK));
       await expectAccessible(page);
 
       const thumbs = toggle(page, "👍");

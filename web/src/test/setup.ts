@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { collabTransport } from "@/features/collab/transport";
 import "./layout";
 
 /**
@@ -62,3 +63,7 @@ if (typeof window !== "undefined") {
 if (typeof HTMLCanvasElement !== "undefined") {
   HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
 }
+
+// jsdom has a WebSocket that would try to reach a server; the editor edits
+// alone in these tests unless one hands it a socket of its own.
+collabTransport.enabled = false;

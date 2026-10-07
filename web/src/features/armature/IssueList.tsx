@@ -164,7 +164,7 @@ export function IssueList({ settings, inEditor = false }: { settings: IssueListS
   );
 }
 
-function Note({ children, status = false }: { children: ReactNode; status?: boolean }) {
+export function Note({ children, status = false }: { children: ReactNode; status?: boolean }) {
   return (
     <p className="doc-block-empty" role={status ? "status" : undefined}>
       {children}
@@ -172,7 +172,7 @@ function Note({ children, status = false }: { children: ReactNode; status?: bool
   );
 }
 
-function OpenInArmature({ url }: { url: string }) {
+export function OpenInArmature({ url }: { url: string }) {
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" data-action="open-query-in-armature">
       {t.armature.list.open}
@@ -181,7 +181,7 @@ function OpenInArmature({ url }: { url: string }) {
 }
 
 /** Armature's sentence with where it went wrong, and to an author the query with that place marked. */
-function BadQuery({
+export function BadQuery({
   query,
   message,
   position,

@@ -455,7 +455,9 @@ func TestVersionsAndDraftsAreGuardedByTheDatabase(t *testing.T) {
 	untouched(t, conn, "A's drafts from B", `UPDATE page_draft SET title = 'Taken' WHERE page_id = $1`, pageA)
 	untouched(t, conn, "deleting A's drafts from B", `DELETE FROM page_draft WHERE page_id = $1`, pageA)
 
-	refused(t, conn, "rewriting B's own history", `UPDATE page_version SET title = 'Rewritten' WHERE page_id = $1`, pageB)
+	// Only a live page's open version takes a save; a published one, none.
+	untouched(t, conn, "rewriting B's own history", `UPDATE page_version SET title = 'Rewritten' WHERE page_id = $1`, pageB)
+	refused(t, conn, "rewriting B's own history's comment", `UPDATE page_version SET comment = 'Rewritten' WHERE page_id = $1`, pageB)
 	refused(t, conn, "deleting B's own history", `DELETE FROM page_version WHERE page_id = $1`, pageB)
 	refused(t, conn, "skipping a version number", `INSERT INTO page_version (org_id, page_id, number, title, body) VALUES ($1, $2, 3, 'Skipped', '{}')`, b.org, pageB)
 	refused(t, conn, "reusing a version number", `INSERT INTO page_version (org_id, page_id, number, title, body) VALUES ($1, $2, 1, 'Again', '{}')`, b.org, pageB)

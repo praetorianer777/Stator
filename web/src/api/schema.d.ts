@@ -73,6 +73,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The issues Armature dates in one month of one project, as the caller may see them, for a calendar block beside its events: each with its first and its due day. */
+        get: operations["armatureCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/chart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A count of the issues an NQL query matches in one project, as the caller may see them, for a chart block: shared out by a field for a pie, or created and resolved each day. Refused with bad_query and its position. */
+        get: operations["armatureChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/armature/connection": {
         parameters: {
             query?: never;
@@ -161,6 +195,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/roadmap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The issues an NQL query matches in one project, as the caller may see them, on a timeline of their start and due days for a roadmap block: under their epics or their teams. Refused with bad_query and its position. */
+        get: operations["armatureRoadmap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/armature/search": {
         parameters: {
             query?: never;
@@ -221,12 +272,63 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The bytes of a file, as a download. */
+        /** The bytes of a file, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416. */
         get: operations["downloadAttachment"];
         put?: never;
         post?: never;
-        /** Take a file off its page for good. */
+        /** Take a version of a file off its page for good, or with versions=all every version of its name. */
         delete: operations["deleteAttachment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachmentID}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save a picture cropped or drawn on as the next version of the file it was drawn on, as a multipart part named file of the file's own type. Refused with not_editable for a file that is no PNG, JPEG or WebP picture, wrong_type for a part of another type, and too_large over the upload limit. */
+        post: operations["editAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachmentID}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A file as a PDF to show in place: a PDF itself, or an office document converted once and kept. Refused with no_preview for any other file, and with preview_failed, preview_too_large, preview_off or preview_unavailable when there is no PDF to show. */
+        get: operations["previewAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachmentID}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bring an earlier version of a file back as its name's next version, with that version's bytes. Refused with already_latest for the latest version. */
+        post: operations["restoreAttachment"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -386,6 +488,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calendars/{calendarID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a calendar with every event in it. For whoever may add pages to its space, out of the archive. */
+        delete: operations["deleteCalendar"];
+        options?: never;
+        head?: never;
+        /** Rename a calendar. For whoever may add pages to its space, out of the archive. */
+        patch: operations["renameCalendar"];
+        trace?: never;
+    };
+    "/calendars/{calendarID}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A calendar and its events that fall between from and to, by when they start, the day's whole ones first; an event that lasts all day holds its last day whole. Truncated says more fell there than are answered. */
+        get: operations["listCalendarEvents"];
+        put?: never;
+        /** Add an event or an absence to a calendar. One that lasts all day starts and ends at midnight UTC, its end the last day it covers; at most 366 days. For whoever may add pages to its space, out of the archive. */
+        post: operations["createCalendarEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/{calendarID}/events/{eventID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change all of an event, as a new one is given. For whoever may add pages to its space, out of the archive. */
+        put: operations["updateCalendarEvent"];
+        post?: never;
+        /** Remove an event from its calendar. For whoever may add pages to its space, out of the archive. */
+        delete: operations["deleteCalendarEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comments/{commentID}": {
         parameters: {
             query?: never;
@@ -474,6 +630,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/example-space": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's example space, the one whose pages explain Stator, or null while there is none. For administrators. */
+        get: operations["getExampleSpace"];
+        put?: never;
+        /** Make the example space, whose pages explain Stator, in the language asked for, else the caller's own; 200 with created false when the organization has it already. For administrators. */
+        post: operations["createExampleSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/groups": {
         parameters: {
             query?: never;
@@ -542,6 +716,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/labelled-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The published pages out of the trash and the archive that carry the labels, all or any, and that the caller may read, for a content by label block. */
+        get: operations["labelledPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/labels": {
         parameters: {
             query?: never;
@@ -568,6 +759,23 @@ export interface paths {
         };
         /** The pages out of the trash that carry a label and that the caller may view, by title. */
         get: operations["listLabelPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/link-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a web page says about itself, its title, summary and site, for a link's card, and the player it embeds in when its site is allowlisted. Read through the outbound guard and kept an hour. */
+        get: operations["linkPreview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -732,6 +940,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/org/anonymous-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether anybody may read the spaces that allow it without signing in, and whether search engines are asked in. For administrators. */
+        get: operations["getAnonymousAccess"];
+        /** Let anybody read the spaces that allow it without signing in, or stop it, and say whether search engines may list those pages. For administrators. */
+        put: operations["setAnonymousAccess"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/hub": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's hub page as the caller may see it, and whether everybody lands on it. */
+        get: operations["getHub"];
+        /** Choose the organization's hub page, or none, and whether everybody lands on it. For administrators. */
+        put: operations["setHub"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org/permissions": {
         parameters: {
             query?: never;
@@ -759,6 +1003,24 @@ export interface paths {
         get?: never;
         /** Replace whom a global permission is granted to. For administrators. */
         put: operations["setGlobalPermission"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/public-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the editors of a page may open it to anybody through a public link. For administrators. */
+        get: operations["getPublicLinks"];
+        /** Allow public links, or stop every one of them and the making of more; stopped links work again once they are allowed again. For administrators. */
+        put: operations["setPublicLinks"];
         post?: never;
         delete?: never;
         options?: never;
@@ -809,7 +1071,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a page under a parent, last unless a place is named; unpublished and its creator's alone unless publish is set. A template in place of a body starts it from that template, the server filling its variables from values. */
+        /** Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once. A template in place of a body starts a page from that template, the server filling its variables from values. */
         post: operations["createPage"];
         delete?: never;
         options?: never;
@@ -846,6 +1108,23 @@ export interface paths {
         /** What a person may do to a page and which grant or restriction decides each right, as the database answers it. For the space's administrators. */
         get: operations["inspectPageAccess"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/appearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace how a page looks: one emoji before its title and in the tree, fixed or full width, and one of its own pictures as its cover with the point that stays in view. A null icon or cover takes it away. For the page's editors. */
+        put: operations["setAppearance"];
         post?: never;
         delete?: never;
         options?: never;
@@ -895,7 +1174,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The files on a page, the latest first. */
+        /** The files on a page, the latest first. A file uploaded under a name the page already has, whatever its case, is that name's next version. */
         get: operations["listAttachments"];
         put?: never;
         /** Put a file on a page, as a multipart part named file; refused with too_large over the upload limit. */
@@ -915,6 +1194,26 @@ export interface paths {
         };
         /** The pages under a page that the caller may view, out of the trash, each after its parent, for a child pages block; truncated says the list stopped at its limit. */
         get: operations["listPagesBelow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/collab": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Edit a page together: a WebSocket carrying the page's shared draft, for somebody signed in who may edit the page.
+         * @description Binary frames in y-protocols' framing: a varuint message type, then its payload. Sync (0) and awareness (1) are y-protocols' own; the server stores sync updates and passes them and awareness on without reading them. The server opens with room (100: the room's id as a string, its base version, and 1 when this client is to send its first content), then every stored update as a sync update and an empty sync step 2 when they are all sent; room starts every such load. A client sends updates as sync updates, seed (102: base version, update) when asked for first content, published (101: version) after publishing from the room, discard (103) to throw the room away for everybody, and compacted (105: from, to, count, merged update) when the server asks with compact (104: from, to, count) for the merge of the updates the last load carried. The server says base (107: version) when a publish moves the room on. Close codes: 4401 the session ended, 4403 the person may no longer edit, 4408 the client fell behind, 4409 the room was started afresh; load again for the last two.
+         */
+        get: operations["collab"];
         put?: never;
         post?: never;
         delete?: never;
@@ -950,6 +1249,23 @@ export interface paths {
         };
         /** What changed between two versions of a page, or between a version and the caller's draft. */
         get: operations["compareVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/contributors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The people who published versions of a page, or with scope tree of it and the pages below it the caller may view, for a contributors block: the most versions first, then the latest; truncated says more did. */
+        get: operations["pageContributors"];
         put?: never;
         post?: never;
         delete?: never;
@@ -994,6 +1310,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/excerpts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The named excerpts of a page's published body, in reading order, for choosing one to include elsewhere. */
+        get: operations["listExcerpts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/export": {
         parameters: {
             query?: never;
@@ -1022,6 +1355,23 @@ export interface paths {
         put?: never;
         /** Make pages under a page from Markdown files and their folders, sent as parts named file with their paths, or as a .zip; each folder of Markdown is a page too. */
         post: operations["importMarkdown"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/included": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What an include of a page shows the caller: its published body, or one excerpt's blocks. 404 for a page the caller may not read, never published, or without that excerpt; 409 for an include that leads back to a page in via or is nested too deep. */
+        get: operations["getIncluded"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1080,6 +1430,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save a live page as its editor holds it, visible to every reader at once: into the open version while it lasts, else as the next version. room names the shared draft saved from; page_not_live refuses a page edited through drafts, room_gone a shared draft started afresh. */
+        put: operations["saveLive"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/markdown": {
         parameters: {
             query?: never;
@@ -1108,6 +1475,23 @@ export interface paths {
         /** Members to mention on a page, each saying whether they may view it once published; only those are told. */
         get: operations["listMentionable"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose whether a page is published from drafts or saved live as it is typed. Making it live throws away the drafts nobody published, so it is refused with drafts_pending naming whose they are unless discardDrafts confirms it. For the page's editors. */
+        put: operations["setPageMode"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1145,6 +1529,41 @@ export interface paths {
         post?: never;
         /** Leave a page without an owner, also when it had none; needs edit. */
         delete: operations["removePageOwner"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/public-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page's live public links, oldest first, and why another cannot be made now, if it cannot; somebody who may not edit the page is told so and shown none. */
+        get: operations["listPageLinks"];
+        put?: never;
+        /** Make a link that lets anybody read this published page without an account, until it is revoked or runs out. The token and the address are in this answer only. Refused with link_refused, saying why, for a page that may not be opened or has as many links as it may. */
+        post: operations["createPageLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/public-links/{linkID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a public link of a page for good. For whoever may edit the page. */
+        delete: operations["revokePageLink"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1220,6 +1639,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Publish the caller's draft at a time, in their name, as they would publish it then; setting it again moves it. A page holds one schedule: schedule_taken refuses while somebody else's waits, publish_conflict a draft begun before the latest version. The page's schedule is read with it. */
+        put: operations["schedulePublish"];
+        post?: never;
+        /** Call off the page's scheduled publish: the caller's own, or anybody's for an editor of the page. The draft stays. */
+        delete: operations["cancelSchedule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/share": {
         parameters: {
             query?: never;
@@ -1270,6 +1707,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/tasks/{taskID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Tick a task off or open it again, by publishing the page with its box changed as the next version; its state already is no change. For whoever may edit the page. */
+        patch: operations["setTaskDone"];
         trace?: never;
     };
     "/pages/{pageID}/verification": {
@@ -1444,6 +1898,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Published blog posts the caller may read, newest first, in one space or across the spaces not archived, the trash and the archive left out; year, and month with it, keep a stretch of time in UTC; next is the cursor for the window after, null at the end. For a blog and a latest blog posts block. */
+        get: operations["listPosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/properties-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The properties of the published pages that carry every label given and that the caller may read, by title, for a properties report. */
+        get: operations["propertiesReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/{orgSlug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization and the spaces anybody may read in it without signing in. Not found, as not_public, when it lets nobody in. */
+        get: operations["publicSite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/{orgSlug}/attachments/{attachmentID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The bytes of a file on a page anybody may read, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416. */
+        get: operations["publicAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/{orgSlug}/links/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The one published page a public link opens, with the people it mentions unnamed and nothing of its space, tree or people. Not found, as link_gone, once the link is revoked or ran out, the page may no longer be opened, or the organization allows no links. Never cached. */
+        get: operations["linkedPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/{orgSlug}/links/{token}/attachments/{attachmentID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416. */
+        get: operations["linkedAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/{orgSlug}/pages/{pageID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A published page anybody may read, with the people it mentions unnamed and nothing about who wrote or read it. */
+        get: operations["publicPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/{orgSlug}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Published pages anybody may read whose words match, the best first. */
+        get: operations["publicSearch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/{orgSlug}/spaces/{spaceKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A space anybody may read, with its published pages in reading order. */
+        get: operations["publicSpace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/readyz": {
         parameters: {
             query?: never;
@@ -1512,6 +2119,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/space-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The structures a new space can start from, in the order to offer them: the home page, the pages below it with their labels, and what everyone may do. Send one's key as template with POST /spaces. */
+        get: operations["listSpaceTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/spaces": {
         parameters: {
             query?: never;
@@ -1522,7 +2146,7 @@ export interface paths {
         /** Every space the caller may see, by name; archived ones only when asked for. */
         get: operations["listSpaces"];
         put?: never;
-        /** Make a space and its home page. For whoever may create spaces. */
+        /** Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see. */
         post: operations["createSpace"];
         delete?: never;
         options?: never;
@@ -1547,6 +2171,24 @@ export interface paths {
         head?: never;
         /** Rename or describe a space. For the space's administrators. */
         patch: operations["updateSpace"];
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/anonymous-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether anybody may read this space without signing in, and whether the organization allows it at all. For the space's administrators. */
+        get: operations["getSpaceAnonymousAccess"];
+        /** Let anybody read this space's published pages without signing in, or stop it; it counts while the organization allows it. A personal space stays private. For the space's administrators. */
+        put: operations["setSpaceAnonymousAccess"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/spaces/{spaceKey}/archive": {
@@ -1579,6 +2221,111 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/blog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A space's blog: the months with posts the caller may read and how many, newest first, in UTC; the caller's own posts not yet published; whether the caller watches it and may post. */
+        get: operations["getBlog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/blog/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Hear of every post first published in a space's blog; later versions of a post are told to its own watchers. */
+        put: operations["watchBlog"];
+        post?: never;
+        /** Stop hearing of a blog's new posts; a watch on the space or on a post stays. */
+        delete: operations["unwatchBlog"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/calendars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The space's calendars by name, and whether the caller may change each one. */
+        get: operations["listCalendars"];
+        put?: never;
+        /** Add a calendar to the space, named as none of its others is, whatever the case; at most 20. For whoever may add pages to the space, out of the archive. */
+        post: operations["createCalendar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The decision log of a space: every decision item on its published pages the caller may read, newest page first. */
+        get: operations["listDecisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/guests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The people from outside let into this space alone, with what they may do there. For administrators of the organization. */
+        get: operations["listGuests"];
+        put?: never;
+        /** Let somebody from outside into this space alone, as a viewer, commenter or editor; they sign in through the organization's provider with the address given. For administrators of the organization. */
+        post: operations["inviteGuest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/guests/{userID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a guest out of this space, and so out of the organization. For administrators of the organization. */
+        delete: operations["removeGuest"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1630,6 +2377,93 @@ export interface paths {
         /** Replace a space's whole permission table. For the space's administrators. */
         put: operations["setSpacePermissions"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/permissions/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What copying another space's permissions onto this one would add, widen, narrow and remove, and what it cannot copy, without changing anything. Replace makes this space's grants the other's, keeping this space's guests; merge only adds. For whoever administers both spaces. */
+        get: operations["previewPermissionCopy"];
+        put?: never;
+        /** Apply the preview whose fingerprint the request carries, in one step; refused as copy_changed once either space's permissions changed since, and as no_administrator when it would leave this space without one. For whoever administers both spaces. */
+        post: operations["copyPermissions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. For whoever may add pages to the space. */
+        post: operations["createPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/shortcuts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The space's shortcuts in order: each a page or an address. A shortcut to a page the caller may not view, or one in the trash, is left out. */
+        get: operations["listShortcuts"];
+        put?: never;
+        /** Pin a shortcut last: a page the caller may view, or an http or https address with a label, its host when none is given. For the space's administrators. */
+        post: operations["createShortcut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a shortcut; the page it opened stays. For the space's administrators. */
+        delete: operations["deleteShortcut"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/shortcuts/{shortcutID}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a shortcut after another of the space, or first when after is null, and answer them all in their new order. For the space's administrators. */
+        post: operations["moveShortcut"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1758,6 +2592,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/task-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The tasks of published pages the caller may view, out of the trash and the archive, that the filter picks, for a task report block: open ones soonest due first and those without a day last, then done ones the latest first; truncated says more matched. */
+        get: operations["taskReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The tasks assigned to the caller on published pages they may still view, out of the trash and the archive: open ones soonest due first and those without a day last, or done ones the latest first; next is the cursor for the window after, null at the end. */
+        get: operations["listMyTasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/template-button": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a template button makes and where, for its view: the template, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found. */
+        get: operations["templateButton"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/templates": {
         parameters: {
             query?: never;
@@ -1790,6 +2675,23 @@ export interface paths {
         post?: never;
         /** Delete one of the organization's templates; pages made from it keep what they were given. */
         delete: operations["deleteTemplate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/templates/{templateKey}/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC. For whoever may add pages there. */
+        post: operations["createFromTemplate"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1983,6 +2885,23 @@ export interface paths {
         post?: never;
         /** Revoke one of the caller's tokens; it stops working at once. */
         delete: operations["revokeAPIToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/updated-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The pages published last that the caller may read, in a space or across the organization, folders, the trash and the archive left out, for a recently updated block. */
+        get: operations["updatedPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2232,7 +3151,7 @@ export interface components {
             person: components["schemas"]["Person"];
             rights: components["schemas"]["AccessRight"][];
             /** @enum {string} */
-            role: "owner" | "admin" | "member";
+            role: "owner" | "admin" | "member" | "guest";
             /** @enum {string} */
             roleSource: "manual" | "oidc";
         };
@@ -2274,12 +3193,33 @@ export interface components {
         };
         AdmitRequest: {
             /** @enum {string} */
-            role: "owner" | "admin" | "member";
+            role: "admin" | "member";
         };
         Anchor: {
             quote: string;
             /** @enum {string} */
             state: "anchored" | "detached";
+        };
+        AnonymousAccessSettings: {
+            enabled: boolean;
+            indexable: boolean;
+        };
+        AnonymousHit: {
+            page: components["schemas"]["PageRef"];
+            snippet: components["schemas"]["Segment"][];
+            title: components["schemas"]["Segment"][];
+        };
+        Appearance: {
+            cover: components["schemas"]["Cover"] | null;
+            icon: string | null;
+            /** @enum {string} */
+            width: "fixed" | "full";
+        };
+        AppearanceInput: {
+            cover: components["schemas"]["Cover"] | null;
+            icon: string | null;
+            /** @enum {string} */
+            width: "fixed" | "full";
         };
         Archive: {
             /** Format: date-time */
@@ -2311,14 +3251,20 @@ export interface components {
             contentType: string;
             /** Format: date-time */
             createdAt: string;
+            editedFrom: number | null;
             fileName: string;
             height: number | null;
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             pageId: string;
+            /** @enum {string} */
+            preview: "none" | "pdf" | "office";
+            restoredFrom: number | null;
             size: number;
             uploadedByName: string;
+            version: number;
+            versions: number;
             width: number | null;
         };
         AuditActor: {
@@ -2328,7 +3274,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted";
+            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -2344,7 +3290,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted")[];
+            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -2366,9 +3312,81 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        Blog: {
+            canPost: boolean;
+            months: components["schemas"]["BlogMonth"][];
+            spaceKey: string;
+            spaceName: string;
+            unpublished: components["schemas"]["UnpublishedPost"][];
+            watching: boolean;
+        };
+        BlogMonth: {
+            count: number;
+            month: number;
+            year: number;
+        };
         BodyInput: {
             /** @description A JSON value. */
             body: unknown;
+        };
+        Calendar: {
+            canEdit: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            spaceKey: string;
+            spaceName: string;
+        };
+        CalendarEvent: {
+            allDay: boolean;
+            /** Format: uuid */
+            calendarId: string;
+            createdByName: string;
+            /** Format: date-time */
+            end: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "event" | "absence";
+            /** Format: date-time */
+            start: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CalendarEventInput: {
+            allDay: boolean;
+            /** Format: date-time */
+            end: string;
+            /** @enum {string} */
+            kind?: "event" | "absence";
+            /** Format: date-time */
+            start: string;
+            title: string;
+        };
+        CalendarEvents: {
+            calendar: components["schemas"]["Calendar"];
+            events: components["schemas"]["CalendarEvent"][];
+            truncated: boolean;
+        };
+        CalendarInput: {
+            name: string;
+        };
+        CalendarIssue: {
+            category: string;
+            done: boolean;
+            from: string;
+            key: string;
+            summary: string;
+            to: string;
+            url: string;
+        };
+        CalendarMonth: {
+            issues: components["schemas"]["CalendarIssue"][];
+            month: string;
+            truncated: boolean;
         };
         Can: {
             addComments: boolean;
@@ -2377,6 +3395,25 @@ export interface components {
             deletePages: boolean;
             editPages: boolean;
             purgeTrash: boolean;
+        };
+        Chart: {
+            days: components["schemas"]["ChartDay"][];
+            groupBy: string;
+            /** @enum {string} */
+            kind: "pie" | "createdResolved";
+            slices: components["schemas"]["ChartSlice"][];
+            total: number;
+            url: string;
+        };
+        ChartDay: {
+            created: number;
+            day: string;
+            resolved: number;
+        };
+        ChartSlice: {
+            category: string;
+            count: number;
+            label: string;
         };
         ChooseThemeRequest: {
             builtIn?: boolean;
@@ -2443,6 +3480,35 @@ export interface components {
             orgSlug: string;
             webhookSecret?: string;
         };
+        Contributor: {
+            avatarUrl?: string;
+            edits: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastEditedAt: string;
+            name: string;
+        };
+        CopyChange: {
+            after: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
+            before: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
+            /** @enum {string} */
+            kind: "added" | "widened" | "narrowed" | "changed" | "removed";
+            subject: components["schemas"]["CopySubject"];
+        };
+        CopyCounts: {
+            added: number;
+            changed: number;
+            narrowed: number;
+            removed: number;
+            skipped: number;
+            unchanged: number;
+            widened: number;
+        };
+        CopyGrant: {
+            permissions: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
+            subject: components["schemas"]["CopySubject"];
+        };
         CopyInput: {
             /** Format: uuid */
             afterId?: string;
@@ -2453,10 +3519,30 @@ export interface components {
             title?: string;
             withChildren: boolean;
         };
+        CopySkip: {
+            permissions: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
+            /** @enum {string} */
+            reason: "guest";
+            subject: components["schemas"]["CopySubject"];
+        };
+        CopySubject: {
+            guest: boolean;
+            /** Format: uuid */
+            id: string | null;
+            name: string;
+            /** @enum {string} */
+            type: "user" | "group" | "everyone" | "anonymous";
+        };
         Counts: {
             detached: number;
             inline: number;
             page: number;
+        };
+        Cover: {
+            /** Format: uuid */
+            attachmentId: string;
+            focusX: number;
+            focusY: number;
         };
         CreateFailure: {
             code: string;
@@ -2467,6 +3553,8 @@ export interface components {
             description?: string;
             key: string;
             name: string;
+            personal?: boolean;
+            template?: string;
         };
         CreateIssuesInput: {
             items: components["schemas"]["CreateItem"][];
@@ -2487,11 +3575,12 @@ export interface components {
             spaces?: string[];
         };
         CurrentOrg: {
+            guestSpace: components["schemas"]["SpaceRef"] | null;
             /** Format: uuid */
             id: string;
             name: string;
             /** @enum {string} */
-            role: "owner" | "admin" | "member";
+            role: "owner" | "admin" | "member" | "guest";
             slug: string;
         };
         Cursor: {
@@ -2499,6 +3588,20 @@ export interface components {
             assetId: string;
             hotspotX: number;
             hotspotY: number;
+        };
+        Decision: {
+            /** Format: uuid */
+            pageId: string;
+            pageTitle: string;
+            state: string;
+            text: string;
+            /** Format: date-time */
+            updatedAt: string;
+            updatedByName: string;
+        };
+        DecisionLog: {
+            decisions: components["schemas"]["Decision"][];
+            truncated: boolean;
         };
         DefaultThemeRequest: {
             /** Format: uuid */
@@ -2566,6 +3669,18 @@ export interface components {
             name: string;
             spec: components["schemas"]["Spec"];
         };
+        ExampleSpaceRequest: {
+            language?: string;
+        };
+        ExampleSpaceResponse: {
+            created: boolean;
+            space: components["schemas"]["Space"];
+        };
+        Excerpt: {
+            id: string;
+            name: string;
+            text: string;
+        };
         Font: {
             /** Format: uuid */
             assetId?: string;
@@ -2605,6 +3720,22 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        Guest: {
+            email: string;
+            /** Format: date-time */
+            invitedAt: string;
+            name: string;
+            permissions: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
+            /** @enum {string} */
+            role: "viewer" | "commenter" | "editor" | "none";
+            /** Format: uuid */
+            userId: string;
+        };
+        GuestInviteInput: {
+            email: string;
+            /** @enum {string} */
+            role: "viewer" | "commenter" | "editor";
+        };
         Hit: {
             archived: boolean;
             /** Format: uuid */
@@ -2622,6 +3753,21 @@ export interface components {
             updatedByName: string;
             verified: boolean;
         };
+        Hub: {
+            landing: boolean;
+            page: components["schemas"]["HubPage"] | null;
+        };
+        HubInput: {
+            landing: boolean;
+            /** Format: uuid */
+            pageId: string | null;
+        };
+        HubPage: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            title: string;
+        };
         Icon: {
             /** Format: uuid */
             assetId?: string;
@@ -2635,6 +3781,22 @@ export interface components {
             parentId: string;
             title: string;
         };
+        Included: {
+            /** @description A JSON value. */
+            body: unknown;
+            excerpt: components["schemas"]["IncludedExcerpt"] | null;
+            page: components["schemas"]["IncludedPage"];
+        };
+        IncludedExcerpt: {
+            id: string;
+            name: string;
+        };
+        IncludedPage: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            title: string;
+        };
         Info: {
             description?: string;
             title: string;
@@ -2642,7 +3804,7 @@ export interface components {
         };
         Inherited: {
             /** @enum {string} */
-            kind: "page" | "subtree" | "space";
+            kind: "page" | "subtree" | "space" | "blog";
             page: components["schemas"]["PageTitle"] | null;
         };
         InheritedRestriction: {
@@ -2738,9 +3900,42 @@ export interface components {
             /** Format: date-time */
             syncedAt: string | null;
         };
+        LinkEmbed: {
+            /** @enum {string} */
+            kind: "video" | "design";
+            provider: string;
+            src: string;
+        };
+        LinkPreview: {
+            description: string;
+            embed: components["schemas"]["LinkEmbed"] | null;
+            fetched: boolean;
+            siteName: string;
+            title: string;
+            url: string;
+        };
+        LinkedPage: {
+            appearance: components["schemas"]["Appearance"];
+            /** @description A JSON value. */
+            body: unknown;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "page" | "folder" | "post";
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
         LoginRequest: {
             email: string;
             password: string;
+        };
+        Mark: {
+            attrs?: {
+                [key: string]: unknown;
+            };
+            type: string;
         };
         MarkReadInput: {
             all?: boolean;
@@ -2756,11 +3951,12 @@ export interface components {
         };
         Member: {
             email: string;
+            guestSpace: components["schemas"]["SpaceRef"] | null;
             /** Format: date-time */
             joinedAt: string;
             name: string;
             /** @enum {string} */
-            role: "owner" | "admin" | "member";
+            role: "owner" | "admin" | "member" | "guest";
             /** @enum {string} */
             roleSource: "manual" | "oidc";
             /** Format: uuid */
@@ -2772,7 +3968,7 @@ export interface components {
             orgName: string;
             orgSlug: string;
             /** @enum {string} */
-            role: "owner" | "admin" | "member";
+            role: "owner" | "admin" | "member" | "guest";
         };
         Mentionable: {
             canView: boolean;
@@ -2790,6 +3986,15 @@ export interface components {
             parentId: string;
             withChildren?: boolean;
         };
+        Node: {
+            attrs?: {
+                [key: string]: unknown;
+            };
+            content?: components["schemas"]["Node"][];
+            marks?: components["schemas"]["Mark"][];
+            text?: string;
+            type: string;
+        };
         Notification: {
             /** Format: uuid */
             actorId: string | null;
@@ -2802,7 +4007,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "expired";
+            kind: "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "posted" | "expired" | "failed";
             page: components["schemas"]["PageLink"];
             /** Format: date-time */
             readAt: string | null;
@@ -2860,6 +4065,7 @@ export interface components {
         };
         Page: {
             ancestors: components["schemas"]["Ref"][];
+            appearance: components["schemas"]["Appearance"];
             archived: components["schemas"]["Archive"] | null;
             /** @description A JSON value. */
             body: unknown;
@@ -2872,12 +4078,19 @@ export interface components {
             home: boolean;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder" | "post";
             labels: string[];
+            /** @enum {string} */
+            mode: "draft" | "live";
             owner: components["schemas"]["Owner"] | null;
             /** Format: uuid */
             parentId: string | null;
+            /** Format: date-time */
+            postedAt: string | null;
             reactions: components["schemas"]["Reaction"][];
             restricted: components["schemas"]["Restricted"];
+            schedule: components["schemas"]["PageSchedule"] | null;
             /** Format: uuid */
             spaceId: string;
             spaceKey: string;
@@ -2898,6 +4111,10 @@ export interface components {
             edit: boolean;
             restrict: boolean;
         };
+        PageContributors: {
+            contributors: components["schemas"]["Contributor"][];
+            truncated: boolean;
+        };
         PageCreateInput: {
             /** Format: uuid */
             afterId?: string;
@@ -2905,6 +4122,8 @@ export interface components {
             beforeId?: string;
             /** @description A JSON value. */
             body?: unknown;
+            /** @enum {string} */
+            kind?: "page" | "folder" | "post";
             /** Format: uuid */
             parentId: string;
             publish?: boolean;
@@ -2913,6 +4132,12 @@ export interface components {
             values?: {
                 [key: string]: string;
             };
+        };
+        PageFromTemplateInput: {
+            /** Format: uuid */
+            parentId?: string;
+            spaceKey?: string;
+            title?: string;
         };
         PageHit: {
             /** Format: uuid */
@@ -2928,6 +4153,33 @@ export interface components {
             spaceKey: string;
             title: string;
         };
+        PageLiveInput: {
+            /** @description A JSON value. */
+            body: unknown;
+            /** Format: uuid */
+            room?: string;
+            title: string;
+        };
+        PageLiveSaved: {
+            amended: boolean;
+            version: components["schemas"]["VersionEntry"];
+        };
+        PageModeChange: {
+            discardedDrafts: string[];
+            /** @enum {string} */
+            mode: "draft" | "live";
+        };
+        PageModeInput: {
+            discardDrafts?: boolean;
+            /** @enum {string} */
+            mode: "draft" | "live";
+        };
+        PagePublicLinks: {
+            links: components["schemas"]["PublicLink"][];
+            max: number;
+            /** @enum {string|null} */
+            refusal: "cannotManage" | "off" | "personal" | "folder" | "trashed" | "unpublished" | "restricted" | "full" | null;
+        };
         PageRef: {
             /** Format: uuid */
             id: string;
@@ -2938,6 +4190,27 @@ export interface components {
         PageResponse: {
             page: components["schemas"]["Page"];
             space: components["schemas"]["Space"];
+        };
+        PageSchedule: {
+            /** Format: uuid */
+            authorId: string;
+            authorName: string;
+            comment: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            failedAt: string | null;
+            failure: ("gone" | "forbidden" | "archived" | "conflict") | null;
+            mine: boolean;
+            notifyWatchers: boolean;
+            /** Format: date-time */
+            publishAt: string;
+        };
+        PageScheduleInput: {
+            comment?: string;
+            notifyWatchers?: boolean;
+            /** Format: date-time */
+            publishAt: string;
         };
         PageTitle: {
             /** Format: uuid */
@@ -2978,11 +4251,51 @@ export interface components {
             required?: boolean;
             schema: components["schemas"]["Schema"] | null;
         };
+        PermissionCopyInput: {
+            fingerprint?: string;
+            from: string;
+            /** @enum {string} */
+            mode: "replace" | "merge";
+        };
+        PermissionCopyPreview: {
+            changes: components["schemas"]["CopyChange"][];
+            counts: components["schemas"]["CopyCounts"];
+            fingerprint: string;
+            kept: components["schemas"]["CopyGrant"][];
+            leavesNoAdministrator: boolean;
+            /** @enum {string} */
+            mode: "replace" | "merge";
+            skipped: components["schemas"]["CopySkip"][];
+            source: components["schemas"]["PermissionCopySpace"];
+            target: components["schemas"]["PermissionCopySpace"];
+        };
+        PermissionCopySpace: {
+            key: string;
+            name: string;
+        };
         Person: {
             email: string;
             /** Format: uuid */
             id: string;
             name: string;
+        };
+        Post: {
+            authorName: string;
+            excerpt: string;
+            icon: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            postedAt: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+        };
+        PostInput: {
+            /** @description A JSON value. */
+            body?: unknown;
+            publish?: boolean;
+            title: string;
         };
         Preferences: {
             autoWatch: boolean;
@@ -2995,6 +4308,16 @@ export interface components {
             canCreate: boolean;
             key: string;
             name: string;
+        };
+        PropertiesReport: {
+            columns: string[];
+            rows: components["schemas"]["ReportRow"][];
+            truncated: boolean;
+        };
+        Property: {
+            content: components["schemas"]["Node"][];
+            key: string;
+            text: string;
         };
         Provider: {
             clientId: string;
@@ -3010,6 +4333,71 @@ export interface components {
         ProviderView: {
             callbackUrl: string;
             provider: components["schemas"]["Provider"] | null;
+        };
+        PublicLink: {
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: components["schemas"]["Person"] | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            /** Format: uuid */
+            id: string;
+            label: string;
+        };
+        PublicLinkInput: {
+            /** Format: date-time */
+            expiresAt?: string;
+            label?: string;
+        };
+        PublicLinkSettings: {
+            enabled: boolean;
+        };
+        PublicPage: {
+            ancestors: components["schemas"]["PublicPageRef"][];
+            appearance: components["schemas"]["Appearance"];
+            /** @description A JSON value. */
+            body: unknown;
+            children: components["schemas"]["PublicPageRef"][];
+            home: boolean;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "page" | "folder" | "post";
+            space: components["schemas"]["PublicSpace"];
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        PublicPageRef: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "page" | "folder" | "post";
+            title: string;
+        };
+        PublicSite: {
+            indexable: boolean;
+            name: string;
+            slug: string;
+        };
+        PublicSpace: {
+            description: string;
+            /** Format: uuid */
+            homePageId: string;
+            key: string;
+            name: string;
+        };
+        PublicTreePage: {
+            depth: number;
+            icon: string | null;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "page" | "folder" | "post";
+            /** Format: uuid */
+            parentId: string | null;
+            title: string;
         };
         PublishInput: {
             comment?: string;
@@ -3084,6 +4472,15 @@ export interface components {
             lastError?: string;
             name: string;
         };
+        ReportRow: {
+            /** Format: uuid */
+            pageId: string;
+            spaceKey: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            values: (components["schemas"]["Property"] | null)[];
+        };
         RequestBody: {
             content: {
                 [key: string]: components["schemas"]["MediaType"];
@@ -3114,6 +4511,31 @@ export interface components {
         RestrictionsInput: {
             edit: components["schemas"]["SubjectRef"][];
             view: components["schemas"]["SubjectRef"][];
+        };
+        Roadmap: {
+            from: string | null;
+            /** @enum {string} */
+            groupBy: "epic" | "team";
+            groups: components["schemas"]["RoadmapGroup"][];
+            hidden: number;
+            to: string | null;
+            unscheduled: number;
+            url: string;
+        };
+        RoadmapBar: {
+            derived: boolean;
+            due: string | null;
+            key: string;
+            start: string | null;
+            status: components["schemas"]["IssueStatus"];
+            summary: string;
+            type: components["schemas"]["IssueType"];
+            url: string;
+        };
+        RoadmapGroup: {
+            epic: components["schemas"]["RoadmapBar"] | null;
+            name: string;
+            rows: components["schemas"]["RoadmapBar"][];
         };
         RpcError: {
             code: number;
@@ -3196,6 +4618,33 @@ export interface components {
             message?: string;
             recipients: components["schemas"]["SubjectRef"][];
         };
+        Shortcut: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "page" | "link";
+            label: string;
+            page: components["schemas"]["ShortcutPage"] | null;
+            url: string | null;
+        };
+        ShortcutInput: {
+            label?: string;
+            /** Format: uuid */
+            pageId?: string;
+            url?: string;
+        };
+        ShortcutMove: {
+            /** Format: uuid */
+            after: string | null;
+        };
+        ShortcutPage: {
+            archived: boolean;
+            home: boolean;
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            title: string;
+        };
         Space: {
             /** Format: date-time */
             archivedAt: string | null;
@@ -3210,10 +4659,19 @@ export interface components {
             id: string;
             key: string;
             name: string;
+            owner: components["schemas"]["SpaceOwner"] | null;
             starred: boolean;
             /** Format: date-time */
             updatedAt: string;
             watching: boolean;
+        };
+        SpaceAnonymousAccess: {
+            orgEnabled: boolean;
+            personal: boolean;
+            view: boolean;
+        };
+        SpaceAnonymousAccessInput: {
+            view: boolean;
         };
         SpaceGrant: {
             permissions: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
@@ -3225,6 +4683,37 @@ export interface components {
         };
         SpaceGrantsInput: {
             grants: components["schemas"]["SpaceGrantInput"][];
+        };
+        SpaceOwner: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        SpacePage: {
+            /** @description A JSON value. */
+            body: unknown;
+            children: components["schemas"]["SpacePage"][];
+            labels: string[];
+            title: string;
+        };
+        SpacePermissions: {
+            everyone: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
+        };
+        SpaceRef: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            name: string;
+        };
+        SpaceTemplate: {
+            builtIn: boolean;
+            description: string;
+            /** @description A JSON value. */
+            home: unknown;
+            key: string;
+            name: string;
+            pages: components["schemas"]["SpacePage"][];
+            permissions: components["schemas"]["SpacePermissions"];
         };
         Spec: {
             backdrop?: components["schemas"]["Backdrop"];
@@ -3301,10 +4790,14 @@ export interface components {
             slug: string;
         };
         Switches: {
+            assigned: boolean;
             commented: boolean;
             created: boolean;
+            due: boolean;
             expired: boolean;
+            failed: boolean;
             mentioned: boolean;
+            posted: boolean;
             published: boolean;
             replied: boolean;
             resolved: boolean;
@@ -3313,6 +4806,38 @@ export interface components {
         Tag: {
             description?: string;
             name: string;
+        };
+        Task: {
+            /** Format: date-time */
+            assignedAt: string | null;
+            assignedByName: string;
+            /** Format: uuid */
+            assigneeId: string | null;
+            assigneeName: string;
+            canEdit: boolean;
+            done: boolean;
+            /** Format: date-time */
+            doneAt: string | null;
+            dueOn: string | null;
+            /** Format: uuid */
+            id: string;
+            page: components["schemas"]["TaskPage"];
+            text: string;
+        };
+        TaskPage: {
+            /** Format: uuid */
+            id: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
+        };
+        TaskReport: {
+            assigneeName: string;
+            tasks: components["schemas"]["Task"][];
+            truncated: boolean;
+        };
+        TaskSetDoneInput: {
+            done: boolean;
         };
         Template: {
             /** @description A JSON value. */
@@ -3327,6 +4852,13 @@ export interface components {
             spaceKey: string;
             title: string;
             variables: components["schemas"]["Variable"][];
+        };
+        TemplateButton: {
+            canCreate: boolean;
+            parent: components["schemas"]["Ref"];
+            spaceKey: string;
+            spaceName: string;
+            template: components["schemas"]["TemplateRef"];
         };
         TemplateCreateInput: {
             /** @description A JSON value. */
@@ -3344,6 +4876,11 @@ export interface components {
             name: string;
             title: string;
             variables: components["schemas"]["Variable"][];
+        };
+        TemplateRef: {
+            key: string;
+            name: string;
+            title: string;
         };
         Theme: {
             active: boolean;
@@ -3398,6 +4935,8 @@ export interface components {
         TrashItem: {
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder" | "post";
             pages: number;
             parentInTree: boolean;
             parentTitle: string;
@@ -3409,13 +4948,25 @@ export interface components {
         TreeNode: {
             archived: boolean;
             hasChildren: boolean;
+            icon: string | null;
             /** Format: uuid */
             id: string;
+            /** @enum {string} */
+            kind: "page" | "folder" | "post";
             /** Format: uuid */
             parentId: string;
             restricted: boolean;
             title: string;
             unpublished: boolean;
+        };
+        UnpublishedPost: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            publishAt: string | null;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         UpdateInput: {
             description?: string;
@@ -3425,6 +4976,16 @@ export interface components {
             /** @enum {string} */
             locale?: "" | "en" | "de";
             showInReaders?: boolean;
+        };
+        UpdatedPage: {
+            authorName: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            publishedAt: string;
+            spaceKey: string;
+            spaceName: string;
+            title: string;
         };
         User: {
             avatarUrl?: string;
@@ -3466,23 +5027,31 @@ export interface components {
             authorName: string;
             /** @description A JSON value. */
             body: unknown;
+            coEditors: string[];
             comment: string;
             /** Format: date-time */
             createdAt: string;
+            live: boolean;
             number: number;
             restoredFrom: number | null;
             title: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         VersionEntry: {
             /** Format: uuid */
             authorId: string | null;
             authorName: string;
+            coEditors: string[];
             comment: string;
             /** Format: date-time */
             createdAt: string;
+            live: boolean;
             number: number;
             restoredFrom: number | null;
             title: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         ViewCounts: {
             canListReaders: boolean;
@@ -3496,7 +5065,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
-            kind: "page" | "subtree" | "space";
+            kind: "page" | "subtree" | "space" | "blog";
             page: components["schemas"]["PageTitle"] | null;
             spaceKey: string;
             spaceName: string;
@@ -3510,7 +5079,7 @@ export interface components {
             /** Format: uuid */
             userId: string;
             /** @enum {string} */
-            via: "page" | "subtree" | "space";
+            via: "page" | "subtree" | "space" | "blog";
             viaPage: components["schemas"]["PageTitle"] | null;
         };
         Watching: {
@@ -3732,6 +5301,106 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    armatureCalendar: {
+        parameters: {
+            query?: {
+                /** @description The project's key, such as CP. */
+                project?: string;
+                /** @description The month as YYYY-MM. */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        month: components["schemas"]["CalendarMonth"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    armatureChart: {
+        parameters: {
+            query?: {
+                /** @description The project's key, such as CP. */
+                project?: string;
+                /** @description An NQL query, at most 2000 characters. */
+                q?: string;
+                /** @description pie or createdResolved. */
+                kind?: "pie" | "createdResolved";
+                /** @description The field a pie shares the issues out by. */
+                groupBy?: "status" | "statusCategory" | "type" | "priority" | "assignee";
+                /** @description How many days back created against resolved counts, 7 to 365; 30 when absent. */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        chart: components["schemas"]["Chart"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -4046,6 +5715,55 @@ export interface operations {
             };
         };
     };
+    armatureRoadmap: {
+        parameters: {
+            query?: {
+                /** @description The project's key, such as CP. */
+                project?: string;
+                /** @description An NQL query, at most 2000 characters. */
+                q?: string;
+                /** @description epic or team. */
+                groupBy?: "epic" | "team";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        roadmap: components["schemas"]["Roadmap"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     searchArmatureIssues: {
         parameters: {
             query?: {
@@ -4260,7 +5978,7 @@ export interface operations {
     downloadAttachment: {
         parameters: {
             query?: {
-                /** @description 1 to show images, PDFs and text in place. */
+                /** @description 1 to show images, videos, PDFs and text in place. */
                 inline?: string;
             };
             header?: never;
@@ -4280,6 +5998,24 @@ export interface operations {
                     "*/*": string;
                 };
             };
+            /** @description Partial Content */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Requested Range Not Satisfiable */
+            416: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
                 headers: {
@@ -4293,7 +6029,10 @@ export interface operations {
     };
     deleteAttachment: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description all deletes every version of the file's name; absent deletes this version alone. */
+                versions?: "all";
+            };
             header?: never;
             path: {
                 attachmentID: string;
@@ -4320,11 +6059,178 @@ export interface operations {
             };
         };
     };
+    editAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attachment: components["schemas"]["Attachment"];
+                    };
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    previewAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    restoreAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attachment: components["schemas"]["Attachment"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listAudit: {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -4373,7 +6279,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -4680,6 +6586,249 @@ export interface operations {
             };
         };
     };
+    deleteCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    renameCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendar: components["schemas"]["Calendar"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listCalendarEvents: {
+        parameters: {
+            query?: {
+                /** @description An RFC 3339 time, the first instant asked for. */
+                from?: string;
+                /** @description An RFC 3339 time after from, at most 62 days later, the first instant not asked for. */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEvents"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        event: components["schemas"]["CalendarEvent"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+                eventID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        event: components["schemas"]["CalendarEvent"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteCalendarEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarID: string;
+                eventID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getThread: {
         parameters: {
             query?: never;
@@ -4974,6 +7123,88 @@ export interface operations {
             };
         };
     };
+    getExampleSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        space: components["schemas"]["Space"] | null;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createExampleSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExampleSpaceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExampleSpaceResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExampleSpaceResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listGroups: {
         parameters: {
             query?: {
@@ -5115,6 +7346,57 @@ export interface operations {
             };
         };
     };
+    labelledPages: {
+        parameters: {
+            query?: {
+                /** @description 1 to 5 labels. */
+                label?: string[];
+                /** @description all when absent: a page carries every label; any: at least one. */
+                match?: "all" | "any";
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description updated, the latest published first, when absent; or title. */
+                sort?: "updated" | "title";
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["LabeledPage"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     suggestLabels: {
         parameters: {
             query?: {
@@ -5181,6 +7463,40 @@ export interface operations {
                         offset: number;
                         pages: components["schemas"]["LabeledPage"][];
                         total: number;
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    linkPreview: {
+        parameters: {
+            query?: {
+                /** @description The full address of the web page, http or https. */
+                url?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        preview: components["schemas"]["LinkPreview"];
                     };
                 };
             };
@@ -5589,6 +7905,138 @@ export interface operations {
             };
         };
     };
+    getAnonymousAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        anonymousAccess: components["schemas"]["AnonymousAccessSettings"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setAnonymousAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnonymousAccessSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        anonymousAccess: components["schemas"]["AnonymousAccessSettings"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hub: components["schemas"]["Hub"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setHub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HubInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hub: components["schemas"]["Hub"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listGlobalPermissions: {
         parameters: {
             query?: never;
@@ -5643,6 +8091,72 @@ export interface operations {
                 content: {
                     "application/json": {
                         permission: components["schemas"]["GlobalGrant"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getPublicLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        publicLinks: components["schemas"]["PublicLinkSettings"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setPublicLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicLinkSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        publicLinks: components["schemas"]["PublicLinkSettings"];
                     };
                 };
             };
@@ -5883,6 +8397,43 @@ export interface operations {
             };
         };
     };
+    setAppearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppearanceInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        appearance: components["schemas"]["Appearance"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     archivePage: {
         parameters: {
             query?: never;
@@ -5984,7 +8535,10 @@ export interface operations {
     };
     listAttachments: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description true lists only the latest version of each name; false when absent. */
+                current?: boolean;
+            };
             header?: never;
             path: {
                 pageID: string;
@@ -6105,6 +8659,71 @@ export interface operations {
             };
         };
     };
+    collab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Switching Protocols: the connection is a WebSocket from here on. */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upgrade Required */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listComments: {
         parameters: {
             query?: {
@@ -6212,6 +8831,51 @@ export interface operations {
                     "application/json": {
                         comparison: components["schemas"]["Comparison"];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    pageContributors: {
+        parameters: {
+            query?: {
+                /** @description page, the default, or tree. */
+                scope?: "page" | "tree";
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageContributors"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -6361,6 +9025,39 @@ export interface operations {
             };
         };
     };
+    listExcerpts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        excerpts: components["schemas"]["Excerpt"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     exportPage: {
         parameters: {
             query?: {
@@ -6432,6 +9129,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getIncluded: {
+        parameters: {
+            query?: {
+                /** @description The excerpt to show; the whole page when absent. */
+                excerpt?: string;
+                /** @description The ids of the pages the include sits in, outermost first, separated by commas. */
+                via?: string;
+            };
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        included: components["schemas"]["Included"];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -6592,6 +9327,59 @@ export interface operations {
             };
         };
     };
+    saveLive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageLiveInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageLiveSaved"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getPageMarkdown: {
         parameters: {
             query?: never;
@@ -6723,6 +9511,59 @@ export interface operations {
             };
         };
     };
+    setPageMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageModeInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageModeChange"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     movePage: {
         parameters: {
             query?: never;
@@ -6823,6 +9664,153 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPageLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        publicLinks: components["schemas"]["PagePublicLinks"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createPageLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicLinkInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        link: components["schemas"]["PublicLink"];
+                        path: string;
+                        token: string;
+                    };
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revokePageLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                linkID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -7070,6 +10058,99 @@ export interface operations {
             };
         };
     };
+    schedulePublish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageScheduleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        schedule: components["schemas"]["PageSchedule"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cancelSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     sharePage: {
         parameters: {
             query?: never;
@@ -7219,6 +10300,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setTaskDone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                taskID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskSetDoneInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        task: components["schemas"]["Task"];
+                    };
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -7671,6 +10790,465 @@ export interface operations {
             };
         };
     };
+    listPosts: {
+        parameters: {
+            query?: {
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description A year to keep, in UTC. */
+                year?: number;
+                /** @description 1 to 12, a month of the year to keep; needs year. */
+                month?: number;
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        next: string | null;
+                        posts: components["schemas"]["Post"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    propertiesReport: {
+        parameters: {
+            query?: {
+                /** @description 1 to 5 labels; a page carries all of them. */
+                label?: string[];
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description Up to 10 property names to show, in order; every name found when absent. */
+                column?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertiesReport"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publicSite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        site: components["schemas"]["PublicSite"];
+                        spaces: components["schemas"]["PublicSpace"][];
+                    };
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publicAttachment: {
+        parameters: {
+            query?: {
+                /** @description 1 to show images, videos, PDFs and text in place. */
+                inline?: string;
+            };
+            header?: never;
+            path: {
+                orgSlug: string;
+                attachmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Partial Content */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested Range Not Satisfiable */
+            416: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    linkedPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["LinkedPage"];
+                        site: components["schemas"]["PublicSite"];
+                    };
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    linkedAttachment: {
+        parameters: {
+            query?: {
+                /** @description 1 to show images, videos, PDFs and text in place. */
+                inline?: string;
+            };
+            header?: never;
+            path: {
+                orgSlug: string;
+                token: string;
+                attachmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Partial Content */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested Range Not Satisfiable */
+            416: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publicPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["PublicPage"];
+                    };
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publicSearch: {
+        parameters: {
+            query?: {
+                /** @description Words, quoted phrases, or and -word. */
+                q?: string;
+                /** @description A space key to stay inside. */
+                space?: string;
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                /** @description How many hits to skip. */
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hits: components["schemas"]["AnonymousHit"][];
+                        limit: number;
+                        more: boolean;
+                        offset: number;
+                    };
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publicSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["PublicTreePage"][];
+                        space: components["schemas"]["PublicSpace"];
+                    };
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     readiness: {
         parameters: {
             query?: never;
@@ -7821,6 +11399,37 @@ export interface operations {
                 content: {
                     "application/json": {
                         pages: components["schemas"]["PageHit"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSpaceTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        templates: components["schemas"]["SpaceTemplate"][];
                     };
                 };
             };
@@ -8003,6 +11612,85 @@ export interface operations {
             };
         };
     };
+    getSpaceAnonymousAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        anonymousAccess: components["schemas"]["SpaceAnonymousAccess"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setSpaceAnonymousAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpaceAnonymousAccessInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        anonymousAccess: components["schemas"]["SpaceAnonymousAccess"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     archiveSpace: {
         parameters: {
             query?: never;
@@ -8090,6 +11778,328 @@ export interface operations {
                         items: components["schemas"]["ArchiveItem"][];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getBlog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        blog: components["schemas"]["Blog"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    watchBlog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unwatchBlog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listCalendars: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendars: components["schemas"]["Calendar"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        calendar: components["schemas"]["Calendar"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDecisions: {
+        parameters: {
+            query?: {
+                /** @description decided or undecided to keep one state; both when absent. */
+                state?: "decided" | "undecided";
+            };
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionLog"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listGuests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        guests: components["schemas"]["Guest"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    inviteGuest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestInviteInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        guest: components["schemas"]["Guest"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeGuest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -8227,6 +12237,329 @@ export interface operations {
                 content: {
                     "application/json": {
                         grants: components["schemas"]["SpaceGrant"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    previewPermissionCopy: {
+        parameters: {
+            query?: {
+                /** @description The key of the space to copy from: a team space other than this one. */
+                from?: string;
+                /** @description replace or merge. */
+                mode?: "replace" | "merge";
+            };
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        preview: components["schemas"]["PermissionCopyPreview"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    copyPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PermissionCopyInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        copy: components["schemas"]["PermissionCopyPreview"];
+                        grants: components["schemas"]["SpaceGrant"][];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listShortcuts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        shortcuts: components["schemas"]["Shortcut"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShortcutInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        shortcut: components["schemas"]["Shortcut"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+                shortcutID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    moveShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+                shortcutID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShortcutMove"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        shortcuts: components["schemas"]["Shortcut"][];
                     };
                 };
             };
@@ -8567,6 +12900,139 @@ export interface operations {
             };
         };
     };
+    taskReport: {
+        parameters: {
+            query?: {
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description me for the caller, none for tasks nobody is assigned, or a person's id; anybody when absent. */
+                assignee?: string;
+                /** @description any when absent; overdue, today and week (today and the six days after) judge by today in UTC; none is tasks without a day. */
+                due?: "any" | "overdue" | "today" | "week" | "none";
+                /** @description open when absent. */
+                state?: "open" | "done" | "all";
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskReport"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listMyTasks: {
+        parameters: {
+            query?: {
+                /** @description open when absent. */
+                state?: "open" | "done";
+                /** @description 1 to 100; 20 when absent. */
+                limit?: number;
+                /** @description The next of the window before; the first window when absent. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        next: string | null;
+                        tasks: components["schemas"]["Task"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    templateButton: {
+        parameters: {
+            query?: {
+                /** @description The template's key, as GET /templates lists it. */
+                template?: string;
+                /** @description The space whose top the page goes at; ignored when parentId is given. */
+                spaceKey?: string;
+                /** @description The page the new one goes under, wherever it was moved. */
+                parentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateButton"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listTemplates: {
         parameters: {
             query?: {
@@ -8741,6 +13207,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createFromTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageFromTemplateInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        page: components["schemas"]["Page"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -9305,6 +13817,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updatedPages: {
+        parameters: {
+            query?: {
+                /** @description A space key to stay inside; a space the caller may not view is not found. */
+                space?: string;
+                /** @description 1 to 50; 10 when absent. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["UpdatedPage"][];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

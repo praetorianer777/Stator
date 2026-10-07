@@ -11,6 +11,11 @@ import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import Mention, { type MentionOptions } from "@tiptap/extension-mention";
 import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 import { Markdown } from "@tiptap/markdown";
+import Collaboration, { isChangeOrigin } from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import type * as Y from "yjs";
+import type { Awareness } from "y-protocols/awareness";
+import { BODY_FIELD } from "@/features/collab/shared";
 import { t } from "@/i18n";
 import { lowlight } from "./languages";
 import { ANCHOR_PATTERN, CELL_BACKGROUNDS, HEADING_LEVELS, PANEL_KINDS, dedupe, safeHref, slug, type CellBackground, type PanelKind } from "./schema";
@@ -18,13 +23,33 @@ import type { SlashItem } from "./slashItems";
 import type { AttachmentIndex } from "./attachmentIndex";
 import { AttachmentChip, FileUpload, Image, type UploadFile } from "./attachments";
 import { ChildPages, TableOfContents } from "./blockNodes";
+import { Column, Columns } from "./columns";
+import { Decision } from "./decision";
 import { Expand } from "./expand";
 import { Hint } from "./hint";
 import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
+import { ArmatureChart } from "./armatureChart";
+import { ArmatureRoadmap } from "./armatureRoadmap";
+import { Properties, PropertyRow } from "./properties";
+import { PropertiesReportNode } from "./propertiesReport";
+import { LabelledPagesNode, RecentlyUpdatedNode } from "./pageLists";
+import { BlogPostsNode } from "./blogPosts";
+import { TaskReportNode } from "./taskReport";
+import { AttachmentListNode } from "./attachmentList";
+import { GalleryImage, GalleryNode } from "./gallery";
+import { TableChartNode } from "./tableChart";
+import { CalendarNode } from "./calendar";
+import { TemplateButtonNode } from "./templateButton";
+import { ContributorsNode } from "./contributors";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
+import { MathBlock, MathInline } from "./math";
+import { Diagram } from "./diagram";
+import { LinkCardNode } from "./linkCard";
+import { Excerpt } from "./excerpt";
+import { Include } from "./include";
 import { EmojiSuggestion, type EmojiOptions } from "./emoji";
 import { FindReplace } from "./findReplace";
 import { TemplateVariable } from "./templateVariable";
@@ -79,6 +104,60 @@ export const Panel = Node.create({
         ({ commands }) =>
           commands.lift(this.name),
     };
+  },
+});
+
+/**
+ * A checklist item that keeps the id its task has on the server, which gives
+ * one to every item without when the page is published.
+ */
+export const Task = TaskItem.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      taskId: {
+        default: null,
+        // A new item from Enter is a new task, and a copy pasted from markup
+        // must not claim the original's id, so the id only comes from a document.
+        keepOnSplit: false,
+        parseHTML: () => null,
+        renderHTML: (attrs: Record<string, unknown>) => (typeof attrs.taskId === "string" ? { "data-task-id": attrs.taskId } : {}),
+      },
+    };
+  },
+});
+
+/**
+ * Gives every checklist item without an id of its own a new one. A live page
+ * is saved every few keystrokes, and the server, which matches an item
+ * without an id to its task by its words, would make a new task of an item
+ * being retyped at each save.
+ */
+export const TaskIds = Extension.create({
+  name: "taskIds",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("taskIds"),
+        appendTransaction: (transactions, _old, state) => {
+          // Another browser's item is that browser's to number.
+          if (!transactions.some((tr) => tr.docChanged && !isChangeOrigin(tr))) return null;
+          const seen = new Set<string>();
+          let tr: Transaction | null = null;
+          state.doc.descendants((node, pos) => {
+            if (node.type.name !== "taskItem") return;
+            const id: unknown = node.attrs.taskId;
+            if (typeof id === "string" && !seen.has(id)) {
+              seen.add(id);
+              return;
+            }
+            tr ??= state.tr;
+            tr.setNodeMarkup(pos, undefined, { ...node.attrs, taskId: crypto.randomUUID() });
+          });
+          return tr;
+        },
+      }),
+    ];
   },
 });
 
@@ -235,6 +314,35 @@ const MarkdownPaste = Extension.create({
   },
 });
 
+/** The part of ProseMirror's view that reads the browser's selection; it is not in its types. */
+interface ObservedView {
+  domObserver?: { flush?: () => void };
+}
+
+/** Reads where the browser put the caret before a key is acted on. */
+const CaretBeforeKeys = Extension.create({
+  name: "caretBeforeKeys",
+  // Ahead of every keymap, which would otherwise act on the old selection too.
+  priority: 1000,
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("caretBeforeKeys"),
+        props: {
+          // A caret key moves the browser's caret at once but tells ProseMirror
+          // by a later selectionchange, which a busy browser lets the next key
+          // overtake. Typed onto a block still selected, that key replaced the
+          // block, so a page lost a block put in just before.
+          handleKeyDown: (view) => {
+            (view as unknown as ObservedView).domObserver?.flush?.();
+            return false;
+          },
+        },
+      }),
+    ];
+  },
+});
+
 export interface SlashMenuOptions {
   suggestion: Omit<SuggestionOptions<SlashItem, SlashItem>, "editor">;
 }
@@ -302,12 +410,47 @@ export interface ExtensionOptions {
   pickIssue?: () => void;
   /** Opens the settings dialog the slash menu's Armature issue list starts with. */
   pickIssueList?: () => void;
-  /** Opens the dialog that changes a status or a date. */
+  /** Opens the settings dialog the slash menu's Armature chart starts with. */
+  pickChart?: () => void;
+  /** Opens the settings dialog the slash menu's Armature roadmap starts with. */
+  pickRoadmap?: () => void;
+  /** Opens the settings dialog the slash menu's properties report starts with. */
+  pickPropertiesReport?: () => void;
+  /** Opens the settings dialog the slash menu's content by label starts with. */
+  pickLabelledPages?: () => void;
+  /** Opens the settings dialog the slash menu's latest blog posts starts with. */
+  pickBlogPosts?: () => void;
+  /** Opens the settings dialog the slash menu's task report starts with. */
+  pickTaskReport?: () => void;
+  /** Opens the dialog the slash menu's gallery starts with. */
+  pickGallery?: () => void;
+  /** Opens the settings dialog the slash menu's calendar starts with. */
+  pickCalendar?: () => void;
+  /** Opens the settings dialog the slash menu's template button starts with. */
+  pickTemplateButton?: () => void;
+  /** Opens the dialog the slash menu's link preview asks for an address with. */
+  pickLinkCard?: () => void;
+  /** Opens the picker the slash menu's include asks what to include with. */
+  pickInclude?: () => void;
+  /** The page being edited, which an include may not show. */
+  pageId?: string;
+  /** Opens the dialog that changes a status, a date or a formula. */
   editInlineValue?: (target: InlineValueTarget) => void;
   /** Draws the emoji a colon offers; without it a colon offers none. */
   emoji?: Partial<EmojiOptions["suggestion"]>;
   /** Opens the find bar with the selected words; without it Ctrl or Cmd+F is the browser's. */
   find?: (seed: string) => void;
+  /** The shared draft the body is bound to, and who this browser is in it; without it the editor holds its own. */
+  collab?: CollabBinding;
+  /** Gives each checklist item an id of its own as it is made. */
+  taskIds?: boolean;
+}
+
+/** A shared draft's document and awareness, and the person editing here. */
+export interface CollabBinding {
+  doc: Y.Doc;
+  awareness: Awareness;
+  user: { id: string; name: string; color: string };
 }
 
 /** Every extension the editor runs; the read-only view draws the same nodes. */
@@ -322,12 +465,28 @@ export function editorExtensions({
   armature,
   pickIssue,
   pickIssueList,
+  pickLinkCard,
+  pickChart,
+  pickRoadmap,
+  pickPropertiesReport,
+  pickLabelledPages,
+  pickBlogPosts,
+  pickTaskReport,
+  pickCalendar,
+  pickGallery,
+  pickTemplateButton,
+  pickInclude,
+  pageId,
   editInlineValue,
   emoji,
   find,
+  collab,
+  taskIds = false,
 }: ExtensionOptions = {}): AnyExtension[] {
   const shared: AnyExtension[] = [
     StarterKit.configure({
+      // The shared draft keeps its own undo, of this person's changes only.
+      undoRedo: collab ? false : undefined,
       underline: false,
       codeBlock: false,
       heading: false,
@@ -345,6 +504,7 @@ export function editorExtensions({
       suggestion: { char: "@", items: () => [], ...mention },
     }),
     ...(emoji ? [EmojiSuggestion.configure({ suggestion: emoji })] : []),
+    CaretBeforeKeys,
     Extension.create({
       name: "submitOnModEnter",
       addKeyboardShortcuts() {
@@ -362,13 +522,17 @@ export function editorExtensions({
   return [
     ...shared,
     TaskList,
-    TaskItem.configure({ nested: true, a11y: { checkboxLabel: () => t.editor.taskDone } }),
+    Task.configure({ nested: true, a11y: { checkboxLabel: () => t.editor.taskDone } }),
+    ...(taskIds ? [TaskIds] : []),
     Table.configure({ resizable: false }),
     TableRow,
     HeaderCell,
     Cell,
     Panel,
     Expand,
+    Columns,
+    Column,
+    Decision,
     HeadingAnchors,
     SlashMenu.configure({ suggestion: slash }),
     TableOfContents,
@@ -381,9 +545,37 @@ export function editorExtensions({
     ArmatureIssue.configure({ source: armature }),
     ArmatureIssueBlock.configure({ pick: pickIssue }),
     ArmatureIssueList.configure({ pick: pickIssueList }),
+    ArmatureChart.configure({ pick: pickChart }),
+    ArmatureRoadmap.configure({ pick: pickRoadmap }),
+    Properties,
+    PropertyRow,
+    PropertiesReportNode.configure({ pick: pickPropertiesReport }),
+    LabelledPagesNode.configure({ pick: pickLabelledPages }),
+    RecentlyUpdatedNode,
+    BlogPostsNode.configure({ pick: pickBlogPosts }),
+    TaskReportNode.configure({ pick: pickTaskReport }),
+    AttachmentListNode.configure({ pageId }),
+    GalleryNode.configure({ pick: pickGallery, index: attachments }),
+    GalleryImage,
+    TableChartNode,
+    CalendarNode.configure({ pick: pickCalendar }),
+    TemplateButtonNode.configure({ pick: pickTemplateButton }),
+    ContributorsNode,
     Status.configure({ edit: editInlineValue }),
     DateNode.configure({ edit: editInlineValue }),
+    MathInline.configure({ edit: editInlineValue }),
+    MathBlock.configure({ edit: editInlineValue }),
+    Diagram,
+    LinkCardNode.configure({ pick: pickLinkCard }),
+    Excerpt,
+    Include.configure({ pick: pickInclude, pageId }),
     FindReplace.configure({ open: find }),
+    ...(collab
+      ? [
+          Collaboration.configure({ document: collab.doc, field: BODY_FIELD }),
+          CollaborationCaret.configure({ provider: { awareness: collab.awareness }, user: collab.user }),
+        ]
+      : []),
     ...(variant === "template" ? [TemplateVariable] : []),
   ];
 }

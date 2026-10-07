@@ -28,6 +28,8 @@ x-s3-env: &s3-env
   STATOR_S3_SECRET_KEY: ${S3_SECRET_KEY:-stator-dev-secret}
   # The largest file a page takes; nginx passes any size through to the api.
   STATOR_UPLOAD_LIMIT: 50MB
+  # Office documents are converted to PDF here for their previews.
+  STATOR_CONVERTER_URL: http://converter:3000
 
 # Sign-in. The key seals the provider's client secret and is for development
 # only. The browser reaches Keycloak on the published port, which is also the
@@ -41,10 +43,12 @@ x-auth-env: &auth-env
 # Armature, as the stub stands in for it. An administrator connects
 # http://localhost:${ARMATURE_STUB_PORT}, the address a browser opens; the api
 # and the worker reach it on the stack's network. The guard lets the stub's
-# host through here only; the chart allows nothing inside the network. For a
+# host through here, and the web container's, the one page inside the network
+# the browser suite's link previews can read; the chart allows nothing inside
+# the network. For a
 # real Armature on the host, see docs/api-contract-m3.md.
 x-armature-env: &armature-env
-  STATOR_OUTBOUND_ALLOW: armature-stub
+  STATOR_OUTBOUND_ALLOW: armature-stub,web
   STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080
 
 # Who an organization of the stack is made with: the realm's people, let in
@@ -187,6 +191,29 @@ services:
       start_period: 60s
       start_interval: 1s
 
+  # Converts office documents to PDF for their previews: a headless office
+  # suite behind a small HTTP API, which only the api calls, so it publishes
+  # no port. Its browser half is never started and its routes are off.
+  converter:
+    image: gotenberg/gotenberg:8.25.1
+    command:
+      - gotenberg
+      - --chromium-auto-start=false
+      - --chromium-disable-routes=true
+      - --libreoffice-auto-start=true
+      - --webhook-disable=true
+      - --prometheus-disable-collect=true
+      # Longer than the api waits for one conversion, so the api is the one
+      # that gives up and says so.
+      - --api-timeout=30s
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+      start_interval: 1s
+
   # The identity provider. The realm is imported afresh on every start, so no
   # volume: a mounted data directory would be root owned while the image runs
   # unprivileged. The browser reaches it on the published port, containers as
@@ -256,6 +283,8 @@ services:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
+      converter:
+        condition: service_healthy
       armature-stub:
         condition: service_healthy
       # After the seed rather than beside it: a stack that answers is one a
@@ -306,6 +335,10 @@ services:
       STATOR_MAIL_FROM: Stator <no-reply@stator.test>
       # A verification made to run out in a test is told within seconds.
       STATOR_VERIFICATION_CHECK_INTERVAL: 10s
+      # So is a task whose day a test sets to today.
+      STATOR_TASK_DUE_CHECK_INTERVAL: 10s
+      # A publish a test schedules a few seconds ahead goes out within them.
+      STATOR_SCHEDULE_CHECK_INTERVAL: 1s
     healthcheck:
       # The worker serves nothing but its metrics, so they are its sign of life.
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/metrics"]

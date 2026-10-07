@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { stubUploads, upload } from "@/test/xhr";
 import { ApiError } from "./client";
-import { attachmentUrl, canPreview, formatSize, isImage, uploadAttachment, uploadErrorMessage, type Attachment } from "./attachments";
+import { attachmentUrl, canPreview, formatSize, isImage, isVideo, uploadAttachment, uploadErrorMessage, type Attachment } from "./attachments";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -17,6 +17,11 @@ const stored: Attachment = {
   height: null,
   uploadedByName: "Ada Lovelace",
   createdAt: "2026-09-29T09:00:00Z",
+  version: 1,
+  versions: 1,
+  restoredFrom: null,
+  editedFrom: null,
+  preview: "none",
 };
 
 describe("formatSize", () => {
@@ -31,9 +36,21 @@ describe("formatSize", () => {
 
 describe("what a browser shows in place", () => {
   it("previews exactly what the API serves inline", () => {
-    for (const type of ["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf", "text/plain; charset=utf-8"])
+    for (const type of [
+      "image/png",
+      "image/jpeg",
+      "image/gif",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+      "video/ogg",
+      "application/pdf",
+      "text/plain; charset=utf-8",
+    ])
       expect(canPreview(type), type).toBe(true);
-    for (const type of ["image/svg+xml", "text/html", "application/zip"]) expect(canPreview(type), type).toBe(false);
+    for (const type of ["image/svg+xml", "text/html", "application/zip", "video/quicktime"]) expect(canPreview(type), type).toBe(false);
+    expect(isVideo("video/webm; codecs=vp9")).toBe(true);
+    expect(isVideo("image/png")).toBe(false);
     expect(isImage("image/png")).toBe(true);
     expect(isImage("image/svg+xml")).toBe(false);
     expect(isImage("application/pdf")).toBe(false);

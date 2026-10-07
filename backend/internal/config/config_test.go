@@ -20,18 +20,37 @@ func clean(t *testing.T) {
 		"STATOR_VALKEY_URL", "STATOR_SESSION_COOKIE",
 		"STATOR_SECURE_COOKIES", "STATOR_OTEL_ENDPOINT", "STATOR_OTEL_SAMPLE_RATIO",
 		"STATOR_S3_ENDPOINT", "STATOR_S3_BUCKET", "STATOR_S3_ACCESS_KEY", "STATOR_S3_SECRET_KEY",
-		"STATOR_S3_REGION", "STATOR_S3_USE_SSL", "STATOR_UPLOAD_LIMIT",
+		"STATOR_S3_REGION", "STATOR_S3_USE_SSL", "STATOR_UPLOAD_LIMIT", "STATOR_CONVERTER_URL",
 		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
 		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
 		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
 		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
-		"STATOR_VERIFICATION_CHECK_INTERVAL",
+		"STATOR_VERIFICATION_CHECK_INTERVAL", "STATOR_TASK_DUE_CHECK_INTERVAL", "STATOR_SCHEDULE_CHECK_INTERVAL",
 	} {
 		t.Setenv(key, "")
 	}
 	t.Setenv("STATOR_DB_PRIMARY_URL", "postgres://app@db/stator")
+}
+
+// The conversion service is optional, and an address that is no web
+// address is refused by name rather than failing at the first preview.
+func TestTheConverterIsAnHTTPAddressOrNothing(t *testing.T) {
+	clean(t)
+	if cfg, err := Load(); err != nil || cfg.ConverterURL != "" {
+		t.Fatalf("no converter reads as %q, %v", cfg.ConverterURL, err)
+	}
+	t.Setenv("STATOR_CONVERTER_URL", "http://converter:3000/")
+	if cfg, err := Load(); err != nil || cfg.ConverterURL != "http://converter:3000" {
+		t.Errorf("the converter reads as %q, %v", cfg.ConverterURL, err)
+	}
+	for _, bad := range []string{"converter:3000", "ftp://converter", "http://"} {
+		t.Setenv("STATOR_CONVERTER_URL", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_CONVERTER_URL") {
+			t.Errorf("%q should be refused by name, got %v", bad, err)
+		}
+	}
 }
 
 func TestUploadLimitReadsSizes(t *testing.T) {
@@ -221,6 +240,31 @@ func TestTheVerificationCheckIsAnInterval(t *testing.T) {
 		_, err := Load()
 		var cfgErr *Error
 		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_VERIFICATION_CHECK_INTERVAL") {
+			t.Errorf("%s was not refused by name: %v", bad, err)
+		}
+	}
+}
+
+// The task reminder runs every ten minutes unless told otherwise, and an
+// interval too short to be meant is refused with what to set.
+func TestTheTaskDueCheckIsAnInterval(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.TaskDueCheck != DefaultTaskDueCheck {
+		t.Errorf("the task reminder runs every %s, want %s", c.TaskDueCheck, DefaultTaskDueCheck)
+	}
+	t.Setenv("STATOR_TASK_DUE_CHECK_INTERVAL", "1m")
+	if c, err = Load(); err != nil || c.TaskDueCheck != time.Minute {
+		t.Errorf("1m read as %s, %v", c.TaskDueCheck, err)
+	}
+	for _, bad := range []string{"0s", "10ms", "-5m"} {
+		t.Setenv("STATOR_TASK_DUE_CHECK_INTERVAL", bad)
+		_, err := Load()
+		var cfgErr *Error
+		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_TASK_DUE_CHECK_INTERVAL") {
 			t.Errorf("%s was not refused by name: %v", bad, err)
 		}
 	}
@@ -496,5 +540,30 @@ func TestArmatureIsReachedAsTheOperatorSays(t *testing.T) {
 	t.Setenv("STATOR_ARMATURE_BACKCHANNEL", "armature-stub")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_ARMATURE_BACKCHANNEL") {
 		t.Errorf("an unreadable pair was not refused by name: %v", err)
+	}
+}
+
+// Scheduled publishes are looked for every half minute unless told
+// otherwise, and an interval too short to be meant is refused with what to set.
+func TestTheScheduleCheckIsAnInterval(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ScheduleCheck != DefaultScheduleCheck {
+		t.Errorf("scheduled publishes are looked for every %s, want %s", c.ScheduleCheck, DefaultScheduleCheck)
+	}
+	t.Setenv("STATOR_SCHEDULE_CHECK_INTERVAL", "5s")
+	if c, err = Load(); err != nil || c.ScheduleCheck != 5*time.Second {
+		t.Errorf("5s read as %s, %v", c.ScheduleCheck, err)
+	}
+	for _, bad := range []string{"0s", "100ms", "-30s"} {
+		t.Setenv("STATOR_SCHEDULE_CHECK_INTERVAL", bad)
+		_, err := Load()
+		var cfgErr *Error
+		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_SCHEDULE_CHECK_INTERVAL") {
+			t.Errorf("%s was not refused by name: %v", bad, err)
+		}
 	}
 }

@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"regexp"
@@ -96,6 +97,13 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 	case "paragraph":
 		out := r.inline(n.Content, ctxBlock)
 		return out, out != ""
+	// Markdown has no decision items, so one reads as a line that says its state.
+	case document.NodeDecision:
+		label := "Undecided:"
+		if stringAttr(n, "state") == document.DecisionDecided {
+			label = "Decided:"
+		}
+		return strings.TrimSpace("**" + label + "** " + r.inline(n.Content, ctxBlock)), true
 	case "heading":
 		level := intAttr(n, "level", 1)
 		return strings.Repeat("#", level+1) + " " + r.inline(n.Content, ctxHeading), true
@@ -103,6 +111,18 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 		return "---", true
 	case "codeBlock":
 		return codeFence(textOf(n), stringAttr(n, "language")), true
+	// A math fence is how Markdown that typesets formulas writes one on its
+	// own line, and the import reads it back as one.
+	case document.NodeMathBlock:
+		return codeFence(stringAttr(n, "latex"), mathLanguage), true
+	// A mermaid fence is drawn as a diagram where Markdown draws them, and
+	// reads as its source everywhere else.
+	case document.NodeDiagram:
+		return codeFence(stringAttr(n, "source"), diagramLanguage), true
+	// A card's words are read for each reader, so its address stands alone
+	// on its line, where Markdown readers that draw cards draw one.
+	case document.NodeLinkCard:
+		return "<" + strings.NewReplacer("<", "%3C", ">", "%3E").Replace(stringAttr(n, "url")) + ">", true
 	case "blockquote":
 		return quote(r.blocks(n.Content, depth+1)), true
 	case "panel":
@@ -126,12 +146,95 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 		}
 		b.WriteString("</details>")
 		return b.String(), true
+	// Markdown has no columns, so they read one after another, as they do
+	// on a narrow screen; an excerpt reads as the blocks it marks, its name
+	// being for pickers.
+	case "columns", "column", document.NodeExcerpt:
+		out := r.blocks(n.Content, depth+1)
+		return out, out != ""
 	case "bulletList", "orderedList", "taskList":
 		return r.list(n, depth), true
+	// Markdown has no properties, so they read as the two-column table they look like.
+	case document.NodeProperties:
+		return r.table(propertiesTable(n), depth)
+	// A list's pages are each reader's, so the export keeps what it lists.
+	case document.NodeLabelledPages:
+		return div(kindLabelled, [][2]string{
+			{"data-labels", strings.Join(stringsAttr(n, "labels"), ",")},
+			{"data-match", stringAttr(n, "match")},
+			{"data-space", stringAttr(n, "space")},
+			{"data-sort", stringAttr(n, "sort")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
+		}, ""), true
+	case document.NodeRecentlyUpdated:
+		return div(kindUpdated, [][2]string{
+			{"data-space", stringAttr(n, "space")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
+		}, ""), true
+	case document.NodeBlogPosts:
+		return div(kindPosts, [][2]string{
+			{"data-space", stringAttr(n, "space")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultListedPages))},
+		}, ""), true
+	// Markdown has no charts, so the table stands as a table and a marker
+	// before it says what to draw of it.
+	case document.NodeTableChart:
+		show, _ := n.Attrs["showTable"].(bool)
+		marker := div(kindTableChart, [][2]string{{"data-chart", stringAttr(n, "chart")}, {"data-show-table", strconv.FormatBool(show)}}, "")
+		if len(n.Content) == 0 {
+			return marker, true
+		}
+		table, ok := r.table(n.Content[0], depth)
+		if !ok {
+			return marker, true
+		}
+		return marker + "\n\n" + table, true
+	// The files are the page's own, which an export carries beside it.
+	case document.NodeAttachmentList:
+		return div(kindFiles, nil, ""), true
+	// The events live in the calendar, so the export keeps which one to draw.
+	case document.NodeCalendar:
+		return div(kindCalendar, [][2]string{
+			{"data-calendar-id", stringAttr(n, "calendarId")},
+			{"data-project", stringAttr(n, "project")},
+		}, ""), true
+	// A button does its work in Stator, so the export keeps what it makes, its words as the text.
+	case document.NodeTemplateButton:
+		return div(kindButton, [][2]string{
+			{"data-template", stringAttr(n, "template")},
+			{"data-space", stringAttr(n, "space")},
+			{"data-parent", stringAttr(n, "parent")},
+			{"data-title", stringAttr(n, "title")},
+		}, stringAttr(n, "label")), true
+	// The people are read from the page's history, so the export keeps what to count.
+	case document.NodeContributors:
+		return div(kindPeople, [][2]string{
+			{"data-scope", stringAttr(n, "scope")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultContributors))},
+		}, ""), true
+	// A report's tasks are each reader's, so the export keeps what it picks.
+	case document.NodeTaskReport:
+		return div(kindTasks, [][2]string{
+			{"data-space", stringAttr(n, "space")},
+			{"data-assignee", stringAttr(n, "assignee")},
+			{"data-due", stringAttr(n, "due")},
+			{"data-state", stringAttr(n, "state")},
+			{"data-limit", strconv.Itoa(intAttr(n, "limit", document.DefaultReportedTasks))},
+		}, ""), true
+	// A report's rows are each reader's, so the export keeps what it gathers.
+	case document.NodePropertiesReport:
+		columns, _ := json.Marshal(stringsAttr(n, "columns"))
+		return div(kindReport, [][2]string{
+			{"data-labels", strings.Join(stringsAttr(n, "labels"), ",")},
+			{"data-space", stringAttr(n, "space")},
+			{"data-columns", string(columns)},
+		}, ""), true
 	case "table":
 		return r.table(n, depth)
 	case "image":
 		return r.image(n)
+	case document.NodeGallery:
+		return r.gallery(n)
 	case armature.NodeIssueBlock:
 		return div(kindIssue, nil, stringAttr(n, "key")), true
 	case armature.NodeIssueList:
@@ -149,6 +252,27 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 		}
 		attrs = append(attrs, [2]string{"data-sort", stringAttr(n, "sort")})
 		return div(kindChildPages, attrs, ""), true
+	// What an include shows is read for each reader, so the export keeps
+	// what it points at, which an import into the same organization finds.
+	// A chart's counts are each reader's, so the export keeps what it counts.
+	case armature.NodeChart:
+		return div(kindChart, [][2]string{
+			{"data-project", stringAttr(n, "project")},
+			{"data-chart", stringAttr(n, "chart")},
+			{"data-group-by", stringAttr(n, "groupBy")},
+			{"data-days", strconv.Itoa(intAttr(n, "days", armature.DefaultChartDays))},
+		}, stringAttr(n, "query")), true
+	case armature.NodeRoadmap:
+		return div(kindRoadmap, [][2]string{
+			{"data-project", stringAttr(n, "project")},
+			{"data-group-by", stringAttr(n, "groupBy")},
+		}, stringAttr(n, "query")), true
+	case document.NodeInclude:
+		attrs := [][2]string{{"data-page", stringAttr(n, "pageId")}}
+		if excerpt := stringAttr(n, "excerptId"); excerpt != "" {
+			attrs = append(attrs, [2]string{"data-excerpt", excerpt})
+		}
+		return div(kindInclude, attrs, ""), true
 	}
 	return "", false
 }
@@ -228,8 +352,43 @@ func (r renderer) image(n document.Node) (string, bool) {
 	return "![" + r.escape(alt, escText, false) + "](" + destination(dest) + ")", true
 }
 
+// gallery writes the pictures as img elements in a div that says how many go
+// in a row, so a Markdown reader that shows HTML shows them, and its caption
+// as each picture's description. A picture whose file is not written is left out.
+func (r renderer) gallery(n document.Node) (string, bool) {
+	var pictures []string
+	for _, c := range n.Content {
+		if dest, ok := r.links.file(stringAttr(c, "attachmentId")); ok {
+			pictures = append(pictures, fmt.Sprintf(`<img src="%s" alt="%s">`, htmlText(dest), htmlText(stringAttr(c, "caption"))))
+		}
+	}
+	if len(pictures) == 0 {
+		return "", false
+	}
+	columns := strconv.Itoa(intAttr(n, "columns", document.DefaultGalleryColumns))
+	return "<div" + htmlAttrs(kindGallery, [][2]string{{"data-columns", columns}}) + ">\n" + strings.Join(pictures, "\n") + "\n</div>", true
+}
+
 // table writes a GFM table. The first row is its header; a merged cell's
 // content goes in its first place, and each cell's blocks share one line.
+// propertiesTable is a properties block as a table headed Property and Value.
+func propertiesTable(n document.Node) document.Node {
+	cell := func(kind string, content ...document.Node) document.Node {
+		return document.Node{Type: kind, Content: []document.Node{{Type: "paragraph", Content: content}}}
+	}
+	text := func(s string) []document.Node {
+		if s == "" {
+			return nil
+		}
+		return []document.Node{{Type: "text", Text: s}}
+	}
+	rows := []document.Node{{Type: "tableRow", Content: []document.Node{cell("tableHeader", text("Property")...), cell("tableHeader", text("Value")...)}}}
+	for _, row := range n.Content {
+		rows = append(rows, document.Node{Type: "tableRow", Content: []document.Node{cell("tableCell", text(stringAttr(row, "key"))...), cell("tableCell", row.Content...)}})
+	}
+	return document.Node{Type: "table", Content: rows}
+}
+
 func (r renderer) table(n document.Node, depth int) (string, bool) {
 	var grid [][]string
 	var aligns []string
@@ -324,6 +483,15 @@ func (r renderer) cell(nodes []document.Node, depth int) string {
 			} else {
 				out = r.escape(stringAttr(c, "alt"), escTable, false)
 			}
+		// A cell is one line, so its gallery is its pictures side by side.
+		case document.NodeGallery:
+			var pictures []string
+			for _, p := range c.Content {
+				if dest, ok := r.links.file(stringAttr(p, "attachmentId")); ok {
+					pictures = append(pictures, "!["+r.escape(stringAttr(p, "caption"), escTable, false)+"]("+destination(dest)+")")
+				}
+			}
+			out = strings.Join(pictures, " ")
 		default:
 			if depth > document.MaxDepth {
 				continue
@@ -576,8 +744,35 @@ func (r renderer) atom(n document.Node, ctx inlineCtx) string {
 	case document.NodeVariable:
 		name := stringAttr(n, "name")
 		return span(kindVariable, [][2]string{{"data-name", name}}, r.escape("{"+name+"}", esc, false))
+	case document.NodeMathInline:
+		return inlineMath(stringAttr(n, "latex"), ctx)
 	}
 	return ""
+}
+
+// mathLanguage and diagramLanguage are the fence languages a formula on its
+// own line and a diagram are written with.
+const (
+	mathLanguage    = "math"
+	diagramLanguage = "mermaid"
+)
+
+// inlineMath writes a formula between dollar signs, its source as it is: TeX
+// already writes a dollar inside a formula as \$, so a bare one is escaped
+// only to keep the formula closed. A table splits its cells before anything
+// else and takes every \| back to a pipe, so each pipe there gains one.
+func inlineMath(latex string, ctx inlineCtx) string {
+	latex = strings.Join(strings.Fields(latex), " ")
+	var b strings.Builder
+	escaped := false
+	for _, c := range latex {
+		if (c == '$' && !escaped) || (c == '|' && ctx == ctxTable) {
+			b.WriteByte('\\')
+		}
+		escaped = c == '\\' && !escaped
+		b.WriteRune(c)
+	}
+	return "$" + b.String() + "$"
 }
 
 func span(kind string, attrs [][2]string, inner string) string {

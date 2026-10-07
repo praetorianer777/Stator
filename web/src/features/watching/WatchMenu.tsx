@@ -39,8 +39,15 @@ export function WatchMenu({ page, space, onFailure }: { page: Page; space: Space
 
   const items: MenuItem[] = [
     { label: marked(t.watch.page, page.watching.page), onSelect: () => watchPage.mutate(false, told), attrs: { "data-action": "watch-page" } },
-    { label: marked(t.watch.subtree, page.watching.subtree), onSelect: () => watchPage.mutate(true, told), attrs: { "data-action": "watch-subtree" } },
   ];
+  // A post has no pages below it to watch.
+  if (page.kind !== "post") {
+    items.push({
+      label: marked(t.watch.subtree, page.watching.subtree),
+      onSelect: () => watchPage.mutate(true, told),
+      attrs: { "data-action": "watch-subtree" },
+    });
+  }
   if (own) items.push({ label: t.watch.stopPage, onSelect: () => unwatchPage.mutate(undefined, told), attrs: { "data-action": "unwatch-page" } });
   items.push(
     space.watching

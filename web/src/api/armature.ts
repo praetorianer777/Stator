@@ -178,6 +178,58 @@ export function useArmatureSearch(query: string, limit: number, enabled: boolean
   });
 }
 
+/** An NQL query's issues on a timeline for a roadmap block, as the caller may see them. */
+export type ArmatureRoadmapAnswer = Awaited<ReturnType<typeof roadmapOf>>;
+
+async function roadmapOf(settings: { project: string; query: string; groupBy: "epic" | "team" }) {
+  return (await api.GET("/armature/roadmap", { params: { query: { project: settings.project, q: settings.query, groupBy: settings.groupBy } } })).data!;
+}
+
+/** A roadmap block's rows; kept with the searches, so an issue's change asks again. */
+export function useArmatureRoadmap(settings: Parameters<typeof roadmapOf>[0], enabled: boolean) {
+  return useQuery({
+    queryKey: [...searchQueryKey, "roadmap", settings.project, settings.query, settings.groupBy],
+    enabled: enabled && settings.query.trim() !== "",
+    queryFn: () => roadmapOf(settings),
+  });
+}
+
+/** A project's dated issues in one month for a calendar block, as the caller may see them. */
+export type ArmatureCalendarAnswer = Awaited<ReturnType<typeof calendarMonthOf>>;
+
+async function calendarMonthOf(project: string, month: string) {
+  return (await api.GET("/armature/calendar", { params: { query: { project, month } } })).data!;
+}
+
+/** A calendar block's due issues; kept with the searches, so an issue's change asks again. */
+export function useArmatureCalendar(project: string | null, month: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...searchQueryKey, "calendar", project, month],
+    enabled: enabled && project !== null,
+    queryFn: () => calendarMonthOf(project!, month),
+  });
+}
+
+/** A count of an NQL query's issues for a chart block, as the caller may see them. */
+export type ArmatureChartAnswer = Awaited<ReturnType<typeof chartOf>>;
+
+async function chartOf(settings: { project: string; query: string; chart: "pie" | "createdResolved"; groupBy: string; days: number }) {
+  return (
+    await api.GET("/armature/chart", {
+      params: { query: { project: settings.project, q: settings.query, kind: settings.chart, groupBy: settings.groupBy as never, days: settings.days } },
+    })
+  ).data!;
+}
+
+/** A chart block's counts; kept with the searches, so an issue's change asks again. */
+export function useArmatureChart(settings: Parameters<typeof chartOf>[0], enabled: boolean) {
+  return useQuery({
+    queryKey: [...searchQueryKey, "chart", settings.project, settings.query, settings.chart, settings.groupBy, settings.days],
+    enabled: enabled && settings.query.trim() !== "",
+    queryFn: () => chartOf(settings),
+  });
+}
+
 /** The issue types a new issue may take, sub-tasks left out. */
 export function useArmatureIssueTypes(enabled: boolean) {
   return useQuery({

@@ -21,6 +21,7 @@ const item = (over: Partial<TrashItem>): TrashItem => ({
   pages: 3,
   parentTitle: "Handbook",
   parentInTree: true,
+  kind: "page",
   ...over,
 });
 const gone = item({});

@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -229,6 +230,63 @@ func (s *Server) handleSearchArmatureIssues(w http.ResponseWriter, r *http.Reque
 	respondJSON(w, r, http.StatusOK, map[string]any{
 		"status": status, "issues": found.Issues, "total": found.Total, "limit": found.Limit, "offset": found.Offset, "url": found.URL,
 	})
+}
+
+// The chart block (#51): a count of the issues an NQL query matches, as the
+// caller may see them, drawn as a pie or as created against resolved.
+func (s *Server) handleArmatureChart(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	q := r.URL.Query()
+	in := armature.ChartInput{Project: q.Get("project"), Query: q.Get("q"), Kind: armature.ChartKind(q.Get("kind")), GroupBy: q.Get("groupBy"), Days: armature.DefaultChartDays}
+	if raw := q.Get("days"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			respondError(w, r, ErrValidation(map[string]string{"days": fmt.Sprintf("Count %d to %d days back.", armature.MinChartDays, armature.MaxChartDays)}))
+			return
+		}
+		in.Days = n
+	}
+	status, chart, err := s.Armature.Chart(r.Context(), in)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "chart": chart})
+}
+
+// The roadmap block (#52): the issues an NQL query matches on a timeline of
+// their start and due days, under their epics or their teams.
+func (s *Server) handleArmatureRoadmap(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	q := r.URL.Query()
+	status, roadmap, err := s.Armature.Roadmap(r.Context(), armature.RoadmapInput{Project: q.Get("project"), Query: q.Get("q"), GroupBy: armature.RoadmapGrouping(q.Get("groupBy"))})
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "roadmap": roadmap})
+}
+
+// A calendar block's Armature source (#60): a project's dated issues in a
+// month, beside the calendar's own events.
+func (s *Server) handleArmatureCalendar(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	q := r.URL.Query()
+	status, month, err := s.Armature.Calendar(r.Context(), q.Get("project"), q.Get("month"))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "month": month})
 }
 
 func (s *Server) handleListArmatureIssueTypes(w http.ResponseWriter, r *http.Request) {

@@ -11,14 +11,16 @@ import { TemplatePicker } from "./TemplatePicker";
 
 /**
  * Names a new page under a parent and picks what it starts from; the page is
- * made unpublished and opens in the editor.
+ * made unpublished and opens in the editor. A folder takes a name alone.
  */
 export function NewPageDialog({
   parent,
+  folder = false,
   onClose,
   onDone,
 }: {
   parent: { id: string; title: string; spaceKey?: string };
+  folder?: boolean;
   onClose: () => void;
   onDone: (page: Page) => void;
 }) {
@@ -54,20 +56,23 @@ export function NewPageDialog({
       return;
     }
     setError("");
-    create.mutate(
-      {
-        parentId: parent.id,
-        title,
-        ...(template ? { template: template.key } : {}),
-        ...(variables.length > 0 ? { values: wireValues(values) } : {}),
-      },
-      { onSuccess: onDone },
-    );
+    const what = folder
+      ? { kind: "folder" as const }
+      : {
+          ...(template ? { template: template.key } : {}),
+          ...(variables.length > 0 ? { values: wireValues(values) } : {}),
+        };
+    create.mutate({ parentId: parent.id, title, ...what }, { onSuccess: onDone });
   }
 
   const banner = create.error && !Object.keys(fields).some((field) => field.startsWith("values.") || field === "title") ? create.error.message : "";
   return (
-    <Dialog title={t.page.newPageUnder(parent.title)} wide onClose={onClose} data-new-page-dialog="">
+    <Dialog
+      title={folder ? t.page.newFolderUnder(parent.title) : t.page.newPageUnder(parent.title)}
+      wide={!folder}
+      onClose={onClose}
+      data-new-page-dialog={folder ? "folder" : ""}
+    >
       <form onSubmit={submit} className="space-y-3" noValidate>
         {banner && <ErrorBanner>{fields.template ?? banner}</ErrorBanner>}
         <Field
@@ -82,7 +87,7 @@ export function NewPageDialog({
           hint={variables.length > 0 ? t.templates.titleHint : undefined}
           autoFocus
         />
-        <TemplatePicker value={key} onChange={choose} spaceKey={parent.spaceKey} />
+        {!folder && <TemplatePicker value={key} onChange={choose} spaceKey={parent.spaceKey} />}
         <TemplateValues variables={variables} values={values} onChange={setValues} parentId={parent.id} errors={fields} />
         {template && error && (
           <p role="alert" className="text-sm text-danger" data-template-missing="">
@@ -94,7 +99,7 @@ export function NewPageDialog({
             {t.page.cancel}
           </Button>
           <Button type="submit" loading={create.isPending} data-action="confirm-new-page">
-            {t.page.create}
+            {folder ? t.page.createFolder : t.page.create}
           </Button>
         </div>
       </form>

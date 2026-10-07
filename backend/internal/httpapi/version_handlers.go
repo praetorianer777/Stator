@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/page"
 )
@@ -50,6 +51,41 @@ func (s *Server) handleDiscardDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lsn, err := s.Pages.DiscardDraft(r.Context(), actorFrom(r), id)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondNoContent(w)
+}
+
+func (s *Server) handleSchedulePublish(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req page.ScheduleInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	schedule, lsn, err := s.Pages.SchedulePublish(r.Context(), actorFrom(r), id, req)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"schedule": schedule})
+}
+
+func (s *Server) handleCancelSchedule(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	lsn, err := s.Pages.CancelSchedule(r.Context(), actorFrom(r), id)
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
@@ -194,4 +230,54 @@ func window(r *http.Request, defaultLimit, maxLimit int) (int, int, *APIError) {
 		offset = n
 	}
 	return limit, offset, nil
+}
+
+func (s *Server) handleSaveLive(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req page.LiveInput
+	if err := decodeJSONWithin(w, r, &req, pageBodyBytes); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	saved, replaced, lsn, err := s.Pages.SaveLive(r.Context(), actorFrom(r), id, req)
+	noteWrite(r.Context(), lsn)
+	s.resetRoom(id, replaced)
+	if err != nil {
+		respondError(w, r, asValidationError(err))
+		return
+	}
+	respondJSON(w, r, http.StatusOK, saved)
+}
+
+func (s *Server) handleSetPageMode(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req page.ModeInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	changed, replaced, lsn, err := s.Pages.SetMode(r.Context(), actorFrom(r), id, req)
+	noteWrite(r.Context(), lsn)
+	s.resetRoom(id, replaced)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, changed)
+}
+
+// resetRoom sends the editors of a shared draft the service threw away to
+// load the one that takes its place.
+func (s *Server) resetRoom(pageID uuid.UUID, room *uuid.UUID) {
+	if room != nil && s.Collab != nil {
+		s.Collab.Reset(pageID, *room)
+	}
 }

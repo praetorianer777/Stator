@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { Doc } from "@/features/editor/schema";
 import { api } from "./client";
-import { pagesQueryKey, type Page } from "./pages";
+import { pageQueryKey, pagesQueryKey, type Page } from "./pages";
 import type { components } from "./schema";
 
 type Wire = components["schemas"];
@@ -62,9 +62,20 @@ function refreshTrees(queryClient: QueryClient) {
 export function useCreatePage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: Placement & { title: string; body?: Doc; template?: string; values?: Record<string, string> }): Promise<Page> =>
-      (await api.POST("/pages", { body: input })).data!.page as Page,
+    mutationFn: async (
+      input: Placement & { title: string; body?: Doc; kind?: Page["kind"]; template?: string; values?: Record<string, string> },
+    ): Promise<Page> => (await api.POST("/pages", { body: input })).data!.page as Page,
     onSuccess: () => refreshTrees(queryClient),
+  });
+}
+
+/** Renames a folder, which changes its title alone, and the trees that show it. */
+export function useRenameFolder(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ title, version }: { title: string; version: number }): Promise<Page> =>
+      (await api.PATCH("/pages/{pageID}", { params: { path: { pageID: id } }, body: { title, version } })).data!.page as Page,
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: pageQueryKey(id) }), refreshTrees(queryClient)]),
   });
 }
 

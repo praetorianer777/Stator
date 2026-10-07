@@ -1,5 +1,40 @@
 {
   "nodes": {
+    "armatureChart": {
+      "attrs": {
+        "chart": {
+          "kind": "string",
+          "enum": [
+            "pie",
+            "createdResolved"
+          ]
+        },
+        "days": {
+          "kind": "integer",
+          "min": 7,
+          "max": 365
+        },
+        "groupBy": {
+          "kind": "string",
+          "enum": [
+            "status",
+            "statusCategory",
+            "type",
+            "priority",
+            "assignee"
+          ]
+        },
+        "project": {
+          "kind": "string",
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        },
+        "query": {
+          "kind": "string",
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      }
+    },
     "armatureIssue": {
       "attrs": {
         "key": {
@@ -48,6 +83,26 @@
         }
       }
     },
+    "armatureRoadmap": {
+      "attrs": {
+        "groupBy": {
+          "kind": "string",
+          "enum": [
+            "epic",
+            "team"
+          ]
+        },
+        "project": {
+          "kind": "string",
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        },
+        "query": {
+          "kind": "string",
+          "maxLength": 2000,
+          "pattern": "\\S"
+        }
+      }
+    },
     "attachment": {
       "attrs": {
         "attachmentId": {
@@ -62,6 +117,7 @@
       },
       "inline": true
     },
+    "attachmentList": {},
     "blockquote": {
       "content": [
         "paragraph",
@@ -75,17 +131,65 @@
         "table",
         "panel",
         "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
         "image",
+        "gallery",
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
       ]
+    },
+    "blogPosts": {
+      "attrs": {
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 50
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
     },
     "bulletList": {
       "content": [
         "listItem"
       ]
+    },
+    "calendar": {
+      "attrs": {
+        "calendarId": {
+          "kind": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "project": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
     },
     "childPages": {
       "attrs": {
@@ -125,6 +229,78 @@
         "text"
       ]
     },
+    "column": {
+      "attrs": {
+        "width": {
+          "kind": "integer",
+          "nullable": true,
+          "min": 10,
+          "max": 80
+        }
+      },
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel",
+        "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
+        "image",
+        "gallery",
+        "tableOfContents",
+        "childPages",
+        "armatureIssueBlock",
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
+      ]
+    },
+    "columns": {
+      "content": [
+        "column"
+      ],
+      "minContent": 2,
+      "maxContent": 3
+    },
+    "contributors": {
+      "attrs": {
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 50
+        },
+        "scope": {
+          "kind": "string",
+          "enum": [
+            "page",
+            "tree"
+          ]
+        }
+      }
+    },
     "date": {
       "attrs": {
         "date": {
@@ -134,6 +310,37 @@
         }
       },
       "inline": true
+    },
+    "decision": {
+      "attrs": {
+        "state": {
+          "kind": "string",
+          "enum": [
+            "decided",
+            "undecided"
+          ]
+        }
+      },
+      "content": [
+        "text",
+        "hardBreak",
+        "mention",
+        "attachment",
+        "armatureIssue",
+        "status",
+        "date",
+        "mathInline"
+      ],
+      "allowsMarks": true
+    },
+    "diagram": {
+      "attrs": {
+        "source": {
+          "kind": "string",
+          "maxLength": 20000,
+          "pattern": "\\S"
+        }
+      }
     },
     "doc": {
       "content": [
@@ -148,11 +355,84 @@
         "table",
         "panel",
         "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
         "image",
+        "gallery",
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
+      ]
+    },
+    "excerpt": {
+      "attrs": {
+        "id": {
+          "kind": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "name": {
+          "kind": "string",
+          "maxLength": 80,
+          "pattern": "\\S"
+        }
+      },
+      "content": [
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "blockquote",
+        "codeBlock",
+        "horizontalRule",
+        "table",
+        "panel",
+        "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
+        "image",
+        "gallery",
+        "tableOfContents",
+        "childPages",
+        "armatureIssueBlock",
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "expand": {
@@ -174,12 +454,60 @@
         "table",
         "panel",
         "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
         "image",
+        "gallery",
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
       ]
+    },
+    "gallery": {
+      "attrs": {
+        "columns": {
+          "kind": "integer",
+          "min": 2,
+          "max": 4
+        }
+      },
+      "content": [
+        "galleryImage"
+      ],
+      "minContent": 1,
+      "maxContent": 60
+    },
+    "galleryImage": {
+      "attrs": {
+        "attachmentId": {
+          "kind": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "caption": {
+          "kind": "string",
+          "nullable": true,
+          "maxLength": 500
+        }
+      }
     },
     "hardBreak": {
       "inline": true
@@ -205,7 +533,8 @@
         "attachment",
         "armatureIssue",
         "status",
-        "date"
+        "date",
+        "mathInline"
       ],
       "allowsMarks": true
     },
@@ -229,6 +558,70 @@
         }
       }
     },
+    "include": {
+      "attrs": {
+        "excerptId": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "pageId": {
+          "kind": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "labelledPages": {
+      "attrs": {
+        "labels": {
+          "kind": "strings",
+          "minLength": 1,
+          "maxLength": 5,
+          "pattern": "^[\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}][\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}_.-]{0,39}$"
+        },
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 50
+        },
+        "match": {
+          "kind": "string",
+          "enum": [
+            "all",
+            "any"
+          ]
+        },
+        "sort": {
+          "kind": "string",
+          "enum": [
+            "updated",
+            "title"
+          ]
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
+    },
+    "linkCard": {
+      "attrs": {
+        "url": {
+          "kind": "string",
+          "maxLength": 2048,
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+          "url": true
+        },
+        "view": {
+          "kind": "string",
+          "enum": [
+            "card",
+            "embed"
+          ]
+        }
+      }
+    },
     "listItem": {
       "content": [
         "paragraph",
@@ -242,12 +635,52 @@
         "table",
         "panel",
         "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
         "image",
+        "gallery",
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
       ]
+    },
+    "mathBlock": {
+      "attrs": {
+        "latex": {
+          "kind": "string",
+          "maxLength": 4000,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "mathInline": {
+      "attrs": {
+        "latex": {
+          "kind": "string",
+          "maxLength": 4000,
+          "pattern": "\\S"
+        }
+      },
+      "inline": true
     },
     "mention": {
       "attrs": {
@@ -317,11 +750,32 @@
         "table",
         "panel",
         "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
         "image",
+        "gallery",
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "paragraph": {
@@ -332,9 +786,70 @@
         "attachment",
         "armatureIssue",
         "status",
-        "date"
+        "date",
+        "mathInline"
       ],
       "allowsMarks": true
+    },
+    "properties": {
+      "content": [
+        "propertyRow"
+      ],
+      "minContent": 1,
+      "maxContent": 50
+    },
+    "propertiesReport": {
+      "attrs": {
+        "columns": {
+          "kind": "strings",
+          "maxLength": 10,
+          "pattern": "^\\S(?:.{0,58}\\S)?$"
+        },
+        "labels": {
+          "kind": "strings",
+          "minLength": 1,
+          "maxLength": 5,
+          "pattern": "^[\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}][\\p{Ll}\\p{Lo}\\p{Lm}\\p{N}_.-]{0,39}$"
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
+    },
+    "propertyRow": {
+      "attrs": {
+        "key": {
+          "kind": "string",
+          "maxLength": 60
+        }
+      },
+      "content": [
+        "text",
+        "hardBreak",
+        "mention",
+        "attachment",
+        "armatureIssue",
+        "status",
+        "date",
+        "mathInline"
+      ],
+      "allowsMarks": true
+    },
+    "recentlyUpdated": {
+      "attrs": {
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 50
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        }
+      }
     },
     "status": {
       "attrs": {
@@ -412,12 +927,53 @@
         "table",
         "panel",
         "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
         "image",
+        "gallery",
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
       ]
+    },
+    "tableChart": {
+      "attrs": {
+        "chart": {
+          "kind": "string",
+          "enum": [
+            "bar",
+            "line",
+            "pie"
+          ]
+        },
+        "showTable": {
+          "kind": "boolean"
+        }
+      },
+      "content": [
+        "table"
+      ],
+      "minContent": 1,
+      "maxContent": 1
     },
     "tableHeader": {
       "attrs": {
@@ -470,11 +1026,32 @@
         "table",
         "panel",
         "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
         "image",
+        "gallery",
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "tableOfContents": {
@@ -496,6 +1073,11 @@
       "attrs": {
         "checked": {
           "kind": "boolean"
+        },
+        "taskId": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
         }
       },
       "content": [
@@ -510,17 +1092,102 @@
         "table",
         "panel",
         "expand",
+        "columns",
+        "decision",
+        "mathBlock",
+        "diagram",
+        "linkCard",
+        "excerpt",
+        "include",
+        "properties",
+        "propertiesReport",
+        "labelledPages",
+        "recentlyUpdated",
+        "blogPosts",
+        "taskReport",
+        "attachmentList",
+        "tableChart",
+        "calendar",
+        "templateButton",
+        "contributors",
         "image",
+        "gallery",
         "tableOfContents",
         "childPages",
         "armatureIssueBlock",
-        "armatureIssueList"
+        "armatureIssueList",
+        "armatureChart",
+        "armatureRoadmap"
       ]
     },
     "taskList": {
       "content": [
         "taskItem"
       ]
+    },
+    "taskReport": {
+      "attrs": {
+        "assignee": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^(?:me|none|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
+        },
+        "due": {
+          "kind": "string",
+          "enum": [
+            "any",
+            "overdue",
+            "today",
+            "week",
+            "none"
+          ]
+        },
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 100
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        },
+        "state": {
+          "kind": "string",
+          "enum": [
+            "open",
+            "done",
+            "all"
+          ]
+        }
+      }
+    },
+    "templateButton": {
+      "attrs": {
+        "label": {
+          "kind": "string",
+          "maxLength": 80
+        },
+        "parent": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "space": {
+          "kind": "string",
+          "nullable": true,
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        },
+        "template": {
+          "kind": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "title": {
+          "kind": "string",
+          "maxLength": 255
+        }
+      }
     },
     "text": {
       "inline": true

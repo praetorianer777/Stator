@@ -112,7 +112,7 @@ func logging(base *slog.Logger) func(http.Handler) http.Handler {
 			}
 			attrs := []any{
 				"method", r.Method,
-				"path", r.URL.Path,
+				"path", redactPath(r.URL.Path),
 				"status", rec.status,
 				"duration_ms", time.Since(start).Milliseconds(),
 				"bytes", rec.bytes,
@@ -132,7 +132,7 @@ func recovery(next http.Handler) http.Handler {
 				if v == http.ErrAbortHandler {
 					panic(v)
 				}
-				loggerFrom(r.Context()).Error("panic in handler", "panic", v, "path", r.URL.Path)
+				loggerFrom(r.Context()).Error("panic in handler", "panic", v, "path", redactPath(r.URL.Path))
 				respondError(w, r, ErrInternal(nil))
 			}
 		}()
@@ -151,9 +151,10 @@ type Authenticator interface {
 func (s *Server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		secret := credentialFrom(r, s.CookieName)
-		// The test endpoints answer to their own token alone, so a session or
-		// an access token riding along can neither open nor refuse them.
-		if secret == "" || s.Auth == nil || isTestPath(r) {
+		// The test endpoints answer to their own token alone, and the public
+		// reads to nobody's, so a session or an access token riding along can
+		// neither open nor refuse them.
+		if secret == "" || s.Auth == nil || isTestPath(r) || isPublicPath(r) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -213,11 +214,16 @@ func requireSession(next http.Handler) http.Handler {
 	})
 }
 
-// requireWholeOrg refuses a token limited to spaces what concerns the whole
-// organization, which is outside every space it names.
+// requireWholeOrg refuses a token limited to spaces, and a guest, what
+// concerns the whole organization, which is outside every space they reach.
 func requireWholeOrg(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if PrincipalFrom(r.Context()).InSpacesOnly() {
+		p := PrincipalFrom(r.Context())
+		if p.Guest() {
+			respondError(w, r, errGuest)
+			return
+		}
+		if p.InSpacesOnly() {
 			respondError(w, r, errSpacesToken)
 			return
 		}

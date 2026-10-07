@@ -156,6 +156,12 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[` + para(txt("Name")) + `]},{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"right"},"content":[` + para(txt("Count")) + `]}]},` +
 			`{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[` + para(txt("a | b"), `{"type":"hardBreak"}`, txt("c")) + `]},{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"right"},"content":[` + para(txt("2", `{"type":"bold"}`)) + `]}]}` +
 			`]}`),
+		"table chart": doc(`{"type":"tableChart","attrs":{"chart":"line","showTable":true},"content":[{"type":"table","content":[`+
+			`{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[`+para(txt("Quarter"))+`]},{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"right"},"content":[`+para(txt("Sales"))+`]}]},`+
+			`{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[`+para(txt("Q1"))+`]},{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"right"},"content":[`+para(txt("12"))+`]}]}`+
+			`]}]}`, `{"type":"tableChart","attrs":{"chart":"pie","showTable":false},"content":[{"type":"table","content":[`+
+			`{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[`+para(txt("Team"))+`]},{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null,"align":"left"},"content":[`+para(txt("Size"))+`]}]}`+
+			`]}]}`),
 		"panels": doc(
 			`{"type":"panel","attrs":{"kind":"info"},"content":[`+para(txt("info"))+`]}`,
 			`{"type":"panel","attrs":{"kind":"note"},"content":[`+para(txt("note"))+`]}`,
@@ -165,6 +171,13 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 		),
 		"expand": doc(
 			`{"type":"expand","attrs":{"title":"Details <& more>"},"content":[`+para(txt("inside"))+`,{"type":"expand","attrs":{"title":""},"content":[`+para(txt("deeper"))+`]}]}`,
+			para(txt("after")),
+		),
+		"gallery": doc(
+			`{"type":"gallery","attrs":{"columns":2},"content":[`+
+				`{"type":"galleryImage","attrs":{"attachmentId":"`+fileID+`","caption":"Board \"one\" <b> & more"}},`+
+				`{"type":"galleryImage","attrs":{"attachmentId":"`+file2ID+`","caption":null}},`+
+				`{"type":"galleryImage","attrs":{"attachmentId":"`+fileID+`","caption":"again\non two lines"}}]}`,
 			para(txt("after")),
 		),
 		"files": doc(
@@ -180,9 +193,41 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"armatureIssueBlock","attrs":{"key":"STA-7"}}`,
 			`{"type":"armatureIssueList","attrs":{"query":"project = STA AND text ~ \"<b>\"","columns":["key","summary","status"],"limit":25}}`,
 			`{"type":"armatureIssueList","attrs":{"query":"assignee = me()","columns":["key"]}}`,
+			`{"type":"armatureChart","attrs":{"project":"CP","query":"project = CP AND text ~ \"<b>\"","chart":"createdResolved","groupBy":"statusCategory","days":90}}`,
+			`{"type":"armatureRoadmap","attrs":{"project":"CP","query":"project = CP ORDER BY key","groupBy":"team"}}`,
+			`{"type":"propertiesReport","attrs":{"labels":["release-notes","v1.2"],"space":"DOCS","columns":["Owner","Say \"hi\", <b>"]}}`,
+			`{"type":"propertiesReport","attrs":{"labels":["adr"],"space":null,"columns":[]}}`,
+			`{"type":"labelledPages","attrs":{"labels":["adr","v1.2"],"match":"any","space":"DOCS","sort":"title","limit":20}}`,
+			`{"type":"labelledPages","attrs":{"labels":["adr"],"match":"all","space":null,"sort":"updated","limit":10}}`,
+			`{"type":"recentlyUpdated","attrs":{"space":null,"limit":5}}`,
+			`{"type":"recentlyUpdated","attrs":{"space":"DOCS","limit":50}}`,
+			`{"type":"blogPosts","attrs":{"space":null,"limit":5}}`,
+			`{"type":"blogPosts","attrs":{"space":"NEWS","limit":50}}`,
+			`{"type":"taskReport","attrs":{"space":"DOCS","assignee":"me","due":"week","state":"open","limit":20}}`,
+			`{"type":"taskReport","attrs":{"space":null,"assignee":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","due":"none","state":"all","limit":100}}`,
+			`{"type":"taskReport","attrs":{"space":null,"assignee":null,"due":"any","state":"done","limit":1}}`,
+			`{"type":"attachmentList"}`,
+			`{"type":"calendar","attrs":{"calendarId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a77","project":"CP"}}`,
+			`{"type":"calendar","attrs":{"calendarId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a78","project":null}}`,
+			`{"type":"templateButton","attrs":{"template":"meeting-notes","space":"DOCS","parent":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a79","label":"Notes & <minutes>","title":"Weekly \"sync\" {date}"}}`,
+			`{"type":"templateButton","attrs":{"template":"how-to","space":null,"parent":null,"label":"","title":""}}`,
+			`{"type":"contributors","attrs":{"scope":"page","limit":10}}`,
+			`{"type":"contributors","attrs":{"scope":"tree","limit":50}}`,
 			`{"type":"tableOfContents","attrs":{"maxLevel":2}}`,
 			`{"type":"childPages","attrs":{"scope":"subtree","depth":2,"sort":"title"}}`,
 			`{"type":"childPages","attrs":{"scope":"children","depth":null,"sort":"tree"}}`,
+		),
+		"includes": doc(
+			`{"type":"include","attrs":{"pageId":"`+otherID+`","excerptId":null}}`,
+			`{"type":"include","attrs":{"pageId":"`+otherID+`","excerptId":"`+fileID+`"}}`,
+		),
+		"formulas": doc(
+			`{"type":"mathBlock","attrs":{"latex":"\\sum_{i=1}^n i = \\frac{n(n+1)}{2}"}}`,
+			`{"type":"mathBlock","attrs":{"latex":"a\n`+"```"+`\nb"}}`,
+		),
+		"diagrams": doc(
+			`{"type":"diagram","attrs":{"source":"flowchart LR\n  A[\"Draft <b>\"] --> B[Published]\n\n  B -.-> A"}}`,
+			`{"type":"diagram","attrs":{"source":"sequenceDiagram\n  Ada->>Bob: `+"```"+`"}}`,
 		),
 		"breaks and links to pages": doc(
 			para(txt("line one"), `{"type":"hardBreak"}`, txt("line two")),
@@ -217,9 +262,15 @@ func TestExportReadsAsMarkdown(t *testing.T) {
 		`{"type":"image","attrs":{"attachmentId":"`+fileID+`","alt":"A chart","width":null}}`,
 		`{"type":"expand","attrs":{"title":"More"},"content":[`+para(txt("inside"))+`]}`,
 		para(`{"type":"status","attrs":{"label":"DONE","color":"success"}}`),
+		`{"type":"linkCard","attrs":{"url":"https://example.test/a?b=<c>","view":"embed"}}`,
+		para(txt("Energy "), `{"type":"mathInline","attrs":{"latex":"E =\n mc^2 \\$ $"}}`),
+		`{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[`+para(`{"type":"mathInline","attrs":{"latex":"\\|x\\| = |y|"}}`)+`]}]}]}`,
 	)
 	md := Render("Plan", parseDoc(t, body), testLinks)
 	for _, want := range []string{
+		`Energy $E = mc^2 \$ \$$`,
+		`| $\\|x\\| = \|y\|$ |`,
+		"\n\n<https://example.test/a?b=%3Cc%3E>\n\n",
 		"# Plan\n\n## Intro\n",
 		"> [!WARNING]\n> Careful\n",
 		"- [x] done\n",
@@ -233,6 +284,59 @@ func TestExportReadsAsMarkdown(t *testing.T) {
 	}
 }
 
+func TestAGalleryIsPicturesInADiv(t *testing.T) {
+	picture := func(id, caption string) string {
+		return `{"type":"galleryImage","attrs":{"attachmentId":"` + id + `","caption":` + caption + `}}`
+	}
+	body := doc(
+		`{"type":"gallery","attrs":{"columns":4},"content":[`+picture(fileID, `"A chart"`)+`,`+picture(otherID, `"Not exported"`)+`]}`,
+		`{"type":"gallery","attrs":{"columns":2},"content":[`+picture(otherID, `null`)+`]}`,
+		`{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[`+
+			`{"type":"gallery","attrs":{"columns":2},"content":[`+picture(fileID, `"left"`)+`,`+picture(file2ID, `"right | side"`)+`]}]}]}]}`,
+	)
+	md := Render("Plan", parseDoc(t, body), testLinks)
+	want := "<div data-stator=\"gallery\" data-columns=\"4\">\n<img src=\"plan.files/chart%20one.png\" alt=\"A chart\">\n</div>"
+	if !strings.Contains(md, want) {
+		t.Errorf("the export lacks %q:\n%s", want, md)
+	}
+	if strings.Contains(md, "Not exported") || strings.Count(md, `data-stator="gallery"`) != 1 {
+		t.Errorf("a picture whose file is not written was written:\n%s", md)
+	}
+	if !strings.Contains(md, `| ![left](plan.files/chart%20one.png) ![right \| side](plan.files/notes.txt) |`) {
+		t.Errorf("a gallery in a cell is not its pictures side by side:\n%s", md)
+	}
+
+	got, err := Convert([]byte(`<div data-stator="gallery" data-columns="9">`+"\n"+
+		`<img src="plan.files/chart%20one.png" alt="kept">`+"\n"+
+		`<img src="elsewhere/x.png" alt="dropped">`+"\n"+
+		`<img src="https://example.test/x.png">`+"\n</div>\n\n"+
+		`<div data-stator="gallery"><img src="nowhere.png"></div>`+"\n\n"+
+		`<div data-stator="gallery"><img src="plan.files/chart%20one.png" onerror="x"><script>x</script></div>`+"\n"), testResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(got.Body)
+	if want := `{"type":"gallery","attrs":{"columns":4},"content":[{"type":"galleryImage","attrs":{"attachmentId":"` + fileID + `","caption":"kept"}}]}`; !strings.Contains(text, want) {
+		t.Errorf("a gallery of nine columns did not come in as one of four with the picture of the import: %s", text)
+	}
+	if strings.Count(text, `"type":"gallery"`) != 1 || strings.Contains(text, "dropped") {
+		t.Errorf("a gallery of no picture or one holding a script came in as a gallery: %s", text)
+	}
+	if !strings.Contains(text, `"language":"html"`) {
+		t.Errorf("a gallery holding a script is not shown as code: %s", text)
+	}
+	if len(got.Warnings) < 3 {
+		t.Errorf("the pictures left out were not warned about: %v", got.Warnings)
+	}
+	got, err = Convert([]byte("<div data-stator=\"gallery\">\n<img src=\"plan.files/chart%20one.png\">\n<img src=\"elsewhere/x.png\">\n</div>\n"), testResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"type":"gallery","attrs":{"columns":3},"content":[{"type":"galleryImage","attrs":{"attachmentId":"` + fileID + `","caption":null}}]}`; !strings.Contains(string(got.Body), want) {
+		t.Errorf("a gallery that names no columns, with a picture from outside, came in as %s", got.Body)
+	}
+}
+
 func TestWhatMarkdownCannotCarryIsReadable(t *testing.T) {
 	body := doc(
 		`{"type":"orderedList","attrs":{"start":1,"type":"a"},"content":[{"type":"listItem","content":[`+para(txt("lettered"))+`]}]}`,
@@ -242,9 +346,14 @@ func TestWhatMarkdownCannotCarryIsReadable(t *testing.T) {
 			`]}`,
 		para(txt("hinted", `{"type":"hint"}`), txt(" "), txt("discussed", `{"type":"inlineComment","attrs":{"threadId":"`+userID+`"}}`)),
 		`{"type":"image","attrs":{"attachmentId":"`+otherID+`","alt":"Somewhere else","width":null}}`,
+		`{"type":"columns","content":[{"type":"column","attrs":{"width":67},"content":[`+para(txt("left column"))+`]},{"type":"column","attrs":{"width":33},"content":[{"type":"paragraph"}]},{"type":"column","attrs":{"width":null},"content":[`+para(txt("right column"))+`]}]}`,
+		`{"type":"decision","attrs":{"state":"decided"},"content":[`+txt("Ship on Fridays")+`]}`,
+		`{"type":"decision","attrs":{"state":"undecided"},"content":[`+txt("Which region")+`]}`,
+		`{"type":"excerpt","attrs":{"id":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a71","name":"Hours"},"content":[`+para(txt("Inside the excerpt"))+`]}`,
+		`{"type":"properties","content":[{"type":"propertyRow","attrs":{"key":"Owner"},"content":[`+txt("Ada", `{"type":"bold"}`)+`]},{"type":"propertyRow","attrs":{"key":"Due"}}]}`,
 	)
 	md := Render("Plan", parseDoc(t, body), testLinks)
-	for _, want := range []string{"1. lettered", "| wide |  |", "| a<br>item | b |", "hinted discussed", "Somewhere else"} {
+	for _, want := range []string{"1. lettered", "| wide |  |", "| a<br>item | b |", "hinted discussed", "Somewhere else", "left column\n\nright column", "**Decided:** Ship on Fridays", "**Undecided:** Which region", "\n\nInside the excerpt", "| Property | Value |", "| Owner | **Ada** |", "| Due |  |"} {
 		if !strings.Contains(md, want) {
 			t.Errorf("the export lacks %q:\n%s", want, md)
 		}

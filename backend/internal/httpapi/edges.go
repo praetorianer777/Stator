@@ -60,7 +60,9 @@ func (s *Server) sameSite(allowed []string) func(http.Handler) http.Handler {
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if safeMethod(r.Method) || !carriesCookie(r, s.CookieName) || isTestPath(r) {
+			// A WebSocket opens with a GET, but what it carries afterwards are
+			// writes, so its handshake is held to the same origins.
+			if safeMethod(r.Method) && !isUpgrade(r) || !carriesCookie(r, s.CookieName) || isTestPath(r) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -77,6 +79,11 @@ func (s *Server) sameSite(allowed []string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// isUpgrade says whether a request asks to become a WebSocket.
+func isUpgrade(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
 }
 
 func safeMethod(method string) bool {

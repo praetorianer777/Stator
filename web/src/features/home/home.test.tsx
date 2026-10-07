@@ -53,6 +53,7 @@ function stubHome(more: Stubs = {}) {
       body: { pages: [{ id: guide, title: "Guide", spaceKey: "DOCS", spaceName: "Handbook", path: [], visitedAt: "2026-10-01T06:00:00Z" }] },
     },
     "GET /home/edited": { status: 200, body: { pages: [edited], next: null } },
+    "GET /tasks": { status: 200, body: { tasks: [], next: null } },
     "GET /home/updates": (request) => {
       const scope = new URL(request.url).searchParams.get("scope");
       return { status: 200, body: { updates: scope === "watched" ? [] : [update()], next: null } };
@@ -84,6 +85,39 @@ describe("the home page", () => {
     stubHome({ "GET /home/updates": { status: 200, body: { updates: [update({ version: 1, comment: "", authorName: "" })], next: null } } });
     await renderAt("/");
     expect(await screen.findByText("Somebody created this page")).toBeInTheDocument();
+  });
+
+  it("lists the caller's open tasks beside the stars, with the way to all of them", async () => {
+    stubHome({
+      "GET /tasks": {
+        status: 200,
+        body: {
+          tasks: [
+            {
+              id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b01",
+              page: { id: runbook, title: "Runbook", spaceKey: "DOCS", spaceName: "Handbook" },
+              text: "Rotate the keys",
+              done: false,
+              dueOn: "2020-01-01",
+              assigneeId: "u-ada",
+              assigneeName: "Ada Lovelace",
+              assignedByName: "Grace Hopper",
+              assignedAt: "2026-10-01T09:00:00Z",
+              doneAt: null,
+              canEdit: true,
+            },
+          ],
+          next: null,
+        },
+      },
+    });
+    await renderAt("/");
+    const row = (await within(list("tasks")).findByText("Rotate the keys")).closest("li")!;
+    expect(within(row).getByRole("link", { name: "Runbook" })).toHaveAttribute("href", `/s/DOCS/p/${runbook}/runbook`);
+    expect(within(row).getByRole("checkbox", { name: "Done: Rotate the keys" })).toBeEnabled();
+    expect(within(row).getByText("Overdue")).toBeInTheDocument();
+    expect(within(list("tasks")).getByRole("link", { name: "All my tasks" })).toHaveAttribute("href", "/tasks");
+    expect(await axeViolations()).toEqual([]);
   });
 
   it("marks a verified page among the updates", async () => {

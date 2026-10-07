@@ -57,6 +57,11 @@ export function useSetLanguage() {
   });
 }
 
+/** The one space a guest belongs to and lands in; null for everybody else. */
+export function guestSpaceOf(me: Me | undefined): Wire["SpaceRef"] | null {
+  return me?.organization?.guestSpace ?? null;
+}
+
 /** Whether a role may change the organization's settings. */
 export function administers(role: OrgRole | undefined): boolean {
   return role === "owner" || role === "admin";

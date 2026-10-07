@@ -3,6 +3,7 @@ package page
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -28,19 +29,28 @@ func NewService(cluster *db.Cluster) *Service {
 }
 
 const selectPages = `
-SELECT p.id, p.space_id, s.key, p.parent_id, p.title, p.body, p.version, p.parent_id IS NULL,
-       COALESCE(cu.name, ''), p.created_at, COALESCE(uu.name, ''), p.updated_at
+SELECT p.id, p.space_id, s.key, p.parent_id, p.title, p.kind, p.body, p.version, p.parent_id IS NULL AND p.kind <> 'post',
+       COALESCE(cu.name, ''), p.created_at, COALESCE(uu.name, ''), p.updated_at,
+       p.icon, p.width, p.cover_attachment_id, p.cover_focus_x, p.cover_focus_y, p.mode, p.posted_at
 FROM page p
 JOIN space s ON s.id = p.space_id
 LEFT JOIN app_user cu ON cu.id = p.created_by
 LEFT JOIN app_user uu ON uu.id = p.updated_by`
 
 func scan(row pgx.Row) (*Page, error) {
-	var p Page
-	err := row.Scan(&p.ID, &p.SpaceID, &p.SpaceKey, &p.ParentID, &p.Title, &p.Body, &p.Version, &p.Home,
-		&p.CreatedByName, &p.CreatedAt, &p.UpdatedByName, &p.UpdatedAt)
+	var (
+		p     Page
+		cover *uuid.UUID
+		x, y  int
+	)
+	err := row.Scan(&p.ID, &p.SpaceID, &p.SpaceKey, &p.ParentID, &p.Title, &p.Kind, &p.Body, &p.Version, &p.Home,
+		&p.CreatedByName, &p.CreatedAt, &p.UpdatedByName, &p.UpdatedAt,
+		&p.Appearance.Icon, &p.Appearance.Width, &cover, &x, &y, &p.Mode, &p.PostedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
+	}
+	if cover != nil {
+		p.Appearance.Cover = &Cover{AttachmentID: *cover, FocusX: x, FocusY: y}
 	}
 	p.Unpublished = p.Version == 0
 	return &p, err
@@ -104,6 +114,9 @@ func load(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, lock 
 		return nil, nil, err
 	}
 	if p.Archived, err = archiveOf(ctx, tx, id); err != nil {
+		return nil, nil, err
+	}
+	if p.Schedule, err = scheduleOf(ctx, tx, actor, id); err != nil {
 		return nil, nil, err
 	}
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM star WHERE user_id = $1 AND page_id = $2)`, actor.UserID, id).Scan(&p.Starred); err != nil {
@@ -171,7 +184,7 @@ func (s *Service) Update(ctx context.Context, actor perm.Actor, id uuid.UUID, in
 		}
 	}
 	if in.Body != nil {
-		if err := document.Validate(in.Body); err != nil {
+		if err := document.ValidatePage(in.Body, id.String()); err != nil {
 			return nil, 0, err
 		}
 	}
@@ -189,6 +202,17 @@ func (s *Service) Update(ctx context.Context, actor perm.Actor, id uuid.UUID, in
 		}
 		if in.Title == nil {
 			title = current.Title
+		}
+		// A folder has no versions: renaming it changes its title and nothing else.
+		if current.Kind == KindFolder {
+			if in.Body != nil {
+				return ErrFolder
+			}
+			if _, err := tx.Exec(ctx, `UPDATE page SET title = $2, updated_by = $3 WHERE id = $1`, id, title, actor.UserID); err != nil {
+				return fmt.Errorf("rename the folder: %w", err)
+			}
+			out, _, err = load(ctx, tx, actor, id, false)
+			return err
 		}
 		body := current.Body
 		if in.Body != nil {

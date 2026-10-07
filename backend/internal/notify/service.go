@@ -25,6 +25,10 @@ func (e *FieldError) Error() string { return e.Message }
 // On says whether the switch for a kind is on; a kind it does not know is on.
 func (s Switches) On(kind Kind) bool {
 	switch kind {
+	case KindAssigned:
+		return s.Assigned
+	case KindDue:
+		return s.Due
 	case KindMentioned:
 		return s.Mentioned
 	case KindShared:
@@ -41,12 +45,16 @@ func (s Switches) On(kind Kind) bool {
 		return s.Expired
 	case KindCreated:
 		return s.Created
+	case KindPosted:
+		return s.Posted
+	case KindFailed:
+		return s.Failed
 	}
 	return true
 }
 
 // allOn is every switch on, what nobody has said otherwise means.
-var allOn = Switches{Mentioned: true, Shared: true, Replied: true, Commented: true, Resolved: true, Published: true, Created: true, Expired: true}
+var allOn = Switches{Assigned: true, Due: true, Mentioned: true, Shared: true, Replied: true, Commented: true, Resolved: true, Published: true, Created: true, Posted: true, Expired: true, Failed: true}
 
 // DefaultPreferences is what having saved nothing means.
 func DefaultPreferences() Preferences {
@@ -64,9 +72,10 @@ func switchesFrom(raw []byte) (Switches, error) {
 		return !set || v
 	}
 	return Switches{
+		Assigned: on(KindAssigned), Due: on(KindDue),
 		Mentioned: on(KindMentioned), Shared: on(KindShared), Replied: on(KindReplied), Commented: on(KindCommented),
-		Resolved: on(KindResolved), Published: on(KindPublished), Created: on(KindCreated),
-		Expired: on(KindExpired),
+		Resolved: on(KindResolved), Published: on(KindPublished), Created: on(KindCreated), Posted: on(KindPosted),
+		Expired: on(KindExpired), Failed: on(KindFailed),
 	}, nil
 }
 

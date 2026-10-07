@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor } from "@tiptap/core";
-import { CODE_LANGUAGES, EDITOR_HEADING_LEVELS, EXPAND_TITLE_MAX_LENGTH } from "@/config";
+import { CODE_LANGUAGES, COLUMN_LAYOUTS, COLUMN_SHARE_MAX, COLUMN_SHARE_MIN, EDITOR_HEADING_LEVELS, EXPAND_TITLE_MAX_LENGTH } from "@/config";
 import { allowlist, attrProblem, problems } from "@/test/allowlist";
 import { anchorHeadings, editorExtensions } from "./extensions";
 import { CELL_BACKGROUNDS, PANEL_KINDS, slug, type DocNode } from "./schema";
@@ -72,6 +72,7 @@ describe("the web editor against the server's allowlist", () => {
       .focus("end")
       .insertContent([
         { type: "image", attrs: { attachmentId, alt: "A picture", width: 480 } },
+        { type: "gallery", attrs: { columns: 4 }, content: [{ type: "galleryImage", attrs: { attachmentId, caption: "A caption" } }] },
         { type: "paragraph", content: [{ type: "attachment", attrs: { attachmentId, fileName: "plan.pdf" } }] },
         { type: "paragraph", content: [{ type: "text", text: "Say more", marks: [{ type: "hint" }] }] },
         { type: "expand", attrs: { title: "More" }, content: [{ type: "paragraph", content: [{ type: "text", text: "Hidden" }] }] },
@@ -101,6 +102,8 @@ describe("the web editor against the server's allowlist", () => {
       '"language":"go"',
       '"type":"image"',
       '"width":480',
+      '"type":"gallery","attrs":{"columns":4}',
+      '"caption":"A caption"',
       '"type":"attachment"',
       '"type":"hint"',
       '"type":"armatureIssueBlock"',
@@ -118,6 +121,11 @@ describe("the web editor against the server's allowlist", () => {
     expect(enumOf("tableHeader", "background")).toEqual([...CELL_BACKGROUNDS]);
     expect(allowlist.nodes.heading?.attrs?.level?.max).toBe(Math.max(...EDITOR_HEADING_LEVELS));
     expect(allowlist.nodes.expand?.attrs?.title?.maxLength).toBe(EXPAND_TITLE_MAX_LENGTH);
+    const share = allowlist.nodes.column?.attrs?.width;
+    expect([share?.min, share?.max]).toEqual([COLUMN_SHARE_MIN, COLUMN_SHARE_MAX]);
+    const counts = COLUMN_LAYOUTS.map((layout) => layout.widths.length);
+    expect([Math.min(...counts), Math.max(...counts)]).toEqual([allowlist.nodes.columns?.minContent, allowlist.nodes.columns?.maxContent]);
+    for (const layout of COLUMN_LAYOUTS) for (const width of layout.widths) expect(attrProblem(share!, width), layout.key).toBeNull();
     const language = allowlist.nodes.codeBlock?.attrs?.language;
     for (const { id } of CODE_LANGUAGES) expect(attrProblem(language!, id), id).toBeNull();
     const anchor = allowlist.nodes.heading?.attrs?.id;
@@ -133,9 +141,10 @@ describe("the web editor against the server's allowlist", () => {
         { type: "iframe" },
         { type: "paragraph", attrs: { style: "x" }, content: [{ type: "text", text: "x", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }] }] },
         { type: "panel", attrs: { kind: "danger" }, content: [{ type: "paragraph" }] },
+        { type: "columns", content: [{ type: "column", attrs: { width: 50 }, content: [{ type: "paragraph" }] }] },
       ],
     };
-    expect(problems(hostile)).toHaveLength(4);
+    expect(problems(hostile)).toHaveLength(5);
   });
 });
 

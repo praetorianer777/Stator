@@ -1,7 +1,7 @@
 import { formatNumber } from "@/lib/format";
 import { useCallback, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE, KILOBYTE } from "@/config";
+import { API_BASE, KILOBYTE, VIDEO_TYPES } from "@/config";
 import { t } from "@/i18n";
 import { api, ApiError, type ApiErrorBody } from "./client";
 import type { components } from "./schema";
@@ -29,11 +29,40 @@ export function attachmentUrl(id: string, inline = false): string {
 }
 
 // The types the API shows in place with inline=1; everything else downloads.
-const PREVIEWABLE = ["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf", "text/plain"];
+const PREVIEWABLE = ["image/png", "image/jpeg", "image/gif", "image/webp", ...VIDEO_TYPES, "application/pdf", "text/plain"];
+
+function mediaType(contentType: string): string {
+  return contentType.split(";")[0]!.trim().toLowerCase();
+}
 
 /** Whether the browser can show this in a tab rather than download it. */
 export function canPreview(contentType: string): boolean {
-  return PREVIEWABLE.includes(contentType.split(";")[0]!.trim().toLowerCase());
+  return PREVIEWABLE.includes(mediaType(contentType));
+}
+
+/** Whether a file is a video the browser's own player plays in place. */
+export function isVideo(contentType: string): boolean {
+  return VIDEO_TYPES.includes(mediaType(contentType));
+}
+
+/** Where a file's PDF preview is: a PDF itself, or an office document converted by the server. */
+export function previewUrl(id: string): string {
+  return `${API_BASE}/attachments/${encodeURIComponent(id)}/preview`;
+}
+
+/** Whether the server can show this file as a PDF in place. */
+export function hasPreview(file: Pick<Attachment, "preview">): boolean {
+  return file.preview === "pdf" || file.preview === "office";
+}
+
+/**
+ * The PDF a preview shows. The first reader of an office document waits for
+ * its conversion; a refusal is an ApiError whose message says what to do.
+ */
+export async function fetchPreview(id: string): Promise<Blob> {
+  const { data } = await api.GET("/attachments/{attachmentID}/preview", { params: { path: { attachmentID: id } }, parseAs: "arrayBuffer" });
+  // Typed here rather than by the answer, so the frame can only ever hold a PDF.
+  return new Blob([data as ArrayBuffer], { type: "application/pdf" });
 }
 
 /** Whether a file is drawn as a picture in a page rather than as a download chip. */
@@ -66,14 +95,22 @@ function envelope(xhr: XMLHttpRequest): ApiErrorBody | undefined {
   }
 }
 
-/**
- * Sends one file to a page. XMLHttpRequest rather than fetch, because only it
- * reports how much of the body has gone, which a large file needs to show.
- */
+/** Sends one file to a page. */
 export function uploadAttachment(pageId: string, file: File, onProgress?: Progress): Promise<Attachment> {
+  return sendFile(`/pages/${encodeURIComponent(pageId)}/attachments`, file, onProgress);
+}
+
+/** Sends a picture cropped or drawn on, to be the next version of the file it was drawn on. */
+export function editAttachment(id: string, file: File, onProgress?: Progress): Promise<Attachment> {
+  return sendFile(`/attachments/${encodeURIComponent(id)}/edit`, file, onProgress);
+}
+
+// XMLHttpRequest rather than fetch, because only it reports how much of the
+// body has gone, which a large file needs to show.
+function sendFile(path: string, file: File, onProgress?: Progress): Promise<Attachment> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE}/pages/${encodeURIComponent(pageId)}/attachments`);
+    xhr.open("POST", `${API_BASE}${path}`);
     xhr.withCredentials = true;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total);
@@ -159,15 +196,51 @@ export function useUploadAttachments(pageId: string) {
   return { upload, pending, errors, clearErrors };
 }
 
+/** What to delete: one version of a file, or with every set all the versions of its name. */
+export interface DeleteAttachment {
+  id: string;
+  every?: boolean;
+}
+
 export function useDeleteAttachment(pageId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      await api.DELETE("/attachments/{attachmentID}", { params: { path: { attachmentID: id } } });
-      return id;
+    mutationFn: async (target: DeleteAttachment) => {
+      await api.DELETE("/attachments/{attachmentID}", {
+        params: { path: { attachmentID: target.id }, query: target.every ? { versions: "all" } : {} },
+      });
+      return target;
     },
-    onSuccess: (id) => {
-      queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => list?.filter((a) => a.id !== id));
+    onSuccess: ({ id, every }) => {
+      queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => {
+        const name = list?.find((a) => a.id === id)?.fileName.toLowerCase();
+        return list?.filter((a) => a.id !== id && !(every && a.fileName.toLowerCase() === name));
+      });
+      return queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
+    },
+  });
+}
+
+/** Brings an earlier version of a file back as its name's next version. */
+export function useRestoreAttachment(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<Attachment> =>
+      (await api.POST("/attachments/{attachmentID}/restore", { params: { path: { attachmentID: id } } })).data!.attachment,
+    onSuccess: (made) => {
+      queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => (list ? [made, ...list.filter((a) => a.id !== made.id)] : list));
+      return queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
+    },
+  });
+}
+
+/** Saves a picture cropped or drawn on as the next version of the file it was drawn on. */
+export function useEditAttachment(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }): Promise<Attachment> => editAttachment(id, file),
+    onSuccess: (made) => {
+      queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => (list ? [made, ...list.filter((a) => a.id !== made.id)] : list));
       return queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
     },
   });

@@ -9,10 +9,11 @@ should find their way around the other without a map.
 
 ```
 browser ──> web (nginx, React SPA) ──> api (Go) ──> PostgreSQL (primary + replica)
-                                        │  ├──> Valkey (cache, rate limits)
+                                        │  ├──> Valkey (cache, rate limits, shared drafts between api processes; Postgres carries those without it)
                                         │  ├──> S3-compatible storage (attachments, theme assets)
+                                        │  ├──> converter (office documents to PDF, for previews)
                                         │  └──> Armature API (as the viewing user)
-                                        └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks
+                                        └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks, scheduled publishes
 Keycloak / any OIDC provider <── login ──┘
 ```
 
@@ -42,6 +43,16 @@ Every table carries an organisation and a row-level security policy keyed on
 Each transaction of a request also names the person it acts for, read by
 `current_actor_id()`, and restrictive policies hold `stator_app` to that
 person's space permissions and page restrictions (see `docs/decisions.md`).
+A guest, a member with the role `guest` and the one space they were invited
+to, is held by the same functions to that space and to the people in it,
+whatever a query forgets to ask.
+A reader who is not signed in is a principal of its own: a transaction that
+sets `app.anonymous` and names nobody. The same functions give it view of
+the spaces the organization opened to anybody and nothing else, and a
+policy on every table keeps it to reading spaces, pages and files and to
+writing nothing. Holding a public link's token, the same reader also views
+the one page a live link opens, through the digest the transaction sets in
+`app.page_link`.
 
 ### Reads, writes and replicas
 
@@ -77,22 +88,30 @@ process, which is only right for a single api process. `/readyz` and
 |---|---|
 | `auth` | sessions, argon2 passwords, personal access tokens |
 | `oidc` | OIDC relying party per organisation, group sync |
-| `perm` | global, space and page permissions |
+| `perm` | global, space and page permissions, and the plan of copying one space's permissions onto another |
+| `guest` | guests: people from outside invited into one space, and taken out again |
+| `public` | reading without signing in: the organization's switches, the spaces, pages and files anybody may read, and the public links that open one page each, with nobody named in them |
 | `space` | spaces, space settings |
 | `document` | page document allowlist and validation, plain text for search, headings for the table of contents |
-| `page` | page tree (parent plus rank), move, copy, trash, archive, drafts, published versions, diff, restore, restrictions, owners and verification, and the worker's watch on verifications that run out |
+| `page` | page tree (parent plus rank), blog posts outside it by date, move, copy, trash, archive, drafts, the shared draft of a page edited together, live pages and the open version their saves amend, published versions, diff, restore, restrictions, owners and verification, pages made from a template, the people who published a page or a tree, publishes scheduled for a time, and the worker's watches on verifications that run out and on scheduled publishes that came due |
+| `collab` | editing together: the WebSocket of a page's shared draft, in y-protocols' framing, its updates stored and passed on unread, awareness, and the bus between api processes: Valkey when configured, else Postgres's LISTEN and NOTIFY, with catching up after a lost connection |
 | `version` | which build is running |
 | `comment` | page comments, inline comments anchored by mark id |
 | `reaction` | emoji reactions on pages and comments |
-| `label`, `watch`, `notify` | labels, watchers, in-app and email notifications |
+| `label`, `watch`, `notify` | labels, watchers of pages, spaces and blogs, in-app and email notifications |
 | `star`, `home` | starred pages and spaces, the home page's updates and edits |
+| `shortcut` | the links a space's administrators pin above its page tree, to pages or web addresses, each shown only to whoever may view its page |
+| `task` | the tasks of published pages: each person's list, and the worker's reminder on the due day |
+| `calendar` | each space's calendars and their events and absences, which a calendar block draws a month of |
 | `stale` | the stale content report: pages nobody published or opened for a while, for the administrators of their spaces |
 | `pageview` | page views: each person once a day per page, counted for every reader, named to editors within the retention, pruned into a tally by the worker |
 | `share` | sending a page to people and groups who may view it, with a note |
 | `keyset` | the cursor a list ordered by time hands out for its next window |
-| `template` | page templates: the built-ins, the organization's and each space's own, their variables, and filling them in for a new page |
+| `template` | page templates: the built-ins, the organization's and each space's own, their variables and filling them in for a new page; and the space templates a new space starts from |
+| `example` | the example space that explains Stator: its pages as Markdown per language, made through the other services |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
-| `attachment` | uploads to S3-compatible storage |
+| `attachment` | uploads to S3-compatible storage, each upload of a name its next version, a restore an upload of an earlier one and an annotated picture an upload drawn on one, served whole or by the byte range a video player asks for, and their PDF previews, converted once and kept |
+| `convert` | the client of the conversion service that turns office documents into PDF |
 | `markdown` | a document as Markdown and Markdown as a document, held to the allowlist |
 | `mdio` | Markdown import and export of pages, subtrees and their files, through the page and file services |
 | `theme` | custom themes in the `armature-theme/1` format |
@@ -116,8 +135,22 @@ process, which is only right for a single api process. `/readyz` and
   `api/document-allowlist.json`, which a vitest test holds the editor to.
   The editor arrives with the route that edits, through the router's
   `lazy()`, so a reader never downloads it.
+- Editing together: the editor binds the body and title to a Yjs document
+  kept in step over a WebSocket (`web/src/features/collab`), with y-protocols'
+  awareness for avatars and carets and y-indexeddb for what is written
+  offline. What is published is still the person's own draft, saved from the
+  shared one, or for a live page the page itself, saved as it is typed and
+  followed by its readers every few seconds; see `docs/decisions.md`.
 - Addresses: a space is `/s/{spaceKey}`, a page `/s/{spaceKey}/p/{pageId}/{slug}`.
   Only the id finds a page; the slug is for people and is put right when stale.
+  A blog post is a page and has a page's address; the space's blog is
+  `/s/{spaceKey}/blog`, a month of it `?year=2026&month=10`.
+- The pages anybody may read are at `/public/{org}`, outside the app's shell
+  and its sign-in guard, read through `/api/v1/public/{org}`; the document
+  view draws them with every link and file through those reads.
+- A public link opens `/public/{org}/link/{token}`, the same reading view
+  for that one page without the shell's tree and search, read through
+  `/api/v1/public/{org}/links/{token}`; its files come through the link too.
 
 ## Armature integration
 
@@ -158,7 +191,9 @@ ports, so parallel worktrees do not collide.
 `deploy/` follows Armature's layout. `docker-compose.yml` is the development
 and test stack: Postgres 18 as a primary and a streaming replica, Valkey,
 SeaweedFS (S3), Mailpit, Keycloak with the `stator-dev` realm
-(`deploy/keycloak/realm.json`), the one-shot `migrate` and `seed`, `api`,
+(`deploy/keycloak/realm.json`), the converter that turns office documents
+into PDF for previews (a headless office suite behind an HTTP API, reached
+by the api alone), the one-shot `migrate` and `seed`, `api`,
 `worker`, `web`, and `armature-stub` in Armature's place, which only the
 stack lets the SSRF guard through to. Every service has a health check and the dependencies
 wait on them, so `docker compose up --wait` returns once the stack answers.
@@ -169,7 +204,9 @@ host's disk could take seconds on a busy machine. Only this stack does so; see
 Two images are built. `Dockerfile.backend` holds every Go binary, stamped with
 `VERSION`, and each service picks one by its command. `Dockerfile.web` builds
 the SPA with Node and serves it from nginx (`deploy/nginx.conf`), which proxies
-`/api/`, `/healthz` and `/readyz` to the api so the browser sees one origin.
+`/api/`, `/healthz` and `/readyz` to the api so the browser sees one origin,
+and passes the shared draft's WebSocket (`/api/v1/pages/{id}/collab`) on
+with its upgrade.
 
 `mk/stack.mk` drives the stack. The compose project is `stator-<cksum of the
 checkout path>`, and the published ports are a block of twenty from 20000 up,
@@ -212,7 +249,9 @@ fallbacks to the primary by reason.
 For a trial, `values-demo.yaml` brings one Postgres pod and one Valkey pod of
 the chart's own. The chart refuses to render with both `cnpg.enabled` and
 `postgresql.enabled`, and refuses replicas behind more than one api pod
-without a Valkey they share. `tests/test-helm.sh` runs `helm lint` and
+without a Valkey they share. Several api pods without Valkey and without
+replicas render: editors on different pods reach each other through
+Postgres. `tests/test-helm.sh` runs `helm lint` and
 `helm template` in a container for each layout and checks the rendered URLs.
 
 The browser suite (`e2e/`, `mk/e2e.mk`) runs in Microsoft's Playwright image

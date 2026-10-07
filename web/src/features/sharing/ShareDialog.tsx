@@ -9,6 +9,7 @@ import { Button, Dialog, ErrorBanner, Field, Skeleton } from "@/components/ui";
 import { SubjectGlyph, SubjectPicker } from "@/features/permissions/SubjectPicker";
 import { SHARE_MAX_RECIPIENTS, SHARE_MESSAGE_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
+import { PublicLinks } from "./PublicLinks";
 
 interface Picked {
   subject: Subject;
@@ -32,6 +33,9 @@ export function ShareDialog({ page, onClose }: { page: Page; onClose: () => void
   return (
     <Dialog title={t.share.title(page.title)} onClose={onClose} data-share-dialog={page.id}>
       {sent ? <Sent share={sent} onClose={onClose} /> : <Compose page={page} onClose={onClose} onSent={setSent} />}
+      <div className="mt-4">
+        <PublicLinks pageId={page.id} />
+      </div>
     </Dialog>
   );
 }

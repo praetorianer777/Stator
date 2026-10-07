@@ -21,6 +21,11 @@ type Action string
 const (
 	// CreateSpace makes a new space in the organization.
 	CreateSpace Action = "space.create"
+	// CreatePersonalSpace makes the actor's own space, which only they see.
+	CreatePersonalSpace Action = "space.createPersonal"
+	// CreateExampleSpace makes the space that explains Stator, which only the
+	// organization's administrators do.
+	CreateExampleSpace Action = "space.createExample"
 	// ViewSpace reads a space and its pages.
 	ViewSpace Action = "space.view"
 	// AdministerSpace changes a space's details and its permissions.
@@ -52,6 +57,15 @@ const (
 	// KeepOrgTemplates makes, changes and deletes the templates every space
 	// of the organization offers.
 	KeepOrgTemplates Action = "org.templates"
+	// ManageShortcuts adds, orders and removes the links pinned above the
+	// space's page tree.
+	ManageShortcuts Action = "space.shortcuts"
+	// EditCalendars adds, renames and removes the space's calendars and
+	// their events, which whoever may add pages to the space may.
+	EditCalendars Action = "space.calendars"
+	// CopyPermissionsFrom reads a space's permissions to copy them onto
+	// another, which takes administering it, as reading them does.
+	CopyPermissionsFrom Action = "space.copyPermissionsFrom"
 )
 
 // Actor is who asks: a person and their standing in the organization the
@@ -89,6 +103,10 @@ func (e *DeniedError) Error() string {
 	switch e.Action {
 	case CreateSpace:
 		return "You may not create spaces. Ask an administrator of the organization to let you, or to make the space for you."
+	case CreatePersonalSpace:
+		return "You may not create a personal space, since you may not use Stator in this organization. Ask an administrator of the organization for access."
+	case CreateExampleSpace:
+		return "Only an administrator of the organization can create the example space. Ask one of them to create it."
 	case AdministerSpace:
 		return "Only an administrator of this space can change its details and permissions. Ask one of them."
 	case DeleteSpace:
@@ -115,6 +133,12 @@ func (e *DeniedError) Error() string {
 		return "Only an administrator of this space can change its templates. Ask one of them."
 	case KeepOrgTemplates:
 		return "Only an administrator of the organization can change the templates every space offers. Ask one of them, or make the template in a space you administer."
+	case ManageShortcuts:
+		return "Only an administrator of this space can change its shortcuts. Ask one of them to add, move or remove a shortcut."
+	case EditCalendars:
+		return "You may read this space's calendars but not change them. Ask an administrator of the space to let you add pages, which lets you keep its calendars."
+	case CopyPermissionsFrom:
+		return "You may copy permissions only from a space you administer, since only its administrators read them. Ask one of them to copy them for you, or choose another space."
 	}
 	return "You do not have permission to do that. Ask an administrator of the organization."
 }

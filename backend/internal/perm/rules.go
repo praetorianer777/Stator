@@ -20,9 +20,9 @@ type Facts struct {
 	// Global and Space are the grants as stored, before any implication.
 	Global []GlobalPermission
 	Space  []SpacePermission
-	// SpacesOnly says the person acts with a token limited to spaces, which
-	// reaches nothing of the organization as a whole. Facts about a space it
-	// does not reach are empty.
+	// SpacesOnly says the person acts with a token limited to spaces, or is a
+	// guest of one, and so reaches nothing of the organization as a whole.
+	// Facts about a space they do not reach are empty.
 	SpacesOnly bool
 }
 
@@ -71,15 +71,21 @@ func Decide(f Facts, action Action) bool {
 	switch action {
 	case CreateSpace:
 		return f.HoldsGlobal(CreateSpaces)
+	case CreatePersonalSpace:
+		// A space of one's own is outside every space a limited token or a
+		// guest reaches.
+		return f.HoldsGlobal(UseStator) && !f.SpacesOnly
+	case CreateExampleSpace:
+		return f.OrgAdmin()
 	case ViewSpace:
 		return f.HoldsSpace(SpaceView)
-	case EditPages:
+	case EditPages, EditCalendars:
 		return f.HoldsSpace(SpaceAddPages)
 	case AddComments:
 		return f.HoldsSpace(SpaceAddComments)
 	case DeletePages:
 		return f.HoldsSpace(SpaceDelete)
-	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace, ReviewStale, KeepTemplates:
+	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace, ReviewStale, ManageShortcuts, CopyPermissionsFrom, KeepTemplates:
 		return f.HoldsSpace(SpaceAdminister)
 	case KeepOrgTemplates:
 		return f.OrgAdmin()

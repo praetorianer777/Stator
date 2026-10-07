@@ -114,6 +114,15 @@ func (c *Cluster) inTx(
 					return fmt.Errorf("apply the token's spaces: %w", err)
 				}
 			}
+		} else if AnonymousFrom(ctx) {
+			if _, err := tx.Exec(ctx, setOrgSQL, AnonymousVar, "on"); err != nil {
+				return fmt.Errorf("apply the anonymous reader: %w", err)
+			}
+			if a, _ := ctx.Value(userKey{}).(acting); a.link != "" {
+				if _, err := tx.Exec(ctx, setOrgSQL, LinkVar, a.link); err != nil {
+					return fmt.Errorf("apply the public link: %w", err)
+				}
+			}
 		}
 	}
 	if err := fn(ctx, tx); err != nil {

@@ -13,10 +13,14 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/calendar"
+	"github.com/praetorianer777/stator/backend/internal/collab"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -25,14 +29,18 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
+	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
@@ -82,8 +90,21 @@ type Server struct {
 	Templates *template.Service
 	// Stale reads the stale content report for administrators.
 	Stale *stale.Service
+	// Tasks reads the tasks people are assigned on published pages.
+	Tasks *task.Service
 	// Shares sends pages to people who may read them, with a note.
 	Shares *share.Service
+	// Shortcuts keeps the links pinned above each space's page tree.
+	Shortcuts *shortcut.Service
+	// Calendars keeps each space's calendars and their events.
+	Calendars *calendar.Service
+	// Guests lets people from outside into one space each.
+	Guests *guest.Service
+	// Public serves the spaces anybody may read without signing in, and the
+	// organization's switch for it; nil answers that nothing is public.
+	Public *public.Service
+	Hub    *hub.Service
+	Unfurl *unfurl.Service
 	// PageViews reads how often pages were read and by whom;
 	// PageViewRetention is how long the worker keeps named views, zero forever.
 	PageViews         *pageview.Service
@@ -102,6 +123,9 @@ type Server struct {
 	// both. AuditRetention is how long the worker keeps an entry, zero forever.
 	Audit          *audit.Service
 	AuditRetention time.Duration
+	// Collab relays the shared drafts of pages being edited together; nil
+	// answers that editing together is off, and the editor edits alone.
+	Collab *collab.Hub
 	// Webhooks keeps where the organization's events are posted; nil answers
 	// that webhooks are not set up.
 	Webhooks *webhook.Service
@@ -145,7 +169,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 	r.Use(securityHeaders)
 	r.Use(cors(allowedOrigins))
 	r.Use(s.sameSite(allowedOrigins))
-	r.Use(middleware.Timeout(timeout))
+	r.Use(unlessUpgrade(middleware.Timeout(timeout)))
 	r.Use(s.authenticate)
 	r.Use(readOnlyToken)
 	r.Use(s.readYourWrites)
@@ -161,6 +185,19 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Get("/auth/oidc/{orgSlug}/start", s.handleOIDCStart)
 		r.Get("/auth/oidc/callback", s.handleOIDCCallback)
 		r.Post("/armature/webhook/{orgSlug}", s.handleArmatureWebhook)
+		r.Group(func(r chi.Router) {
+			r.Use(s.anonymousReader)
+			r.Get("/public/{orgSlug}", s.handlePublicSite)
+			r.Get("/public/{orgSlug}/spaces/{spaceKey}", s.handlePublicSpace)
+			r.Get("/public/{orgSlug}/pages/{pageID}", s.handlePublicPage)
+			r.Get("/public/{orgSlug}/attachments/{attachmentID}", s.handlePublicAttachment)
+			r.Get("/public/{orgSlug}/search", s.handlePublicSearch)
+		})
+		r.Group(func(r chi.Router) {
+			r.Use(s.linkReader)
+			r.Get("/public/{orgSlug}/links/{token}", s.handleLinkedPage)
+			r.Get("/public/{orgSlug}/links/{token}/attachments/{attachmentID}", s.handleLinkedAttachment)
+		})
 		mountPending(r, true)
 
 		r.Group(func(r chi.Router) {
@@ -187,6 +224,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/org/tokens/{tokenID}", s.handleRevokeOrgAPIToken)
 			r.Get("/org/permissions", s.handleListGlobalPermissions)
 			r.Put("/org/permissions/{permission}", s.handleSetGlobalPermission)
+			r.Put("/org/hub", s.handleSetHub)
+			r.Get("/org/anonymous-access", s.handleGetAnonymousAccess)
+			r.Put("/org/anonymous-access", s.handleSetAnonymousAccess)
+			r.Get("/org/public-links", s.handleGetPublicLinks)
+			r.Put("/org/public-links", s.handleSetPublicLinks)
+			r.Get("/spaces/{spaceKey}/guests", s.handleListGuests)
+			r.Post("/spaces/{spaceKey}/guests", s.handleInviteGuest)
+			r.Delete("/spaces/{spaceKey}/guests/{userID}", s.handleRemoveGuest)
 		})
 
 		// What the caller may do is theirs to read even without use, so the
@@ -249,6 +294,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/armature/issues/{issueKey}", s.handleGetArmatureIssue)
 			r.Get("/armature/projects", s.handleListArmatureProjects)
 			r.Get("/armature/search", s.handleSearchArmatureIssues)
+			r.Get("/armature/chart", s.handleArmatureChart)
+			r.Get("/armature/roadmap", s.handleArmatureRoadmap)
+			r.Get("/armature/calendar", s.handleArmatureCalendar)
 			r.Get("/armature/issue-types", s.handleListArmatureIssueTypes)
 			r.Post("/armature/issues", s.handleCreateArmatureIssues)
 			r.Get("/pages/{pageID}/armature-links", s.handleListArmatureLinks)
@@ -272,22 +320,45 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/spaces", s.handleListSpaces)
 			// A new space is outside every space a limited token names.
 			r.With(requireWholeOrg).Post("/spaces", s.handleCreateSpace)
+			r.With(requireWholeOrg).Get("/example-space", s.handleGetExampleSpace)
+			r.With(requireWholeOrg).Post("/example-space", s.handleCreateExampleSpace)
 			r.Get("/spaces/{spaceKey}", s.handleGetSpace)
 			r.Patch("/spaces/{spaceKey}", s.handleUpdateSpace)
 			r.Delete("/spaces/{spaceKey}", s.handleDeleteSpace)
 			r.Get("/spaces/{spaceKey}/pages", s.handleListPages)
 			r.Get("/spaces/{spaceKey}/outline", s.handleSpaceOutline)
+			r.Get("/spaces/{spaceKey}/decisions", s.handleListDecisions)
+			r.Get("/spaces/{spaceKey}/blog", s.handleGetBlog)
+			r.Post("/spaces/{spaceKey}/posts", s.handleCreatePost)
 			r.Get("/spaces/{spaceKey}/permissions", s.handleListSpacePermissions)
 			r.Put("/spaces/{spaceKey}/permissions", s.handleSetSpacePermissions)
+			r.Get("/spaces/{spaceKey}/permissions/copy", s.handlePreviewPermissionCopy)
+			r.Post("/spaces/{spaceKey}/permissions/copy", s.handleCopyPermissions)
+			r.Get("/spaces/{spaceKey}/anonymous-access", s.handleGetSpaceAnonymousAccess)
+			r.Put("/spaces/{spaceKey}/anonymous-access", s.handleSetSpaceAnonymousAccess)
 			r.Put("/spaces/{spaceKey}/archive", s.handleArchiveSpace)
 			r.Delete("/spaces/{spaceKey}/archive", s.handleUnarchiveSpace)
 			r.Get("/spaces/{spaceKey}/archived-pages", s.handleListArchivedPages)
+			r.Get("/spaces/{spaceKey}/shortcuts", s.handleListShortcuts)
+			r.Post("/spaces/{spaceKey}/shortcuts", s.handleCreateShortcut)
+			r.Post("/spaces/{spaceKey}/shortcuts/{shortcutID}/move", s.handleMoveShortcut)
+			r.Delete("/spaces/{spaceKey}/shortcuts/{shortcutID}", s.handleDeleteShortcut)
+			r.Get("/spaces/{spaceKey}/calendars", s.handleListCalendars)
+			r.Post("/spaces/{spaceKey}/calendars", s.handleCreateCalendar)
+			r.Patch("/calendars/{calendarID}", s.handleRenameCalendar)
+			r.Delete("/calendars/{calendarID}", s.handleDeleteCalendar)
+			r.Get("/calendars/{calendarID}/events", s.handleListCalendarEvents)
+			r.Post("/calendars/{calendarID}/events", s.handleCreateCalendarEvent)
+			r.Put("/calendars/{calendarID}/events/{eventID}", s.handleUpdateCalendarEvent)
+			r.Delete("/calendars/{calendarID}/events/{eventID}", s.handleDeleteCalendarEvent)
 			r.Get("/spaces/{spaceKey}/trash", s.handleListTrash)
 			r.Delete("/spaces/{spaceKey}/trash", s.handleEmptyTrash)
 			r.Post("/spaces/{spaceKey}/trash/{pageID}/restore", s.handleRestorePage)
 			r.Delete("/spaces/{spaceKey}/trash/{pageID}", s.handlePurgePage)
 			r.Post("/pages", s.handleCreatePage)
 			r.Get("/pages/{pageID}", s.handleGetPage)
+			r.Get("/pages/{pageID}/excerpts", s.handleListExcerpts)
+			r.Get("/pages/{pageID}/included", s.handleGetIncluded)
 			r.Patch("/pages/{pageID}", s.handleUpdatePage)
 			r.Delete("/pages/{pageID}", s.handleTrashPage)
 			r.Post("/pages/{pageID}/move", s.handleMovePage)
@@ -304,19 +375,37 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/templates/{templateKey}", s.handleGetTemplate)
 			r.Put("/templates/{templateKey}", s.handleUpdateTemplate)
 			r.Delete("/templates/{templateKey}", s.handleDeleteTemplate)
+			r.Get("/space-templates", s.handleListSpaceTemplates)
 			r.Get("/pages/{pageID}/labels", s.handleListPageLabels)
 			r.Post("/pages/{pageID}/labels", s.handleAddPageLabel)
 			r.Delete("/pages/{pageID}/labels/{labelName}", s.handleRemovePageLabel)
 			r.Get("/labels", s.handleSuggestLabels)
 			r.Get("/labels/{labelName}/pages", s.handleListLabelPages)
+			r.Get("/properties-report", s.handlePropertiesReport)
+			r.Get("/labelled-pages", s.handleLabelledPages)
+			r.Get("/updated-pages", s.handleUpdatedPages)
+			r.Get("/posts", s.handleListPosts)
+			r.Get("/task-report", s.handleTaskReport)
+			r.Get("/template-button", s.handleTemplateButton)
+			r.Post("/templates/{templateKey}/pages", s.handleCreateFromTemplate)
+			r.Get("/pages/{pageID}/contributors", s.handlePageContributors)
 			r.Get("/pages/{pageID}/attachments", s.handleListAttachments)
 			r.Post("/pages/{pageID}/attachments", s.handleUploadAttachment)
 			r.Get("/attachments/{attachmentID}", s.handleDownloadAttachment)
+			r.Get("/attachments/{attachmentID}/preview", s.handlePreviewAttachment)
 			r.Delete("/attachments/{attachmentID}", s.handleDeleteAttachment)
+			r.Post("/attachments/{attachmentID}/restore", s.handleRestoreAttachment)
+			r.Post("/attachments/{attachmentID}/edit", s.handleEditAttachment)
 			r.Get("/pages/{pageID}/draft", s.handleGetDraft)
 			r.Put("/pages/{pageID}/draft", s.handleSaveDraft)
 			r.Delete("/pages/{pageID}/draft", s.handleDiscardDraft)
+			// A browser holds it open while its person edits, so a token has no use for it.
+			r.With(requireSession).Get("/pages/{pageID}/collab", s.handleCollab)
 			r.Post("/pages/{pageID}/publish", s.handlePublishPage)
+			r.Put("/pages/{pageID}/schedule", s.handleSchedulePublish)
+			r.Delete("/pages/{pageID}/schedule", s.handleCancelSchedule)
+			r.Put("/pages/{pageID}/live", s.handleSaveLive)
+			r.Put("/pages/{pageID}/mode", s.handleSetPageMode)
 			r.Get("/pages/{pageID}/versions", s.handleListVersions)
 			r.Get("/pages/{pageID}/versions/{versionNumber}", s.handleGetVersion)
 			r.Post("/pages/{pageID}/versions/{versionNumber}/restore", s.handleRestoreVersion)
@@ -349,9 +438,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/mentionable", s.handleListMentionable)
 			r.Post("/pages/{pageID}/share", s.handleSharePage)
 			r.Get("/pages/{pageID}/share/recipients", s.handleShareRecipients)
+			r.Get("/pages/{pageID}/public-links", s.handleListPageLinks)
+			r.Post("/pages/{pageID}/public-links", s.handleCreatePageLink)
+			r.Delete("/pages/{pageID}/public-links/{linkID}", s.handleRevokePageLink)
 			r.Get("/pages/{pageID}/viewers", s.handleListViewers)
 			r.Put("/spaces/{spaceKey}/watch", s.handleWatchSpace)
 			r.Delete("/spaces/{spaceKey}/watch", s.handleUnwatchSpace)
+			r.Put("/spaces/{spaceKey}/blog/watch", s.handleWatchBlog)
+			r.Delete("/spaces/{spaceKey}/blog/watch", s.handleUnwatchBlog)
 			r.Get("/watches", s.handleListWatches)
 			r.Put("/pages/{pageID}/star", s.handleStarPage)
 			r.Delete("/pages/{pageID}/star", s.handleUnstarPage)
@@ -359,9 +453,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/spaces/{spaceKey}/star", s.handleUnstarSpace)
 			r.Get("/stars", s.handleListStars)
 			r.Get("/home/updates", s.handleHomeUpdates)
+			r.Get("/org/hub", s.handleGetHub)
+			r.Get("/link-preview", s.handleLinkPreview)
 			r.Get("/home/edited", s.handleHomeEdited)
 			r.Get("/stale-pages", s.handleListStalePages)
+			r.Get("/tasks", s.handleListMyTasks)
+			r.Patch("/pages/{pageID}/tasks/{taskID}", s.handleSetTaskDone)
 			r.Put("/pages/{pageID}/owner", s.handleSetPageOwner)
+			r.Put("/pages/{pageID}/appearance", s.handleSetAppearance)
 			r.Delete("/pages/{pageID}/owner", s.handleRemovePageOwner)
 			r.Put("/pages/{pageID}/verification", s.handleVerifyPage)
 			r.Delete("/pages/{pageID}/verification", s.handleUnverifyPage)

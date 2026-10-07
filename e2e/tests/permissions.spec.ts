@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil, openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
@@ -13,12 +14,6 @@ const NOT_FOUND = /not found/i;
 async function pick(scope: Locator, typed: string, name: string): Promise<void> {
   await scope.getByRole("combobox").fill(typed);
   await scope.locator(`[data-subject-option="${name}"]`).click();
-}
-
-/** Opens a page and waits for either its title or the sentence that it is not there. */
-async function openPage(page: Page, path: string): Promise<void> {
-  await page.goto(path);
-  await expect(page.locator("[data-page-title], [role=alert], [data-route-error], [data-not-found]").first()).toBeVisible();
 }
 
 /** What bob gets for a page, read through the API, which a replica may lag behind on. */
@@ -66,19 +61,14 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     await expect.poll(() => statusOf(bobApi, space.homePageId)).toBe(404);
 
     const bob = await pageAs("bob");
-    await bob.goto("/spaces");
-    await expect(bob.locator("[data-space-directory]")).toBeVisible();
-    await expect(bob.locator(`[data-space-row="${key}"]`)).toHaveCount(0);
+    await openWithout(bob, "/spaces", bob.locator(`[data-space-row="${key}"]`), bob.locator("[data-space-directory]"));
 
     await pick(page.locator("[data-space-permissions] [data-subject-picker]"), "bob", "Bob Builder");
     await expect(grid.locator('[data-grant="Bob Builder"] [data-permission-cell="view"]')).toBeChecked();
     await page.locator('[data-action="save-space-permissions"]').click();
     await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
     await expect.poll(() => statusOf(bobApi, space.homePageId)).toBe(200);
-    await expect(async () => {
-      await bob.goto(`/s/${key}`);
-      await expect(bob.locator("[data-page-home]")).toBeAttached({ timeout: 1_000 });
-    }).toPass();
+    await openUntil(bob, `/s/${key}`, () => expect(bob.locator("[data-page-home]")).toBeAttached(ONE_LOOK));
     // Viewing is all he was given, so nothing on the page offers to change it.
     await expect(bob.locator('[data-action="edit-page"]')).toHaveCount(0);
   });
@@ -103,22 +93,18 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     await expect.poll(() => statusOf(bobApi, secret.id)).toBe(404);
 
     const bob = await pageAs("bob");
-    await openPage(bob, `/s/${key}/p/${secret.id}/salaries`);
-    await expect(bob.locator("[data-page-title]")).toHaveCount(0);
-    await expect(bob.getByText(NOT_FOUND).first()).toBeVisible();
-    await bob.goto(`/s/${key}`);
-    await expect(bob.locator("[data-page-home]")).toBeAttached();
-    await expect(bob.locator(`[data-tree-item="${secret.id}"]`)).toHaveCount(0);
+    await openWithout(bob, `/s/${key}/p/${secret.id}/salaries`, bob.locator("[data-page-title]"), bob.getByText(NOT_FOUND).first());
+    await openUntil(bob, `/s/${key}`, async () => {
+      await expect(bob.locator("[data-page-home]")).toBeAttached(ONE_LOOK);
+      await expect(bob.locator(`[data-tree-item="${secret.id}"]`)).toHaveCount(0, ONE_LOOK);
+    });
 
     dialog = await openRestrictions(page);
     await pick(dialog.locator('[data-restriction-list="view"]'), "bob", "Bob Builder");
     await dialog.locator('[data-action="save-restrictions"]').click();
     await expect(dialog).toHaveCount(0);
     await expect.poll(() => statusOf(bobApi, secret.id)).toBe(200);
-    await expect(async () => {
-      await bob.goto(`/s/${key}/p/${secret.id}/salaries`);
-      await expect(heading(bob)).toHaveText("Salaries", { timeout: 1_000 });
-    }).toPass();
+    await openUntil(bob, `/s/${key}/p/${secret.id}/salaries`, () => expect(heading(bob)).toHaveText("Salaries", ONE_LOOK));
     await expect(bob.locator('[data-page-restricted="view"]')).toBeVisible();
   });
 
@@ -155,10 +141,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     const notes = await createPage(api, space.homePageId, "Notes");
 
     const bob = await pageAs("bob");
-    await expect(async () => {
-      await bob.goto(`/s/${key}/p/${notes.id}/notes`);
-      await expect(heading(bob)).toHaveText("Notes", { timeout: 1_000 });
-    }).toPass();
+    await openUntil(bob, `/s/${key}/p/${notes.id}/notes`, () => expect(heading(bob)).toHaveText("Notes", ONE_LOOK));
     const dialog = await openRestrictions(bob);
     await pick(dialog.locator('[data-restriction-list="edit"]'), "alice", "Alice Admin");
     await dialog.locator('[data-action="save-restrictions"]').click();
@@ -184,10 +167,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
       await expect(use.getByText("Saved.", { exact: true })).toBeVisible();
 
       const bob = await pageAs("bob");
-      await expect(async () => {
-        await bob.goto("/spaces");
-        await expect(bob.locator("[data-no-access]")).toBeVisible({ timeout: 1_000 });
-      }).toPass();
+      await openShowing(bob, "/spaces", bob.locator("[data-no-access]"));
       await expect(bob.getByRole("heading", { level: 1 })).toContainText("You do not have access to");
       await expect(bob.getByText(/Ask one of its administrators to add you under Permissions/)).toBeVisible();
       await expectAccessible(bob);

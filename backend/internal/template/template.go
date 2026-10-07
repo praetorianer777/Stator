@@ -62,8 +62,10 @@ var (
 	ErrUnknown = errors.New("no such template")
 	// ErrBuiltIn refuses changing a template the product ships.
 	ErrBuiltIn = errors.New("built-in templates come with the product and cannot be changed; make a template of your own instead")
-	// ErrUnknownSpace is returned for a space key the caller cannot see.
-	ErrUnknownSpace = errors.New("no such space")
+	// ErrOtherSpace is a space's own template asked for in another space.
+	ErrOtherSpace = errors.New("that template belongs to another space")
+	// ErrNoSpace is returned for a space key the caller cannot see.
+	ErrNoSpace = errors.New("no such space")
 )
 
 //go:embed builtin/*.json

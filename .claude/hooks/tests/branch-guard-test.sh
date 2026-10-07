@@ -22,10 +22,17 @@ fixture_main() {
   git branch -q --set-upstream-to=origin/main main
 }
 
+# The hooks as they stand in the checkout, but not its worktrees: those hold
+# whole repositories with read-only module caches, which the fixture's cleanup
+# could not remove.
+copy_claude() {
+  mkdir -p .claude && cp -r "$SRC/.claude/hooks" "$SRC/.claude/skills" "$SRC/.claude/settings.json" .claude/
+}
+
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
 git clone -q "$SRC" "$W/r" && cd "$W/r"
-fixture_main && cp -r "$SRC/.claude" . && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
+fixture_main && copy_claude && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
 export CLAUDE_PROJECT_DIR="$W/r"
 G="git"; C="commit"
 fail=0
@@ -168,7 +175,7 @@ true
 W2=$(mktemp -d)
 trap 'rm -rf "$W" "$W2"' EXIT
 git clone -q "$SRC" "$W2/r" && cd "$W2/r"
-fixture_main && cp -r "$SRC/.claude" . && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
+fixture_main && copy_claude && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
 export CLAUDE_PROJECT_DIR="$W2/r"
 G="git"; C="commit"
 

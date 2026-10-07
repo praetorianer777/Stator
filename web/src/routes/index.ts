@@ -8,19 +8,25 @@ import { appRoute } from "./app";
 import { armatureSettingsRoute } from "./armature";
 import { auditRoute } from "./audit";
 import { devEditorRoute } from "./dev-editor";
+import { exampleSpaceRoute } from "./example-space";
 import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
 import { notificationSettingsRoute, watchingRoute } from "./notifications";
-import { homeRoute } from "./pages";
+import { homeRoute, personalHomeRoute } from "./pages";
+import { hubSettingsRoute } from "./hub";
 import { pageEditRoute } from "./page-edit";
 import { orgPermissionsRoute } from "./permissions";
 import { pageHistoryRoute } from "./page-history";
 import { profileRoute } from "./profile";
+import { publicLinkRoute, publicRoutes } from "./public";
 import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
-import { spaceNewRoute, spacesRoute } from "./spaces";
+import { spaceDecisionsRoute } from "./decisions";
+import { spaceBlogRoute } from "./blog";
+import { personalSpaceNewRoute, spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
 import { searchRoute } from "./search";
 import { staleRoute } from "./stale";
+import { tasksRoute } from "./tasks";
 import { ssoRoute } from "./sso";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
@@ -30,12 +36,27 @@ import { templateEditRoute, templateNewRoute, templatesRoute } from "./templates
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  publicRoutes,
+  publicLinkRoute,
   appRoute.addChildren([
     homeRoute,
+    personalHomeRoute,
     spacesRoute,
     spaceNewRoute,
-    spaceRoute.addChildren([spaceHomeRoute, pageRoute, pageBareRoute, pageEditRoute, pageHistoryRoute, spaceSettingsRoute, spaceLabelRoute]),
+    personalSpaceNewRoute,
+    spaceRoute.addChildren([
+      spaceHomeRoute,
+      pageRoute,
+      pageBareRoute,
+      pageEditRoute,
+      pageHistoryRoute,
+      spaceSettingsRoute,
+      spaceLabelRoute,
+      spaceDecisionsRoute,
+      spaceBlogRoute,
+    ]),
     searchRoute,
+    tasksRoute,
     labelRoute,
     themesRoute,
     themeNewRoute,
@@ -46,6 +67,8 @@ const routeTree = rootRoute.addChildren([
     watchingRoute,
     ssoRoute,
     orgPermissionsRoute,
+    hubSettingsRoute,
+    exampleSpaceRoute,
     armatureSettingsRoute,
     auditRoute,
     webhooksRoute,

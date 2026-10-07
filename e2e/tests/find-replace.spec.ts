@@ -3,6 +3,7 @@ import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
@@ -35,10 +36,7 @@ test.describe("find and replace in the editor", { tag: ["@auth"] }, () => {
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Find"));
     const notes = await createPage(api, space.homePageId, "Notes", BODY);
-    await expect(async () => {
-      await page.goto(`/s/${space.key}/p/${notes.id}/notes/edit`);
-      await expect(editorBox(page)).toContainText("The last draft", { timeout: 2_000 });
-    }).toPass();
+    await openUntil(page, `/s/${space.key}/p/${notes.id}/notes/edit`, () => expect(editorBox(page)).toContainText("The last draft", ONE_LOOK));
     return space;
   }
 

@@ -38,7 +38,48 @@ var (
 	ErrRestoreStale = errors.New("somebody published this page after you opened its history")
 	// ErrRestoreLatest refuses restoring the version the page already is.
 	ErrRestoreLatest = errors.New("that is already the latest version of the page")
+	// ErrFolder refuses giving a folder anything a page holds: text, drafts,
+	// versions, comments and the rest.
+	ErrFolder = errors.New("a folder holds pages and folders, not content of its own; put it on a page inside the folder")
+	// ErrBadKind refuses a kind that is neither a page nor a folder.
+	ErrBadKind = errors.New("choose page or folder; a blog post is written in its space's blog")
+	// ErrPostPlace refuses putting a blog post in the tree, or a page under one.
+	ErrPostPlace = errors.New("a blog post stays in its space's blog, outside the page tree; copy its text into a new page instead")
+	// ErrPostLive refuses a live blog post: a post goes out once, on its date.
+	ErrPostLive = errors.New("a blog post is published from drafts, so it cannot be live")
+	// ErrLivePage refuses a draft or a publish of a live page, whose saves
+	// are the page already.
+	ErrLivePage = errors.New("this page is live, so what you type is saved to the page as you go; there is no draft to save or publish")
+	// ErrNotLive refuses a live save of a page edited through drafts.
+	ErrNotLive = errors.New("this page is published from drafts now, not saved as you type; open the editor again")
+	// ErrBadMode refuses a mode that is neither draft nor live.
+	ErrBadMode = errors.New("choose draft or live")
 )
+
+// Kind is what a row of a page tree is.
+type Kind string
+
+const (
+	KindPage   Kind = "page"
+	KindFolder Kind = "folder"
+	// KindPost is a blog post: a page of its space's blog, outside the tree.
+	KindPost Kind = "post"
+)
+
+// Kinds is every kind, for the API's description.
+var Kinds = []Kind{KindPage, KindFolder, KindPost}
+
+// Mode is how a page's words are edited: through drafts its editors publish,
+// or live, where every save is the page at once.
+type Mode string
+
+const (
+	ModeDraft Mode = "draft"
+	ModeLive  Mode = "live"
+)
+
+// Modes is every mode, for the API's description.
+var Modes = []Mode{ModeDraft, ModeLive}
 
 // FieldError is a refusal of one field of the request, which the client
 // shows next to it.
@@ -56,6 +97,15 @@ type Page struct {
 	SpaceKey string     `json:"spaceKey"`
 	ParentID *uuid.UUID `json:"parentId"`
 	Title    string     `json:"title"`
+	// Kind is page, folder for a row that only holds others and has no
+	// body, versions, drafts or comments of its own, or post for a blog post.
+	Kind Kind `json:"kind"`
+	// PostedAt is a blog post's date, its first publish; null otherwise.
+	PostedAt *time.Time `json:"postedAt"`
+	// Appearance is the page's emoji, width and cover.
+	Appearance Appearance `json:"appearance"`
+	// Mode is draft, published from drafts, or live, saved as it is typed.
+	Mode Mode `json:"mode"`
 	// Body is the document, ProseMirror JSON the allowlist accepts.
 	Body json.RawMessage `json:"body"`
 	// Version is the number of the published version the title and body
@@ -66,6 +116,9 @@ type Page struct {
 	Unpublished bool `json:"unpublished"`
 	// Draft is the caller's own unpublished edit of the page, if any.
 	Draft *DraftRef `json:"draft"`
+	// Schedule is the publish set for a time, null when there is none or the
+	// caller is neither its author nor an editor of the page.
+	Schedule *Schedule `json:"schedule"`
 	// Restricted says whether a view or edit restriction on the page or
 	// above it narrows who may do so.
 	Restricted Restricted `json:"restricted"`

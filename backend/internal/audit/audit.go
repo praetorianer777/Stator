@@ -24,25 +24,35 @@ const (
 	ActionMemberJoined = "member.joined"
 	// ActionMemberRoleChanged is a role the identity provider's groups changed.
 	ActionMemberRoleChanged = "member.role_changed"
-	ActionSSOProviderSaved  = "sso.provider_saved"
-	ActionGroupRoleSet      = "sso.group_role_set"
-	ActionGroupRoleRemoved  = "sso.group_role_removed"
-	ActionTokenCreated      = "token.created"
-	ActionTokenRevoked      = "token.revoked"
-	ActionSpaceCreated      = "space.created"
-	ActionSpaceUpdated      = "space.updated"
-	ActionSpaceDeleted      = "space.deleted"
-	ActionPagePurged        = "page.purged"
-	ActionTrashEmptied      = "trash.emptied"
+	// ActionGuestInvited is somebody from outside let into one space.
+	ActionGuestInvited     = "member.guest_invited"
+	ActionSSOProviderSaved = "sso.provider_saved"
+	ActionGroupRoleSet     = "sso.group_role_set"
+	ActionGroupRoleRemoved = "sso.group_role_removed"
+	ActionTokenCreated     = "token.created"
+	ActionTokenRevoked     = "token.revoked"
+	ActionSpaceCreated     = "space.created"
+	ActionSpaceUpdated     = "space.updated"
+	ActionSpaceDeleted     = "space.deleted"
+	// ActionExampleSpaceCreated is the space that explains Stator made, in
+	// place of space.created for it.
+	ActionExampleSpaceCreated = "space.example_created"
+	ActionPagePurged          = "page.purged"
+	ActionTrashEmptied        = "trash.emptied"
 	// Permissions: whom a global permission is granted to, a space's table,
 	// and a page's own restrictions.
 	ActionOrgPermissionSet    = "org.permission_set"
 	ActionSpacePermissionsSet = "space.permissions_set"
 	ActionPageRestrictionsSet = "page.restrictions_set"
+	// ActionSpacePermissionsCopied is another space's table copied onto a
+	// space, as one entry naming both, the mode and the counts.
+	ActionSpacePermissionsCopied = "space.permissions_copied"
 	// ActionCommentDeleted is somebody else's comment deleted with the
 	// space's delete permission; one's own is not recorded.
-	ActionCommentDeleted            = "comment.deleted"
-	ActionThemeDefaultSet           = "theme.default_set"
+	ActionCommentDeleted  = "comment.deleted"
+	ActionThemeDefaultSet = "theme.default_set"
+	// ActionOrgHubSet is the organization's hub chosen, changed or cleared.
+	ActionOrgHubSet                 = "org.hub_set"
 	ActionArmatureConnectionSaved   = "armature.connection_saved"
 	ActionArmatureConnectionRemoved = "armature.connection_removed"
 	// Exports: what left the wiki as a file, and the record itself.
@@ -71,17 +81,32 @@ const (
 	ActionTemplateCreated = "template.created"
 	ActionTemplateUpdated = "template.updated"
 	ActionTemplateDeleted = "template.deleted"
+	// Shortcuts pinned above a space's page tree.
+	ActionShortcutAdded   = "space.shortcut_added"
+	ActionShortcutMoved   = "space.shortcut_moved"
+	ActionShortcutRemoved = "space.shortcut_removed"
+	// Reading without signing in: the organization's switch, and a space's
+	// grant to anybody.
+	ActionOrgAnonymousAccessSet   = "org.anonymous_access_set"
+	ActionSpaceAnonymousAccessSet = "space.anonymous_access_set"
+	// Public links: one made or revoked for a page, and the organization's switch.
+	ActionPageLinkCreated   = "page.public_link_created"
+	ActionPageLinkRevoked   = "page.public_link_revoked"
+	ActionOrgPublicLinksSet = "org.public_links_set"
+	// ActionPageModeChanged is a page switched between drafts and live, with
+	// whose unpublished drafts going live threw away.
+	ActionPageModeChanged = "page.mode_changed"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
 // client to name.
 var Actions = []string{
-	ActionMemberAdmitted, ActionMemberDeclined, ActionMemberRemoved, ActionMemberJoined, ActionMemberRoleChanged,
+	ActionMemberAdmitted, ActionMemberDeclined, ActionMemberRemoved, ActionMemberJoined, ActionMemberRoleChanged, ActionGuestInvited,
 	ActionSSOProviderSaved, ActionGroupRoleSet, ActionGroupRoleRemoved,
 	ActionTokenCreated, ActionTokenRevoked,
 	ActionSpaceCreated, ActionSpaceUpdated, ActionSpaceDeleted, ActionPagePurged, ActionTrashEmptied,
 	ActionOrgPermissionSet, ActionSpacePermissionsSet, ActionPageRestrictionsSet,
-	ActionCommentDeleted, ActionThemeDefaultSet,
+	ActionCommentDeleted, ActionThemeDefaultSet, ActionOrgHubSet,
 	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved,
 	ActionPageExported, ActionAuditExported,
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
@@ -89,6 +114,12 @@ var Actions = []string{
 	ActionWebhookCreated, ActionWebhookUpdated, ActionWebhookDeleted, ActionWebhookSecretRotated, ActionWebhookDisabled,
 	ActionPageShared,
 	ActionTemplateCreated, ActionTemplateUpdated, ActionTemplateDeleted,
+	ActionShortcutAdded, ActionShortcutMoved, ActionShortcutRemoved,
+	ActionOrgAnonymousAccessSet, ActionSpaceAnonymousAccessSet,
+	ActionPageLinkCreated, ActionPageLinkRevoked, ActionOrgPublicLinksSet,
+	ActionSpacePermissionsCopied,
+	ActionPageModeChanged,
+	ActionExampleSpaceCreated,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

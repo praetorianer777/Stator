@@ -83,7 +83,9 @@ describe("the editor", () => {
       await userEvent.clear(title);
       await userEvent.type(title, "Plans 2027");
       expect(puts(sent)).toHaveLength(0);
-      expect(await screen.findByText("Draft saved. Only you can see it until you publish.", {}, AUTOSAVE_WAIT)).toBeInTheDocument();
+      expect(
+        await screen.findByText("Draft saved. Only you can see it until you publish.", { selector: "[data-draft-status]" }, AUTOSAVE_WAIT),
+      ).toBeInTheDocument();
       expect(puts(sent)).toHaveLength(1);
       expect(puts(sent)[0]!.body).toMatchObject({ title: "Plans 2027", baseVersion: 3, body: { type: "doc" } });
       expect(sent.some((r) => isChange(r) || r.method === "PATCH")).toBe(false);
@@ -110,7 +112,7 @@ describe("the editor", () => {
       await renderAt(EDIT_PATH);
       await screen.findByLabelText("Title");
       expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
-      expect(screen.getByText("Nothing to publish yet: change something first.")).toBeInTheDocument();
+      expect(screen.getByText("Nothing to publish yet: change something first.", { selector: "[data-draft-status]" })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Discard draft" })).toBeNull();
     },
     EDITOR_TEST_MS,
@@ -192,7 +194,9 @@ describe("the editor", () => {
       await userEvent.clear(await screen.findByLabelText("Title"));
       await userEvent.click(screen.getByRole("button", { name: "Publish" }));
       expect(await screen.findByText("A page needs a title.")).toBeInTheDocument();
-      expect(await screen.findByText("A page needs a title before the draft can be saved.", {}, AUTOSAVE_WAIT)).toBeInTheDocument();
+      expect(
+        await screen.findByText("A page needs a title before the draft can be saved.", { selector: "[data-draft-status]" }, AUTOSAVE_WAIT),
+      ).toBeInTheDocument();
       expect(sent.some((r) => r.method !== "GET" && !isVisit(r))).toBe(false);
     },
     EDITOR_TEST_MS,
@@ -370,7 +374,17 @@ describe("the editor", () => {
 describe("an unpublished page", () => {
   it("is marked where it is read and in the tree", async () => {
     const fresh = aPage({ ...plans, unpublished: true, version: 0 });
-    const node: TreeNode = { id: PAGE_ID, parentId: home.id, title: "Plans", hasChildren: false, unpublished: true, restricted: false, archived: false };
+    const node: TreeNode = {
+      id: PAGE_ID,
+      parentId: home.id,
+      title: "Plans",
+      hasChildren: false,
+      unpublished: true,
+      restricted: false,
+      archived: false,
+      kind: "page",
+      icon: null,
+    };
     stubPage({ "GET /spaces/DOCS/pages": { status: 200, body: { pages: [node] } } }, { page: fresh });
     await renderAt(`/s/DOCS/p/${PAGE_ID}/plans`);
     expect(await screen.findByText("Only you can see this page until you publish it.")).toBeInTheDocument();
@@ -398,6 +412,9 @@ const entry = (number: number, over: Partial<VersionEntry> = {}): VersionEntry =
   authorName: "Ada Lovelace",
   createdAt: `2026-09-2${number}T09:00:00Z`,
   restoredFrom: null,
+  live: false,
+  updatedAt: `2026-09-2${number}T09:00:00Z`,
+  coEditors: [],
   ...over,
 });
 const versions = [

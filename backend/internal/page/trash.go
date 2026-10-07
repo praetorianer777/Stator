@@ -34,8 +34,11 @@ type TrashItem struct {
 	Pages int `json:"pages"`
 	// ParentTitle names where a restore puts it back; ParentInTree says
 	// whether that page is still there, or the item goes under the home page.
+	// A blog post goes back to its blog, which is always there.
 	ParentTitle  string `json:"parentTitle"`
 	ParentInTree bool   `json:"parentInTree"`
+	// Kind is page, folder or post.
+	Kind Kind `json:"kind"`
 }
 
 // Trash moves a page and every page below it still in the tree to the
@@ -89,9 +92,9 @@ func (s *Service) ListTrash(ctx context.Context, actor perm.Actor, spaceKey stri
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.title, p.trashed_at, COALESCE(u.name, ''),
 			       (SELECT count(*) FROM page i WHERE i.trash_id = p.id),
-			       parent.title, parent.trashed_at IS NULL
+			       COALESCE(parent.title, ''), COALESCE(parent.trashed_at IS NULL, true), p.kind
 			FROM page p
-			JOIN page parent ON parent.id = p.parent_id
+			LEFT JOIN page parent ON parent.id = p.parent_id
 			LEFT JOIN app_user u ON u.id = p.trashed_by
 			WHERE p.space_id = $1 AND p.trash_id = p.id AND `+perm.ViewablePage("p", 2)+`
 			ORDER BY p.trashed_at DESC, p.id`, sp.ID, actor.UserID)
@@ -108,11 +111,12 @@ func (s *Service) ListTrash(ctx context.Context, actor perm.Actor, spaceKey stri
 
 // trashItem locks an item of a space's trash, answering ErrNotInTrash for
 // anything else.
-func trashItem(ctx context.Context, tx db.DBTX, sp *space.Space, id uuid.UUID) (parent uuid.UUID, title string, err error) {
+// A blog post has no parent.
+func trashItem(ctx context.Context, tx db.DBTX, sp *space.Space, id uuid.UUID) (parent *uuid.UUID, title string, err error) {
 	err = tx.QueryRow(ctx, `
 		SELECT parent_id, title FROM page WHERE id = $1 AND space_id = $2 AND trash_id = id FOR UPDATE`, id, sp.ID).Scan(&parent, &title)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, "", ErrNotInTrash
+		return nil, "", ErrNotInTrash
 	}
 	return parent, title, err
 }
@@ -141,9 +145,11 @@ func (s *Service) Restore(ctx context.Context, actor perm.Actor, spaceKey string
 			return &perm.DeniedError{Action: perm.DeletePages}
 		}
 		// A page that may change never hangs under an archived one.
-		var parentInTree bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page WHERE id = $1 AND trashed_at IS NULL AND archived_at IS NULL)`, parent).Scan(&parentInTree); err != nil {
-			return err
+		parentInTree := parent == nil
+		if parent != nil {
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM page WHERE id = $1 AND trashed_at IS NULL AND archived_at IS NULL)`, *parent).Scan(&parentInTree); err != nil {
+				return err
+			}
 		}
 		var home *uuid.UUID
 		var homeRank *string

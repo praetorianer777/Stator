@@ -1,5 +1,5 @@
 import { t } from "@/i18n";
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "./cx";
 
@@ -43,6 +43,7 @@ export function PageHeader({
   actions,
   tabs,
   className,
+  style,
 }: {
   /** Where this page sits, drawn small above the title; crumbs is the structured form. */
   crumb?: ReactNode;
@@ -54,10 +55,12 @@ export function PageHeader({
   /** A row of tabs under the title, when the page has views. */
   tabs?: ReactNode;
   className?: string;
+  /** Carries a page sheet's widths to a header drawn in the shell, outside the sheet. */
+  style?: CSSProperties;
 }) {
   const target = useContext(ShellHeaderContext);
   const header = (
-    <header className={cx(target ? "pb-3" : "mb-5", className)}>
+    <header className={cx(target ? "pb-3" : "mb-5", className)} style={style}>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           {crumbs && crumbs.length > 0 ? (

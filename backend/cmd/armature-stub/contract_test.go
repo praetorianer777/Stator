@@ -192,8 +192,8 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	if n := len(c.expect("GET", "/projects", alice, nil, 200)["projects"].([]any)); n != 1 {
 		t.Errorf("alice lists %d projects, want 1", n)
 	}
-	if n := len(c.expect("GET", "/issue-types", alice, nil, 200)["issueTypes"].([]any)); n != 4 {
-		t.Errorf("%d issue types, want 4", n)
+	if n := len(c.expect("GET", "/issue-types", alice, nil, 200)["issueTypes"].([]any)); n != 5 {
+		t.Errorf("%d issue types, want 5", n)
 	}
 
 	for _, tc := range []struct {
@@ -304,6 +304,62 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	if changed["issue"].(map[string]any)["summary"] != "Renamed" {
 		t.Errorf("a change did not hold: %v", changed)
 	}
+	if changed["issue"].(map[string]any)["resolvedAt"] == nil {
+		t.Errorf("an issue made done has no resolvedAt: %v", changed)
+	}
+
+	// The reports a chart block draws (#51), counted over what the person
+	// may see and the query matches.
+	pie := c.expect("GET", "/projects/CP/reports/chart?groupBy=statusCategory&measure=count&shape=donut&q=project+%3D+CP", alice, nil, 200)
+	sum := 0.0
+	for _, g := range pie["groups"].([]any) {
+		sum += g.(map[string]any)["value"].(float64)
+	}
+	if len(pie["groups"].([]any)) != 3 || sum != pie["total"] {
+		t.Errorf("the chart by status category is %v", pie)
+	}
+	flow := c.expect("GET", "/projects/CP-1/reports/created_vs_resolved?days=7&q=project+%3D+CP", alice, nil, 200)
+	if days := flow["days"].([]any); len(days) != 7 || days[6].(map[string]any)["resolved"] != float64(1) {
+		t.Errorf("created against resolved is %v", flow)
+	}
+	c.expect("GET", "/projects/SEC/reports/chart?groupBy=type&q=project+%3D+SEC", alice, nil, 404)
+	c.expect("GET", "/projects/CP/reports/chart?groupBy=type&q=project+%3D", alice, nil, 400)
+	// The plan a roadmap block draws (#52): an epic's children give it the
+	// span it has no days of its own for.
+	epic := c.expect("POST", stubPrefix+"/acme/projects/CP/issues", "", map[string]any{"summary": "Launch", "type": "Epic"}, 201)["issue"].(map[string]any)["key"].(string)
+	c.expect("PATCH", stubPrefix+"/acme/issues/CP-1", "", map[string]any{"parent": epic, "startDate": "2026-10-01", "dueDate": "2026-10-09", "team": "Platform"}, 200)
+	c.expect("PATCH", stubPrefix+"/acme/issues/CP-4", "", map[string]any{"parent": epic, "startDate": "2026-10-12", "team": "Platform"}, 200)
+	c.expect("PATCH", stubPrefix+"/acme/issues/CP-4", "", map[string]any{"startDate": "someday"}, 422)
+	plan := c.expect("GET", "/projects/CP/plan?q=key+in+%28CP-1%2C+CP-4%29", alice, nil, 200)
+	var launch map[string]any
+	for _, it := range plan["items"].([]any) {
+		if it.(map[string]any)["issue"].(map[string]any)["key"] == epic {
+			launch = it.(map[string]any)
+		}
+	}
+	if launch == nil || launch["derived"] != true || !strings.HasPrefix(fmt.Sprint(launch["start"]), "2026-10-01") ||
+		!strings.HasPrefix(fmt.Sprint(launch["due"]), "2026-10-15") || len(launch["children"].([]any)) != 2 {
+		t.Errorf("the epic in the plan is %v", launch)
+	}
+	if fmt.Sprint(plan["matched"]) != "[CP-1 CP-4]" {
+		t.Errorf("a plan for two keys matches %v", plan["matched"])
+	}
+	c.expect("GET", "/projects/SEC/plan", alice, nil, 404)
+	// The month a calendar block draws beside its own events (#60): each
+	// issue from its start to its due day, an epic without days of its own left out.
+	month := c.expect("GET", "/projects/CP/calendar?month=2026-10", alice, nil, 200)["month"].(map[string]any)
+	var dated []string
+	for _, it := range month["items"].([]any) {
+		item := it.(map[string]any)
+		dated = append(dated, fmt.Sprint(item["kind"], ":", item["key"], "@", item["from"], "..", item["to"]))
+	}
+	if fmt.Sprint(dated) != "[issue:CP-1@2026-10-01..2026-10-09 issue:CP-4@2026-10-12..2026-10-15]" || month["month"] != float64(10) {
+		t.Errorf("October in CP is %v", month)
+	}
+	if september := c.expect("GET", "/projects/CP-1/calendar?month=2026-09", alice, nil, 200)["month"].(map[string]any); len(september["items"].([]any)) != 0 {
+		t.Errorf("September in CP has %v", september["items"])
+	}
+	c.expect("GET", "/projects/SEC/calendar?month=2026-10", alice, nil, 404)
 	c.expect("POST", stubPrefix+"/acme/issues/CP-3/move", "", map[string]any{"projectKey": "SEC"}, 200)
 	if got := c.expect("GET", "/issues/CP-3", admin, nil, 200)["issue"].(map[string]any); got["key"] != "SEC-3" {
 		t.Errorf("a moved issue answers to %v, want SEC-3", got["key"])

@@ -505,6 +505,364 @@ and the versioning [Semantic Versioning](https://semver.org/).
   changing, rotating and deleting a webhook is written to the audit log.
   Moving a published page to another parent or space and deleting one now
   write `page.moved` and `page.deleted` to the outbox.
+- Space shortcuts (#39): the administrators of a space pin up to 30 links
+  above its page tree, to pages of any space or to web addresses, under
+  Shortcuts in the space's settings, and order them with move up and move
+  down buttons (`/spaces/{key}/shortcuts`, read by the
+  `list_space_shortcuts` tool). Everybody who reads the space sees them; a
+  shortcut to a page is left out for whoever may not view the page or while
+  it is in the trash. Only `http` and `https` addresses without a name or
+  password are taken, refused by the database as well as the API, and they
+  open in a new tab with `rel="noopener noreferrer nofollow"`. Adding,
+  moving and removing a shortcut is written to the audit log.
+- Column layouts (#42). "Two columns" and "Three columns" in the slash menu
+  put the blocks under the caret in the first of that many columns side by
+  side. The toolbar changes the layout, even or with one column wider, and
+  going from three columns to two folds the third into the second;
+  "Remove the columns, keep their content" puts the blocks back one after
+  another. Under 48rem the columns stack in reading order. The page stores
+  each column's share of the row, from 10 to 80 percent; the API refuses
+  fewer than two columns or more than three, and a comment holds none.
+  Search reads every column, and a Markdown export writes them one after
+  another.
+- Personal spaces (#35). Everybody may make one space of their own from the
+  space directory, named for them, for drafts and notes. Nobody else sees it
+  until its owner shares it from its permissions like any other space;
+  administrators of the organization reach it, as every space. The directory
+  lists personal spaces apart, with whose each is. The database holds to one
+  each, made only by and for its owner, and refuses handing it to somebody
+  else; members still need `createSpace` for any other space.
+- Folders in the page tree (#36). "New folder" in a page's menu, or on a
+  folder, adds a folder: a named group of pages and folders with no text of
+  its own, seen at once by everybody who may see where it is. Opening one
+  lists what it holds; it is renamed from its menu, and moved, copied,
+  restricted, archived and deleted as a page is, with what it holds. The
+  tree marks it with a folder icon. A folder takes no body, drafts,
+  versions, comments, reactions, labels, files, shares or stewardship, and
+  the database refuses them whichever request asks; `POST /pages` takes
+  `kind: "folder"`.
+- The organization's hub page (#40). Under Hub page in the account menu, an
+  administrator names one page of any space as the organization's hub,
+  which everybody who may read it finds under Hub in the navigation, and
+  may make it where everybody lands when they open Stator; their own home
+  is then at `/home`. `GET /org/hub` and `PUT /org/hub` (administrators
+  only, in the audit log). Only administrators change it, the database
+  included, and a hub page deleted for good stops being the hub.
+- Decision items (#44). "Decision" in the slash menu turns a line into a
+  decision, undecided until its label is pressed to mark it decided; readers
+  see the state in words before the line. Each space has a decision log,
+  under Decisions in its navigation, quoting every decision on its published
+  pages the reader may read, newest page first, filtered by state and linked
+  to its page (`GET /spaces/{key}/decisions`, the `list_decisions` tool).
+  Search finds a page by its decisions, and a Markdown export writes each
+  as a line that starts with its state.
+- Math formulas (#45). "Inline formula" and "Formula block" in the slash
+  menu ask for LaTeX source in a dialog that typesets it as it is typed and
+  refuses what cannot be typeset; a click on a formula opens its source
+  again. Readers see formulas typeset with KaTeX, with MathML for screen
+  readers. Search finds a page by its formulas' source, and a Markdown
+  export writes them as `$...$` and a `math` fence, which an import reads
+  back as a formula.
+- Diagrams (#46). "Diagram" in the slash menu puts in a block of Mermaid
+  text with a sketch to start from, drawn below the text as it is typed and
+  saying why when it cannot be. Readers see the diagram as SVG in the
+  page's own colours and can download it as an SVG file. Labels are text,
+  never markup, links or pictures. Search finds a page by its diagrams'
+  text, and a Markdown export writes a `mermaid` fence, which an import
+  reads back as a diagram.
+- Link previews and embeds (#47). An address pasted alone on an empty line
+  becomes a card with the linked page's title, summary and site, and the
+  page's player when it is a YouTube or Vimeo video or a Figma file; "Link
+  preview" in the slash menu asks for one. A card's toolbar shows it inline,
+  as a link titled as its page, as a card, or embedded. The server reads
+  what a page says about itself through the outbound guard
+  (`STATOR_OUTBOUND_ALLOW`), from its head alone, and keeps it an hour in
+  Valkey (`GET /link-preview`); a page keeps only the address and the view.
+  Players load in a sandbox from the origins the Content-Security-Policy's
+  new `frame-src` names.
+- Excerpts (#48). "Excerpt" in the slash menu marks the blocks under the
+  caret as a named part of the page, framed for its author with its name in
+  a box to type over; readers see only the blocks. An excerpt keeps an id
+  that outlives a rename, and the editor gives a pasted copy an id and a
+  name of its own and takes the frame off one pasted inside another.
+  `GET /pages/{id}/excerpts` (the `list_page_excerpts` tool) lists a page's
+  published excerpts by name with the start of their words, and a picker
+  chooses a page and the whole of it or one excerpt, for the include block.
+- Include page and excerpt blocks (#53). "Include" in the slash menu opens
+  the picker, and the page then shows the other page's published words, or
+  one excerpt's, framed and named with a link to where they come from, kept
+  up to date as that page changes. Each reader sees what they may read: a
+  page kept from them, never published, or whose excerpt is gone is one
+  notice that says no more. A page cannot include itself, and an include
+  that leads back to a page on the way to it, or more than five deep, says
+  so instead (`GET /pages/{id}/included`). A Markdown export keeps what an
+  include points at, which an import reads back.
+- Page appearance (#50). Appearance in a page's menu chooses an emoji,
+  found by name, shown before the title and in the page tree; a width,
+  fixed for comfortable lines or full for wide tables and diagrams; and a
+  cover picture from the page's own files or a new upload, with the point
+  that stays in view, set by a click or the arrow keys. Only the page's
+  editors change it (`PUT /pages/{id}/appearance`), the database included;
+  a cover is always one of the page's own pictures, and goes when its file
+  is deleted.
+- Armature charts (#51). "Armature chart" in the slash menu asks for a
+  project, an NQL query and a chart: a pie of the matching issues by status,
+  status category, type, priority or assignee, or the issues created against
+  resolved each day over 7 days to a year. Armature counts them with each
+  reader's own token, through its reports, so every reader sees the chart of
+  the issues they may see (`GET /armature/chart`). The pie keeps status
+  categories in their board colours and lists every share in a table beside
+  it; created against resolved reads a day at a time with the pointer or the
+  arrow keys and opens as a table. The stub serves the two reports and
+  `resolvedAt`.
+- Armature roadmaps (#52). "Armature roadmap" in the slash menu asks for a
+  project and an NQL query, and draws the matching issues on a timeline of
+  their start and due dates, under their epics or their teams, from
+  Armature's plan read with each reader's own token
+  (`GET /armature/roadmap`). An epic heads its issues even when the query
+  leaves it out, and spans their dates when it has none of its own, drawn as
+  an outline; a bar takes its status category's board colour, a lone start or
+  due date is a point, and today is marked. Issues without either date are
+  counted below it. The stub serves the plan, an Epic type, teams, start dates
+  and parents.
+- Page properties (#54). "Properties" in the slash menu puts a two-column
+  table of names and values on a page, starting with Owner and Status; a
+  value takes marks, mentions, dates and statuses, Enter starts the next
+  property and Backspace in an empty one removes it. Search reads them as
+  table rows. "Properties report" lists the published pages carrying every
+  label given, in one space or all, with a column for each property found or
+  for those named, sortable by any column, as each reader may read them
+  (`GET /properties-report`, also the MCP tool `properties_report`).
+- Page lists (#55). "Content by label" lists the published pages carrying
+  all or any of some labels, in one space or all, latest first or by title,
+  5 to 50 of them (`GET /labelled-pages`); "Recently updated" lists the pages
+  published last in a space or across the organization, with who published
+  each (`GET /updated-pages`). Both show each reader the pages they may read,
+  leave the trash, the archive and folders out, and keep only their settings
+  in the page, so an overview stays current without editing. The latest blog
+  posts block waits for blog posts (#72).
+- Tasks (#56): a checklist item is a task, assigned to the first person it
+  @mentions and due on the first date in it. Publishing gives every item a
+  `taskId` and reads the tasks from the stored page, so the document stays
+  the only record; a task can only be assigned to a member who may view the
+  page, and the publish says so otherwise. My tasks, in the sidebar and on
+  the home page, lists the caller's open tasks soonest due first and their
+  done ones, from every page they may still read (`GET /tasks`, the
+  `list_my_tasks` tool). A box ticks off on the page, or in the list, for
+  whoever may edit the page, which publishes it as the next version
+  (`PATCH /pages/{id}/tasks/{taskId}`, the `set_task_done` tool). An
+  assignment tells the assignee once, and the worker reminds them on the
+  due day, in UTC, every `STATOR_TASK_DUE_CHECK_INTERVAL` (10 minutes;
+  `tasks.dueCheckInterval` in the chart); both are new kinds in the
+  notification settings. A page shows when a task is overdue or due today.
+- Task report (#57): a block that lists the tasks of published pages, in one
+  space or all, assigned to whoever reads the page, to nobody or to one
+  person, overdue, due today, due in the next 7 days or without a day, open,
+  done or both, 10 to 100 of them: open ones soonest due first, then done
+  ones (`GET /task-report`, also the MCP tool `task_report`). Each reader
+  sees the tasks on pages they may view, and whoever may edit a task's page
+  ticks it off from the report. The page keeps only the filter.
+- Files block and file versions (#58). A file uploaded to a page under a
+  name it already has, whatever the case, is that file's next version: each
+  version keeps its own bytes and links, and the database numbers them. The
+  list of a page's files says each one's `version` and how many `versions`
+  the page holds, and `current=true` lists only the latest of each name
+  (`GET /pages/{id}/attachments`, the `list_attachments` tool). "Files" in
+  the slash menu puts the page's files in its content, the latest version of
+  each with its size, uploader and version and the earlier ones a click
+  away, and whoever may edit the page uploads from the block.
+- Chart from table (#59). "Chart from table" in the slash menu, or "Chart
+  this table" in the table tools, draws a table as bars, lines or a pie: the
+  first row names the series, the first column the categories, and numbers
+  may be written 1,234.5 or 1.234,5, with a sign, a unit, a percent or a
+  currency. The block holds the table itself, so editing the table redraws
+  the chart; readers see the table under it unless the author hides it, and
+  can read each category by pointer or keyboard, or open the numbers as a
+  table. A chart draws 8 series at most; a pie draws the first.
+- Team calendars (#60). A space keeps calendars, at most 20, each a name and
+  its events: a title, an event or an absence, and whole days or two times
+  (`GET` and `POST /spaces/{key}/calendars`, `PATCH` and `DELETE
+  /calendars/{id}`, `GET` and `POST /calendars/{id}/events`, `PUT` and
+  `DELETE /calendars/{id}/events/{eventId}`, also the MCP tools
+  `list_calendars`, `create_calendar`, `rename_calendar`,
+  `list_calendar_events`, `create_calendar_event` and
+  `update_calendar_event`). Everybody who reads the space reads them, and
+  whoever may add pages to it keeps them while it is not archived, which the
+  database holds too. "Calendar" in the slash menu draws a month of one,
+  week by week, with an Armature project's issues on the days they are due
+  (`GET /armature/calendar`), read with each reader's own token; whoever may
+  change the calendar adds, changes and deletes events from the block. The
+  page keeps only which calendar and which project.
+- PDF and office previews (#61). A PDF, and a docx, xlsx, pptx, odt, ods or
+  odp document (or an older doc, xls or ppt), opens in place from the
+  attachments panel and the files block, in the browser's own PDF viewer,
+  with a download beside it. Office documents are converted to PDF by a
+  conversion service in the compose stack (`STATOR_CONVERTER_URL`;
+  `attachments.converterUrl` in the chart), once per version, and the PDF is
+  kept beside the file and goes with it. Each file says its `preview`, and
+  `GET /attachments/{id}/preview` answers the PDF, or a sentence saying why
+  there is none and to download the file. Documents over 20 MB are not
+  converted.
+- Space templates (#64). `GET /space-templates` serves three built-ins, a
+  knowledge base, a team space and documentation, each a home page, a tree
+  of published pages with their labels, and what everyone in the
+  organization may do in the space. `POST /spaces` takes the key of one as
+  `template` and makes the space, its pages, their labels and its
+  permissions in one transaction, logged as `space.created` with the
+  template's key; the creator administers it, as in a blank space. The new
+  space form offers a blank space and every template as a radio group, with
+  the chosen one's pages, labels and permissions beside it. A personal
+  space starts blank.
+- Template button and contributors (#62). "Template button" in the slash
+  menu puts a button on a page that makes a new page from a template, under
+  a chosen page or at the top of a space, with words of its own and a title
+  in which `{date}` becomes the day, then opens it to write
+  (`POST /templates/{key}/pages`, also the MCP tool
+  `create_page_from_template`). Whoever may not add pages there sees it
+  disabled, with a sentence saying why (`GET /template-button`).
+  "Contributors" lists the people who published versions of the page, or of
+  it and the pages below it the reader may view, the most versions first,
+  each with their picture, how many versions and the day of the last, 1 to
+  50 of them (`GET /pages/{id}/contributors`, also the MCP tool
+  `list_page_contributors`). The page keeps only the template, the place
+  and the words, and which pages to count.
+- Editing together (#65). People who open a page's editor at the same time
+  edit one shared draft: each sees the others' words as they are typed,
+  their carets with their names in their colours, and their avatars in the
+  header. The draft is a Yjs document the api keeps as a log of updates per
+  page (`GET /pages/{id}/collab`, a WebSocket for a signed-in session that
+  may edit the page, checked again every 30 seconds) and passes between api
+  processes through Valkey, or through Postgres's LISTEN and NOTIFY when
+  no Valkey is configured, so several api pods need no Valkey for it. A
+  process that loses the other processes for a while relays what was
+  stored meanwhile once it hears them again. A browser that loses the connection keeps
+  editing, keeps its changes in IndexedDB, and merges them when it is back.
+  Publishing publishes the shared draft as it stands and moves everybody on
+  to the new version; discarding throws it away for everybody. Each person's
+  own draft still holds what they publish, and the editor edits alone, as
+  before, when the shared draft is out of reach. The chart's nginx passes
+  the WebSocket on.
+- Guests (#69). An administrator of the organization invites somebody from
+  outside into one team space by their address, to read, to read and
+  comment, or to read, comment and edit, under the space's new Guests tab
+  (`GET`, `POST /spaces/{key}/guests`, `DELETE /spaces/{key}/guests/{id}`).
+  The guest signs in through the organization's provider with that address
+  and lands in the space. They reach nothing else: no other space, no
+  personal space, no tokens, nothing of the organization as a whole, which
+  answers `403 guest`, and of its people only those of their space, so the
+  people picker, mentions and every name a page shows keep to the space
+  and the groups are hidden. The database holds all of it, and refuses a
+  guest a second space, a group, administering their space or a change of
+  role. The members list marks guests with their space; invitations and
+  removals go to the audit log, and deleting the space takes its guests
+  with it. An assistant acting for a guest is offered only what the guest
+  may do.
+- Reading without signing in (#79). An administrator of the organization
+  lets anybody read the spaces that allow it (`PUT /org/anonymous-access`,
+  under Settings, Permissions), and a space's administrators allow it in
+  the space's permissions tab (`PUT /spaces/{key}/anonymous-access`); a
+  personal space never does. Anybody then reads the published pages of
+  those spaces at `/public/{org}`, with their files and a search, in a
+  reading view with a header and a way to sign in and nothing else of the
+  app. A restricted page, a draft and everything of other spaces is not
+  found, and a link to it leads to signing in. Nobody is named: no authors,
+  comments, reactions, readers, watchers, contributors, assignees or
+  history, and a mention reads as someone, in the API's answers as on the
+  page. The database holds an anonymous reader to reading those spaces,
+  pages and files and to writing nothing. Search engines are asked to stay
+  away unless the organization lets them in, and both switches go to the
+  audit log.
+- Public links (#80). Whoever may edit a published page makes a link in
+  the share dialog that lets anybody read that page without an account,
+  with an optional label and a lifetime of a day to three months or none,
+  and sees the page's live links with who made them and when they run out,
+  and revokes them; the address is shown once, when the link is made. A
+  page has at most five live links, and a restricted page, a draft, a
+  folder and a page of a personal space get none. The link opens that page
+  and its files in a reading view with nobody named in it, whether or not
+  the organization opens any space, and nothing else: not the pages below
+  it, its space, comments or history. A link stops when it is revoked or
+  runs out, and while the page is restricted, unpublished or in the trash.
+  An administrator stops every link at once under Settings, Permissions
+  (`PUT /org/public-links`), and allows them again; nothing is deleted.
+  The database holds a reader with a link to that one page. Answers through
+  a link are never cached, send no referrer and keep the token out of the
+  logs, search engines are asked to stay away unless the organization lets
+  them in, and making, revoking and the switch go to the audit log.
+- Copying space permissions (#82). In a team space's permissions tab, an
+  administrator copies the permissions of another team space they
+  administer: replace makes this space's grants the other's, keeping this
+  space's guests; merge only adds subjects and widens what they hold. A
+  preview (`GET /spaces/{key}/permissions/copy`) lists per person or group
+  what is added, widened, narrowed or removed, what cannot be copied (a
+  guest of the other space) and whether the copy would leave the space
+  without an administrator, which is refused. Applying
+  (`POST /spaces/{key}/permissions/copy`) takes the preview's fingerprint
+  and is refused once either space's permissions changed since, so what is
+  applied is what was shown; it is one step and one audit entry naming
+  both spaces, the mode and the counts. Page restrictions are not copied,
+  and personal spaces are neither copied from nor into.
+- Live pages (#70). A page's editors choose, under Editing mode in the
+  page's menu, between drafts and publishing and live
+  (`PUT /pages/{id}/mode`). On a live page what is typed is saved to the
+  page about a second later (`PUT /pages/{id}/live`), with nothing to
+  publish, and a reader with the page open sees it within seconds. The
+  history keeps a version per ten minutes of work, amended by every save in
+  it and naming everybody who saved into it; mentions and assignments added
+  by a save are told once, and webhooks hear of each version as of a
+  publish. Going live throws away the drafts nobody published, so it names
+  whose they are first and goes ahead only when confirmed; the switch goes
+  to the audit log. The database holds a live page to no drafts and lets
+  only its open version be amended, only by the page's editors.
+- Scheduled publishing (#71). The publish dialog offers "At a set time",
+  in the person's own time zone (`PUT /pages/{id}/schedule`): at that time
+  the worker publishes the author's draft as it then stands, in their name,
+  with the comment and notice they chose, and the watchers hear of it as of
+  any publish. A time missed while the worker was down goes out once when
+  it returns, and any number of workers publish it exactly once. A page
+  holds one schedule, shown to its author and editors, who may call it off
+  (`DELETE /pages/{id}/schedule`); discarding or publishing the draft, or
+  making the page live, takes it too. A publish refused at its time, since
+  the author lost edit, the page was archived or deleted, or somebody
+  published after the draft began, is kept with why and its author is told
+  once. The worker looks every `STATOR_SCHEDULE_CHECK_INTERVAL` (30
+  seconds; `publishing.scheduleCheckInterval` in the chart). The database
+  holds a schedule to its author's own draft, set by an editor for a time
+  ahead, and lets only the worker mark it failed.
+- Blog posts (#72). Each space has a blog at `/s/{key}/blog`: dated posts
+  outside the page tree, written by whoever may add pages there
+  (`POST /spaces/{key}/posts`) and published, scheduled, versioned,
+  commented, labelled, restricted and searched as pages are. A post's date
+  is its first publish. The blog lists the posts a reader may read newest
+  first, by year and month with counts (`GET /spaces/{key}/blog`,
+  `GET /posts`), and each writer's own posts still to go out. Watching a
+  blog (`PUT /spaces/{key}/blog/watch`) hears of its new posts as the
+  notification kind `posted`, which a watch on the space hears too; a
+  webhook's page now says its `kind`. A latest blog posts block lists the
+  newest posts of this space, another or every space, as each reader may
+  read them. `get_blog`, `list_posts` and `create_post` are MCP tools. The
+  database holds a post outside the tree, unpublished when written, to
+  whoever may add pages to a space not archived, and keeps its date.
+- Restoring a file's version (#95). The attachments below a page list each
+  name once, latest first, with its earlier versions under it to download,
+  preview, restore or delete; the files block restores too. A restore
+  (`POST /attachments/{id}/restore`) uploads that version's bytes again as
+  the name's next version, marked `restoredFrom`, so nothing is
+  overwritten; the latest is refused with `already_latest`. Deleting a
+  name deletes all its versions (`DELETE /attachments/{id}?versions=all`).
+  The database holds a restore to an earlier version of the same file, by
+  whoever may edit the page.
+- Image annotation (#94). Whoever may edit a page crops a PNG, JPEG or
+  WebP picture and draws arrows, boxes and text on it in six colours, with
+  undo, redo, moving and deleting by pointer, touch and keyboard, opened
+  from the picture in the editor, the attachments below the page or the
+  files block. Saving flattens it in the browser and sends it as the
+  file's next version in its own type
+  (`POST /attachments/{id}/edit`, refused with `not_editable` or
+  `wrong_type`), marked `editedFrom`; the version drawn on stays. Opened
+  from the editor, the dialog offers to show the edited picture in the
+  page. The database holds an edit to a picture's version of the same
+  file and type, by whoever may edit the page.
 - Templates of the organization's own, with variables. Administrators of
   the organization keep templates every space offers, under Settings,
   Templates; administrators of a space keep its own, under the space's
@@ -520,6 +878,23 @@ and the versioning [Semantic Versioning](https://semver.org/).
   scope. Variables travel through Markdown as a marked span.
 
 ### Changed
+
+- A space keeps at least one administrator of its own: taking administer
+  from the last person or group that holds it is refused, by the api and by
+  the database, unless an administrator of the organization does it.
+- A page's text keeps a readable measure of 44rem, about 85 characters,
+  centred, while its wide blocks use the window up to 96rem: tables and
+  their charts, diagrams, math blocks, code, columns, link cards and
+  embeds, Armature charts, roadmaps and issue lists, calendars and
+  property reports; a picture takes its own width between the two. The
+  title, the header and the sections below the page keep to the measure.
+  The layout is the same in the reader, the editor, a version, a
+  comparison and the public view, and a phone is unchanged. Full width now
+  widens the text too (#287).
+
+- The CI gate may run 45 minutes rather than 30, since the suite had grown
+  to fill the old limit, and a cancelled run now says it was stopped rather
+  than failed (#283).
 
 - Renaming and deleting a space and purging its trash are for the space's
   administrators, and making spaces for whoever holds `createSpace`, rather

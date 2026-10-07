@@ -78,7 +78,10 @@ func Validate(body json.RawMessage) error {
 
 // ValidateNode checks an already decoded document against the allowlist.
 func ValidateNode(root Node) error {
-	return validator{list: &Allowed, noun: "page", anchors: map[string]bool{}}.check(root)
+	if err := (validator{list: &Allowed, noun: "page", anchors: map[string]bool{}}).check(root); err != nil {
+		return err
+	}
+	return checkExcerpts(root)
 }
 
 // ParseTemplate decodes a template's body and holds it to TemplateAllowed,
@@ -146,6 +149,9 @@ func (v validator) node(n Node, parent NodeSpec, depth int) error {
 	}
 	if len(spec.Content) == 0 && len(n.Content) > 0 {
 		return v.invalid("This %s puts content inside a %q, which holds none.", n.Type)
+	}
+	if (spec.MinContent > 0 && len(n.Content) < spec.MinContent) || (spec.MaxContent > 0 && len(n.Content) > spec.MaxContent) {
+		return v.invalid("This %s has a %q holding %d, which takes %d to %d; add or take some out.", n.Type, len(n.Content), spec.MinContent, spec.MaxContent)
 	}
 	if err := v.checkAttrs(n.Attrs, spec.Attrs, fmt.Sprintf("a %q", n.Type)); err != nil {
 		return err
@@ -250,7 +256,7 @@ func attrValid(rule Attr, value any) bool {
 		seen := make(map[string]bool, len(list))
 		for _, item := range list {
 			s, ok := item.(string)
-			if !ok || seen[s] || !slices.Contains(rule.Enum, s) {
+			if !ok || seen[s] || (rule.Pattern == "" && !slices.Contains(rule.Enum, s)) || (rule.Pattern != "" && !patterns[rule.Pattern].MatchString(s)) {
 				return false
 			}
 			seen[s] = true

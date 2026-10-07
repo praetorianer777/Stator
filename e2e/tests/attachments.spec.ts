@@ -4,6 +4,7 @@ import type { Locator, Page, TestInfo } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { must, type StatorApi } from "../fixtures/api";
 import { orgTest as test } from "../fixtures/org";
+import { openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
@@ -207,9 +208,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     expect(refused.response.status).toBe(403);
 
     const bob = await pageAs("bob");
-    await bob.goto(`/s/${key}/p/${wiki.id}/runbook`);
-    await expect(row(bob, "handover.txt")).toBeVisible();
-    await expect(panel(bob).locator('[data-action="attach-files"]')).toHaveCount(0);
+    await openWithout(bob, `/s/${key}/p/${wiki.id}/runbook`, panel(bob).locator('[data-action="attach-files"]'), row(bob, "handover.txt"));
     await expect(panel(bob).locator('[data-action="delete-attachment"]')).toHaveCount(0);
   });
 

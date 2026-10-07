@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Doc } from "@/features/editor/schema";
+import { LIVE_PAGE_REFRESH_MS } from "@/config";
 import { api } from "./client";
 import type { components } from "./schema";
 import { spaceQueryKey, type Space } from "./spaces";
@@ -31,8 +32,13 @@ export function pageQuery(id: string) {
   };
 }
 
-export function usePage(id: string | undefined) {
-  return useQuery({ ...pageQuery(id ?? ""), enabled: Boolean(id) });
+/** A page; follow asks a live page again every so often, as its reader does to see edits arrive. */
+export function usePage(id: string | undefined, { follow = false }: { follow?: boolean } = {}) {
+  return useQuery({
+    ...pageQuery(id ?? ""),
+    enabled: Boolean(id),
+    refetchInterval: follow ? (query) => (query.state.data?.page.mode === "live" ? LIVE_PAGE_REFRESH_MS : false) : false,
+  });
 }
 
 export interface PageChanges {
@@ -40,6 +46,22 @@ export interface PageChanges {
   body?: Doc;
   /** The version the change was made from; the API refuses it over a newer one. */
   version: number;
+}
+
+/** How a page looks apart from its words: an emoji, a width and a cover. */
+export type Appearance = Wire["Appearance"];
+
+/** Replaces how a page looks; the tree shows the emoji, so its levels are asked again. */
+export function useSetAppearance(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (appearance: Wire["AppearanceInput"]): Promise<Appearance> =>
+      (await api.PUT("/pages/{pageID}/appearance", { params: { path: { pageID: id } }, body: appearance })).data!.appearance,
+    onSuccess: (saved) => {
+      queryClient.setQueryData<PageInSpace>(pageQueryKey(id), (current) => (current ? { ...current, page: { ...current.page, appearance: saved } } : current));
+      return queryClient.invalidateQueries({ queryKey: ["tree"] });
+    },
+  });
 }
 
 export function useUpdatePage(id: string) {

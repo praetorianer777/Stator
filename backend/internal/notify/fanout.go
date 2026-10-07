@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -90,12 +91,15 @@ type FanOut struct {
 func NewFanOut(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog.Logger) *FanOut {
 	f := &FanOut{db: cluster, mailer: mailer, appURL: strings.TrimRight(appURL, "/"), log: log, planners: map[string]Planner{}}
 	f.planners[events.TopicPagePublished] = planPublished
+	f.planners[events.TopicPageAmended] = planAmended
 	f.planners[events.TopicCommentCreated] = planCommentCreated
 	f.planners[events.TopicCommentEdited] = planCommentEdited
 	f.planners[events.TopicThreadResolved] = planThreadResolved
 	f.planners[events.TopicThreadReopened] = planThreadResolved
 	f.planners[events.TopicVerificationLapsed] = planVerificationLapsed
 	f.planners[events.TopicPageShared] = planShared
+	f.planners[events.TopicTaskDue] = planTaskDue
+	f.planners[events.TopicScheduleFailed] = planScheduleFailed
 	return f
 }
 
@@ -151,12 +155,8 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 	}
 	version := in.Version
 	plan := &Plan{Actor: in.ActorID, Subject: Subject{PageID: in.PageID, Version: &version, Excerpt: Excerpt(comment)}}
-	blocks := map[uuid.UUID]string{}
-	for _, m := range document.MentionsIn(body) {
-		blocks[m.ID] = m.Block
-	}
-	for _, id := range in.Mentioned {
-		plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: KindMentioned, Excerpt: Excerpt(blocks[id])})
+	if err := tellAssignedAndMentioned(ctx, tx, plan, in.PageID, in.Version, nil, body, in.Mentioned); err != nil {
+		return nil, err
 	}
 	if !in.NotifyWatchers {
 		return plan, nil
@@ -164,6 +164,13 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 	kind := KindPublished
 	if in.First {
 		kind = KindCreated
+		var post bool
+		if err := tx.QueryRow(ctx, `SELECT kind = 'post' FROM page WHERE id = $1`, in.PageID).Scan(&post); err != nil {
+			return nil, err
+		}
+		if post {
+			kind = KindPosted
+		}
 	}
 	rows, err := tx.Query(ctx, `SELECT user_id FROM page_watch_coverage($1, $2)`, in.PageID, in.First)
 	if err != nil {
@@ -177,6 +184,63 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 		plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: kind})
 	}
 	return plan, nil
+}
+
+// planAmended tells whom a save into a live page's open version newly
+// mentioned or assigned, and nobody else: the version was announced when it began.
+func planAmended(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) {
+	var in events.PageAmended
+	if err := json.Unmarshal(e.Payload, &in); err != nil {
+		return nil, nil
+	}
+	var body []byte
+	err := tx.QueryRow(ctx, `SELECT body FROM page_version WHERE page_id = $1 AND number = $2 AND org_id = current_org_id()`,
+		in.PageID, in.Version).Scan(&body)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	version := in.Version
+	plan := &Plan{Actor: in.ActorID, Subject: Subject{PageID: in.PageID, Version: &version}}
+	if err := tellAssignedAndMentioned(ctx, tx, plan, in.PageID, in.Version, &in.At, body, in.Mentioned); err != nil {
+		return nil, err
+	}
+	return plan, nil
+}
+
+// tellAssignedAndMentioned adds the assignees of the version's open tasks,
+// only those assigned at a given moment when one is named, and the mentioned.
+func tellAssignedAndMentioned(ctx context.Context, tx db.DBTX, plan *Plan, pageID uuid.UUID, version int, at *time.Time, body []byte, mentioned []uuid.UUID) error {
+	blocks := map[uuid.UUID]string{}
+	for _, m := range document.MentionsIn(body) {
+		blocks[m.ID] = m.Block
+	}
+	// The rows say who this version assigned, so a later version that
+	// assigned the task to somebody else, or saw it done, tells nobody here.
+	rows, err := tx.Query(ctx, `
+		SELECT assignee_id, summary FROM page_task
+		WHERE org_id = current_org_id() AND page_id = $1 AND assigned_version = $2 AND NOT done AND assignee_id IS NOT NULL
+		  AND ($3::timestamptz IS NULL OR assigned_at = $3)
+		ORDER BY position`, pageID, version, at)
+	if err != nil {
+		return err
+	}
+	var (
+		assignee uuid.UUID
+		summary  string
+	)
+	if _, err := pgx.ForEachRow(rows, []any{&assignee, &summary}, func() error {
+		plan.Tells = append(plan.Tells, Tell{UserID: assignee, Kind: KindAssigned, Excerpt: Excerpt(summary)})
+		return nil
+	}); err != nil {
+		return err
+	}
+	for _, id := range mentioned {
+		plan.Tells = append(plan.Tells, Tell{UserID: id, Kind: KindMentioned, Excerpt: Excerpt(blocks[id])})
+	}
+	return nil
 }
 
 // planVerificationLapsed tells the page's owner, or whoever verified it when
@@ -212,6 +276,61 @@ func planVerificationLapsed(ctx context.Context, tx db.DBTX, e events.Event) (*P
 		plan.Tells = []Tell{{UserID: *verifier, Kind: KindExpired}}
 	}
 	return plan, nil
+}
+
+// planTaskDue reminds the assignee of a task whose day came. A task done, given
+// another day or another assignee since, or on an archived page, tells nobody.
+func planTaskDue(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) {
+	var in events.TaskDue
+	if err := json.Unmarshal(e.Payload, &in); err != nil {
+		return nil, nil
+	}
+	var (
+		summary string
+		version int
+	)
+	err := tx.QueryRow(ctx, `
+		SELECT t.summary, p.version FROM page_task t
+		JOIN page p ON p.org_id = t.org_id AND p.id = t.page_id
+		JOIN space s ON s.id = p.space_id
+		WHERE t.org_id = current_org_id() AND t.page_id = $1 AND t.task_id = $2 AND t.assignee_id = $3
+		  AND t.due_on = $4::date AND NOT t.done AND p.archived_at IS NULL AND s.archived_at IS NULL`,
+		in.PageID, in.TaskID, in.AssigneeID, in.DueOn).Scan(&summary, &version)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &Plan{
+		Subject: Subject{PageID: in.PageID, Version: &version, Excerpt: Excerpt(summary)},
+		Tells:   []Tell{{UserID: in.AssigneeID, Kind: KindDue}},
+	}, nil
+}
+
+// planScheduleFailed tells the author of a scheduled publish that was refused.
+// A schedule set again, or called off, since tells nobody.
+func planScheduleFailed(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) {
+	var in events.ScheduleFailed
+	if err := json.Unmarshal(e.Payload, &in); err != nil {
+		return nil, nil
+	}
+	var version int
+	err := tx.QueryRow(ctx, `
+		SELECT p.version FROM page_schedule sc JOIN page p ON p.org_id = sc.org_id AND p.id = sc.page_id
+		WHERE sc.org_id = current_org_id() AND sc.page_id = $1 AND sc.user_id = $2
+		  AND sc.failed_at IS NOT NULL AND sc.publish_at = $3`,
+		in.PageID, in.AuthorID, in.PublishAt).Scan(&version)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &Plan{
+		Subject: Subject{PageID: in.PageID, Version: &version},
+		Tells:   []Tell{{UserID: in.AuthorID, Kind: KindFailed}},
+	}, nil
 }
 
 // deliver writes one row acting for its recipient, so the database refuses

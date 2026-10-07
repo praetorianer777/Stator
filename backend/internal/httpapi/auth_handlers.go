@@ -81,7 +81,7 @@ func (s *Server) me(r *http.Request, p *auth.Principal) (*meResponse, error) {
 		Organizations: organizations,
 	}
 	if p.InOrg() {
-		out.Organization = &auth.CurrentOrg{ID: p.Org.ID, Slug: p.Org.Slug, Name: p.OrgName, Role: p.Role}
+		out.Organization = &auth.CurrentOrg{ID: p.Org.ID, Slug: p.Org.Slug, Name: p.OrgName, Role: p.Role, GuestSpace: p.GuestSpace}
 	}
 	return out, nil
 }

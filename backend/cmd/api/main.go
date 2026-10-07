@@ -19,12 +19,17 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/calendar"
+	"github.com/praetorianer777/stator/backend/internal/collab"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
+	"github.com/praetorianer777/stator/backend/internal/convert"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
+	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
@@ -35,17 +40,21 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
+	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
@@ -150,7 +159,17 @@ func run() error {
 		armature.NewClient(netguard.ParseAllow(cfg.Armature.OutboundAllow), cfg.Armature.Backchannel), cache,
 		armature.Options{AppURL: cfg.AppBaseURL, Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Development: cfg.Env == config.EnvDevelopment, Log: log})
 	files := attachment.NewService(cluster, store, pages).WithMaxSize(cfg.UploadLimit).WithLogger(log)
+	if cfg.ConverterURL != "" {
+		files.WithConverter(convert.New(cfg.ConverterURL, attachment.MaxPreviewSize))
+	} else {
+		log.Warn("office documents have no preview: STATOR_CONVERTER_URL is not set")
+	}
+	collabs, err := collabHub(ctx, cluster, cfg, valkey, log)
+	if err != nil {
+		return err
+	}
 	server := &httpapi.Server{
+		Collab:            collabs,
 		DB:                cluster,
 		Fresh:             fresh,
 		Auth:              accounts,
@@ -173,9 +192,16 @@ func run() error {
 		Notifications:     notify.NewService(cluster),
 		Stars:             star.NewService(cluster),
 		Shares:            share.NewService(cluster),
+		Shortcuts:         shortcut.NewService(cluster),
+		Calendars:         calendar.NewService(cluster),
+		Guests:            guest.NewService(cluster),
+		Public:            public.NewService(cluster),
+		Hub:               hub.NewService(cluster),
+		Unfurl:            unfurlService(cfg, valkey, log),
 		Home:              home.NewService(cluster),
 		Stale:             stale.NewService(cluster),
 		Templates:         template.NewService(cluster),
+		Tasks:             task.NewService(cluster),
 		PageViews:         pageview.NewService(cluster),
 		PageViewRetention: cfg.RetainPageViews,
 		Armature:          armatures,
@@ -208,6 +234,10 @@ func run() error {
 		IdleTimeout:       idleTimeout,
 		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
 	}
+
+	// Shutdown does not wait for a WebSocket, so the hub closes each one,
+	// asking its browser to come back to another process.
+	srv.RegisterOnShutdown(collabs.Shutdown)
 
 	// Exactly one value is ever sent on this channel. Closing it instead would
 	// make the select below read a nil and report a clean exit for a failure.
@@ -260,6 +290,16 @@ func telemetryConfig(cfg config.Config, service string) observability.Config {
 	}
 }
 
+// unfurlService reads link previews through the outbound guard, keeping them
+// in Valkey when there is one.
+func unfurlService(cfg config.Config, valkey *redis.Client, log *slog.Logger) *unfurl.Service {
+	client := netguard.Client(unfurl.FetchTimeout, netguard.ParseAllow(cfg.Armature.OutboundAllow))
+	if valkey == nil {
+		return unfurl.NewService(client, nil, log)
+	}
+	return unfurl.NewService(client, valkey, log)
+}
+
 // openValkey connects to STATOR_VALKEY_URL, or returns nil when it is blank.
 func openValkey(ctx context.Context, cfg config.Config) (*redis.Client, error) {
 	if cfg.Valkey.URL == "" {
@@ -277,6 +317,23 @@ func openValkey(ctx context.Context, cfg config.Config) (*redis.Client, error) {
 		return nil, fmt.Errorf("connect to Valkey: %w", err)
 	}
 	return client, nil
+}
+
+// collabPrefix keeps the shared drafts' channels apart from anything else in Valkey.
+const collabPrefix = "stator:collab:"
+
+// collabHub relays shared drafts between this process's connections and
+// every other api process's: through Valkey when there is one, else Postgres.
+func collabHub(ctx context.Context, cluster *db.Cluster, cfg config.Config, valkey *redis.Client, log *slog.Logger) (*collab.Hub, error) {
+	if valkey != nil {
+		bus := collab.NewValkeyBus(valkey, collabPrefix)
+		hub := collab.NewHub(bus, log, collab.DefaultOptions())
+		return hub, bus.Listen(ctx, hub)
+	}
+	log.Info("STATOR_VALKEY_URL is not set, so api processes pass shared drafts' changes to each other through Postgres")
+	bus := collab.NewPostgresBus(cluster.Primary(), cfg.DB.PrimaryURL, collab.PostgresChannel, log)
+	hub := collab.NewHub(bus, log, collab.DefaultOptions())
+	return hub, bus.Listen(ctx, hub)
 }
 
 // freshnessTracker keeps read-your-writes positions in Valkey, so they hold

@@ -120,8 +120,26 @@ export const TOC_DEFAULT_MAX_LEVEL = EDITOR_HEADING_LEVELS[EDITOR_HEADING_LEVELS
 export const CHILD_PAGES_MAX_DEPTH = 10;
 /** How many pages one child pages block lists at most, matching the API's MaxBelow. */
 export const CHILD_PAGES_LIMIT = 500;
+/** How long the organization's hub stays fresh before it is asked for again; administrators change it rarely. */
+export const HUB_STALE_MS = 60_000;
 /** The longest title an expand block takes, matching the API's MaxExpandTitleLength. */
 export const EXPAND_TITLE_MAX_LENGTH = 200;
+/** The narrowest and widest share of its row a column takes, in percent, matching the API's MinColumnShare and MaxColumnShare. */
+export const COLUMN_SHARE_MIN = 10;
+export const COLUMN_SHARE_MAX = 80;
+/**
+ * The layouts a column section offers, by name and each column's share of the
+ * row. The first of each count is the one inserting that many columns makes.
+ */
+export const COLUMN_LAYOUTS = [
+  { key: "twoEven", widths: [50, 50] },
+  { key: "twoWideLeft", widths: [67, 33] },
+  { key: "twoWideRight", widths: [33, 67] },
+  { key: "threeEven", widths: [33, 34, 33] },
+  { key: "threeWideLeft", widths: [50, 25, 25] },
+  { key: "threeWideMiddle", widths: [25, 50, 25] },
+  { key: "threeWideRight", widths: [25, 25, 50] },
+] as const;
 
 /** The languages a code block offers, by highlighting grammar, and the name the picker shows. */
 export const CODE_LANGUAGES = [
@@ -158,6 +176,20 @@ export const CODE_LANGUAGES = [
 export const SPACE_KEY_MAX_LENGTH = 10;
 export const SPACE_NAME_MAX_LENGTH = 100;
 export const SPACE_DESCRIPTION_MAX_LENGTH = 1000;
+/** The longest address a guest is invited by, as the mail standards and the API allow. */
+export const GUEST_EMAIL_MAX_LENGTH = 254;
+/** How many shortcuts a space holds, and the longest label and address, matching the API's limits. */
+export const SHORTCUTS_MAX = 30;
+export const SHORTCUT_LABEL_MAX_LENGTH = 100;
+export const SHORTCUT_URL_MAX_LENGTH = 2000;
+/** The schemes a shortcut's address may use; anything else could run a script. */
+export const SHORTCUT_URL_SCHEMES: readonly string[] = ["http:", "https:"];
+/** What an address somebody typed opens with: its own tab, no hold on this one, no word for it from us. */
+export const EXTERNAL_LINK_REL = "noopener noreferrer nofollow";
+/** A page's text measure, 44rem (616px at the app's 14px root): about 85 characters of Inter to a line. */
+export const PAGE_MEASURE_REM = 44;
+/** How wide a page's wide blocks grow, 96rem (1344px): past that a table's rows are too long to follow. */
+export const PAGE_MAX_WIDTH_REM = 96;
 /** The longest page title, matching the API's MaxTitleLength. */
 export const PAGE_TITLE_MAX_LENGTH = 255;
 /** Where a template's title takes the day the page is made, matching the API's template.DateToken. */
@@ -183,6 +215,10 @@ export const TEMPLATE_VARIABLE_NAME_MAX_LENGTH = 40;
 export const TEMPLATES_PATH = "/settings/templates";
 export const TEMPLATE_NEW_PATH = "/settings/templates/new";
 export const TEMPLATE_EDIT_PATH = "/settings/templates/$templateKey";
+/** The picker's value for a space that starts blank; the API takes no template then. */
+export const BLANK_SPACE_TEMPLATE = "";
+/** What everyone may do in a blank space, matching the database's space_default_grants. */
+export const BLANK_SPACE_EVERYONE = ["view", "addPages", "addComments", "delete"] as const;
 /** How far a page's title runs into its address before it is cut. */
 export const PAGE_SLUG_MAX_LENGTH = 60;
 /** The slug of a page whose title leaves nothing usable in an address. */
@@ -194,6 +230,62 @@ export const IMAGE_WIDTHS = { small: 240, medium: 480, large: 720, original: nul
 export const IMAGE_ALT_MAX_LENGTH = 500;
 /** The widest an image's width attribute may be, matching the API's MaxImageWidth. */
 export const IMAGE_MAX_WIDTH_PX = 4000;
+
+/** How many pictures a gallery's row may hold on a wide screen, matching the API's bounds; a narrow screen shows two. */
+export const GALLERY_COLUMNS = [2, 3, 4] as const;
+/** The row a new gallery starts with. */
+export const GALLERY_DEFAULT_COLUMNS = 3;
+/** The most pictures one gallery holds, matching the API's MaxGalleryImages. */
+export const GALLERY_MAX_IMAGES = 60;
+/** The longest caption, which is the picture's alternative text too, matching the API's limit. */
+export const GALLERY_CAPTION_MAX_LENGTH = IMAGE_ALT_MAX_LENGTH;
+
+/** The lightbox's zoom: from the picture fitted to the screen up to this many times that. */
+export const LIGHTBOX_MAX_ZOOM = 8;
+/** How much one press of zoom in or out, or of + and -, multiplies the zoom by. */
+export const LIGHTBOX_ZOOM_STEP = 1.5;
+/** What a double click or double tap zooms an unzoomed picture to. */
+export const LIGHTBOX_DOUBLE_ZOOM = 2.5;
+/** How fast the wheel zooms: the zoom is multiplied by e to this times the pixels scrolled. */
+export const LIGHTBOX_WHEEL_ZOOM_PER_PX = 0.0015;
+/** How far one arrow key press moves a zoomed picture. */
+export const LIGHTBOX_PAN_STEP_PX = 64;
+/** How far a finger must sweep sideways across an unzoomed picture to go to the next or previous one. */
+export const LIGHTBOX_SWIPE_PX = 48;
+
+/** The colours a picture is annotated in: strong on a screenshot of either theme, and each edged in black or white besides. */
+export const ANNOTATION_COLOURS = { red: "#e5191f", yellow: "#ffd60a", green: "#12a150", blue: "#1f6fe5", black: "#111111", white: "#ffffff" } as const;
+/** The colour the annotation editor starts with. */
+export const ANNOTATION_DEFAULT_COLOUR: keyof typeof ANNOTATION_COLOURS = "red";
+/** How thick a box or an arrow is: this share of the picture's shorter side, and never thinner than the floor in picture pixels. */
+export const ANNOTATION_STROKE_SHARE = 0.006;
+export const ANNOTATION_STROKE_MIN_PX = 3;
+/** How tall text is: this share of the picture's shorter side, and never smaller than the floor in picture pixels. */
+export const ANNOTATION_TEXT_SHARE = 0.045;
+export const ANNOTATION_TEXT_MIN_PX = 16;
+/** The longest text one label holds. */
+export const ANNOTATION_TEXT_MAX_LENGTH = 200;
+/** How far a press must drag, in screen pixels, to draw a shape rather than click. */
+export const ANNOTATION_MIN_DRAG_PX = 6;
+/** How near, in screen pixels, a press must land to pick a shape's line. */
+export const ANNOTATION_HIT_PX = 12;
+/** How far one arrow key press moves or resizes a shape, as a share of the picture's shorter side. */
+export const ANNOTATION_KEY_STEP_SHARE = 0.02;
+/** The smallest crop, in picture pixels. */
+export const ANNOTATION_MIN_CROP_PX = 8;
+/** The most pixels a picture may have to be edited, what a phone's browser draws on one canvas. */
+export const ANNOTATION_MAX_PIXELS = 16_777_216;
+/** How much detail a JPEG or WebP keeps when the edited picture is saved. */
+export const ANNOTATION_QUALITY = 0.92;
+/** How many steps undo goes back. */
+export const ANNOTATION_HISTORY_LIMIT = 100;
+/** The pictures that can be annotated, with the name a person knows each type by, matching the API's attachment.Editable. */
+export const ANNOTATION_TYPES: Readonly<Record<string, string>> = { "image/png": "PNG", "image/jpeg": "JPEG", "image/webp": "WebP" };
+
+/** The videos the API shows in place, which a browser's own player plays. */
+export const VIDEO_TYPES: readonly string[] = ["video/mp4", "video/webm", "video/ogg"];
+/** The names a file chip offers to play by, since a chip does not carry the file's type. */
+export const VIDEO_FILE_PATTERN = /\.(mp4|webm|ogv)$/i;
 
 /** How far each level of the page tree is indented. */
 export const TREE_INDENT_PX = 12;
@@ -212,6 +304,29 @@ export const SHARE_MAX_RECIPIENTS = 20;
 export const SHARE_VIEWERS_SHOWN = 8;
 /** How long the editor waits after the last keystroke before it saves the draft. */
 export const DRAFT_AUTOSAVE_MS = 1000;
+/** How often a live page's reader asks for the page again, so what its editors type shows without a reload. */
+export const LIVE_PAGE_REFRESH_MS = 3000;
+/** How far ahead the publish dialog first offers a time to publish at, rounded up to the hour. */
+export const SCHEDULE_DEFAULT_LEAD_MINUTES = 60;
+/** How far ahead a publish may be scheduled at most, matching the API's page.MaxScheduleAhead. */
+export const SCHEDULE_MAX_AHEAD_DAYS = 366;
+/** How many minutes of a live page's saves one version of its history takes, matching the API's page.LiveVersionSpan. */
+export const LIVE_VERSION_SPAN_MINUTES = 10;
+/** How long the editor waits for a page's shared draft before it edits alone, saving to the person's own draft. */
+export const COLLAB_CONNECT_TIMEOUT_MS = 6000;
+/** The first and the longest wait before a lost connection to a shared draft is tried again; each try doubles it. */
+export const COLLAB_RECONNECT_MIN_MS = 500;
+export const COLLAB_RECONNECT_MAX_MS = 10_000;
+/** How long a browser waits for somebody else to send a new shared draft's first content, past the API's page.SeedLease of 15 seconds, before it asks again. */
+export const COLLAB_SEED_WAIT_MS = 20_000;
+/** Where this browser keeps each shared draft's document in IndexedDB, by room, so changes made offline outlive a closed tab. */
+export const COLLAB_LOCAL_PREFIX = "stator.collab.";
+/** The colours people's carets and avatars take in a shared draft, as #rrggbb, which the caret needs; each person gets one by their id. */
+export const COLLAB_COLORS: readonly string[] = ["#1d4ed8", "#b45309", "#047857", "#be185d", "#6d28d9", "#0e7490", "#b91c1c", "#4d7c0f"];
+/** The initials on those colours, which a test holds to a readable contrast with each. */
+export const COLLAB_INK = "#ffffff";
+/** How many other people's avatars the editor shows before it counts the rest. */
+export const COLLAB_AVATARS_SHOWN = 5;
 /** The longest version comment, matching the API's page.MaxCommentLength. */
 export const VERSION_COMMENT_MAX_LENGTH = 500;
 /** How many versions the history shows at a time. */
@@ -227,6 +342,9 @@ export const RECENT_PAGES_LIMIT = 8;
 export const HOME_STARS_PAGE_SIZE = 10;
 export const HOME_UPDATES_PAGE_SIZE = 20;
 export const HOME_EDITED_PAGE_SIZE = 8;
+/** How many open tasks the home page shows, and the list of tasks reads at a time, within the API's limit of 100. */
+export const HOME_TASKS_PAGE_SIZE = 5;
+export const TASKS_PAGE_SIZE = 25;
 /** How many hits one page of search results shows, within the API's limit of 100. */
 export const SEARCH_PAGE_SIZE = 20;
 /** The longest query, matching the API's limit. */
@@ -350,6 +468,130 @@ export const ARMATURE_LINKS_POLL_MS = 2000;
 
 /** The longest status label, matching the API's MaxStatusLength. */
 export const STATUS_LABEL_MAX_LENGTH = 40;
+/** The longest formula source, matching the API's MaxMathLength. */
+export const MATH_MAX_LENGTH = 4000;
+/** How many macro expansions one formula may take, so a macro that calls itself stops instead of holding the page. */
+export const MATH_MAX_EXPAND = 1000;
+/** The largest box, in em, a formula may ask for, so one cannot cover the page. */
+export const MATH_MAX_SIZE = 20;
+/** What a new formula holds until its author writes their own. */
+export const MATH_DEFAULT_LATEX = "a^2 + b^2 = c^2";
+/** How many lines the formula dialog's source field shows. */
+export const MATH_SOURCE_ROWS = 5;
+/** The longest diagram source, matching the API's MaxDiagramLength. */
+export const DIAGRAM_MAX_LENGTH = 20000;
+/** The most arrows one diagram may draw, so a huge graph cannot hold the page while it lays out. */
+export const DIAGRAM_MAX_EDGES = 500;
+/** How long the preview waits after the last keystroke before drawing the diagram again. */
+export const DIAGRAM_PREVIEW_DELAY_MS = 300;
+/** How many lines the diagram's source field shows. */
+export const DIAGRAM_SOURCE_ROWS = 6;
+/** What a new diagram holds until its author writes their own: a sketch that shows the syntax. */
+export const DIAGRAM_DEFAULT_SOURCE = "flowchart LR\n  idea[Idea] --> draft[Draft] --> published[Published]";
+/** The name a downloaded diagram is saved under. */
+export const DIAGRAM_FILE_NAME = "diagram.svg";
+/** How long a link's card is shown before it is asked for again; the server keeps it an hour. */
+export const LINK_PREVIEW_STALE_MS = 5 * 60_000;
+/** The views a link card offers, in the order its toolbar lists them. */
+export const LINK_CARD_VIEWS = ["inline", "card", "embed"] as const;
+/** The longest excerpt name, matching the API's MaxExcerptNameLength. */
+export const EXCERPT_NAME_MAX_LENGTH = 80;
+/** What a chart block shares issues out by, as armature.ChartGroupings. */
+export const ARMATURE_CHART_GROUPINGS = ["status", "statusCategory", "type", "priority", "assignee"] as const;
+export type ArmatureChartGrouping = (typeof ARMATURE_CHART_GROUPINGS)[number];
+/** The windows a created against resolved chart offers, in days, within armature.MinChartDays to MaxChartDays. */
+export const ARMATURE_CHART_DAY_CHOICES: readonly number[] = [7, 14, 30, 90, 180, 365];
+/** A new created against resolved chart's window, as armature.DefaultChartDays. */
+export const ARMATURE_CHART_DEFAULT_DAYS = 30;
+/** The most slices a pie draws; the rest share one slice, Other, rather than take a colour nobody tells apart. */
+export const ARMATURE_CHART_MAX_SLICES = 8;
+/** A pie's size and its hole, in SVG units. */
+export const ARMATURE_PIE_SIZE = 160;
+export const ARMATURE_PIE_HOLE = 0.6;
+/** A line chart's drawing box, in SVG units; it scales to the page's width. */
+export const ARMATURE_FLOW_WIDTH = 640;
+export const ARMATURE_FLOW_HEIGHT = 200;
+/** How many evenly spaced ticks a line chart's axes carry at most. */
+export const ARMATURE_FLOW_TICKS = 4;
+/** The longest property name, matching the API's MaxPropertyKeyLength. */
+export const PROPERTY_KEY_MAX_LENGTH = 60;
+/** The most rows one properties block holds, matching the API's MaxProperties. */
+export const PROPERTIES_MAX_ROWS = 50;
+/** The most labels and columns a properties report asks for, matching MaxReportLabels and MaxReportColumns. */
+export const PROPERTIES_REPORT_MAX_LABELS = 5;
+export const PROPERTIES_REPORT_MAX_COLUMNS = 10;
+/** How many pages a list block shows when it names no number, and the most, as document.DefaultListedPages and MaxListedPages. */
+export const PAGE_LIST_DEFAULT_LIMIT = 10;
+export const PAGE_LIST_MAX_LIMIT = 50;
+/** The lengths a list block's settings offer, within 1 to PAGE_LIST_MAX_LIMIT. */
+export const PAGE_LIST_LIMIT_CHOICES: readonly number[] = [5, 10, 20, 50];
+/** How a content by label list matches its labels and orders its pages, as document.ListMatches and ListSorts. */
+export const PAGE_LIST_MATCHES = ["all", "any"] as const;
+export const PAGE_LIST_SORTS = ["updated", "title"] as const;
+/** How many posts a latest blog posts block shows when it names no number; at most PAGE_LIST_MAX_LIMIT, as for any list block. */
+export const BLOG_POSTS_DEFAULT_LIMIT = 5;
+/** How many posts a blog shows at a time, as page.DefaultPostLimit. */
+export const BLOG_PAGE_SIZE = 10;
+/** The most opening characters of a post a block quotes; a blog shows all the API sends. */
+export const BLOG_BLOCK_EXCERPT_LENGTH = 140;
+/** How many tasks a task report shows when it names no number, and the most, as document.DefaultReportedTasks and MaxReportedTasks. */
+export const TASK_REPORT_DEFAULT_LIMIT = 20;
+export const TASK_REPORT_MAX_LIMIT = 100;
+/** The lengths a task report's settings offer, within 1 to TASK_REPORT_MAX_LIMIT. */
+export const TASK_REPORT_LIMIT_CHOICES: readonly number[] = [10, 20, 50, 100];
+/** The due days and states a task report picks, as document.TaskReportDues and TaskReportStates. */
+export const TASK_REPORT_DUES = ["any", "overdue", "today", "week", "none"] as const;
+export const TASK_REPORT_STATES = ["open", "done", "all"] as const;
+/** The bounds of a template button's words and its pattern for the page's title, as document.MaxButtonLabelLength and MaxButtonTitleLength. */
+export const TEMPLATE_BUTTON_LABEL_MAX_LENGTH = 80;
+export const TEMPLATE_BUTTON_TITLE_MAX_LENGTH = PAGE_TITLE_MAX_LENGTH;
+/** What a contributors block counts, as document.ContributorScopes: the page alone, or it and the pages below it. */
+export const CONTRIBUTOR_SCOPES = ["page", "tree"] as const;
+/** How many people a contributors block names when it says no number, and the most, as document.DefaultContributors and MaxContributors. */
+export const CONTRIBUTORS_DEFAULT_LIMIT = 10;
+export const CONTRIBUTORS_MAX_LIMIT = 50;
+/** The lengths a contributors block's settings offer, within 1 to CONTRIBUTORS_MAX_LIMIT. */
+export const CONTRIBUTORS_LIMIT_CHOICES: readonly number[] = [5, 10, 20, 50];
+/** The charts a table becomes, as document.TableCharts. */
+export const TABLE_CHARTS = ["bar", "line", "pie"] as const;
+/** The most series a chart from a table draws, one per categorical colour; more columns are left out. */
+export const TABLE_CHART_MAX_SERIES = 8;
+/** The plot of a bar or line chart from a table, before it takes its box's width. */
+export const TABLE_CHART_WIDTH = 640;
+export const TABLE_CHART_HEIGHT = 220;
+/** How many gridlines a chart from a table aims for. */
+export const TABLE_CHART_TICKS = 4;
+/** What a bar's group leaves free on each side, as a share of its slot. */
+export const TABLE_CHART_BAR_GAP = 0.2;
+/** The kinds of a calendar's events, as calendar.Kinds. */
+export const CALENDAR_EVENT_KINDS = ["event", "absence"] as const;
+/** How long a calendar's name and an event's title may be, as calendar.MaxNameLength and MaxTitleLength. */
+export const CALENDAR_NAME_MAX_LENGTH = 100;
+export const CALENDAR_EVENT_TITLE_MAX_LENGTH = 200;
+/** How many days one event may last, as calendar.MaxEventDays. */
+export const CALENDAR_EVENT_MAX_DAYS = 366;
+/** The weekday a calendar's weeks start on, 0 for Sunday: Monday, as ISO 8601 counts weeks. */
+export const CALENDAR_WEEK_START = 1;
+/** The hour a new event with times starts at, and how many minutes it lasts. */
+export const CALENDAR_DEFAULT_START_HOUR = 9;
+export const CALENDAR_DEFAULT_EVENT_MINUTES = 60;
+/** What a roadmap block puts its rows under, as armature.RoadmapGroupings. */
+export const ARMATURE_ROADMAP_GROUPINGS = ["epic", "team"] as const;
+export type ArmatureRoadmapGrouping = (typeof ARMATURE_ROADMAP_GROUPINGS)[number];
+/** Past this many days a roadmap's axis marks months; within it, weeks. */
+export const ARMATURE_ROADMAP_WEEKLY_DAYS = 70;
+/** The least room, in pixels, between two labels of a roadmap's axis; closer ones skip a label. */
+export const ARMATURE_ROADMAP_LABEL_GAP_PX = 64;
+/** The room, in pixels, a label of a roadmap's axis needs to its right; nearer the edge it is left out. */
+export const ARMATURE_ROADMAP_LABEL_ROOM_PX = 48;
+/** Days left either side of a roadmap's earliest and latest day, so no bar touches its edge. */
+export const ARMATURE_ROADMAP_MARGIN_DAYS = 3;
+/** How many emoji the appearance dialog offers for a page at once. */
+export const PAGE_ICON_CHOICES = 24;
+/** Where a new cover's focus starts, in percent: its middle. */
+export const COVER_FOCUS_DEFAULT = 50;
+/** How far one arrow key moves a cover's focus, in percent. */
+export const COVER_FOCUS_STEP = 5;
 /** How many emoji a colon offers at once. */
 export const EMOJI_MAX_SUGGESTIONS = 8;
 /** What a colon offers before a letter is typed, by shortcode, most used first. */
@@ -367,3 +609,18 @@ export const ZIP_FILE_PATTERN = /\.zip$/i;
 export const VERIFY_TERM_DAYS = [30, 90, 180, 365] as const;
 /** The term offered first, as the API's own default. */
 export const VERIFY_DEFAULT_DAYS = 90;
+
+/** Where the pages anybody may read without signing in live, followed by the organization's slug. */
+export const PUBLIC_PATH = "/public";
+/** A public answer is the same for everybody and may be a minute old, as the API lets caches keep it. */
+export const PUBLIC_STALE_MS = 60_000;
+/** Hits a public search shows at a time. */
+export const PUBLIC_SEARCH_LIMIT = 20;
+/** The part of a public address a link's token follows, after the organization, as the API makes it. */
+export const PUBLIC_LINK_SEGMENT = "link";
+/** The lifetimes a public link is offered, in days; it may also work until it is revoked. */
+export const PUBLIC_LINK_EXPIRY_DAYS = [1, 7, 30, 90] as const;
+/** The lifetime offered first: a link nobody remembers stops by itself. */
+export const PUBLIC_LINK_DEFAULT_EXPIRY_DAYS = 30;
+/** The longest label a public link takes, matching the API's limit. */
+export const PUBLIC_LINK_LABEL_MAX_LENGTH = 60;

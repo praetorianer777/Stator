@@ -24,27 +24,36 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
+	"github.com/praetorianer777/stator/backend/internal/convert"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
+	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
+	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
+	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
+	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
+	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
@@ -78,7 +87,9 @@ func (a *apiServer) handOver(t *testing.T, c *client, method string) {
 	}
 }
 
-func newAPIServer(t *testing.T, h *harness) *apiServer {
+// newAPIServer starts the api in this process; tweaks change its server
+// before it starts, as a test that needs another guard or service does.
+func newAPIServer(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *apiServer {
 	t.Helper()
 	if os.Getenv("STATOR_S3_ENDPOINT") == "" {
 		t.Fatal("STATOR_S3_ENDPOINT is not set; run the suite with make test-integration against the running stack")
@@ -96,18 +107,39 @@ func newAPIServer(t *testing.T, h *harness) *apiServer {
 	accounts := auth.NewService(h.cluster, cheapPasswords(), time.Hour)
 	a := &apiServer{accounts: accounts, store: store, themes: theme.NewService(h.cluster, store), h: h}
 	pages := page.NewService(h.cluster)
-	a.attachments = attachment.NewService(h.cluster, store, pages).WithMaxSize(testUploadLimit).WithLogger(discard())
+	if h.cfg.ConverterURL == "" {
+		t.Fatal("STATOR_CONVERTER_URL is not set; run the suite with make test-integration against the running stack")
+	}
+	a.attachments = attachment.NewService(h.cluster, store, pages).WithMaxSize(testUploadLimit).WithLogger(discard()).
+		WithConverter(convert.New(h.cfg.ConverterURL, attachment.MaxPreviewSize))
 	server := &httpapi.Server{
 		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
-		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Shares: share.NewService(h.cluster), Templates: template.NewService(h.cluster),
+		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Tasks: task.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Calendars: calendar.NewService(h.cluster), Guests: guest.NewService(h.cluster), Public: public.NewService(h.cluster), Hub: hub.NewService(h.cluster), Templates: template.NewService(h.cluster),
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),
 		Audit: audit.NewService(h.cluster), AuditRetention: config.DefaultRetainAudit, Webhooks: h.webhooks(t),
 		PageViews: pageview.NewService(h.cluster), PageViewRetention: config.DefaultRetainPageViews,
+		Unfurl: h.unfurl(t, netguard.ParseAllow(armatureStubHost)),
+	}
+	for _, tweak := range tweaks {
+		tweak(server)
 	}
 	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))
 	t.Cleanup(a.srv.Close)
 	return a
+}
+
+// unfurl reads link previews through a guard that lets allow through, kept
+// in the running Valkey under a prefix of the suite's own.
+func (h *harness) unfurl(t *testing.T, allow netguard.Allow) *unfurl.Service {
+	t.Helper()
+	opts, err := redis.ParseURL(h.cfg.Valkey.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := redis.NewClient(opts)
+	t.Cleanup(func() { _ = client.Close() })
+	return unfurl.NewService(netguard.Client(unfurl.FetchTimeout, allow), client, discard())
 }
 
 // freshness is the read-your-writes store the running api uses, under a

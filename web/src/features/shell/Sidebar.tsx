@@ -1,4 +1,5 @@
 import { useRef, type ReactNode } from "react";
+import { HomeNavItem, HubNavItem } from "@/features/hub/HubNav";
 import { createPortal } from "react-dom";
 import { IconButton } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
@@ -6,7 +7,7 @@ import { Icon } from "@/components/icons";
 import { APP_NAME, APP_VERSION, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { t } from "@/i18n";
 import { SpaceNav } from "@/features/spaces/SpaceNav";
-import { NavItem } from "./nav";
+import { NavItem, SpacesNavItem } from "./nav";
 import { Rail } from "./Rail";
 import { SidebarGroup } from "./SidebarGroup";
 import { DRAWER_ID, SIDEBAR_ID, useSidebarGroups, useSidebarMode } from "./state";
@@ -63,11 +64,11 @@ function SidebarGroups({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <SidebarGroup id="wiki" title={t.nav.groupWiki} open={isOpen("wiki", true)} onToggle={() => toggleGroup("wiki", true)}>
-        <NavItem to="/" exact icon="Home" rail={false} onNavigate={onNavigate}>
-          {t.nav.home}
-        </NavItem>
-        <NavItem to="/spaces" icon="Space" rail={false} onNavigate={onNavigate}>
-          {t.nav.spaces}
+        <HomeNavItem rail={false} onNavigate={onNavigate} />
+        <HubNavItem rail={false} onNavigate={onNavigate} />
+        <SpacesNavItem rail={false} onNavigate={onNavigate} />
+        <NavItem to="/tasks" icon="Checklist" rail={false} onNavigate={onNavigate}>
+          {t.nav.tasks}
         </NavItem>
         <NavItem
           to="/search"

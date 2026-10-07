@@ -357,6 +357,9 @@ func (h *harness) makeMember(t *testing.T, slug string) member {
 		t.Fatalf("make the user a member of %s: %v", full, err)
 	}
 	t.Cleanup(func() {
+		// The hub first: its page goes with the organization, and clearing it
+		// then would touch the row being deleted.
+		h.cleanupExec(t, h.super, `UPDATE org SET hub_page_id = NULL WHERE id = $1`, m.org)
 		h.cleanupExec(t, h.super, `DELETE FROM org WHERE id = $1`, m.org)
 		h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, m.user)
 	})

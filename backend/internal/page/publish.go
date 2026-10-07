@@ -36,21 +36,22 @@ type release struct {
 	comment      string
 	notify       bool
 	restoredFrom *int
+	// live marks a version saved as its editors type, which later saves amend.
+	live bool
 }
 
 // publish writes the page's next version, copies it onto the page, makes the
 // actor watch it and tells the outbox. The caller has checked the actor may edit it.
 func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r release) (*VersionEntry, error) {
 	number := p.Version + 1
-	body, err := comment.SettleAnchors(ctx, tx, p.ID, r.body)
-	if err != nil {
+	var err error
+	if r.body, err = settleBody(ctx, tx, p, r.body); err != nil {
 		return nil, err
 	}
-	r.body = body
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_version (org_id, page_id, number, title, body, comment, notify_watchers, restored_from, created_by)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8)`,
-		p.ID, number, r.title, r.body, r.comment, r.notify, r.restoredFrom, actor.UserID); err != nil {
+		INSERT INTO page_version (org_id, page_id, number, title, body, comment, notify_watchers, restored_from, created_by, live)
+		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		p.ID, number, r.title, r.body, r.comment, r.notify, r.restoredFrom, actor.UserID, r.live); err != nil {
 		return nil, fmt.Errorf("write version %d: %w", number, err)
 	}
 	if _, err := tx.Exec(ctx, `
@@ -60,6 +61,11 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 	}
 	if err := watch.Auto(ctx, tx, actor.UserID, p.ID); err != nil {
 		return nil, fmt.Errorf("watch the page: %w", err)
+	}
+	// After the page is published, so whom a task may be assigned to is read
+	// as the page now stands, and the stamp names this version.
+	if err := syncTasks(ctx, tx, p.ID, true); err != nil {
+		return nil, err
 	}
 	// Read after the page is published, so a first version's mentions reach
 	// the people who may view it now.
@@ -79,8 +85,25 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 	return versionEntry(ctx, tx, p.ID, number)
 }
 
+// settleBody is a body as the page will hold it: inline threads settled, and
+// every checklist item with the id of its task.
+func settleBody(ctx context.Context, tx db.DBTX, p *Page, body json.RawMessage) (json.RawMessage, error) {
+	body, err := comment.SettleAnchors(ctx, tx, p.ID, body)
+	if err != nil {
+		return nil, err
+	}
+	var previous []document.Task
+	if p.Version > 0 {
+		previous = document.TasksIn(p.Body)
+	}
+	return document.SettleTasksIn(body, previous)
+}
+
 const selectVersions = `
-SELECT v.number, v.title, v.comment, u.id, COALESCE(u.name, ''), v.created_at, v.restored_from
+SELECT v.number, v.title, v.comment, u.id, COALESCE(u.name, ''), v.created_at, v.restored_from, v.live, v.updated_at,
+       ARRAY(SELECT e.name FROM page_version_editor pe JOIN app_user e ON e.id = pe.user_id
+             WHERE pe.page_id = v.page_id AND pe.number = v.number AND pe.user_id IS DISTINCT FROM v.created_by
+             ORDER BY pe.created_at, e.id)
 FROM page_version v
 LEFT JOIN app_user u ON u.id = v.created_by`
 
@@ -145,7 +168,7 @@ func (s *Service) SaveDraft(ctx context.Context, actor perm.Actor, id uuid.UUID,
 	if in.Body == nil {
 		return nil, 0, &FieldError{Field: "body", Message: "A draft needs its whole body. Send the document as the editor holds it."}
 	}
-	if err := document.Validate(in.Body); err != nil {
+	if err := document.ValidatePage(in.Body, id.String()); err != nil {
 		return nil, 0, err
 	}
 	var out *Draft
@@ -156,6 +179,12 @@ func (s *Service) SaveDraft(ctx context.Context, actor perm.Actor, id uuid.UUID,
 		}
 		if err := p.must(perm.EditPages); err != nil {
 			return err
+		}
+		if p.Kind == KindFolder {
+			return ErrFolder
+		}
+		if p.Mode == ModeLive {
+			return ErrLivePage
 		}
 		if in.BaseVersion < 0 || in.BaseVersion > p.Version {
 			return &FieldError{Field: "baseVersion", Message: fmt.Sprintf("The page is at version %d, so a draft cannot start from version %d. Reload the page and edit again.", p.Version, in.BaseVersion)}
@@ -197,36 +226,52 @@ func (s *Service) Publish(ctx context.Context, actor perm.Actor, id uuid.UUID, i
 		version *VersionEntry
 	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		p, _, err := load(ctx, tx, actor, id, true)
-		if err != nil {
-			return err
-		}
-		if err := p.must(perm.EditPages); err != nil {
-			return err
-		}
-		draft, err := draftOf(ctx, tx, actor, id, true)
-		if err != nil {
-			return err
-		}
-		r := release{title: p.Title, body: p.Body, comment: comment, notify: in.NotifyWatchers}
-		switch {
-		case draft != nil && draft.BaseVersion != p.Version:
-			return ErrPublishConflict
-		case draft != nil:
-			r.title, r.body = draft.Title, draft.Body
-		case !p.Unpublished:
-			return ErrNoDraft
-		}
-		if version, err = publish(ctx, tx, actor, p, r); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `DELETE FROM page_draft WHERE page_id = $1 AND user_id = $2`, id, actor.UserID); err != nil {
-			return err
-		}
-		out, _, err = load(ctx, tx, actor, id, false)
+		var err error
+		out, version, err = publishDraft(ctx, tx, actor, id, comment, in.NotifyWatchers)
 		return err
 	})
 	return out, version, lsn, err
+}
+
+// publishDraft makes the actor's draft the page's next version, or, for a
+// page never published, the content it was made with when there is no draft.
+func publishDraft(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, comment string, notify bool) (*Page, *VersionEntry, error) {
+	p, _, err := load(ctx, tx, actor, id, true)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := p.must(perm.EditPages); err != nil {
+		return nil, nil, err
+	}
+	if p.Kind == KindFolder {
+		return nil, nil, ErrFolder
+	}
+	if p.Mode == ModeLive {
+		return nil, nil, ErrLivePage
+	}
+	draft, err := draftOf(ctx, tx, actor, id, true)
+	if err != nil {
+		return nil, nil, err
+	}
+	r := release{title: p.Title, body: p.Body, comment: comment, notify: notify}
+	switch {
+	case draft != nil && draft.BaseVersion != p.Version:
+		return nil, nil, ErrPublishConflict
+	case draft != nil:
+		r.title, r.body = draft.Title, draft.Body
+	case !p.Unpublished:
+		return nil, nil, ErrNoDraft
+	}
+	version, err := publish(ctx, tx, actor, p, r)
+	if err != nil {
+		return nil, nil, err
+	}
+	// The draft takes its schedule with it, whoever publishes it.
+	if _, err := tx.Exec(ctx, `DELETE FROM page_draft WHERE page_id = $1 AND user_id = $2`, id, actor.UserID); err != nil {
+		return nil, nil, err
+	}
+	out, _, err := load(ctx, tx, actor, id, false)
+	return out, version, err
 }
 
 // Versions lists a page's published versions, the latest first, and how
@@ -297,6 +342,9 @@ func (s *Service) RestoreVersion(ctx context.Context, actor perm.Actor, id uuid.
 		}
 		if err := p.must(perm.EditPages); err != nil {
 			return err
+		}
+		if p.Kind == KindFolder {
+			return ErrFolder
 		}
 		old, err := version(ctx, tx, id, number)
 		if err != nil {

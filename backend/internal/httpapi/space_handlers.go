@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -156,6 +157,87 @@ func (s *Server) handleSpaceOutline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"pages": pages})
+}
+
+func (s *Server) handleSetAppearance(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req page.AppearanceInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	got, lsn, err := s.Pages.SetAppearance(r.Context(), actorFrom(r), id, req)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"appearance": got})
+}
+
+func (s *Server) handleGetIncluded(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	q := r.URL.Query()
+	excerpt := q.Get("excerpt")
+	if excerpt != "" {
+		if _, err := uuid.Parse(excerpt); err != nil {
+			respondError(w, r, ErrValidation(map[string]string{"excerpt": "That is not an excerpt's id. Choose the excerpt again in the include's picker."}))
+			return
+		}
+	}
+	var via []uuid.UUID
+	for raw := range strings.SplitSeq(q.Get("via"), ",") {
+		if raw = strings.TrimSpace(raw); raw == "" {
+			continue
+		}
+		each, err := uuid.Parse(raw)
+		if err != nil {
+			respondError(w, r, ErrValidation(map[string]string{"via": "List the pages the include sits in by their ids, separated by commas."}))
+			return
+		}
+		via = append(via, each)
+	}
+	got, err := s.Pages.Included(r.Context(), actorFrom(r), id, excerpt, via)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"included": got})
+}
+
+func (s *Server) handleListExcerpts(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	got, err := s.Pages.Excerpts(r.Context(), actorFrom(r), id)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"excerpts": got})
+}
+
+func (s *Server) handleListDecisions(w http.ResponseWriter, r *http.Request) {
+	log, err := s.Pages.Decisions(r.Context(), actorFrom(r), spaceKey(r), r.URL.Query().Get("state"))
+	if errors.Is(err, page.ErrBadDecisionState) {
+		respondError(w, r, ErrValidation(map[string]string{"state": "Choose decided or undecided, or leave the state out for both."}))
+		return
+	}
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, log)
 }
 
 func (s *Server) handleListPagesBelow(w http.ResponseWriter, r *http.Request) {

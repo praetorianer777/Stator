@@ -29,21 +29,27 @@ func NewService(cluster *db.Cluster) *Service {
 const selectSpaces = `
 SELECT s.id, s.key, s.name, s.description, s.home_page_id, s.created_at, s.updated_at,
        s.archived_at, COALESCE((SELECT u.name FROM app_user u WHERE u.id = s.archived_by), ''),
-       EXISTS (SELECT 1 FROM watch w WHERE w.space_id = s.id AND w.user_id = current_actor_id()),
-       EXISTS (SELECT 1 FROM star st WHERE st.space_id = s.id AND st.user_id = current_actor_id())
+       EXISTS (SELECT 1 FROM watch w WHERE w.space_id = s.id AND w.user_id = current_actor_id() AND w.kind = 'space'),
+       EXISTS (SELECT 1 FROM star st WHERE st.space_id = s.id AND st.user_id = current_actor_id()),
+       s.owner_id, COALESCE((SELECT u.name FROM app_user u WHERE u.id = s.owner_id), '')
 FROM space s`
 
 func scan(row pgx.Row) (*Space, error) {
 	var (
-		s    Space
-		home *uuid.UUID
+		s         Space
+		home      *uuid.UUID
+		owner     *uuid.UUID
+		ownerName string
 	)
-	err := row.Scan(&s.ID, &s.Key, &s.Name, &s.Description, &home, &s.CreatedAt, &s.UpdatedAt, &s.ArchivedAt, &s.ArchivedByName, &s.Watching, &s.Starred)
+	err := row.Scan(&s.ID, &s.Key, &s.Name, &s.Description, &home, &s.CreatedAt, &s.UpdatedAt, &s.ArchivedAt, &s.ArchivedByName, &s.Watching, &s.Starred, &owner, &ownerName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if home != nil {
 		s.HomePageID = *home
+	}
+	if owner != nil {
+		s.Owner = &SpaceOwner{ID: *owner, Name: ownerName}
 	}
 	return &s, err
 }
@@ -146,17 +152,39 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 	if err != nil {
 		return nil, 0, err
 	}
+	tpl, err := chooseTemplate(in)
+	if err != nil {
+		return nil, 0, err
+	}
 	var out *Space
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if err := perm.Check(ctx, tx, actor, perm.CreateSpace, uuid.Nil); err != nil {
+		action, owner := perm.CreateSpace, (*uuid.UUID)(nil)
+		if in.Personal {
+			action, owner = perm.CreatePersonalSpace, &actor.UserID
+		}
+		if err := perm.Check(ctx, tx, actor, action, uuid.Nil); err != nil {
 			return err
+		}
+		if in.Personal {
+			var mine string
+			err := tx.QueryRow(ctx, `SELECT key FROM space WHERE owner_id = $1 AND org_id = current_org_id()`, actor.UserID).Scan(&mine)
+			if err == nil {
+				return &PersonalTakenError{Key: mine}
+			}
+			if !errors.Is(err, pgx.ErrNoRows) {
+				return fmt.Errorf("look for the personal space: %w", err)
+			}
 		}
 		// The ids are made here rather than returned: a row the statement
 		// writes is not yet one its own snapshot lets the policies see.
 		id, home := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
 		_, err := tx.Exec(ctx, `
-			INSERT INTO space (id, org_id, key, name, description, created_by)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5)`, id, key, name, description, actor.UserID)
+			INSERT INTO space (id, org_id, key, name, description, created_by, owner_id)
+			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6)`, id, key, name, description, actor.UserID, owner)
+		// Made a moment ago by another request, which the look above missed.
+		if constraint(err) == "space_one_personal" {
+			return &PersonalTakenError{}
+		}
 		if isUnique(err) {
 			return &FieldError{Field: "key", Message: fmt.Sprintf("The key %s is taken by another space. Choose another.", key)}
 		}
@@ -168,19 +196,30 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 			VALUES ($1, current_org_id(), $2, $3, $4, $5, $5)`, home, id, rank.Initial(), name, actor.UserID); err != nil {
 			return fmt.Errorf("make the home page: %w", err)
 		}
-		// Everybody who sees the space sees its home page, so it starts published.
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
-			SELECT org_id, id, 1, title, body, created_by FROM page WHERE id = $1`, home); err != nil {
-			return fmt.Errorf("publish the home page: %w", err)
+		if tpl != nil {
+			body, err := forSpace(tpl.Home, key)
+			if err != nil {
+				return fmt.Errorf("fill the home page: %w", err)
+			}
+			if _, err := tx.Exec(ctx, `UPDATE page SET body = $2 WHERE id = $1`, home, body); err != nil {
+				return fmt.Errorf("fill the home page: %w", err)
+			}
 		}
-		if _, err := tx.Exec(ctx, `UPDATE page SET version = 1 WHERE id = $1`, home); err != nil {
+		// Everybody who sees the space sees its home page, so it starts published.
+		if err := publishFirst(ctx, tx, home); err != nil {
 			return fmt.Errorf("publish the home page: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `UPDATE space SET home_page_id = $2 WHERE id = $1`, id, home); err != nil {
 			return fmt.Errorf("name the home page: %w", err)
 		}
-		if err := record(ctx, tx, actor, audit.ActionSpaceCreated, id, map[string]any{"key": key, "name": name}); err != nil {
+		logged := map[string]any{"key": key, "name": name, "personal": in.Personal}
+		if tpl != nil {
+			if err := seed(ctx, tx, actor, id, home, key, tpl); err != nil {
+				return err
+			}
+			logged["template"] = tpl.Key
+		}
+		if err := record(ctx, tx, actor, audit.ActionSpaceCreated, id, logged); err != nil {
 			return err
 		}
 		out, err = Load(ctx, tx, actor, ByID, id)
@@ -284,6 +323,15 @@ func record(ctx context.Context, tx db.DBTX, actor perm.Actor, action string, id
 		return err
 	}
 	return audit.Write(ctx, tx, org.ID, audit.Entry{Action: action, TargetType: "space", TargetID: &id, Actor: actor.UserID, Data: data})
+}
+
+// constraint names the constraint a unique violation broke, or "".
+func constraint(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return pgErr.ConstraintName
+	}
+	return ""
 }
 
 func isUnique(err error) bool {

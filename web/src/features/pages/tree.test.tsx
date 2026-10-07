@@ -20,6 +20,8 @@ const node = (id: string, parentId: string, title: string, hasChildren = false):
   id,
   parentId,
   title,
+  kind: "page",
+  icon: null,
   hasChildren,
   unpublished: false,
   restricted: false,
@@ -194,5 +196,74 @@ describe("a new page", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
     await arrival(router, `/s/DOCS/p/${made.id}/onboarding/edit`);
     expect(sent.find(isChange)?.body).toEqual({ parentId: home.id, title: "Onboarding" });
+  });
+});
+
+describe("folders", () => {
+  const folderId = "0195f000-0000-7000-8000-0000000000f1";
+  const guides = aPage({
+    id: folderId,
+    title: "Guides",
+    kind: "folder",
+    home: false,
+    parentId: home.id,
+    body: { type: "doc", content: [{ type: "paragraph" }] },
+  });
+  const below = {
+    pages: [{ id: ids.oneA, parentId: folderId, title: "Install", depth: 1, unpublished: false, updatedAt: "2026-10-01T08:00:00Z" }],
+    truncated: false,
+  };
+  const folderTree = (more: Record<string, Answer | ((request: Request) => Answer)> = {}) =>
+    stubTree({
+      "GET /spaces/DOCS/pages": (request) => {
+        const parent = new URL(request.url).searchParams.get("parent");
+        return { status: 200, body: { pages: parent ? [] : [{ ...node(folderId, home.id, "Guides", true), kind: "folder" }] } };
+      },
+      [`GET /pages/${folderId}`]: { status: 200, body: { page: guides, space } },
+      [`GET /pages/${folderId}/below`]: { status: 200, body: below },
+      ...more,
+    });
+
+  it("say they are folders in the tree, and show what they hold instead of a body", async () => {
+    folderTree();
+    await renderAt(`/s/DOCS/p/${folderId}/guides`);
+    expect(await screen.findByRole("treeitem", { name: "Guides, folder" })).toBeInTheDocument();
+    const children = await screen.findByRole("link", { name: "Install" });
+    expect(children.closest("[data-folder-children]")).not.toBeNull();
+    expect(screen.getByText("A folder holds pages and folders and has no text of its own.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "History" })).toBeNull();
+    expect(screen.getByRole("button", { name: "New folder" })).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("are renamed in a dialog, by their title alone", async () => {
+    const sent = folderTree({ [`PATCH /pages/${folderId}`]: { status: 200, body: { page: { ...guides, title: "How-tos" } } } });
+    await renderAt(`/s/DOCS/p/${folderId}/guides`);
+    await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Rename" }));
+    const dialog = await screen.findByRole("dialog", { name: "Rename Guides" });
+    await userEvent.clear(within(dialog).getByLabelText("Title"));
+    await userEvent.type(within(dialog).getByLabelText("Title"), "How-tos");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Rename" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(sent.find((r) => r.method === "PATCH")?.body).toEqual({ title: "How-tos", version: 1 });
+  });
+
+  it("are made from a page with a name alone, and open as folders", async () => {
+    const sent = stubTree({
+      "POST /pages": { status: 201, body: { page: guides } },
+      [`GET /pages/${folderId}`]: { status: 200, body: { page: guides, space } },
+      [`GET /pages/${folderId}/below`]: { status: 200, body: { pages: [], truncated: false } },
+    });
+    const router = await renderAt("/s/DOCS");
+    await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "New folder" }));
+    const dialog = await screen.findByRole("dialog", { name: "New folder under Handbook" });
+    expect(within(dialog).queryByText(/template/i)).toBeNull();
+    await userEvent.type(within(dialog).getByLabelText("Title"), "Guides");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create folder" }));
+    await arrival(router, `/s/DOCS/p/${folderId}/guides`);
+    expect(sent.find(isChange)?.body).toEqual({ parentId: home.id, title: "Guides", kind: "folder" });
   });
 });

@@ -4,21 +4,56 @@ import type { Element as HastElement, ElementContent, Root } from "hast";
 import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
-import { DocAttachment, DocImage } from "./AttachmentView";
-import { ChildPagesList, TocList, childPagesSummary, tocSummary } from "./BlockViews";
+import { DocAttachment, DocGallery, DocImage } from "./AttachmentView";
+import { GALLERY_NODE } from "@/features/gallery/gallery";
+import { ChildPagesList, DocPageContext, TocList, childPagesSummary, tocSummary } from "./BlockViews";
 import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
+import { columnStyle } from "./columns";
+import { decisionState } from "./decision";
 import { ExpandView, revealInExpands } from "./ExpandView";
 import { languageLabel, lowlight } from "./languages";
-import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type DocNode } from "./schema";
+import { ANCHOR_PATTERN, CELL_BACKGROUNDS, INLINE_COMMENT_MARK, PANEL_KINDS, safeHref, textOf, type Doc, type DocNode } from "./schema";
 import { Passage, usePassages, type BlockPath } from "./passages";
 import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel } from "./InlineValueViews";
 import { Blank, TEMPLATE_VARIABLE_NODE, variableName } from "./blanks";
+import { MATH_BLOCK_NODE, MATH_INLINE_NODE, MathFormula, mathSource } from "./MathViews";
+import { DIAGRAM_NODE, DiagramFigure, diagramSource } from "./DiagramViews";
+import { LINK_CARD_NODE, LinkCard, linkCardView, webAddress } from "./LinkCardViews";
+import { INCLUDE_NODE, IncludeBlock, IncludeChain, includeId } from "./IncludeViews";
+import { PassagesContext } from "./passages";
+import { publicHref, publicPagePath, usePublicReading } from "./publicReading";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
+import { DueChip } from "@/features/tasks/DueChip";
+import { taskOfItem } from "@/features/tasks/taskItem";
 
+import { ARMATURE_CHART_NODE, chartSettings } from "@/features/armature/chart";
+import { IssueChart } from "@/features/armature/IssueChart";
+import { IssueRoadmap } from "@/features/armature/IssueRoadmap";
+import { ARMATURE_ROADMAP_NODE, roadmapSettings } from "@/features/armature/roadmap";
+import { PropertiesReport } from "@/features/properties/PropertiesReport";
+import { PROPERTIES_REPORT_NODE, reportSettings } from "@/features/properties/report";
+import { LabelledPages, UpdatedPages } from "@/features/pageLists/PageLists";
+import { LABELLED_PAGES_NODE, RECENTLY_UPDATED_NODE, labelledSettings, updatedSettings } from "@/features/pageLists/lists";
+import { TaskReport } from "@/features/taskReport/TaskReport";
+import { LatestPosts } from "@/features/blog/LatestPosts";
+import { BLOG_POSTS_NODE, blogPostsSettings } from "@/features/blog/blogPosts";
+import { TASK_REPORT_NODE, taskReportSettings } from "@/features/taskReport/report";
+import { AttachmentList } from "@/features/attachments/AttachmentList";
+import { ATTACHMENT_LIST_NODE } from "./attachmentList";
+import { KnownAttachmentsContext } from "./attachmentIndex";
+import { TableChart } from "@/features/tableChart/TableChart";
+import { TABLE_CHART_NODE, tableChartSettings } from "@/features/tableChart/data";
+import { TeamCalendar } from "@/features/calendar/TeamCalendar";
+import { CALENDAR_NODE, calendarSettings } from "@/features/calendar/calendar";
+import { TemplateButton } from "@/features/templateButton/TemplateButton";
+import { TEMPLATE_BUTTON_NODE, templateButtonSettings } from "@/features/templateButton/button";
+import { Contributors } from "@/features/contributors/Contributors";
+import { CONTRIBUTORS_NODE, contributorsSettings } from "@/features/contributors/contributors";
+import { PROPERTIES_NODE, propertyKey } from "./properties";
 import { ARMATURE_ISSUE_BLOCK_NODE, ARMATURE_ISSUE_LIST_NODE, ARMATURE_ISSUE_NODE, issueKeysOf, normalizeKey } from "@/features/armature/issueKeys";
 
 /**
@@ -38,9 +73,15 @@ export function DocView({
   /** False for a preview beside the page, whose headings must not take the page's anchors. */
   anchors?: boolean;
 }) {
+  // The page this is the body of starts the chain, so an include in it that
+  // leads back to it is caught.
+  const chain = useContext(IncludeChain);
+  const pageId = useContext(DocPageContext)?.id;
   const { copy, status } = useCopyHeadingLink();
   const headings = useMemo(() => headingsOfDoc(doc), [doc]);
-  const keys = useMemo(() => issueKeysOf(doc), [doc]);
+  // Somebody who is not signed in has no Armature account to ask with.
+  const reading = usePublicReading();
+  const keys = useMemo(() => (reading ? [] : issueKeysOf(doc)), [doc, reading]);
   const root = useRef<HTMLDivElement>(null);
   const shown = Boolean(doc);
   // The browser scrolled to the address's heading before the page was drawn,
@@ -54,13 +95,28 @@ export function DocView({
   if (!doc) return null;
   return (
     <div ref={root} className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
-      <HeadingsContext value={headings}>
-        <WithIssues keys={keys}>
-          <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
-        </WithIssues>
-      </HeadingsContext>
+      <IncludeChain value={pageId && chain.length === 0 ? [pageId] : chain}>
+        <HeadingsContext value={headings}>
+          <WithIssues keys={keys}>
+            <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
+          </WithIssues>
+        </HeadingsContext>
+      </IncludeChain>
       {status}
     </div>
+  );
+}
+
+// An included document takes no anchors and no inline threads of the page
+// it is shown in: those belong to the page whose words they are. Its
+// pictures are files of its own page, which the reader's reads decide.
+function drawIncluded(doc: Doc) {
+  return (
+    <PassagesContext value={null}>
+      <KnownAttachmentsContext value={undefined}>
+        <DocView doc={doc} anchors={false} />
+      </KnownAttachmentsContext>
+    </PassagesContext>
   );
 }
 
@@ -142,6 +198,10 @@ function oneOf<T extends string>(values: readonly T[], value: unknown): T | unde
 
 function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPath }): ReactNode {
   const block = usePassages() ? path.join(".") : undefined;
+  // What a generated block lists is asked for as its reader, which somebody
+  // who is not signed in is not, so they read what it lists in words.
+  const org = usePublicReading();
+  const live = org ? null : copy;
   switch (node.type) {
     case "paragraph":
       return <p data-block={block}>{inline(node.content)}</p>;
@@ -156,17 +216,9 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     case "taskList":
       return (
         <ul data-type="taskList">
-          {(node.content ?? []).map((item, i) => {
-            const checked = item.attrs?.checked === true;
-            return (
-              <li key={i} data-checked={checked}>
-                <input type="checkbox" checked={checked} readOnly disabled aria-label={t.editor.taskDone} />
-                <div>
-                  <Blocks nodes={item.content} copy={copy} path={[...path, i]} />
-                </div>
-              </li>
-            );
-          })}
+          {(node.content ?? []).map((item, i) => (
+            <TaskLine key={i} item={item} copy={copy} path={[...path, i]} />
+          ))}
         </ul>
       );
     case "blockquote":
@@ -223,8 +275,155 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
           <Blocks nodes={node.content} copy={copy} path={path} />
         </ExpandView>
       );
+    case "columns":
+      return (
+        <div className="doc-columns" data-columns="">
+          {(node.content ?? []).map((column, c) => (
+            <div key={c} className="doc-column" data-column="" style={columnStyle(column.attrs?.width)}>
+              <Blocks nodes={column.content} copy={copy} path={[...path, c]} />
+            </div>
+          ))}
+        </div>
+      );
+    case "decision": {
+      const state = decisionState(node.attrs?.state);
+      return (
+        <div className="doc-decision" data-decision={state} data-block={block}>
+          <span className="doc-decision-badge">{state === "decided" ? t.editor.decision.decided : t.editor.decision.undecided}</span>
+          <p className="doc-decision-text" data-decision-text="">
+            {inline(node.content)}
+          </p>
+        </div>
+      );
+    }
+    // A row without a name is one still being typed, which a report leaves out too.
+    case PROPERTIES_NODE: {
+      const rows = (node.content ?? []).filter((row) => propertyKey(row.attrs?.key).trim() !== "");
+      if (rows.length === 0) return null;
+      return (
+        <table className="doc-properties" data-properties="" data-block={block}>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} data-property-row="">
+                <th scope="row">{propertyKey(row.attrs?.key)}</th>
+                <td className="doc-property-value">{inline(row.content)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    // Its rows are each reader's own, now; a comparison says what it gathers.
+    case PROPERTIES_REPORT_NODE: {
+      const settings = reportSettings(node.attrs);
+      if (settings.labels.length === 0) return null;
+      if (!live) {
+        return (
+          <p className="doc-block doc-block-summary" data-properties-report="">
+            {t.properties.report.summary(settings.labels, settings.space)}
+          </p>
+        );
+      }
+      return <PropertiesReport settings={settings} draw={drawInline} />;
+    }
+    // A list's pages are each reader's own, now; a comparison says what it lists.
+    case LABELLED_PAGES_NODE: {
+      const settings = labelledSettings(node.attrs);
+      if (settings.labels.length === 0) return null;
+      if (!live) return <p className="doc-block doc-block-summary">{t.pageLists.labelledTitle(settings.labels, settings.match, settings.space)}</p>;
+      return <LabelledPages settings={settings} />;
+    }
+    case RECENTLY_UPDATED_NODE: {
+      const settings = updatedSettings(node.attrs);
+      if (!live) return <p className="doc-block doc-block-summary">{t.pageLists.updatedTitle(settings.space)}</p>;
+      return <UpdatedPages settings={settings} />;
+    }
+    case BLOG_POSTS_NODE: {
+      const settings = blogPostsSettings(node.attrs);
+      if (!live) return <p className="doc-block doc-block-summary">{t.blogPosts.summary(settings.space)}</p>;
+      return <LatestPosts settings={settings} />;
+    }
+    // The chart is drawn from the table it holds, which readers may see beneath it.
+    case TABLE_CHART_NODE: {
+      const settings = tableChartSettings(node.attrs);
+      const table = node.content?.[0];
+      return (
+        <div className="doc-table-chart" data-table-chart-block="">
+          <TableChart table={table} kind={settings.chart} dataTable={!settings.showTable} />
+          {settings.showTable && table && <Block node={table} copy={copy} path={[...path, 0]} />}
+        </div>
+      );
+    }
+    case ATTACHMENT_LIST_NODE:
+      return <AttachmentListBlock copy={live} />;
+    case CALENDAR_NODE: {
+      const settings = calendarSettings(node.attrs);
+      // A comparison says which project, never the month as it is now.
+      if (!live) return <p className="doc-block doc-block-summary">{t.calendar.summary(settings.project)}</p>;
+      return <TeamCalendar settings={settings} />;
+    }
+    case TEMPLATE_BUTTON_NODE: {
+      const settings = templateButtonSettings(node.attrs);
+      // A comparison says what the button makes; nothing in it makes a page.
+      if (!live) return <p className="doc-block doc-block-summary">{t.templateButton.summary(settings.template)}</p>;
+      return <TemplateButton settings={settings} />;
+    }
+    case CONTRIBUTORS_NODE: {
+      const settings = contributorsSettings(node.attrs);
+      if (!live) return <p className="doc-block doc-block-summary">{t.contributors.title(settings.scope)}</p>;
+      return <Contributors settings={settings} />;
+    }
+    case TASK_REPORT_NODE: {
+      const settings = taskReportSettings(node.attrs);
+      // Without the person's name, which only the report answers with.
+      if (!live) return <p className="doc-block doc-block-summary">{t.taskReport.title(settings, "")}</p>;
+      return <TaskReport settings={settings} />;
+    }
+    // An excerpt reads as the blocks it marks; its name is for pickers.
+    case "excerpt":
+      return (
+        <div className="doc-excerpt" data-excerpt={String(node.attrs?.id ?? "")}>
+          <Blocks nodes={node.content} copy={copy} path={path} />
+        </div>
+      );
+    case INCLUDE_NODE: {
+      const id = includeId(node.attrs?.pageId);
+      if (id && org) {
+        return (
+          <p className="doc-block doc-block-summary" data-include-link="">
+            <a href={publicPagePath(org, id)}>{t.publicReading.included}</a>
+          </p>
+        );
+      }
+      return id ? <IncludeBlock pageId={id} excerptId={includeId(node.attrs?.excerptId)} draw={drawIncluded} /> : null;
+    }
+    // A card's summary is read by the server for a signed-in reader; anybody
+    // else follows the address itself.
+    case LINK_CARD_NODE: {
+      const url = webAddress(node.attrs?.url);
+      if (url && org) {
+        return (
+          <p className="doc-block">
+            <a href={url} rel="noopener noreferrer nofollow" target="_blank">
+              {url}
+            </a>
+          </p>
+        );
+      }
+      return url ? <LinkCard url={url} view={linkCardView(node.attrs?.view)} /> : null;
+    }
+    case DIAGRAM_NODE: {
+      const source = diagramSource(node.attrs?.source);
+      return source ? <DiagramFigure source={source} /> : null;
+    }
+    case MATH_BLOCK_NODE: {
+      const latex = mathSource(node.attrs?.latex);
+      return latex ? <MathFormula latex={latex} display /> : null;
+    }
     case "image":
       return <DocImage node={node} />;
+    case GALLERY_NODE:
+      return <DocGallery node={node} />;
     // A comparison says what the block asks for rather than drawing it: its
     // headings and pages are the page's now, not the version's.
     case "tableOfContents":
@@ -238,7 +437,7 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       return <DocToc node={node} />;
     case "childPages": {
       const options = childPagesOptions(node.attrs);
-      if (!copy) {
+      if (!live) {
         return (
           <p className="doc-block doc-block-summary" data-child-pages>
             {childPagesSummary(options)}
@@ -254,7 +453,7 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     case ARMATURE_ISSUE_BLOCK_NODE: {
       const key = normalizeKey(node.attrs?.key);
       if (!key) return null;
-      if (!copy) {
+      if (!live) {
         return (
           <p className="doc-block doc-block-summary" data-armature-issue-block={key}>
             {t.armature.block.summary(key)}
@@ -264,10 +463,34 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       return <IssueBlock issueKey={key} />;
     }
     // Its rows are each reader's own, now; a comparison says what it asks for.
+    case ARMATURE_CHART_NODE: {
+      const settings = chartSettings(node.attrs);
+      if (!settings.project || !settings.query.trim()) return null;
+      if (!live) {
+        return (
+          <p className="doc-block doc-block-summary" data-armature-chart="">
+            {t.armature.chart.summary(settings.project, settings.query)}
+          </p>
+        );
+      }
+      return <IssueChart settings={settings} />;
+    }
+    case ARMATURE_ROADMAP_NODE: {
+      const settings = roadmapSettings(node.attrs);
+      if (!settings.project || !settings.query.trim()) return null;
+      if (!live) {
+        return (
+          <p className="doc-block doc-block-summary" data-armature-roadmap="">
+            {t.armature.roadmap.summary(settings.project, settings.query)}
+          </p>
+        );
+      }
+      return <IssueRoadmap settings={settings} />;
+    }
     case ARMATURE_ISSUE_LIST_NODE: {
       const settings = listSettings(node.attrs);
       if (!settings.query.trim()) return null;
-      if (!copy) {
+      if (!live) {
         return (
           <p className="doc-block doc-block-summary" data-armature-issue-list="">
             {t.armature.list.summary(settings.query)}
@@ -279,6 +502,36 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     default:
       return <p>{textOf(node)}</p>;
   }
+}
+
+// A published item can be ticked off where the page offers it, which is the
+// live page to its editors; a comparison or a preview draws the box still.
+function TaskLine({ item, copy, path }: { item: DocNode; copy: Copy; path: BlockPath }) {
+  const page = useContext(DocPageContext);
+  const task = taskOfItem(item);
+  const toggle = copy && task.id ? page?.toggleTask : undefined;
+  const words = (item.content ?? [])
+    .filter((block) => block.type !== "taskList")
+    .map(textOf)
+    .join(" ")
+    .trim();
+  return (
+    <li data-checked={task.done} data-task-id={task.id ?? undefined}>
+      <input
+        type="checkbox"
+        checked={task.done}
+        readOnly={!toggle}
+        disabled={!toggle}
+        aria-label={words ? t.tasks.tick(words) : t.editor.taskDone}
+        onChange={toggle && task.id ? (event) => toggle(task.id!, event.target.checked) : undefined}
+        data-task-check={words}
+      />
+      <div>
+        <Blocks nodes={item.content} copy={copy} path={path} />
+      </div>
+      <DueChip due={task.due} done={task.done} brief className="mt-1" />
+    </li>
+  );
 }
 
 function Heading({ node, copy, block }: { node: DocNode; copy: Copy; block?: string }) {
@@ -339,6 +592,11 @@ function items(nodes: DocNode[] | undefined, copy: Copy, path: BlockPath): React
   ));
 }
 
+/** Draws inline nodes as the read view does, for a block that shows another page's words. */
+export function drawInline(nodes: DocNode[]): ReactNode {
+  return inline(nodes);
+}
+
 function inline(nodes: DocNode[] | undefined): ReactNode {
   return (nodes ?? []).map((node, i) => <Fragment key={i}>{inlineNode(node)}</Fragment>);
 }
@@ -350,7 +608,8 @@ function inlineNode(node: DocNode): ReactNode {
     case "hardBreak":
       return <br />;
     case "mention":
-      return marked(<span data-mention={String(node.attrs?.id ?? "")}>{`@${String(node.attrs?.label ?? "")}`}</span>, node.marks);
+      // A public page names nobody: the API sends its mentions without a label.
+      return marked(<span data-mention={String(node.attrs?.id ?? "")}>{`@${String(node.attrs?.label ?? "") || t.publicReading.someone}`}</span>, node.marks);
     case "attachment":
       return <DocAttachment node={node} />;
     case ARMATURE_ISSUE_NODE: {
@@ -374,6 +633,10 @@ function inlineNode(node: DocNode): ReactNode {
     case TEMPLATE_VARIABLE_NODE: {
       const name = variableName(node.attrs?.name);
       return name ? marked(<Blank name={name} />, node.marks) : null;
+    }
+    case MATH_INLINE_NODE: {
+      const latex = mathSource(node.attrs?.latex);
+      return latex ? marked(<MathFormula latex={latex} display={false} />, node.marks) : null;
     }
     default:
       return textOf(node);
@@ -427,10 +690,12 @@ function marked(content: ReactNode, marks: DocNode["marks"]): ReactNode {
         const href = safeHref(mark.attrs?.href);
         if (href) {
           const external = /^(https?|mailto):/i.test(href);
-          out = (
-            <a href={href} rel={external ? "noopener noreferrer nofollow" : undefined} target={external ? "_blank" : undefined}>
+          out = external ? (
+            <a href={href} rel="noopener noreferrer nofollow" target="_blank">
               {out}
             </a>
+          ) : (
+            <SiteLink href={href}>{out}</SiteLink>
           );
         }
         break;
@@ -438,4 +703,17 @@ function marked(content: ReactNode, marks: DocNode["marks"]): ReactNode {
     }
   }
   return out;
+}
+
+/** A link to an address of this site, which leads somebody who is not signed in to the public page or to signing in. */
+function SiteLink({ href, children }: { href: string; children: ReactNode }) {
+  const org = usePublicReading();
+  return <a href={org ? publicHref(org, href) : href}>{children}</a>;
+}
+
+/** The page's files, with an upload for whoever may edit it; a comparison of versions says only that it is there. */
+function AttachmentListBlock({ copy }: { copy: Copy }) {
+  const page = useContext(DocPageContext);
+  if (!copy) return <p className="doc-block doc-block-summary">{t.attachmentList.title}</p>;
+  return <AttachmentList pageId={page?.id} editable={page?.canEdit ?? false} />;
 }

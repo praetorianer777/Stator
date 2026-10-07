@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { Slice } from "@tiptap/pm/model";
+import { NodeSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { DIAGRAM_DEFAULT_SOURCE } from "@/config";
 import { editorExtensions, type ExtensionOptions } from "./extensions";
 import type { DocNode } from "./schema";
 import { SLASH_ITEMS } from "./slashItems";
@@ -72,7 +74,10 @@ describe("the slash menu's blocks", () => {
       panelSuccess: (d) => find(d, "panel")[0]?.attrs?.kind === "success",
       panelWarning: (d) => find(d, "panel")[0]?.attrs?.kind === "warning",
       panelError: (d) => find(d, "panel")[0]?.attrs?.kind === "error",
+      decision: (d) => d.content?.[0]?.type === "decision" && d.content[0].attrs?.state === "undecided",
       expand: (d) => d.content?.[0]?.type === "expand" && d.content[0].attrs?.title === "" && d.content[0].content?.[0]?.type === "paragraph",
+      columns2: (d) => JSON.stringify(find(d, "column").map((c) => c.attrs?.width)) === "[50,50]",
+      columns3: (d) => JSON.stringify(find(d, "column").map((c) => c.attrs?.width)) === "[33,34,33]",
       tableOfContents: (d) => d.content?.[0]?.type === "tableOfContents" && d.content[0].attrs?.maxLevel === 3,
       childPages: (d) => JSON.stringify(find(d, "childPages")[0]?.attrs) === JSON.stringify({ scope: "children", depth: null, sort: "tree" }),
       // The picker asks which issue; this one answers lower case, as a person might type it.
@@ -83,17 +88,79 @@ describe("the slash menu's blocks", () => {
       status: (d) => JSON.stringify(find(d, "status")[0]?.attrs) === JSON.stringify({ label: "Blocked", color: "danger" }),
       date: (d) => JSON.stringify(find(d, "date")[0]?.attrs) === JSON.stringify({ date: "2026-11-02" }),
       emoji: (d) => find(d, "text")[0]?.text === ":",
+      diagram: (d) => find(d, "diagram")[0]?.attrs?.source === DIAGRAM_DEFAULT_SOURCE,
+      armatureChart: (d) =>
+        JSON.stringify(find(d, "armatureChart")[0]?.attrs) ===
+        JSON.stringify({ project: "CP", query: "project = CP", chart: "pie", groupBy: "type", days: 30 }),
+      armatureRoadmap: (d) =>
+        JSON.stringify(find(d, "armatureRoadmap")[0]?.attrs) === JSON.stringify({ project: "CP", query: "project = CP", groupBy: "team" }),
+      properties: (d) => JSON.stringify(find(d, "propertyRow").map((r) => r.attrs?.key)) === JSON.stringify(["Owner", "Status"]),
+      propertiesReport: (d) => JSON.stringify(find(d, "propertiesReport")[0]?.attrs) === JSON.stringify({ labels: ["adr"], space: null, columns: ["Owner"] }),
+      labelledPages: (d) =>
+        JSON.stringify(find(d, "labelledPages")[0]?.attrs) === JSON.stringify({ labels: ["adr"], match: "any", space: null, sort: "title", limit: 5 }),
+      recentlyUpdated: (d) => JSON.stringify(find(d, "recentlyUpdated")[0]?.attrs) === JSON.stringify({ space: null, limit: 10 }),
+      blogPosts: (d) => JSON.stringify(find(d, "blogPosts")[0]?.attrs) === JSON.stringify({ space: "NEWS", limit: 5 }),
+      tableChart: (d) => find(d, "tableChart")[0]?.attrs?.chart === "bar" && find(d, "tableRow").length === 4,
+      attachmentList: (d) => JSON.stringify(find(d, "attachmentList")[0]) === JSON.stringify({ type: "attachmentList" }),
+      gallery: (d) =>
+        JSON.stringify(find(d, "gallery")[0]) ===
+        JSON.stringify({
+          type: "gallery",
+          attrs: { columns: 2 },
+          content: [{ type: "galleryImage", attrs: { attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a91", caption: "Dock" } }],
+        }),
+      taskReport: (d) =>
+        JSON.stringify(find(d, "taskReport")[0]?.attrs) === JSON.stringify({ space: "DOCS", assignee: "me", due: "week", state: "open", limit: 20 }),
+      calendar: (d) => JSON.stringify(find(d, "calendar")[0]?.attrs) === JSON.stringify({ calendarId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a90", project: "CP" }),
+      templateButton: (d) =>
+        JSON.stringify(find(d, "templateButton")[0]?.attrs) ===
+        JSON.stringify({ template: "meeting-notes", space: "DOCS", parent: null, label: "New notes", title: "Notes {date}" }),
+      contributors: (d) => JSON.stringify(find(d, "contributors")[0]?.attrs) === JSON.stringify({ scope: "page", limit: 10 }),
+      include: (d) => JSON.stringify(find(d, "include")[0]?.attrs) === JSON.stringify({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null }),
+      excerpt: (d) => {
+        const e = find(d, "excerpt")[0];
+        return e?.attrs?.name === "Excerpt 1" && /^[0-9a-f-]{36}$/.test(String(e.attrs.id)) && e.content?.[0]?.type !== undefined;
+      },
+      // The dialog asks for the address; this one answers as a person would.
+      linkCard: (d) => JSON.stringify(find(d, "linkCard")[0]?.attrs) === JSON.stringify({ url: "https://example.test/post", view: "card" }),
+      mathBlock: (d) => find(d, "mathBlock")[0]?.attrs?.latex === "\\sqrt{2}",
+      mathInline: (d) => find(d, "paragraph")[0]?.content?.[0]?.type === "mathInline" && find(d, "mathInline")[0]?.attrs?.latex === "\\sqrt{2}",
     };
     expect(SLASH_ITEMS.map((item) => item.key).sort()).toEqual(Object.keys(expected).sort());
     for (const item of SLASH_ITEMS) {
       // The pickers answer later, as a dialog does, never inside the slash command.
       const e = await make(undefined, {
         pickIssue: () => setTimeout(() => editor?.commands.insertArmatureIssueBlock("cp-4")),
+        pickChart: () =>
+          setTimeout(() => editor?.commands.insertArmatureChart({ project: "CP", query: "project = CP", chart: "pie", groupBy: "type", days: 30 })),
+        pickRoadmap: () => setTimeout(() => editor?.commands.insertArmatureRoadmap({ project: "CP", query: "project = CP", groupBy: "team" })),
+        pickPropertiesReport: () => setTimeout(() => editor?.commands.insertPropertiesReport({ labels: ["adr"], space: null, columns: ["Owner"] })),
+        pickLabelledPages: () =>
+          setTimeout(() => editor?.commands.insertLabelledPages({ labels: ["adr"], match: "any", space: null, sort: "title", limit: 5 })),
+        pickBlogPosts: () => setTimeout(() => editor?.commands.insertBlogPosts({ space: "NEWS", limit: 5 })),
+        pickTaskReport: () => setTimeout(() => editor?.commands.insertTaskReport({ space: "DOCS", assignee: "me", due: "week", state: "open", limit: 20 })),
+        pickCalendar: () => setTimeout(() => editor?.commands.insertCalendar({ calendarId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a90", project: "CP" })),
+        pickGallery: () =>
+          setTimeout(() =>
+            editor?.commands.insertGallery({ columns: 2, pictures: [{ attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a91", caption: "Dock" }] }),
+          ),
+        pickTemplateButton: () =>
+          setTimeout(() =>
+            editor?.commands.insertTemplateButton({ template: "meeting-notes", space: "DOCS", parent: null, label: "New notes", title: "Notes {date}" }),
+          ),
+        pickInclude: () => setTimeout(() => editor?.commands.insertInclude({ pageId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80", excerptId: null })),
+        pickLinkCard: () => setTimeout(() => editor?.commands.insertLinkCard("https://example.test/post")),
         pickIssueList: () => setTimeout(() => editor?.commands.insertArmatureIssueList({ query: "project = CP", columns: ["key", "due"], limit: 5 })),
         editInlineValue: (target) =>
           setTimeout(() =>
             editor?.commands.command(({ tr }) => {
-              tr.setNodeMarkup(target.pos, undefined, target.kind === "status" ? { label: "Blocked", color: "danger" } : { date: "2026-11-02" });
+              const attrs = {
+                status: { label: "Blocked", color: "danger" },
+                date: { date: "2026-11-02" },
+                mathInline: { latex: "\\sqrt{2}" },
+                mathBlock: { latex: "\\sqrt{2}" },
+              };
+              tr.setNodeMarkup(target.pos, undefined, attrs[target.kind]);
               return true;
             }),
           ),
@@ -103,6 +170,70 @@ describe("the slash menu's blocks", () => {
       expect(expected[item.key]?.(e.getJSON() as DocNode), item.key).toBe(true);
       e.destroy();
     }
+  });
+});
+
+describe("galleries", () => {
+  it("are read back from what the editor copies, their pictures in order with their captions", async () => {
+    const doc: DocNode = {
+      type: "doc",
+      content: [
+        {
+          type: "gallery",
+          attrs: { columns: 4 },
+          content: [
+            { type: "galleryImage", attrs: { attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a91", caption: "Dock <b>" } },
+            { type: "galleryImage", attrs: { attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a92", caption: null } },
+          ],
+        },
+        { type: "image", attrs: { attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a93", alt: null, width: null } },
+      ],
+    };
+    const e = await make(doc);
+    const html = e.getHTML();
+    e.destroy();
+    const back = await make();
+    back.commands.setContent(html);
+    expect(back.getJSON().content?.slice(0, 2)).toEqual(doc.content);
+  });
+});
+
+describe("diagrams", () => {
+  it("are read back from what the editor copies, their lines and spaces kept", async () => {
+    const doc: DocNode = { type: "doc", content: [{ type: "diagram", attrs: { source: 'flowchart LR\n  a["<b>Draft</b>"] --> b\n\n  b --> c' } }] };
+    const e = await make(doc);
+    const html = e.getHTML();
+    expect(html).not.toContain("<b>");
+    e.destroy();
+    const back = await make();
+    back.commands.setContent(html);
+    expect(back.getJSON().content?.slice(0, 1)).toEqual(doc.content);
+  });
+});
+
+describe("formulas", () => {
+  it("are read back from what the editor copies, inline and on their own line", async () => {
+    const doc: DocNode = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Area " },
+            { type: "mathInline", attrs: { latex: "\\pi r^2" } },
+          ],
+        },
+        { type: "mathBlock", attrs: { latex: "a < b & c" } },
+      ],
+    };
+    const e = await make(doc);
+    const html = e.getHTML();
+    expect(e.getText()).toContain("$\\pi r^2$");
+    e.destroy();
+    const back = await make();
+    back.commands.setContent(html);
+    // The editor keeps a line after a closing block to type on.
+    expect(back.getJSON().content?.slice(0, 2)).toEqual(doc.content);
   });
 });
 
@@ -195,6 +326,25 @@ describe("panels", () => {
   });
 });
 
+describe("decision items", () => {
+  it("turn the line into a decision, undecided until somebody says otherwise", async () => {
+    const e = await make();
+    e.chain().insertContent("Ship weekly").setDecision().run();
+    expect(find(e.getJSON() as DocNode, "decision")[0]?.attrs).toEqual({ state: "undecided" });
+    e.commands.updateAttributes("decision", { state: "decided" });
+    expect(find(e.getJSON() as DocNode, "decision")[0]?.attrs).toEqual({ state: "decided" });
+    expect(find(e.getJSON() as DocNode, "text").map((n) => n.text)).toEqual(["Ship weekly"]);
+  });
+
+  it("are read back from the reader's view, its label left out", async () => {
+    const e = await make();
+    e.commands.setContent('<div data-decision="decided"><span class="doc-decision-badge">Decided</span><p data-decision-text>Use Postgres</p></div>');
+    const [item] = find(e.getJSON() as DocNode, "decision");
+    expect(item?.attrs).toEqual({ state: "decided" });
+    expect(find(item!, "text").map((n) => n.text)).toEqual(["Use Postgres"]);
+  });
+});
+
 describe("expand blocks", () => {
   it("wrap the blocks under the caret, store their title and come off again", async () => {
     const e = await make();
@@ -231,6 +381,82 @@ describe("expand blocks", () => {
     const [block] = find(e.getJSON() as DocNode, "expand");
     expect(block?.attrs).toEqual({ title: "Read view" });
     expect(find(block!, "text").map((n) => n.text)).toEqual(["body"]);
+  });
+});
+
+describe("columns", () => {
+  const texts = (doc: DocNode) => find(doc, "text").map((n) => n.text);
+  const widths = (doc: DocNode) => find(doc, "column").map((c) => c.attrs?.width);
+  const columnTexts = (doc: DocNode) => find(doc, "column").map((c) => find(c, "text").map((n) => n.text));
+  // The end of a column's one paragraph: two tokens in from where the column closes.
+  const endOfColumn = (e: Editor, index: number) => {
+    const at: number[] = [];
+    e.state.doc.descendants((node, pos) => void (node.type.name === "column" && at.push(pos + node.nodeSize - 2)));
+    return at[index] ?? -1;
+  };
+
+  it("take the blocks under the caret into the first column and put the caret there", async () => {
+    const e = await make();
+    e.chain().insertContent("left words").setColumns(2).insertContent(" and more").run();
+    const doc = e.getJSON() as DocNode;
+    expect(doc.content?.[0]?.type).toBe("columns");
+    expect(widths(doc)).toEqual([50, 50]);
+    expect(columnTexts(doc)).toEqual([["left words and more"], []]);
+    expect(e.view.dom.querySelectorAll(".doc-columns > .doc-column")).toHaveLength(2);
+    expect(e.view.dom.querySelector<HTMLElement>(".doc-column")?.style.getPropertyValue("--column-share")).toBe("50");
+  });
+
+  it("are not made inside a column", async () => {
+    const e = await make();
+    e.chain().insertContent("x").setColumns(3).run();
+    expect(e.can().setColumns(2)).toBe(false);
+    expect(find(e.getJSON() as DocNode, "columns")).toHaveLength(1);
+  });
+
+  it("change layout, adding a column or folding the last one into the one before", async () => {
+    const e = await make();
+    e.chain().insertContent("one").setColumns(3).run();
+    e.chain().setTextSelection(endOfColumn(e, 2)).insertContent("three").run();
+    expect(columnTexts(e.getJSON() as DocNode)).toEqual([["one"], [], ["three"]]);
+    e.chain().setColumnLayout("twoWideLeft").run();
+    expect(widths(e.getJSON() as DocNode)).toEqual([67, 33]);
+    expect(columnTexts(e.getJSON() as DocNode)).toEqual([["one"], ["three"]]);
+    e.chain().setColumnLayout("threeWideMiddle").run();
+    expect(widths(e.getJSON() as DocNode)).toEqual([25, 50, 25]);
+    expect(columnTexts(e.getJSON() as DocNode)).toEqual([["one"], ["three"], []]);
+  });
+
+  it("come off and leave their blocks in reading order, the caret where it was", async () => {
+    const e = await make();
+    e.chain().insertContent("first").setColumns(2).run();
+    e.chain().setTextSelection(endOfColumn(e, 1)).insertContent("second").run();
+    e.chain().unsetColumns().insertContent("!").run();
+    const doc = e.getJSON() as DocNode;
+    expect(find(doc, "columns")).toHaveLength(0);
+    expect(texts(doc)).toEqual(["first", "second!"]);
+  });
+
+  it("are read back from what the editor copies and from the reader's view", async () => {
+    const content: JSONContent = {
+      type: "doc",
+      content: [
+        {
+          type: "columns",
+          content: [
+            { type: "column", attrs: { width: 33 }, content: [{ type: "paragraph", content: [{ type: "text", text: "a" }] }] },
+            { type: "column", attrs: { width: 67 }, content: [{ type: "paragraph", content: [{ type: "text", text: "b" }] }] },
+          ],
+        },
+      ],
+    };
+    const e = await make(content);
+    const html = e.getHTML();
+    e.destroy();
+    const again = await make();
+    again.commands.setContent(html);
+    expect(again.getJSON().content?.[0]).toEqual(content.content?.[0]);
+    again.commands.setContent('<div data-columns><div data-column style="--column-share: 90"><p>x</p></div><div data-column><p>y</p></div></div>');
+    expect(widths(again.getJSON() as DocNode)).toEqual([null, null]);
   });
 });
 
@@ -290,5 +516,29 @@ describe("markdown", () => {
     e.commands.clearContent();
     type("**strong** ");
     expect(find(e.getJSON() as DocNode, "text")[0]?.marks?.[0]?.type).toBe("bold");
+  });
+});
+
+describe("keys after a caret move", () => {
+  it("land where the browser moved the caret, even before it reported the move", async () => {
+    const e = await make({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Welcome." }] }, { type: "horizontalRule" }, { type: "paragraph" }],
+    });
+    const dom = e.view.dom;
+    dom.setAttribute("tabindex", "0");
+    document.body.append(dom);
+    dom.focus();
+    e.commands.setNodeSelection(10);
+    expect(e.state.selection).toBeInstanceOf(NodeSelection);
+    // End moves the browser's caret at once, but tells of it in a selectionchange
+    // that a busy browser lets the next key overtake, as jsdom does here.
+    const last = dom.lastElementChild as HTMLElement;
+    document.getSelection()?.collapse(last, 0);
+    dom.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true }));
+    dom.dispatchEvent(new KeyboardEvent("keypress", { key: "/", charCode: "/".charCodeAt(0), bubbles: true, cancelable: true }));
+    expect(find(e.getJSON() as DocNode, "horizontalRule")).toHaveLength(1);
+    expect(e.state.selection.from).toBe(e.state.doc.content.size - 1);
+    dom.remove();
   });
 });
