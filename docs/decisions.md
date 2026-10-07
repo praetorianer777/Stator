@@ -3,6 +3,14 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: A page's text measure is 60rem
+
+The measure of 2026-10-06 below, 44rem, left much of a wide window empty.
+Seen side by side at 44, 52 and 60rem, 60rem (840px at the 14px root,
+about 115 characters of Inter) still reads as one column and fills the
+window better, so `PAGE_MEASURE_REM` is 60. Wide blocks still break out to
+96rem, and Full width is unchanged.
+
 ## 2026-10-07: The worker makes the example space, and the page follows its job
 
 Making the example space (#288) took one request: some twenty pages, their
