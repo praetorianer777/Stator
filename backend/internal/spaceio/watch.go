@@ -165,13 +165,18 @@ func (w *Watch) claim(ctx context.Context, k kind) (*claim, error) {
 			extra = `j.space_id, '', j.key, j.name, j.size_bytes`
 		}
 		var format string
+		// Materialized, so the pick runs once: joined as a subquery, it was
+		// scanned again for the update and, skipping the row it had just
+		// locked, handed this worker a second job it never ran.
 		err := tx.QueryRow(ctx, fmt.Sprintf(`
+			WITH next AS MATERIALIZED (
+				SELECT id FROM %[1]s
+				WHERE state = 'queued' OR (state = 'running' AND lease_until < now())
+				ORDER BY requested_at LIMIT 1 FOR UPDATE SKIP LOCKED)
 			UPDATE %[1]s j
 			SET state = 'running', attempts = j.attempts + 1, lease_until = now() + make_interval(secs => $1),
 			    started_at = COALESCE(j.started_at, now())
-			FROM (SELECT id FROM %[1]s
-			      WHERE state = 'queued' OR (state = 'running' AND lease_until < now())
-			      ORDER BY requested_at LIMIT 1 FOR UPDATE SKIP LOCKED) next
+			FROM next
 			WHERE j.id = next.id
 			RETURNING j.id, j.org_id, (SELECT slug FROM org WHERE id = j.org_id), j.requested_by,
 			          COALESCE((SELECT org_role FROM org_member m WHERE m.org_id = j.org_id AND m.user_id = j.requested_by), ''),
