@@ -1397,6 +1397,16 @@ export const en = {
     remove: (name: string) => `Delete ${name}`,
     removed: (name: string) => `Deleted ${name}.`,
     confirmRemove: (name: string) => `Delete ${name} for good? It cannot be restored, and the page and its older versions will show it as a missing file.`,
+    confirmRemoveAll: (name: string, n: number) =>
+      `Delete ${name} and all ${n} of its versions for good? None of them can be restored, and the page and its older versions will show them as missing files.`,
+    removeVersion: (name: string, n: number) => `Delete ${name}, version ${n}`,
+    confirmRemoveVersion: (name: string, n: number) =>
+      `Delete version ${n} of ${name} for good? The other versions stay, and wherever the page shows this version it will show a missing file.`,
+    removedVersion: (name: string, n: number) => `Deleted version ${n} of ${name}.`,
+    restore: "Restore",
+    restoreVersion: (name: string, n: number) => `Restore ${name}, version ${n}`,
+    restored: (name: string, from: number, to: number) => `Restored version ${from} of ${name} as version ${to}.`,
+    restoredFrom: (n: number) => `restored from version ${n}`,
     uploadedBy: (who: string, when: string) => `${who}, ${when}`,
     tooLarge: (name: string, size: string, limit: string) =>
       `${name} (${size}) is larger than this site accepts.${limit ? ` ${limit}` : ""} Make the file smaller, or split it into parts, and attach it again.`,

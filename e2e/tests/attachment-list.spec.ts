@@ -54,8 +54,9 @@ test.describe("files block", { tag: ["@auth"] }, () => {
     const href = await earlier.getAttribute("href");
     const old = await page.request.get(href!);
     expect(await old.text()).toBe("q1,10\n");
-    // The panel below the page lists every version.
-    await expect(page.locator("[data-attachments] [data-attachment]")).toHaveCount(2);
+    // The panel below the page lists the name once, with its earlier version under it.
+    await expect(page.locator("[data-attachments] [data-attachment]")).toHaveCount(1);
+    await expect(page.locator('[data-attachments] [data-attachment="budget.csv"]')).toContainText("1 earlier version");
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
