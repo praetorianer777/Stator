@@ -26,3 +26,7 @@ Uploads are off: no bucket is configured, and an upload is refused saying so.
 Mail is off: no SMTP relay is configured, so notifications are shown in the
 app only. Set mail.smtpAddr to send them by mail too.
 {{ end }}
+{{- if not .Values.render.enabled }}
+PDF export is off: a PDF download is refused saying so. Set render.enabled to
+turn it on.
+{{ end }}

@@ -125,6 +125,22 @@ check "the guard lets through what is named, and Armature is reached where it is
         | grep -E 'STATOR_(OUTBOUND_ALLOW|ARMATURE_BACKCHANNEL)' | tr -d ' ' | paste -sd ' ')" \
     'STATOR_OUTBOUND_ALLOW:"armature-api.armature.svc,10.40.0.0/16" STATOR_ARMATURE_BACKCHANNEL:"https://armature.example.com=http://armature-api.armature.svc:8080"'
 
+check "PDF export is off until the renderer is enabled" \
+    "$(grep -c 'STATOR_RENDER_URL' <<<"${RENDERED}") $(grep -c "name: ${FULL}-render\$" <<<"${RENDERED}")" \
+    "0 0"
+RENDER_ON=$(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set render.enabled=true --set render.timeout=15s 2>&1)
+check "the api prints through the renderer's Service, within its bounds" \
+    "$(grep -E 'STATOR_RENDER_(URL|TIMEOUT|CONCURRENCY|MAX_SIZE)' <<<"${RENDER_ON}" | tr -d ' ' | paste -sd ' ')" \
+    "STATOR_RENDER_URL:\"http://${FULL}-render:8090\" STATOR_RENDER_TIMEOUT:\"15s\" STATOR_RENDER_CONCURRENCY:\"4\" STATOR_RENDER_MAX_SIZE:\"50MB\""
+check "the renderer runs as a Deployment behind a Service of its own" \
+    "$(grep -c "name: ${FULL}-render\$" <<<"${RENDER_ON}")" "2"
+check "the renderer prints the web pods' pages inside the cluster" \
+    "$(grep -A1 -- '- name: RENDER_APP_URL$' <<<"${RENDER_ON}" | sed -n 's/^ *value: "\(.*\)"$/\1/p')" "http://${FULL}-web"
+check "the renderer keeps nothing but its scratch space" \
+    "$(awk -v RS='---' -v name="name: ${FULL}-render" '/kind: Deployment/ && index($0, name "\n")' <<<"${RENDER_ON}" | grep -cE 'readOnlyRootFilesystem: true|mountPath: /tmp')" "2"
+check "the web's nginx logs and caches no print view" \
+    "$(grep -A3 -F 'location ^~ /print/ {' <<<"${RENDERED}" | grep -cE 'access_log off|Cache-Control "no-store"')" "2"
+
 check "the web's nginx passes a shared draft's WebSocket on" \
     "$(grep -A4 -F 'location ~ ^/api/v1/pages/[^/]+/collab$' <<<"${RENDERED}" | grep -cE 'proxy_http_version 1.1|proxy_set_header Upgrade \$http_upgrade|proxy_set_header Connection "upgrade"')" \
     "3"

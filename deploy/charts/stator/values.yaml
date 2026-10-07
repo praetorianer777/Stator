@@ -11,6 +11,9 @@ images:
   # means the chart's appVersion.
   backend: { repository: stator/backend, tag: "" }
   web: { repository: stator/web, tag: "" }
+  # deploy/Dockerfile.render: the public Chrome image with the render
+  # service's script baked in, for PDF export.
+  render: { repository: stator/render, tag: "" }
   # The client the roles Job runs, and the server the bundled Postgres runs.
   psql: { repository: postgres, tag: 18-alpine }
   valkey: { repository: valkey/valkey, tag: 8-alpine }
@@ -156,6 +159,27 @@ attachments:
   # the api, as deploy/docker-compose.yml does. Only the api calls it. Blank
   # turns those previews off; PDFs show in place either way.
   converterUrl: ""
+
+render:
+  # PDF export, as in Armature. Off by default: it needs a Chromium image an
+  # order of magnitude larger than everything else, and without it the only
+  # thing that fails is a PDF download, with a sentence saying so.
+  enabled: false
+  replicas: 1
+  # How long one print may take, waiting for a free browser included; below
+  # the api's request timeout, so a slow page is refused in words.
+  timeout: 20s
+  # Prints one api pod runs at once; each pod of the service takes four.
+  concurrency: 4
+  # The largest PDF handed back.
+  maxSize: 50MB
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits: { memory: 2Gi }
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
 
 verification:
   # How often the worker looks for page verifications that ran out, to tell
