@@ -198,3 +198,10 @@ Adapted from Armature:
 - backend/internal/comment/service.go: the edit and delete rules of
   internal/issue/comments.go, where only the author rewrites a comment and an
   administrator may remove anybody's; Stator deletes softly and threads them
+- render/server.mjs, deploy/Dockerfile.render, backend/internal/render and
+  backend/internal/httpapi/pdf_handlers.go and throttle.go: render/server.mjs,
+  deploy/Dockerfile.render, internal/render, the PDF handlers of
+  internal/httpapi/pdf_handlers.go and the throttle of
+  portal_entry_handlers.go, with a credential for the page's API calls, a
+  concurrency limit, a size limit and a running header and footer added, and
+  the render templates of deploy/charts/armature in deploy/charts/stator

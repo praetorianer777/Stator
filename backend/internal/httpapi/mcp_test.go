@@ -32,6 +32,7 @@ const (
 	whyReaders    = "names the people who read a page, which stays with its editors in the page; get_page_views counts them"
 	whyLive       = "a WebSocket a browser holds open while its person edits, not a call and an answer"
 	whyPublic     = "the reading view for people who are not signed in; an assistant acts for a member, whom get_page and search serve"
+	whyPrint      = "a PDF is a file for a person to keep or hand on, printed by a browser; get_page and get_page_markdown carry the same words to a model"
 	whyLinks      = "opens a page to anybody outside the organization, a decision its editors make in the share dialog; the token is shown once, to a person"
 )
 
@@ -59,6 +60,7 @@ var notTools = map[string]string{
 	"GET /themes/active":                               whySelf,
 	"PUT /themes/active":                               whySelf,
 	"PUT /themes/default":                              whySelf,
+	"GET /themes/default":                              whySelf,
 	"POST /themes/import":                              whySelf,
 	"GET /themes/{themeID}/export":                     whySelf,
 	"GET /themes/{themeID}":                            whySelf,
@@ -101,6 +103,8 @@ var notTools = map[string]string{
 	"GET /public/{orgSlug}":                            whyPublic,
 	"GET /public/{orgSlug}/spaces/{spaceKey}":          whyPublic,
 	"GET /public/{orgSlug}/pages/{pageID}":             whyPublic,
+	"GET /public/{orgSlug}/pages/{pageID}/pdf":         whyPublic,
+	"GET /public/{orgSlug}/links/{token}/pdf":          whyPublic,
 	"GET /public/{orgSlug}/attachments/{attachmentID}": whyPublic,
 	"GET /public/{orgSlug}/search":                     whyPublic,
 	"GET /public/{orgSlug}/links/{token}":              whyPublic,
@@ -176,6 +180,7 @@ var notTools = map[string]string{
 	"PUT /pages/{pageID}/mode":                                     whyBrowser,
 	"DELETE /pages/{pageID}/draft":                                 whyBrowser,
 	"GET /pages/{pageID}/export":                                   whyFiles,
+	"GET /pages/{pageID}/pdf":                                      whyPrint,
 	"POST /pages/{pageID}/attachments":                             whyFiles,
 	"GET /attachments/{attachmentID}":                              whyFiles,
 	"GET /attachments/{attachmentID}/preview":                      whyFiles,

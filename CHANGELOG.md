@@ -881,6 +881,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
   and the space's templates, asking for their variables first
   (`POST /templates/{key}/pages` takes `values`). A guest is offered the templates
   of their space only, and nobody reads templates without signing in.
+- PDF export (#86). Export as PDF in the page menu prints the published
+  page as its reader reads it, every block drawn, in the organization's
+  theme, A4 portrait with the organization, space and title above and the
+  version, its date, the day printed and page numbers below
+  (`GET /pages/{id}/pdf`). Anybody prints a page anybody may read and the
+  page a public link opens (`GET /public/{org}/pages/{id}/pdf`,
+  `GET /public/{org}/links/{token}/pdf`), six times a minute per page from
+  one address. Armature's render service prints it: a headless Chromium,
+  `render` in the compose stack and `render.enabled` in the chart, set by
+  `STATOR_RENDER_URL`, `_TIMEOUT`, `_CONCURRENCY` and `_MAX_SIZE`. A
+  signed-in reader is printed with a read-only token made for that print
+  and deleted once it is back, which the database holds to five minutes.
+  Member exports are audited as `page.exported` with scope `pdf`.
 
 ### Changed
 

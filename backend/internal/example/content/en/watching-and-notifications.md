@@ -26,3 +26,5 @@ The bell in the top bar counts what you have not read: mentions, tasks given to 
 ## Sharing a page
 
 **Share** in a page's header sends it to people and groups with a note. It gives nobody access: only people who may already see the page are told, and the dialog says who may.
+
+**Export as PDF** in the **Page actions** hands a page on as a file: the published page as you read it, with every block drawn and the page's title, version and page numbers on every sheet. A public page and a public link offer **PDF** beside the title.

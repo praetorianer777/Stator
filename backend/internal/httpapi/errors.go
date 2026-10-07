@@ -25,6 +25,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/render"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/shortcut"
@@ -471,6 +472,21 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(err.Error())}
 	case errors.Is(err, attachment.ErrEmpty):
 		return ErrValidation(map[string]string{"file": sentence(attachment.ErrEmpty.Error())})
+	case errors.Is(err, render.ErrUnavailable):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "render_unavailable",
+			Message: "PDF export is not set up on this server. Export the page as Markdown instead, or ask whoever runs Stator to start the render service.", cause: err}
+	case errors.Is(err, render.ErrBusy):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "render_busy",
+			Message: "Too many PDFs are being made right now. Try again in a minute.", cause: err}
+	case errors.Is(err, render.ErrTimeout):
+		return &APIError{Status: http.StatusGatewayTimeout, Code: "render_timeout",
+			Message: "The page took too long to print. Try again in a minute; a page with many diagrams, charts or Armature blocks may need a quieter moment.", cause: err}
+	case errors.Is(err, render.ErrTooLarge):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "render_too_large",
+			Message: "The PDF came out larger than this server hands out. Make the pictures on the page smaller, or split the page, and export it again.", cause: err}
+	case errors.Is(err, render.ErrFailed):
+		return &APIError{Status: http.StatusBadGateway, Code: "render_failed",
+			Message: "The PDF could not be made. Try again in a minute, and if it keeps failing, ask whoever runs Stator to look at the render service.", cause: err}
 	case errors.Is(err, attachment.ErrNoPreview):
 		return &APIError{Status: http.StatusUnsupportedMediaType, Code: "no_preview",
 			Message: "This kind of file has no preview. Download it to open it."}

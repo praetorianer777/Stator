@@ -143,9 +143,13 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
   drafts, a live page's saves and the choice between drafts and live);
 - the shared draft of a page edited together, a WebSocket a browser holds
   open while its person edits, not a call and an answer;
+- a page as PDF (`GET /pages/{pageID}/pdf`), a file printed by a browser
+  for a person to keep or hand on; `get_page` and `get_page_markdown`
+  carry the same words to a model;
 - Armature's issues, which Armature's own MCP endpoint serves as the person;
 - the reading view for people who are not signed in (`/public/{orgSlug}`
-  and below, a public link's page included) and the switches that open it:
+  and below, a public link's page and both their PDFs included) and the
+  switches that open it:
   an assistant acts for a member, for whom `get_page` and `search` read the
   same pages;
 - a page's public links (`/pages/{pageID}/public-links`), which open the

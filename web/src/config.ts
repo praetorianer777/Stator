@@ -625,6 +625,11 @@ export const PUBLIC_LINK_DEFAULT_EXPIRY_DAYS = 30;
 /** The longest label a public link takes, matching the API's limit. */
 export const PUBLIC_LINK_LABEL_MAX_LENGTH = 60;
 
+/** How long a print view stays quiet, nothing loading or drawing, before it says it is ready to print. */
+export const PRINT_SETTLE_MS = 300;
+/** What a print view waits out: a skeleton, a busy region, a diagram being drawn or a preview loading. */
+export const PRINT_PENDING_SELECTOR = '[data-skeleton], [aria-busy="true"], [data-diagram-state="drawing"], [data-preview-loading]';
+
 /** How often a page that asked for the example space asks how its making goes. */
 export const EXAMPLE_SPACE_POLL_MS = 1000;
 /** After this long without the worker beginning the example space, the page says it may not be running. */

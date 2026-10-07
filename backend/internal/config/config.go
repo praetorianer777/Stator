@@ -61,6 +61,11 @@ const (
 	// DefaultUploadLimit is attachment.DefaultMaxSize, which a test holds
 	// the two to; this package cannot import that one.
 	DefaultUploadLimit int64 = 50 << 20
+	// The render service's bounds, render.DefaultTimeout, DefaultConcurrency
+	// and DefaultMaxSize, which a test holds these to.
+	DefaultRenderTimeout           = 20 * time.Second
+	DefaultRenderConcurrency       = 4
+	DefaultRenderMaxSize     int64 = 50 << 20
 	// OIDCCallbackPath is where an identity provider sends the browser back,
 	// under the web client's origin, which proxies the API.
 	OIDCCallbackPath = "/api/v1/auth/oidc/callback"
@@ -92,7 +97,10 @@ type Config struct {
 	// ConverterURL is the service that converts office documents to PDF for
 	// previews; blank turns those previews off.
 	ConverterURL string
-	Bootstrap    Bootstrap
+	// Render is the service that prints pages as PDF; a blank URL turns
+	// PDF export off.
+	Render    Render
+	Bootstrap Bootstrap
 	// TestEndpoints serves the throwaway organizations of the browser suite.
 	TestEndpoints TestEndpoints
 	Mail          Mail
@@ -119,6 +127,17 @@ type Config struct {
 	// SecretKey encrypts secrets stored in the database, such as an identity
 	// provider's client secret. Nil in development when it is not set.
 	SecretKey []byte
+}
+
+// Render names the render service, when there is one, and bounds its prints.
+type Render struct {
+	URL string
+	// Timeout covers waiting for a free browser and printing.
+	Timeout time.Duration
+	// Concurrency is how many prints one api process runs at once.
+	Concurrency int
+	// MaxSize is the largest PDF handed back, in bytes.
+	MaxSize int64
 }
 
 // DB describes the Postgres cluster: one writable primary and optional read
@@ -299,6 +318,12 @@ func Load() (Config, error) {
 		},
 		UploadLimit:  l.size("STATOR_UPLOAD_LIMIT", DefaultUploadLimit),
 		ConverterURL: strings.TrimSuffix(l.str("STATOR_CONVERTER_URL", ""), "/"),
+		Render: Render{
+			URL:         strings.TrimSuffix(l.str("STATOR_RENDER_URL", ""), "/"),
+			Timeout:     l.duration("STATOR_RENDER_TIMEOUT", DefaultRenderTimeout),
+			Concurrency: l.integer("STATOR_RENDER_CONCURRENCY", DefaultRenderConcurrency),
+			MaxSize:     l.size("STATOR_RENDER_MAX_SIZE", DefaultRenderMaxSize),
+		},
 		Bootstrap: Bootstrap{
 			AdminEmail: l.str("STATOR_BOOTSTRAP_ADMIN_EMAIL", ""),
 			// Not trimmed: a password is exactly what was typed.
@@ -418,6 +443,20 @@ func Load() (Config, error) {
 		if u, err := url.Parse(c.ConverterURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			l.problem(fmt.Sprintf("STATOR_CONVERTER_URL is %q; set it to the conversion service's address, such as http://converter:3000, or leave it blank to turn office previews off.", c.ConverterURL))
 		}
+	}
+	if c.Render.URL != "" {
+		if u, err := url.Parse(c.Render.URL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			l.problem(fmt.Sprintf("STATOR_RENDER_URL is %q; set it to the render service's address, such as http://render:8090, or leave it blank to turn PDF export off.", c.Render.URL))
+		}
+	}
+	if c.Render.Timeout <= 0 || c.Render.Timeout >= c.RequestTimeout {
+		l.problem(fmt.Sprintf("STATOR_RENDER_TIMEOUT is %s; set it above zero and below STATOR_REQUEST_TIMEOUT (%s), so a slow print is refused in words rather than cut off.", c.Render.Timeout, c.RequestTimeout))
+	}
+	if c.Render.Concurrency < 1 {
+		l.problem(fmt.Sprintf("STATOR_RENDER_CONCURRENCY is %d; set it to 1 or more.", c.Render.Concurrency))
+	}
+	if c.Render.MaxSize < 1 {
+		l.problem("STATOR_RENDER_MAX_SIZE must be above zero, such as 50MB.")
 	}
 	if c.Mail.SMTPAddr != "" {
 		if _, err := mail.ParseAddress(c.Mail.From); err != nil {

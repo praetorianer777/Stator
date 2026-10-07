@@ -12,6 +12,7 @@ browser ──> web (nginx, React SPA) ──> api (Go) ──> PostgreSQL (prim
                                         │  ├──> Valkey (cache, rate limits, shared drafts between api processes; Postgres carries those without it)
                                         │  ├──> S3-compatible storage (attachments, theme assets)
                                         │  ├──> converter (office documents to PDF, for previews)
+                                        │  ├──> render (headless Chromium: a page's print view to PDF) ──> web
                                         │  └──> Armature API (as the viewing user)
                                         └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks, scheduled publishes, example spaces
 Keycloak / any OIDC provider <── login ──┘
@@ -112,6 +113,7 @@ process, which is only right for a single api process. `/readyz` and
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
 | `attachment` | uploads to S3-compatible storage, each upload of a name its next version, a restore an upload of an earlier one and an annotated picture an upload drawn on one, served whole or by the byte range a video player asks for, and their PDF previews, converted once and kept |
 | `convert` | the client of the conversion service that turns office documents into PDF |
+| `render` | the client of the render service, which prints a page's print view as PDF; the api hands it a path and, for a signed-in reader, a read-only token made for that one print |
 | `markdown` | a document as Markdown and Markdown as a document, held to the allowlist |
 | `mdio` | Markdown import and export of pages, subtrees and their files, through the page and file services |
 | `theme` | custom themes in the `armature-theme/1` format |
@@ -148,6 +150,11 @@ process, which is only right for a single api process. `/readyz` and
 - The pages anybody may read are at `/public/{org}`, outside the app's shell
   and its sign-in guard, read through `/api/v1/public/{org}`; the document
   view draws them with every link and file through those reads.
+- The render service prints a page from `/print/p/{id}`,
+  `/print/public/{org}/p/{id}` or `/print/public/{org}/link/{token}`: the
+  page alone, outside the shell, which marks the document
+  `data-print-ready` once nothing is loading or drawing, and states the
+  running header and footer in `data-print-meta`.
 - A public link opens `/public/{org}/link/{token}`, the same reading view
   for that one page without the shell's tree and search, read through
   `/api/v1/public/{org}/links/{token}`; its files come through the link too.
@@ -193,7 +200,10 @@ and test stack: Postgres 18 as a primary and a streaming replica, Valkey,
 SeaweedFS (S3), Mailpit, Keycloak with the `stator-dev` realm
 (`deploy/keycloak/realm.json`), the converter that turns office documents
 into PDF for previews (a headless office suite behind an HTTP API, reached
-by the api alone), the one-shot `migrate` and `seed`, `api`,
+by the api alone), `render`, Armature's PDF renderer (headless Chromium
+with puppeteer in the public Chrome image, `render/server.mjs` mounted in),
+which the api alone calls and which opens the web container's print views,
+the one-shot `migrate` and `seed`, `api`,
 `worker`, `web`, and `armature-stub` in Armature's place, which only the
 stack lets the SSRF guard through to. Every service has a health check and the dependencies
 wait on them, so `docker compose up --wait` returns once the stack answers.
@@ -245,6 +255,11 @@ each read pool are sized apart (`STATOR_DB_PRIMARY_MAX_CONNS`,
 `STATOR_DB_REPLICA_MAX_CONNS`), and `/metrics` reports each pool's
 connections taken, the time spent waiting for one, and each read pool's
 fallbacks to the primary by reason.
+
+With `render.enabled` the chart runs the PDF renderer as in Armature's
+chart: the image `deploy/Dockerfile.render` builds, behind a Service of its
+own, reaching the web pods inside the cluster; without it a PDF download
+is refused with a sentence.
 
 For a trial, `values-demo.yaml` brings one Postgres pod and one Valkey pod of
 the chart's own. The chart refuses to render with both `cnpg.enabled` and

@@ -17,6 +17,7 @@ import { hubSettingsRoute } from "./hub";
 import { pageEditRoute } from "./page-edit";
 import { orgPermissionsRoute } from "./permissions";
 import { pageHistoryRoute } from "./page-history";
+import { printLinkRoute, printPageRoute, printPublicPageRoute } from "./print";
 import { profileRoute } from "./profile";
 import { publicLinkRoute, publicRoutes } from "./public";
 import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
@@ -38,6 +39,9 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   publicRoutes,
   publicLinkRoute,
+  printPageRoute,
+  printPublicPageRoute,
+  printLinkRoute,
   appRoute.addChildren([
     homeRoute,
     personalHomeRoute,

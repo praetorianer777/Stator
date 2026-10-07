@@ -32,6 +32,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/render"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/shortcut"
@@ -119,6 +120,8 @@ type Server struct {
 	Attachments *attachment.Service
 	// Markdown imports and exports pages; nil makes one of Pages and Attachments.
 	Markdown *mdio.Service
+	// Renderer prints pages as PDF; nil answers that PDF export is not set up.
+	Renderer render.Renderer
 	// Armature keeps the organization's connection and the members' tokens;
 	// nil answers that Armature is out of reach.
 	Armature *armature.Service
@@ -193,12 +196,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/public/{orgSlug}", s.handlePublicSite)
 			r.Get("/public/{orgSlug}/spaces/{spaceKey}", s.handlePublicSpace)
 			r.Get("/public/{orgSlug}/pages/{pageID}", s.handlePublicPage)
+			r.Get("/public/{orgSlug}/pages/{pageID}/pdf", s.handlePublicPagePDF)
 			r.Get("/public/{orgSlug}/attachments/{attachmentID}", s.handlePublicAttachment)
 			r.Get("/public/{orgSlug}/search", s.handlePublicSearch)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(s.linkReader)
 			r.Get("/public/{orgSlug}/links/{token}", s.handleLinkedPage)
+			r.Get("/public/{orgSlug}/links/{token}/pdf", s.handleLinkedPagePDF)
 			r.Get("/public/{orgSlug}/links/{token}/attachments/{attachmentID}", s.handleLinkedAttachment)
 		})
 		mountPending(r, true)
@@ -259,6 +264,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/themes", s.handleCreateTheme)
 			r.Get("/themes/active", s.handleActiveTheme)
 			r.Put("/themes/active", s.handleChooseTheme)
+			r.Get("/themes/default", s.handleDefaultTheme)
 			r.Put("/themes/default", s.handleSetDefaultTheme)
 			r.Post("/themes/import", s.handleImportTheme)
 			r.Get("/themes/{themeID}/export", s.handleExportTheme)
@@ -371,6 +377,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/below", s.handleListPagesBelow)
 			r.Get("/pages/{pageID}/export", s.handleExportPage)
 			r.Get("/pages/{pageID}/markdown", s.handleGetPageMarkdown)
+			r.Get("/pages/{pageID}/pdf", s.handlePagePDF)
 			r.Put("/pages/{pageID}/markdown", s.handleReplacePageMarkdown)
 			r.Post("/pages/{pageID}/import", s.handleImportMarkdown)
 			r.Get("/templates", s.handleListTemplates)

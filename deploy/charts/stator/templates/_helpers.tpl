@@ -228,6 +228,12 @@ STATOR_UPLOAD_LIMIT: {{ .Values.attachments.uploadLimit | quote }}
 {{- with .Values.attachments.converterUrl }}
 STATOR_CONVERTER_URL: {{ . | quote }}
 {{- end }}
+{{- if .Values.render.enabled }}
+STATOR_RENDER_URL: {{ printf "http://%s-render:8090" (include "stator.fullname" .) | quote }}
+STATOR_RENDER_TIMEOUT: {{ .Values.render.timeout | quote }}
+STATOR_RENDER_CONCURRENCY: {{ .Values.render.concurrency | quote }}
+STATOR_RENDER_MAX_SIZE: {{ .Values.render.maxSize | quote }}
+{{- end }}
 STATOR_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
 STATOR_RETAIN_PAGE_VIEWS: {{ .Values.retention.pageViews | quote }}
 STATOR_VERIFICATION_CHECK_INTERVAL: {{ .Values.verification.checkInterval | quote }}

@@ -148,7 +148,7 @@ export function DiagramFigure({ source }: { source: string }) {
     <figure className="doc-diagram" data-diagram="">
       <DiagramDrawing source={source} drawn={drawn} />
       {drawn?.svg && (
-        <figcaption className="doc-diagram-tools">
+        <figcaption className="doc-diagram-tools" data-print-hide="">
           <Button type="button" variant="ghost" size="sm" onClick={() => download(drawn.svg)} data-action="download-diagram">
             <Icon.Download size={14} />
             {t.editor.diagram.download}
