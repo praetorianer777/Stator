@@ -50,6 +50,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/spaceio"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
@@ -206,6 +207,7 @@ func run() error {
 		Stale:             stale.NewService(cluster),
 		Templates:         template.NewService(cluster),
 		ExampleJobs:       example.NewJobs(cluster),
+		SpaceTransfers:    spaceTransfers(cluster, store, cfg),
 		Tasks:             task.NewService(cluster),
 		PageViews:         pageview.NewService(cluster),
 		PageViewRetention: cfg.RetainPageViews,
@@ -405,4 +407,12 @@ func renderer(cfg config.Render, log *slog.Logger) render.Renderer {
 		return render.Unavailable{}
 	}
 	return render.New(cfg.URL, render.Options{Timeout: cfg.Timeout, Concurrency: cfg.Concurrency, MaxSize: cfg.MaxSize})
+}
+
+// spaceTransfers queues space exports and imports, with the largest archive
+// an import takes.
+func spaceTransfers(cluster *db.Cluster, store objectstore.Store, cfg config.Config) *spaceio.Jobs {
+	jobs := spaceio.NewJobs(cluster, store)
+	jobs.MaxImportBytes = cfg.SpaceImportLimit
+	return jobs
 }

@@ -33,6 +33,7 @@ const (
 	whyLive       = "a WebSocket a browser holds open while its person edits, not a call and an answer"
 	whyPublic     = "the reading view for people who are not signed in; an assistant acts for a member, whom get_page and search serve"
 	whyPrint      = "a PDF is a file for a person to keep or hand on, printed by a browser; get_page and get_page_markdown carry the same words to a model"
+	whyTransfer   = "moves a whole space as a file, an administrator's act the worker runs; get_space_outline and get_page_markdown carry a space's words"
 	whyWord       = "a Word document is a file for a person to edit offline or hand on; get_page and get_page_markdown carry the same words to a model"
 	whyWordImport = "a Word document is a file a person uploads, and several are imported by the worker; import_markdown carries a model's words into a new page"
 	whyLinks      = "opens a page to anybody outside the organization, a decision its editors make in the share dialog; the token is shown once, to a person"
@@ -141,6 +142,12 @@ var notTools = map[string]string{
 	"PUT /templates/{templateKey}":                                 whyAdmin,
 	"DELETE /templates/{templateKey}":                              whyAdmin,
 	"POST /example-space":                                          whyAdmin,
+	"POST /spaces/{spaceKey}/exports":                              whyTransfer,
+	"GET /spaces/{spaceKey}/exports":                               whyTransfer,
+	"GET /space-exports/{exportID}/file":                           whyTransfer,
+	"POST /space-imports":                                          whyTransfer,
+	"GET /space-imports":                                           whyTransfer,
+	"GET /space-imports/{importID}":                                whyTransfer,
 	"PATCH /spaces/{spaceKey}":                                     whyAdmin,
 	"GET /audit/facets":                                            whyAdmin,
 	"GET /audit/export":                                            whyAdmin,

@@ -201,6 +201,17 @@ exampleSpace:
   # for, who waits on the page meanwhile. A second or more.
   checkInterval: 2s
 
+spaceTransfers:
+  # How often the worker looks for space exports and imports to run, which
+  # somebody follows on the page meanwhile. A second or more.
+  checkInterval: 2s
+  # How long an export's file is kept for download before it is deleted.
+  # A minute or more.
+  exportTTL: 24h
+  # The largest archive a space import takes, such as 200MB or 2GB. The
+  # Ingress in front must allow at least this much.
+  importLimit: 200MB
+
 wordImport:
   # How often the worker looks for Word documents somebody imported several
   # of at once, who waits on the page meanwhile. A second or more.

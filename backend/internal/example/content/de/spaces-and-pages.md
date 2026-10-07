@@ -31,6 +31,8 @@ Stator bewahrt das Wissen eines Teams als Seiten auf. Seiten liegen in **Bereich
 
 Ein archivierter Bereich bleibt unter jeder Adresse lesbar, verschwindet aber aus der Bereichsliste, der Suche und Start, und nichts darin ändert sich, bis ihn eine Administratorin oder ein Administrator wieder aus dem Archiv holt. Wer einen Bereich löscht, löscht jede Seite darin, endgültig.
 
+**Export** schreibt den ganzen Bereich im Hintergrund in eine Datei, die seine Administratoren einen Tag lang herunterladen können: ein **Archiv** mit jeder veröffentlichten Seite, ihrem Verlauf, den Dateien, Kommentaren und Berechtigungen, als Sicherung oder um ihn in eine andere Organisation zu bringen, oder **HTML-Seiten**, die sich offline in jedem Browser lesen lassen. **Bereich importieren** in der Bereichsübersicht macht aus einem solchen Archiv einen neuen Bereich, erkennt Personen an ihrer E-Mail-Adresse und Gruppen an ihrem Namen und sagt am Ende, was es nicht übernehmen konnte.
+
 ## Seiten
 
 Eine Seite hat einen Titel und einen Inhalt aus Blöcken: Text, Listen, Tabellen, Hinweisfelder und vieles mehr, alles gezeigt in [Alle Blöcke einer Seite](showcase.md). **Neue Seite** im Kopf einer Seite legt eine Seite darunter an, leer oder aus einer Vorlage. Eine neue Seite gehört Ihnen allein, bis Sie sie veröffentlichen; siehe [Entwürfe, Veröffentlichen und Verlauf](drafts-and-history.md).

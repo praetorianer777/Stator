@@ -31,6 +31,8 @@ Stator keeps a team's knowledge as pages. Pages live in **spaces**, one for each
 
 An archived space stays readable at every address but leaves the space list, search and Home, and nothing in it changes until an administrator takes it out of the archive again. Deleting a space deletes every page in it, for good.
 
+**Export** writes the whole space to a file in the background, for its administrators to download within a day: an **archive** with every published page, its history, files, comments and permissions, to keep as a backup or to bring into another organization, or **HTML pages** to read offline in any browser. **Import space** on the spaces overview makes a new space of such an archive, finds people by their email address and groups by their name, and says at the end what it could not bring across.
+
 ## Pages
 
 A page has a title and a body made of blocks: text, lists, tables, panels and many more, all shown in [Every block a page can hold](showcase.md). **New page** in a page's header makes a page below it, blank or from a template. A new page is yours alone until you publish it; see [Drafts, publishing and history](drafts-and-history.md).

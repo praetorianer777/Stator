@@ -48,6 +48,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/spaceio"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
@@ -117,7 +118,7 @@ func newAPIServer(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *ap
 	server := &httpapi.Server{
 		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
-		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Tasks: task.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Calendars: calendar.NewService(h.cluster), Guests: guest.NewService(h.cluster), Public: public.NewService(h.cluster), Hub: hub.NewService(h.cluster), Templates: template.NewService(h.cluster), ExampleJobs: example.NewJobs(h.cluster), Word: wordio.NewService(h.cluster, pages, a.attachments, store),
+		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Tasks: task.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Calendars: calendar.NewService(h.cluster), Guests: guest.NewService(h.cluster), Public: public.NewService(h.cluster), Hub: hub.NewService(h.cluster), Templates: template.NewService(h.cluster), ExampleJobs: example.NewJobs(h.cluster), Word: wordio.NewService(h.cluster, pages, a.attachments, store), SpaceTransfers: spaceio.NewJobs(h.cluster, h.appStore(t)),
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),
 		Audit: audit.NewService(h.cluster), AuditRetention: config.DefaultRetainAudit, Webhooks: h.webhooks(t),
 		PageViews: pageview.NewService(h.cluster), PageViewRetention: config.DefaultRetainPageViews,
@@ -129,6 +130,27 @@ func newAPIServer(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *ap
 	a.srv = httptest.NewServer(observed(t, server.Routes(nil)))
 	t.Cleanup(a.srv.Close)
 	return a
+}
+
+// appBucket is the running app's bucket, which the stack's worker reads and
+// writes: a space export or import the suite queues may be run by that
+// worker as well as by the suite's own watch, so both must find its files.
+const appBucket = "stator-files"
+
+// appStore is the app's bucket, for what the stack's worker may touch.
+func (h *harness) appStore(t *testing.T) objectstore.Store {
+	t.Helper()
+	store, err := objectstore.Open(objectstore.Config{
+		Endpoint: h.cfg.S3.Endpoint, Bucket: appBucket, AccessKey: h.cfg.S3.AccessKey,
+		SecretKey: h.cfg.S3.SecretKey, Region: h.cfg.S3.Region, UseSSL: h.cfg.S3.UseSSL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.(*objectstore.S3Store).EnsureBucket(context.Background()); err != nil {
+		t.Fatalf("make the app's bucket: %v", err)
+	}
+	return store
 }
 
 // unfurl reads link previews through a guard that lets allow through, kept

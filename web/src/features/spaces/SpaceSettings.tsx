@@ -13,10 +13,11 @@ import { SpaceArchive } from "@/features/archive/SpaceArchive";
 import { TemplateList } from "@/features/templates/TemplateList";
 import { ShortcutsPanel } from "@/features/shortcuts/ShortcutsPanel";
 import { useCanAdministerOrg } from "@/features/permissions/access";
+import { SpaceExportPanel } from "./SpaceExport";
 import { SpaceGuests } from "./SpaceGuests";
 import { TrashPanel } from "./TrashPanel";
 
-export type SettingsTab = "details" | "shortcuts" | "permissions" | "templates" | "guests" | "trash" | "archive";
+export type SettingsTab = "details" | "shortcuts" | "permissions" | "templates" | "guests" | "trash" | "archive" | "export";
 
 const SETTINGS_PANEL_ID = "space-settings-panel";
 
@@ -28,7 +29,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
   if (!space) return <Skeleton />;
   // Guests are let into team spaces, by the organization's administrators.
   const guests = orgAdmin && !space.owner;
-  const shown = tab === "guests" && !guests ? "details" : tab;
+  const shown = (tab === "guests" && !guests) || (tab === "export" && !space.can.administer) ? "details" : tab;
   return (
     <div className="mx-auto max-w-3xl" data-space-settings={space.key}>
       <PageHeader
@@ -71,6 +72,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
               ...(guests ? [{ value: "guests" as const, label: t.spaceSettings.guests, attrs: { "data-settings-tab": "guests" } }] : []),
               { value: "trash", label: t.spaceSettings.trash, attrs: { "data-settings-tab": "trash" } },
               { value: "archive", label: t.spaceSettings.archive, attrs: { "data-settings-tab": "archive" } },
+              ...(space.can.administer ? [{ value: "export" as const, label: t.spaceSettings.export, attrs: { "data-settings-tab": "export" } }] : []),
             ]}
           />
         }
@@ -84,6 +86,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
         {shown === "guests" && <SpaceGuests space={space} />}
         {shown === "trash" && <TrashPanel space={space} />}
         {shown === "archive" && <ArchivePanel space={space} />}
+        {shown === "export" && <SpaceExportPanel space={space} />}
       </TabPanel>
     </div>
   );

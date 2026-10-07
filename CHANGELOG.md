@@ -894,6 +894,20 @@ and the versioning [Semantic Versioning](https://semver.org/).
   signed-in reader is printed with a read-only token made for that print
   and deleted once it is back, which the database holds to five minutes.
   Member exports are audited as `page.exported` with scope `pdf`.
+- Space export and import (#88). Under Export in a space's settings its
+  administrators export the whole space as an archive, every published page
+  with its versions, files and their versions, labels, discussions,
+  reactions, permissions, templates and calendars, or as HTML pages to read
+  offline, and download the file for a day
+  (`POST /spaces/{key}/exports`, `GET /space-exports/{id}/file`). Import
+  space on the spaces overview makes a new space of an archive, under a key
+  of one's choosing, for whoever may create spaces
+  (`POST /space-imports`): people are found by their address and groups by
+  their name, versions keep their authors or, for somebody not found, name
+  them beside the importer, and a report lists what could not be mapped.
+  The worker runs both (`STATOR_SPACE_TRANSFER_CHECK_INTERVAL`,
+  `STATOR_SPACE_EXPORT_TTL`, `STATOR_SPACE_IMPORT_LIMIT`), and the audit log
+  records `space.exported` and `space.imported`.
 - Word export (#87). Export as Word in the page menu downloads the published
   page as a .docx to edit offline, as its reader may read it
   (`GET /pages/{id}/docx`): headings in Word's heading styles, which its
@@ -955,6 +969,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The worker no longer takes two example spaces, or two space exports or
+  imports, at once and leaves the second marked as running until its lease
+  lapses: picking the next job ran once for every row it was joined to.
 - The example space no longer fails on a busy machine. Making it took
   longer than a request may last, answered 500 and could leave half a space
   behind. The worker now makes it (`STATOR_EXAMPLE_CHECK_INTERVAL`):

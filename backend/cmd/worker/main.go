@@ -2,8 +2,9 @@
 // with the notifications it fans out and the page links it syncs to Armature,
 // the notifications' digests, the file reaper, the audit log's retention,
 // the watch on page verifications that run out, the publishes scheduled for a
-// time, the example spaces administrators ask for, the Word documents
-// imported several at once, and the outbound webhooks.
+// time, the example spaces administrators ask for, the spaces exported and
+// imported, the Word documents imported several at once, and the outbound
+// webhooks.
 package main
 
 import (
@@ -34,6 +35,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/reaction"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/spaceio"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
@@ -141,6 +143,11 @@ func run() error {
 		Calendars: calendar.NewService(cluster), Comments: comment.NewService(cluster), Reactions: reaction.NewService(cluster),
 		Attachments: files, Armature: armatures,
 	}, log, cfg.ExampleCheck).Run(ctx)
+	if objectstore.IsUnavailable(store) {
+		log.Warn("space export and import are off: STATOR_S3_ENDPOINT is not set")
+	} else {
+		go spaceio.NewWatch(cluster, store, log, cfg.SpaceTransferCheck, cfg.SpaceExportTTL).Run(ctx)
+	}
 	if files == nil {
 		log.Warn("importing several Word documents at once is off: STATOR_S3_ENDPOINT is not set")
 	} else {

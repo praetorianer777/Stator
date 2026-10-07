@@ -373,6 +373,8 @@ services:
       STATOR_SCHEDULE_CHECK_INTERVAL: 1s
       # The example space a test asks for is begun within a second.
       STATOR_EXAMPLE_CHECK_INTERVAL: 1s
+      # So is a space export or import.
+      STATOR_SPACE_TRANSFER_CHECK_INTERVAL: 1s
       # So is an import of several Word documents.
       STATOR_WORD_IMPORT_CHECK_INTERVAL: 1s
     healthcheck:

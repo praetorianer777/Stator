@@ -1779,7 +1779,9 @@
                 "org.public_links_set",
                 "space.permissions_copied",
                 "page.mode_changed",
-                "space.example_created"
+                "space.example_created",
+                "space.exported",
+                "space.imported"
               ]
             }
           },
@@ -1952,7 +1954,9 @@
                 "org.public_links_set",
                 "space.permissions_copied",
                 "page.mode_changed",
-                "space.example_created"
+                "space.example_created",
+                "space.exported",
+                "space.imported"
               ]
             }
           },
@@ -10665,6 +10669,255 @@
         }
       }
     },
+    "/space-exports/{exportID}/file": {
+      "get": {
+        "operationId": "downloadSpaceExport",
+        "summary": "The file an export made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after.",
+        "tags": [
+          "spaces"
+        ],
+        "parameters": [
+          {
+            "name": "exportID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/space-imports": {
+      "get": {
+        "operationId": "listSpaceImports",
+        "summary": "The caller's latest imports of spaces, newest first.",
+        "tags": [
+          "spaces"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpaceImport"
+                      }
+                    }
+                  },
+                  "required": [
+                    "imports"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSpaceImport",
+        "summary": "Upload a space archive, as a multipart part named file, and ask the worker to make a new space of it: under the key and name given, else the archive's own. Refused at once when the file is no archive of Stator or the key is taken; 202 with the job, which GET /space-imports/{importID} follows to its report. For whoever may create spaces.",
+        "tags": [
+          "spaces"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "query",
+            "description": "The new space's key; the archive's own when absent.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "The new space's name; the archive's own when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "import": {
+                      "$ref": "#/components/schemas/SpaceImport"
+                    }
+                  },
+                  "required": [
+                    "import"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/space-imports/{importID}": {
+      "get": {
+        "operationId": "getSpaceImport",
+        "summary": "One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, or why it failed.",
+        "tags": [
+          "spaces"
+        ],
+        "parameters": [
+          {
+            "name": "importID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "import": {
+                      "$ref": "#/components/schemas/SpaceImport"
+                    }
+                  },
+                  "required": [
+                    "import"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/space-templates": {
       "get": {
         "operationId": "listSpaceTemplates",
@@ -11488,6 +11741,125 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DecisionLog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/exports": {
+      "get": {
+        "operationId": "listSpaceExports",
+        "summary": "The latest exports of a space the caller may read: their own, and every one while they administer the space, newest first.",
+        "tags": [
+          "spaces"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpaceExport"
+                      }
+                    }
+                  },
+                  "required": [
+                    "exports"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSpaceExport",
+        "summary": "Ask the worker to export a whole space: as an archive with every published page, its versions, files, comments, labels and permissions, to import again; or as HTML pages to read offline. 202 with the job, which GET /spaces/{spaceKey}/exports follows. For the space's administrators.",
+        "tags": [
+          "spaces"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "export": {
+                      "$ref": "#/components/schemas/SpaceExport"
+                    }
+                  },
+                  "required": [
+                    "export"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -15855,7 +16227,9 @@
               "org.public_links_set",
               "space.permissions_copied",
               "page.mode_changed",
-              "space.example_created"
+              "space.example_created",
+              "space.exported",
+              "space.imported"
             ]
           },
           "actorId": {
@@ -15966,7 +16340,9 @@
                 "org.public_links_set",
                 "space.permissions_copied",
                 "page.mode_changed",
-                "space.example_created"
+                "space.example_created",
+                "space.exported",
+                "space.imported"
               ]
             }
           },
@@ -17334,6 +17710,25 @@
           "updatedAt"
         ]
       },
+      "DroppedEntry": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "page",
+          "permission",
+          "subject"
+        ]
+      },
       "EditedPage": {
         "type": "object",
         "properties": {
@@ -17540,6 +17935,21 @@
           "id",
           "name",
           "text"
+        ]
+      },
+      "ExportRequest": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "archive",
+              "html"
+            ]
+          }
+        },
+        "required": [
+          "format"
         ]
       },
       "Font": {
@@ -18692,6 +19102,21 @@
           "name",
           "email",
           "canView"
+        ]
+      },
+      "MissingPerson": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
         ]
       },
       "MoveInput": {
@@ -21376,6 +21801,119 @@
           "view"
         ]
       },
+      "SpaceExport": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "too_large",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fileName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "archive",
+              "html"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/SpaceTransferProgress"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedBy": {
+            "type": "string"
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "expired"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "spaceKey",
+          "format",
+          "state",
+          "progress",
+          "requestedBy",
+          "mine",
+          "requestedAt",
+          "startedAt",
+          "finishedAt",
+          "fileName",
+          "size",
+          "expiresAt",
+          "failure",
+          "message"
+        ]
+      },
       "SpaceGrant": {
         "type": "object",
         "properties": {
@@ -21438,6 +21976,174 @@
         },
         "required": [
           "grants"
+        ]
+      },
+      "SpaceImport": {
+        "type": "object",
+        "properties": {
+          "failure": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "key_taken",
+                  "invalid",
+                  "too_large",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "progress": {
+            "$ref": "#/components/schemas/SpaceTransferProgress"
+          },
+          "report": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SpaceImportReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "spaceKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "state",
+          "progress",
+          "spaceKey",
+          "report",
+          "failure",
+          "message",
+          "requestedAt",
+          "startedAt",
+          "finishedAt"
+        ]
+      },
+      "SpaceImportReport": {
+        "type": "object",
+        "properties": {
+          "calendars": {
+            "type": "integer"
+          },
+          "comments": {
+            "type": "integer"
+          },
+          "dropped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DroppedEntry"
+            }
+          },
+          "droppedReactions": {
+            "type": "integer"
+          },
+          "files": {
+            "type": "integer"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mentionsAsText": {
+            "type": "integer"
+          },
+          "pages": {
+            "type": "integer"
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingPerson"
+            }
+          },
+          "reattributed": {
+            "type": "integer"
+          },
+          "templates": {
+            "type": "integer"
+          },
+          "versions": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pages",
+          "versions",
+          "files",
+          "comments",
+          "templates",
+          "calendars",
+          "people",
+          "groups",
+          "dropped",
+          "reattributed",
+          "droppedReactions",
+          "mentionsAsText"
         ]
       },
       "SpaceOwner": {
@@ -21562,6 +22268,21 @@
           "pages",
           "permissions",
           "builtIn"
+        ]
+      },
+      "SpaceTransferProgress": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "done",
+          "total"
         ]
       },
       "Spec": {
@@ -22742,6 +23463,12 @@
           "number": {
             "type": "integer"
           },
+          "originalAuthor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "restoredFrom": {
             "type": [
               "integer",
@@ -22767,6 +23494,7 @@
           "live",
           "updatedAt",
           "coEditors",
+          "originalAuthor",
           "body"
         ]
       },
@@ -22802,6 +23530,12 @@
           "number": {
             "type": "integer"
           },
+          "originalAuthor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "restoredFrom": {
             "type": [
               "integer",
@@ -22826,7 +23560,8 @@
           "restoredFrom",
           "live",
           "updatedAt",
-          "coEditors"
+          "coEditors",
+          "originalAuthor"
         ]
       },
       "ViewCounts": {

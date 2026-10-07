@@ -645,6 +645,9 @@ export const PRINT_SETTLE_MS = 300;
 /** What a print view waits out: a skeleton, a busy region, a diagram being drawn or a preview loading. */
 export const PRINT_PENDING_SELECTOR = '[data-skeleton], [aria-busy="true"], [data-diagram-state="drawing"], [data-preview-loading]';
 
+/** How often a page following a space's export or import asks how it goes. */
+export const SPACE_TRANSFER_POLL_MS = 1000;
+
 /** How often a page that asked for the example space asks how its making goes. */
 export const EXAMPLE_SPACE_POLL_MS = 1000;
 /** After this long without the worker beginning the example space, the page says it may not be running. */

@@ -415,6 +415,7 @@ const entry = (number: number, over: Partial<VersionEntry> = {}): VersionEntry =
   live: false,
   updatedAt: `2026-09-2${number}T09:00:00Z`,
   coEditors: [],
+  originalAuthor: null,
   ...over,
 });
 const versions = [

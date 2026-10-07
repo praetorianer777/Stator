@@ -53,6 +53,7 @@ const savedVersion = {
   restoredFrom: null,
   live: true,
   coEditors: [],
+  originalAuthor: null,
 };
 
 describe("a live page", () => {

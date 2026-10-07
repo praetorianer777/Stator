@@ -177,3 +177,9 @@ func cleanDescription(description string) (string, error) {
 	}
 	return description, nil
 }
+
+// CheckKey refuses a key no space may take, in a sentence.
+func CheckKey(key string) error { return checkKey(key) }
+
+// CleanName trims a space's name, refusing a blank or long one in a sentence.
+func CleanName(name string) (string, error) { return cleanName(name) }

@@ -96,6 +96,9 @@ check "the Valkey URL reaches every workload" "$(env_value "${RENDERED}" STATOR_
 check "the upload limit is set, and can be changed" \
     "$(grep -c 'STATOR_UPLOAD_LIMIT: "50MB"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set attachments.uploadLimit=2GB 2>&1 | grep -c 'STATOR_UPLOAD_LIMIT: "2GB"')" \
     "1 1"
+check "space transfers are set, and the import limit can be changed" \
+    "$(grep -c 'STATOR_SPACE_EXPORT_TTL: "24h"' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set spaceTransfers.importLimit=2GB 2>&1 | grep -c 'STATOR_SPACE_IMPORT_LIMIT: "2GB"')" \
+    "1 1"
 check "office previews are off until a converter is named" \
     "$(grep -c 'STATOR_CONVERTER_URL' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set attachments.converterUrl=http://converter:3000 2>&1 | grep -c 'STATOR_CONVERTER_URL: "http://converter:3000"')" \
     "0 1"

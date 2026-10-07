@@ -192,6 +192,11 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
                     </Td>
                     <Td className="text-ink-muted">
                       {entry ? t.history.published(entry.authorName, when(entry.createdAt)) : ""}
+                      {entry?.originalAuthor && (
+                        <span className="block text-xs" data-original-author="">
+                          {t.history.originalAuthor(entry.originalAuthor)}
+                        </span>
+                      )}
                       {entry?.live && (
                         <span className="block text-xs" data-live-version="">
                           {t.live.versionSaved(when(entry.updatedAt), entry.coEditors.join(", "))}
@@ -285,6 +290,7 @@ function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number
           version && (
             <>
               {t.history.published(version.authorName, when(version.createdAt))}
+              {version.originalAuthor && <span className="block">{t.history.originalAuthor(version.originalAuthor)}</span>}
               {version.comment && <span className="block text-ink">{version.comment}</span>}
               {version.restoredFrom != null && <span className="block">{t.history.restoredFrom(version.restoredFrom)}</span>}
             </>
