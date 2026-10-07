@@ -1,7 +1,7 @@
 import { formatNumber } from "@/lib/format";
 import { useCallback, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE, KILOBYTE } from "@/config";
+import { API_BASE, KILOBYTE, VIDEO_TYPES } from "@/config";
 import { t } from "@/i18n";
 import { api, ApiError, type ApiErrorBody } from "./client";
 import type { components } from "./schema";
@@ -29,11 +29,20 @@ export function attachmentUrl(id: string, inline = false): string {
 }
 
 // The types the API shows in place with inline=1; everything else downloads.
-const PREVIEWABLE = ["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf", "text/plain"];
+const PREVIEWABLE = ["image/png", "image/jpeg", "image/gif", "image/webp", ...VIDEO_TYPES, "application/pdf", "text/plain"];
+
+function mediaType(contentType: string): string {
+  return contentType.split(";")[0]!.trim().toLowerCase();
+}
 
 /** Whether the browser can show this in a tab rather than download it. */
 export function canPreview(contentType: string): boolean {
-  return PREVIEWABLE.includes(contentType.split(";")[0]!.trim().toLowerCase());
+  return PREVIEWABLE.includes(mediaType(contentType));
+}
+
+/** Whether a file is a video the browser's own player plays in place. */
+export function isVideo(contentType: string): boolean {
+  return VIDEO_TYPES.includes(mediaType(contentType));
 }
 
 /** Where a file's PDF preview is: a PDF itself, or an office document converted by the server. */

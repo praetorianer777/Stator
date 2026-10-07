@@ -134,7 +134,7 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
                 </a>
                 <span className="text-ink-muted tabular-nums">{formatSize(a.size)}</span>
                 <span className="hidden text-ink-muted sm:inline">{t.attachments.uploadedBy(a.uploadedByName, uploadedAt.format(new Date(a.createdAt)))}</span>
-                <PreviewButton file={a} />
+                <PreviewButton file={a} media={list} />
                 <ButtonLink
                   href={attachmentUrl(a.id)}
                   download={a.fileName}

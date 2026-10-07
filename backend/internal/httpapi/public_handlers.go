@@ -2,8 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"io"
-	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -107,24 +105,12 @@ func (s *Server) handlePublicAttachment(w http.ResponseWriter, r *http.Request) 
 		respondError(w, r, apiErr)
 		return
 	}
-	found, body, err := s.Attachments.OpenAnonymous(r.Context(), id)
+	found, err := s.Attachments.LocateAnonymous(r.Context(), id)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	defer body.Close()
-	disposition := "attachment"
-	if r.URL.Query().Get("inline") == "1" && isSafeInline(found.ContentType) {
-		disposition = "inline"
-	}
-	h := w.Header()
-	h.Set("Content-Type", found.ContentType)
-	h.Set("Content-Length", strconv.FormatInt(found.Size, 10))
-	h.Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": found.FileName}))
-	h.Set("X-Content-Type-Options", "nosniff")
-	cachedPublicly(w)
-	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, body)
+	serveFile(w, r, found, "public, max-age="+strconv.Itoa(publicMaxAge))
 }
 
 func (s *Server) handlePublicSearch(w http.ResponseWriter, r *http.Request) {

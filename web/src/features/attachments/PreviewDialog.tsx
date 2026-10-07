@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { attachmentUrl, fetchPreview, hasPreview, previewUrl, type Attachment } from "@/api/attachments";
 import { ApiError } from "@/api/client";
 import { ButtonLink, Dialog, ErrorBanner, IconButton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
+import { Lightbox } from "./Lightbox";
+import { mediaItems, mediaKind } from "./lightboxItems";
 
 type Shown = { state: "loading" } | { state: "ready"; url: string } | { state: "failed"; message: string };
 
@@ -68,15 +70,26 @@ export function PreviewDialog({ file, onClose }: { file: Attachment; onClose: ()
   );
 }
 
-/** The button that opens a file's preview, for the files the server can show as a PDF. */
-export function PreviewButton({ file, label }: { file: Attachment; label?: string }) {
+/**
+ * The button that shows a file in place: a picture or a video in the
+ * lightbox, stepping through the others of media given, else a PDF preview.
+ */
+export function PreviewButton({ file, label, media }: { file: Attachment; label?: string; media?: readonly Attachment[] }) {
   const [open, setOpen] = useState(false);
-  if (!hasPreview(file)) return null;
+  const shown = mediaKind(file.contentType) !== null;
+  if (!shown && !hasPreview(file)) return null;
   const name = label ?? file.fileName;
+  let lightbox: ReactNode = null;
+  if (open && shown) {
+    const items = mediaItems(media?.some((each) => each.id === file.id) ? media : [file], (each) => (each.id === file.id ? name : each.fileName));
+    lightbox = <Lightbox items={items} start={items.findIndex((each) => each.id === file.id)} onClose={() => setOpen(false)} />;
+  } else if (open) {
+    lightbox = <PreviewDialog file={file} onClose={() => setOpen(false)} />;
+  }
   return (
     <>
       <IconButton icon={<Icon.Eye />} label={t.preview.open(name)} size="sm" onClick={() => setOpen(true)} data-action="preview-attachment" />
-      {open && <PreviewDialog file={file} onClose={() => setOpen(false)} />}
+      {lightbox}
     </>
   );
 }

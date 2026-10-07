@@ -18,7 +18,7 @@ import (
 )
 
 // S3Store keeps objects in one bucket of any S3 compatible service, with the
-// standard library alone: six signed calls, rather than a dozen modules.
+// standard library alone: seven signed calls, rather than a dozen modules.
 type S3Store struct {
 	endpoint  *url.URL
 	bucket    string
@@ -154,6 +154,42 @@ func (s *S3Store) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	}
 }
 
+// GetRange asks the bucket for the stretch alone, so a reader seeking in a
+// long video costs the bytes it plays rather than the whole file.
+func (s *S3Store) GetRange(ctx context.Context, key string, offset, length int64) (io.ReadCloser, error) {
+	if offset < 0 || length <= 0 {
+		return nil, fmt.Errorf("fetch object: no bytes in %d from %d", length, offset)
+	}
+	extra := map[string]string{"range": fmt.Sprintf("bytes=%d-%d", offset, offset+length-1)}
+	resp, err := s.send(ctx, http.MethodGet, key, "", nil, 0, emptyPayloadHash, "", extra)
+	if err != nil {
+		return nil, fmt.Errorf("fetch object: %w", err)
+	}
+	switch resp.StatusCode {
+	case http.StatusPartialContent:
+		return resp.Body, nil
+	case http.StatusOK:
+		// A store that ignores the range sends everything; the stretch is cut here.
+		if _, err := io.CopyN(io.Discard, resp.Body, offset); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("fetch object: %w", err)
+		}
+		return limitedBody{Reader: io.LimitReader(resp.Body, length), Closer: resp.Body}, nil
+	case http.StatusNotFound:
+		resp.Body.Close()
+		return nil, ErrNoObject
+	default:
+		defer resp.Body.Close()
+		code, message := s3Error(resp)
+		return nil, fmt.Errorf("fetch object: %s %s", code, message)
+	}
+}
+
+type limitedBody struct {
+	io.Reader
+	io.Closer
+}
+
 func (s *S3Store) Delete(ctx context.Context, key string) error {
 	resp, err := s.do(ctx, http.MethodDelete, key, nil, 0, emptyPayloadHash, "")
 	if err != nil {
@@ -239,6 +275,11 @@ func (s *S3Store) do(ctx context.Context, method, key string, body io.Reader, si
 // doQuery is do with a query string already in canonical form: names sorted,
 // each name and value encoded as encodeSegment does.
 func (s *S3Store) doQuery(ctx context.Context, method, key, query string, body io.Reader, size int64, payloadHash, contentType string) (*http.Response, error) {
+	return s.send(ctx, method, key, query, body, size, payloadHash, contentType, nil)
+}
+
+// send is doQuery with further headers, named in lower case, signed with the rest.
+func (s *S3Store) send(ctx context.Context, method, key, query string, body io.Reader, size int64, payloadHash, contentType string, extra map[string]string) (*http.Response, error) {
 	path := "/" + encodeSegment(s.bucket)
 	if key != "" {
 		path += "/" + encodePath(key)
@@ -267,6 +308,9 @@ func (s *S3Store) doQuery(ctx context.Context, method, key, query string, body i
 	}
 	if contentType != "" {
 		headers["content-type"] = contentType
+	}
+	for name, value := range extra {
+		headers[name] = value
 	}
 	for name, value := range headers {
 		if name != "host" {

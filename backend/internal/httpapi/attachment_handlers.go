@@ -107,8 +107,8 @@ func uploadError(err error, limit int64) error {
 	return err
 }
 
-// handleDownloadAttachment streams the bytes as a download with the stored
-// type; only types that cannot run script show in place, and only when asked.
+// handleDownloadAttachment streams the bytes with the stored type, whole or
+// the range a video player asks for; see serveFile.
 func (s *Server) handleDownloadAttachment(w http.ResponseWriter, r *http.Request) {
 	if !s.attachmentsOn(w, r) {
 		return
@@ -118,24 +118,12 @@ func (s *Server) handleDownloadAttachment(w http.ResponseWriter, r *http.Request
 		respondError(w, r, apiErr)
 		return
 	}
-	found, body, err := s.Attachments.Open(r.Context(), actorFrom(r), id)
+	found, err := s.Attachments.Locate(r.Context(), actorFrom(r), id)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	defer body.Close()
-	disposition := "attachment"
-	if r.URL.Query().Get("inline") == "1" && isSafeInline(found.ContentType) {
-		disposition = "inline"
-	}
-	h := w.Header()
-	h.Set("Content-Type", found.ContentType)
-	h.Set("Content-Length", strconv.FormatInt(found.Size, 10))
-	h.Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": found.FileName}))
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Cache-Control", "private, max-age=0")
-	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, body)
+	serveFile(w, r, found, "private, max-age=0")
 }
 
 // handlePreviewAttachment answers with a file as a PDF shown in place. The
@@ -166,15 +154,15 @@ func (s *Server) handlePreviewAttachment(w http.ResponseWriter, r *http.Request)
 	_, _ = io.Copy(w, preview.Body)
 }
 
-// isSafeInline says which types a browser may show in place: images, PDFs
-// and plain text, which cannot run script against this origin. SVG can.
+// isSafeInline says which types a browser may show in place: images, videos,
+// PDFs and plain text, which cannot run script against this origin. SVG can.
 func isSafeInline(contentType string) bool {
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		return false
 	}
 	switch mediaType {
-	case "image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf", "text/plain":
+	case "image/png", "image/jpeg", "image/gif", "image/webp", "video/mp4", "video/webm", "video/ogg", "application/pdf", "text/plain":
 		return true
 	}
 	return false

@@ -50,6 +50,11 @@ export const Icon = {
   User: makeIcon("user", ["M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M2.5 14a5.5 5.5 0 0 1 11 0"]),
   ChevronDown: makeIcon("chevron-down", ["m4 6 4 4 4-4"]),
   ChevronUp: makeIcon("chevron-up", ["m4 10 4-4 4 4"]),
+  ChevronLeft: makeIcon("chevron-left", ["m10 4-4 4 4 4"]),
+  ChevronRight: makeIcon("chevron-right", ["m6 4 4 4-4 4"]),
+  Play: makeIcon("play", ["M5.5 3.5v9l7.5-4.5z"]),
+  ZoomIn: makeIcon("zoom-in", ["M7 12A5 5 0 1 0 7 2a5 5 0 0 0 0 10Z", "m10.5 10.5 3 3", "M7 5v4", "M5 7h4"]),
+  ZoomOut: makeIcon("zoom-out", ["M7 12A5 5 0 1 0 7 2a5 5 0 0 0 0 10Z", "m10.5 10.5 3 3", "M5 7h4"]),
   Disclosure: makeIcon("disclosure", ["m2.5 3.5 2.5 2.5-2.5 2.5", "M7.5 6h6", "M5 11h8.5"]),
   Sun: makeIcon("sun", [
     "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",

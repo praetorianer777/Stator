@@ -147,6 +147,16 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 			t.Errorf("the guide's file = %d %q, caching %q", resp.StatusCode, body, resp.Header.Get("Cache-Control"))
 		}
 		want(t, anon.get(t, linkPath(slug, token, "/attachments/", besideFile)), http.StatusNotFound, "a file beside")
+		resp, body = anon.downloadRange(t, linkPath(slug, token, "/attachments/", file), "bytes=-5", "")
+		if resp.StatusCode != http.StatusPartialContent || string(body) != "hours" || resp.Header.Get("Cache-Control") != "no-store" {
+			t.Errorf("a stretch of the guide's file = %d %q, caching %q", resp.StatusCode, body, resp.Header.Get("Cache-Control"))
+		}
+		if resp, _ := anon.downloadRange(t, linkPath(slug, token, "/attachments/", file), "bytes=99-", ""); resp.StatusCode != http.StatusRequestedRangeNotSatisfiable {
+			t.Errorf("a stretch past the guide's file = %d", resp.StatusCode)
+		}
+		if resp, _ := anon.downloadRange(t, linkPath(slug, token, "/attachments/", besideFile), "bytes=0-1", ""); resp.StatusCode != http.StatusNotFound {
+			t.Errorf("a stretch of a file beside = %d", resp.StatusCode)
+		}
 	})
 
 	t.Run("nothing else opens through it", func(t *testing.T) {

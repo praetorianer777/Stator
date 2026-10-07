@@ -428,8 +428,8 @@ var operations = []operation{
 		responses: map[int]any{200: env{"space": public.Space{}, "pages": []public.TreePage{}}, 404: errorEnvelope{}}},
 	{method: "GET", path: "/public/{orgSlug}/pages/{pageID}", handler: "handlePublicPage", tag: "public", public: true, summary: "A published page anybody may read, with the people it mentions unnamed and nothing about who wrote or read it.",
 		responses: map[int]any{200: env{"page": public.Page{}}, 404: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/attachments/{attachmentID}", handler: "handlePublicAttachment", tag: "public", public: true, summary: "The bytes of a file on a page anybody may read, as a download.", binary: true,
-		query: []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: map[int]any{200: nil, 404: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}/attachments/{attachmentID}", handler: "handlePublicAttachment", tag: "public", public: true, summary: "The bytes of a file on a page anybody may read, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.", binary: true,
+		query: []param{{name: "inline", description: "1 to show images, videos, PDFs and text in place."}}, responses: map[int]any{200: nil, 206: nil, 404: errorEnvelope{}, 416: errorEnvelope{}}},
 	{method: "GET", path: "/public/{orgSlug}/search", handler: "handlePublicSearch", tag: "public", public: true, summary: "Published pages anybody may read whose words match, the best first.",
 		query: []param{
 			{name: "q", description: "Words, quoted phrases, or and -word."},
@@ -441,8 +441,8 @@ var operations = []operation{
 		summary:   "The one published page a public link opens, with the people it mentions unnamed and nothing of its space, tree or people. Not found, as link_gone, once the link is revoked or ran out, the page may no longer be opened, or the organization allows no links. Never cached.",
 		responses: map[int]any{200: env{"site": public.Site{}, "page": public.LinkedPage{}}, 404: errorEnvelope{}}},
 	{method: "GET", path: "/public/{orgSlug}/links/{token}/attachments/{attachmentID}", handler: "handleLinkedAttachment", tag: "public", public: true, binary: true,
-		summary: "The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached.",
-		query:   []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: map[int]any{200: nil, 404: errorEnvelope{}}},
+		summary: "The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.",
+		query:   []param{{name: "inline", description: "1 to show images, videos, PDFs and text in place."}}, responses: map[int]any{200: nil, 206: nil, 404: errorEnvelope{}, 416: errorEnvelope{}}},
 	{method: "GET", path: "/org/public-links", handler: "handleGetPublicLinks", orgWide: true, tag: "public", summary: "Whether the editors of a page may open it to anybody through a public link. For administrators.",
 		responses: ok(env{"publicLinks": public.LinkSettings{}})},
 	{method: "PUT", path: "/org/public-links", handler: "handleSetPublicLinks", orgWide: true, tag: "public",
@@ -484,8 +484,8 @@ var operations = []operation{
 		responses: ok(env{"attachments": []attachment.Attachment{}})},
 	{method: "POST", path: "/pages/{pageID}/attachments", handler: "handleUploadAttachment", tag: "attachments", summary: "Put a file on a page, as a multipart part named file; refused with too_large over the upload limit.", multipart: true,
 		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 413: errorEnvelope{}}},
-	{method: "GET", path: "/attachments/{attachmentID}", handler: "handleDownloadAttachment", tag: "attachments", summary: "The bytes of a file, as a download.", binary: true,
-		query: []param{{name: "inline", description: "1 to show images, PDFs and text in place."}}, responses: ok(nil)},
+	{method: "GET", path: "/attachments/{attachmentID}", handler: "handleDownloadAttachment", tag: "attachments", summary: "The bytes of a file, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.", binary: true,
+		query: []param{{name: "inline", description: "1 to show images, videos, PDFs and text in place."}}, responses: map[int]any{200: nil, 206: nil, 416: errorEnvelope{}}},
 	{method: "GET", path: "/attachments/{attachmentID}/preview", handler: "handlePreviewAttachment", tag: "attachments", summary: "A file as a PDF to show in place: a PDF itself, or an office document converted once and kept. Refused with no_preview for any other file, and with preview_failed, preview_too_large, preview_off or preview_unavailable when there is no PDF to show.", binary: true,
 		responses: map[int]any{200: nil, 413: errorEnvelope{}, 415: errorEnvelope{}, 422: errorEnvelope{}, 503: errorEnvelope{}}},
 	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a file off its page for good.",
@@ -1070,7 +1070,7 @@ func Spec() *openapi.Document {
 			switch {
 			case isErrorEnvelope(body):
 				r.Content = map[string]openapi.MediaType{"application/json": {Schema: errorSchema}}
-			case op.binary && status == http.StatusOK:
+			case op.binary && (status == http.StatusOK || status == http.StatusPartialContent):
 				r.Content = map[string]openapi.MediaType{"*/*": {Schema: &openapi.Schema{Type: "string", Format: "binary"}}}
 			case body != nil:
 				r.Content = map[string]openapi.MediaType{"application/json": {Schema: envelopeSchema(b, body)}}

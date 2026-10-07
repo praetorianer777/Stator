@@ -127,6 +127,12 @@ func (c *contract) observe(t *testing.T, method, path string, status int, conten
 	if r.Binary && status == http.StatusOK {
 		return
 	}
+	if r.Binary && status == http.StatusPartialContent {
+		if r.op.Responses[fmt.Sprint(status)] == nil {
+			t.Errorf("contract: %s %s answered %d, which the document does not mention", method, path, status)
+		}
+		return
+	}
 	if status/100 == 3 {
 		if !r.Redirect {
 			t.Errorf("contract: %s %s answered %d, but the document does not say it redirects", method, path, status)

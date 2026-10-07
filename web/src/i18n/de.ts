@@ -1467,6 +1467,25 @@ export const de: Messages = {
     newTab: "In neuem Tab öffnen",
     failed: "Die Vorschau konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und öffnen Sie sie erneut, oder laden Sie die Datei herunter.",
   },
+  lightbox: {
+    position: (n: number, count: number) => `${n} von ${count}`,
+    previous: "Vorheriges",
+    next: "Nächstes",
+    zoomIn: "Vergrößern",
+    zoomOut: "Verkleinern",
+    fit: (percent: number) => `An das Fenster anpassen, jetzt ${percent} %`,
+    stage: (name: string) => `${name}, zoombar`,
+    hint: "Plus und Minus zoomen, 0 passt das Bild wieder an das Fenster an, und die Pfeiltasten verschieben ein vergrößertes Bild.",
+    hintMany:
+      "Plus und Minus zoomen, 0 passt das Bild wieder an das Fenster an, und die Pfeiltasten verschieben ein vergrößertes Bild oder wechseln zum vorherigen und nächsten.",
+    status: (name: string, position: string, percent?: number) => [position, name, percent === undefined ? "" : `${percent} %`].filter(Boolean).join(", "),
+    imageFailed: (name: string) =>
+      `${name} konnte nicht angezeigt werden. Laden Sie die Seite neu, um zu sehen, ob es noch da ist, oder laden Sie es herunter.`,
+    videoFailed: (name: string) => `${name} kann in diesem Browser nicht abgespielt werden. Laden Sie es herunter, um es auf Ihrem Gerät abzuspielen.`,
+    openImage: (alt: string) => (alt ? `${alt} vergrößert ansehen` : "Bild vergrößert ansehen"),
+    picture: "Bild",
+    play: (name: string) => `${name} abspielen`,
+  },
   markdown: {
     exportMenu: "Als Markdown exportieren",
     importMenu: "Markdown importieren",

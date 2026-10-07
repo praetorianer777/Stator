@@ -65,13 +65,15 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
     body = <p className="doc-block-empty">{editable ? l.emptyEditable : l.empty}</p>;
   } else {
     state = "list";
+    const named = byName(files.data);
+    const latestOfEach = named.map((each) => each.latest);
     body = (
       <ul className="doc-page-list">
-        {byName(files.data).map(({ latest, earlier }) => (
+        {named.map(({ latest, earlier }) => (
           <li key={latest.id} data-listed-file={latest.fileName} data-version={latest.version}>
             <span className="flex items-center gap-1">
               <FileLink file={latest} label={latest.fileName} />
-              <PreviewButton file={latest} />
+              <PreviewButton file={latest} media={latestOfEach} />
             </span>
             <span className="doc-page-list-meta">{meta(latest)}</span>
             {earlier.length > 0 && (
