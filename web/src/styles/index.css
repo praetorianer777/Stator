@@ -2109,11 +2109,11 @@
   }
 }
 
-/* The view the render service prints a page from: the page alone, on the
-   theme's surface, as wide as the sheet's margins leave it. */
+/* The view the render service prints a page from: the page alone, on paper,
+   in the theme's ink and blocks. The sheet's margins, where the running
+   header and footer go, are paper whatever the theme, so the page is too. */
 .print-view {
-  min-height: 100%;
-  background: var(--color-surface);
+  background: white;
   color: var(--color-ink);
 }
 
