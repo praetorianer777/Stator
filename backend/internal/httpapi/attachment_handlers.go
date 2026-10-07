@@ -215,6 +215,31 @@ func (s *Server) handleRestoreAttachment(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, r, http.StatusCreated, map[string]any{"attachment": restored})
 }
 
+// handleEditAttachment saves a picture cropped or drawn on in the browser as
+// the next version of the file it was drawn on.
+func (s *Server) handleEditAttachment(w http.ResponseWriter, r *http.Request) {
+	if !s.attachmentsOn(w, r) {
+		return
+	}
+	id, apiErr := pathUUID(r, "attachmentID", "file")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	in, err := readUploadedFile(w, r, s.Attachments.MaxSize)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	edited, lsn, err := s.Attachments.Edit(r.Context(), actorFrom(r), id, in)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, uploadError(err, s.Attachments.MaxSize))
+		return
+	}
+	respondJSON(w, r, http.StatusCreated, map[string]any{"attachment": edited})
+}
+
 // attachmentsOn answers for a server built without the file service, such as
 // a test's, as for one without storage.
 func (s *Server) attachmentsOn(w http.ResponseWriter, r *http.Request) bool {

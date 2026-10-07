@@ -32,6 +32,7 @@ const picture: Attachment = {
   version: 1,
   versions: 1,
   restoredFrom: null,
+  editedFrom: null,
   preview: "none",
 };
 const node: TreeNode = {

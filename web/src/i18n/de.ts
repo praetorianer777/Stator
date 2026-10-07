@@ -1479,6 +1479,7 @@ export const de: Messages = {
     restoreVersion: (name: string, n: number) => `${name}, Version ${n} wiederherstellen`,
     restored: (name: string, from: number, to: number) => `Version ${from} von ${name} als Version ${to} wiederhergestellt.`,
     restoredFrom: (n: number) => `wiederhergestellt aus Version ${n}`,
+    editedFrom: (n: number) => `bearbeitet aus Version ${n}`,
     uploadedBy: (who: string, when: string) => `${who}, ${when}`,
     tooLarge: (name: string, size: string, limit: string) =>
       `${name} (${size}) ist größer, als diese Website annimmt.${limit ? ` ${limit}` : ""} Verkleinern Sie die Datei oder teilen Sie sie auf, und hängen Sie sie erneut an.`,

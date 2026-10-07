@@ -163,6 +163,7 @@ func toAPIError(err error) *APIError {
 		err = page.ErrPostPlace
 	}
 	var alreadyLatest *attachment.AlreadyLatestError
+	var editType *attachment.EditTypeError
 	var scheduled *page.ScheduleTakenError
 	if errors.As(err, &scheduled) {
 		return &APIError{Status: http.StatusConflict, Code: "schedule_taken", Message: scheduled.Error()}
@@ -451,6 +452,10 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That file was not found. It may have been deleted, or its page moved to the trash.")
 	case errors.As(err, &alreadyLatest):
 		return &APIError{Status: http.StatusConflict, Code: "already_latest", Message: sentence(alreadyLatest.Error())}
+	case errors.Is(err, attachment.ErrNotEditable):
+		return &APIError{Status: http.StatusUnsupportedMediaType, Code: "not_editable", Message: sentence(err.Error())}
+	case errors.As(err, &editType):
+		return &APIError{Status: http.StatusUnsupportedMediaType, Code: "wrong_type", Message: sentence(editType.Error())}
 	case errors.Is(err, attachment.ErrTooLarge):
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(err.Error())}
 	case errors.Is(err, attachment.ErrEmpty):

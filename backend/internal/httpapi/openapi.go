@@ -493,6 +493,8 @@ var operations = []operation{
 		responses: none()},
 	{method: "POST", path: "/attachments/{attachmentID}/restore", handler: "handleRestoreAttachment", tag: "attachments", summary: "Bring an earlier version of a file back as its name's next version, with that version's bytes. Refused with already_latest for the latest version.",
 		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 409: errorEnvelope{}}},
+	{method: "POST", path: "/attachments/{attachmentID}/edit", handler: "handleEditAttachment", tag: "attachments", summary: "Save a picture cropped or drawn on as the next version of the file it was drawn on, as a multipart part named file of the file's own type. Refused with not_editable for a file that is no PNG, JPEG or WebP picture, wrong_type for a part of another type, and too_large over the upload limit.", multipart: true,
+		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 413: errorEnvelope{}, 415: errorEnvelope{}}},
 
 	// Comments (#22) and inline comments (#23); see docs/api-contract-m2.md.
 	{method: "GET", path: "/pages/{pageID}/comments", handler: "handleListComments", tool: "list_comments", toolHelp: "A page's comment threads, oldest first.", tag: "comments",

@@ -1437,6 +1437,7 @@ export const en = {
     restoreVersion: (name: string, n: number) => `Restore ${name}, version ${n}`,
     restored: (name: string, from: number, to: number) => `Restored version ${from} of ${name} as version ${to}.`,
     restoredFrom: (n: number) => `restored from version ${n}`,
+    editedFrom: (n: number) => `edited from version ${n}`,
     uploadedBy: (who: string, when: string) => `${who}, ${when}`,
     tooLarge: (name: string, size: string, limit: string) =>
       `${name} (${size}) is larger than this site accepts.${limit ? ` ${limit}` : ""} Make the file smaller, or split it into parts, and attach it again.`,
