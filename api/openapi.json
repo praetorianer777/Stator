@@ -12201,7 +12201,7 @@
     "/template-button": {
       "get": {
         "operationId": "templateButton",
-        "summary": "What a template button makes and where, for its view: the template, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found.",
+        "summary": "What a template button makes and where, for its view: the template with the variables to ask for, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found.",
         "tags": [
           "templates"
         ],
@@ -12526,7 +12526,7 @@
     "/templates/{templateKey}/pages": {
       "post": {
         "operationId": "createFromTemplate",
-        "summary": "Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC. For whoever may add pages there.",
+        "summary": "Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC; values fill the template's variables as with POST /pages. For whoever may add pages there.",
         "tags": [
           "templates"
         ],
@@ -18250,6 +18250,12 @@
           },
           "title": {
             "type": "string"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         }
       },
@@ -21074,12 +21080,19 @@
           },
           "title": {
             "type": "string"
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Variable"
+            }
           }
         },
         "required": [
           "key",
           "name",
-          "title"
+          "title",
+          "variables"
         ]
       },
       "Theme": {

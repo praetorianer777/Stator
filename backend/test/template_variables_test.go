@@ -4,7 +4,9 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -56,12 +58,6 @@ func kickoff(spaceKey, name string) map[string]any {
 		in["spaceKey"] = spaceKey
 	}
 	return in
-}
-
-func fieldsOf(t *testing.T, r response) map[string]any {
-	t.Helper()
-	fields, _ := obj(t, r, "error")["fields"].(map[string]any)
-	return fields
 }
 
 // Templates are kept by the administrators of their scope, and the server fills
@@ -201,6 +197,47 @@ func TestTemplatesWithVariablesOverTheAPI(t *testing.T) {
 		}
 	})
 
+	t.Run("a template button offers it and makes a page with its values", func(t *testing.T) {
+		button := templateButtonOf(t, bob, url.Values{"template": {tplID}, "spaceKey": {"KICK"}}, http.StatusOK)
+		tpl := button["template"].(map[string]any)
+		if vars, _ := tpl["variables"].([]any); tpl["name"] != "Kickoff" || len(vars) != 5 || button["canCreate"] != true {
+			t.Errorf("the button shows %v", button)
+		}
+		made := obj(t, want(t, bob.post(t, "/api/v1/templates/"+tplID+"/pages", map[string]any{
+			"spaceKey": "KICK", "values": map[string]any{"customer": "Delta"},
+		}), http.StatusCreated, "bob clicks it"), "page")
+		if made["title"] != "Kickoff with Delta" || made["parentId"] != kick.homeID || !strings.Contains(mustJSON(t, made["body"]), `"text":"Delta"`) {
+			t.Errorf("the button made %v", made)
+		}
+		r := want(t, bob.post(t, "/api/v1/templates/"+tplID+"/pages", map[string]any{"spaceKey": "KICK"}), http.StatusUnprocessableEntity, "without the customer")
+		if _, ok := fieldsOf(t, r)["values.customer"]; !ok {
+			t.Errorf("a click without the customer is refused with %s", r.Raw)
+		}
+		elsewhere := obj(t, want(t, owner.post(t, "/api/v1/templates", kickoff("HIDE", "Elsewhere")), http.StatusCreated, "a template of HIDE"), "template")["key"].(string)
+		r = want(t, owner.get(t, "/api/v1/template-button?"+url.Values{"template": {elsewhere}, "spaceKey": {"KICK"}}.Encode()), http.StatusUnprocessableEntity, "HIDE's template in KICK")
+		if msg, _ := fieldsOf(t, r)["template"].(string); !strings.HasSuffix(msg, ".") {
+			t.Errorf("HIDE's template in KICK is refused with %s", r.Raw)
+		}
+		want(t, owner.post(t, "/api/v1/templates/"+elsewhere+"/pages", map[string]any{"spaceKey": "KICK", "values": map[string]any{"customer": "x"}}),
+			http.StatusUnprocessableEntity, "a page in KICK from HIDE's template")
+		templateButtonOf(t, dora, url.Values{"template": {tplID}, "spaceKey": {"KICK"}}, http.StatusNotFound)
+	})
+
+	t.Run("a page in a folder starts from a template, and a folder from none", func(t *testing.T) {
+		folder := obj(t, want(t, bob.post(t, "/api/v1/pages", map[string]any{"parentId": kick.homeID, "title": "Customers", "kind": "folder"}),
+			http.StatusCreated, "bob makes a folder"), "page")["id"].(string)
+		made := obj(t, want(t, bob.post(t, "/api/v1/pages", map[string]any{
+			"parentId": folder, "template": tplID, "values": map[string]any{"customer": "Epsilon"},
+		}), http.StatusCreated, "a page in the folder"), "page")
+		if made["parentId"] != folder || made["title"] != "Kickoff with Epsilon" {
+			t.Errorf("the page in the folder is %v", made)
+		}
+		got := bob.post(t, "/api/v1/pages", map[string]any{"parentId": kick.homeID, "title": "Kickoffs", "kind": "folder", "template": tplID, "values": map[string]any{"customer": "x"}})
+		if got.Status != http.StatusConflict || errorCode(t, got) != "folder" {
+			t.Errorf("a folder from a template = %d %s", got.Status, got.Raw)
+		}
+	})
+
 	t.Run("values that do not fit are refused on their field", func(t *testing.T) {
 		otherSpace := obj(t, want(t, owner.post(t, "/api/v1/templates", kickoff("HIDE", "Hidden kickoff")), http.StatusCreated, "a template of HIDE"), "template")["key"].(string)
 		make := func(more map[string]any) response {
@@ -245,7 +282,8 @@ func TestTemplatesWithVariablesOverTheAPI(t *testing.T) {
 		}
 		want(t, ann.delete(t, "/api/v1/templates/"+tplID), http.StatusNoContent, "ann deletes it")
 		want(t, ann.get(t, "/api/v1/templates/"+tplID), http.StatusNotFound, "it is gone")
-		if n := len(kick.titles(kick.homeID)); n != 2 {
+		// The two published pages and the folder; the button's page is still bob's alone.
+		if n := len(kick.titles(kick.homeID)); n != 3 {
 			t.Errorf("KICK holds %d pages", n)
 		}
 		var audited int
@@ -340,4 +378,37 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 	if _, err := conn.Exec(ctx, `SELECT set_config($1, '', false)`, db.TokenSpacesVar); err != nil {
 		t.Fatal(err)
 	}
+
+	// A guest of TSQL reads its templates but none of the organization's, and
+	// somebody reading TSQL without signing in reads and writes none.
+	orgTpl := obj(t, want(t, owner.post(t, "/api/v1/templates", kickoff("", "Everywhere")), http.StatusCreated, "a template for every space"), "template")["key"].(string)
+	gwenEmail := fmt.Sprintf("gwen-%s@example.test", uuid.NewString()[:8])
+	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, gwenEmail) })
+	gwen := obj(t, want(t, owner.post(t, "/api/v1/spaces/TSQL/guests", map[string]any{"email": gwenEmail, "role": "editor"}), http.StatusCreated, "invite gwen"), "guest")
+	gwenID := uuid.MustParse(gwen["userId"].(string))
+	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+	want(t, owner.put(t, "/api/v1/spaces/TSQL/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open TSQL")
+	h.settle(t)
+	gwenAPI := api.as(t, gwenID, home.org, slug)
+	for _, each := range list(t, want(t, gwenAPI.get(t, "/api/v1/templates?space=TSQL"), http.StatusOK, "gwen lists TSQL's"), "templates") {
+		if key := each.(map[string]any)["key"]; key == orgTpl {
+			t.Error("gwen is offered the organization's template")
+		}
+	}
+	actAs(t, conn, home.org, gwenID)
+	count := func(who string, n int) {
+		t.Helper()
+		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_template WHERE id = ANY($1::uuid[])`, []string{spaceTpl, orgTpl, hiddenTpl}).Scan(&seen); err != nil || seen != n {
+			t.Errorf("%s sees %d templates (%v), want %d", who, seen, err, n)
+		}
+	}
+	count("gwen", 1)
+	refused(t, conn, "gwen makes a template for TSQL",
+		`INSERT INTO page_template (org_id, space_id, name, body) VALUES ($1, $2, 'Guest', $3)`, home.org, spaceID, body)
+	actAs(t, conn, home.org, home.user)
+	count("the owner", 3)
+	actAnonymously(t, conn, home.org)
+	count("an anonymous reader of TSQL", 0)
+	refused(t, conn, "an anonymous reader makes a template for TSQL",
+		`INSERT INTO page_template (org_id, space_id, name, body) VALUES ($1, $2, 'Anybody', $3)`, home.org, spaceID, body)
 }

@@ -2633,7 +2633,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** What a template button makes and where, for its view: the template, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found. */
+        /** What a template button makes and where, for its view: the template with the variables to ask for, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found. */
         get: operations["templateButton"];
         put?: never;
         post?: never;
@@ -2689,7 +2689,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC. For whoever may add pages there. */
+        /** Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC; values fill the template's variables as with POST /pages. For whoever may add pages there. */
         post: operations["createFromTemplate"];
         delete?: never;
         options?: never;
@@ -4138,6 +4138,9 @@ export interface components {
             parentId?: string;
             spaceKey?: string;
             title?: string;
+            values?: {
+                [key: string]: string;
+            };
         };
         PageHit: {
             /** Format: uuid */
@@ -4881,6 +4884,7 @@ export interface components {
             key: string;
             name: string;
             title: string;
+            variables: components["schemas"]["Variable"][];
         };
         Theme: {
             active: boolean;

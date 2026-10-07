@@ -1,11 +1,13 @@
 package page
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/template"
 )
 
@@ -33,12 +35,13 @@ func TestATemplateButtonNamesItsPage(t *testing.T) {
 }
 
 func TestATemplateButtonRefusesATemplateThatIsNotThere(t *testing.T) {
-	_, err := templateByKey("no-such-template")
+	// A built-in's key is no id, so it is found without the database.
+	_, err := templateFor(context.Background(), nil, &space.Space{}, "no-such-template")
 	var field *FieldError
 	if !errors.As(err, &field) || field.Field != "template" {
 		t.Fatalf("a missing template is %v", err)
 	}
-	if tpl, err := templateByKey("meeting-notes"); err != nil || tpl.Name == "" {
+	if tpl, err := templateFor(context.Background(), nil, &space.Space{}, "meeting-notes"); err != nil || tpl.Name == "" {
 		t.Errorf("a built-in is %+v, %v", tpl, err)
 	}
 }
