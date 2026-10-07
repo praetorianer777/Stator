@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { Editor as TiptapEditor } from "@tiptap/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { Included } from "@/api/included";
 import { stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
+import { KnownAttachmentsContext } from "./attachmentIndex";
 import { DocPageContext } from "./BlockViews";
 import { DocView } from "./DocView";
 import { editorExtensions } from "./extensions";
@@ -83,6 +84,27 @@ describe("an include in the read-only view", () => {
     await waitFor(() => expect(screen.getByRole("note")).toHaveTextContent("leads back to a page that includes it"));
     expect(asked).toEqual([`${SUPPORT}<${HERE}`, `${HERE}<${HERE},${SUPPORT}`]);
     expect(screen.getByRole("region", { name: "Included from Support" })).toHaveTextContent("Support says");
+  });
+
+  it("shows the included page's pictures, which are files of that page and not of this one", async () => {
+    const picture = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a61";
+    stubApi({
+      [`GET /pages/${SUPPORT}/included`]: included(SUPPORT, "Support", {
+        type: "doc",
+        content: [
+          { type: "image", attrs: { attachmentId: picture, alt: "The desk", width: null } },
+          { type: "gallery", attrs: { columns: 2 }, content: [{ type: "galleryImage", attrs: { attachmentId: picture, caption: "The desk again" } }] },
+        ],
+      }),
+    });
+    shown(
+      <KnownAttachmentsContext value={new Set<string>()}>
+        <DocView doc={{ type: "doc", content: [include(SUPPORT)] }} />
+      </KnownAttachmentsContext>,
+    );
+    const region = await screen.findByRole("region", { name: "Included from Support" });
+    expect(within(region).getByRole("button", { name: "View The desk larger" })).toBeInTheDocument();
+    expect(within(region).getByRole("list", { name: "Gallery of 1 picture" })).toHaveTextContent("The desk again");
   });
 });
 

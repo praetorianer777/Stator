@@ -32,7 +32,9 @@ lightbox of #93 steps through them.
   and one whose read is refused is left out when it fails. Readers see the
   pictures that are left, numbered among themselves in the lightbox, and a
   sentence when none is; an author editing sees each gap with a sentence,
-  to remove it.
+  to remove it. An include shows another page's words, whose pictures are
+  that page's files, so inside an include the reads alone decide; until
+  now a picture in an included page was drawn as deleted.
 - **No thumbnails.** Nothing makes smaller copies of uploads, so a gallery
   shows the picture itself, loaded lazily and cropped by CSS to one shape
   so the rows line up; the lightbox shows it whole. A thumbnail would be a

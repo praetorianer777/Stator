@@ -43,6 +43,7 @@ import { BLOG_POSTS_NODE, blogPostsSettings } from "@/features/blog/blogPosts";
 import { TASK_REPORT_NODE, taskReportSettings } from "@/features/taskReport/report";
 import { AttachmentList } from "@/features/attachments/AttachmentList";
 import { ATTACHMENT_LIST_NODE } from "./attachmentList";
+import { KnownAttachmentsContext } from "./attachmentIndex";
 import { TableChart } from "@/features/tableChart/TableChart";
 import { TABLE_CHART_NODE, tableChartSettings } from "@/features/tableChart/data";
 import { TeamCalendar } from "@/features/calendar/TeamCalendar";
@@ -106,11 +107,14 @@ export function DocView({
 }
 
 // An included document takes no anchors and no inline threads of the page
-// it is shown in: those belong to the page whose words they are.
+// it is shown in: those belong to the page whose words they are. Its
+// pictures are files of its own page, which the reader's reads decide.
 function drawIncluded(doc: Doc) {
   return (
     <PassagesContext value={null}>
-      <DocView doc={doc} anchors={false} />
+      <KnownAttachmentsContext value={undefined}>
+        <DocView doc={doc} anchors={false} />
+      </KnownAttachmentsContext>
     </PassagesContext>
   );
 }
