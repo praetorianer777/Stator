@@ -38,7 +38,10 @@ var (
 		Message: "A folder has no words of its own to print. Open a page in it and export that one."}
 	errPrintUnpublished = &APIError{Status: http.StatusConflict, Code: "not_printable",
 		Message: "This page has not been published yet, and only what is published is exported. Publish it, then export it again."}
-	errPublicPDFs = "This page was printed too often from here in the last minute. Wait a minute and try again."
+	// A print reads the page as its reader with every include in it, which a
+	// token limited to spaces could not hand on without making a token itself.
+	errPrintLimitedToken = ErrForbidden("A token limited to spaces cannot export a PDF. Export the page from Stator, or with a token that reaches every space you do.")
+	errPublicPDFs        = "This page was printed too often from here in the last minute. Wait a minute and try again."
 )
 
 func (s *Server) renderer() render.Renderer {
@@ -84,22 +87,24 @@ func (s *Server) handlePagePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := PrincipalFrom(r.Context())
+	if p.InSpacesOnly() {
+		respondError(w, r, errPrintLimitedToken)
+		return
+	}
 	secret, tokenID, lsn, err := s.Accounts.MintRenderToken(r.Context(), p)
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	// Spent or not, the token goes once the print is back, even when the
-	// reader has stopped waiting for it.
-	defer func() {
-		if err := s.Accounts.RevokeRenderToken(context.WithoutCancel(r.Context()), tokenID); err != nil {
-			loggerFrom(r.Context()).Error("a print's token outlives its print until it expires", "token_id", tokenID, "error", err)
-		}
-	}()
 	carryWrites(r.Context(), tokenFreshnessKey(tokenID), lsn)
 
 	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: "/print/p/" + got.ID.String(), Token: secret, Language: printLanguage(r, p)})
+	// Spent or not, the token goes once the print is back, before the reader
+	// hears anything, and even when they have stopped waiting.
+	if revokeErr := s.Accounts.RevokeRenderToken(context.WithoutCancel(r.Context()), tokenID); revokeErr != nil {
+		loggerFrom(r.Context()).Error("a print's token outlives its print until it expires", "token_id", tokenID, "error", revokeErr)
+	}
 	if err != nil {
 		respondError(w, r, err)
 		return

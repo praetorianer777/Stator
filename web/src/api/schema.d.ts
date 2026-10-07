@@ -1541,7 +1541,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The published page as a PDF, printed as the caller reads it with every block drawn, in the organization's theme, with the title, space, version, date and page numbers on every sheet. Refused with not_printable for a folder or a page never published, and with render_unavailable, render_busy, render_timeout, render_too_large or render_failed when no PDF could be made. */
+        /** The published page as a PDF, printed as the caller reads it with every block drawn, in the organization's theme, with the title, space, version, date and page numbers on every sheet. Refused with not_printable for a folder or a page never published, as forbidden for a token limited to spaces, and with render_unavailable, render_busy, render_timeout, render_too_large or render_failed when no PDF could be made. */
         get: operations["pagePDF"];
         put?: never;
         post?: never;
@@ -9783,6 +9783,15 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description Not Found */

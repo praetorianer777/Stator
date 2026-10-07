@@ -19,9 +19,10 @@ const RenderTokenTTL = 2 * time.Minute
 const renderTokenName = "PDF export"
 
 // MintRenderToken makes the token the render service prints a page with, as
-// the caller: read only, for RenderTokenTTL, and reaching the spaces the
-// caller's own credential reaches. It is listed nowhere and not audited; the
-// export it serves is. The caller's expired print tokens go with it.
+// the caller: read only, for RenderTokenTTL, listed nowhere and not audited;
+// the export it serves is. The caller's expired print tokens go with it. A
+// caller with a token limited to spaces may make no token, which the
+// database refuses too.
 func (s *Service) MintRenderToken(ctx context.Context, p *Principal) (string, uuid.UUID, db.LSN, error) {
 	secret, digest, err := GenerateAPIToken()
 	if err != nil {
@@ -33,19 +34,12 @@ func (s *Service) MintRenderToken(ctx context.Context, p *Principal) (string, uu
 			return fmt.Errorf("forget spent print tokens: %w", err)
 		}
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, spaces_only, for_render)
-			VALUES (current_org_id(), $1, $2, $3, ARRAY['read'], now() + make_interval(secs => $4), $5, true)
+			INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, for_render)
+			VALUES (current_org_id(), $1, $2, $3, ARRAY['read'], now() + make_interval(secs => $4), true)
 			RETURNING id`,
-			p.UserID, renderTokenName, digest, RenderTokenTTL.Seconds(), p.InSpacesOnly(),
+			p.UserID, renderTokenName, digest, RenderTokenTTL.Seconds(),
 		).Scan(&id); err != nil {
 			return fmt.Errorf("make the print's token: %w", err)
-		}
-		if p.InSpacesOnly() && len(p.TokenSpaces) > 0 {
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO api_token_space (org_id, token_id, space_id)
-				SELECT current_org_id(), $1, unnest($2::uuid[])`, id, p.TokenSpaces); err != nil {
-				return fmt.Errorf("limit the print's token to the caller's spaces: %w", err)
-			}
 		}
 		return nil
 	})
