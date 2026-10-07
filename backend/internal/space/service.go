@@ -303,16 +303,21 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, key string) (db.
 		if err := perm.Check(ctx, tx, actor, perm.DeleteSpace, current.ID); err != nil {
 			return err
 		}
-		// Before the pages go: the sync finds them gone and takes their links
-		// off the issues they named.
-		if _, err := tx.Exec(ctx, `SELECT armature_links_emit_space($1, false, $2)`, current.ID, events.TraceParent(ctx)); err != nil {
-			return fmt.Errorf("sync the space's Armature links: %w", err)
-		}
-		if _, err := tx.Exec(ctx, `DELETE FROM space WHERE id = $1`, current.ID); err != nil {
+		if err := deleteSpace(ctx, tx, current.ID); err != nil {
 			return err
 		}
 		return record(ctx, tx, actor, audit.ActionSpaceDeleted, current.ID, map[string]any{"key": current.Key, "name": current.Name})
 	})
+}
+
+func deleteSpace(ctx context.Context, tx db.DBTX, id uuid.UUID) error {
+	// Before the pages go: the sync finds them gone and takes their links
+	// off the issues they named.
+	if _, err := tx.Exec(ctx, `SELECT armature_links_emit_space($1, false, $2)`, id, events.TraceParent(ctx)); err != nil {
+		return fmt.Errorf("sync the space's Armature links: %w", err)
+	}
+	_, err := tx.Exec(ctx, `DELETE FROM space WHERE id = $1`, id)
+	return err
 }
 
 // record notes an administrator's act on a space in the organization's audit
