@@ -307,7 +307,7 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	once(audit.ActionTemplateUpdated, me, tplID)
 	want(t, owner.delete(t, "/api/v1/templates/"+tplID), http.StatusNoContent, "delete the template")
 	once(audit.ActionTemplateDeleted, me, tplID)
-	exampleID := idOf(t, want(t, owner.post(t, "/api/v1/example-space", map[string]any{"language": "en"}), http.StatusCreated, "make the example space"), "space")
+	exampleID := api.makeExample(t, owner, map[string]any{"language": "en"})["id"].(string)
 	if data := once(audit.ActionExampleSpaceCreated, me, exampleID); !strings.Contains(data, `"language": "en"`) {
 		t.Errorf("the example's record reads %s", data)
 	}

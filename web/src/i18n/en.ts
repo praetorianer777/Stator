@@ -781,6 +781,16 @@ export const en = {
     exists: "The example space exists already:",
     archived: "It is archived. Take it out of the archive in its space settings to change it again.",
     notAdmin: "Only administrators of the organization create the example space. Ask one of them to create it.",
+    underWay: "The example space is being made. This page opens it when it is ready.",
+    slow: "The example space has not been begun yet. The worker that makes it may not be running; this page keeps checking, and if nothing changes, ask whoever runs Stator to start it.",
+    gaveUp:
+      "The example space has not been made after a quarter of an hour. Reload this page to check again, or ask whoever runs Stator whether its worker is running.",
+    failures: {
+      keys_taken: "The keys STATOR to STATOR9 are all taken by other spaces. Delete or rename one of them, then create the example space again.",
+      forbidden: "Only administrators of the organization create the example space. Ask one of them to create it.",
+      failed:
+        "Creating the example space failed, and what was made of it was deleted. Create it again; if it fails once more, ask whoever runs Stator to look at the worker's log.",
+    },
   },
   spaces: {
     title: "Spaces",

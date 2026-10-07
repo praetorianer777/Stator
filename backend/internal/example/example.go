@@ -58,7 +58,17 @@ type Maker struct {
 	Attachments *attachment.Service
 	Armature    *armature.Service
 	Now         func() time.Time
+	// Started hears of the space as soon as it exists, before its pages; an
+	// error from it fails the making, which deletes the space again.
+	Started func(context.Context, *space.Space) error
 }
+
+// ErrNotDiscarded says a failed making left its half made space behind.
+var ErrNotDiscarded = errors.New("the half made example space is still there")
+
+// CleanupLimit bounds deleting a half made example, which goes on after the
+// context of the making ended: a making cut short is what leaves one.
+const CleanupLimit = 2 * time.Minute
 
 // ErrNoLanguage refuses a language the content is not written in.
 var ErrNoLanguage = errors.New("the example space is written in English (en) and German (de); choose one of them")
@@ -103,17 +113,43 @@ func (m *Maker) Make(ctx context.Context, actor perm.Actor, me Person, lang stri
 		return nil, false, lsn, err
 	}
 	w := &writes{lsn: lsn}
-	if err := m.fill(ctx, actor, sp, &f, w); err != nil {
-		if _, cleanup := m.Spaces.Delete(ctx, actor, sp.Key); cleanup != nil {
-			err = errors.Join(err, fmt.Errorf("delete the half made example space: %w", cleanup))
-		}
-		if m.Attachments != nil {
-			_, _ = m.Attachments.Sweep(ctx)
+	err = m.started(ctx, sp)
+	if err == nil {
+		err = m.fill(ctx, actor, sp, &f, w)
+	}
+	if err == nil {
+		lsn, err = m.Spaces.ExampleMade(ctx, actor, sp.ID, lang)
+		w.note(lsn)
+	}
+	if err != nil {
+		if cleanup := m.Discard(ctx, actor, sp.ID); cleanup != nil {
+			err = errors.Join(err, cleanup)
 		}
 		return nil, false, w.lsn, err
 	}
 	made, err := m.Spaces.Get(ctx, actor, sp.Key)
 	return made, true, w.lsn, err
+}
+
+func (m *Maker) started(ctx context.Context, sp *space.Space) error {
+	if m.Started == nil {
+		return nil
+	}
+	return m.Started(ctx, sp)
+}
+
+// Discard deletes a half made example space with its files, also when ctx
+// has ended, within CleanupLimit.
+func (m *Maker) Discard(ctx context.Context, actor perm.Actor, id uuid.UUID) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), CleanupLimit)
+	defer cancel()
+	if _, err := m.Spaces.DiscardExample(ctx, actor, id); err != nil {
+		return fmt.Errorf("%w: %w", ErrNotDiscarded, err)
+	}
+	if m.Attachments != nil {
+		_, _ = m.Attachments.Sweep(ctx)
+	}
+	return nil
 }
 
 func (m *Maker) now() time.Time {

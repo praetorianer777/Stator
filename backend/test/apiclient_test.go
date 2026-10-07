@@ -29,6 +29,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/convert"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/example"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
@@ -115,7 +116,7 @@ func newAPIServer(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *ap
 	server := &httpapi.Server{
 		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
-		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Tasks: task.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Calendars: calendar.NewService(h.cluster), Guests: guest.NewService(h.cluster), Public: public.NewService(h.cluster), Hub: hub.NewService(h.cluster), Templates: template.NewService(h.cluster),
+		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Tasks: task.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Calendars: calendar.NewService(h.cluster), Guests: guest.NewService(h.cluster), Public: public.NewService(h.cluster), Hub: hub.NewService(h.cluster), Templates: template.NewService(h.cluster), ExampleJobs: example.NewJobs(h.cluster),
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),
 		Audit: audit.NewService(h.cluster), AuditRetention: config.DefaultRetainAudit, Webhooks: h.webhooks(t),
 		PageViews: pageview.NewService(h.cluster), PageViewRetention: config.DefaultRetainPageViews,

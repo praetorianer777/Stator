@@ -196,6 +196,11 @@ publishing:
   # a scheduled publish goes out at most this late. A second or more.
   scheduleCheckInterval: 30s
 
+exampleSpace:
+  # How often the worker looks for an example space an administrator asked
+  # for, who waits on the page meanwhile. A second or more.
+  checkInterval: 2s
+
 mail:
   # The SMTP relay the worker sends notifications through, as host:port.
   # Blank turns mail off: notifications are then shown in the app only.

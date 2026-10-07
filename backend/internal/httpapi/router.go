@@ -18,6 +18,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/example"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/hub"
@@ -89,6 +90,8 @@ type Server struct {
 	Home  *home.Service
 	// Templates keeps the organization's own templates beside the built-ins.
 	Templates *template.Service
+	// ExampleJobs queues the example space for the worker and reads how it goes.
+	ExampleJobs *example.Jobs
 	// Stale reads the stale content report for administrators.
 	Stale *stale.Service
 	// Tasks reads the tasks people are assigned on published pages.

@@ -14,7 +14,7 @@ browser ──> web (nginx, React SPA) ──> api (Go) ──> PostgreSQL (prim
                                         │  ├──> converter (office documents to PDF, for previews)
                                         │  ├──> render (headless Chromium: a page's print view to PDF) ──> web
                                         │  └──> Armature API (as the viewing user)
-                                        └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks, scheduled publishes
+                                        └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks, scheduled publishes, example spaces
 Keycloak / any OIDC provider <── login ──┘
 ```
 
@@ -109,7 +109,7 @@ process, which is only right for a single api process. `/readyz` and
 | `share` | sending a page to people and groups who may view it, with a note |
 | `keyset` | the cursor a list ordered by time hands out for its next window |
 | `template` | page templates: the built-ins, the organization's and each space's own, their variables and filling them in for a new page; and the space templates a new space starts from |
-| `example` | the example space that explains Stator: its pages as Markdown per language, made through the other services |
+| `example` | the example space that explains Stator: its pages as Markdown per language, made through the other services by the worker, as the administrator who queued it |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
 | `attachment` | uploads to S3-compatible storage, each upload of a name its next version, a restore an upload of an earlier one and an annotated picture an upload drawn on one, served whole or by the byte range a video player asks for, and their PDF previews, converted once and kept |
 | `convert` | the client of the conversion service that turns office documents into PDF |

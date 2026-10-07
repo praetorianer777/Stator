@@ -63,7 +63,8 @@ func exampleOf(ctx context.Context, tx db.DBTX, actor perm.Actor) (*Space, error
 }
 
 // CreateExample makes the example space and its published home page; a taken
-// key is a FieldError on key, an existing example ErrExampleExists.
+// key is a FieldError on key, an existing example ErrExampleExists. It is
+// audited by ExampleMade once its pages are made, so a failed one never is.
 func (s *Service) CreateExample(ctx context.Context, actor perm.Actor, in ExampleInput) (*Space, db.LSN, error) {
 	key := NormalizeKey(in.Key)
 	if err := checkKey(key); err != nil {
@@ -112,11 +113,45 @@ func (s *Service) CreateExample(ctx context.Context, actor perm.Actor, in Exampl
 		if err := presetGrants(ctx, tx, id, in.Everyone); err != nil {
 			return err
 		}
-		if err := record(ctx, tx, actor, audit.ActionExampleSpaceCreated, id, map[string]any{"key": key, "name": name, "language": in.Language}); err != nil {
-			return err
-		}
 		out, err = Load(ctx, tx, actor, ByID, id)
 		return err
 	})
 	return out, lsn, err
+}
+
+// ExampleMade records in the audit log that the example space is made, in
+// the language its pages are written in.
+func (s *Service) ExampleMade(ctx context.Context, actor perm.Actor, id uuid.UUID, language string) (db.LSN, error) {
+	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		made, err := Load(ctx, tx, actor, ByID, id)
+		if err != nil {
+			return err
+		}
+		if err := perm.Check(ctx, tx, actor, perm.CreateExampleSpace, uuid.Nil); err != nil {
+			return err
+		}
+		return record(ctx, tx, actor, audit.ActionExampleSpaceCreated, id, map[string]any{"key": made.Key, "name": made.Name, "language": language})
+	})
+}
+
+// DiscardExample deletes an example space whose making failed. It is not
+// audited: the log never said it was made.
+func (s *Service) DiscardExample(ctx context.Context, actor perm.Actor, id uuid.UUID) (db.LSN, error) {
+	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var example bool
+		err := tx.QueryRow(ctx, `SELECT example FROM space WHERE id = $1 FOR UPDATE`, id).Scan(&example)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if !example {
+			return ErrNotFound
+		}
+		if err := perm.Check(ctx, tx, actor, perm.DeleteSpace, id); err != nil {
+			return err
+		}
+		return deleteSpace(ctx, tx, id)
+	})
 }

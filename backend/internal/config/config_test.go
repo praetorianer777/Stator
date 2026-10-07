@@ -29,6 +29,7 @@ func clean(t *testing.T) {
 		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
 		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
 		"STATOR_VERIFICATION_CHECK_INTERVAL", "STATOR_TASK_DUE_CHECK_INTERVAL", "STATOR_SCHEDULE_CHECK_INTERVAL",
+		"STATOR_EXAMPLE_CHECK_INTERVAL",
 	} {
 		t.Setenv(key, "")
 	}
@@ -590,6 +591,31 @@ func TestTheScheduleCheckIsAnInterval(t *testing.T) {
 		_, err := Load()
 		var cfgErr *Error
 		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_SCHEDULE_CHECK_INTERVAL") {
+			t.Errorf("%s was not refused by name: %v", bad, err)
+		}
+	}
+}
+
+// The example space is looked for every two seconds unless told otherwise,
+// and an interval too short to be meant is refused with what to set.
+func TestTheExampleCheckIsAnInterval(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ExampleCheck != DefaultExampleCheck {
+		t.Errorf("example spaces are looked for every %s, want %s", c.ExampleCheck, DefaultExampleCheck)
+	}
+	t.Setenv("STATOR_EXAMPLE_CHECK_INTERVAL", "5s")
+	if c, err = Load(); err != nil || c.ExampleCheck != 5*time.Second {
+		t.Errorf("5s read as %s, %v", c.ExampleCheck, err)
+	}
+	for _, bad := range []string{"0s", "100ms", "-2s"} {
+		t.Setenv("STATOR_EXAMPLE_CHECK_INTERVAL", bad)
+		_, err := Load()
+		var cfgErr *Error
+		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_EXAMPLE_CHECK_INTERVAL") {
 			t.Errorf("%s was not refused by name: %v", bad, err)
 		}
 	}
