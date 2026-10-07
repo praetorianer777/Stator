@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { meQueryKey } from "@/api/auth";
-import { fetchPdf, fileNameOf } from "@/api/pdf";
+import { fetchFile, fetchPdf, fileNameOf } from "@/api/pdf";
 import { LocalizedRouter } from "@/features/shell/LocalizedRouter";
 import { createQueryClient } from "@/lib/session";
 import { buildRouter, sendToLogin } from "@/routes";
@@ -68,7 +68,7 @@ function stubReading(pdf: (() => Promise<Response>)[]) {
   const printed: string[] = [];
   vi.stubGlobal("fetch", async (input: Request) => {
     const path = new URL(input.url).pathname;
-    if (path.endsWith("/pdf")) {
+    if (path.endsWith("/pdf") || path.endsWith("/docx")) {
       printed.push(path);
       // The last answer stands for any print after it.
       const next = pdf.length > 1 ? pdf.shift()! : pdf[0]!;
@@ -210,6 +210,69 @@ describe("exporting a page as PDF", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     expect(await screen.findByRole("menuitem", { name: "Export as Markdown" })).toBeVisible();
     expect(screen.queryByRole("menuitem", { name: "Export as PDF" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Export as Word" })).toBeNull();
+  });
+});
+
+/** Answers the Word route with a document, or with the envelope given. */
+function wordAnswer(refusal?: Answer) {
+  return async () =>
+    refusal
+      ? new Response(JSON.stringify(refusal.body), { status: refusal.status, headers: { "Content-Type": "application/json" } })
+      : new Response("PK\u0003\u0004", {
+          status: 200,
+          headers: {
+            "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition": 'attachment; filename="DOCS-guide-2026-10-07.docx"',
+          },
+        });
+}
+
+describe("exporting a page as Word", () => {
+  async function openExport() {
+    await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Export as Word" }));
+  }
+
+  it("saves the document under the API's name and closes", async () => {
+    const { printed } = stubReading([wordAnswer()]);
+    const saved: string[] = [];
+    stubObjectUrls();
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.download);
+    });
+    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await openExport();
+    await waitFor(() => expect(saved).toEqual(["DOCS-guide-2026-10-07.docx"]));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(new Set(printed)).toEqual(new Set([`/api/v1/pages/${pageId}/docx`]));
+  });
+
+  it("says why an export failed, in words that pass axe, and tries again", async () => {
+    const large = {
+      status: 422,
+      body: { error: { code: "docx_too_large", message: "The Word file came out larger than this server hands out. Make the pictures on the page smaller." } },
+    };
+    stubReading([wordAnswer(large), wordAnswer()]);
+    stubObjectUrls();
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await openExport();
+    const dialog = within(await screen.findByRole("dialog", { name: "Export Guide as Word" }));
+    expect(await dialog.findByRole("alert")).toHaveTextContent("The Word file came out larger");
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(dialog.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("says a lost connection in words of its own", async () => {
+    vi.stubGlobal("fetch", async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    await expect(fetchFile("/api/v1/pages/x/docx", "x.docx", "The Word document could not be fetched.")).rejects.toMatchObject({
+      code: "network",
+      message: "The Word document could not be fetched.",
+    });
   });
 });
 
