@@ -115,6 +115,89 @@ may hold, so the example space's showcase cannot show it; the templates
 guide tells of it instead, and the showcase's test names every such node
 with why.
 
+## 2026-10-07: A PDF is the page's print view, printed by a browser as its reader
+
+A reader exports a page to PDF to share or archive it (#86).
+
+- **Printed by a browser, as in Armature.** Armature's render service
+  comes over: puppeteer in the public Chrome image behind a small HTTP
+  door (`render/server.mjs`), which the api names a path of the web
+  application and which answers with the PDF. Diagrams, formulas,
+  charts, galleries, includes and Armature blocks are drawn in the
+  reader's browser, so HTML made on the server would print none of them;
+  the conversion service's own browser stays off, as it is the office
+  suite's.
+- **What is printed.** The published page as the reader may read it, with
+  every block drawn as in the reading view, from a view of its own
+  (`/print/p/{id}`) that shows the page alone. A draft is never printed and
+  no "export my draft" is offered: a draft is its author's work in
+  progress, and what is handed on should be what readers read. A folder
+  and a page never published are refused with `not_printable`; the menu
+  does not offer them.
+- **How the browser reads as the reader.** For a signed-in reader the api
+  makes a personal access token for that one print: read only, for two
+  minutes, listed on no tokens page and not audited itself, and deleted as
+  soon as the render service answers, whatever it answered. The token goes
+  to the service in the request's body, never in an address, and the
+  service sends it as a bearer only on the page's own `/api/` requests and
+  lets the page reach no other origin, so no host but Stator's own ever
+  sees it. A check in migration 00590 holds every such row to read only
+  and five minutes at most, so a raw INSERT or UPDATE as the app role
+  cannot make one that outlives a print. The reader's last write position
+  goes with the token, so a print right after a publish shows it. The
+  reader's own session is not handed over, since it outlives the print and
+  could do everything; a public link would print as nobody, without
+  Armature blocks, mentions or what restrictions let the reader see, and
+  only where links are allowed.
+- **Tokens limited to spaces.** Such a token may make no token, which the
+  database refuses, so its print is refused with a sentence before anything
+  is made. Handing the limit on would mean the limited token making one.
+  A script with a token that reaches every space prints.
+- **Anybody, and a public link.** What anybody may read anybody may print,
+  from the public view and from a public link, as anybody reads it and with
+  no credential at all: `GET /public/{org}/pages/{id}/pdf` and
+  `GET /public/{org}/links/{token}/pdf`. Nobody is signed in to be asked,
+  so Armature's throttle brakes one address at six prints of one page a
+  minute. The print views are logged and cached nowhere, as a link's own
+  view, since one carries a link's token.
+- **Theme and language.** A signed-in reader's PDF is in the organization's
+  theme (`GET /themes/default`), not the theme they chose for themselves,
+  since a PDF is handed on; anybody's is in the built-in theme the public
+  views show. Paper is light, so the light scheme always, and the page is
+  on white, because the browser draws the margins where the header and
+  footer go on white whatever the theme. The words and dates are in the
+  reader's language, the one they chose or else their browser's, which the
+  service's browser is made to prefer.
+- **Paper.** A4 portrait: Armature prints dashboards on landscape A4 and
+  offers no choice, and a wiki page is a column of text. Every sheet
+  carries the organization and space and the page's title above, and the
+  version, its date, the day printed and the page number of the count
+  below. Blocks are kept on one sheet when they fit, headings stay with
+  what follows, and controls such as a diagram's download are left out.
+- **Knowing when to print.** The print view marks the document
+  `data-print-ready` once no query is fetching and nothing is pending (a
+  skeleton, a busy region, a diagram being drawn, a picture not yet in)
+  for 300 ms, and asks for every lazy picture at once; or it shows why the
+  page cannot be printed, which the service answers with at once rather
+  than waiting out its budget.
+- **Limits.** One deadline, 20 seconds by default and below the api's
+  request timeout, covers waiting for a free browser and printing; each api
+  process prints four at once, and so does each render service; a PDF over
+  50 MB is refused. Each failure is a sentence that says what to do:
+  `render_unavailable`, `render_busy`, `render_timeout`,
+  `render_too_large` or `render_failed`. `STATOR_RENDER_URL`, `_TIMEOUT`,
+  `_CONCURRENCY` and `_MAX_SIZE` set them; a blank URL turns export off.
+- **Deployment.** The compose stack runs `render` as Armature's does, with
+  the script mounted; the chart runs it with `render.enabled`, off by
+  default, from `deploy/Dockerfile.render`, reaching the web pods inside
+  the cluster, and `tests/test-helm.sh` covers both.
+- **Audited as Markdown is.** A member's export is `page.exported` with
+  scope `pdf`. A print by anybody is not: there is nobody to name, and
+  reading a public page is not audited either.
+- **Not an MCP tool.** A PDF is a file printed for a person to keep or hand
+  on; `get_page` and `get_page_markdown` carry the same words to a model.
+  The public PDFs are the public reading view's, which no tool is.
+
 ## 2026-10-07: An annotated picture is flattened in the browser and saved as its file's next version
 
 An author crops a screenshot and draws on it so that it shows what

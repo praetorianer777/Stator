@@ -26,3 +26,5 @@ Die Glocke in der oberen Leiste zählt, was Sie noch nicht gelesen haben: Erwäh
 ## Eine Seite teilen
 
 **Teilen** im Kopf einer Seite schickt sie mit einer Notiz an Personen und Gruppen. Es gibt niemandem Zugriff: Nur wer die Seite schon sehen darf, wird benachrichtigt, und der Dialog sagt, wer das ist.
+
+**Als PDF exportieren** in den **Seitenaktionen** gibt eine Seite als Datei weiter: die veröffentlichte Seite so, wie Sie sie lesen, mit allen Blöcken und mit Titel, Version und Seitenzahlen auf jedem Blatt. Eine öffentliche Seite und ein öffentlicher Link bieten **PDF** neben dem Titel an.
