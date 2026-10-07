@@ -154,6 +154,10 @@ func merge(x, y *node) (*node, bool, bool) {
 		return &out, key(x) != key(y), true
 	case y.Type == "table":
 		return mergeTable(x, y)
+	// A gallery's pictures hold no text to mark, so one that changed at all
+	// reads as the old gallery taken out and the new one put in.
+	case y.Type == document.NodeGallery:
+		return nil, false, false
 	case len(x.Content) == 0 && len(y.Content) == 0:
 		return &out, false, true
 	}

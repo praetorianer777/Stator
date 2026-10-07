@@ -56,6 +56,9 @@ lightbox of #93 steps through them.
   side as Markdown images.
 - **Not searched.** Captions are not in a page's search text, as an
   image's description is not.
+- **Compared whole.** A picture holds no text a comparison of versions
+  could mark, so a gallery that changed at all is shown taken out and put
+  in again, as a table whose shape changed is.
 - No new API operation, so the MCP tools are unchanged. The example
   showcase shows a gallery of its picture and a second one drawn in code,
   written as a `%%gallery N%%` container of pictures.
