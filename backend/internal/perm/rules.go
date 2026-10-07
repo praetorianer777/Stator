@@ -79,13 +79,13 @@ func Decide(f Facts, action Action) bool {
 		return f.OrgAdmin()
 	case ViewSpace:
 		return f.HoldsSpace(SpaceView)
-	case EditPages, EditCalendars:
+	case EditPages, EditCalendars, ArrangePages:
 		return f.HoldsSpace(SpaceAddPages)
 	case AddComments:
 		return f.HoldsSpace(SpaceAddComments)
 	case DeletePages:
 		return f.HoldsSpace(SpaceDelete)
-	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace, ReviewStale, ManageShortcuts, CopyPermissionsFrom, KeepTemplates:
+	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace, ReviewStale, ManageShortcuts, CopyPermissionsFrom, GrantEdit, KeepTemplates:
 		return f.HoldsSpace(SpaceAdminister)
 	case KeepOrgTemplates:
 		return f.OrgAdmin()
@@ -124,11 +124,22 @@ type ChainLink struct {
 	// is on it. The same for edit.
 	ViewListed, OnViewList bool
 	EditListed, OnEditList bool
+	// Granted says the page's grant list names the person, which lets them
+	// edit it and below without add pages, and passes its edit list.
+	Granted bool
 }
 
 // PageAccess is what one person may do to one page.
 type PageAccess struct {
 	View, Edit, Delete, Comment bool
+	// Add is adding pages below this one and moving them, which takes add
+	// pages in the space; a grant to edit never gives it.
+	Add bool
+	// GrantEdit is changing who the page's grant list names, which only the
+	// space's administrators may.
+	GrantEdit bool
+	// Granted says the person edits only through a grant list.
+	Granted bool
 	// Archive is archiving the page and unarchiving it, which its space's
 	// administrators may; Archived says whether it is, and how.
 	Archive  bool
@@ -140,32 +151,38 @@ type PageAccess struct {
 
 // Can is the access as the interface is told it.
 func (a PageAccess) Can() PageCan {
-	return PageCan{Edit: a.Edit, Delete: a.Delete, Restrict: a.Edit, Comment: a.Comment,
+	return PageCan{Edit: a.Edit, Delete: a.Delete, Restrict: a.Edit, Comment: a.Comment, Add: a.Add, GrantEdit: a.GrantEdit,
 		Archive: a.Archive && a.Archived != ArchivedSpace}
 }
 
 // PageRules decides a page from the facts of its space and its chain, the
 // page first. A person must pass every list on the page and above it;
 // administrators of the space pass them all, but see nobody's unpublished page.
+// A grant list stands in for add pages when editing, never for anything else.
 func PageRules(f Facts, chain []ChainLink) PageAccess {
 	var a PageAccess
 	if len(chain) == 0 {
 		return a
 	}
 	viewLists, editLists := true, true
-	hidden := false
+	hidden, granted := false, false
 	for _, l := range chain {
 		hidden = hidden || l.HiddenDraft
+		granted = granted || l.Granted
 		a.ViewRestricted = a.ViewRestricted || l.ViewListed
 		a.EditRestricted = a.EditRestricted || l.EditListed
 		viewLists = viewLists && (!l.ViewListed || l.OnViewList)
-		editLists = editLists && (!l.EditListed || l.OnEditList)
+		editLists = editLists && (!l.EditListed || l.OnEditList || l.Granted)
 	}
 	if f.HoldsSpace(SpaceAdminister) {
 		viewLists, editLists = true, true
 	}
+	addPages := f.HoldsSpace(SpaceAddPages)
 	a.View = !hidden && f.HoldsSpace(SpaceView) && viewLists
-	a.Edit = a.View && f.HoldsSpace(SpaceAddPages) && editLists
+	a.Edit = a.View && (addPages || granted) && editLists
+	a.Granted = a.Edit && !addPages
+	a.Add = a.Edit && addPages
+	a.GrantEdit = a.Edit && f.HoldsSpace(SpaceAdminister)
 	a.Delete = a.View && f.HoldsSpace(SpaceDelete) && editLists
 	a.Comment = a.View && f.HoldsSpace(SpaceAddComments)
 	a.Archive = a.View && f.HoldsSpace(SpaceAdminister)

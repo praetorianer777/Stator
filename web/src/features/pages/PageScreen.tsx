@@ -185,14 +185,15 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   const actions: MenuItem[] = [];
   if (folder && page.can.edit) actions.push({ label: t.page.rename, onSelect: () => setDialog("rename"), attrs: { "data-action": "rename-folder" } });
   // A post stays in its blog: nothing goes under it, and it is neither moved nor copied into the tree.
-  if (!folder && !post && page.can.edit)
+  // Adding pages below this one and moving it take add pages in the space, which a grant to edit the page does not give.
+  if (!folder && !post && page.can.add)
     actions.push({ label: t.page.newFolder, icon: <Icon.Folder />, onSelect: () => setDialog("newFolder"), attrs: { "data-action": "new-folder" } });
-  if (!page.home && !post && page.can.edit) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
+  if (!page.home && !post && page.can.add) actions.push({ label: t.page.move, onSelect: () => setDialog("move"), attrs: { "data-action": "move-page" } });
   if (!post && space.can.editPages) actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
   if (!folder) {
     actions.push({ label: t.markdown.exportMenu, icon: <Icon.Download />, onSelect: () => setDialog("export"), attrs: { "data-action": "export-markdown" } });
   }
-  if (page.can.edit && !folder && !post) {
+  if (page.can.add && !folder && !post) {
     actions.push({ label: t.markdown.importMenu, icon: <Icon.Upload />, onSelect: () => setDialog("import"), attrs: { "data-action": "import-markdown" } });
   }
   if (page.can.restrict) {
@@ -321,15 +322,17 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
             )}
             {page.can.edit && (
               <>
-                {!post && (
+                {!post && page.can.add && (
                   <Button variant="secondary" icon={<Icon.Plus />} onClick={() => setDialog("new")} data-action="new-page">
                     {t.page.newPage}
                   </Button>
                 )}
                 {folder ? (
-                  <Button variant="secondary" icon={<Icon.Folder />} onClick={() => setDialog("newFolder")} data-action="new-folder">
-                    {t.page.newFolder}
-                  </Button>
+                  page.can.add && (
+                    <Button variant="secondary" icon={<Icon.Folder />} onClick={() => setDialog("newFolder")} data-action="new-folder">
+                      {t.page.newFolder}
+                    </Button>
+                  )
                 ) : (
                   <Button variant="secondary" icon={<Icon.Edit />} onClick={edit} data-action="edit-page">
                     {t.page.edit}

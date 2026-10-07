@@ -120,6 +120,7 @@ var notTools = map[string]string{
 	"DELETE /spaces/{spaceKey}/guests/{userID}":                    whyAdmin,
 	"GET /pages/{pageID}/restrictions":                             whyAdmin,
 	"PUT /pages/{pageID}/restrictions":                             whyAdmin,
+	"POST /pages/{pageID}/restrictions/check":                      whyAdmin,
 	"GET /pages/{pageID}/access/{userID}":                          whyAdmin,
 	"GET /pages/{pageID}/viewers":                                  whyAdmin,
 	"GET /pages/{pageID}/share/recipients":                         whyBrowser,

@@ -2217,6 +2217,18 @@ export const en = {
     inheritedView: "View",
     inheritedEdit: "Edit",
     inheritedOpen: "Not restricted",
+    inheritedGrant: "Also edit",
+    grantTitle: "Also allowed to edit",
+    grantHint:
+      "These people and groups edit this page and the pages below it although the space does not let them add pages. They still need to view the page and pass every edit list above it; adding, moving and deleting pages stays with the space's permissions.",
+    grantOpen: "Nobody else.",
+    grantAdminsOnly: "Only administrators of the space change this list.",
+    cannotEdit: "Cannot edit",
+    cannotEditMembers: (n: number) => (n === 1 ? "1 member cannot edit" : `${n} members cannot edit`),
+    cannotEditNote:
+      "Those marked cannot edit, because the space does not let them add pages. Add them to Also allowed to edit below, or give them Add pages in the space's permissions.",
+    cannotEditAsk:
+      "Those marked cannot edit, because the space does not let them add pages. Ask an administrator of the space to add them to Also allowed to edit, or to give them Add pages.",
     adminNote: "Administrators of the space and of the organization always pass these lists.",
     readOnly: "Only people who can edit this page can change its restrictions.",
     save: "Save restrictions",
@@ -2298,6 +2310,7 @@ export const en = {
     listYes: (kind: "view" | "edit", title: string) => `On the ${kind} list of ${title}.`,
     listBypassed: (kind: "view" | "edit", title: string) => `Not on the ${kind} list of ${title}, but administrators of the space pass every list.`,
     listNo: (kind: "view" | "edit", title: string) => `Not on the ${kind} list of ${title}. Add them, or one of their groups, under that page's restrictions.`,
+    grantYes: (title: string) => `Allowed to edit ${title} and the pages below it, although the space does not let them add pages.`,
     viewYes: "May view the page.",
     viewNo: "May not view the page, so may do nothing else with it.",
     publishedNo: "The page is not published yet. Comments open once it is.",

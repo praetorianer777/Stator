@@ -261,6 +261,9 @@ func (s *Service) Import(ctx context.Context, actor perm.Actor, parentID uuid.UU
 	if !parent.Can.Edit {
 		return nil, 0, parent.Refusal(perm.EditPages)
 	}
+	if !parent.Can.Add {
+		return nil, 0, parent.Refusal(perm.ArrangePages)
+	}
 	if parent.Kind == page.KindPost {
 		return nil, 0, page.ErrPostPlace
 	}

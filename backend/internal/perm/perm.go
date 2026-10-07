@@ -63,6 +63,11 @@ const (
 	// EditCalendars adds, renames and removes the space's calendars and
 	// their events, which whoever may add pages to the space may.
 	EditCalendars Action = "space.calendars"
+	// ArrangePages adds pages below a page and moves it, which takes add
+	// pages in the space besides editing the page.
+	ArrangePages Action = "page.arrange"
+	// GrantEdit changes who else may edit a page and the pages below it.
+	GrantEdit Action = "page.grantEdit"
 	// CopyPermissionsFrom reads a space's permissions to copy them onto
 	// another, which takes administering it, as reading them does.
 	CopyPermissionsFrom Action = "space.copyPermissionsFrom"
@@ -137,6 +142,10 @@ func (e *DeniedError) Error() string {
 		return "Only an administrator of this space can change its shortcuts. Ask one of them to add, move or remove a shortcut."
 	case EditCalendars:
 		return "You may read this space's calendars but not change them. Ask an administrator of the space to let you add pages, which lets you keep its calendars."
+	case ArrangePages:
+		return "You may edit this page but not add pages below it or move it, since you may not add pages in this space. Ask an administrator of the space to let you add pages."
+	case GrantEdit:
+		return "Only an administrator of this space can change who else may edit this page. Ask one of them to change it."
 	case CopyPermissionsFrom:
 		return "You may copy permissions only from a space you administer, since only its administrators read them. Ask one of them to copy them for you, or choose another space."
 	}
@@ -233,7 +242,7 @@ func Global(ctx context.Context, tx db.DBTX, actor Actor) (GlobalCan, error) {
 // one nobody may view.
 func ForPage(ctx context.Context, tx db.DBTX, actor Actor, page uuid.UUID) (PageAccess, uuid.UUID, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT id, space_id, hidden, view_listed, on_view_list, edit_listed, on_edit_list
+		SELECT id, space_id, hidden, view_listed, on_view_list, edit_listed, on_edit_list, granted
 		FROM perm_page_lists($1, $2)`, page, actor.UserID)
 	if err != nil {
 		return PageAccess{}, uuid.Nil, err
@@ -241,7 +250,7 @@ func ForPage(ctx context.Context, tx db.DBTX, actor Actor, page uuid.UUID) (Page
 	var space uuid.UUID
 	chain, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (ChainLink, error) {
 		var l ChainLink
-		err := row.Scan(&l.PageID, &space, &l.HiddenDraft, &l.ViewListed, &l.OnViewList, &l.EditListed, &l.OnEditList)
+		err := row.Scan(&l.PageID, &space, &l.HiddenDraft, &l.ViewListed, &l.OnViewList, &l.EditListed, &l.OnEditList, &l.Granted)
 		return l, err
 	})
 	if err != nil {

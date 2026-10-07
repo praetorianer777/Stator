@@ -40,7 +40,7 @@ export function aPage(over: Partial<Page> = {}): Page {
     draft: null,
     schedule: null,
     restricted: { view: false, edit: false },
-    can: { edit: true, delete: true, restrict: true, comment: true, archive: true },
+    can: { edit: true, delete: true, restrict: true, comment: true, archive: true, add: true, grantEdit: false },
     ancestors: [],
     labels: [],
     comments: { page: 0, inline: 0, detached: 0 },

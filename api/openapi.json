@@ -7529,7 +7529,7 @@
       },
       "put": {
         "operationId": "setPageRestrictions",
-        "summary": "Replace a page's own view and edit restrictions; the pages below it inherit them.",
+        "summary": "Replace a page's own view and edit restrictions, and, for administrators of the space, who else may edit it without add pages; the pages below it inherit them.",
         "tags": [
           "permissions"
         ],
@@ -7568,6 +7568,66 @@
                   },
                   "required": [
                     "restrictions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/restrictions/check": {
+      "post": {
+        "operationId": "checkPageRestrictions",
+        "summary": "Which people and groups of an edit list, not yet saved, could not edit the page because the space does not let them add pages and no grant names them. Changes nothing; for whoever may edit the page.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestrictionsInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "check": {
+                      "$ref": "#/components/schemas/RestrictionsCheck"
+                    }
+                  },
+                  "required": [
+                    "check"
                   ]
                 }
               }
@@ -14394,6 +14454,7 @@
               "space",
               "unpublished",
               "list",
+              "grant",
               "view",
               "published",
               "home",
@@ -14404,7 +14465,8 @@
             "type": "string",
             "enum": [
               "view",
-              "edit"
+              "edit",
+              "editGrant"
             ]
           },
           "listed": {
@@ -15403,6 +15465,21 @@
           "purgeTrash",
           "addComments",
           "deletePages"
+        ]
+      },
+      "CannotEdit": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "integer"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/Subject"
+          }
+        },
+        "required": [
+          "subject",
+          "members"
         ]
       },
       "Chart": {
@@ -16984,6 +17061,12 @@
               "$ref": "#/components/schemas/Subject"
             }
           },
+          "editGrant": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          },
           "page": {
             "$ref": "#/components/schemas/Ref"
           },
@@ -16997,7 +17080,8 @@
         "required": [
           "page",
           "view",
-          "edit"
+          "edit",
+          "editGrant"
         ]
       },
       "InlineThreadInput": {
@@ -18149,6 +18233,9 @@
       "PageCan": {
         "type": "object",
         "properties": {
+          "add": {
+            "type": "boolean"
+          },
           "archive": {
             "type": "boolean"
           },
@@ -18161,6 +18248,9 @@
           "edit": {
             "type": "boolean"
           },
+          "grantEdit": {
+            "type": "boolean"
+          },
           "restrict": {
             "type": "boolean"
           }
@@ -18170,6 +18260,8 @@
           "delete",
           "restrict",
           "comment",
+          "add",
+          "grantEdit",
           "archive"
         ]
       },
@@ -19627,6 +19719,12 @@
               "$ref": "#/components/schemas/Subject"
             }
           },
+          "editGrant": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          },
           "inherited": {
             "type": "array",
             "items": {
@@ -19643,13 +19741,34 @@
         "required": [
           "view",
           "edit",
+          "editGrant",
           "inherited"
+        ]
+      },
+      "RestrictionsCheck": {
+        "type": "object",
+        "properties": {
+          "cannotEdit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CannotEdit"
+            }
+          }
+        },
+        "required": [
+          "cannotEdit"
         ]
       },
       "RestrictionsInput": {
         "type": "object",
         "properties": {
           "edit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            }
+          },
+          "editGrant": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SubjectRef"

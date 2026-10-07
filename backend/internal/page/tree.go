@@ -201,7 +201,7 @@ func parentFor(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID) 
 	if _, err := tx.Exec(ctx, `SELECT 1 FROM page WHERE id = $1 FOR NO KEY UPDATE`, id); err != nil {
 		return nil, nil, err
 	}
-	if err := p.must(perm.EditPages); err != nil {
+	if err := p.must(perm.ArrangePages); err != nil {
 		return nil, nil, err
 	}
 	if p.Kind == KindPost {
@@ -447,7 +447,7 @@ func (s *Service) Move(ctx context.Context, actor perm.Actor, id uuid.UUID, in M
 		if current.Home {
 			return ErrHomeFixed
 		}
-		if err := current.must(perm.EditPages); err != nil {
+		if err := current.must(perm.ArrangePages); err != nil {
 			return err
 		}
 		if current.Kind == KindPost {
@@ -633,11 +633,13 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			return fmt.Errorf("publish the copy: %w", err)
 		}
 		// Each copy keeps its original's own lists, and takes on those above
-		// where it lands.
+		// where it lands. Who else may edit is not copied: that is the word of
+		// the space's administrators about the original alone.
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id, group_id)
 			SELECT r.org_id, m.new_id, r.kind, r.subject_type, r.user_id, r.group_id
-			FROM page_restriction r JOIN unnest($1::uuid[], $2::uuid[]) AS m (old_id, new_id) ON r.page_id = m.old_id`, olds, news); err != nil {
+			FROM page_restriction r JOIN unnest($1::uuid[], $2::uuid[]) AS m (old_id, new_id) ON r.page_id = m.old_id
+			WHERE r.kind <> 'editGrant'`, olds, news); err != nil {
 			return fmt.Errorf("copy the restrictions: %w", err)
 		}
 		// A copy is published, so its checklists are tasks too. Nobody chose

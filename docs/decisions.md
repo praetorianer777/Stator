@@ -3,6 +3,84 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: A page's grant list opens editing to readers, and only editing
+
+Editing a page needed the space's Add pages, and a page's view and edit
+lists only narrow what the space allows, so a reader of a space could not
+be let at one page (#304). A user put bob, who may only view the space, on
+a page's "Who can edit" list, and bob still could not edit.
+
+- **A third list, of who else may edit.** "Also allowed to edit" is a
+  `page_restriction` row of the kind `editGrant`, beside `view` and `edit`,
+  so a page's lists stay in one table with one picker, one audit entry and
+  the same cascade when the page goes. Whoever it names may edit the page
+  and every page below it although the space does not give them Add pages.
+  It only ever widens; the view and edit lists narrow as before.
+- **The grant never passes a view list, and an edit list holds.** A grantee
+  must view the page as anybody must, and pass every edit list on the page
+  and above it. One exception keeps it simple to explain: an entry of a
+  page's grant list counts as an entry of the same page's edit list, so
+  "Also allowed to edit" means "on this page's edit list, and past the
+  space's Add pages". An administrator who lets bob edit a page with an
+  edit list therefore does not have to name him twice, but an edit list on
+  a page above still stops him, as it stops anybody who adds pages; the
+  access report then names that list. `perm_lists_pass` reads it so for
+  every caller of the edit rule.
+- **Editing, not arranging.** The grant covers everything editing a page
+  covers today: drafts, publishing, live saves, shared drafts, files,
+  labels, how it looks, owners and verification, who read it, and its view
+  and edit lists as an editor may change them. It does not cover adding
+  pages below it, moving it or reordering it, copying it, importing pages
+  under it or deleting it: those still take Add pages, or Delete, in the
+  space, through `perm_page_arrangeable` in `perm_page_insertable`,
+  `page_place` and the page's write guard, and `page.can.add` in the
+  interface. A grant names a page and what is below it as the
+  administrators found it; letting the grantee grow or move that tree
+  would hand them part of the space. Public links stay with whoever holds
+  Add pages, since a link widens who may view and the grant never does.
+- **Only administrators of the space change the list.** The list widens
+  the space's permissions, which only its administrators change, so the
+  database refuses an `editGrant` row written, changed or removed by
+  anybody else, an editor of the page and the grantee included, and the
+  service refuses a save that changes the list with a sentence. A save
+  that leaves `editGrant` out, as an editor's dialog does, keeps the list.
+- **Guests, tokens and anybody.** A guest is granted in their own space
+  only: a trigger refuses naming a guest of another space, as
+  `space_grant_guest_guard` does, and a guest of another space cannot view
+  the page anyway. Guests cannot be in groups, so a group entry never
+  reaches one. A token limited to spaces reaches a granted page only in a
+  space it reaches, since the view rule asks first; a read-only token
+  writes nothing. The anonymous reader is nobody, whom no list names.
+- **Scheduled publishing** is the author's publish at its time, so it goes
+  out only if the author may still edit then, through a grant or not; a
+  grant taken away in between fails it as `forbidden`, as losing Add pages
+  does.
+- **Copies and moves.** Copying a space's permissions copies no page's
+  lists, this one included. Copying pages keeps their view and edit lists
+  but not their grant lists: the copy is a new page the administrators did
+  not look at, and the copier could not write the rows anyway. A page
+  moved to another space leaves its grant list behind, removed by a
+  trigger, since it was the old space's administrators' word.
+- **The access report** shows a grant step, naming the page whose list
+  lets the person edit, in place of the Add pages step when the grant is
+  what decides; for somebody who holds Add pages it shows the space step
+  as before. An edit list step counts the same page's grant entries as
+  passing it.
+- **The dialog says who still cannot edit.** `POST
+  /pages/{id}/restrictions/check` answers, for the lists as the dialog
+  holds them, who of the edit list could not edit because the space does
+  not give them Add pages and no grant names them, and for a group how many
+  of its members. The dialog marks them and says what to do: add them to
+  "Also allowed to edit", or give them Add pages, or, for an editor who is
+  not an administrator, ask one. It speaks of Add pages alone, the reason
+  the issue met; a view list keeping somebody out is the access report's
+  to explain. Only an editor of the page may ask, since it tells whether
+  people hold Add pages.
+- **MCP.** The check is a preview of who may do what, declined as a tool
+  like the restrictions it belongs to; the page tools work for a grantee as
+  the API does, `create_page` under a granted page included, which is
+  refused.
+
 ## 2026-10-07: Every way to start a page takes a template's variables, and guests see their space's templates only
 
 The organization's own templates (#63, decided 2026-10-02) were written
