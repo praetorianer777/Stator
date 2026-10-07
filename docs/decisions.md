@@ -3,6 +3,82 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: The worker makes the example space, and the page follows its job
+
+Making the example space (#288) took one request: some twenty pages, their
+files, a calendar and posts, made through the services one by one in about
+a hundred transactions. On a busy CI runner that outlasted the API's
+request limit (`STATOR_REQUEST_TIMEOUT`, 30 seconds): the request answered
+500 after 30010 ms and the administrator was left on a button saying the
+space was being made (#306). The cleanup that should then have deleted the
+half made space ran on the request's context, which the limit had just
+ended, so it failed too and left the space behind.
+
+Making it faster would only move the limit. Each of those transactions is a
+person's act through a service, holding the rules and policies that make the
+showcase what it claims to be (decided 2026-10-06), so they are not batched
+into fewer; and correctness must not depend on a machine being quick. So
+the making is a job of the worker's, and no request waits for it:
+
+- **A row per making.** `POST /example-space` queues a row of
+  `example_job` (queued, running, done with the space, failed with why) and
+  answers 202 with it at once, or 200 with the space when there is one.
+  `GET /example-space` answers the space and the latest job; the space is
+  null while a job is open, so a half made space is never offered as the
+  example. An organization has at most one job queued or running
+  (`example_job_one_open`), so a second click, or five at once, answers the
+  same job; a click after the space is made finds the space, as before.
+- **As the administrator who asked.** The worker's `example.Watch` runs the
+  same `Maker` through the same services, acting for the requester through
+  the app role in their organization, as a scheduled publish acts for its
+  author (decided 2026-10-06). Every guard holds as it did in the request.
+  The worker looks every `STATOR_EXAMPLE_CHECK_INTERVAL` (2 seconds; a
+  second in the compose stack), since somebody is waiting on the page.
+- **Claimed by a lease.** A worker claims a job with `FOR UPDATE SKIP
+  LOCKED` in a short transaction of the admin role, which marks it running
+  with a lease (`example.Lease`, longer than the making's limit and its
+  cleanup), and commits, as the outbox leases its events (decided
+  2026-10-01): a making of a hundred transactions cannot hold one open. The
+  space is recorded on the job as soon as it exists; a worker that dies
+  leaves the lease to lapse, and the next one deletes that space before it
+  makes the example again, three times at most. Every write the worker
+  makes to the row names the attempt it claimed, so a worker that lost its
+  job writes nothing.
+- **Failing leaves nothing.** A making is bounded (`example.RunLimit`, five
+  minutes). What fails part way is deleted, on a context of its own that
+  the making's end does not cancel (`example.CleanupLimit`), first as the
+  requester and, if they may no longer, by the worker that made it for
+  them. The job then says why, as `keys_taken`, `forbidden` or `failed`,
+  each a sentence that says what to do. A worker stopping hands its job
+  back rather than failing it.
+- **Audited when made.** `space.example_created` is now written once the
+  pages are made, in a transaction of its own, rather than with the space:
+  a making that fails is never recorded as made, and deleting what it left
+  is not recorded either.
+- **The page follows.** The overview's button and the settings page ask
+  every second while the job is open, say the space is being made, and open
+  it when it is done, in the browser that saw it under way. A job still
+  queued after a minute says the worker may not be running and keeps asking;
+  after a quarter of an hour, past every limit the worker keeps, the page
+  stops asking and says to reload or to ask whoever runs Stator. A job
+  already finished when the page opened is named, not jumped to.
+- **Reading what the worker wrote.** The job keeps the position past the
+  worker's last write, and `GET /example-space` hands it to read-your-writes
+  when it reports the job done, so the space it then opens is never read
+  from a replica short of it.
+
+The database holds the requester to what a request could skip. As
+`stator_app`, a job is queued only by an administrator with a token for the
+whole organization, only for themselves, and only as queued: the app role
+may insert the id, the organization, the requester and the language and
+nothing else, and may neither update nor delete a job. Only administrators
+read the jobs. Everything after queuing is the worker's, as the admin role.
+One example per organization stays the index on `space`. The integration
+suite tries each of these through SQL, makes the example under a request
+limit of two seconds with a database slowed past it, makes one fail part
+way and finds nothing of it, and cuts a making's context short and finds
+its space gone. The making stays out of MCP, as before.
+
 ## 2026-10-07: Every way to start a page takes a template's variables, and guests see their space's templates only
 
 The organization's own templates (#63, decided 2026-10-02) were written
