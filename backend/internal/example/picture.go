@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 )
 
 // The showcase's picture: a page of lines beside a bar chart, drawn here so
@@ -93,6 +94,56 @@ func Board() ([]byte, error) {
 		return nil, err
 	}
 	return out.Bytes(), nil
+}
+
+// The showcase's cover: two ranges of hills under a sky that lightens toward
+// them, wide and low as a cover is shown, so any cut around its focus reads.
+const (
+	coverWidth  = 1600
+	coverHeight = 400
+	// CoverFocusX and CoverFocusY are where the cover stays in view, in
+	// percent from the left and the top: the nearer hills' highest point.
+	CoverFocusX = 30
+	CoverFocusY = 60
+)
+
+// coverHill is one range of hills: its base line and wave, as shares of the
+// cover's height, and how many waves span the cover.
+type coverHill struct {
+	base, swell, waves float64
+	colour             color.RGBA
+}
+
+var coverHills = []coverHill{
+	{base: 0.55, swell: 0.12, waves: 1.6, colour: color.RGBA{R: 0x9f, G: 0xbf, B: 0xf5, A: 0xff}},
+	{base: 0.72, swell: 0.10, waves: 1.0, colour: accent},
+}
+
+// Cover is the PNG the showcase shows as its cover picture.
+func Cover() ([]byte, error) {
+	img := image.NewRGBA(image.Rect(0, 0, coverWidth, coverHeight))
+	for y := range coverHeight {
+		share := float64(y) / coverHeight
+		sky := color.RGBA{R: mix(0xdc, paper.R, share), G: mix(0xe8, paper.G, share), B: mix(0xfc, paper.B, share), A: 0xff}
+		fill(img, image.Rect(0, y, coverWidth, y+1), sky)
+	}
+	for _, h := range coverHills {
+		for x := range coverWidth {
+			wave := math.Sin(float64(x) / coverWidth * h.waves * 2 * math.Pi)
+			top := int((h.base - h.swell*wave) * coverHeight)
+			fill(img, image.Rect(x, top, x+1, coverHeight), h.colour)
+		}
+	}
+	var out bytes.Buffer
+	if err := png.Encode(&out, img); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+// mix is the share of the way from a to b.
+func mix(a, b uint8, share float64) uint8 {
+	return uint8(float64(a) + (float64(b)-float64(a))*share)
 }
 
 func fill(img *image.RGBA, r image.Rectangle, c color.RGBA) {

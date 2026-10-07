@@ -8,6 +8,8 @@ Diese Seite zeigt jeden Block und jede Formatierung, die der Editor anbietet, je
 > [!NOTE]
 > Drei Wege führen hinein: Tippen Sie **/** am Anfang eines Wortes, um das Menü **Block einfügen** zu öffnen, und wählen Sie beim Weitertippen aus; nutzen Sie die Werkzeugleiste über dem Text; oder ein Tastenkürzel. Mod steht für Strg, auf einem Mac für Cmd.
 
+{{if .Files}}Das Bild über dieser Seite ist ihr **Titelbild**. Wer eine Seite bearbeiten darf, setzt es unter **Darstellung** im Menü der Seite: Laden Sie ein Bild hoch oder wählen Sie eines der Seite, und klicken Sie dann auf die Stelle, die sichtbar bleiben soll, wie breit das Fenster auch ist. Derselbe Dialog setzt ein Emoji vor den Titel einer Seite und wählt ihre Breite.{{else}}Eine Seite kann ein **Titelbild** tragen, ein Bild über ihrem Kopf, gesetzt unter **Darstellung** im Menü der Seite; diese Website speichert keine Dateien, darum hat diese Seite keines.{{end}}
+
 %%properties%%
 
 | Zielgruppe | Alle |

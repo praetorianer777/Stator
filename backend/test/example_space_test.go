@@ -137,8 +137,13 @@ func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
 			t.Fatal(err)
 		}
 		var body []byte
-		if err := h.super.QueryRow(ctx, `SELECT body FROM page WHERE space_id = $1 AND title = $2`, spaceID, title).Scan(&body); err != nil {
+		var cover *string
+		if err := h.super.QueryRow(ctx, `SELECT p.body, a.file_name FROM page p LEFT JOIN attachment a ON a.id = p.cover_attachment_id
+			WHERE p.space_id = $1 AND p.title = $2`, spaceID, title).Scan(&body, &cover); err != nil {
 			t.Fatalf("no showcase titled %q: %v", title, err)
+		}
+		if cover == nil || *cover != example.CoverFile {
+			t.Errorf("the showcase's cover is %v, want %s", cover, example.CoverFile)
 		}
 		root, err := document.Parse(body)
 		if err != nil {

@@ -8,6 +8,8 @@ This page shows every block and every kind of formatting the editor offers, each
 > [!NOTE]
 > Three ways in: type **/** at the start of a word to open the slash menu, **Insert a block**, and pick from it as you type; use the toolbar above the text; or use a keyboard shortcut. Mod means Ctrl, or Cmd on a Mac.
 
+{{if .Files}}The picture across the top of this page is its **cover**. Whoever may edit a page sets one under **Appearance** in the page's menu: upload a picture or pick one of the page's own, then click the point that should stay in view however wide the window is. The same dialog puts an emoji before a page's title and chooses its width.{{else}}A page can carry a **cover**, a picture across its top, set under **Appearance** in the page's menu; this site keeps no files, so this page has none.{{end}}
+
 %%properties%%
 
 | Audience | Everybody |

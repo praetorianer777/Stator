@@ -48,6 +48,10 @@ test.describe("the example space", { tag: ["@auth"] }, () => {
     const doc = page.locator("[data-doc]").first();
     await doc.getByRole("link", { name: SHOWCASE }).first().click();
     await expect(page.getByRole("heading", { level: 1, name: SHOWCASE })).toBeVisible();
+    const cover = page.locator("[data-page-cover] img");
+    await expect(cover).toBeVisible();
+    await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    await expect(doc).toContainText("The picture across the top of this page is its cover.");
     for (const mark of DRAWN) await expect(doc.locator(`[${mark}]`).first(), mark).toBeVisible();
     await expect(doc.getByRole("img", { name: "A page of text beside a bar chart" })).toBeVisible();
     await expect(doc.locator("[data-include]")).toContainText("Stator keeps a team's knowledge as pages");

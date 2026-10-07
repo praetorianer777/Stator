@@ -325,11 +325,16 @@ func (m *Maker) label(ctx context.Context, actor perm.Actor, id uuid.UUID, label
 	return nil
 }
 
-// upload puts the showcase's two pictures and its table of numbers, twice so
-// it has versions, on the showcase; without file storage there are none.
+// upload puts the showcase's cover, its two pictures and its table of numbers,
+// twice so it has versions, on the showcase, and makes the first its cover;
+// without file storage there are none.
 func (m *Maker) upload(ctx context.Context, actor perm.Actor, f *Facts, w *writes) error {
 	if m.Attachments == nil {
 		return nil
+	}
+	cover, err := Cover()
+	if err != nil {
+		return err
 	}
 	picture, err := Picture()
 	if err != nil {
@@ -343,6 +348,7 @@ func (m *Maker) upload(ctx context.Context, actor perm.Actor, f *Facts, w *write
 		name, contentType string
 		data              []byte
 	}{
+		{CoverFile, "image/png", cover},
 		{ImageFile, "image/png", picture},
 		{BoardFile, "image/png", board},
 		{DataFile, "text/csv", numbers(f.Lang, false)},
@@ -354,6 +360,14 @@ func (m *Maker) upload(ctx context.Context, actor perm.Actor, f *Facts, w *write
 			return fmt.Errorf("upload %s: %w", file.name, err)
 		}
 		f.Files[file.name] = made.ID
+	}
+	_, lsn, err := m.Pages.SetAppearance(ctx, actor, f.Pages[Showcase], page.AppearanceInput{
+		Width: page.WidthFixed,
+		Cover: &page.Cover{AttachmentID: f.Files[CoverFile], FocusX: CoverFocusX, FocusY: CoverFocusY},
+	})
+	w.note(lsn)
+	if err != nil {
+		return fmt.Errorf("give the showcase its cover: %w", err)
 	}
 	return nil
 }
