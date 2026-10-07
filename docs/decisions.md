@@ -3,6 +3,63 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: A gallery names one version of each picture, and each reader sees what they may download
+
+A gallery (#96) shows several pictures of a page side by side, and the
+lightbox of #93 steps through them.
+
+- **Its shape.** A `gallery` block holds one to sixty `galleryImage`
+  nodes, each an `attachmentId` and an optional `caption`, and stores how
+  many pictures go in a row, two to four. The pictures are child nodes
+  rather than a list in an attribute: the allowlist has no list of
+  objects, and as nodes every walk of a document reaches them, the
+  validator's checks of an id, a copy's rewrite of its files' ids
+  (`attachment.ReferenceNodes`) and the anonymous reader's pass among them.
+- **A fixed version, not the latest of a name.** Each picture names one
+  version of a file by id, as a picture in the words does (#95). A
+  gallery is pictures an author chose and placed; following a name would
+  change a published page without a publish, and the page's history would
+  stop showing what was published. A reader through a public link has no
+  list of files to find a name's latest in. The files block remains the
+  one place that follows each name's latest. To show a newer upload, the
+  author edits the gallery, whose dialog offers the latest of each name.
+- **Who sees what.** The body names ids only, and each picture is fetched
+  through the reader's own read of the file: the app's, the public one or
+  the link's, so the rules and row level policies of a download decide.
+  `document.ForAnonymous` passes a gallery on as it does an image, since an
+  id names nobody. In the app a picture that is not a file of the page is
+  left out without a request, as a picture in the words is drawn missing,
+  and one whose read is refused is left out when it fails. Readers see the
+  pictures that are left, numbered among themselves in the lightbox, and a
+  sentence when none is; an author editing sees each gap with a sentence,
+  to remove it.
+- **No thumbnails.** Nothing makes smaller copies of uploads, so a gallery
+  shows the picture itself, loaded lazily and cropped by CSS to one shape
+  so the rows line up; the lightbox shows it whole. A thumbnail would be a
+  second object per version for copies, deletes and the reaper to keep
+  right; that is worth it once pages carry many large pictures, not before.
+- **Layout.** The stored row holds on a wide screen; under the shell's
+  breakpoint (48rem) a gallery shows two in a row whatever it stores.
+- **Making one.** The slash menu's **Gallery** opens a dialog that offers
+  the latest version of each picture on the page, uploads more by the
+  page's upload, orders them by buttons that a keyboard reaches as well,
+  and takes a caption each. The caption is the picture's words for a
+  screen reader too, so it shares the image description's bound, and the
+  picture is not described twice. A page not saved yet says to save it
+  first, as the files block does.
+- **Markdown.** A gallery is written as `<div data-stator="gallery"
+  data-columns="N">` holding an `<img>` per picture with its caption as
+  `alt`, so a Markdown reader that shows HTML shows the pictures, and the
+  import reads it back. A picture whose file is not in the export or the
+  import is left out with a warning; a row out of bounds is brought within
+  them. In a table cell, which is one line, the pictures stand side by
+  side as Markdown images.
+- **Not searched.** Captions are not in a page's search text, as an
+  image's description is not.
+- No new API operation, so the MCP tools are unchanged. The example
+  showcase shows a gallery of its picture and a second one drawn in code,
+  written as a `%%gallery N%%` container of pictures.
+
 ## 2026-10-07: Restoring a file's version uploads it again, and a file is deleted with all its versions
 
 Re-uploads were versions already (#58): each upload of a name to a page is
