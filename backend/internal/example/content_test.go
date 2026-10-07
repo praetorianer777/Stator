@@ -37,7 +37,7 @@ func facts(lang string) example.Facts {
 		Me:    example.Person{ID: uuid.New(), Name: "Ada <Admin> & Co"},
 		Today: "2026-10-06", Soon: "2026-10-09", NextWeek: "2026-10-13",
 		Pages: map[string]uuid.UUID{}, Excerpts: map[string]uuid.UUID{},
-		Files:    map[string]uuid.UUID{example.ImageFile: uuid.New(), example.BoardFile: uuid.New(), example.DataFile: uuid.New()},
+		Files:    map[string]uuid.UUID{example.CoverFile: uuid.New(), example.ImageFile: uuid.New(), example.BoardFile: uuid.New(), example.DataFile: uuid.New()},
 		Calendar: uuid.New(),
 		Armature: &example.ArmatureFacts{Project: "CP", Issue: "CP-4"},
 	}
@@ -276,7 +276,7 @@ func TestTheContentIsEveryFileAndNoOther(t *testing.T) {
 }
 
 func TestThePicturesArePNGs(t *testing.T) {
-	for name, draw := range map[string]func() ([]byte, error){example.ImageFile: example.Picture, example.BoardFile: example.Board} {
+	for name, draw := range map[string]func() ([]byte, error){example.CoverFile: example.Cover, example.ImageFile: example.Picture, example.BoardFile: example.Board} {
 		data, err := draw()
 		if err != nil {
 			t.Fatal(err)
