@@ -173,6 +173,31 @@ describe("the slash menu's blocks", () => {
   });
 });
 
+describe("galleries", () => {
+  it("are read back from what the editor copies, their pictures in order with their captions", async () => {
+    const doc: DocNode = {
+      type: "doc",
+      content: [
+        {
+          type: "gallery",
+          attrs: { columns: 4 },
+          content: [
+            { type: "galleryImage", attrs: { attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a91", caption: "Dock <b>" } },
+            { type: "galleryImage", attrs: { attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a92", caption: null } },
+          ],
+        },
+        { type: "image", attrs: { attachmentId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a93", alt: null, width: null } },
+      ],
+    };
+    const e = await make(doc);
+    const html = e.getHTML();
+    e.destroy();
+    const back = await make();
+    back.commands.setContent(html);
+    expect(back.getJSON().content?.slice(0, 2)).toEqual(doc.content);
+  });
+});
+
 describe("diagrams", () => {
   it("are read back from what the editor copies, their lines and spaces kept", async () => {
     const doc: DocNode = { type: "doc", content: [{ type: "diagram", attrs: { source: 'flowchart LR\n  a["<b>Draft</b>"] --> b\n\n  b --> c' } }] };

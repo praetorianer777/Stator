@@ -128,8 +128,9 @@ export const GalleryNode = Node.create<GalleryOptions>({
     return {
       columns: {
         default: galleryColumns(undefined),
-        parseHTML: (el) => galleryColumns(Number(el.getAttribute("data-columns"))),
-        renderHTML: (attrs) => ({ "data-columns": attrs.columns }),
+        parseHTML: (el) => galleryColumns(Number(el.getAttribute("data-gallery-columns"))),
+        // Not data-columns, which a column layout reads as its own.
+        renderHTML: (attrs) => ({ "data-gallery-columns": attrs.columns }),
       },
     };
   },
