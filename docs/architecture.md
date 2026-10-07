@@ -14,7 +14,7 @@ browser ──> web (nginx, React SPA) ──> api (Go) ──> PostgreSQL (prim
                                         │  ├──> converter (office documents to PDF, for previews)
                                         │  ├──> render (headless Chromium: a page's print view to PDF) ──> web
                                         │  └──> Armature API (as the viewing user)
-                                        └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks, scheduled publishes, example spaces
+                                        └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks, scheduled publishes, example spaces, space exports and imports
 Keycloak / any OIDC provider <── login ──┘
 ```
 
@@ -116,6 +116,7 @@ process, which is only right for a single api process. `/readyz` and
 | `render` | the client of the render service, which prints a page's print view as PDF; the api hands it a path and, for a signed-in reader, a read-only token made for that one print |
 | `markdown` | a document as Markdown and Markdown as a document, held to the allowlist |
 | `mdio` | Markdown import and export of pages, subtrees and their files, through the page and file services |
+| `spaceio` | a whole space exported as an archive or as HTML pages, and an archive imported as a new space, run by the worker as leased jobs |
 | `theme` | custom themes in the `armature-theme/1` format |
 | `armature` | Armature client: issues, queries, issue creation, link sync |
 | `events` | transactional outbox, drained by the worker |
