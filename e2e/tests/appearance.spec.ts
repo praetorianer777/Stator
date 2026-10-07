@@ -9,9 +9,9 @@ import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../
 
 const PIXEL_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
-// Text keeps a measure of 44rem while wide blocks reach 96rem, which this
+// Text keeps a measure of 60rem while wide blocks reach 96rem, which this
 // window has room for beside the tree; the phone is the narrowest we serve.
-const MEASURE_REM = 44;
+const MEASURE_REM = 60;
 const MAX_WIDTH_REM = 96;
 const WIDE_WINDOW_PX = 1920;
 const DROP_ZONE_REACH_REM = 0.75;
