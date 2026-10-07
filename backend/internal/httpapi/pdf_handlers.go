@@ -99,7 +99,7 @@ func (s *Server) handlePagePDF(w http.ResponseWriter, r *http.Request) {
 	}()
 	carryWrites(r.Context(), tokenFreshnessKey(tokenID), lsn)
 
-	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: printPath("/print/p/"+got.ID.String(), r, p), Token: secret})
+	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: "/print/p/" + got.ID.String(), Token: secret, Language: printLanguage(r, p)})
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -133,7 +133,7 @@ func (s *Server) handlePublicPagePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	org := chi.URLParam(r, "orgSlug")
-	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: printPath("/print/public/"+url.PathEscape(org)+"/p/"+got.ID.String(), r, nil)})
+	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: "/print/public/" + url.PathEscape(org) + "/p/" + got.ID.String(), Language: printLanguage(r, nil)})
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -156,7 +156,7 @@ func (s *Server) handleLinkedPagePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	org, token := chi.URLParam(r, "orgSlug"), chi.URLParam(r, "token")
-	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: printPath("/print/public/"+url.PathEscape(org)+"/link/"+url.PathEscape(token), r, nil)})
+	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: "/print/public/" + url.PathEscape(org) + "/link/" + url.PathEscape(token), Language: printLanguage(r, nil)})
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -164,12 +164,8 @@ func (s *Server) handleLinkedPagePDF(w http.ResponseWriter, r *http.Request) {
 	sendPDF(w, pdfName("", got.Title), pdf)
 }
 
-// printPath is the print view of path in the reader's language: the one they
-// chose, else the first of their browser's the interface speaks.
-func printPath(path string, r *http.Request, p *auth.Principal) string {
-	return path + "?lang=" + printLanguage(r, p)
-}
-
+// printLanguage is the reader's language: the one they chose, else the first
+// of their browser's the interface speaks, else English.
 func printLanguage(r *http.Request, p *auth.Principal) string {
 	if p != nil && p.Locale != auth.LocaleBrowser {
 		return string(p.Locale)

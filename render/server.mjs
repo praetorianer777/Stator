@@ -45,8 +45,15 @@ function requestOf(body) {
   if (!path.startsWith("/") || path.startsWith("//")) throw new BadRequest("a path starts with one slash");
   const token = asked?.token == null ? "" : String(asked.token);
   if (/[\r\n]/.test(token)) throw new BadRequest("a token is one line");
+  const language = asked?.language == null ? "" : String(asked.language);
+  if (language && !/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(language)) throw new BadRequest("a language is a tag such as de or en-GB");
   const budget = Number(asked?.budgetMs);
-  return { path, token, budget: Number.isFinite(budget) && budget > 0 ? Math.min(budget, RENDER_BUDGET_MS) : RENDER_BUDGET_MS };
+  return {
+    language,
+    path,
+    token,
+    budget: Number.isFinite(budget) && budget > 0 ? Math.min(budget, RENDER_BUDGET_MS) : RENDER_BUDGET_MS,
+  };
 }
 
 function escapeHTML(text) {
@@ -69,7 +76,7 @@ function margins(meta) {
   };
 }
 
-async function print({ path, token, budget }) {
+async function print({ path, token, language, budget }) {
   const deadline = Date.now() + budget;
   // What is left of the budget, so no one step can spend it all.
   const left = () => {
@@ -82,6 +89,14 @@ async function print({ path, token, budget }) {
     const page = await context.newPage();
     await page.setViewport(VIEWPORT);
     page.setDefaultTimeout(left());
+    // The page follows the browser's language when its reader chose none,
+    // so the browser prefers the reader's.
+    if (language) {
+      await page.evaluateOnNewDocument((tag) => {
+        Object.defineProperty(navigator, "language", { get: () => tag });
+        Object.defineProperty(navigator, "languages", { get: () => [tag] });
+      }, language);
+    }
     // The page reaches its own origin and nothing else, and only its API
     // calls carry the credential, so no other host ever sees it.
     await page.setRequestInterception(true);

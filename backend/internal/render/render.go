@@ -50,11 +50,13 @@ var (
 	ErrTooLarge = errors.New("the PDF is larger than this server hands out")
 )
 
-// Request is what to print: a path of the web application, and the
-// credential its API calls carry, if any. The credential never goes in the path.
+// Request is what to print: a path of the web application, the credential
+// its API calls carry, if any, and the reader's language, which the browser
+// then prefers. The credential never goes in the path.
 type Request struct {
-	Path  string
-	Token string
+	Path     string
+	Token    string
+	Language string
 }
 
 // Renderer turns a path of the web application into a PDF.
@@ -101,6 +103,7 @@ func New(baseURL string, opts Options) *Client {
 type wire struct {
 	Path     string `json:"path"`
 	Token    string `json:"token,omitempty"`
+	Language string `json:"language,omitempty"`
 	BudgetMS int64  `json:"budgetMs"`
 }
 
@@ -120,7 +123,7 @@ func (c *Client) PDF(ctx context.Context, req Request) ([]byte, error) {
 	if budget < minBudget {
 		return nil, ErrBusy
 	}
-	body, _ := json.Marshal(wire{Path: req.Path, Token: req.Token, BudgetMS: budget.Milliseconds()})
+	body, _ := json.Marshal(wire{Path: req.Path, Token: req.Token, Language: req.Language, BudgetMS: budget.Milliseconds()})
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/pdf", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)

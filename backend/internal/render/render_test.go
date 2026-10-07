@@ -40,14 +40,14 @@ func TestAPrintSendsThePathTheTokenAndWhatIsLeftOfTheDeadline(t *testing.T) {
 		asked = got
 		_, _ = w.Write([]byte(testPDF))
 	})
-	pdf, err := New(srv.URL+"/", Options{Timeout: 10 * time.Second}).PDF(context.Background(), Request{Path: "/print/p/1", Token: "secret"})
+	pdf, err := New(srv.URL+"/", Options{Timeout: 10 * time.Second}).PDF(context.Background(), Request{Path: "/print/p/1", Token: "secret", Language: "de"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(pdf) != testPDF {
 		t.Errorf("got %q", pdf)
 	}
-	if asked.Path != "/print/p/1" || asked.Token != "secret" {
+	if asked.Path != "/print/p/1" || asked.Token != "secret" || asked.Language != "de" {
 		t.Errorf("sent %+v", asked)
 	}
 	if asked.BudgetMS <= 0 || asked.BudgetMS > (10*time.Second-budgetMargin).Milliseconds() {
