@@ -41,24 +41,25 @@ function refusal(xhr: XMLHttpRequest): ApiError {
 }
 
 /**
- * Sends files to be made pages under a page, each under its path. XMLHttpRequest
- * rather than fetch, because only it reports how much of a large folder has gone.
+ * Posts files in parts named file, each under its path, and answers the body
+ * when the status is the one expected. XMLHttpRequest rather than fetch,
+ * because only it reports how much of a large upload has gone.
  */
-export function importMarkdown(pageId: string, files: File[], onProgress?: Progress): Promise<ImportResult> {
+export function postFiles<T>(path: string, files: File[], expected: number, onProgress?: Progress): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE}/pages/${encodeURIComponent(pageId)}/import`);
+    xhr.open("POST", `${API_BASE}${path}`);
     xhr.withCredentials = true;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total);
     };
     xhr.onload = () => {
-      if (xhr.status !== 201) {
+      if (xhr.status !== expected) {
         reject(refusal(xhr));
         return;
       }
       try {
-        resolve(JSON.parse(xhr.responseText) as ImportResult);
+        resolve(JSON.parse(xhr.responseText) as T);
       } catch {
         reject(new ApiError(xhr.status, { code: "unexpected_response", message: t.api.unexpected(xhr.status) }));
       }
@@ -68,6 +69,11 @@ export function importMarkdown(pageId: string, files: File[], onProgress?: Progr
     for (const file of files) form.append("file", file, uploadPath(file));
     xhr.send(form);
   });
+}
+
+/** Sends files to be made pages under a page, each under its path. */
+export function importMarkdown(pageId: string, files: File[], onProgress?: Progress): Promise<ImportResult> {
+  return postFiles<ImportResult>(`/pages/${encodeURIComponent(pageId)}/import`, files, 201, onProgress);
 }
 
 /** Makes pages under a page from Markdown files, keeping how much of them has gone. */
