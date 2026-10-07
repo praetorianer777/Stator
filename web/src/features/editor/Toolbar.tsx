@@ -60,14 +60,14 @@ export function EditorToolbar({
       language: (e.getAttributes("codeBlock").language as string | null | undefined) ?? "",
       table: e.isActive("table"),
       // A chart's table goes with its chart; there is no chart without one.
-      charted: variant === "page" && e.isActive("tableChart"),
+      charted: variant !== "comment" && e.isActive("tableChart"),
       panel: e.isActive("panel"),
       panelKind: (e.getAttributes("panel").kind as PanelKind | undefined) ?? "info",
-      expand: variant === "page" && e.isActive("expand"),
-      columnLayout: variant === "page" ? layoutAround(e.state) : null,
+      expand: variant !== "comment" && e.isActive("expand"),
+      columnLayout: variant !== "comment" ? layoutAround(e.state) : null,
       // A comment's editor has no tables, and so neither command.
-      canMerge: variant === "page" && e.can().mergeCells(),
-      canSplit: variant === "page" && e.can().splitCell(),
+      canMerge: variant !== "comment" && e.can().mergeCells(),
+      canSplit: variant !== "comment" && e.can().splitCell(),
       issueItems: onCreateIssues ? (planSelection(e.state)?.items.length ?? 0) : 0,
     }),
   });
@@ -167,7 +167,7 @@ export function EditorToolbar({
             onClick={b.run}
           />
         ))}
-        {variant === "page" && <AttachButton editor={editor} />}
+        {variant !== "comment" && <AttachButton editor={editor} />}
         {onFind && (
           <>
             <Separator />
@@ -243,7 +243,7 @@ export function EditorToolbar({
             )}
           />
           <Separator />
-          {variant === "page" &&
+          {variant !== "comment" &&
             (state.charted ? (
               <ToolButton label={t.tableChart.unchart} action="unchart-table" run={() => chain().unchartTable().run()} />
             ) : (

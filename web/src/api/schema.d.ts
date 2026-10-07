@@ -1071,7 +1071,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once. */
+        /** Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once. A template in place of a body starts a page from that template, the server filling its variables from values. */
         post: operations["createPage"];
         delete?: never;
         options?: never;
@@ -2427,7 +2427,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. For whoever may add pages to the space. */
+        /** Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. A template in place of a body starts it from that template, as with POST /pages. For whoever may add pages to the space. */
         post: operations["createPost"];
         delete?: never;
         options?: never;
@@ -2650,7 +2650,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** What a template button makes and where, for its view: the template, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found. */
+        /** What a template button makes and where, for its view: the template with the variables to ask for, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found. */
         get: operations["templateButton"];
         put?: never;
         post?: never;
@@ -2667,10 +2667,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The documents a new page can start from, in the order to offer them; send one's body and title with POST /pages. */
+        /** The templates a new page can start from, in the order to offer them: the space's own when space is given, the organization's, then the built-ins. Send one's key and values with POST /pages. */
         get: operations["listTemplates"];
         put?: never;
-        post?: never;
+        /** Make a template for the space spaceKey names, for its administrators, or without one for every space, for the organization's administrators. */
+        post: operations["createTemplate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2684,11 +2685,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One template by its key. */
+        /** One template by its key: a built-in's name or the id of one of the organization's. */
         get: operations["getTemplate"];
-        put?: never;
+        /** Replace what one of the organization's templates is made of; the space it belongs to stays. Built-ins are refused. */
+        put: operations["updateTemplate"];
         post?: never;
-        delete?: never;
+        /** Delete one of the organization's templates; pages made from it keep what they were given. */
+        delete: operations["deleteTemplate"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2703,7 +2706,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC. For whoever may add pages there. */
+        /** Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC; values fill the template's variables as with POST /pages. For whoever may add pages there. */
         post: operations["createFromTemplate"];
         delete?: never;
         options?: never;
@@ -3288,7 +3291,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created";
+            action: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -3304,7 +3307,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created")[];
+            actions: ("member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -4148,13 +4151,20 @@ export interface components {
             /** Format: uuid */
             parentId: string;
             publish?: boolean;
+            template?: string;
             title: string;
+            values?: {
+                [key: string]: string;
+            };
         };
         PageFromTemplateInput: {
             /** Format: uuid */
             parentId?: string;
             spaceKey?: string;
             title?: string;
+            values?: {
+                [key: string]: string;
+            };
         };
         PageHit: {
             /** Format: uuid */
@@ -4312,7 +4322,11 @@ export interface components {
             /** @description A JSON value. */
             body?: unknown;
             publish?: boolean;
+            template?: string;
             title: string;
+            values?: {
+                [key: string]: string;
+            };
         };
         Preferences: {
             autoWatch: boolean;
@@ -4865,10 +4879,15 @@ export interface components {
             /** @description A JSON value. */
             body: unknown;
             builtIn: boolean;
+            canEdit: boolean;
             description: string;
             key: string;
             name: string;
+            /** @enum {string} */
+            scope: "space" | "organization" | "builtIn";
+            spaceKey: string;
             title: string;
+            variables: components["schemas"]["Variable"][];
         };
         TemplateButton: {
             canCreate: boolean;
@@ -4877,10 +4896,28 @@ export interface components {
             spaceName: string;
             template: components["schemas"]["TemplateRef"];
         };
+        TemplateCreateInput: {
+            /** @description A JSON value. */
+            body: unknown;
+            description: string;
+            name: string;
+            spaceKey?: string;
+            title: string;
+            variables: components["schemas"]["Variable"][];
+        };
+        TemplateInput: {
+            /** @description A JSON value. */
+            body: unknown;
+            description: string;
+            name: string;
+            title: string;
+            variables: components["schemas"]["Variable"][];
+        };
         TemplateRef: {
             key: string;
             name: string;
             title: string;
+            variables: components["schemas"]["Variable"][];
         };
         Theme: {
             active: boolean;
@@ -4996,6 +5033,15 @@ export interface components {
             locale: "" | "en" | "de";
             name: string;
             showInReaders: boolean;
+        };
+        Variable: {
+            default: string;
+            /** @enum {string} */
+            kind: "text" | "date" | "select" | "person";
+            label: string;
+            name: string;
+            options: string[];
+            required: boolean;
         };
         Verification: {
             /** Format: date-time */
@@ -6221,7 +6267,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -6270,7 +6316,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created";
+                action?: "member.admitted" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -13063,7 +13109,10 @@ export interface operations {
     };
     listTemplates: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description A space key, to include that space's own templates. */
+                space?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -13079,6 +13128,50 @@ export interface operations {
                     "application/json": {
                         templates: components["schemas"]["Template"][];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreateInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        template: components["schemas"]["Template"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -13113,6 +13206,81 @@ export interface operations {
                         template: components["schemas"]["Template"];
                     };
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        template: components["schemas"]["Template"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

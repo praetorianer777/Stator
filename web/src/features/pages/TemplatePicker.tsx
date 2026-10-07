@@ -12,8 +12,17 @@ const STEPS: Record<string, number> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1
  * group with one stop in the tab order, arrows moving the choice as in any
  * radio group, and the chosen one drawn read-only beside it.
  */
-export function TemplatePicker({ value, onChange }: { value: string; onChange: (key: string, template: Template | undefined) => void }) {
-  const { data: templates = [], isLoading, isError } = useTemplates();
+export function TemplatePicker({
+  value,
+  onChange,
+  spaceKey,
+}: {
+  value: string;
+  onChange: (key: string, template: Template | undefined) => void;
+  /** The space the page goes in, whose own templates come first. */
+  spaceKey?: string;
+}) {
+  const { data: templates = [], isLoading, isError } = useTemplates(spaceKey);
   const group = useRef<HTMLDivElement>(null);
   const keys = [BLANK_TEMPLATE, ...templates.map((tpl) => tpl.key)];
   const chosen = templates.find((tpl) => tpl.key === value);
@@ -65,7 +74,7 @@ export function TemplatePicker({ value, onChange }: { value: string; onChange: (
               tabIndex={value === tpl.key ? 0 : -1}
               onSelect={() => pick(tpl.key)}
               title={tpl.name}
-              description={tpl.description}
+              description={tpl.builtIn ? tpl.description : t.templates.described(tpl.description, t.templates.scopes[tpl.scope], tpl.variables.length)}
               className="p-2"
               data-template={tpl.key}
             />

@@ -18,6 +18,7 @@ import (
 // serves it, so whatever later answers to a key is found the same way.
 const (
 	msgNoTemplate = "That template is not there any more. Pick another one in the button's settings."
+	msgElsewhere  = "That template belongs to another space. Pick one the space the page goes in offers, in the button's settings."
 	msgNoTarget   = "Say where the page goes: a space, a page in it, or both."
 )
 
@@ -35,6 +36,8 @@ type TemplateRef struct {
 	Name string `json:"name"`
 	// Title is what a page made from it is called, with the date token, or empty.
 	Title string `json:"title"`
+	// Variables are what the reader fills in before the page is made.
+	Variables []template.Variable `json:"variables"`
 }
 
 // TemplateButton is what a template button shows its reader: the template,
@@ -48,19 +51,24 @@ type TemplateButton struct {
 	CanCreate bool `json:"canCreate"`
 }
 
-// FromTemplateInput is a page made from a template: where it goes and,
-// optionally, its title, in which the date token becomes today in UTC.
+// FromTemplateInput is a page made from a template: where it goes, optionally
+// its title, in which the date token becomes today in UTC, and its variables' values.
 type FromTemplateInput struct {
-	ParentID *uuid.UUID `json:"parentId,omitempty"`
-	SpaceKey string     `json:"spaceKey,omitempty"`
-	Title    string     `json:"title,omitempty"`
+	ParentID *uuid.UUID        `json:"parentId,omitempty"`
+	SpaceKey string            `json:"spaceKey,omitempty"`
+	Title    string            `json:"title,omitempty"`
+	Values   map[string]string `json:"values,omitempty"`
 }
 
-// templateByKey finds a template; a missing one is a field the caller fixes.
-func templateByKey(key string) (template.Template, error) {
-	tpl, err := template.ByKey(key)
-	if errors.Is(err, template.ErrUnknown) {
+// templateFor finds a template a page in the space may start from; a missing
+// one is a field the caller fixes.
+func templateFor(ctx context.Context, tx db.DBTX, sp *space.Space, key string) (template.Template, error) {
+	tpl, err := template.ForSpace(ctx, tx, sp.ID, key)
+	switch {
+	case errors.Is(err, template.ErrUnknown):
 		return tpl, &FieldError{Field: "template", Message: msgNoTemplate}
+	case errors.Is(err, template.ErrOtherSpace):
+		return tpl, &FieldError{Field: "template", Message: msgElsewhere}
 	}
 	return tpl, err
 }
@@ -97,18 +105,18 @@ func targetPage(ctx context.Context, tx db.DBTX, actor perm.Actor, parent *uuid.
 // TemplateButton says what a button would make and where, as the actor sees
 // it; a parent or space they may not view is not found.
 func (s *Service) TemplateButton(ctx context.Context, actor perm.Actor, in TemplateTarget) (*TemplateButton, error) {
-	tpl, err := templateByKey(in.Template)
-	if err != nil {
-		return nil, err
-	}
 	var out *TemplateButton
-	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		p, sp, err := targetPage(ctx, tx, actor, in.Parent, in.SpaceKey)
 		if err != nil {
 			return err
 		}
+		tpl, err := templateFor(ctx, tx, sp, in.Template)
+		if err != nil {
+			return err
+		}
 		out = &TemplateButton{
-			Template: TemplateRef{Key: tpl.Key, Name: tpl.Name, Title: tpl.Title},
+			Template: TemplateRef{Key: tpl.Key, Name: tpl.Name, Title: tpl.Title, Variables: tpl.Variables},
 			SpaceKey: sp.Key, SpaceName: sp.Name,
 			Parent:    Ref{ID: p.ID, Title: p.Title, Home: p.Home},
 			CanCreate: p.must(perm.ArrangePages) == nil,
@@ -121,26 +129,29 @@ func (s *Service) TemplateButton(ctx context.Context, actor perm.Actor, in Templ
 // CreateFromTemplate makes an unpublished page of the actor's from a
 // template, last under the target, as a new page from the tree is made.
 func (s *Service) CreateFromTemplate(ctx context.Context, actor perm.Actor, key string, in FromTemplateInput, now time.Time) (*Page, db.LSN, error) {
-	tpl, err := templateByKey(key)
+	var (
+		parent uuid.UUID
+		title  string
+	)
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		p, sp, err := targetPage(ctx, tx, actor, in.ParentID, in.SpaceKey)
+		if err != nil {
+			return err
+		}
+		tpl, err := templateFor(ctx, tx, sp, key)
+		if err != nil {
+			return err
+		}
+		parent, title = p.ID, TitleFor(in.Title, tpl, now)
+		return nil
+	})
 	if err != nil {
 		return nil, 0, err
 	}
-	parent := in.ParentID
-	if parent == nil {
-		var p *Page
-		err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-			var err error
-			p, _, err = targetPage(ctx, tx, actor, nil, in.SpaceKey)
-			return err
-		})
-		if err != nil {
-			return nil, 0, err
-		}
-		parent = &p.ID
-	}
 	return s.Create(ctx, actor, CreateInput{
-		Placement: Placement{ParentID: *parent},
-		Title:     TitleFor(in.Title, tpl, now),
-		Body:      tpl.Body,
+		Placement: Placement{ParentID: parent},
+		Title:     title,
+		Template:  key,
+		Values:    in.Values,
 	})
 }

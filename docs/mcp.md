@@ -71,7 +71,7 @@ to ask for less.
 | `list_archived_pages` | `GET /spaces/{spaceKey}/archived-pages` | yes |
 | `list_space_shortcuts` | `GET /spaces/{spaceKey}/shortcuts` | yes |
 | `list_pages_below` | `GET /pages/{pageID}/below` | yes |
-| `list_templates` | `GET /templates` | yes |
+| `list_templates` | `GET /templates`, with a space's own | yes |
 | `get_template` | `GET /templates/{templateKey}` | yes |
 | `list_versions` | `GET /pages/{pageID}/versions` | yes |
 | `list_page_contributors` | `GET /pages/{pageID}/contributors` | yes |
@@ -129,8 +129,8 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
   page restrictions, making or changing spaces and the
   space templates a new one starts from, and
   archiving or unarchiving pages and spaces and pinning, ordering or
-  removing a space's shortcuts, which is for a space's administrators, and
-  the organization's webhooks;
+  removing a space's shortcuts, which is for a space's administrators, the
+  organization's webhooks, and keeping templates;
 - who read a page (`GET /pages/{pageID}/readers`), which stays with its
   editors in the page; `get_page_views` counts them;
 - the caller's own session, settings, tokens, themes and Armature account;

@@ -51,6 +51,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
+	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
@@ -199,6 +200,7 @@ func run() error {
 		Unfurl:            unfurlService(cfg, valkey, log),
 		Home:              home.NewService(cluster),
 		Stale:             stale.NewService(cluster),
+		Templates:         template.NewService(cluster),
 		Tasks:             task.NewService(cluster),
 		PageViews:         pageview.NewService(cluster),
 		PageViewRetention: cfg.RetainPageViews,

@@ -85,8 +85,10 @@ func Decide(f Facts, action Action) bool {
 		return f.HoldsSpace(SpaceAddComments)
 	case DeletePages:
 		return f.HoldsSpace(SpaceDelete)
-	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace, ReviewStale, ManageShortcuts, CopyPermissionsFrom, GrantEdit:
+	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace, ReviewStale, ManageShortcuts, CopyPermissionsFrom, GrantEdit, KeepTemplates:
 		return f.HoldsSpace(SpaceAdminister)
+	case KeepOrgTemplates:
+		return f.OrgAdmin()
 	}
 	return false
 }

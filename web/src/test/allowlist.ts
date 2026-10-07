@@ -30,6 +30,8 @@ interface Allowlist {
   marks: Record<string, { attrs?: Record<string, Attr> }>;
 }
 export const allowlist = JSON.parse(readFileSync(resolve(process.cwd(), "../api/document-allowlist.json"), "utf8")) as Allowlist;
+/** What a template's body may hold: a page's nodes and the variables' blanks. */
+export const templateAllowlist = JSON.parse(readFileSync(resolve(process.cwd(), "../api/template-allowlist.json"), "utf8")) as Allowlist;
 
 export function attrProblem(rule: Attr, value: unknown): string | null {
   if (value === null || value === undefined) return rule.nullable || rule.kind === "null" ? null : "is empty";
@@ -64,8 +66,8 @@ export function attrProblem(rule: Attr, value: unknown): string | null {
 }
 
 /** Everything the server would refuse in a document, as readable lines. */
-export function problems(node: DocNode, parent: NodeSpec = { content: ["doc"] }, path = "doc"): string[] {
-  const spec = allowlist.nodes[node.type];
+export function problems(node: DocNode, parent: NodeSpec = { content: ["doc"] }, path = "doc", list: Allowlist = allowlist): string[] {
+  const spec = list.nodes[node.type];
   if (!spec) return [`${path}: node ${node.type} is not allowed`];
   const out: string[] = [];
   if (!parent.content?.includes(node.type)) out.push(`${path}: ${node.type} may not sit here`);
@@ -83,7 +85,7 @@ export function problems(node: DocNode, parent: NodeSpec = { content: ["doc"] },
   }
   if (node.marks?.length && !(spec.inline && parent.allowsMarks)) out.push(`${path}: ${node.type} may not carry marks`);
   for (const mark of node.marks ?? []) {
-    const markSpec = allowlist.marks[mark.type];
+    const markSpec = list.marks[mark.type];
     if (!markSpec) {
       out.push(`${path}: mark ${mark.type} is not allowed`);
       continue;
@@ -95,7 +97,7 @@ export function problems(node: DocNode, parent: NodeSpec = { content: ["doc"] },
     }
   }
   (node.content ?? []).forEach((child, i) => {
-    out.push(...problems(child, spec, `${path}/${child.type}[${i}]`));
+    out.push(...problems(child, spec, `${path}/${child.type}[${i}]`, list));
   });
   return out;
 }

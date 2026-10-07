@@ -38,6 +38,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
+	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
@@ -85,6 +86,8 @@ type Server struct {
 	// home page's lists of updates and edits.
 	Stars *star.Service
 	Home  *home.Service
+	// Templates keeps the organization's own templates beside the built-ins.
+	Templates *template.Service
 	// Stale reads the stale content report for administrators.
 	Stale *stale.Service
 	// Tasks reads the tasks people are assigned on published pages.
@@ -368,7 +371,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/pages/{pageID}/markdown", s.handleReplacePageMarkdown)
 			r.Post("/pages/{pageID}/import", s.handleImportMarkdown)
 			r.Get("/templates", s.handleListTemplates)
+			r.Post("/templates", s.handleCreateTemplate)
 			r.Get("/templates/{templateKey}", s.handleGetTemplate)
+			r.Put("/templates/{templateKey}", s.handleUpdateTemplate)
+			r.Delete("/templates/{templateKey}", s.handleDeleteTemplate)
 			r.Get("/space-templates", s.handleListSpaceTemplates)
 			r.Get("/pages/{pageID}/labels", s.handleListPageLabels)
 			r.Post("/pages/{pageID}/labels", s.handleAddPageLabel)

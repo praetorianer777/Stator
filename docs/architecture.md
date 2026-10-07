@@ -107,7 +107,7 @@ process, which is only right for a single api process. `/readyz` and
 | `pageview` | page views: each person once a day per page, counted for every reader, named to editors within the retention, pruned into a tally by the worker |
 | `share` | sending a page to people and groups who may view it, with a note |
 | `keyset` | the cursor a list ordered by time hands out for its next window |
-| `template` | page templates, and the space templates a new space starts from |
+| `template` | page templates: the built-ins, the organization's and each space's own, their variables and filling them in for a new page; and the space templates a new space starts from |
 | `example` | the example space that explains Stator: its pages as Markdown per language, made through the other services |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
 | `attachment` | uploads to S3-compatible storage, each upload of a name its next version, a restore an upload of an earlier one and an annotated picture an upload drawn on one, served whole or by the byte range a video player asks for, and their PDF previews, converted once and kept |

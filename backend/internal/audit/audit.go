@@ -77,6 +77,10 @@ const (
 	ActionWebhookDisabled      = "webhook.disabled"
 	// ActionPageShared is a page sent to people with a note; the note is not kept.
 	ActionPageShared = "page.shared"
+	// Templates of the organization's own, for every space or for one.
+	ActionTemplateCreated = "template.created"
+	ActionTemplateUpdated = "template.updated"
+	ActionTemplateDeleted = "template.deleted"
 	// Shortcuts pinned above a space's page tree.
 	ActionShortcutAdded   = "space.shortcut_added"
 	ActionShortcutMoved   = "space.shortcut_moved"
@@ -109,6 +113,7 @@ var Actions = []string{
 	ActionPageArchived, ActionPageUnarchived, ActionSpaceArchived, ActionSpaceUnarchived,
 	ActionWebhookCreated, ActionWebhookUpdated, ActionWebhookDeleted, ActionWebhookSecretRotated, ActionWebhookDisabled,
 	ActionPageShared,
+	ActionTemplateCreated, ActionTemplateUpdated, ActionTemplateDeleted,
 	ActionShortcutAdded, ActionShortcutMoved, ActionShortcutRemoved,
 	ActionOrgAnonymousAccessSet, ActionSpaceAnonymousAccessSet,
 	ActionPageLinkCreated, ActionPageLinkRevoked, ActionOrgPublicLinksSet,

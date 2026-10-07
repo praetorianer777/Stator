@@ -863,6 +863,24 @@ and the versioning [Semantic Versioning](https://semver.org/).
   from the editor, the dialog offers to show the edited picture in the
   page. The database holds an edit to a picture's version of the same
   file and type, by whoever may edit the page.
+- Templates of the organization's own, with variables (#63). Administrators
+  of the organization keep templates every space offers, under Settings,
+  Templates; administrators of a space keep its own, under the space's
+  settings. A template defines variables (text, date, choice or person, each
+  with a label, a default and whether it is required) and puts their blanks
+  in its body and title. Making a page from it asks for the values in a
+  form, and the server fills them in: words, a date, a mention of a member
+  who may view the space. An optional blank left empty becomes a hint, which
+  publishing removes. `GET /templates?space=`, `POST /templates`,
+  `PUT /templates/{templateKey}` and `DELETE /templates/{templateKey}` keep them,
+  `POST /pages` takes `template` and `values`, and the database refuses a
+  blank in any page and holds templates to the administrators of their
+  scope. Variables travel through Markdown as a marked span. A blog post
+  starts from a template too (`POST /spaces/{key}/posts` takes `template`
+  and `values`), and a template button makes pages from the organization's
+  and the space's templates, asking for their variables first
+  (`POST /templates/{key}/pages` takes `values`). A guest is offered the templates
+  of their space only, and nobody reads templates without signing in.
 
 ### Changed
 

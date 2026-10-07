@@ -201,8 +201,8 @@ var operations = []operation{
 	{method: "GET", path: "/spaces/{spaceKey}/blog", handler: "handleGetBlog", tool: "get_blog", toolHelp: "A space's blog: how many posts went out each month, newest first, the caller's own posts still to go out, and whether the caller may post there; list_posts lists the posts.", tag: "posts",
 		summary:   "A space's blog: the months with posts the caller may read and how many, newest first, in UTC; the caller's own posts not yet published; whether the caller watches it and may post.",
 		responses: ok(env{"blog": page.Blog{}})},
-	{method: "POST", path: "/spaces/{spaceKey}/posts", handler: "handleCreatePost", tool: "create_post", toolHelp: "Write a post in a space's blog; body is a document as get_page returns one, and publish true sends it out at once, dated now and told to the blog's watchers. Otherwise it is the caller's own until published like any page.", tag: "posts",
-		summary: "Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. For whoever may add pages to the space.",
+	{method: "POST", path: "/spaces/{spaceKey}/posts", handler: "handleCreatePost", tool: "create_post", toolHelp: "Write a post in a space's blog; body is a document as get_page returns one, or template is a template's key with values filling its variables by name, and publish true sends it out at once, dated now and told to the blog's watchers. Otherwise it is the caller's own until published like any page.", tag: "posts",
+		summary: "Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. A template in place of a body starts it from that template, as with POST /pages. For whoever may add pages to the space.",
 		request: page.PostInput{}, responses: map[int]any{201: env{"page": page.Page{}}, 422: errorEnvelope{}}},
 	// Archive (#37).
 	{method: "PUT", path: "/spaces/{spaceKey}/archive", handler: "handleArchiveSpace", tag: "archive", summary: "Archive a space: it stays readable, leaves the space list, search and the home page, and none of its pages changes. For the space's administrators; archiving it again is no change.",
@@ -258,7 +258,7 @@ var operations = []operation{
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash", handler: "handleEmptyTrash", tag: "trash", summary: "Delete everything in the space's trash for good. For administrators.", responses: none()},
 	{method: "POST", path: "/spaces/{spaceKey}/trash/{pageID}/restore", handler: "handleRestorePage", tag: "trash", summary: "Put a trashed page back where it was, or under the home page when that is gone.", responses: ok(env{"page": page.Page{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}/trash/{pageID}", handler: "handlePurgePage", tag: "trash", summary: "Delete a trashed page and what went with it for good. For administrators.", responses: none()},
-	{method: "POST", path: "/pages", handler: "handleCreatePage", tool: "create_page", toolHelp: "Add a page under parentId; body is a document as get_page returns one, and publish true makes it visible to the space at once. kind folder makes a folder, which holds pages and has no body.", tag: "pages", summary: "Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
+	{method: "POST", path: "/pages", handler: "handleCreatePage", tool: "create_page", toolHelp: "Add a page under parentId; body is a document as get_page returns one, or template is a template's key with values filling its variables by name, and publish true makes it visible to the space at once. kind folder makes a folder, which holds pages and has no body.", tag: "pages", summary: "Add a page or a folder under a parent, last unless a place is named; a page is unpublished and its creator's alone unless publish is set, a folder is seen at once. A template in place of a body starts a page from that template, the server filling its variables from values.", request: page.CreateInput{}, responses: created(env{"page": page.Page{}})},
 	{method: "PUT", path: "/pages/{pageID}/appearance", handler: "handleSetAppearance", tag: "pages", summary: "Replace how a page looks: one emoji before its title and in the tree, fixed or full width, and one of its own pictures as its cover with the point that stays in view. A null icon or cover takes it away. For the page's editors.", request: page.AppearanceInput{}, responses: ok(env{"appearance": page.Appearance{}})},
 	{method: "GET", path: "/pages/{pageID}/included", handler: "handleGetIncluded", tag: "pages", summary: "What an include of a page shows the caller: its published body, or one excerpt's blocks. 404 for a page the caller may not read, never published, or without that excerpt; 409 for an include that leads back to a page in via or is nested too deep.",
 		query: []param{
@@ -290,11 +290,18 @@ var operations = []operation{
 	{method: "POST", path: "/pages/{pageID}/import", handler: "handleImportMarkdown", tool: "import_markdown", toolHelp: "Make a new published page under pageID from Markdown in content; its leading level 1 heading becomes the title.", toolFile: "page.md", tag: "markdown", summary: "Make pages under a page from Markdown files and their folders, sent as parts named file with their paths, or as a .zip; each folder of Markdown is a page too.", multipart: true,
 		responses: map[int]any{201: env{"pages": []mdio.Imported{}, "warnings": []string{}}, 413: errorEnvelope{}}},
 
-	// Templates (#15).
-	{method: "GET", path: "/templates", handler: "handleListTemplates", tool: "list_templates", toolHelp: "The documents a new page can start from.", tag: "templates", summary: "The documents a new page can start from, in the order to offer them; send one's body and title with POST /pages.",
+	// Templates (#15), and the organization's own with variables (#63).
+	{method: "GET", path: "/templates", handler: "handleListTemplates", tool: "list_templates", toolHelp: "The templates a new page can start from, with the variables each asks for; space names a space to include its own.", tag: "templates", summary: "The templates a new page can start from, in the order to offer them: the space's own when space is given, the organization's, then the built-ins. Send one's key and values with POST /pages.",
+		query:     []param{{name: "space", description: "A space key, to include that space's own templates."}},
 		responses: ok(env{"templates": []template.Template{}})},
-	{method: "GET", path: "/templates/{templateKey}", handler: "handleGetTemplate", tool: "get_template", toolHelp: "One template's title and body, to send to create_page.", tag: "templates", summary: "One template by its key.",
+	{method: "POST", path: "/templates", handler: "handleCreateTemplate", tag: "templates", summary: "Make a template for the space spaceKey names, for its administrators, or without one for every space, for the organization's administrators.",
+		request: template.CreateInput{}, responses: map[int]any{201: env{"template": template.Template{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/templates/{templateKey}", handler: "handleGetTemplate", tool: "get_template", toolHelp: "One template with its title, body and variables; create_page takes its key as template and the variables' values as values.", tag: "templates", summary: "One template by its key: a built-in's name or the id of one of the organization's.",
 		responses: ok(env{"template": template.Template{}})},
+	{method: "PUT", path: "/templates/{templateKey}", handler: "handleUpdateTemplate", tag: "templates", summary: "Replace what one of the organization's templates is made of; the space it belongs to stays. Built-ins are refused.",
+		request: template.Input{}, responses: map[int]any{200: env{"template": template.Template{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/templates/{templateKey}", handler: "handleDeleteTemplate", tag: "templates", summary: "Delete one of the organization's templates; pages made from it keep what they were given.",
+		responses: none()},
 	// Space templates (#64).
 	{method: "GET", path: "/space-templates", handler: "handleListSpaceTemplates", tag: "templates", summary: "The structures a new space can start from, in the order to offer them: the home page, the pages below it with their labels, and what everyone may do. Send one's key as template with POST /spaces.",
 		responses: ok(env{"templates": []template.SpaceTemplate{}})},
@@ -650,14 +657,14 @@ var operations = []operation{
 
 	// Template buttons and contributors (#62).
 	{method: "GET", path: "/template-button", handler: "handleTemplateButton", tag: "templates",
-		summary: "What a template button makes and where, for its view: the template, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found.",
+		summary: "What a template button makes and where, for its view: the template with the variables to ask for, the space, the page the new one goes under (the home page for the top of the space), and whether the caller may add a page there. A parent or space the caller may not view is not found.",
 		query: []param{
 			{name: "template", description: "The template's key, as GET /templates lists it."},
 			{name: "spaceKey", description: "The space whose top the page goes at; ignored when parentId is given."},
 			{name: "parentId", schema: &openapi.Schema{Type: "string", Format: "uuid"}, description: "The page the new one goes under, wherever it was moved."},
 		}, responses: map[int]any{200: page.TemplateButton{}, 422: errorEnvelope{}}},
-	{method: "POST", path: "/templates/{templateKey}/pages", handler: "handleCreateFromTemplate", tool: "create_page_from_template", toolHelp: "Make a page from a template, last under parentId or at the top of spaceKey; a title's {date} becomes today. It stays the caller's until published.", tag: "templates",
-		summary: "Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC. For whoever may add pages there.",
+	{method: "POST", path: "/templates/{templateKey}/pages", handler: "handleCreateFromTemplate", tool: "create_page_from_template", toolHelp: "Make a page from a template, last under parentId or at the top of spaceKey; a title's {date} becomes today, and values fill the template's variables by name. It stays the caller's until published.", tag: "templates",
+		summary: "Make an unpublished page of the caller's from a template, last under parentId or, without it, at the top of spaceKey. The title is the one given, else the template's, else its name, {date} in it becoming today in UTC; values fill the template's variables as with POST /pages. For whoever may add pages there.",
 		request: page.FromTemplateInput{}, responses: map[int]any{201: env{"page": page.Page{}}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/pages/{pageID}/contributors", handler: "handlePageContributors", tool: "list_page_contributors", toolHelp: "Who published versions of a page, or with scope tree of it and the pages below it, the most versions first.", tag: "history",
 		summary: "The people who published versions of a page, or with scope tree of it and the pages below it the caller may view, for a contributors block: the most versions first, then the latest; truncated says more did.",
@@ -909,6 +916,8 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(reaction.Input{})] = "ReactionInput"
 	b.Names[reflect.TypeOf(share.Input{})] = "ShareInput"
 	b.Names[reflect.TypeOf(watch.Input{})] = "WatchInput"
+	b.Names[reflect.TypeOf(template.CreateInput{})] = "TemplateCreateInput"
+	b.Names[reflect.TypeOf(template.Input{})] = "TemplateInput"
 	b.Names[reflect.TypeOf(task.PageRef{})] = "TaskPage"
 	b.Names[reflect.TypeOf(task.SetDoneInput{})] = "TaskSetDoneInput"
 	b.Names[reflect.TypeOf(task.Report{})] = "TaskReport"
@@ -970,6 +979,8 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["AuditEntry.action"] = &openapi.Schema{Type: "string", Enum: audit.Actions}
 	b.FieldOverrides["AuditFacets.actions"] = &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: audit.Actions}}
 	b.Enums[reflect.TypeOf(webhook.DeliveryState(""))] = enumStrings(webhook.States)
+	b.Enums[reflect.TypeOf(template.Kind(""))] = enumStrings(template.Kinds)
+	b.Enums[reflect.TypeOf(template.Scope(""))] = enumStrings(template.Scopes)
 	topics := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: webhook.Subscribable}}
 	b.FieldOverrides["Webhook.topics"] = topics
 	b.FieldOverrides["WebhookInput.topics"] = topics

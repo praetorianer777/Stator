@@ -64,9 +64,11 @@ function changeInlineValue(editor: TiptapEditor, target: InlineValueTarget, attr
   (node.isInline ? chain.setTextSelection(target.pos + node.nodeSize) : chain.setNodeSelection(target.pos)).run();
 }
 
-/** What a form may do to the editor from outside: put words in, or empty it. */
+/** What a form may do to the editor from outside: put words or a template's blank in, or empty it. */
 export interface EditorHandle {
   insertMarkdown: (text: string) => void;
+  /** Puts the blank for a variable where the caret is, in a template's editor. */
+  insertVariable: (name: string) => void;
   clear: () => void;
 }
 
@@ -301,6 +303,9 @@ export function Editor({
             .insertContent(fitSchema(sanitizePasted(parsed), editor.schema).content ?? [])
             .run();
       },
+      insertVariable: (name) => {
+        if (editor.schema.nodes.templateVariable) editor.chain().focus().insertVariable(name).run();
+      },
       clear: () => {
         editor.commands.clearContent(true);
       },
@@ -316,7 +321,7 @@ export function Editor({
           variant={variant}
           onCreateIssues={armature?.canCreate?.() ? () => setFiling(planSelection(editor.state)) : undefined}
           finding={finding !== null}
-          onFind={variant === "page" ? () => (finding ? setFinding(null) : openFind(selectedQuery(editor.state))) : undefined}
+          onFind={variant !== "comment" ? () => (finding ? setFinding(null) : openFind(selectedQuery(editor.state))) : undefined}
         />
       )}
       {finding && editor && <FindBar editor={editor} seed={finding.seed} focusToken={finding.token} onClose={() => setFinding(null)} />}

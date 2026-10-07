@@ -47,7 +47,7 @@ function shown(children: ReactNode) {
 
 function target(over: Record<string, unknown> = {}) {
   return {
-    template: { key: "meeting-notes", name: "Meeting notes", title: "Meeting notes {date}" },
+    template: { key: "meeting-notes", name: "Meeting notes", title: "Meeting notes {date}", variables: [] },
     spaceKey: "TEAM",
     spaceName: "Team",
     parent: { id: home, title: "Team", home: true },
@@ -112,6 +112,37 @@ describe("the template button", () => {
     expect(await screen.findByText("Editing the new page")).toBeInTheDocument();
     expect(sent.find((each) => each.method === "POST")?.body).toEqual({ parentId: plans, spaceKey: "TEAM", title: "Weekly" });
     expect(router.state.location.pathname).toBe(`/s/TEAM/p/${made}/weekly/edit`);
+  });
+
+  it("asks for its template's variables first, and sends them with the page", async () => {
+    const user = userEvent.setup();
+    const kickoff = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a13";
+    const variables = [
+      { name: "customer", label: "Customer", kind: "text", options: [], default: "", required: true },
+      { name: "phase", label: "Phase", kind: "select", options: ["Discovery", "Delivery"], default: "Discovery", required: false },
+    ];
+    const sent = stubApi({
+      "GET /template-button": { status: 200, body: target({ template: { key: kickoff, name: "Kick-off", title: "Kick-off {customer}", variables } }) },
+      [`POST /templates/${kickoff}/pages`]: { status: 201, body: { page: { id: made, title: "Kick-off Acme", spaceKey: "TEAM" } } },
+    });
+    shown(<TemplateButton settings={templateButtonSettings({ template: kickoff })} />);
+    const button = await screen.findByRole("button", { name: "New page: Kick-off" });
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(button).toHaveAccessibleDescription("Asks what Kick-off needs, makes the page at the top of Team and opens it for you to write.");
+    await user.click(button);
+    const dialog = await screen.findByRole("dialog", { name: "New page from Kick-off" });
+    await user.click(within(dialog).getByRole("button", { name: "Create page" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Fill in Customer first; the template needs it.");
+    expect(sent.some((each) => each.method === "POST")).toBe(false);
+    await user.type(within(dialog).getByLabelText("Customer (required)"), "Acme");
+    expect(await axeViolations()).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Create page" }));
+    expect(await screen.findByText("Editing the new page")).toBeInTheDocument();
+    expect(sent.find((each) => each.method === "POST")?.body).toEqual({
+      spaceKey: "TEAM",
+      title: "Kick-off {customer}",
+      values: { customer: "Acme", phase: "Discovery" },
+    });
   });
 
   it("is disabled, with a sentence, for a reader who may not add pages there", async () => {

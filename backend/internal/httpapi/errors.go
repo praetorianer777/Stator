@@ -30,6 +30,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/task"
+	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
@@ -220,6 +221,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &webhookField) {
 		return ErrValidation(map[string]string{webhookField.Field: webhookField.Message})
 	}
+	var templateField *template.FieldError
+	if errors.As(err, &templateField) {
+		return ErrValidation(map[string]string{templateField.Field: templateField.Message})
+	}
 	var shareField *share.FieldError
 	if errors.As(err, &shareField) {
 		return ErrValidation(map[string]string{shareField.Field: shareField.Message})
@@ -317,6 +322,12 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(badDoc.Message)}
 	}
 	switch {
+	case errors.Is(err, template.ErrUnknown):
+		return ErrNotFound("There is no such template. Pick one from the list of templates.")
+	case errors.Is(err, template.ErrNoSpace):
+		return ErrNotFound("There is no such space, or you may not view it. Check the space key.")
+	case errors.Is(err, template.ErrBuiltIn):
+		return ErrForbidden(sentence(template.ErrBuiltIn.Error()))
 	case errors.Is(err, auth.ErrInvalidToken):
 		return ErrUnauthorized("Your session has expired. Sign in again.")
 	case errors.Is(err, auth.ErrInvalidCredentials):

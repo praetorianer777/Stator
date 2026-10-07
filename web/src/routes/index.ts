@@ -32,6 +32,7 @@ import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
 import { tokensRoute } from "./tokens";
 import { webhooksRoute } from "./webhooks";
+import { templateEditRoute, templateNewRoute, templatesRoute } from "./templates";
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -71,6 +72,9 @@ const routeTree = rootRoute.addChildren([
     armatureSettingsRoute,
     auditRoute,
     webhooksRoute,
+    templatesRoute,
+    templateNewRoute,
+    templateEditRoute,
     staleRoute,
     devEditorRoute,
   ]),

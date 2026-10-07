@@ -39,6 +39,8 @@ const (
 	kindButton     = "template-button"
 	kindPeople     = "contributors"
 	kindGallery    = "gallery"
+	// kindVariable is a template's blank, read back only into a template.
+	kindVariable = "variable"
 )
 
 // panelAlerts pairs each panel kind with the alert a quote opens with, one
@@ -67,6 +69,12 @@ func markRank(t string) int {
 // validates says whether a node passes the allowlist where it would stand,
 // inline in a paragraph or as a block of its own.
 func validates(n document.Node, inline bool) bool {
+	return validatesIn(n, inline, false)
+}
+
+// validatesIn is validates held to a template's allowlist when template is
+// set, which also takes its variables.
+func validatesIn(n document.Node, inline, template bool) bool {
 	doc := document.Node{Type: "doc", Content: []document.Node{n}}
 	if inline {
 		doc.Content = []document.Node{{Type: "paragraph", Content: []document.Node{n}}}
@@ -75,5 +83,15 @@ func validates(n document.Node, inline bool) bool {
 	if err != nil {
 		return false
 	}
-	return document.Validate(body) == nil
+	return check(body, template) == nil
+}
+
+// check holds a whole converted document to the page's allowlist, or to a
+// template's.
+func check(body json.RawMessage, template bool) error {
+	if template {
+		_, err := document.ParseTemplate(body)
+		return err
+	}
+	return document.Validate(body)
 }
