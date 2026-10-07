@@ -2,7 +2,17 @@ import { useState } from "react";
 import { useMe } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import type { Page } from "@/api/pages";
-import { subjectKey, usePageRestrictions, useSetPageRestrictions, type InheritedRestriction, type Restrictions, type Subject } from "@/api/permissions";
+import {
+  subjectKey,
+  usePageRestrictions,
+  useRestrictionsCheck,
+  useSetPageRestrictions,
+  type CannotEdit,
+  type InheritedRestriction,
+  type Restrictions,
+  type Subject,
+} from "@/api/permissions";
+import { Icon } from "@/components/icons";
 import { Button, Dialog, ErrorBanner, Skeleton } from "@/components/ui";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
@@ -15,8 +25,13 @@ export function restrictionsError(error: Error): string {
   return error.message;
 }
 
+/** What to say beside somebody on the edit list who could not edit. */
+function cannotEditLabel(entry: CannotEdit): string {
+  return entry.subject.type === "group" ? t.restrictions.cannotEditMembers(entry.members) : t.restrictions.cannotEdit;
+}
+
 /**
- * Who may view and edit a page: its own two lists, and the lists of every
+ * Who may view and edit a page: its own lists, and the lists of every
  * restricted page above it, which it inherits. Changes wait for Save.
  */
 export function RestrictionsDialog({ page, spaceKey, onClose }: { page: Page; spaceKey: string; onClose: () => void }) {
@@ -39,7 +54,12 @@ function Lists({ page, spaceKey, saved, onClose }: { page: Page; spaceKey: strin
   const save = useSetPageRestrictions(page.id);
   const [view, setView] = useState<Subject[]>(saved.view);
   const [edit, setEdit] = useState<Subject[]>(saved.edit);
+  const [grant, setGrant] = useState<Subject[]>(saved.editGrant);
   const editable = page.can.restrict;
+  const granting = editable && page.can.grantEdit;
+  const check = useRestrictionsCheck(page.id, { edit, editGrant: grant }, editable);
+  const cannotEdit = edit.length > 0 ? (check.data ?? []) : [];
+  const warnings = Object.fromEntries(cannotEdit.map((entry) => [subjectKey(entry.subject), cannotEditLabel(entry)]));
   const fields = save.error instanceof ApiError ? save.error.fields : {};
   const self: Subject | undefined = me ? { type: "user", id: me.user.id, name: me.user.name || me.user.email } : undefined;
 
@@ -75,17 +95,36 @@ function Lists({ page, spaceKey, saved, onClose }: { page: Page; spaceKey: strin
           editable={editable}
           self={self}
           error={fields.edit}
+          warnings={warnings}
+          warning={cannotEdit.length > 0 ? (granting ? t.restrictions.cannotEditNote : t.restrictions.cannotEditAsk) : undefined}
         />
+        <div className="sm:col-span-2">
+          <ListEditor
+            kind="editGrant"
+            title={t.restrictions.grantTitle}
+            hint={t.restrictions.grantHint}
+            open={t.restrictions.grantOpen}
+            subjects={grant}
+            onChange={(next) => change(setGrant, next)}
+            editable={granting}
+            note={editable && !granting ? t.restrictions.grantAdminsOnly : undefined}
+            error={fields.editGrant}
+          />
+        </div>
       </div>
       <p className="text-xs text-ink-subtle">{t.restrictions.adminNote}</p>
       {!editable && <p className="text-sm text-ink-muted">{t.restrictions.readOnly}</p>}
-      {save.error && !fields.view && !fields.edit && <ErrorBanner>{restrictionsError(save.error)}</ErrorBanner>}
+      {save.error && !fields.view && !fields.edit && !fields.editGrant && <ErrorBanner>{restrictionsError(save.error)}</ErrorBanner>}
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>
           {editable ? t.restrictions.cancel : t.restrictions.close}
         </Button>
         {editable && (
-          <Button loading={save.isPending} onClick={() => save.mutate({ view, edit }, { onSuccess: onClose })} data-action="save-restrictions">
+          <Button
+            loading={save.isPending}
+            onClick={() => save.mutate(granting ? { view, edit, editGrant: grant } : { view, edit }, { onSuccess: onClose })}
+            data-action="save-restrictions"
+          >
             {t.restrictions.save}
           </Button>
         )}
@@ -105,8 +144,11 @@ function ListEditor({
   blocked,
   self,
   error,
+  warnings,
+  warning,
+  note,
 }: {
-  kind: "view" | "edit";
+  kind: "view" | "edit" | "editGrant";
   title: string;
   hint: string;
   open: string;
@@ -116,6 +158,11 @@ function ListEditor({
   blocked?: string;
   self?: Subject;
   error?: string;
+  /** Words beside the subjects who would not get what the list is for, by subjectKey. */
+  warnings?: Record<string, string>;
+  /** What to do about the subjects warned of. */
+  warning?: string;
+  note?: string;
 }) {
   const keys = subjects.map(subjectKey);
   // Somebody narrowing a list almost always means to stay on it, so the way to do that sits beside it.
@@ -134,8 +181,16 @@ function ListEditor({
             subjects={subjects}
             empty={open}
             selfId={self?.id ?? undefined}
+            warnings={warnings}
             onRemove={editable ? (gone) => onChange(subjects.filter((each) => subjectKey(each) !== subjectKey(gone))) : undefined}
           />
+          {warning && (
+            <p className="flex gap-1.5 text-sm text-danger" role="status" data-cannot-edit-note>
+              <Icon.Warning className="mt-0.5 shrink-0" />
+              <span>{warning}</span>
+            </p>
+          )}
+          {note && <p className="text-sm text-ink-muted">{note}</p>}
           {offerSelf && (
             <Button size="sm" variant="secondary" onClick={() => onChange([...subjects, self])} data-action={`add-me-${kind}`}>
               {t.restrictions.addMe}
@@ -175,6 +230,12 @@ function Inherited({ spaceKey, inherited }: { spaceKey: string; inherited: Inher
                 <SubjectList subjects={above.view} empty={t.restrictions.inheritedOpen} />
                 <span className="text-ink-subtle">{t.restrictions.inheritedEdit}</span>
                 <SubjectList subjects={above.edit} empty={t.restrictions.inheritedOpen} />
+                {above.editGrant.length > 0 && (
+                  <>
+                    <span className="text-ink-subtle">{t.restrictions.inheritedGrant}</span>
+                    <SubjectList subjects={above.editGrant} empty="" />
+                  </>
+                )}
               </div>
             </li>
           ))}

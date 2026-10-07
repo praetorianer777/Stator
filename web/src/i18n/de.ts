@@ -2293,6 +2293,18 @@ export const de: Messages = {
     inheritedView: "Ansehen",
     inheritedEdit: "Bearbeiten",
     inheritedOpen: "Nicht eingeschränkt",
+    inheritedGrant: "Auch bearbeiten",
+    grantTitle: "Darf außerdem bearbeiten",
+    grantHint:
+      "Diese Personen und Gruppen bearbeiten diese Seite und die Seiten darunter, obwohl sie im Bereich keine Seiten hinzufügen dürfen. Sie müssen die Seite trotzdem ansehen dürfen und jede Bearbeiten-Liste darüber passieren; Seiten hinzufügen, verschieben und löschen bleibt bei den Berechtigungen des Bereichs.",
+    grantOpen: "Sonst niemand.",
+    grantAdminsOnly: "Nur Administratoren des Bereichs ändern diese Liste.",
+    cannotEdit: "Kann nicht bearbeiten",
+    cannotEditMembers: (n: number) => (n === 1 ? "1 Mitglied kann nicht bearbeiten" : `${n} Mitglieder können nicht bearbeiten`),
+    cannotEditNote:
+      "Die Markierten können nicht bearbeiten, weil sie im Bereich keine Seiten hinzufügen dürfen. Fügen Sie sie unten bei Darf außerdem bearbeiten hinzu, oder geben Sie ihnen in den Berechtigungen des Bereichs Seiten hinzufügen.",
+    cannotEditAsk:
+      "Die Markierten können nicht bearbeiten, weil sie im Bereich keine Seiten hinzufügen dürfen. Bitten Sie einen Administrator des Bereichs, sie bei Darf außerdem bearbeiten hinzuzufügen oder ihnen Seiten hinzufügen zu geben.",
     adminNote: "Administratoren des Bereichs und der Organisation passieren diese Listen immer.",
     readOnly: "Nur wer diese Seite bearbeiten kann, kann ihre Einschränkungen ändern.",
     save: "Einschränkungen speichern",
@@ -2377,6 +2389,7 @@ export const de: Messages = {
       `Steht nicht auf der ${kind === "view" ? "Ansehen" : "Bearbeiten"}-Liste von ${title}, aber Administratoren des Bereichs passieren jede Liste.`,
     listNo: (kind: "view" | "edit", title: string) =>
       `Steht nicht auf der ${kind === "view" ? "Ansehen" : "Bearbeiten"}-Liste von ${title}. Fügen Sie die Person oder eine ihrer Gruppen in den Einschränkungen dieser Seite hinzu.`,
+    grantYes: (title: string) => `Darf ${title} und die Seiten darunter bearbeiten, obwohl der Bereich keine Seiten hinzufügen erlaubt.`,
     viewYes: "Darf die Seite ansehen.",
     viewNo: "Darf die Seite nicht ansehen und daher auch sonst nichts mit ihr tun.",
     publishedNo: "Die Seite ist noch nicht veröffentlicht. Kommentare sind möglich, sobald sie es ist.",

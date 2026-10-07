@@ -31,6 +31,8 @@ In diesem Bereich dürfen alle ansehen und kommentieren, so bleiben die Anleitun
 
 **Einschränkungen** in den **Seitenaktionen** grenzt ein, wer eine Seite und jede Seite darunter ansehen und wer sie bearbeiten darf, innerhalb dessen, was der Bereich erlaubt. Der Dialog zeigt, was Seiten darüber schon einschränken, und lehnt eine Änderung ab, die Sie selbst aussperren würde. Eine eingeschränkte Seite trägt das Zeichen **Eingeschränkt**.
 
+Die dritte Liste, **Darf außerdem bearbeiten**, lässt Personen und Gruppen die Seite und die Seiten darunter bearbeiten, obwohl sie im Bereich keine Seiten hinzufügen dürfen; nur Administratoren des Bereichs ändern sie. Ansehen dürfen müssen sie die Seite trotzdem, und Seiten hinzufügen, verschieben und löschen bleibt bei den Berechtigungen des Bereichs. Der Dialog markiert, wer auf **Wer bearbeiten kann** steht und trotzdem nicht bearbeiten kann, und sagt, was zu tun ist.
+
 ## Zugriff prüfen
 
 **Zugriff prüfen** in den **Seitenaktionen**, für Administratoren des Bereichs, sagt für eine Person, ob sie eine Seite ansehen, bearbeiten, in den Papierkorb legen und kommentieren darf, und welche Berechtigung oder Einschränkung das entscheidet.

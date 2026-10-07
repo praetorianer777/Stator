@@ -15,7 +15,7 @@ export function decidingStep(right: AccessRight): number {
 export function stepSentence(step: AccessStep, report: Pick<AccessReport, "role" | "roleSource">): string {
   const permission = step.permission ? t.permissions.spaceNames[step.permission] : "";
   const title = step.page?.title ?? "";
-  const list = step.list ?? "view";
+  const list = step.list === "view" ? "view" : "edit";
   switch (step.kind) {
     case "orgAdmin": {
       const role = t.access.orgAdmin(report.role === "owner");
@@ -30,6 +30,8 @@ export function stepSentence(step: AccessStep, report: Pick<AccessReport, "role"
     case "list":
       if (step.bypassed) return t.access.listBypassed(list, title);
       return step.passed ? t.access.listYes(list, title) : t.access.listNo(list, title);
+    case "grant":
+      return t.access.grantYes(title);
     case "view":
       return step.passed ? t.access.viewYes : t.access.viewNo;
     case "published":

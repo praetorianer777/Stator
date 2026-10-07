@@ -71,7 +71,7 @@ function stubPage({
     parentId: home.id,
     body,
     ancestors: [{ id: home.id, title: "Handbook", home: true }],
-    can: { edit, delete: edit, restrict: edit, comment: true, archive: false },
+    can: { edit, delete: edit, restrict: edit, comment: true, archive: false, add: edit, grantEdit: false },
   });
   const where = aSpace({ can: { ...space.can, editPages: edit } });
   const sent = stubApi({

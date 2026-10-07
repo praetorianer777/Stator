@@ -53,6 +53,10 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"an organization admin copies every space's permissions", admin, CopyPermissionsFrom, true},
 		{"a member of an open space keeps its calendars", member(openSpace...), EditCalendars, true},
 		{"a reader of a space does not change its calendars", member(SpaceView, SpaceAddComments), EditCalendars, false},
+		{"a reader of a space does not arrange its pages", member(SpaceView), ArrangePages, false},
+		{"a member of an open space arranges its pages", member(openSpace...), ArrangePages, true},
+		{"a member of an open space does not grant editing", member(openSpace...), GrantEdit, false},
+		{"an administrator of the space grants editing", member(SpaceAdminister), GrantEdit, true},
 		{"no grant is no view", member(), ViewSpace, false},
 		{"without use nothing holds", Facts{Member: true, Role: auth.RoleMember, Space: openSpace}, ViewSpace, false},
 		{"a stranger holds nothing", Facts{Space: openSpace, Global: []GlobalPermission{UseStator}}, ViewSpace, false},
@@ -116,11 +120,11 @@ func TestRestrictionsInheritAndNarrow(t *testing.T) {
 		want  PageAccess
 	}{
 		{"an unrestricted page is the space's", member(openSpace...), []ChainLink{free, free},
-			PageAccess{View: true, Edit: true, Delete: true, Comment: true}},
+			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Add: true}},
 		{"a view list above hides the page", member(openSpace...), []ChainLink{free, link(true, false, false, false), free},
 			PageAccess{ViewRestricted: true}},
 		{"passing every view list shows it", member(openSpace...), []ChainLink{link(true, true, false, false), link(true, true, false, false)},
-			PageAccess{View: true, Edit: true, Delete: true, Comment: true, ViewRestricted: true}},
+			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Add: true, ViewRestricted: true}},
 		{"one list failed among several hides it", member(openSpace...), []ChainLink{link(true, true, false, false), link(true, false, false, false)},
 			PageAccess{ViewRestricted: true}},
 		{"an edit list above stops editing and deleting", member(openSpace...), []ChainLink{free, link(false, false, true, false)},
@@ -130,9 +134,9 @@ func TestRestrictionsInheritAndNarrow(t *testing.T) {
 		{"restrictions only narrow the space", member(SpaceView), []ChainLink{link(true, true, true, true)},
 			PageAccess{View: true, ViewRestricted: true, EditRestricted: true}},
 		{"a space administrator is not bound", member(SpaceAdminister), []ChainLink{link(true, false, true, false)},
-			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Archive: true, ViewRestricted: true, EditRestricted: true}},
+			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Add: true, GrantEdit: true, Archive: true, ViewRestricted: true, EditRestricted: true}},
 		{"an organization administrator is not bound", Facts{Member: true, Role: auth.RoleAdmin}, []ChainLink{free, link(true, false, true, false)},
-			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Archive: true, ViewRestricted: true, EditRestricted: true}},
+			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Add: true, GrantEdit: true, Archive: true, ViewRestricted: true, EditRestricted: true}},
 		{"nobody sees another's unpublished page", Facts{Member: true, Role: auth.RoleOwner}, []ChainLink{free, {HiddenDraft: true}},
 			PageAccess{}},
 		{"no chain is no page", member(openSpace...), nil, PageAccess{}},
@@ -140,6 +144,62 @@ func TestRestrictionsInheritAndNarrow(t *testing.T) {
 		if got := PageRules(tt.facts, tt.chain); got != tt.want {
 			t.Errorf("%s: %+v, want %+v", tt.name, got, tt.want)
 		}
+	}
+}
+
+func granted(l ChainLink) ChainLink {
+	l.Granted = true
+	return l
+}
+
+// A grant list stands in for add pages when editing, and for nothing else:
+// not for a view list, not for adding or moving pages, not for deleting.
+func TestAGrantListOpensEditingAndNothingElse(t *testing.T) {
+	free := link(false, false, false, false)
+	reader := member(SpaceView, SpaceAddComments)
+	for _, tt := range []struct {
+		name  string
+		facts Facts
+		chain []ChainLink
+		want  PageAccess
+	}{
+		{"a reader on the page's grant list edits it", reader, []ChainLink{granted(free), free},
+			PageAccess{View: true, Edit: true, Comment: true, Granted: true}},
+		{"a grant above reaches the pages below", reader, []ChainLink{free, granted(free), free},
+			PageAccess{View: true, Edit: true, Comment: true, Granted: true}},
+		{"a grant on a sibling is nothing here", reader, []ChainLink{free, free},
+			PageAccess{View: true, Comment: true}},
+		{"a grant never passes a view list", reader, []ChainLink{granted(link(true, false, false, false))},
+			PageAccess{ViewRestricted: true}},
+		{"a grant passes its own page's edit list", reader, []ChainLink{granted(link(false, false, true, false))},
+			PageAccess{View: true, Edit: true, Comment: true, Granted: true, EditRestricted: true}},
+		{"a grant does not pass an edit list above it", reader, []ChainLink{granted(free), link(false, false, true, false)},
+			PageAccess{View: true, Comment: true, EditRestricted: true}},
+		{"a grant below an edit list that names the person edits", reader, []ChainLink{granted(free), link(false, false, true, true)},
+			PageAccess{View: true, Edit: true, Comment: true, Granted: true, EditRestricted: true}},
+		{"a grant does not delete for somebody without delete", reader, []ChainLink{granted(free)},
+			PageAccess{View: true, Edit: true, Comment: true, Granted: true}},
+		{"a grant does not take delete away", member(SpaceView, SpaceDelete), []ChainLink{granted(link(false, false, true, false))},
+			PageAccess{View: true, Edit: true, Delete: true, Granted: true, EditRestricted: true}},
+		{"somebody who adds pages also arranges a granted page", member(openSpace...), []ChainLink{granted(free)},
+			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Add: true}},
+		{"a grant without use is nothing", Facts{Member: true, Role: auth.RoleMember, Space: []SpacePermission{SpaceView}}, []ChainLink{granted(free)},
+			PageAccess{}},
+		{"a space it does not reach is nothing", Facts{}, []ChainLink{granted(free)},
+			PageAccess{}},
+		{"a guest who reads their space edits a granted page there", Facts{Member: true, Role: auth.RoleGuest, Global: []GlobalPermission{UseStator}, Space: []SpacePermission{SpaceView}, SpacesOnly: true},
+			[]ChainLink{granted(free)}, PageAccess{View: true, Edit: true, Granted: true}},
+		{"an unpublished page stays its author's", reader, []ChainLink{granted(ChainLink{HiddenDraft: true})},
+			PageAccess{}},
+	} {
+		if got := PageRules(tt.facts, tt.chain); got != tt.want {
+			t.Errorf("%s: %+v, want %+v", tt.name, got, tt.want)
+		}
+	}
+	archived := PageRules(member(SpaceAdminister), []ChainLink{free})
+	archived.Archived = ArchivedPage
+	if got := archived.Frozen(); got.Edit || got.Add || got.GrantEdit {
+		t.Errorf("an archived page is still changed: %+v", got)
 	}
 }
 
@@ -166,7 +226,7 @@ func TestASaveMayNotLockItsSaverOut(t *testing.T) {
 }
 
 func TestRefusalsAreSentences(t *testing.T) {
-	for _, a := range []Action{CreateSpace, CreatePersonalSpace, CreateExampleSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, EditCalendars, CopyPermissionsFrom, Action("x")} {
+	for _, a := range []Action{CreateSpace, CreatePersonalSpace, CreateExampleSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, EditCalendars, CopyPermissionsFrom, ArrangePages, GrantEdit, Action("x")} {
 		err := error(&DeniedError{Action: a})
 		if !errors.Is(err, ErrDenied) {
 			t.Errorf("the refusal of %s does not wrap ErrDenied", a)

@@ -1630,9 +1630,26 @@ export interface paths {
         };
         /** Who may view and edit a page beyond the space's permissions, and the restricted pages above it. */
         get: operations["getPageRestrictions"];
-        /** Replace a page's own view and edit restrictions; the pages below it inherit them. */
+        /** Replace a page's own view and edit restrictions, and, for administrators of the space, who else may edit it without add pages; the pages below it inherit them. */
         put: operations["setPageRestrictions"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/restrictions/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Which people and groups of an edit list, not yet saved, could not edit the page because the space does not let them add pages and no grant names them. Changes nothing; for whoever may edit the page. */
+        post: operations["checkPageRestrictions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3165,9 +3182,9 @@ export interface components {
             bypassed: boolean;
             grants: components["schemas"]["SpaceGrant"][];
             /** @enum {string} */
-            kind: "orgAdmin" | "use" | "space" | "unpublished" | "list" | "view" | "published" | "home" | "archived";
+            kind: "orgAdmin" | "use" | "space" | "unpublished" | "list" | "grant" | "view" | "published" | "home" | "archived";
             /** @enum {string} */
-            list?: "view" | "edit";
+            list?: "view" | "edit" | "editGrant";
             listed: components["schemas"]["Subject"][];
             page?: components["schemas"]["AccessPage"];
             passed: boolean;
@@ -3395,6 +3412,10 @@ export interface components {
             deletePages: boolean;
             editPages: boolean;
             purgeTrash: boolean;
+        };
+        CannotEdit: {
+            members: number;
+            subject: components["schemas"]["Subject"];
         };
         Chart: {
             days: components["schemas"]["ChartDay"][];
@@ -3826,6 +3847,7 @@ export interface components {
         };
         InheritedRestriction: {
             edit: components["schemas"]["Subject"][];
+            editGrant: components["schemas"]["Subject"][];
             page: components["schemas"]["Ref"];
             view: components["schemas"]["Subject"][];
         };
@@ -4122,10 +4144,12 @@ export interface components {
             watching: components["schemas"]["Watching"];
         };
         PageCan: {
+            add: boolean;
             archive: boolean;
             comment: boolean;
             delete: boolean;
             edit: boolean;
+            grantEdit: boolean;
             restrict: boolean;
         };
         PageContributors: {
@@ -4529,11 +4553,16 @@ export interface components {
         };
         Restrictions: {
             edit: components["schemas"]["Subject"][];
+            editGrant: components["schemas"]["Subject"][];
             inherited: components["schemas"]["InheritedRestriction"][];
             view: components["schemas"]["Subject"][];
         };
+        RestrictionsCheck: {
+            cannotEdit: components["schemas"]["CannotEdit"][];
+        };
         RestrictionsInput: {
             edit: components["schemas"]["SubjectRef"][];
+            editGrant?: components["schemas"]["SubjectRef"][];
             view: components["schemas"]["SubjectRef"][];
         };
         Roadmap: {
@@ -10067,6 +10096,43 @@ export interface operations {
                 content: {
                     "application/json": {
                         restrictions: components["schemas"]["Restrictions"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    checkPageRestrictions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestrictionsInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        check: components["schemas"]["RestrictionsCheck"];
                     };
                 };
             };

@@ -346,7 +346,7 @@ describe("a page's restrictions", () => {
     restricted: { view: true, edit: false },
     ancestors: [{ id: home.id, title: "Handbook", home: true }, plans],
   });
-  const inherited: Restrictions = { view: [], edit: [], inherited: [{ page: plans, view: [eng], edit: [] }] };
+  const inherited: Restrictions = { view: [], edit: [], editGrant: [], inherited: [{ page: plans, view: [eng], edit: [], editGrant: [] }] };
   const tree: Record<string, TreeNode[]> = {
     home: [
       { id: ids.plans, parentId: home.id, title: "Plans", hasChildren: true, unpublished: false, restricted: true, archived: false, kind: "page", icon: null },
@@ -365,7 +365,7 @@ describe("a page's restrictions", () => {
       },
     ],
   };
-  const stubPage = (page = secret, more: Record<string, Answer | ((request: Request) => Answer)> = {}) =>
+  const stubPage = (page = secret, more: Record<string, Answer | ((request: Request) => Answer | Promise<Answer>)> = {}) =>
     stubApi({
       "GET /spaces": { status: 200, body: { spaces: [space] } },
       "GET /spaces/DOCS": { status: 200, body: { space } },
@@ -426,7 +426,7 @@ describe("a page's restrictions", () => {
   });
 
   it("offer the home page an edit list but no view list", async () => {
-    stubPage(home, { [`GET /pages/${home.id}/restrictions`]: { status: 200, body: { restrictions: { view: [], edit: [], inherited: [] } } } });
+    stubPage(home, { [`GET /pages/${home.id}/restrictions`]: { status: 200, body: { restrictions: { view: [], edit: [], editGrant: [], inherited: [] } } } });
     await renderAt("/s/DOCS");
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Restrictions" }));
@@ -438,8 +438,62 @@ describe("a page's restrictions", () => {
     expect(within(dialog).getByText("No page above this one is restricted.")).toBeInTheDocument();
   });
 
+  it("let an administrator of the space name who else may edit, and mark who on the edit list cannot", async () => {
+    const admin = aPage({ ...secret, can: { ...secret.can, grantEdit: true } });
+    const sent = stubPage(admin, {
+      [`POST /pages/${ids.secret}/restrictions/check`]: async (request) => {
+        const body = (await request.json()) as { edit: { id: string }[]; editGrant: { id: string }[] };
+        const blocked = body.edit.some((each) => each.id === ids.bob) && !body.editGrant.some((each) => each.id === ids.bob);
+        return { status: 200, body: { check: { cannotEdit: blocked ? [{ subject: bob, members: 0 }] : [] } } };
+      },
+      [`PUT /pages/${ids.secret}/restrictions`]: { status: 200, body: { restrictions: { ...inherited, edit: [bob], editGrant: [bob] } } },
+    });
+    await renderAt(`/s/DOCS/p/${ids.secret}/secret`);
+    await userEvent.click(await screen.findByRole("button", { name: /^Restricted/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Restrictions on Secret" });
+    const editList = within(dialog).getByRole("region", { name: "Who can edit" });
+    await userEvent.type(within(editList).getByRole("combobox"), "Bo");
+    await userEvent.click(await within(editList).findByRole("option", { name: /Bob Builder/ }));
+    expect(await within(editList).findByText("Cannot edit")).toBeInTheDocument();
+    expect(within(editList).getByText(/because the space does not let them add pages\. Add them to Also allowed to edit/)).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+
+    const grantList = within(dialog).getByRole("region", { name: "Also allowed to edit" });
+    await userEvent.type(within(grantList).getByRole("combobox"), "Bo");
+    await userEvent.click(await within(grantList).findByRole("option", { name: /Bob Builder/ }));
+    await waitFor(() => expect(within(editList).queryByText("Cannot edit")).toBeNull());
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save restrictions" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(sent.find((r) => r.method === "PUT")?.body).toEqual({ view: [], edit: [{ type: "user", id: ids.bob }], editGrant: [{ type: "user", id: ids.bob }] });
+  });
+
+  it("show who else may edit, without changing it, to an editor who does not administer the space", async () => {
+    stubPage(secret, {
+      [`GET /pages/${ids.secret}/restrictions`]: {
+        status: 200,
+        body: { restrictions: { ...inherited, editGrant: [bob], inherited: [{ page: plans, view: [], edit: [], editGrant: [eng] }] } },
+      },
+      [`POST /pages/${ids.secret}/restrictions/check`]: { status: 200, body: { check: { cannotEdit: [{ subject: eng, members: 2 }] } } },
+    });
+    await renderAt(`/s/DOCS/p/${ids.secret}/secret`, { me: member });
+    await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Restrictions" }));
+    const dialog = await screen.findByRole("dialog", { name: "Restrictions on Secret" });
+    const grantList = within(dialog).getByRole("region", { name: "Also allowed to edit" });
+    expect(within(grantList).getByText("Bob Builder")).toBeInTheDocument();
+    expect(within(grantList).queryByRole("combobox")).toBeNull();
+    expect(within(grantList).getByText("Only administrators of the space change this list.")).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "From Plans" }).closest("li")).toHaveTextContent("Also edit");
+
+    const editList = within(dialog).getByRole("region", { name: "Who can edit" });
+    await userEvent.type(within(editList).getByRole("combobox"), "Eng");
+    await userEvent.click(await within(editList).findByRole("option", { name: /Engineering/ }));
+    expect(await within(editList).findByText("2 members cannot edit")).toBeInTheDocument();
+    expect(within(editList).getByText(/Ask an administrator of the space to add them to Also allowed to edit/)).toBeInTheDocument();
+  });
+
   it("are shown but not changeable to a reader who cannot edit the page", async () => {
-    const readOnly = aPage({ ...secret, can: { edit: false, delete: false, restrict: false, comment: true, archive: false } });
+    const readOnly = aPage({ ...secret, can: { edit: false, delete: false, restrict: false, comment: true, archive: false, add: false, grantEdit: false } });
     stubPage(readOnly);
     await renderAt(`/s/DOCS/p/${ids.secret}/secret`, { me: member });
     await screen.findByRole("button", { name: /^Restricted/ });
@@ -464,7 +518,7 @@ describe("what a page offers", () => {
     });
 
   it("follows page.can rather than the space", async () => {
-    stub({ edit: true, delete: false, restrict: true, comment: true, archive: false });
+    stub({ edit: true, delete: false, restrict: true, comment: true, archive: false, add: true, grantEdit: false });
     await renderAt(`/s/DOCS/p/${ids.plans}/plans`);
     expect(await screen.findByRole("button", { name: "Edit" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Page actions" }));
@@ -473,7 +527,7 @@ describe("what a page offers", () => {
   });
 
   it("sends somebody who may not edit away from the editor with a sentence", async () => {
-    stub({ edit: false, delete: false, restrict: false, comment: false, archive: false });
+    stub({ edit: false, delete: false, restrict: false, comment: false, archive: false, add: false, grantEdit: false });
     await renderAt(`/s/DOCS/p/${ids.plans}/plans/edit`);
     expect(await screen.findByText(/You can read this page but not edit it\./, undefined, EDITOR_CHUNK_WAIT)).toBeInTheDocument();
   });

@@ -45,6 +45,9 @@ const (
 	StepUnpublished StepKind = "unpublished"
 	// StepList is a view or edit list on the page or a page above it.
 	StepList StepKind = "list"
+	// StepGrant is a grant list on the page or a page above it that names
+	// the person, which lets them edit without add pages in the space.
+	StepGrant StepKind = "grant"
 	// StepView is viewing the page, which every other right needs first.
 	StepView StepKind = "view"
 	// StepPublished is the page being published, which comments wait for.
@@ -57,18 +60,20 @@ const (
 )
 
 // StepKinds lists every StepKind, for the API document.
-var StepKinds = []StepKind{StepOrgAdmin, StepUse, StepSpace, StepUnpublished, StepList, StepView, StepPublished, StepHome, StepArchived}
+var StepKinds = []StepKind{StepOrgAdmin, StepUse, StepSpace, StepUnpublished, StepList, StepGrant, StepView, StepPublished, StepHome, StepArchived}
 
-// ListKind is which of a page's two lists a restriction is on.
+// ListKind is which of a page's lists a restriction is on.
 type ListKind string
 
 const (
 	ListView ListKind = "view"
 	ListEdit ListKind = "edit"
+	// ListEditGrant is the list of who else may edit, without add pages.
+	ListEditGrant ListKind = "editGrant"
 )
 
 // ListKinds lists every ListKind, for the API document.
-var ListKinds = []ListKind{ListView, ListEdit}
+var ListKinds = []ListKind{ListView, ListEdit, ListEditGrant}
 
 // AccessPage is a page a step is about.
 type AccessPage struct {
@@ -125,8 +130,8 @@ type ListFacts struct {
 type InspectLink struct {
 	Page AccessPage
 	// Hidden is a page nobody has published yet, made by somebody else.
-	Hidden     bool
-	View, Edit ListFacts
+	Hidden            bool
+	View, Edit, Grant ListFacts
 }
 
 // InspectFacts are the database's answers for one person and one page.
@@ -177,7 +182,11 @@ func Explain(f InspectFacts) []AccessRight {
 		if r.right == RightDelete && !f.Trashable {
 			a.Steps = append(a.Steps, step(AccessStep{Kind: StepHome}))
 		}
-		a.Steps = append(a.Steps, f.standing(r.needs, false)...)
+		if r.right == RightEdit && f.grantDecides() {
+			a.Steps = append(a.Steps, f.grants()...)
+		} else {
+			a.Steps = append(a.Steps, f.standing(r.needs, false)...)
+		}
 		a.Steps = append(a.Steps, f.lists(ListEdit)...)
 		out = append(out, a)
 	}
@@ -234,8 +243,36 @@ func grantsGiving(grants []SpaceGrant, p SpacePermission) []SpaceGrant {
 	return out
 }
 
+// grantDecides says a grant list, not the space's add pages, is what lets
+// the person edit, or would once the other conditions are met.
+func (f InspectFacts) grantDecides() bool {
+	if f.OrgAdmin || f.Space[SpaceAddPages] || !f.Use {
+		return false
+	}
+	for _, l := range f.Chain {
+		if l.Grant.On {
+			return true
+		}
+	}
+	return false
+}
+
+// grants are the steps of the grant lists on the way up that name the person.
+func (f InspectFacts) grants() []AccessStep {
+	var out []AccessStep
+	for _, l := range f.Chain {
+		if !l.Grant.On {
+			continue
+		}
+		page, k := l.Page, ListEditGrant
+		out = append(out, step(AccessStep{Kind: StepGrant, List: &k, Page: &page, Passed: true, Via: l.Grant.Via, Listed: l.Grant.Listed}))
+	}
+	return out
+}
+
 // lists are the steps of every list of a kind on the way up, which an
 // administrator of the space passes; the grant that makes them one comes first.
+// A page's grant list passes its own edit list too.
 func (f InspectFacts) lists(kind ListKind) []AccessStep {
 	admin := f.Space[SpaceAdminister]
 	var out []AccessStep
@@ -243,6 +280,8 @@ func (f InspectFacts) lists(kind ListKind) []AccessStep {
 		facts := l.View
 		if kind == ListEdit {
 			facts = l.Edit
+			facts.On = facts.On || l.Grant.On
+			facts.Via = append(slices.Clone(facts.Via), l.Grant.Via...)
 		}
 		if len(facts.Listed) == 0 {
 			continue
@@ -284,8 +323,8 @@ func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (Insp
 	f := InspectFacts{Space: map[SpacePermission]bool{}, Verdict: map[Right]bool{}}
 	rows, err := tx.Query(ctx, `
 		SELECT l.id, l.space_id, COALESCE(p.title, ''), COALESCE(p.parent_id IS NULL AND p.kind <> 'post', false), COALESCE(p.version > 0, false),
-		       l.hidden, l.on_view_list, l.on_edit_list
-		FROM perm_page_lists($1, $2) WITH ORDINALITY AS l (id, space_id, hidden, view_listed, on_view_list, edit_listed, on_edit_list, n)
+		       l.hidden, l.on_view_list, l.on_edit_list, l.granted
+		FROM perm_page_lists($1, $2) WITH ORDINALITY AS l (id, space_id, hidden, view_listed, on_view_list, edit_listed, on_edit_list, granted, n)
 		LEFT JOIN page p ON p.id = l.id
 		ORDER BY l.n DESC`, page, person)
 	if err != nil {
@@ -300,7 +339,7 @@ func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (Insp
 			l  InspectLink
 			pb bool
 		)
-		err := row.Scan(&l.Page.ID, &space, &l.Page.Title, &l.Page.Home, &pb, &l.Hidden, &l.View.On, &l.Edit.On)
+		err := row.Scan(&l.Page.ID, &space, &l.Page.Title, &l.Page.Home, &pb, &l.Hidden, &l.View.On, &l.Edit.On, &l.Grant.On)
 		published = append(published, pb)
 		return l, err
 	})
@@ -426,8 +465,11 @@ func readLists(ctx context.Context, tx db.DBTX, person uuid.UUID, chain []Inspec
 			continue
 		}
 		list := &chain[i].View
-		if kind == ListEdit {
+		switch kind {
+		case ListEdit:
 			list = &chain[i].Edit
+		case ListEditGrant:
+			list = &chain[i].Grant
 		}
 		list.Listed = append(list.Listed, sub)
 		if matches {

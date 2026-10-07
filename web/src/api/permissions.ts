@@ -20,6 +20,8 @@ export type SubjectType = Subject["type"];
 export type SpaceGrant = Wire["SpaceGrant"];
 export type SpacePermission = SpaceGrant["permissions"][number];
 export type Restrictions = Wire["Restrictions"];
+/** Somebody an edit list names who could not edit, since the space does not let them add pages. */
+export type CannotEdit = Wire["CannotEdit"];
 export type InheritedRestriction = Wire["InheritedRestriction"];
 export type Person = Wire["Person"];
 /** What one person may do to one page, and the steps behind each right, as the database answers it. */
@@ -170,16 +172,23 @@ export function usePageRestrictions(pageId: string) {
   });
 }
 
+/** A page's lists as the dialog holds them; editGrant is left out by whoever may not change it. */
+export interface RestrictionLists {
+  view: Subject[];
+  edit: Subject[];
+  editGrant?: Subject[];
+}
+
+function restrictionsBody(lists: RestrictionLists) {
+  const body = { view: lists.view.map(subjectRef), edit: lists.edit.map(subjectRef) };
+  return lists.editGrant ? { ...body, editGrant: lists.editGrant.map(subjectRef) } : body;
+}
+
 export function useSetPageRestrictions(pageId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (lists: { view: Subject[]; edit: Subject[] }): Promise<Restrictions> =>
-      (
-        await api.PUT("/pages/{pageID}/restrictions", {
-          params: { path: { pageID: pageId } },
-          body: { view: lists.view.map(subjectRef), edit: lists.edit.map(subjectRef) },
-        })
-      ).data!.restrictions,
+    mutationFn: async (lists: RestrictionLists): Promise<Restrictions> =>
+      (await api.PUT("/pages/{pageID}/restrictions", { params: { path: { pageID: pageId } }, body: restrictionsBody(lists) })).data!.restrictions,
     // The pages below inherit the lists, so every page and tree level read may have changed.
     onSuccess: (saved) => {
       queryClient.setQueryData(restrictionsQueryKey(pageId), saved);
@@ -189,6 +198,22 @@ export function useSetPageRestrictions(pageId: string) {
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
       ]);
     },
+  });
+}
+
+/** Who of an edit list not yet saved could not edit the page, asked as the lists change; only for whoever may edit it. */
+export function useRestrictionsCheck(pageId: string, lists: { edit: Subject[]; editGrant: Subject[] }, enabled: boolean) {
+  return useQuery({
+    queryKey: ["restrictions", pageId, "check", lists.edit.map(subjectKey), lists.editGrant.map(subjectKey)],
+    queryFn: async (): Promise<CannotEdit[]> =>
+      (
+        await api.POST("/pages/{pageID}/restrictions/check", {
+          params: { path: { pageID: pageId } },
+          body: restrictionsBody({ view: [], ...lists }),
+        })
+      ).data!.check.cannotEdit,
+    enabled: enabled && lists.edit.length > 0,
+    placeholderData: keepPreviousData,
   });
 }
 
