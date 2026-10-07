@@ -1,10 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { ApiError } from "@/api/client";
 import { useBlog, useCreatePost, usePosts, useWatchBlog, type BlogMonth } from "@/api/posts";
+import { useSpace } from "@/api/spaces";
+import { templateTitle, type Template } from "@/api/templates";
 import { Button, Dialog, EmptyState, ErrorBanner, Field, PageHeader, SelectInput, Skeleton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { PAGE_TITLE_MAX_LENGTH } from "@/config";
+import { BLANK_TEMPLATE, PAGE_TITLE_MAX_LENGTH } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
+import { TemplatePicker } from "@/features/pages/TemplatePicker";
+import { TemplateValues, initialValues, missingValues, wireValues, type Values } from "@/features/templates/TemplateValues";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 import { pageSlug } from "@/lib/slug";
@@ -45,22 +50,48 @@ export function groupByYear(months: BlogMonth[]): Array<{ year: number; count: n
   return years;
 }
 
-/** Asks for a new post's title, makes the post and opens it to write. */
+/** Asks for a new post's title and what it starts from, makes the post and opens it to write. */
 function NewPostDialog({ spaceKey, onClose }: { spaceKey: string; onClose: () => void }) {
   const create = useCreatePost(spaceKey);
+  const { data: space } = useSpace(spaceKey);
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
+  // A title the writer typed is theirs; one a template filled in follows the choice.
+  const [titleTyped, setTitleTyped] = useState(false);
+  const [key, setKey] = useState(BLANK_TEMPLATE);
+  const [template, setTemplate] = useState<Template>();
+  const [values, setValues] = useState<Values>({});
   const [error, setError] = useState("");
+  const fields = create.error instanceof ApiError ? create.error.fields : {};
+  const variables = template?.variables ?? [];
+
+  function choose(next: string, chosen: Template | undefined) {
+    setKey(next);
+    setTemplate(chosen);
+    setValues(initialValues(chosen?.variables ?? []));
+    setError("");
+    create.reset();
+    if (!titleTyped) setTitle(chosen?.title ? templateTitle(chosen.title) : "");
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!title.trim()) {
+    if (!template && !title.trim()) {
       setError(t.blog.emptyTitle);
+      return;
+    }
+    const missing = missingValues(variables, values);
+    if (missing.length > 0) {
+      setError(t.templates.missing(missing));
       return;
     }
     setError("");
     create.mutate(
-      { title: title.trim() },
+      {
+        title: title.trim(),
+        ...(template ? { template: template.key } : {}),
+        ...(variables.length > 0 ? { values: wireValues(values) } : {}),
+      },
       {
         onSuccess: (made) =>
           void navigate({ to: "/s/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: made.spaceKey, pageId: made.id, slug: pageSlug(made.title) } }),
@@ -68,18 +99,30 @@ function NewPostDialog({ spaceKey, onClose }: { spaceKey: string; onClose: () =>
     );
   }
 
+  const banner = create.error && !Object.keys(fields).some((field) => field.startsWith("values.") || field === "title") ? create.error.message : "";
   return (
-    <Dialog title={t.blog.newPostTitle} onClose={onClose} data-new-post-dialog="">
+    <Dialog title={t.blog.newPostTitle} wide onClose={onClose} data-new-post-dialog="">
       <form onSubmit={submit} className="space-y-3" noValidate>
-        {create.error && <ErrorBanner>{create.error.message || t.blog.createFailed}</ErrorBanner>}
+        {banner && <ErrorBanner>{fields.template ?? (banner || t.blog.createFailed)}</ErrorBanner>}
         <Field
           label={t.blog.postTitle}
           value={title}
           maxLength={PAGE_TITLE_MAX_LENGTH}
-          onChange={(event) => setTitle(event.target.value)}
-          error={error}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            setTitleTyped(event.target.value !== "");
+          }}
+          error={(template ? "" : error) || fields.title}
+          hint={variables.length > 0 ? t.templates.titleHint : undefined}
           autoFocus
         />
+        <TemplatePicker value={key} onChange={choose} spaceKey={spaceKey} />
+        {space && <TemplateValues variables={variables} values={values} onChange={setValues} parentId={space.homePageId} errors={fields} />}
+        {template && error && (
+          <p role="alert" className="text-sm text-danger" data-template-missing="">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="secondary" onClick={onClose}>
             {t.page.cancel}

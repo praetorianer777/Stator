@@ -3,6 +3,40 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: Every way to start a page takes a template's variables, and guests see their space's templates only
+
+The organization's own templates (#63, decided 2026-10-02) were written
+before folders, blog posts, template buttons, guests and reading without
+signing in. Where they meet:
+
+- **A template button** finds its template as a new page does: a
+  built-in by name, else one of the organization's or the space's own by
+  id, which a button's key pattern already takes. `GET /template-button`
+  names the template's variables, and the button asks for them in a
+  dialog before the click makes anything; `POST /templates/{key}/pages`
+  takes `values` and goes through `POST /pages`'s own path, so the
+  server fills the page and refuses what does not fit on the same fields.
+  A button keeps naming its template by key, as decided on 2026-10-05,
+  rather than storing values: what changes from page to page is asked
+  each time.
+- **A blog post** takes `template` and `values` as a page does, with the
+  checks shared, since posts are written to a pattern as often as pages.
+  A person picker offers whoever may view the space's home page, the
+  closest a post outside the tree has to a parent.
+- **A folder** takes no template, as it takes no body; a page in a folder
+  starts from one like any other page.
+- **A guest** reads the templates of their space and none of the
+  organization's, which are of the organization as a whole and may
+  mention anybody in it; the read policy asks `perm_guest_space`. A
+  reader who is not signed in reads and writes no template, by the
+  restrictive policy every table has since 00470.
+
+The migration moved from 00340, which folders took meanwhile, to 00560.
+A template's blank is the one node a template's editor offers that no page
+may hold, so the example space's showcase cannot show it; the templates
+guide tells of it instead, and the showcase's test names every such node
+with why.
+
 ## 2026-10-07: An annotated picture is flattened in the browser and saved as its file's next version
 
 An author crops a screenshot and draws on it so that it shows what
@@ -1537,6 +1571,62 @@ also ask `perm_token_reaches_page`, so a limited token reads only those
 about pages in its spaces, while a session keeps reading its own rows as
 before. The page view counts and readers ask `perm_page_viewable` and
 `perm_space_holds`, and follow the limit with no change.
+
+## 2026-10-02: A template's variables are filled by the server, and an empty one is a hint
+
+An organization's own templates (#63) are rows of `page_template` beside the
+built-ins, in the same shape and the same list, as the template decision of
+2026-09-30 left room for: keyed by id where a built-in has a name, for every
+space when `space_id` is null and for one space otherwise. The
+organization's are kept by its administrators and a space's by the space's,
+as Armature's custom fields belong to a project or to the whole tenant and
+are kept by those who administer either. Reading follows the space: a
+space's templates are listed with `?space=` for whoever may view it, the
+organization's for everybody who uses Stator. Making, changing and deleting
+one is audited.
+
+A variable is defined in the template, as Armature defines a custom field:
+a name, a label for the form, a kind and, for a choice, its options; a
+default, and whether it is required. The kinds are Armature's text, date and
+select, and a person, which a wiki needs where a tracker has an assignee.
+Number, checkbox and link were left out, as nothing a template asks for
+needed them yet. A date's default may be `today`, the day the page is made,
+which the form fills with the author's local day and the server, when none
+is sent, with the day in UTC. A person has no default: the template cannot
+know who will be there.
+
+The body marks where a value goes with an inline `templateVariable` node
+holding only the name, and the title with the name in braces, as `{date}`
+already was. A node rather than braces in text, because a node cannot be
+half typed, keeps the styles around it, and is allowed only where the
+template allowlist (`api/template-allowlist.json`, the page allowlist with
+the node added wherever inline content goes) puts it; a code block takes
+none. A body may name only variables the template defines.
+
+The page is made by `POST /pages` with `template` and `values` in place of a
+body, and the server fills it in the transaction that makes the page: words
+as text, a day as a date node, a person as a mention, each with the styles
+the blank had, then holds the result to the page allowlist. The client never
+sends a filled document, so nothing it could forge reaches a page. A value
+the variable does not take is refused on `values.<name>` in a sentence, as
+is a name the template lacks, a required value missing, and a person who is
+not a member who may view the space. A template of another space is no
+template there.
+
+An optional blank left empty becomes its label as hint text. The author
+sees what was left out while the page is a draft, and publishing strips it
+like any hint, so a reader never meets a placeholder. The database refuses
+the node itself in any page, draft or version (`document_has_variables`),
+so neither a client nor raw SQL can store an unfilled blank, and holds
+templates to the administrators of their scope, a token limited to spaces
+included, through the same permission functions as everything else.
+
+In the editor a blank is an atom drawn as its name in braces, put in by
+the variable's Insert button in the template form. In Markdown it is
+`<span data-stator="variable" data-name="customer">{customer}</span>`, read
+back as the node only into a template; a page keeps its words. The read
+tools list and get templates with their variables, and `create_page` takes
+a template and values; keeping templates is administration and no tool.
 
 ## 2026-10-02: A view is a person on a day, counted for every reader and named only to editors
 

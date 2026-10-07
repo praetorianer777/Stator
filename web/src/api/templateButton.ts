@@ -37,11 +37,11 @@ export function useTemplateButton(q: TemplateButtonQuery) {
 export function useCreateFromTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ template, ...body }: TemplateButtonQuery & { title: string }): Promise<Page> =>
+    mutationFn: async ({ template, ...body }: TemplateButtonQuery & { title: string; values?: Record<string, string> }): Promise<Page> =>
       (
         await api.POST("/templates/{templateKey}/pages", {
           params: { path: { templateKey: template } },
-          body: { parentId: body.parentId ?? undefined, spaceKey: body.spaceKey ?? undefined, title: body.title },
+          body: { parentId: body.parentId ?? undefined, spaceKey: body.spaceKey ?? undefined, title: body.title, values: body.values },
         })
       ).data!.page as Page,
     onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: treeQueryKey }), queryClient.invalidateQueries({ queryKey: pagesQueryKey })]),

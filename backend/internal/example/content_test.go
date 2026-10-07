@@ -24,6 +24,12 @@ var notShown = map[string]string{
 	document.AnchorMark: "an inline comment's passage, made by commenting on a selection and kept out of every version",
 }
 
+// templateOnly are the nodes a template's editor offers beyond a page's, which
+// no page may hold and so the showcase cannot show, and why.
+var templateOnly = map[string]string{
+	document.NodeVariable: "a template's blank, filled in when a page is made; the templates guide tells of it",
+}
+
 // facts are what a site with files and an Armature fills the content with.
 func facts(lang string) example.Facts {
 	f := example.Facts{
@@ -107,6 +113,11 @@ func TestTheShowcaseShowsEveryBlockAndMarkTheEditorOffers(t *testing.T) {
 	for name := range notShown {
 		if _, ok := document.Allowed.Marks[name]; !ok {
 			t.Errorf("%q is excused from the showcase but is no mark of the allowlist any more", name)
+		}
+	}
+	for name := range document.TemplateAllowed.Nodes {
+		if _, page := document.Allowed.Nodes[name]; !page && templateOnly[name] == "" {
+			t.Errorf("a template's editor offers %q, which no page holds; tell of it in a guide and say so in templateOnly", name)
 		}
 	}
 }

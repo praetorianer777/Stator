@@ -84,6 +84,19 @@ func ValidateNode(root Node) error {
 	return checkExcerpts(root)
 }
 
+// ParseTemplate decodes a template's body and holds it to TemplateAllowed,
+// answering the decoded node so the caller can check its variables.
+func ParseTemplate(body json.RawMessage) (Node, error) {
+	if len(body) > MaxBytes {
+		return Node{}, invalid("This template is too long; keep it under %d MB.", MaxBytes>>20)
+	}
+	root, err := decode(body, "template")
+	if err != nil {
+		return Node{}, err
+	}
+	return root, validator{list: &TemplateAllowed, noun: "template", anchors: map[string]bool{}}.check(root)
+}
+
 // ParseComment decodes a comment's document and holds it to CommentAllowed,
 // answering the decoded node so the caller can read its words.
 func ParseComment(body json.RawMessage) (Node, error) {
@@ -191,7 +204,7 @@ func init() {
 			}
 		}
 	}
-	for _, n := range Allowed.Nodes {
+	for _, n := range TemplateAllowed.Nodes {
 		compile(n.Attrs)
 	}
 	for _, m := range Allowed.Marks {

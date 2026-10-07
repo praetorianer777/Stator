@@ -62,8 +62,9 @@ function refreshTrees(queryClient: QueryClient) {
 export function useCreatePage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: Placement & { title: string; body?: Doc; kind?: Page["kind"] }): Promise<Page> =>
-      (await api.POST("/pages", { body: input })).data!.page as Page,
+    mutationFn: async (
+      input: Placement & { title: string; body?: Doc; kind?: Page["kind"]; template?: string; values?: Record<string, string> },
+    ): Promise<Page> => (await api.POST("/pages", { body: input })).data!.page as Page,
     onSuccess: () => refreshTrees(queryClient),
   });
 }

@@ -741,6 +741,9 @@ func (r renderer) atom(n document.Node, ctx inlineCtx) string {
 		return span(kindStatus, [][2]string{{"data-color", stringAttr(n, "color")}}, r.escape(stringAttr(n, "label"), esc, false))
 	case document.NodeDate:
 		return span(kindDate, nil, r.escape(stringAttr(n, "date"), esc, false))
+	case document.NodeVariable:
+		name := stringAttr(n, "name")
+		return span(kindVariable, [][2]string{{"data-name", name}}, r.escape("{"+name+"}", esc, false))
 	case document.NodeMathInline:
 		return inlineMath(stringAttr(n, "latex"), ctx)
 	}

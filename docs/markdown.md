@@ -95,6 +95,7 @@ each marked `data-stator`. Nothing else in HTML reaches a page.
 | mention | `<span data-stator="mention" data-id="...">@Name</span>` | the mention |
 | status | `<span data-stator="status" data-color="success">DONE</span>` | the status |
 | date | `<span data-stator="date">2026-10-01</span>` | the date |
+| a template's variable | `<span data-stator="variable" data-name="customer">{customer}</span>` | the variable, in a template; its words, in a page |
 | Armature issue chip | `<span data-stator="issue">KEY-1</span>` | the chip |
 | Armature issue block | `<div data-stator="issue">KEY-1</div>` | the block |
 | Armature issue list | `<div data-stator="issues" data-columns="key,summary" data-limit="20">query</div>` | the list |

@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/rank"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
@@ -91,6 +92,10 @@ type CreateInput struct {
 	// Kind folder makes a folder, which takes no body and is seen at once by
 	// everybody who may see where it is; empty or page makes a page.
 	Kind Kind `json:"kind,omitempty"`
+	// Template starts the page from a template's key in place of a body; the
+	// server fills its variables, and the title's names in braces, from Values.
+	Template string            `json:"template,omitempty"`
+	Values   map[string]string `json:"values,omitempty"`
 }
 
 // MoveInput moves a page. Without its children they stay where the page was.
@@ -323,21 +328,16 @@ func (s *Service) Outline(ctx context.Context, actor perm.Actor, spaceKey string
 
 // Create adds a page under a parent, last unless a place is named.
 func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) (*Page, db.LSN, error) {
-	title, err := cleanTitle(in.Title)
-	if err != nil {
-		return nil, 0, err
-	}
 	kind := cmp.Or(in.Kind, KindPage)
 	if kind != KindPage && kind != KindFolder {
 		return nil, 0, ErrBadKind
 	}
-	if kind == KindFolder && in.Body != nil {
+	if kind == KindFolder && (in.Body != nil || in.Template != "") {
 		return nil, 0, ErrFolder
 	}
-	if in.Body != nil {
-		if err := document.Validate(in.Body); err != nil {
-			return nil, 0, err
-		}
+	title, err := startOf(in.Title, in.Body, in.Template, in.Values)
+	if err != nil {
+		return nil, 0, err
 	}
 	// A folder has nothing to publish, but it is version 1 from the start: an
 	// unpublished row is its creator's alone, and so would be all below it.
@@ -350,6 +350,11 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		_, sp, err := parentFor(ctx, tx, actor, in.ParentID)
 		if err != nil {
 			return err
+		}
+		if in.Template != "" {
+			if title, in.Body, err = fromTemplate(ctx, tx, sp.ID, in.Template, in.Values, in.Title); err != nil {
+				return err
+			}
 		}
 		r, err := rankAt(ctx, tx, in.Placement, uuid.Nil)
 		if err != nil {
@@ -380,6 +385,43 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		return err
 	})
 	return out, lsn, err
+}
+
+// startOf checks what a new page starts with before anything is written: its
+// title and body, or a template and its values in their place.
+func startOf(title string, body json.RawMessage, tpl string, values map[string]string) (string, error) {
+	switch {
+	case tpl != "" && body != nil:
+		return "", &FieldError{Field: "body", Message: "Send either a body or a template, not both."}
+	case tpl == "" && len(values) > 0:
+		return "", &FieldError{Field: "values", Message: "Values fill a template's variables; name the template too."}
+	case tpl != "":
+		return "", nil
+	}
+	title, err := cleanTitle(title)
+	if err != nil {
+		return "", err
+	}
+	if body != nil {
+		if err := document.Validate(body); err != nil {
+			return "", err
+		}
+	}
+	return title, nil
+}
+
+// fromTemplate fills a template in for a page of the space, in the
+// transaction that makes it: its title and body.
+func fromTemplate(ctx context.Context, tx db.DBTX, space uuid.UUID, tpl string, values map[string]string, title string) (string, json.RawMessage, error) {
+	filled, body, err := template.Instantiate(ctx, tx, space, tpl, values, title)
+	if err != nil {
+		return "", nil, err
+	}
+	if filled, err = cleanTitle(filled); err != nil {
+		return "", nil, &FieldError{Field: "title", Message: fmt.Sprintf(
+			"Give the page a title of at most %d characters once the template's values are filled in.", MaxTitleLength)}
+	}
+	return filled, body, nil
 }
 
 func nullJSON(raw json.RawMessage) any {

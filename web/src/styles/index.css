@@ -1061,9 +1061,22 @@
   .doc-inline-value {
     cursor: pointer;
   }
-  .ProseMirror-selectednode :is(.doc-status, .doc-date) {
+  .ProseMirror-selectednode :is(.doc-status, .doc-date, .doc-variable) {
     outline: 2px solid var(--color-focus);
     outline-offset: 1px;
+  }
+  /* A template's blank: a dashed accent chip, so it never reads as text a
+     page will keep. */
+  .doc-variable {
+    display: inline-block;
+    border: 1px dashed var(--color-accent);
+    border-radius: var(--radius-control);
+    background: var(--color-accent-subtle);
+    padding: 0 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    white-space: nowrap;
+    color: var(--color-ink);
   }
   /* A formula on its own line scrolls sideways rather than widening the page
    * on a narrow screen. */

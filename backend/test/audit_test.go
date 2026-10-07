@@ -297,6 +297,16 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.delete(t, "/api/v1/spaces/AUD"), http.StatusNoContent, "delete the space")
 	once(audit.ActionSpaceDeleted, me, spaceID)
 
+	audited := map[string]any{"name": "Audited", "body": map[string]any{"type": "doc", "content": []any{map[string]any{"type": "paragraph"}}}, "variables": []any{}}
+	tplID, _ := obj(t, want(t, owner.post(t, "/api/v1/templates", audited), http.StatusCreated, "make a template"), "template")["key"].(string)
+	if data := once(audit.ActionTemplateCreated, me, tplID); !strings.Contains(data, `"name": "Audited"`) {
+		t.Errorf("the template's record reads %s", data)
+	}
+	audited["name"] = "Audited again"
+	want(t, owner.put(t, "/api/v1/templates/"+tplID, audited), http.StatusOK, "change the template")
+	once(audit.ActionTemplateUpdated, me, tplID)
+	want(t, owner.delete(t, "/api/v1/templates/"+tplID), http.StatusNoContent, "delete the template")
+	once(audit.ActionTemplateDeleted, me, tplID)
 	exampleID := idOf(t, want(t, owner.post(t, "/api/v1/example-space", map[string]any{"language": "en"}), http.StatusCreated, "make the example space"), "space")
 	if data := once(audit.ActionExampleSpaceCreated, me, exampleID); !strings.Contains(data, `"language": "en"`) {
 		t.Errorf("the example's record reads %s", data)

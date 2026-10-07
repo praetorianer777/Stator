@@ -94,6 +94,10 @@ type PostInput struct {
 	Title string `json:"title"`
 	// Body is the first document; empty starts with an empty one.
 	Body json.RawMessage `json:"body,omitempty"`
+	// Template starts the post from a template's key in place of a body; the
+	// server fills its variables, and the title's names in braces, from Values.
+	Template string            `json:"template,omitempty"`
+	Values   map[string]string `json:"values,omitempty"`
 	// Publish sends it out at once, dated now; otherwise it stays an
 	// unpublished post of its writer's until they publish or schedule it.
 	Publish bool `json:"publish,omitempty"`
@@ -255,14 +259,9 @@ func (s *Service) Blog(ctx context.Context, actor perm.Actor, spaceKey string) (
 // CreatePost writes a new post in a space's blog, unpublished and its
 // writer's alone unless it is published at once.
 func (s *Service) CreatePost(ctx context.Context, actor perm.Actor, spaceKey string, in PostInput) (*Page, db.LSN, error) {
-	title, err := cleanTitle(in.Title)
+	title, err := startOf(in.Title, in.Body, in.Template, in.Values)
 	if err != nil {
 		return nil, 0, err
-	}
-	if in.Body != nil {
-		if err := document.Validate(in.Body); err != nil {
-			return nil, 0, err
-		}
 	}
 	r, err := rank.Between("", "")
 	if err != nil {
@@ -279,6 +278,11 @@ func (s *Service) CreatePost(ctx context.Context, actor perm.Actor, spaceKey str
 		}
 		if !sp.Can.EditPages {
 			return perm.Refuse(perm.EditPages, "")
+		}
+		if in.Template != "" {
+			if title, in.Body, err = fromTemplate(ctx, tx, sp.ID, in.Template, in.Values, in.Title); err != nil {
+				return err
+			}
 		}
 		// Made here rather than returned, which the policies would refuse:
 		// the statement's own snapshot does not hold the row it writes.

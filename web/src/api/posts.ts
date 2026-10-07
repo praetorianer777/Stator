@@ -65,7 +65,7 @@ export function useLatestPosts(settings: { space: string | null; limit: number }
 export function useCreatePost(spaceKey: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { title: string; body?: Doc }): Promise<Page> =>
+    mutationFn: async (input: { title: string; body?: Doc; template?: string; values?: Record<string, string> }): Promise<Page> =>
       (await api.POST("/spaces/{spaceKey}/posts", { params: { path: { spaceKey } }, body: input })).data!.page as Page,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: blogQueryKey(spaceKey) }),
   });

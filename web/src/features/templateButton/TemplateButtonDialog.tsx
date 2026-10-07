@@ -26,10 +26,11 @@ export function TemplateButtonDialog({
   onClose: () => void;
 }) {
   const d = t.templateButton.dialog;
-  const templates = useTemplates();
   const spaces = useSpaces();
   const [template, setTemplate] = useState(initial.template);
   const [space, setSpace] = useState(initial.space ?? "");
+  // The space the page goes in offers its own templates beside the others.
+  const templates = useTemplates(space || pageSpace || undefined);
   const [parent, setParent] = useState(initial.parent ?? "");
   const [label, setLabel] = useState(initial.label);
   const [title, setTitle] = useState(initial.title);
