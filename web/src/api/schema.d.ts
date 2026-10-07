@@ -637,10 +637,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's example space, the one whose pages explain Stator, or null while there is none. For administrators. */
+        /** The organization's example space, the one whose pages explain Stator, null while there is none or it is being made, and the latest making of it. For administrators. */
         get: operations["getExampleSpace"];
         put?: never;
-        /** Make the example space, whose pages explain Stator, in the language asked for, else the caller's own; 200 with created false when the organization has it already. For administrators. */
+        /** Ask the worker to make the example space, whose pages explain Stator, in the language asked for, else the caller's own: 202 with the job, the same one while it is queued or running, or 200 with the space when the organization has it already. For administrators. */
         post: operations["createExampleSpace"];
         delete?: never;
         options?: never;
@@ -3669,12 +3669,29 @@ export interface components {
             name: string;
             spec: components["schemas"]["Spec"];
         };
+        ExampleSpaceJob: {
+            failure: ("keys_taken" | "forbidden" | "failed") | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            language: "en" | "de";
+            message: string | null;
+            /** Format: date-time */
+            requestedAt: string;
+            spaceKey: string | null;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** @enum {string} */
+            state: "queued" | "running" | "done" | "failed";
+        };
         ExampleSpaceRequest: {
             language?: string;
         };
         ExampleSpaceResponse: {
-            created: boolean;
-            space: components["schemas"]["Space"];
+            job: components["schemas"]["ExampleSpaceJob"] | null;
+            space: components["schemas"]["Space"] | null;
         };
         Excerpt: {
             id: string;
@@ -7146,9 +7163,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        space: components["schemas"]["Space"] | null;
-                    };
+                    "application/json": components["schemas"]["ExampleSpaceResponse"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -7184,8 +7199,8 @@ export interface operations {
                     "application/json": components["schemas"]["ExampleSpaceResponse"];
                 };
             };
-            /** @description Created */
-            201: {
+            /** @description Accepted */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -5,21 +5,36 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
+	"github.com/praetorianer777/stator/backend/internal/calendar"
+	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/example"
+	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/page"
+	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/space"
 )
 
 // The example space (#288): made once per organization by an administrator,
-// through the services every page goes through, and refused to everybody
-// else by the service and by the database.
+// through the services every page goes through, by the worker the request
+// queues it for (#306), and refused to everybody else by the service and by
+// the database.
+
+// exampleWait bounds how long a test waits for the example to be made, by
+// its own watch or by the stack's worker, whichever takes the job first.
+const exampleWait = 2 * time.Minute
 
 func nodeKinds(n document.Node, into map[string]bool) {
 	into[n.Type] = true
@@ -29,6 +44,52 @@ func nodeKinds(n document.Node, into map[string]bool) {
 	for _, c := range n.Content {
 		nodeKinds(c, into)
 	}
+}
+
+// exampleMaker is the Maker the worker runs, over the suite's services.
+func (a *apiServer) exampleMaker(t *testing.T) *example.Maker {
+	t.Helper()
+	pages := page.NewService(a.h.cluster)
+	return &example.Maker{
+		Spaces: space.NewService(a.h.cluster), Pages: pages, Labels: label.NewService(a.h.cluster, pages),
+		Calendars: calendar.NewService(a.h.cluster), Comments: comment.NewService(a.h.cluster), Reactions: reaction.NewService(a.h.cluster),
+		Attachments: a.attachments, Armature: a.h.armature(t),
+	}
+}
+
+// exampleJob runs the worker's watch until the caller's latest job is no
+// longer open, and answers what GET /example-space then says.
+func (a *apiServer) exampleJob(t *testing.T, c *client) response {
+	t.Helper()
+	watch := example.NewWatch(a.h.cluster, a.exampleMaker(t), discard(), time.Hour)
+	deadline := time.Now().Add(exampleWait)
+	for {
+		if _, err := watch.Once(context.Background()); err != nil {
+			t.Logf("the suite's watch: %v", err)
+		}
+		got := want(t, c.get(t, "/api/v1/example-space"), http.StatusOK, "follow the example")
+		if job, _ := got.Body["job"].(map[string]any); job != nil && job["state"] != "queued" && job["state"] != "running" {
+			return got
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the example was not made within %s: %s", exampleWait, got.Raw)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// makeExample asks for the example and waits until it is made.
+func (a *apiServer) makeExample(t *testing.T, c *client, body map[string]any) map[string]any {
+	t.Helper()
+	queued := want(t, c.post(t, "/api/v1/example-space", body), http.StatusAccepted, "ask for the example")
+	if job := obj(t, queued, "job"); job["state"] != "queued" && job["state"] != "running" {
+		t.Fatalf("the example's job is %s", queued.Raw)
+	}
+	done := a.exampleJob(t, c)
+	if job := obj(t, done, "job"); job["state"] != "done" || job["spaceKey"] == nil {
+		t.Fatalf("the example was not made: %s", done.Raw)
+	}
+	return obj(t, done, "space")
 }
 
 func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
@@ -45,15 +106,14 @@ func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "admin")}), http.StatusOK, "the owner connects")
 	h.settle(t)
 
-	if got := want(t, owner.get(t, "/api/v1/example-space"), http.StatusOK, "look for the example"); got.Body["space"] != nil {
+	if got := want(t, owner.get(t, "/api/v1/example-space"), http.StatusOK, "look for the example"); got.Body["space"] != nil || got.Body["job"] != nil {
 		t.Fatalf("a new organization has an example space: %s", got.Raw)
 	}
 
-	made := want(t, owner.post(t, "/api/v1/example-space", map[string]any{"language": "de"}), http.StatusCreated, "make the example in German")
-	sp := obj(t, made, "space")
+	sp := api.makeExample(t, owner, map[string]any{"language": "de"})
 	spaceID := sp["id"].(string)
-	if made.Body["created"] != true || sp["key"] != example.Key || sp["name"] != "Stator kennenlernen" {
-		t.Fatalf("the example is %s", made.Raw)
+	if sp["key"] != example.Key || sp["name"] != "Stator kennenlernen" {
+		t.Fatalf("the example is %v", sp)
 	}
 
 	t.Run("every page is made and published, in German, with its labels, files and calendar", func(t *testing.T) {
@@ -119,11 +179,12 @@ func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
 
 	t.Run("a second click finds it", func(t *testing.T) {
 		again := want(t, owner.post(t, "/api/v1/example-space", map[string]any{}), http.StatusOK, "make it again")
-		if again.Body["created"] != false || obj(t, again, "space")["id"] != spaceID {
+		if again.Body["job"] != nil || obj(t, again, "space")["id"] != spaceID {
 			t.Errorf("the second click answers %s", again.Raw)
 		}
-		if got := obj(t, want(t, owner.get(t, "/api/v1/example-space"), http.StatusOK, "look again"), "space"); got["id"] != spaceID {
-			t.Errorf("the example is %v", got)
+		got := want(t, owner.get(t, "/api/v1/example-space"), http.StatusOK, "look again")
+		if obj(t, got, "space")["id"] != spaceID || obj(t, got, "job")["spaceKey"] != example.Key {
+			t.Errorf("the example is %s", got.Raw)
 		}
 		if n := h.countRows(t, `SELECT count(*) FROM space WHERE org_id = $1`, home.org); n != 1 {
 			t.Errorf("the organization holds %d spaces", n)
@@ -152,11 +213,151 @@ func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
 
 	t.Run("deleted, it is made again", func(t *testing.T) {
 		want(t, owner.delete(t, "/api/v1/spaces/"+example.Key), http.StatusNoContent, "delete the example")
-		again := want(t, owner.post(t, "/api/v1/example-space", map[string]any{}), http.StatusCreated, "make it anew")
-		if sp := obj(t, again, "space"); sp["name"] != "Getting to know Stator" || sp["id"] == spaceID {
-			t.Errorf("the new example is %s", again.Raw)
+		if sp := api.makeExample(t, owner, map[string]any{}); sp["name"] != "Getting to know Stator" || sp["id"] == spaceID {
+			t.Errorf("the new example is %v", sp)
 		}
 	})
+}
+
+// Clicks while the example is queued or being made find the one job; the
+// space is made once.
+func TestClicksWhileTheExampleIsMadeFindTheOneJob(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "example-clicks")
+	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+
+	const clicks = 5
+	answers := make([]response, clicks)
+	var wg sync.WaitGroup
+	for i := range clicks {
+		wg.Go(func() { answers[i] = owner.post(t, "/api/v1/example-space", map[string]any{"language": "en"}) })
+	}
+	wg.Wait()
+	var id any
+	for _, got := range answers {
+		job := obj(t, want(t, got, http.StatusAccepted, "click"), "job")
+		if id == nil {
+			id = job["id"]
+		}
+		if job["id"] != id {
+			t.Errorf("the clicks queued jobs %v and %v", id, job["id"])
+		}
+	}
+	again := want(t, owner.post(t, "/api/v1/example-space", map[string]any{}), http.StatusAccepted, "click once more")
+	if obj(t, again, "job")["id"] != id {
+		t.Errorf("a later click found %s", again.Raw)
+	}
+	if got := obj(t, api.exampleJob(t, owner), "job"); got["state"] != "done" || got["id"] != id {
+		t.Errorf("the job ended %v", got)
+	}
+	if n := h.countRows(t, `SELECT count(*) FROM example_job WHERE org_id = $1`, home.org); n != 1 {
+		t.Errorf("%d jobs were queued", n)
+	}
+	if n := h.countRows(t, `SELECT count(*) FROM space WHERE org_id = $1 AND example`, home.org); n != 1 {
+		t.Errorf("%d examples were made", n)
+	}
+}
+
+// slowDown makes every statement of the kind on table in org sleep, until
+// the test ends.
+func (h *harness) slowDown(t *testing.T, org uuid.UUID, table, kind string, sleep time.Duration) {
+	t.Helper()
+	h.orgTrigger(t, org, table, kind, fmt.Sprintf(`PERFORM pg_sleep(%f);`, sleep.Seconds()))
+}
+
+// orgTrigger runs body before each row the kind of statement on table writes
+// in org, until the test ends.
+func (h *harness) orgTrigger(t *testing.T, org uuid.UUID, table, kind, body string) {
+	t.Helper()
+	name := "test_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	ctx := context.Background()
+	if _, err := h.super.Exec(ctx, fmt.Sprintf(`
+		CREATE FUNCTION %[1]s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN %[2]s RETURN NEW; END $$;
+		CREATE TRIGGER %[1]s BEFORE %[3]s ON %[4]s FOR EACH ROW WHEN (NEW.org_id = '%[5]s') EXECUTE FUNCTION %[1]s();`,
+		name, body, kind, table, org)); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		h.cleanupExec(t, h.super, fmt.Sprintf(`DROP TRIGGER IF EXISTS %[1]s ON %[2]s`, name, table))
+		h.cleanupExec(t, h.super, fmt.Sprintf(`DROP FUNCTION IF EXISTS %[1]s()`, name))
+	})
+}
+
+// A making slower than a request may last is answered at once and made all
+// the same, where it used to answer 500 when the limit ran out.
+func TestTheExampleOutlastsTheRequestLimit(t *testing.T) {
+	h := newHarness(t)
+	const limit = 2 * time.Second
+	api := newAPIServer(t, h, func(s *httpapi.Server) { s.RequestTimeout = limit })
+	home := h.makeMember(t, "example-slow")
+	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	h.slowDown(t, home.org, "space", "INSERT", limit+time.Second)
+
+	began := time.Now()
+	sp := api.makeExample(t, owner, map[string]any{"language": "en"})
+	if took := time.Since(began); took < limit {
+		t.Errorf("the slowed database made the example in %s, under the request limit of %s", took, limit)
+	}
+	if sp["key"] != example.Key {
+		t.Errorf("the example is %v", sp)
+	}
+}
+
+// A making that fails part way leaves no space, no record of one, and a
+// sentence that says what to do.
+func TestAFailedExampleLeavesNothingBehind(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "example-fails")
+	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	// The calendar comes after the space and its pages are made.
+	h.orgTrigger(t, home.org, "calendar", "INSERT", `RAISE EXCEPTION 'the test refuses calendars';`)
+
+	want(t, owner.post(t, "/api/v1/example-space", map[string]any{"language": "en"}), http.StatusAccepted, "ask for the example")
+	got := api.exampleJob(t, owner)
+	job := obj(t, got, "job")
+	if job["state"] != "failed" || job["failure"] != string(example.FailureFailed) || job["message"] != example.FailureFailed.Message() || got.Body["space"] != nil {
+		t.Fatalf("the failed making reads %s", got.Raw)
+	}
+	for what, sql := range map[string]string{
+		"spaces":    `SELECT count(*) FROM space WHERE org_id = $1`,
+		"pages":     `SELECT count(*) FROM page WHERE org_id = $1`,
+		"files":     `SELECT count(*) FROM attachment WHERE org_id = $1`,
+		"audit log": `SELECT count(*) FROM audit_log WHERE org_id = $1 AND target_type = 'space'`,
+	} {
+		if n := h.countRows(t, sql, home.org); n != 0 {
+			t.Errorf("the failed making left %d %s", n, what)
+		}
+	}
+	queued := want(t, owner.post(t, "/api/v1/example-space", map[string]any{}), http.StatusAccepted, "try again")
+	if obj(t, queued, "job")["id"] == job["id"] {
+		t.Errorf("trying again found the failed job: %s", queued.Raw)
+	}
+}
+
+// A making whose context ends part way, as a request's did at its limit,
+// still deletes what it made.
+func TestAMakingCutShortDeletesItsSpace(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "example-cut")
+	ctx, cut := context.WithCancel(home.ctx)
+	defer cut()
+	maker := api.exampleMaker(t)
+	var made uuid.UUID
+	maker.Started = func(_ context.Context, sp *space.Space) error {
+		made = sp.ID
+		cut()
+		return nil
+	}
+	_, _, _, err := maker.Make(ctx, perm.Actor{UserID: home.user, Role: "owner"}, example.Person{ID: home.user, Name: "Owner"}, example.English)
+	if err == nil || made == uuid.Nil {
+		t.Fatalf("the cut making answered %v, made %v", err, made)
+	}
+	if n := h.countRows(t, `SELECT count(*) FROM space WHERE id = $1`, made); n != 0 {
+		t.Errorf("the cut making left its space")
+	}
 }
 
 // A space holding the example's key leaves it the next free one.
@@ -166,8 +367,7 @@ func TestTheExampleTakesTheNextKeyWhenItsOwnIsTaken(t *testing.T) {
 	home := h.makeMember(t, "example-key")
 	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
 	want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": example.Key, "name": "Our rotor and stator"}), http.StatusCreated, "take the key")
-	made := want(t, owner.post(t, "/api/v1/example-space", map[string]any{"language": "en"}), http.StatusCreated, "make the example")
-	if key := obj(t, made, "space")["key"]; key != example.Key+"2" {
+	if key := api.makeExample(t, owner, map[string]any{"language": "en"})["key"]; key != example.Key+"2" {
 		t.Errorf("the example's key is %v", key)
 	}
 	var body []byte
@@ -216,5 +416,45 @@ func TestTheDatabaseKeepsTheExampleTheAdministrators(t *testing.T) {
 	}
 	if sp, _ := found["space"].(map[string]any); sp == nil || sp["key"] != "FIRST" {
 		t.Errorf("the example found is %s", got.Raw)
+	}
+}
+
+// Straight through SQL as stator_app: only an administrator queues the
+// example, for themselves and as a job still to run, one at a time; what
+// the job then does is the worker's alone to write, and members read none.
+func TestTheDatabaseKeepsTheExampleJobsTheAdministrators(t *testing.T) {
+	h := newHarness(t)
+	home := h.makeMember(t, "example-job-sql")
+	memberID := h.addPerson(t, home.org, "member")
+	ctx := context.Background()
+	insert := `INSERT INTO example_job (id, org_id, requested_by, language) VALUES ($1, $2, $3, 'en')`
+
+	conn := appConn(t)
+	actAs(t, conn, home.org, memberID)
+	refused(t, conn, "a member queuing the example", insert, uuid.New(), home.org, memberID)
+
+	actAs(t, conn, home.org, home.user)
+	refused(t, conn, "an administrator queuing it for somebody else", insert, uuid.New(), home.org, memberID)
+	refused(t, conn, "an administrator queuing a job already done",
+		`INSERT INTO example_job (id, org_id, requested_by, language, state) VALUES ($1, $2, $3, 'en', 'done')`, uuid.New(), home.org, home.user)
+	job := uuid.New()
+	if _, err := conn.Exec(ctx, insert, job, home.org, home.user); err != nil {
+		t.Fatalf("an administrator cannot queue the example through SQL: %v", err)
+	}
+	refused(t, conn, "a second job while one waits", insert, uuid.New(), home.org, home.user)
+	for what, sql := range map[string]string{
+		"marking it done":  `UPDATE example_job SET state = 'done' WHERE id = $1`,
+		"deleting it":      `DELETE FROM example_job WHERE id = $1`,
+		"naming its space": `UPDATE example_job SET space_id = NULL WHERE id = $1`,
+	} {
+		refused(t, conn, "an administrator "+what, sql, job)
+	}
+	var seen int
+	if err := conn.QueryRow(ctx, `SELECT count(*) FROM example_job WHERE id = $1`, job).Scan(&seen); err != nil || seen != 1 {
+		t.Errorf("the administrator reads %d of their job: %v", seen, err)
+	}
+	actAs(t, conn, home.org, memberID)
+	if err := conn.QueryRow(ctx, `SELECT count(*) FROM example_job WHERE org_id = $1`, home.org).Scan(&seen); err != nil || seen != 0 {
+		t.Errorf("a member reads %d jobs: %v", seen, err)
 	}
 }

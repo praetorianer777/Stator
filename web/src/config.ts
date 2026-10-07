@@ -624,3 +624,10 @@ export const PUBLIC_LINK_EXPIRY_DAYS = [1, 7, 30, 90] as const;
 export const PUBLIC_LINK_DEFAULT_EXPIRY_DAYS = 30;
 /** The longest label a public link takes, matching the API's limit. */
 export const PUBLIC_LINK_LABEL_MAX_LENGTH = 60;
+
+/** How often a page that asked for the example space asks how its making goes. */
+export const EXAMPLE_SPACE_POLL_MS = 1000;
+/** After this long without the worker beginning the example space, the page says it may not be running. */
+export const EXAMPLE_SPACE_SLOW_MS = 60_000;
+/** After this long, past the API's limit on one making, the page stops asking and says what to do. */
+export const EXAMPLE_SPACE_GIVE_UP_MS = 15 * 60_000;

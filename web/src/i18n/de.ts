@@ -801,6 +801,17 @@ export const de: Messages = {
     exists: "Den Beispielbereich gibt es schon:",
     archived: "Er ist archiviert. Holen Sie ihn in seinen Bereichseinstellungen aus dem Archiv, um ihn wieder zu ändern.",
     notAdmin: "Nur Administratoren der Organisation legen den Beispielbereich an. Bitten Sie eine dieser Personen, ihn anzulegen.",
+    underWay: "Der Beispielbereich wird angelegt. Diese Seite öffnet ihn, sobald er fertig ist.",
+    slow: "Mit dem Beispielbereich wurde noch nicht begonnen. Der Worker, der ihn anlegt, läuft vielleicht nicht; diese Seite prüft weiter, und wenn sich nichts ändert, bitten Sie die Person, die Stator betreibt, ihn zu starten.",
+    gaveUp:
+      "Der Beispielbereich ist nach einer Viertelstunde noch nicht angelegt. Laden Sie diese Seite neu, um nachzusehen, oder fragen Sie die Person, die Stator betreibt, ob ihr Worker läuft.",
+    failures: {
+      keys_taken:
+        "Die Schlüssel STATOR bis STATOR9 gehören alle anderen Bereichen. Löschen Sie einen davon oder benennen Sie ihn um, und legen Sie den Beispielbereich dann noch einmal an.",
+      forbidden: "Nur Administratoren der Organisation legen den Beispielbereich an. Bitten Sie eine dieser Personen, ihn anzulegen.",
+      failed:
+        "Der Beispielbereich konnte nicht angelegt werden, und was davon schon da war, wurde gelöscht. Legen Sie ihn noch einmal an; scheitert es wieder, bitten Sie die Person, die Stator betreibt, ins Protokoll des Workers zu sehen.",
+    },
   },
   spaces: {
     title: "Bereiche",

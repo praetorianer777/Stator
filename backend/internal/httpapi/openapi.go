@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/example"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/hub"
@@ -184,10 +185,10 @@ var operations = []operation{
 		query:     []param{{name: "archived", schema: &openapi.Schema{Type: "boolean"}, description: "true to list archived spaces too; false when absent."}},
 		responses: ok(env{"spaces": []space.Space{}})},
 	{method: "POST", path: "/spaces", handler: "handleCreateSpace", orgWide: true, tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
-	{method: "GET", path: "/example-space", handler: "handleGetExampleSpace", orgWide: true, tag: "spaces", summary: "The organization's example space, the one whose pages explain Stator, or null while there is none. For administrators.",
-		responses: ok(env{"space": (*space.Space)(nil)})},
-	{method: "POST", path: "/example-space", handler: "handleCreateExampleSpace", orgWide: true, tag: "spaces", summary: "Make the example space, whose pages explain Stator, in the language asked for, else the caller's own; 200 with created false when the organization has it already. For administrators.",
-		request: exampleSpaceRequest{}, responses: map[int]any{200: exampleSpaceResponse{}, 201: exampleSpaceResponse{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/example-space", handler: "handleGetExampleSpace", orgWide: true, tag: "spaces", summary: "The organization's example space, the one whose pages explain Stator, null while there is none or it is being made, and the latest making of it. For administrators.",
+		responses: ok(exampleSpaceResponse{})},
+	{method: "POST", path: "/example-space", handler: "handleCreateExampleSpace", orgWide: true, tag: "spaces", summary: "Ask the worker to make the example space, whose pages explain Stator, in the language asked for, else the caller's own: 202 with the job, the same one while it is queued or running, or 200 with the space when the organization has it already. For administrators.",
+		request: exampleSpaceRequest{}, responses: map[int]any{200: exampleSpaceResponse{}, 202: exampleSpaceResponse{}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For the space's administrators.", responses: none()},
@@ -927,6 +928,10 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(page.LiveSaved{})] = "PageLiveSaved"
 	b.Names[reflect.TypeOf(page.Schedule{})] = "PageSchedule"
 	b.Names[reflect.TypeOf(page.ScheduleInput{})] = "PageScheduleInput"
+	b.Names[reflect.TypeOf(example.Job{})] = "ExampleSpaceJob"
+	b.Enums[reflect.TypeOf(example.State(""))] = enumStrings(example.States)
+	b.FieldOverrides["ExampleSpaceJob.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(example.Failures)}, {Type: "null"}}}
+	b.FieldOverrides["ExampleSpaceJob.language"] = &openapi.Schema{Type: "string", Enum: example.Languages}
 	b.FieldOverrides["PageSchedule.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(page.ScheduleFailures)}, {Type: "null"}}}
 	b.FieldOverrides["LinkEmbed.kind"] = &openapi.Schema{Type: "string", Enum: unfurl.EmbedKinds}
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
