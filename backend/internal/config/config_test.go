@@ -21,6 +21,7 @@ func clean(t *testing.T) {
 		"STATOR_SECURE_COOKIES", "STATOR_OTEL_ENDPOINT", "STATOR_OTEL_SAMPLE_RATIO",
 		"STATOR_S3_ENDPOINT", "STATOR_S3_BUCKET", "STATOR_S3_ACCESS_KEY", "STATOR_S3_SECRET_KEY",
 		"STATOR_S3_REGION", "STATOR_S3_USE_SSL", "STATOR_UPLOAD_LIMIT", "STATOR_CONVERTER_URL",
+		"STATOR_RENDER_URL", "STATOR_RENDER_TIMEOUT", "STATOR_RENDER_CONCURRENCY", "STATOR_RENDER_MAX_SIZE",
 		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
@@ -49,6 +50,32 @@ func TestTheConverterIsAnHTTPAddressOrNothing(t *testing.T) {
 		t.Setenv("STATOR_CONVERTER_URL", bad)
 		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_CONVERTER_URL") {
 			t.Errorf("%q should be refused by name, got %v", bad, err)
+		}
+	}
+}
+
+// PDF export is optional too, and its bounds keep a print inside a request.
+func TestTheRenderServiceIsAnHTTPAddressWithBoundsInsideARequest(t *testing.T) {
+	clean(t)
+	cfg, err := Load()
+	if err != nil || cfg.Render.URL != "" || cfg.Render.Timeout != DefaultRenderTimeout || cfg.Render.Concurrency != DefaultRenderConcurrency || cfg.Render.MaxSize != DefaultRenderMaxSize {
+		t.Fatalf("no render service reads as %+v, %v", cfg.Render, err)
+	}
+	t.Setenv("STATOR_RENDER_URL", "http://render:8090/")
+	t.Setenv("STATOR_RENDER_MAX_SIZE", "10MB")
+	t.Setenv("STATOR_RENDER_CONCURRENCY", "2")
+	if cfg, err := Load(); err != nil || cfg.Render.URL != "http://render:8090" || cfg.Render.MaxSize != 10<<20 || cfg.Render.Concurrency != 2 {
+		t.Errorf("the render service reads as %+v, %v", cfg.Render, err)
+	}
+	for key, bad := range map[string]string{
+		"STATOR_RENDER_URL":         "render:8090",
+		"STATOR_RENDER_TIMEOUT":     "30s",
+		"STATOR_RENDER_CONCURRENCY": "0",
+	} {
+		clean(t)
+		t.Setenv(key, bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), key) {
+			t.Errorf("%s=%q should be refused by name, got %v", key, bad, err)
 		}
 	}
 }

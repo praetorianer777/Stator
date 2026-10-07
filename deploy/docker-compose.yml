@@ -30,6 +30,9 @@ x-s3-env: &s3-env
   STATOR_UPLOAD_LIMIT: 50MB
   # Office documents are converted to PDF here for their previews.
   STATOR_CONVERTER_URL: http://converter:3000
+  # Pages are printed to PDF here; it reaches the web container by name, so
+  # the api only ever hands it a path and a credential.
+  STATOR_RENDER_URL: http://render:8090
 
 # Sign-in. The key seals the provider's client secret and is for development
 # only. The browser reaches Keycloak on the published port, which is also the
@@ -212,6 +215,32 @@ services:
       timeout: 5s
       retries: 10
       start_period: 60s
+      start_interval: 1s
+
+  # Prints pages as PDF for export, adapted from Armature's: a headless
+  # Chromium with puppeteer behind a small HTTP API, which only the api
+  # calls, so it publishes no port. The script is mounted from the
+  # repository; deploy/Dockerfile.render bakes it in for a cluster.
+  render:
+    image: zenika/alpine-chrome:with-puppeteer
+    entrypoint: ["node"]
+    command: ["/usr/src/app/render/server.mjs"]
+    working_dir: /usr/src/app
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      HOME: /tmp
+      RENDER_PORT: "8090"
+      RENDER_APP_URL: http://web
+    volumes:
+      - ../render:/usr/src/app/render:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8090/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
       start_interval: 1s
 
   # The identity provider. The realm is imported afresh on every start, so no

@@ -17,6 +17,6 @@
     }
   },
   "files": {
-    "includes": ["web/**", "e2e/**"]
+    "includes": ["web/**", "e2e/**", "render/**"]
   }
 }
