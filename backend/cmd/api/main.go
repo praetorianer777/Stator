@@ -42,6 +42,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/render"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/seed"
@@ -207,6 +208,7 @@ func run() error {
 		Armature:          armatures,
 		Audit:             audit.NewService(cluster),
 		AuditRetention:    cfg.RetainAudit,
+		Renderer:          renderer(cfg.Render, log),
 		Webhooks: webhook.NewService(cluster, box,
 			webhook.Options{AppURL: cfg.AppBaseURL, Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Log: log}),
 		CookieName:     cfg.Auth.SessionCookie,
@@ -390,4 +392,13 @@ func healthcheck() error {
 		return fmt.Errorf("readiness returned %s", resp.Status)
 	}
 	return nil
+}
+
+// renderer is the render service when one is named, else the answer that there is none.
+func renderer(cfg config.Render, log *slog.Logger) render.Renderer {
+	if cfg.URL == "" {
+		log.Warn("PDF export is off: STATOR_RENDER_URL is not set")
+		return render.Unavailable{}
+	}
+	return render.New(cfg.URL, render.Options{Timeout: cfg.Timeout, Concurrency: cfg.Concurrency, MaxSize: cfg.MaxSize})
 }

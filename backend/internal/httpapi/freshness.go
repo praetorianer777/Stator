@@ -41,6 +41,20 @@ func noteWrite(ctx context.Context, lsn db.LSN) {
 	}
 }
 
+// carryWrites hands the caller's last write position on to another key, so the
+// reads made with a token minted for them see what they just wrote: lsn, or
+// the caller's own last write when that is later.
+func carryWrites(ctx context.Context, key string, lsn db.LSN) {
+	n, ok := ctx.Value(ctxFreshnessKey{}).(*writeNote)
+	if !ok {
+		return
+	}
+	lsn = max(lsn, n.fresh.Required(ctx, n.key))
+	if lsn != 0 {
+		n.fresh.Note(ctx, key, lsn)
+	}
+}
+
 // readYourWrites keeps a caller's reads off any replica that has not replayed
 // their own last write, by pinning the request to that write's position.
 func (s *Server) readYourWrites(next http.Handler) http.Handler {
@@ -72,7 +86,7 @@ func (s *Server) freshnessKey(w http.ResponseWriter, r *http.Request) string {
 		case p.SessionID != nil:
 			return "s:" + p.SessionID.String()
 		case p.TokenID != nil:
-			return "t:" + p.TokenID.String()
+			return tokenFreshnessKey(*p.TokenID)
 		}
 	}
 	if c, err := r.Cookie(ClientCookie); err == nil && validClientID(c.Value) {

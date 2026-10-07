@@ -79,6 +79,15 @@ func (s *Server) handleActiveTheme(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"theme": active, "source": string(source)})
 }
 
+func (s *Server) handleDefaultTheme(w http.ResponseWriter, r *http.Request) {
+	got, err := s.Themes.Default(r.Context(), userFrom(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"theme": got})
+}
+
 func (s *Server) handleSetDefaultTheme(w http.ResponseWriter, r *http.Request) {
 	var req defaultThemeRequest
 	if err := decodeJSON(w, r, &req); err != nil {

@@ -173,7 +173,7 @@ func scanToken(row pgx.Row, extra ...any) (APIToken, error) {
 func (s *Service) ListAPITokens(ctx context.Context, userID uuid.UUID) ([]APIToken, error) {
 	out := []APIToken{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `SELECT `+tokenColumns+` FROM api_token t WHERE t.user_id = $1 ORDER BY t.created_at DESC, t.id`, userID)
+		rows, err := tx.Query(ctx, `SELECT `+tokenColumns+` FROM api_token t WHERE t.user_id = $1 AND NOT t.for_render ORDER BY t.created_at DESC, t.id`, userID)
 		if err != nil {
 			return err
 		}
@@ -197,6 +197,7 @@ func (s *Service) ListOrgAPITokens(ctx context.Context) ([]OrgAPIToken, error) {
 		rows, err := tx.Query(ctx, `
 			SELECT `+tokenColumns+`, u.id, u.email::text, u.name, COALESCE(u.avatar_url, '')
 			FROM api_token t JOIN app_user u ON u.id = t.user_id
+			WHERE NOT t.for_render
 			ORDER BY t.created_at DESC, t.id`)
 		if err != nil {
 			return err

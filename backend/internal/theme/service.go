@@ -284,6 +284,26 @@ func (s *Service) Active(ctx context.Context, reader uuid.UUID) (*Theme, Source,
 	return out, source, err
 }
 
+// Default is the organization's default theme, nil for the built-in one,
+// whatever the reader chose for themselves: what the organization looks like.
+func (s *Service) Default(ctx context.Context, reader uuid.UUID) (*Theme, error) {
+	var out *Theme
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var id *uuid.UUID
+		if err := tx.QueryRow(ctx, `SELECT default_theme_id FROM org WHERE id = current_org_id()`).Scan(&id); err != nil || id == nil {
+			return err
+		}
+		var err error
+		out, err = readOne(ctx, tx, reader, *id, ` WHERE t.id = $2 AND`+visible)
+		if errors.Is(err, ErrNotFound) {
+			out = nil
+			return nil
+		}
+		return err
+	})
+	return out, err
+}
+
 // Choose makes a theme the reader's own, which ends following Armature. Nil
 // returns them to the organization's; nil with builtIn keeps the built-in one.
 func (s *Service) Choose(ctx context.Context, reader uuid.UUID, id *uuid.UUID, builtIn bool) (*Theme, db.LSN, error) {
