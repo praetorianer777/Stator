@@ -6,6 +6,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Button, IconButton } from "./Button";
 
+// Reading every file of the client outlasted vitest's five seconds twice on a
+// busy host; the scan is a few hundred files, not a wait on anything.
+const SOURCE_SCAN_MS = 30_000;
+
 function inForm(children: ReactNode) {
   const submitted = vi.fn((event: FormEvent) => event.preventDefault());
   render(<form onSubmit={submitted}>{children}</form>);
@@ -62,5 +66,5 @@ describe("buttons inside a form", () => {
       const submits = source.match(/type="submit"/g)?.length ?? 0;
       expect(submits, `${path} has ${opened} form(s) and ${submits} submit button(s)`).toBeGreaterThanOrEqual(opened);
     }
-  });
+  }, SOURCE_SCAN_MS);
 });
