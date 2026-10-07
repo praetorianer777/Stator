@@ -3,6 +3,88 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: An annotated picture is flattened in the browser and saved as its file's next version
+
+An author crops a screenshot and draws on it so that it shows what
+matters (#94).
+
+- **Drawn in the browser, on a canvas.** The annotation editor
+  (`web/src/features/annotate`) draws the picture and its shapes on one
+  canvas at the picture's own size, scaled to the window by CSS, and
+  writes the result with `toBlob`. The geometry, the picking of shapes,
+  undo and redo are a pure module (`annotation.ts`) the unit tests drive.
+  No drawing library: what it needs is a few strokes, a text line and
+  pointer events, and every canvas package weighs more than the editor
+  and brings a look of its own to theme. The server does not draw, so it
+  needs no image library past reading a header for the size.
+- **Tools.** Crop, arrow, box and text, in six colours (red, yellow,
+  green, blue, black, white). The picture is the same in either theme
+  once saved, so the colours are fixed rather than theme tokens, chosen
+  strong on a light or a dark screenshot; each shape is drawn edged in
+  black or white, whichever stands further from its colour, so it reads
+  on whatever part of the picture it crosses. Lines and text grow with
+  the picture's shorter side and keep a floor, so a large screenshot
+  scaled down still shows them. A crop dims what it leaves out while
+  editing and is applied only on saving, so it can be moved, resized,
+  undone or taken off like a shape.
+- **Hands, fingers and keys.** Dragging draws with the chosen tool, Select
+  picks a shape by its line (a box by its edge, so the picture inside it
+  stays free to draw on) and moves it, and the canvas takes no touch
+  gestures of the page. The canvas is focusable as an application with
+  its keys described: Enter puts the tool's shape in the middle, or with
+  Select picks the next shape; the arrow keys move the selection, with
+  Shift resize it; Delete removes it; Ctrl+Z and Ctrl+Shift+Z undo and
+  redo, as the buttons do. Text is typed into a field below the picture,
+  which also changes a label once selected. The dialog fills the window,
+  as the lightbox does, so a phone has the whole screen to draw on.
+- **Flattened, not editable later.** The new version is the picture with
+  the shapes drawn into it; the shapes are not kept. Keeping them would
+  mean a second object or a JSON column beside each version for copies,
+  deletes and the reaper to keep right, and an editor that reopens them;
+  annotating the earlier version again does what reopening would for the
+  common mistake, since every version stays.
+- **Its own type, its own name.** PNG, JPEG and WebP are annotated, and
+  the edit is saved in the file's own type under its own name, so the
+  name, the readers' expectation and the lightbox stay right. A GIF may
+  move and a canvas would keep one frame, so it is not offered; SVG and
+  the rest are no pictures a canvas writes. A browser that cannot write
+  the type hands back a PNG instead, which the dialog refuses with a
+  sentence rather than saving a PNG under a WebP's name. A picture over
+  16.7 million pixels, what a phone's browser draws on one canvas, is
+  refused with a sentence too.
+- **Saved as the next version.** `POST /attachments/{id}/edit` takes the
+  picture as a multipart part named `file`, as an upload does, and adds
+  it through the same `add` as an upload and a restore, so the upload
+  limit, the size read from the header and the insert policy apply as
+  they do there. Its type is judged from the bytes, never from what the
+  part claims: anything but a picture of the file's type is refused with
+  `wrong_type`, and a file that cannot be annotated with `not_editable`,
+  both 415. An earlier version can be annotated too; its edit is the
+  name's next version all the same. Nothing is overwritten.
+- **The row says what it was drawn on.** `edited_from` holds the version
+  annotated, as `restored_from` holds the one restored, and the panel and
+  the files block say "edited from version N". The stamping trigger
+  refuses a row whose `edited_from` is not a PNG, JPEG or WebP version of
+  the same name on the same page of the same type as the row, and a row
+  cannot be both a restore and an edit, so a raw INSERT as the app role
+  cannot claim an edit that never was. Who may annotate is who may upload
+  to the page, held by the same insert policy. A copy of a page carries
+  no `edited_from`, as it carries no `restored_from`.
+- **Where it opens, and what the page then shows.** For whoever may edit
+  the page: from a picture selected in the editor, from a picture's row in
+  the attachments below the page, and from the files block. A picture in
+  the words names one version by id (#95), so annotating from the
+  attachments or the files block leaves every page showing what it
+  showed, and the files block, which follows each name's latest, shows
+  the edit. Opened from a picture in the editor, the dialog offers, ticked,
+  to show the edited picture there: saving then points that picture of the
+  draft at the new version, which a publish makes the page's. Other
+  pictures of the same file, other pages, galleries and older versions of
+  the page keep the version they name, since an author annotating one
+  place has not looked at the others.
+- **Not audited, and not an MCP tool.** As uploads and restores are not:
+  it moves files rather than words.
+
 ## 2026-10-07: A gallery names one version of each picture, and each reader sees what they may download
 
 A gallery (#96) shows several pictures of a page side by side, and the

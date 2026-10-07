@@ -27,6 +27,7 @@ const file = (over: Partial<Attachment>): Attachment => ({
   version: 2,
   versions: 2,
   restoredFrom: null,
+  editedFrom: null,
   preview: "office",
   ...over,
 });

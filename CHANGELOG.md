@@ -852,6 +852,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
   name deletes all its versions (`DELETE /attachments/{id}?versions=all`).
   The database holds a restore to an earlier version of the same file, by
   whoever may edit the page.
+- Image annotation (#94). Whoever may edit a page crops a PNG, JPEG or
+  WebP picture and draws arrows, boxes and text on it in six colours, with
+  undo, redo, moving and deleting by pointer, touch and keyboard, opened
+  from the picture in the editor, the attachments below the page or the
+  files block. Saving flattens it in the browser and sends it as the
+  file's next version in its own type
+  (`POST /attachments/{id}/edit`, refused with `not_editable` or
+  `wrong_type`), marked `editedFrom`; the version drawn on stays. Opened
+  from the editor, the dialog offers to show the edited picture in the
+  page. The database holds an edit to a picture's version of the same
+  file and type, by whoever may edit the page.
 
 ### Changed
 

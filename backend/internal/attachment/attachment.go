@@ -34,6 +34,9 @@ type Attachment struct {
 	// RestoredFrom is the earlier version whose bytes a restore brought back
 	// as this one; null for an upload.
 	RestoredFrom *int `json:"restoredFrom"`
+	// EditedFrom is the version an edited picture was cropped or drawn on;
+	// null for anything else.
+	EditedFrom *int `json:"editedFrom"`
 	// Preview says whether the file can be shown in place as a PDF, and how.
 	Preview PreviewKind `json:"preview"`
 }

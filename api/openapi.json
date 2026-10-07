@@ -1473,6 +1473,95 @@
         }
       }
     },
+    "/attachments/{attachmentID}/edit": {
+      "post": {
+        "operationId": "editAttachment",
+        "summary": "Save a picture cropped or drawn on as the next version of the file it was drawn on, as a multipart part named file of the file's own type. Refused with not_editable for a file that is no PNG, JPEG or WebP picture, wrong_type for a part of another type, and too_large over the upload limit.",
+        "tags": [
+          "attachments"
+        ],
+        "parameters": [
+          {
+            "name": "attachmentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachment": {
+                      "$ref": "#/components/schemas/Attachment"
+                    }
+                  },
+                  "required": [
+                    "attachment"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/attachments/{attachmentID}/preview": {
       "get": {
         "operationId": "previewAttachment",
@@ -14499,6 +14588,12 @@
             "type": "string",
             "format": "date-time"
           },
+          "editedFrom": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "fileName": {
             "type": "string"
           },
@@ -14562,6 +14657,7 @@
           "version",
           "versions",
           "restoredFrom",
+          "editedFrom",
           "preview"
         ]
       },

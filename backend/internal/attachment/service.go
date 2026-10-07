@@ -63,7 +63,7 @@ const selectAttachment = `
 SELECT a.id, a.page_id, a.file_name, a.content_type, a.size_bytes, a.width, a.height,
        COALESCE(u.name, ''), a.created_at, a.version,
        (SELECT count(*) FROM attachment v WHERE v.org_id = a.org_id AND v.page_id = a.page_id AND lower(v.file_name) = lower(a.file_name)),
-       a.restored_from, a.object_key,
+       a.restored_from, a.edited_from, a.object_key,
        (SELECT max(v.version) FROM attachment v WHERE v.org_id = a.org_id AND v.page_id = a.page_id AND lower(v.file_name) = lower(a.file_name))
 FROM attachment a
 LEFT JOIN app_user u ON u.id = a.uploaded_by`
@@ -79,7 +79,7 @@ type stored struct {
 func scan(row pgx.Row) (*stored, error) {
 	var a stored
 	err := row.Scan(&a.ID, &a.PageID, &a.FileName, &a.ContentType, &a.Size, &a.Width, &a.Height,
-		&a.UploadedByName, &a.CreatedAt, &a.Version, &a.Versions, &a.RestoredFrom, &a.objectKey, &a.latest)
+		&a.UploadedByName, &a.CreatedAt, &a.Version, &a.Versions, &a.RestoredFrom, &a.EditedFrom, &a.objectKey, &a.latest)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -146,18 +146,9 @@ type UploadInput struct {
 // transaction that writes the row, so a store that refuses leaves no row.
 func (s *Service) Upload(ctx context.Context, actor perm.Actor, pageID uuid.UUID, in UploadInput) (*Attachment, db.LSN, error) {
 	name := objectstore.CleanName(in.FileName)
-
-	// Read whole, as Armature does, so the limit holds before anything is
-	// written and the store is handed a body it can hash and rewind.
-	data, err := io.ReadAll(io.LimitReader(in.Body, s.MaxSize+1))
+	data, err := s.readWhole(in.Body)
 	if err != nil {
-		return nil, 0, fmt.Errorf("read upload: %w", err)
-	}
-	if int64(len(data)) > s.MaxSize {
-		return nil, 0, &TooLargeError{Limit: s.MaxSize}
-	}
-	if len(data) == 0 {
-		return nil, 0, ErrEmpty
+		return nil, 0, err
 	}
 	contentType := contentTypeFor(in.ContentType, data)
 	width, height := dimensions(contentType, data)
@@ -180,6 +171,22 @@ func (s *Service) Upload(ctx context.Context, actor perm.Actor, pageID uuid.UUID
 	return created, lsn, nil
 }
 
+// readWhole reads an upload whole, as Armature does, so the limit holds
+// before anything is written and the store is handed a body it can rewind.
+func (s *Service) readWhole(body io.Reader) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(body, s.MaxSize+1))
+	if err != nil {
+		return nil, fmt.Errorf("read upload: %w", err)
+	}
+	if int64(len(data)) > s.MaxSize {
+		return nil, &TooLargeError{Limit: s.MaxSize}
+	}
+	if len(data) == 0 {
+		return nil, ErrEmpty
+	}
+	return data, nil
+}
+
 // version is a file to put on a page: an upload, a restored version, or an
 // edited picture, which under a name the page has is that name's next version.
 type version struct {
@@ -188,6 +195,8 @@ type version struct {
 	width, height     *int
 	// restoredFrom is the earlier version of the name whose bytes these are.
 	restoredFrom *int
+	// editedFrom is the version of the name these bytes were drawn on.
+	editedFrom *int
 }
 
 // add writes the row and then the bytes, inside the caller's transaction,
@@ -199,10 +208,10 @@ func (s *Service) add(ctx context.Context, tx db.DBTX, actor perm.Actor, pageID 
 	}
 	var key string
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO attachment (id, org_id, page_id, uploaded_by, file_name, content_type, size_bytes, width, height, restored_from)
-		VALUES ($1, current_org_id(), $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO attachment (id, org_id, page_id, uploaded_by, file_name, content_type, size_bytes, width, height, restored_from, edited_from)
+		VALUES ($1, current_org_id(), $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING object_key`,
-		id, pageID, actor.UserID, v.name, v.contentType, len(v.data), v.width, v.height, v.restoredFrom).Scan(&key); err != nil {
+		id, pageID, actor.UserID, v.name, v.contentType, len(v.data), v.width, v.height, v.restoredFrom, v.editedFrom).Scan(&key); err != nil {
 		return nil, fmt.Errorf("record the file: %w", err)
 	}
 	if err := s.store.Put(ctx, key, bytes.NewReader(v.data), int64(len(v.data)), v.contentType); err != nil {

@@ -143,3 +143,19 @@ func TestARangeStartingPastTheEndSaysWhatToAskFor(t *testing.T) {
 		t.Fatalf("answered %d %s %q", got.Status, got.Code, got.Message)
 	}
 }
+
+func TestAnEditRefusedForItsTypeSaysWhatToSend(t *testing.T) {
+	for _, c := range []struct {
+		err    error
+		code   string
+		prefix string
+	}{
+		{attachment.ErrNotEditable, "not_editable", "Only PNG"},
+		{fmt.Errorf("edit: %w", &attachment.EditTypeError{Name: "shot.png", Want: "image/png", Got: "image/webp"}), "wrong_type", "The file shot.png"},
+	} {
+		got := toAPIError(c.err)
+		if got.Status != http.StatusUnsupportedMediaType || got.Code != c.code || !strings.HasPrefix(got.Message, c.prefix) || !strings.HasSuffix(got.Message, ".") {
+			t.Errorf("%v answered %d %s %q", c.err, got.Status, got.Code, got.Message)
+		}
+	}
+}

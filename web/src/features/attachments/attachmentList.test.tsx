@@ -29,6 +29,7 @@ const file = (over: Partial<Attachment>): Attachment => ({
   version: 1,
   versions: 1,
   restoredFrom: null,
+  editedFrom: null,
   preview: "office",
   ...over,
 });
@@ -140,9 +141,10 @@ describe("the list of files", () => {
   });
 
   it("says which version a file is and where a restored one came from", () => {
-    expect(versionNote({ version: 1, restoredFrom: null })).toBe("");
-    expect(versionNote({ version: 2, restoredFrom: null })).toBe("Version 2");
-    expect(versionNote({ version: 5, restoredFrom: 2 })).toBe("Version 5, restored from version 2");
+    expect(versionNote({ version: 1, restoredFrom: null, editedFrom: null })).toBe("");
+    expect(versionNote({ version: 2, restoredFrom: null, editedFrom: null })).toBe("Version 2");
+    expect(versionNote({ version: 5, restoredFrom: 2, editedFrom: null })).toBe("Version 5, restored from version 2");
+    expect(versionNote({ version: 3, restoredFrom: null, editedFrom: 1 })).toBe("Version 3, edited from version 1");
   });
 
   it("says when there are no files, and asks an unsaved page to be saved first", async () => {

@@ -132,3 +132,28 @@ func TestRewriteReferencesPointsCopiesAtTheirOwnFiles(t *testing.T) {
 		t.Fatalf("a body without files changed: %s %v %v", out, changed, err)
 	}
 }
+
+func TestOnlyPicturesTheBrowserRedrawsAreEditable(t *testing.T) {
+	for contentType, want := range map[string]bool{
+		"image/png": true, "image/jpeg": true, "IMAGE/WEBP": true, "image/png; charset=binary": true,
+		"image/gif": false, "image/svg+xml": false, "application/pdf": false, "": false,
+	} {
+		if got := Editable(contentType); got != want {
+			t.Errorf("Editable(%q) = %v, want %v", contentType, got, want)
+		}
+	}
+}
+
+func TestAnEditOfAnotherTypeNamesTheTypeToSend(t *testing.T) {
+	for _, c := range []struct {
+		err  EditTypeError
+		want string
+	}{
+		{EditTypeError{Name: "shot.png", Want: "image/png", Got: "image/jpeg"}, "the file shot.png is a PNG picture and the edited one is a JPEG; send it as a PNG picture, or upload it under a new name"},
+		{EditTypeError{Name: "shot.webp", Want: "image/webp"}, "the edited picture could not be read as a picture; send shot.webp as a WebP picture"},
+	} {
+		if got := c.err.Error(); got != c.want {
+			t.Errorf("got %q, want %q", got, c.want)
+		}
+	}
+}
