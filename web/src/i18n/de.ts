@@ -1666,6 +1666,17 @@ export const de: Messages = {
     pages: "Seite {page} von {pages}",
     header: (parts: string[]) => parts.filter(Boolean).join(" · "),
   },
+  docx: {
+    exportMenu: "Als Word exportieren",
+    exportButton: "Word",
+    exportLabel: "Diese Seite als Word-Dokument exportieren",
+    title: (title: string) => `${title} als Word exportieren`,
+    making: "Das Word-Dokument wird erstellt. Sobald es fertig ist, landet es in Ihren Downloads.",
+    note: "Das Dokument enthält die veröffentlichte Seite so, wie Sie sie lesen, bereit zum Bearbeiten ohne Verbindung. Blöcke, die Stator für jede Person füllt, etwa Aufgabenberichte und Armature-Vorgänge, stehen dort als Satz.",
+    networkFailed: "Das Word-Dokument konnte nicht abgerufen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    cancel: "Abbrechen",
+    close: "Schließen",
+  },
   markdown: {
     exportMenu: "Als Markdown exportieren",
     importMenu: "Markdown importieren",

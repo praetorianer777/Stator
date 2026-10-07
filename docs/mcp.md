@@ -150,9 +150,13 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
   `/space-exports`, `/space-imports`), an administrator's act on a file the
   worker makes or reads; `get_space_outline` and `get_page_markdown` carry
   a space's words;
+- a page as a Word document (`GET /pages/{pageID}/docx`), a file for a
+  person to edit offline or hand on; `get_page` and `get_page_markdown`
+  carry the same words to a model;
 - Armature's issues, which Armature's own MCP endpoint serves as the person;
 - the reading view for people who are not signed in (`/public/{orgSlug}`
-  and below, a public link's page and both their PDFs included) and the
+  and below, a public link's page and both their PDFs and Word documents
+  included) and the
   switches that open it:
   an assistant acts for a member, for whom `get_page` and `search` read the
   same pages;

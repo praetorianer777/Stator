@@ -1617,6 +1617,17 @@ export const en = {
     pages: "Page {page} of {pages}",
     header: (parts: string[]) => parts.filter(Boolean).join(" · "),
   },
+  docx: {
+    exportMenu: "Export as Word",
+    exportButton: "Word",
+    exportLabel: "Export this page as a Word document",
+    title: (title: string) => `Export ${title} as Word`,
+    making: "Making the Word document. It is saved to your downloads once it is ready.",
+    note: "The document holds the published page as you read it, ready to edit offline. Blocks Stator fills in for each reader, such as task reports and Armature issues, are described in a sentence.",
+    networkFailed: "The Word document could not be fetched. Check your connection and try again.",
+    cancel: "Cancel",
+    close: "Close",
+  },
   markdown: {
     exportMenu: "Export as Markdown",
     importMenu: "Import Markdown",

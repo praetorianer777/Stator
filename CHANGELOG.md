@@ -908,6 +908,20 @@ and the versioning [Semantic Versioning](https://semver.org/).
   The worker runs both (`STATOR_SPACE_TRANSFER_CHECK_INTERVAL`,
   `STATOR_SPACE_EXPORT_TTL`, `STATOR_SPACE_IMPORT_LIMIT`), and the audit log
   records `space.exported` and `space.imported`.
+- Word export (#87). Export as Word in the page menu downloads the published
+  page as a .docx to edit offline, as its reader may read it
+  (`GET /pages/{id}/docx`): headings in Word's heading styles, which its
+  navigation pane finds, nested lists, tables with header rows, merged cells
+  and colours, the page's pictures inside, code in a monospace style,
+  formulas and diagrams as their source, panels, expands, columns and
+  includes as boxes, and a sentence for each block Stator fills in for each
+  reader. Title, author and dates are in the document's properties, and the
+  words it adds are in the reader's language. Anybody exports a page anybody
+  may read and the page a public link opens
+  (`GET /public/{org}/pages/{id}/docx`, `GET /public/{org}/links/{token}/docx`),
+  six times a minute per page from one address. The api writes the document
+  itself; no service is needed. Member exports are audited as
+  `page.exported` with scope `docx`. `docs/word.md` lists every block.
 
 ### Changed
 

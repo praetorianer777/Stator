@@ -115,6 +115,7 @@ process, which is only right for a single api process. `/readyz` and
 | `convert` | the client of the conversion service that turns office documents into PDF |
 | `render` | the client of the render service, which prints a page's print view as PDF; the api hands it a path and, for a signed-in reader, a read-only token made for that one print |
 | `markdown` | a document as Markdown and Markdown as a document, held to the allowlist |
+| `docx` | a published page as a Word document, written from its document with its pictures inside, as its reader may read it; `docs/word.md` lists how each block comes out |
 | `mdio` | Markdown import and export of pages, subtrees and their files, through the page and file services |
 | `spaceio` | a whole space exported as an archive or as HTML pages, and an archive imported as a new space, run by the worker as leased jobs |
 | `theme` | custom themes in the `armature-theme/1` format |
