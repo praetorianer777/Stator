@@ -20,7 +20,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/docx"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
-	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/wordio"
 )
 
@@ -32,31 +31,12 @@ import (
 // wordWait bounds how long a test waits for the worker to import.
 const wordWait = 2 * time.Minute
 
-// wordBucket is the running app's bucket: an import the suite queues may be
-// run by the stack's worker as well as by the suite's own watch, so both
-// must find its upload and keep its pictures where the other looks.
-const wordBucket = "stator-files"
-
-func (h *harness) wordStore(t *testing.T) objectstore.Store {
-	t.Helper()
-	store, err := objectstore.Open(objectstore.Config{
-		Endpoint: h.cfg.S3.Endpoint, Bucket: wordBucket, AccessKey: h.cfg.S3.AccessKey,
-		SecretKey: h.cfg.S3.SecretKey, Region: h.cfg.S3.Region, UseSSL: h.cfg.S3.UseSSL,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.(*objectstore.S3Store).EnsureBucket(context.Background()); err != nil {
-		t.Fatalf("make the app's bucket: %v", err)
-	}
-	return store
-}
-
-// wordAPI is the api with its files in the app's bucket, and the watch the
-// worker runs over the same services.
+// wordAPI is the api with its files in the app's bucket, which the stack's
+// worker may run an import from too, and the watch the worker runs over
+// the same services.
 func wordAPI(t *testing.T, h *harness) (*apiServer, *wordio.Watch) {
 	t.Helper()
-	store := h.wordStore(t)
+	store := h.appStore(t)
 	var svc *wordio.Service
 	api := newAPIServer(t, h, func(s *httpapi.Server) {
 		s.Attachments = attachment.NewService(h.cluster, store, s.Pages).WithMaxSize(testUploadLimit).WithLogger(discard())
@@ -302,7 +282,7 @@ func queueWordImport(t *testing.T, h *harness, org, requester uuid.UUID, parent 
 		_, _ = w.Write(data)
 	}
 	_ = z.Close()
-	if err := h.wordStore(t).Put(context.Background(), wordio.ObjectKey(org, id), bytes.NewReader(buf.Bytes()), int64(buf.Len()), "application/zip"); err != nil {
+	if err := h.appStore(t).Put(context.Background(), wordio.ObjectKey(org, id), bytes.NewReader(buf.Bytes()), int64(buf.Len()), "application/zip"); err != nil {
 		t.Fatal(err)
 	}
 	all := append([]any{id, org, requester, parent, len(docs), buf.Len()}, args...)
@@ -342,7 +322,7 @@ func TestAWordImportThatCannotFinishLeavesNothing(t *testing.T) {
 		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM page WHERE parent_id = $1 AND trashed_at IS NULL`, parent).Scan(&live); err != nil || live != 0 {
 			t.Errorf("the failed import left %d pages: %v", live, err)
 		}
-		if rc, err := h.wordStore(t).Get(ctx, wordio.ObjectKey(home.org, id)); err == nil {
+		if rc, err := h.appStore(t).Get(ctx, wordio.ObjectKey(home.org, id)); err == nil {
 			_ = rc.Close()
 			t.Errorf("the failed import's upload is still stored")
 		}
