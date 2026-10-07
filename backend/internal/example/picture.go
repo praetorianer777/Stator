@@ -62,6 +62,39 @@ func Picture() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
+// The board the showcase's gallery shows beside the picture: columns of cards.
+const (
+	boardColumns = 3
+	cardHeight   = 36
+	cardGap      = 12
+)
+
+// boardCards is how many cards each of the board's columns holds.
+var boardCards = []int{4, 2, 3}
+
+// Board is the second PNG of the showcase's gallery, as large as Picture.
+func Board() ([]byte, error) {
+	img := image.NewRGBA(image.Rect(0, 0, pictureWidth, pictureHeight))
+	fill(img, img.Bounds(), paper)
+	width := (pictureWidth - (boardColumns+1)*margin/2) / boardColumns
+	for col, cards := range boardCards {
+		left := margin/2 + col*(width+margin/2)
+		column := image.Rect(left, margin, left+width, pictureHeight-margin)
+		fill(img, column, sheet)
+		fill(img, image.Rect(column.Min.X+cardGap, column.Min.Y+cardGap, column.Max.X-cardGap, column.Min.Y+cardGap+lineHeight), accent)
+		top := column.Min.Y + 2*cardGap + lineHeight
+		for range cards {
+			fill(img, image.Rect(column.Min.X+cardGap, top, column.Max.X-cardGap, top+cardHeight), ink)
+			top += cardHeight + cardGap
+		}
+	}
+	var out bytes.Buffer
+	if err := png.Encode(&out, img); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
 func fill(img *image.RGBA, r image.Rectangle, c color.RGBA) {
 	for y := r.Min.Y; y < r.Max.Y; y++ {
 		for x := r.Min.X; x < r.Max.X; x++ {

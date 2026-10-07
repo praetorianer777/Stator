@@ -4,7 +4,8 @@ import type { Element as HastElement, ElementContent, Root } from "hast";
 import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
-import { DocAttachment, DocImage } from "./AttachmentView";
+import { DocAttachment, DocGallery, DocImage } from "./AttachmentView";
+import { GALLERY_NODE } from "@/features/gallery/gallery";
 import { ChildPagesList, DocPageContext, TocList, childPagesSummary, tocSummary } from "./BlockViews";
 import { childPagesOptions } from "./childPages";
 import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
@@ -42,6 +43,7 @@ import { BLOG_POSTS_NODE, blogPostsSettings } from "@/features/blog/blogPosts";
 import { TASK_REPORT_NODE, taskReportSettings } from "@/features/taskReport/report";
 import { AttachmentList } from "@/features/attachments/AttachmentList";
 import { ATTACHMENT_LIST_NODE } from "./attachmentList";
+import { KnownAttachmentsContext } from "./attachmentIndex";
 import { TableChart } from "@/features/tableChart/TableChart";
 import { TABLE_CHART_NODE, tableChartSettings } from "@/features/tableChart/data";
 import { TeamCalendar } from "@/features/calendar/TeamCalendar";
@@ -105,11 +107,14 @@ export function DocView({
 }
 
 // An included document takes no anchors and no inline threads of the page
-// it is shown in: those belong to the page whose words they are.
+// it is shown in: those belong to the page whose words they are. Its
+// pictures are files of its own page, which the reader's reads decide.
 function drawIncluded(doc: Doc) {
   return (
     <PassagesContext value={null}>
-      <DocView doc={doc} anchors={false} />
+      <KnownAttachmentsContext value={undefined}>
+        <DocView doc={doc} anchors={false} />
+      </KnownAttachmentsContext>
     </PassagesContext>
   );
 }
@@ -416,6 +421,8 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     }
     case "image":
       return <DocImage node={node} />;
+    case GALLERY_NODE:
+      return <DocGallery node={node} />;
     // A comparison says what the block asks for rather than drawing it: its
     // headings and pages are the page's now, not the version's.
     case "tableOfContents":

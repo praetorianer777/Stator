@@ -31,7 +31,7 @@ func facts(lang string) example.Facts {
 		Me:    example.Person{ID: uuid.New(), Name: "Ada <Admin> & Co"},
 		Today: "2026-10-06", Soon: "2026-10-09", NextWeek: "2026-10-13",
 		Pages: map[string]uuid.UUID{}, Excerpts: map[string]uuid.UUID{},
-		Files:    map[string]uuid.UUID{example.ImageFile: uuid.New(), example.DataFile: uuid.New()},
+		Files:    map[string]uuid.UUID{example.ImageFile: uuid.New(), example.BoardFile: uuid.New(), example.DataFile: uuid.New()},
 		Calendar: uuid.New(),
 		Armature: &example.ArmatureFacts{Project: "CP", Issue: "CP-4"},
 	}
@@ -117,7 +117,7 @@ func TestASiteWithoutFilesOrArmatureGetsSentencesInstead(t *testing.T) {
 		_, root := render(t, example.Showcase, bare(lang))
 		shown := map[string]bool{}
 		kinds(root, shown)
-		for _, name := range []string{"image", "attachment", document.NodeAttachmentList, "armatureIssue", "armatureIssueBlock", "armatureIssueList", "armatureChart", "armatureRoadmap"} {
+		for _, name := range []string{"image", document.NodeGallery, document.NodeGalleryImage, "attachment", document.NodeAttachmentList, "armatureIssue", "armatureIssueBlock", "armatureIssueList", "armatureChart", "armatureRoadmap"} {
 			if shown[name] {
 				t.Errorf("the bare %s showcase shows a %q, which needs what the site lacks", lang, name)
 			}
@@ -264,14 +264,16 @@ func TestTheContentIsEveryFileAndNoOther(t *testing.T) {
 	}
 }
 
-func TestThePictureIsAPNG(t *testing.T) {
-	data, err := example.Picture()
-	if err != nil {
-		t.Fatal(err)
-	}
-	img, err := png.Decode(bytes.NewReader(data))
-	if err != nil || img.Bounds().Dx() == 0 {
-		t.Fatalf("the picture does not decode: %v", err)
+func TestThePicturesArePNGs(t *testing.T) {
+	for name, draw := range map[string]func() ([]byte, error){example.ImageFile: example.Picture, example.BoardFile: example.Board} {
+		data, err := draw()
+		if err != nil {
+			t.Fatal(err)
+		}
+		img, err := png.Decode(bytes.NewReader(data))
+		if err != nil || img.Bounds().Dx() == 0 {
+			t.Fatalf("%s does not decode: %v", name, err)
+		}
 	}
 }
 

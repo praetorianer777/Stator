@@ -212,6 +212,15 @@ export const IMAGE_ALT_MAX_LENGTH = 500;
 /** The widest an image's width attribute may be, matching the API's MaxImageWidth. */
 export const IMAGE_MAX_WIDTH_PX = 4000;
 
+/** How many pictures a gallery's row may hold on a wide screen, matching the API's bounds; a narrow screen shows two. */
+export const GALLERY_COLUMNS = [2, 3, 4] as const;
+/** The row a new gallery starts with. */
+export const GALLERY_DEFAULT_COLUMNS = 3;
+/** The most pictures one gallery holds, matching the API's MaxGalleryImages. */
+export const GALLERY_MAX_IMAGES = 60;
+/** The longest caption, which is the picture's alternative text too, matching the API's limit. */
+export const GALLERY_CAPTION_MAX_LENGTH = IMAGE_ALT_MAX_LENGTH;
+
 /** The lightbox's zoom: from the picture fitted to the screen up to this many times that. */
 export const LIGHTBOX_MAX_ZOOM = 8;
 /** How much one press of zoom in or out, or of + and -, multiplies the zoom by. */

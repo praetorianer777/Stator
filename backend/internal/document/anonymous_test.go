@@ -22,7 +22,8 @@ func TestAnAnonymousReaderIsToldNobodysName(t *testing.T) {
 			t.Errorf("the anonymous document still holds %s", personal)
 		}
 	}
-	for _, kept := range []string{`"type":"mention"`, `"assignee":"me"`, "report.pdf", "Ada", "CP-12"} {
+	// A gallery names its files as an image does, and each reader's own read of a file decides whether it shows.
+	for _, kept := range []string{`"type":"mention"`, `"assignee":"me"`, "report.pdf", "Ada", "CP-12", `{"type":"galleryImage","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","caption":"The board"}}`} {
 		if !strings.Contains(got, kept) {
 			t.Errorf("the anonymous document lost %s", kept)
 		}

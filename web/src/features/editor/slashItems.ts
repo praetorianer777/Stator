@@ -67,6 +67,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("blogPosts", Icon.Megaphone, ["latest blog posts", "blog", "posts", "news", "announcements", "latest"], (c) => c.pickBlogPosts()),
   item("tableChart", Icon.Chart, ["chart from table", "chart", "bar", "line", "pie", "graph", "plot"], (c) => c.insertTableChart()),
   item("attachmentList", Icon.Paperclip, ["attachments", "files", "uploads", "documents", "downloads"], (c) => c.insertAttachmentList()),
+  item("gallery", Icon.Gallery, ["gallery", "images", "pictures", "photos", "screenshots", "album", "grid"], (c) => c.pickGallery()),
   item("taskReport", Icon.Task, ["task report", "tasks", "todo", "actions", "assigned", "overdue"], (c) => c.pickTaskReport()),
   item("calendar", Icon.Calendar, ["calendar", "events", "absences", "holidays", "vacation", "schedule", "month"], (c) => c.pickCalendar()),
   item("templateButton", Icon.Plus, ["template button", "button", "create from template", "new page", "recurring", "meeting notes"], (c) =>

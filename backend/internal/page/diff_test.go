@@ -176,6 +176,19 @@ func TestATableWhoseShapeChangedIsReplacedWhole(t *testing.T) {
 	sameChanges(t, got, DiffDeleted, DiffInserted)
 }
 
+func TestAGalleryThatChangedIsReplacedWhole(t *testing.T) {
+	gallery := func(ids ...string) string {
+		var pictures []string
+		for _, id := range ids {
+			pictures = append(pictures, `{"type":"galleryImage","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a`+id+`","caption":null}}`)
+		}
+		return `{"type":"gallery","attrs":{"columns":3},"content":[` + strings.Join(pictures, ",") + `]}`
+	}
+	sameChanges(t, mustDiff(t, doc(gallery("01", "02")), doc(gallery("01", "02"))), DiffEqual)
+	sameChanges(t, mustDiff(t, doc(gallery("01", "02")), doc(gallery("01"))), DiffDeleted, DiffInserted)
+	sameChanges(t, mustDiff(t, doc(gallery("01", "02")), doc(gallery("02", "01"))), DiffDeleted, DiffInserted)
+}
+
 func TestInlineNodesThatAreNotTextAreComparedWhole(t *testing.T) {
 	mention := func(id string) string {
 		return `{"type":"paragraph","content":[{"type":"text","text":"Ask "},{"type":"mention","attrs":{"id":"` + id + `","label":"x"}}]}`

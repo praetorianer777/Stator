@@ -35,9 +35,10 @@ import { CalendarDialog } from "@/features/calendar/CalendarDialog";
 import { TemplateButtonDialog } from "@/features/templateButton/TemplateButtonDialog";
 import { templateButtonSettings } from "@/features/templateButton/button";
 import { calendarSettings } from "@/features/calendar/calendar";
+import { GalleryDialog } from "@/features/gallery/GalleryDialog";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
-import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT } from "@/config";
+import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT, GALLERY_DEFAULT_COLUMNS } from "@/config";
 import type { InlineValueTarget } from "./inlineValues";
 import { DateDialog, MathDialog, StatusDialog } from "./InlineValueDialogs";
 import { LinkCardDialog } from "./LinkCardDialog";
@@ -152,6 +153,7 @@ export function Editor({
   const [makingPosts, setMakingPosts] = useState(false);
   const [makingTasks, setMakingTasks] = useState(false);
   const [makingCalendar, setMakingCalendar] = useState(false);
+  const [makingGallery, setMakingGallery] = useState(false);
   const [makingButton, setMakingButton] = useState(false);
   const [pickingLink, setPickingLink] = useState(false);
   const [pickingInclude, setPickingInclude] = useState(false);
@@ -185,6 +187,7 @@ export function Editor({
       pickBlogPosts: () => setMakingPosts(true),
       pickTaskReport: () => setMakingTasks(true),
       pickCalendar: () => setMakingCalendar(true),
+      pickGallery: () => setMakingGallery(true),
       pickTemplateButton: () => setMakingButton(true),
       pickLinkCard: () => setPickingLink(true),
       pickInclude: () => setPickingInclude(true),
@@ -461,6 +464,18 @@ export function Editor({
           onSave={(settings) => {
             setMakingCalendar(false);
             editor.chain().focus().insertCalendar(settings).run();
+          }}
+        />
+      )}
+      {makingGallery && editor && (
+        <GalleryDialog
+          initial={{ columns: GALLERY_DEFAULT_COLUMNS, pictures: [] }}
+          pageId={page?.id}
+          isNew
+          onClose={() => setMakingGallery(false)}
+          onSave={(settings) => {
+            setMakingGallery(false);
+            editor.chain().focus().insertGallery(settings).run();
           }}
         />
       )}

@@ -99,6 +99,7 @@ export const Icon = {
   Archive: makeIcon("archive", ["M2 3h12v3H2z", "M3 6v7h10V6", "M6.5 8.5h3"]),
   Upload: makeIcon("upload", ["M8 10.5V3", "m4.5 6.5 3.5-3.5 3.5 3.5", "M2.5 13.5h11"]),
   Download: makeIcon("download", ["M8 3v7.5", "m4.5 7 3.5 3.5L11.5 7", "M2.5 13.5h11"]),
+  Gallery: makeIcon("gallery", ["M2.5 3.5h11v9h-11z", "m2.5 10.5 3-3 2.5 2.5 2-2 3.5 3.5", "M10.5 6h.01"]),
   Paperclip: makeIcon("paperclip", ["M13 7.5 8.2 12.3a3 3 0 0 1-4.3-4.2l5.4-5.4a2 2 0 0 1 2.8 2.8L6.7 10.9a1 1 0 0 1-1.4-1.4L10 4.8"]),
   File: makeIcon("file", ["M9 1.5H4.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V5z", "M9 1.5V5h3.5"]),
   Share: makeIcon("share", ["M8 9.5V2.5", "m5 5.5 3-3 3 3", "M3.5 8v5h9V8"]),

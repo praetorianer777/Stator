@@ -214,6 +214,25 @@ var TableCharts = []string{ChartBar, ChartLine, ChartPie}
 // version of each name first; it holds nothing, the page's files are its own.
 const NodeAttachmentList = "attachmentList"
 
+// NodeGallery shows pictures of the page side by side, each a NodeGalleryImage
+// naming one version of a file by id, as an image does, with its caption.
+const (
+	NodeGallery      = "gallery"
+	NodeGalleryImage = "galleryImage"
+)
+
+const (
+	// MinGalleryColumns and MaxGalleryColumns bound how many pictures a
+	// gallery's row holds on a wide screen; a narrow one shows fewer.
+	MinGalleryColumns = 2
+	MaxGalleryColumns = 4
+	// DefaultGalleryColumns is what a gallery read from elsewhere starts with
+	// when it says nothing.
+	DefaultGalleryColumns = 3
+	// MaxGalleryImages keeps a gallery to what one page can load.
+	MaxGalleryImages = 60
+)
+
 // NodeCalendar draws a month of one of a space's calendars, with the due
 // issues of an Armature project beside its events; it holds which, never them.
 const NodeCalendar = "calendar"
@@ -335,7 +354,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeBlogPosts, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeBlogPosts, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", NodeGallery, "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -452,6 +471,14 @@ var Allowed = Allowlist{
 				"width":        {Kind: KindInteger, Nullable: true, Min: 1, Max: MaxImageWidth},
 			},
 		},
+		NodeGallery: {Content: []string{NodeGalleryImage}, MinContent: 1, MaxContent: MaxGalleryImages, Attrs: map[string]Attr{
+			"columns": {Kind: KindInteger, Min: MinGalleryColumns, Max: MaxGalleryColumns},
+		}},
+		// A caption is the picture's alternative text too, so it shares its bound.
+		NodeGalleryImage: {Attrs: map[string]Attr{
+			"attachmentId": {Kind: KindString, Pattern: UUIDPattern},
+			"caption":      {Kind: KindString, Nullable: true, MaxLength: MaxAltLength},
+		}},
 		"tableOfContents": {
 			Attrs: map[string]Attr{"maxLevel": {Kind: KindInteger, Min: 1, Max: MaxHeadingLevel}},
 		},

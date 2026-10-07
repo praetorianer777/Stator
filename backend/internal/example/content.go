@@ -132,9 +132,11 @@ type ArmatureFacts struct {
 	Issue string
 }
 
-// The files the showcase uploads, and the one uploaded twice to show versions.
+// The files the showcase uploads, the second picture for its gallery, and the
+// one uploaded twice to show versions.
 const (
 	ImageFile = "stator-example.png"
+	BoardFile = "stator-board.png"
 	DataFile  = "team-numbers.csv"
 )
 

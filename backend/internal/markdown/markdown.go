@@ -38,6 +38,7 @@ const (
 	kindCalendar   = "calendar"
 	kindButton     = "template-button"
 	kindPeople     = "contributors"
+	kindGallery    = "gallery"
 )
 
 // panelAlerts pairs each panel kind with the alert a quote opens with, one

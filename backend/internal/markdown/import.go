@@ -653,6 +653,9 @@ func (c *converter) htmlBlock(raw string) []document.Node {
 	if trimmed == "" || (strings.HasPrefix(trimmed, "<!--") && strings.HasSuffix(trimmed, "-->")) || detailsClose.MatchString(trimmed) {
 		return nil
 	}
+	if made, ok := c.galleryDiv(trimmed); ok {
+		return made
+	}
 	if made, ok := c.statorDiv(trimmed); ok {
 		return made
 	}
@@ -716,6 +719,65 @@ func (c *converter) statorDiv(raw string) ([]document.Node, bool) {
 			}
 		}
 		return nil, false
+	}
+}
+
+// galleryDiv reads the div Render writes for a gallery: its start tag, img
+// tags with nothing but spaces between them, and its end tag. A picture that
+// is not a file of the import is left out, as the warning it gets says.
+func (c *converter) galleryDiv(raw string) ([]document.Node, bool) {
+	tok := nethtml.NewTokenizer(strings.NewReader(raw))
+	if tok.Next() != nethtml.StartTagToken {
+		return nil, false
+	}
+	e := startTag(tok)
+	if e.name != "div" || e.attrs[statorAttr] != kindGallery {
+		return nil, false
+	}
+	columns, err := strconv.Atoi(e.attrs["data-columns"])
+	if err != nil {
+		columns = document.DefaultGalleryColumns
+	}
+	columns = min(max(columns, document.MinGalleryColumns), document.MaxGalleryColumns)
+	var pictures []document.Node
+	for {
+		switch tok.Next() {
+		case nethtml.TextToken:
+			if strings.TrimSpace(string(tok.Text())) != "" {
+				return nil, false
+			}
+		case nethtml.StartTagToken, nethtml.SelfClosingTagToken:
+			img := startTag(tok)
+			if img.name != "img" {
+				return nil, false
+			}
+			src := img.attrs["src"]
+			var target Target
+			if relative(src) {
+				target = c.resolve(src)
+			}
+			if target.Kind != TargetFile {
+				c.warn("The gallery's picture %s is not in the import, so the gallery leaves it out.", src)
+				continue
+			}
+			var caption any
+			if alt := img.attrs["alt"]; alt != "" {
+				caption = alt
+			}
+			pictures = append(pictures, document.Node{Type: document.NodeGalleryImage, Attrs: map[string]any{"attachmentId": target.AttachmentID, "caption": caption}})
+		case nethtml.EndTagToken:
+			if name, _ := tok.TagName(); string(name) != "div" || tok.Next() != nethtml.ErrorToken {
+				return nil, false
+			}
+			n := document.Node{Type: document.NodeGallery, Attrs: map[string]any{"columns": columns}, Content: pictures}
+			if len(pictures) == 0 || !validates(n, false) {
+				c.warn("A %s block could not be read and was left out.", kindGallery)
+				return nil, true
+			}
+			return []document.Node{n}, true
+		default:
+			return nil, false
+		}
 	}
 }
 
