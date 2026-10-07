@@ -238,6 +238,24 @@ func TestTemplatesWithVariablesOverTheAPI(t *testing.T) {
 		}
 	})
 
+	t.Run("a blog post starts from a template too", func(t *testing.T) {
+		made := obj(t, want(t, bob.post(t, "/api/v1/spaces/KICK/posts", map[string]any{
+			"template": tplID, "values": map[string]any{"customer": "Zeta"},
+		}), http.StatusCreated, "bob writes a post from it"), "page")
+		if made["kind"] != "post" || made["title"] != "Kickoff with Zeta" || made["parentId"] != nil || !strings.Contains(mustJSON(t, made["body"]), `"text":"Zeta"`) {
+			t.Errorf("the post is %v", made)
+		}
+		r := want(t, bob.post(t, "/api/v1/spaces/KICK/posts", map[string]any{"template": tplID}), http.StatusUnprocessableEntity, "a post without the customer")
+		if _, ok := fieldsOf(t, r)["values.customer"]; !ok {
+			t.Errorf("a post without the customer is refused with %s", r.Raw)
+		}
+		r = want(t, bob.post(t, "/api/v1/spaces/KICK/posts", map[string]any{"title": "Plain", "values": map[string]any{"customer": "x"}}), http.StatusUnprocessableEntity, "values without a template")
+		if _, ok := fieldsOf(t, r)["values"]; !ok {
+			t.Errorf("values without a template are refused with %s", r.Raw)
+		}
+		want(t, dora.post(t, "/api/v1/spaces/KICK/posts", map[string]any{"template": tplID, "values": map[string]any{"customer": "x"}}), http.StatusNotFound, "dora writes in KICK")
+	})
+
 	t.Run("values that do not fit are refused on their field", func(t *testing.T) {
 		otherSpace := obj(t, want(t, owner.post(t, "/api/v1/templates", kickoff("HIDE", "Hidden kickoff")), http.StatusCreated, "a template of HIDE"), "template")["key"].(string)
 		make := func(more map[string]any) response {

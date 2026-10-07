@@ -2410,7 +2410,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. For whoever may add pages to the space. */
+        /** Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. A template in place of a body starts it from that template, as with POST /pages. For whoever may add pages to the space. */
         post: operations["createPost"];
         delete?: never;
         options?: never;
@@ -4298,7 +4298,11 @@ export interface components {
             /** @description A JSON value. */
             body?: unknown;
             publish?: boolean;
+            template?: string;
             title: string;
+            values?: {
+                [key: string]: string;
+            };
         };
         Preferences: {
             autoWatch: boolean;

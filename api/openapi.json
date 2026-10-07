@@ -11219,7 +11219,7 @@
     "/spaces/{spaceKey}/posts": {
       "post": {
         "operationId": "createPost",
-        "summary": "Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. For whoever may add pages to the space.",
+        "summary": "Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. A template in place of a body starts it from that template, as with POST /pages. For whoever may add pages to the space.",
         "tags": [
           "posts"
         ],
@@ -18836,8 +18836,17 @@
           "publish": {
             "type": "boolean"
           },
+          "template": {
+            "type": "string"
+          },
           "title": {
             "type": "string"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         },
         "required": [

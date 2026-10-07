@@ -93,6 +93,40 @@ describe("a space's blog", () => {
     expect(await screen.findByRole("button", { name: "Watching blog" })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("starts a post from a template, asking for its variables, which the server fills in", async () => {
+    const weekly = {
+      key: "0195f000-0000-7000-8000-0000000000c1",
+      name: "Weekly update",
+      description: "",
+      title: "Week of {week}",
+      body: { type: "doc", content: [{ type: "paragraph" }] },
+      builtIn: false,
+      scope: "space",
+      spaceKey: "DOCS",
+      canEdit: false,
+      variables: [{ name: "week", label: "Week", kind: "date", options: [], default: "", required: true }],
+    };
+    const made = { id: "0195f000-0000-7000-8000-0000000000c2", title: "Week of 2026-10-05", spaceKey: "DOCS" };
+    const sent = shell({
+      "GET /templates": { status: 200, body: { templates: [weekly] } },
+      "POST /spaces/DOCS/posts": { status: 201, body: { page: made } },
+    });
+    const router = await renderAt("/s/DOCS/blog");
+    await userEvent.click(await screen.findByRole("button", { name: "New post" }));
+    const dialog = await screen.findByRole("dialog", { name: "Write a blog post" });
+    await userEvent.click(await within(dialog).findByRole("radio", { name: /Weekly update/ }));
+    expect(within(dialog).getByLabelText("Title")).toHaveValue("Week of {week}");
+    await userEvent.type(within(dialog).getByLabelText("Week (required)"), "2026-10-05");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Start writing" }));
+    await arrival(router, `/s/DOCS/p/${made.id}/week-of-2026-10-05/edit`);
+    expect(sent.find((r) => r.method === "GET" && r.path === "/templates")).toBeDefined();
+    expect(sent.find((r) => r.method === "POST" && r.path === "/spaces/DOCS/posts")?.body).toEqual({
+      title: "Week of {week}",
+      template: weekly.key,
+      values: { week: "2026-10-05" },
+    });
+  });
+
   it("says when a month holds nothing the reader may read", async () => {
     shell({ "GET /posts": { status: 200, body: { posts: [], next: null } } });
     await renderAt("/s/DOCS/blog?year=2024&month=2");
