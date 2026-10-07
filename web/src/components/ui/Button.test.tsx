@@ -56,15 +56,19 @@ describe("buttons inside a form", () => {
 
   // Buttons no longer submit by default, so a form whose submit button was
   // never marked would lose its submit without anything else failing.
-  it("leave every form in the client a submit button", () => {
-    const forms = sources(join(__dirname, "..", ".."))
-      .map((path) => ({ path, source: readFileSync(path, "utf8") }))
-      .filter(({ source }) => /<form\b/.test(source));
-    expect(forms.length).toBeGreaterThan(0);
-    for (const { path, source } of forms) {
-      const opened = source.match(/<form\b/g)!.length;
-      const submits = source.match(/type="submit"/g)?.length ?? 0;
-      expect(submits, `${path} has ${opened} form(s) and ${submits} submit button(s)`).toBeGreaterThanOrEqual(opened);
-    }
-  }, SOURCE_SCAN_MS);
+  it(
+    "leave every form in the client a submit button",
+    () => {
+      const forms = sources(join(__dirname, "..", ".."))
+        .map((path) => ({ path, source: readFileSync(path, "utf8") }))
+        .filter(({ source }) => /<form\b/.test(source));
+      expect(forms.length).toBeGreaterThan(0);
+      for (const { path, source } of forms) {
+        const opened = source.match(/<form\b/g)!.length;
+        const submits = source.match(/type="submit"/g)?.length ?? 0;
+        expect(submits, `${path} has ${opened} form(s) and ${submits} submit button(s)`).toBeGreaterThanOrEqual(opened);
+      }
+    },
+    SOURCE_SCAN_MS,
+  );
 });
