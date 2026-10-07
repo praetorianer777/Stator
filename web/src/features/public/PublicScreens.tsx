@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { linkedPdfHref, publicPdfHref } from "@/api/pdf";
-import { PdfExportDialog } from "@/features/print/PdfExport";
+import { linkedWordHref, publicWordHref } from "@/api/word";
+import { FileExportDialog, type ExportFormat } from "@/features/print/FileExport";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -180,16 +181,32 @@ export function PublicLinkScreen({ org, token }: { org: string; token: string })
   );
 }
 
-/** Prints the page shown as PDF, from a button beside its title. */
-function PdfButton({ href, title }: { href: string; title: string }) {
+/** Exports the page shown as a file, from a button beside its title. */
+function ExportButton({ format, href, title }: { format: ExportFormat; href: string; title: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" icon={<Icon.File />} onClick={() => setOpen(true)} aria-label={t.pdf.exportLabel} data-action="export-pdf">
-        {t.pdf.exportButton}
+      <Button
+        variant="secondary"
+        icon={format === "pdf" ? <Icon.File /> : <Icon.Page />}
+        onClick={() => setOpen(true)}
+        aria-label={t[format].exportLabel}
+        data-action={`export-${format}`}
+      >
+        {t[format].exportButton}
       </Button>
-      {open && <PdfExportDialog href={href} title={title} onClose={() => setOpen(false)} />}
+      {open && <FileExportDialog format={format} href={href} title={title} onClose={() => setOpen(false)} />}
     </>
+  );
+}
+
+/** The files a page anybody reads is exported as, side by side. */
+function ExportButtons({ pdf, docx, title }: { pdf: string; docx: string; title: string }) {
+  return (
+    <div className="flex flex-wrap gap-2" data-export-buttons="">
+      <ExportButton format="pdf" href={pdf} title={title} />
+      <ExportButton format="docx" href={docx} title={title} />
+    </div>
   );
 }
 
@@ -213,7 +230,7 @@ function LinkedArticle({ org, token, page }: { org: string; token: string; page:
           </>
         }
         meta={<span>{t.publicReading.updated(updatedAt.format(new Date(page.updatedAt)))}</span>}
-        actions={page.kind !== "folder" && <PdfButton href={linkedPdfHref(org, token)} title={page.title} />}
+        actions={page.kind !== "folder" && <ExportButtons pdf={linkedPdfHref(org, token)} docx={linkedWordHref(org, token)} title={page.title} />}
       />
       <DocView doc={page.body as DocNode} />
     </article>
@@ -341,7 +358,7 @@ function PageArticle({ org, pageId }: { org: string; pageId: string }) {
           </>
         }
         meta={<span>{t.publicReading.updated(updatedAt.format(new Date(page.updatedAt)))}</span>}
-        actions={page.kind !== "folder" && <PdfButton href={publicPdfHref(org, page.id)} title={page.title} />}
+        actions={page.kind !== "folder" && <ExportButtons pdf={publicPdfHref(org, page.id)} docx={publicWordHref(org, page.id)} title={page.title} />}
       />
       {page.kind === "folder" ? <FolderChildren org={org} page={page} /> : <DocView doc={page.body as DocNode} />}
     </article>

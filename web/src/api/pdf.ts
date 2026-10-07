@@ -17,7 +17,7 @@ export function linkedPdfHref(org: string, token: string): string {
   return `${API_BASE}/public/${encodeURIComponent(org)}/links/${encodeURIComponent(token)}/pdf`;
 }
 
-/** A printed page and the name the API gave it. */
+/** An exported page and the name the API gave it. */
 export interface PrintedPdf {
   blob: Blob;
   name: string;
@@ -36,16 +36,21 @@ export function fileNameOf(disposition: string | null, fallback: string): string
   }
 }
 
+/** Fetches a PDF; see fetchFile. */
+export function fetchPdf(href: string, fallbackName: string): Promise<PrintedPdf> {
+  return fetchFile(href, fallbackName, t.pdf.networkFailed);
+}
+
 /**
- * Fetches a PDF rather than letting the browser follow a link, since a print
- * takes seconds and a refusal has to be read as a sentence, not saved as a file.
+ * Fetches an exported file rather than letting the browser follow a link, since
+ * an export takes seconds and a refusal has to be read as a sentence, not saved as a file.
  */
-export async function fetchPdf(href: string, fallbackName: string): Promise<PrintedPdf> {
+export async function fetchFile(href: string, fallbackName: string, networkFailed: string): Promise<PrintedPdf> {
   let response: Response;
   try {
     response = await globalThis.fetch(new Request(new URL(href, window.location.origin), { credentials: "same-origin" }));
   } catch {
-    throw new ApiError(0, { code: "network", message: t.pdf.networkFailed });
+    throw new ApiError(0, { code: "network", message: networkFailed });
   }
   if (!response.ok) {
     let body: { error?: ApiErrorBody } | undefined;
