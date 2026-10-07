@@ -146,6 +146,10 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
 - a page as PDF (`GET /pages/{pageID}/pdf`), a file printed by a browser
   for a person to keep or hand on; `get_page` and `get_page_markdown`
   carry the same words to a model;
+- exporting and importing whole spaces (`/spaces/{spaceKey}/exports`,
+  `/space-exports`, `/space-imports`), an administrator's act on a file the
+  worker makes or reads; `get_space_outline` and `get_page_markdown` carry
+  a space's words;
 - a page as a Word document (`GET /pages/{pageID}/docx`), a file for a
   person to edit offline or hand on; `get_page` and `get_page_markdown`
   carry the same words to a model;

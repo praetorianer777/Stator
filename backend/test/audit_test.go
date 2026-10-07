@@ -312,6 +312,17 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 		t.Errorf("the example's record reads %s", data)
 	}
 
+	exportedID := idOf(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "AUDEX", "name": "Exported"}), http.StatusCreated, "make a space to export"), "space")
+	want(t, owner.post(t, "/api/v1/spaces/AUDEX/exports", map[string]any{"format": "html"}), http.StatusAccepted, "export the space")
+	if data := once(audit.ActionSpaceExported, me, exportedID); !strings.Contains(data, `"format": "html"`) {
+		t.Errorf("the export's record reads %s", data)
+	}
+	imported := api.importSpace(t, owner, smallArchive(t, "SMALL"), "key=AUDIN")
+	importedID := obj(t, want(t, owner.get(t, "/api/v1/spaces/AUDIN"), http.StatusOK, "the imported space"), "space")["id"].(string)
+	if data := once(audit.ActionSpaceImported, me, importedID); !strings.Contains(data, `"from": "SMALL"`) || imported["state"] != "done" {
+		t.Errorf("the import's record reads %s, after %v", data, imported)
+	}
+
 	_, hookAddress := hookBin(t)
 	hookID := idOf(t, want(t, owner.post(t, "/api/v1/webhooks", map[string]any{"name": "Audited", "url": hookAddress, "topics": []string{"*"}}), http.StatusCreated, "add a webhook"), "webhook")
 	if data := once(audit.ActionWebhookCreated, me, hookID); !strings.Contains(data, `"secret": "set"`) || strings.Contains(data, "/_hooks/") {

@@ -3,6 +3,123 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: A space travels as an archive of everything readers read, and arrives as a new space
+
+An administrator exports a whole space to back it up or to move it, and
+reads it offline as HTML (#88). Both are jobs of the worker, as the example
+space is (decided below): a space of some hundred pages with their history
+and files takes longer than a request may last.
+
+- **The archive.** A zip with `manifest.json` (format `stator.space`,
+  version 1), `pages/{id}.json` for each page and `files/{id}` for each
+  file's bytes. The manifest holds the space (key, name, description, home
+  page), its grants, its own templates and its calendars with their
+  events, the people and groups the archive names, the counts, and every
+  page's id in the order an import makes them, each after the page it hangs
+  from, posts last. A page's entry holds its place (parent, rank, kind,
+  mode, icon, width, cover, archived with which page), its current body,
+  every published version as stored with its author and times, its labels,
+  its view, edit and grant lists, every version of every file, its threads
+  with their comments, and its reactions. Ids are the source's; an import
+  gives everything new ones and rewrites what documents point at: pages,
+  files, threads, calendars, the space's own key, and mentions. An import
+  reads every version up to its own and refuses a newer one in a sentence.
+- **Who is named, and how.** People by their email address, groups by their
+  name, so an import finds them in another organization; a grant or a
+  restriction names its subject by them, as do authors. Somebody the
+  exporter's organization no longer has is nobody in the archive. A guest
+  is never found: guests are let into one space by an organization's
+  administrators, not by an archive.
+- **Not in it.** Drafts, the personal ones and a page's shared draft, and
+  pages never published: they are their authors' work in progress, as a
+  PDF holds that a draft is not handed on (2026-10-07). The trash. The
+  audit log, which is the organization's record of what was done and not
+  the space's content. Page views, visits, stars, watches and
+  notifications, which are each reader's own and would mean nothing in
+  another organization. Shares, public links and anybody's tokens, which
+  open the space to people and must be given again where it lands. Owners
+  and verifications, scheduled publishes, shortcuts and the editors of a
+  live version, which are standing and arrangements rather than content.
+  Tasks come back from the bodies, which hold them, and Armature's page
+  links at the next publish.
+- **What an export holds.** Everything its exporter reads, with nothing
+  widened for the export: it runs as the exporter through the app role, in
+  one snapshot. Only administrators of the space, the organization's among
+  them, export it, and an administrator passes every view list (decided
+  2026-09-30), so the archive holds every published page of the space. A
+  page whose parent is left out, a draft somebody published a page below,
+  hangs from the nearest page above it that is in.
+- **The file.** Written to a temporary file by the worker, stored under the
+  organization's prefix, and downloaded by its requester or the space's
+  administrators (`GET /space-exports/{id}/file`) for
+  `STATOR_SPACE_EXPORT_TTL`, a day by default; the worker then marks the
+  export expired and leaves a tombstone, which the file reaper deletes the
+  bytes by, as for any file. The download reads storage past the request's
+  limit, so a slow line gets the file whole within the server's write
+  timeout. Queuing an export is `space.exported` in the audit log, written
+  with the job.
+- **HTML for reading.** A second format of the same job: the home page as
+  `index.html` with every page below it as a tree and the blog's posts,
+  every other page beside it, its pictures and current files under
+  `files/`, and one style sheet that follows the reader's light or dark
+  scheme. A page is its published body as the exporter reads it, through
+  the Markdown it would export as (2026-10-01) and goldmark, with links to
+  the pages and files beside it made relative, a breadcrumb trail and the
+  pages below. What is read for each reader when a page opens in Stator,
+  such as a calendar, a report or an Armature list, says so in a sentence;
+  child pages, the files list and includes are drawn from the export. No
+  page runs a script, and each refuses any by its content security policy.
+- **The import.** Whoever may create spaces uploads an archive
+  (`POST /space-imports`, 200 MB by `STATOR_SPACE_IMPORT_LIMIT`). The api
+  refuses at once what is no archive of Stator's, one newer than it reads,
+  and a key another space has, whether or not the uploader sees it, each in
+  a sentence; it stores the file and queues the job. The worker checks again
+  that the importer may create spaces, reads every page entry once and
+  refuses an archive whose pages do not fit together, then makes the space
+  in one transaction: one that fails leaves no space behind, and the bytes
+  it had stored get tombstones. Every document, version and comment is held
+  to the allowlist after its ids are rewritten, and the first that fails
+  fails the import with a sentence naming its page. Beyond the upload's
+  size, an archive is held to 5000 pages, 100000 versions, 20000 files and
+  8 GB unpacked, whatever its zip directory claims.
+- **The new space.** Under the key and name asked for, else the archive's,
+  and refused when the key is taken. The importer is its creator and an
+  administrator of it, beside the archive's grants as far as their
+  subjects are found here, so the space is never without somebody who can
+  reach it; every grant and list entry whose person or group is not found
+  is left out and listed. Versions, comments, files and labels keep their
+  authors where they are found; the others are attributed to the importer,
+  and versions, comments and files keep the author's name in
+  `original_author`, which the history shows. A reaction is a person's own
+  and is left out with them; a mention of them becomes the words it showed,
+  so nobody else is told of it. Versions keep their numbers, comments and
+  times, posts their dates, and a page the time of its last change: the
+  stamps of `page_touch` and `page_published_stamp` keep a time a role other
+  than the app's sets itself, as the post date already did (2026-10-06).
+  The job ends with a report of what came across and what did not, which
+  the page shows, and `space.imported` in the audit log in place of
+  `space.created`.
+- **Written by the worker's role.** An import writes other people's names
+  and past times, which no person's write through the app role may claim,
+  so it runs as the admin role in the importer's organization, as the
+  example space's cleanup does; the right to import is checked as the
+  importer, by the database when the job is queued and by the worker before
+  it starts.
+- **The database holds the jobs.** `space_export` and `space_import` follow
+  `example_job`: as `stator_app` an export is queued only by an
+  administrator of its space and an import only by whoever may create
+  spaces, each for themselves and as a job still to run, with nothing but
+  what they ask for; the app role may neither change nor delete a job. An
+  export is read by its requester, the space's administrators and the
+  organization's; an import, whose report names people, by its requester
+  and the organization's administrators. The worker claims a job with a
+  lease, writes its progress as it goes, and a worker that dies leaves it
+  to the next; an import's space is recorded with it in its transaction, so
+  one that was made but never reported is deleted before the next attempt.
+  The integration suite tries each of these through SQL.
+- **Not MCP tools.** Exporting and importing a space is an administrator's
+  act on a file the worker makes or reads; `get_space_outline` and
+  `get_page_markdown` carry a space's words to a model.
 ## 2026-10-07: A Word document is written by the api from the page's document, as its reader may read it
 
 A reader exports a page to .docx to edit it offline (#87).

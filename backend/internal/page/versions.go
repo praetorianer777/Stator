@@ -66,6 +66,9 @@ type VersionEntry struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 	// CoEditors names the others who saved into a live version, by name.
 	CoEditors []string `json:"coEditors"`
+	// OriginalAuthor is who wrote an imported version, by the archive's name
+	// for them, when nobody of theirs is here; null otherwise.
+	OriginalAuthor *string `json:"originalAuthor"`
 }
 
 // Version is one published version with its body, for reading it.

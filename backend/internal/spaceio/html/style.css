@@ -1,0 +1,58 @@
+/* The style of a space exported as HTML: Stator's tokens, light and dark. */
+:root {
+  color-scheme: light dark;
+  --ink: #1b1f24;
+  --ink-muted: #59636e;
+  --surface: #ffffff;
+  --surface-raised: #f5f7f9;
+  --border: #d8dee4;
+  --accent: #0b62c4;
+  --measure: 60rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e6edf3;
+    --ink-muted: #9da7b3;
+    --surface: #0f1419;
+    --surface-raised: #171d24;
+    --border: #2d3640;
+    --accent: #6cb6ff;
+  }
+}
+* { box-sizing: border-box; }
+html { font-size: 14px; }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.6;
+}
+a { color: var(--accent); }
+header.site, footer.site {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
+}
+footer.site { border-top: 1px solid var(--border); border-bottom: 0; color: var(--ink-muted); font-size: 0.9rem; }
+footer.site p { margin: 0; }
+header.site .space { font-weight: 600; text-decoration: none; color: var(--ink); }
+header.site .key { color: var(--ink-muted); font-family: ui-monospace, monospace; font-size: 0.85rem; }
+.layout { max-width: var(--measure); margin: 0 auto; padding: 1rem; }
+.trail ol { list-style: none; display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0; margin: 0 0 1rem; color: var(--ink-muted); }
+.trail li + li::before { content: "/"; margin-right: 0.25rem; }
+.page { overflow-wrap: anywhere; }
+.page img { max-width: 100%; height: auto; }
+.page table { border-collapse: collapse; display: block; overflow-x: auto; }
+.page th, .page td { border: 1px solid var(--border); padding: 0.25rem 0.5rem; text-align: left; }
+.page pre { background: var(--surface-raised); padding: 0.75rem; overflow-x: auto; border-radius: 6px; }
+.page code { font-family: ui-monospace, monospace; }
+.page blockquote { margin: 0; padding-left: 1rem; border-left: 3px solid var(--border); color: var(--ink-muted); }
+.page details { border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem; }
+.labels { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0; }
+.labels li { border: 1px solid var(--border); border-radius: 999px; padding: 0 0.6rem; font-size: 0.85rem; }
+section h2, nav.contents h2 { font-size: 1.1rem; margin-top: 2rem; }

@@ -206,13 +206,18 @@ func (s *dbStore) claim(ctx context.Context) (*claim, error) {
 			out  claim
 			role string
 		)
+		// Materialized, so the pick runs once: joined as a subquery, it was
+		// scanned again for the update and, skipping the row it had just
+		// locked, handed this worker a second job it never ran.
 		err := tx.QueryRow(ctx, `
+			WITH next AS MATERIALIZED (
+				SELECT id FROM example_job
+				WHERE state = 'queued' OR (state = 'running' AND lease_until < now())
+				ORDER BY requested_at LIMIT 1 FOR UPDATE SKIP LOCKED)
 			UPDATE example_job j
 			SET state = 'running', attempts = j.attempts + 1, lease_until = now() + make_interval(secs => $1),
 			    started_at = COALESCE(j.started_at, now())
-			FROM (SELECT id FROM example_job
-			      WHERE state = 'queued' OR (state = 'running' AND lease_until < now())
-			      ORDER BY requested_at LIMIT 1 FOR UPDATE SKIP LOCKED) next
+			FROM next
 			WHERE j.id = next.id
 			RETURNING j.id, j.org_id, (SELECT slug FROM org WHERE id = j.org_id), j.requested_by,
 			          (SELECT name FROM app_user WHERE id = j.requested_by),

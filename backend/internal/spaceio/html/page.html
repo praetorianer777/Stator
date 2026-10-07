@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="generator" content="Stator">
+<title>{{.Title}} - {{.Space}}</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site">
+  <a class="space" href="{{.Home}}">{{.Space}}</a>
+  <span class="key">{{.Key}}</span>
+</header>
+<div class="layout">
+  {{if .Trail}}<nav class="trail" aria-label="Breadcrumbs"><ol>{{range .Trail}}<li><a href="{{.Href}}">{{.Title}}</a></li>{{end}}<li aria-current="page">{{.Title}}</li></ol></nav>{{end}}
+  <main>
+    <article class="page" data-page-title="{{.Title}}">
+      {{.Content}}
+    </article>
+    {{if .Labels}}<ul class="labels" aria-label="Labels">{{range .Labels}}<li>{{.}}</li>{{end}}</ul>{{end}}
+    {{if .Files}}<section class="files" aria-labelledby="files-title"><h2 id="files-title">Files</h2><ul>{{range .Files}}<li><a href="{{.Href}}">{{.Title}}</a></li>{{end}}</ul></section>{{end}}
+    {{if .Below}}<section class="below" aria-labelledby="below-title"><h2 id="below-title">Pages below</h2><ul>{{range .Below}}<li><a href="{{.Href}}">{{.Title}}</a></li>{{end}}</ul></section>{{end}}
+    {{if .IsHome}}{{if .Tree}}<nav class="contents" id="contents" aria-labelledby="contents-title"><h2 id="contents-title">All pages</h2>{{.Tree}}</nav>{{end}}
+    {{if .Posts}}<section class="posts" aria-labelledby="posts-title"><h2 id="posts-title">Blog</h2><ul>{{range .Posts}}<li><a href="{{.Href}}">{{.Title}}</a></li>{{end}}</ul></section>{{end}}{{end}}
+  </main>
+</div>
+<footer class="site">
+  {{if .Published}}<p>Last published on {{.Published}}.</p>{{end}}
+  <p>Exported from Stator on {{.Exported}}{{if .Exporter}} by {{.Exporter}}{{end}}. {{if not .IsHome}}<a href="{{.Home}}#contents">All pages</a>{{end}}</p>
+</footer>
+</body>
+</html>

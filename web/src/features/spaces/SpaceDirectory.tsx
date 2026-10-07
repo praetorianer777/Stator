@@ -42,6 +42,11 @@ export function SpaceDirectory() {
         <span aria-hidden="true">{t.archive.showArchived}</span>
       </span>
       <ExampleSpaceButton />
+      {mayCreate && (
+        <Button variant="secondary" icon={<Icon.Upload />} onClick={() => navigate({ to: "/spaces/import" })} data-action="import-space">
+          {t.spaceTransfer.importSpace}
+        </Button>
+      )}
       {createOwn}
       {create}
     </>

@@ -112,6 +112,12 @@ func syncTasks(ctx context.Context, tx db.DBTX, pageID uuid.UUID, strict bool) e
 	return nil
 }
 
+// SyncTasks brings a page's task rows in line with its published body, for a
+// page written whole rather than published, such as one imported.
+func SyncTasks(ctx context.Context, tx db.DBTX, pageID uuid.UUID) error {
+	return syncTasks(ctx, tx, pageID, false)
+}
+
 func sameAssignee(a, b *uuid.UUID) bool {
 	return (a == nil && b == nil) || (a != nil && b != nil && *a == *b)
 }

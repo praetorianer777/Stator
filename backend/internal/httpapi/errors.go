@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/spaceio"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -319,11 +320,26 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &bigUpload) {
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(bigUpload.Error())}
 	}
+	var badArchive *spaceio.InvalidError
+	if errors.As(err, &badArchive) {
+		msg := sentence(badArchive.Message)
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: msg, Fields: map[string]string{"file": msg}}
+	}
+	var bigArchive *spaceio.TooLargeError
+	if errors.As(err, &bigArchive) {
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: bigArchive.Error()}
+	}
 	var badDoc *document.InvalidError
 	if errors.As(err, &badDoc) {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(badDoc.Message)}
 	}
 	switch {
+	case errors.Is(err, spaceio.ErrJobNotFound):
+		return ErrNotFound("That export or import was not found, or it is not yours to read. Start a new one.")
+	case errors.Is(err, spaceio.ErrNotReady):
+		return &APIError{Status: http.StatusConflict, Code: "not_ready", Message: "This export is not ready to download. Wait until it is done, or export the space again if it failed."}
+	case errors.Is(err, spaceio.ErrExpired):
+		return &APIError{Status: http.StatusGone, Code: "export_expired", Message: "This export's file was deleted after its time. Export the space again to download it."}
 	case errors.Is(err, template.ErrUnknown):
 		return ErrNotFound("There is no such template. Pick one from the list of templates.")
 	case errors.Is(err, template.ErrNoSpace):

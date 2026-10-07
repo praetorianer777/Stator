@@ -90,7 +90,7 @@ export const pageBareRoute = createRoute({
   },
 });
 
-const SETTINGS_TABS: SettingsTab[] = ["details", "shortcuts", "permissions", "templates", "guests", "trash", "archive"];
+const SETTINGS_TABS: SettingsTab[] = ["details", "shortcuts", "permissions", "templates", "guests", "trash", "archive", "export"];
 
 export const spaceSettingsRoute = createRoute({
   getParentRoute: () => spaceRoute,

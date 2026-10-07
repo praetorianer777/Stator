@@ -33,6 +33,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/spaceio"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
@@ -190,6 +191,29 @@ var operations = []operation{
 		responses: ok(exampleSpaceResponse{})},
 	{method: "POST", path: "/example-space", handler: "handleCreateExampleSpace", orgWide: true, tag: "spaces", summary: "Ask the worker to make the example space, whose pages explain Stator, in the language asked for, else the caller's own: 202 with the job, the same one while it is queued or running, or 200 with the space when the organization has it already. For administrators.",
 		request: exampleSpaceRequest{}, responses: map[int]any{200: exampleSpaceResponse{}, 202: exampleSpaceResponse{}, 422: errorEnvelope{}}},
+	// Space export and import (#88), run by the worker.
+	{method: "POST", path: "/spaces/{spaceKey}/exports", handler: "handleCreateSpaceExport", tag: "spaces",
+		summary: "Ask the worker to export a whole space: as an archive with every published page, its versions, files, comments, labels and permissions, to import again; or as HTML pages to read offline. 202 with the job, which GET /spaces/{spaceKey}/exports follows. For the space's administrators.",
+		request: exportRequest{}, responses: map[int]any{202: env{"export": spaceio.ExportJob{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/spaces/{spaceKey}/exports", handler: "handleListSpaceExports", tag: "spaces",
+		summary:   "The latest exports of a space the caller may read: their own, and every one while they administer the space, newest first.",
+		responses: ok(env{"exports": []spaceio.ExportJob{}})},
+	{method: "GET", path: "/space-exports/{exportID}/file", handler: "handleDownloadSpaceExport", tag: "spaces", binary: true,
+		summary:   "The file an export made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after.",
+		responses: map[int]any{200: nil, 409: errorEnvelope{}, 410: errorEnvelope{}}},
+	{method: "POST", path: "/space-imports", handler: "handleCreateSpaceImport", orgWide: true, tag: "spaces", multipart: true,
+		summary: "Upload a space archive, as a multipart part named file, and ask the worker to make a new space of it: under the key and name given, else the archive's own. Refused at once when the file is no archive of Stator or the key is taken; 202 with the job, which GET /space-imports/{importID} follows to its report. For whoever may create spaces.",
+		query: []param{
+			{name: "key", description: "The new space's key; the archive's own when absent."},
+			{name: "name", description: "The new space's name; the archive's own when absent."},
+		},
+		responses: map[int]any{202: env{"import": spaceio.ImportJob{}}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/space-imports", handler: "handleListSpaceImports", orgWide: true, tag: "spaces",
+		summary:   "The caller's latest imports of spaces, newest first.",
+		responses: ok(env{"imports": []spaceio.ImportJob{}})},
+	{method: "GET", path: "/space-imports/{importID}", handler: "handleGetSpaceImport", orgWide: true, tag: "spaces",
+		summary:   "One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, or why it failed.",
+		responses: ok(env{"import": spaceio.ImportJob{}})},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For the space's administrators.", responses: none()},
@@ -950,6 +974,15 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(page.Schedule{})] = "PageSchedule"
 	b.Names[reflect.TypeOf(page.ScheduleInput{})] = "PageScheduleInput"
 	b.Names[reflect.TypeOf(example.Job{})] = "ExampleSpaceJob"
+	b.Names[reflect.TypeOf(spaceio.ExportJob{})] = "SpaceExport"
+	b.Names[reflect.TypeOf(spaceio.ImportJob{})] = "SpaceImport"
+	b.Names[reflect.TypeOf(spaceio.Report{})] = "SpaceImportReport"
+	b.Names[reflect.TypeOf(spaceio.Progress{})] = "SpaceTransferProgress"
+	b.Enums[reflect.TypeOf(spaceio.ExportFormat(""))] = enumStrings(spaceio.Formats)
+	b.FieldOverrides["SpaceExport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ExportStates)}
+	b.FieldOverrides["SpaceImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}
+	b.FieldOverrides["SpaceExport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ExportFailures)}, {Type: "null"}}}
+	b.FieldOverrides["SpaceImport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ImportFailures)}, {Type: "null"}}}
 	b.Enums[reflect.TypeOf(example.State(""))] = enumStrings(example.States)
 	b.FieldOverrides["ExampleSpaceJob.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(example.Failures)}, {Type: "null"}}}
 	b.FieldOverrides["ExampleSpaceJob.language"] = &openapi.Schema{Type: "string", Enum: example.Languages}

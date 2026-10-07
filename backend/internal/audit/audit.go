@@ -37,8 +37,12 @@ const (
 	// ActionExampleSpaceCreated is the space that explains Stator made, in
 	// place of space.created for it.
 	ActionExampleSpaceCreated = "space.example_created"
-	ActionPagePurged          = "page.purged"
-	ActionTrashEmptied        = "trash.emptied"
+	// ActionSpaceExported is a whole space asked for as a file, and
+	// ActionSpaceImported a space made from one, in place of space.created.
+	ActionSpaceExported = "space.exported"
+	ActionSpaceImported = "space.imported"
+	ActionPagePurged    = "page.purged"
+	ActionTrashEmptied  = "trash.emptied"
 	// Permissions: whom a global permission is granted to, a space's table,
 	// and a page's own restrictions.
 	ActionOrgPermissionSet    = "org.permission_set"
@@ -120,6 +124,7 @@ var Actions = []string{
 	ActionSpacePermissionsCopied,
 	ActionPageModeChanged,
 	ActionExampleSpaceCreated,
+	ActionSpaceExported, ActionSpaceImported,
 }
 
 // Redacted stands in the record for a value that looked like a credential.
