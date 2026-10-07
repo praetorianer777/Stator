@@ -3,6 +3,40 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: Every way to start a page takes a template's variables, and guests see their space's templates only
+
+The organization's own templates (#63, decided 2026-10-02) were written
+before folders, blog posts, template buttons, guests and reading without
+signing in. Where they meet:
+
+- **A template button** finds its template as a new page does: a
+  built-in by name, else one of the organization's or the space's own by
+  id, which a button's key pattern already takes. `GET /template-button`
+  names the template's variables, and the button asks for them in a
+  dialog before the click makes anything; `POST /templates/{key}/pages`
+  takes `values` and goes through `POST /pages`'s own path, so the
+  server fills the page and refuses what does not fit on the same fields.
+  A button keeps naming its template by key, as decided on 2026-10-05,
+  rather than storing values: what changes from page to page is asked
+  each time.
+- **A blog post** takes `template` and `values` as a page does, with the
+  checks shared, since posts are written to a pattern as often as pages.
+  A person picker offers whoever may view the space's home page, the
+  closest a post outside the tree has to a parent.
+- **A folder** takes no template, as it takes no body; a page in a folder
+  starts from one like any other page.
+- **A guest** reads the templates of their space and none of the
+  organization's, which are of the organization as a whole and may
+  mention anybody in it; the read policy asks `perm_guest_space`. A
+  reader who is not signed in reads and writes no template, by the
+  restrictive policy every table has since 00470.
+
+The migration moved from 00340, which folders took meanwhile, to 00560.
+A template's blank is the one node a template's editor offers that no page
+may hold, so the example space's showcase cannot show it; the templates
+guide tells of it instead, and the showcase's test names every such node
+with why.
+
 ## 2026-10-07: An annotated picture is flattened in the browser and saved as its file's next version
 
 An author crops a screenshot and draws on it so that it shows what
