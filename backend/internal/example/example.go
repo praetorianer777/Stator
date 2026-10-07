@@ -289,7 +289,7 @@ func (m *Maker) label(ctx context.Context, actor perm.Actor, id uuid.UUID, label
 	return nil
 }
 
-// upload puts the showcase's picture and its table of numbers, twice so
+// upload puts the showcase's two pictures and its table of numbers, twice so
 // it has versions, on the showcase; without file storage there are none.
 func (m *Maker) upload(ctx context.Context, actor perm.Actor, f *Facts, w *writes) error {
 	if m.Attachments == nil {
@@ -299,11 +299,16 @@ func (m *Maker) upload(ctx context.Context, actor perm.Actor, f *Facts, w *write
 	if err != nil {
 		return err
 	}
+	board, err := Board()
+	if err != nil {
+		return err
+	}
 	for _, file := range []struct {
 		name, contentType string
 		data              []byte
 	}{
 		{ImageFile, "image/png", picture},
+		{BoardFile, "image/png", board},
 		{DataFile, "text/csv", numbers(f.Lang, false)},
 		{DataFile, "text/csv", numbers(f.Lang, true)},
 	} {

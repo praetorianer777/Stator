@@ -233,6 +233,8 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 		return r.table(n, depth)
 	case "image":
 		return r.image(n)
+	case document.NodeGallery:
+		return r.gallery(n)
 	case armature.NodeIssueBlock:
 		return div(kindIssue, nil, stringAttr(n, "key")), true
 	case armature.NodeIssueList:
@@ -350,6 +352,23 @@ func (r renderer) image(n document.Node) (string, bool) {
 	return "![" + r.escape(alt, escText, false) + "](" + destination(dest) + ")", true
 }
 
+// gallery writes the pictures as img elements in a div that says how many go
+// in a row, so a Markdown reader that shows HTML shows them, and its caption
+// as each picture's description. A picture whose file is not written is left out.
+func (r renderer) gallery(n document.Node) (string, bool) {
+	var pictures []string
+	for _, c := range n.Content {
+		if dest, ok := r.links.file(stringAttr(c, "attachmentId")); ok {
+			pictures = append(pictures, fmt.Sprintf(`<img src="%s" alt="%s">`, htmlText(dest), htmlText(stringAttr(c, "caption"))))
+		}
+	}
+	if len(pictures) == 0 {
+		return "", false
+	}
+	columns := strconv.Itoa(intAttr(n, "columns", document.DefaultGalleryColumns))
+	return "<div" + htmlAttrs(kindGallery, [][2]string{{"data-columns", columns}}) + ">\n" + strings.Join(pictures, "\n") + "\n</div>", true
+}
+
 // table writes a GFM table. The first row is its header; a merged cell's
 // content goes in its first place, and each cell's blocks share one line.
 // propertiesTable is a properties block as a table headed Property and Value.
@@ -464,6 +483,15 @@ func (r renderer) cell(nodes []document.Node, depth int) string {
 			} else {
 				out = r.escape(stringAttr(c, "alt"), escTable, false)
 			}
+		// A cell is one line, so its gallery is its pictures side by side.
+		case document.NodeGallery:
+			var pictures []string
+			for _, p := range c.Content {
+				if dest, ok := r.links.file(stringAttr(p, "attachmentId")); ok {
+					pictures = append(pictures, "!["+r.escape(stringAttr(p, "caption"), escTable, false)+"]("+destination(dest)+")")
+				}
+			}
+			out = strings.Join(pictures, " ")
 		default:
 			if depth > document.MaxDepth {
 				continue

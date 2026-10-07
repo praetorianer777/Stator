@@ -32,7 +32,7 @@ const (
 )
 
 // containers are markers whose blocks run to the next %%end%%.
-var containers = []string{"columns", "column", "excerpt", "chart", "properties"}
+var containers = []string{"columns", "column", "excerpt", "chart", "properties", "gallery"}
 
 // The defaults the blocks the content names are made with.
 const (
@@ -218,6 +218,20 @@ func (b builder) container(name, arg string, inner []Node) (Node, error) {
 			})
 		}
 		return Node{Type: document.NodeProperties, Content: rows}, nil
+	// A gallery is written as its pictures, each description its caption.
+	case "gallery":
+		columns, err := strconv.Atoi(arg)
+		if err != nil {
+			return Node{}, fmt.Errorf("a gallery's columns %q is not a number", arg)
+		}
+		var pictures []Node
+		for _, p := range inner {
+			if p.Type != "image" {
+				return Node{}, fmt.Errorf("a gallery holds a %s where only pictures go", p.Type)
+			}
+			pictures = append(pictures, Node{Type: document.NodeGalleryImage, Attrs: map[string]any{"attachmentId": p.Attrs["attachmentId"], "caption": p.Attrs["alt"]}})
+		}
+		return Node{Type: document.NodeGallery, Attrs: map[string]any{"columns": columns}, Content: pictures}, nil
 	}
 	return Node{}, fmt.Errorf("no container %q", name)
 }

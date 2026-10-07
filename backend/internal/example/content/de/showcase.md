@@ -205,10 +205,20 @@ Eine **Linkvorschau** zeigt eine Adresse als Karte mit Titel und Zusammenfassung
 
 ![Eine Textseite neben einem Balkendiagramm](showcase.files/stator-example.png)
 
+Mehrere Bilder stehen in einer **Galerie** aus dem Menü nebeneinander: Wählen Sie sie aus den Dateien der Seite oder laden Sie neue hoch, ordnen Sie sie, geben Sie jedem eine Bildunterschrift und legen Sie fest, wie viele in eine Reihe passen. Ein Klick zeigt ein Bild größer, und die Pfeiltasten oder ein Wischen blättern zu den anderen.
+
+%%gallery 2%%
+
+![Eine Textseite neben einem Balkendiagramm](showcase.files/stator-example.png)
+
+![Eine Tafel mit Karten in drei Spalten](showcase.files/stator-board.png)
+
+%%end%%
+
 Jede andere Datei wird ein Chip im Text, etwa [team-numbers.csv](showcase.files/team-numbers.csv). Der Block **Dateien** listet die Dateien der Seite mit ihren Versionen und nimmt weitere an: Laden Sie eine Datei unter einem Namen hoch, den die Seite schon hat, wird sie dessen nächste Version, wie bei dieser.
 
 %%files%%
-{{else}}Diese Website speichert keine Dateien, deshalb zeigt diese Seite kein Bild, keine Datei und keine Dateiliste. Sobald die Administratoren der Website einen Dateispeicher einrichten, setzt **Dateien anhängen** in der Werkzeugleiste Bilder in den Text und andere Dateien als Chips, und **Dateien** im Menü listet sie mit ihren Versionen.
+{{else}}Diese Website speichert keine Dateien, deshalb zeigt diese Seite kein Bild, keine Galerie, keine Datei und keine Dateiliste. Sobald die Administratoren der Website einen Dateispeicher einrichten, setzt **Dateien anhängen** in der Werkzeugleiste Bilder in den Text und andere Dateien als Chips, **Galerie** im Menü stellt Bilder nebeneinander, und **Dateien** listet sie mit ihren Versionen.
 {{end}}
 ## Auszüge und Einbindungen
 

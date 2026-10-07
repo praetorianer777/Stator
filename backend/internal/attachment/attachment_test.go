@@ -98,19 +98,23 @@ func TestImagesReportTheirSize(t *testing.T) {
 }
 
 func TestRewriteReferencesPointsCopiesAtTheirOwnFiles(t *testing.T) {
-	old1, old2, other := uuid.New(), uuid.New(), uuid.New()
-	new1, new2 := uuid.New(), uuid.New()
+	old1, old2, old3, other := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	new1, new2, new3 := uuid.New(), uuid.New(), uuid.New()
 	body := `{"type":"doc","content":[
 		{"type":"image","attrs":{"attachmentId":"` + old1.String() + `","alt":"x","width":480}},
 		{"type":"paragraph","content":[{"type":"text","text":"see "},{"type":"attachment","attrs":{"attachmentId":"` + old2.String() + `","fileName":"a.pdf"}}]},
 		{"type":"image","attrs":{"attachmentId":"` + other.String() + `","alt":null,"width":null}},
+		{"type":"gallery","attrs":{"columns":3},"content":[{"type":"galleryImage","attrs":{"attachmentId":"` + old3.String() + `","caption":"y"}}]},
 		{"type":"mention","attrs":{"attachmentId":"` + old1.String() + `"}}]}`
-	out, changed, err := RewriteReferences([]byte(body), map[uuid.UUID]uuid.UUID{old1: new1, old2: new2})
+	out, changed, err := RewriteReferences([]byte(body), map[uuid.UUID]uuid.UUID{old1: new1, old2: new2, old3: new3})
 	if err != nil || !changed {
 		t.Fatalf("changed=%v err=%v", changed, err)
 	}
 	text := string(out)
-	for _, want := range []string{new1.String(), new2.String(), other.String(), `"width":480`} {
+	if strings.Contains(text, old3.String()) {
+		t.Errorf("a gallery's picture still names the original's file: %s", text)
+	}
+	for _, want := range []string{new1.String(), new2.String(), new3.String(), other.String(), `"width":480`} {
 		if !strings.Contains(text, want) {
 			t.Errorf("%s lacks %s", text, want)
 		}

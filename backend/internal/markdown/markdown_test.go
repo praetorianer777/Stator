@@ -173,6 +173,13 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			`{"type":"expand","attrs":{"title":"Details <& more>"},"content":[`+para(txt("inside"))+`,{"type":"expand","attrs":{"title":""},"content":[`+para(txt("deeper"))+`]}]}`,
 			para(txt("after")),
 		),
+		"gallery": doc(
+			`{"type":"gallery","attrs":{"columns":2},"content":[`+
+				`{"type":"galleryImage","attrs":{"attachmentId":"`+fileID+`","caption":"Board \"one\" <b> & more"}},`+
+				`{"type":"galleryImage","attrs":{"attachmentId":"`+file2ID+`","caption":null}},`+
+				`{"type":"galleryImage","attrs":{"attachmentId":"`+fileID+`","caption":"again\non two lines"}}]}`,
+			para(txt("after")),
+		),
 		"files": doc(
 			`{"type":"image","attrs":{"attachmentId":"`+fileID+`","alt":"A chart","width":null}}`,
 			`{"type":"image","attrs":{"attachmentId":"`+fileID+`","alt":"Sized","width":320}}`,
@@ -274,6 +281,59 @@ func TestExportReadsAsMarkdown(t *testing.T) {
 		if !strings.Contains(md, want) {
 			t.Errorf("the export lacks %q:\n%s", want, md)
 		}
+	}
+}
+
+func TestAGalleryIsPicturesInADiv(t *testing.T) {
+	picture := func(id, caption string) string {
+		return `{"type":"galleryImage","attrs":{"attachmentId":"` + id + `","caption":` + caption + `}}`
+	}
+	body := doc(
+		`{"type":"gallery","attrs":{"columns":4},"content":[`+picture(fileID, `"A chart"`)+`,`+picture(otherID, `"Not exported"`)+`]}`,
+		`{"type":"gallery","attrs":{"columns":2},"content":[`+picture(otherID, `null`)+`]}`,
+		`{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[`+
+			`{"type":"gallery","attrs":{"columns":2},"content":[`+picture(fileID, `"left"`)+`,`+picture(file2ID, `"right | side"`)+`]}]}]}]}`,
+	)
+	md := Render("Plan", parseDoc(t, body), testLinks)
+	want := "<div data-stator=\"gallery\" data-columns=\"4\">\n<img src=\"plan.files/chart%20one.png\" alt=\"A chart\">\n</div>"
+	if !strings.Contains(md, want) {
+		t.Errorf("the export lacks %q:\n%s", want, md)
+	}
+	if strings.Contains(md, "Not exported") || strings.Count(md, `data-stator="gallery"`) != 1 {
+		t.Errorf("a picture whose file is not written was written:\n%s", md)
+	}
+	if !strings.Contains(md, `| ![left](plan.files/chart%20one.png) ![right \| side](plan.files/notes.txt) |`) {
+		t.Errorf("a gallery in a cell is not its pictures side by side:\n%s", md)
+	}
+
+	got, err := Convert([]byte(`<div data-stator="gallery" data-columns="9">`+"\n"+
+		`<img src="plan.files/chart%20one.png" alt="kept">`+"\n"+
+		`<img src="elsewhere/x.png" alt="dropped">`+"\n"+
+		`<img src="https://example.test/x.png">`+"\n</div>\n\n"+
+		`<div data-stator="gallery"><img src="nowhere.png"></div>`+"\n\n"+
+		`<div data-stator="gallery"><img src="plan.files/chart%20one.png" onerror="x"><script>x</script></div>`+"\n"), testResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(got.Body)
+	if want := `{"type":"gallery","attrs":{"columns":4},"content":[{"type":"galleryImage","attrs":{"attachmentId":"` + fileID + `","caption":"kept"}}]}`; !strings.Contains(text, want) {
+		t.Errorf("a gallery of nine columns did not come in as one of four with the picture of the import: %s", text)
+	}
+	if strings.Count(text, `"type":"gallery"`) != 1 || strings.Contains(text, "dropped") {
+		t.Errorf("a gallery of no picture or one holding a script came in as a gallery: %s", text)
+	}
+	if !strings.Contains(text, `"language":"html"`) {
+		t.Errorf("a gallery holding a script is not shown as code: %s", text)
+	}
+	if len(got.Warnings) < 3 {
+		t.Errorf("the pictures left out were not warned about: %v", got.Warnings)
+	}
+	got, err = Convert([]byte("<div data-stator=\"gallery\">\n<img src=\"plan.files/chart%20one.png\">\n<img src=\"elsewhere/x.png\">\n</div>\n"), testResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"type":"gallery","attrs":{"columns":3},"content":[{"type":"galleryImage","attrs":{"attachmentId":"` + fileID + `","caption":null}}]}`; !strings.Contains(string(got.Body), want) {
+		t.Errorf("a gallery that names no columns, with a picture from outside, came in as %s", got.Body)
 	}
 }
 

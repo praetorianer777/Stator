@@ -14,7 +14,7 @@ import (
 )
 
 // ReferenceNodes are the document nodes that name a file by attachmentId.
-var ReferenceNodes = []string{"image", "attachment"}
+var ReferenceNodes = []string{"image", "attachment", "galleryImage"}
 
 // PagesCopied gives every copied page a copy of each file on its original,
 // objects included, and points the copy's body at its own files.

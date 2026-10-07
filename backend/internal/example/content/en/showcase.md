@@ -205,10 +205,20 @@ A **Link preview** shows an address as a card with its page's title and summary,
 
 ![A page of text beside a bar chart](showcase.files/stator-example.png)
 
+Several pictures go side by side in a **Gallery** from the slash menu: pick them from the page's files or upload new ones, put them in order, give each a caption and choose how many fit in a row. Click one to see it larger and step through the others with the arrow keys or a swipe.
+
+%%gallery 2%%
+
+![A page of text beside a bar chart](showcase.files/stator-example.png)
+
+![A board of cards in three columns](showcase.files/stator-board.png)
+
+%%end%%
+
 Any other file becomes a chip in the text, such as [team-numbers.csv](showcase.files/team-numbers.csv). The **Files** block lists the page's files with their versions and takes more: upload a file under a name the page has already and it becomes that file's next version, as this one did.
 
 %%files%%
-{{else}}This site keeps no files, so this page shows no picture, no file and no list of files. Once the site's administrators set up file storage, the toolbar's **Attach files** puts pictures in the text and other files as chips, and the slash menu's **Files** lists them with their versions.
+{{else}}This site keeps no files, so this page shows no picture, no gallery, no file and no list of files. Once the site's administrators set up file storage, the toolbar's **Attach files** puts pictures in the text and other files as chips, the slash menu's **Gallery** sets pictures side by side, and its **Files** lists them with their versions.
 {{end}}
 ## Excerpts and includes
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -27,6 +28,9 @@ const richDoc = `{"type":"doc","content":[
  {"type":"horizontalRule"},
  {"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","alt":"The plan","width":480}},
  {"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c","alt":null,"width":null}},
+ {"type":"gallery","attrs":{"columns":3},"content":[
+  {"type":"galleryImage","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","caption":"The board"}},
+  {"type":"galleryImage","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c","caption":null}}]},
  {"type":"paragraph","content":[{"type":"text","text":"See "},{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5d","fileName":"report.pdf"}}]},
  {"type":"paragraph","content":[{"type":"text","text":"Fixed in "},{"type":"armatureIssue","attrs":{"key":"CP-12"}}]},
  {"type":"armatureIssueBlock","attrs":{"key":"CP-7"}},
@@ -236,6 +240,15 @@ func TestValidateRefusesInASentence(t *testing.T) {
 		{"image width zero", `{"type":"doc","content":[{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","width":0}}]}`, `width=0`},
 		{"image src", `{"type":"doc","content":[{"type":"image","attrs":{"src":"https://evil.test/x.png"}}]}`, `attribute "src"`},
 		{"image inline", para(`{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}`), `puts a "image"`},
+		{"gallery without pictures", gallery(`3`), `a "gallery" holding 0,`},
+		{"gallery of too many pictures", gallery(`3`, slices.Repeat([]string{galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `null`)}, MaxGalleryImages+1)...), `a "gallery" holding 61,`},
+		{"gallery of one column", gallery(`1`, galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `null`)), `columns=1`},
+		{"gallery of five columns", gallery(`5`, galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `null`)), `columns=5`},
+		{"gallery holding an image", gallery(`3`, `{"type":"image","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}`), `puts a "image"`},
+		{"gallery picture alone", `{"type":"doc","content":[` + galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `null`) + `]}`, `puts a "galleryImage"`},
+		{"gallery picture of no file", gallery(`3`, galleryImage(`"../x"`, `null`)), `attachmentId=`},
+		{"gallery picture from elsewhere", gallery(`3`, `{"type":"galleryImage","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","src":"https://evil.test/x.png"}}`), `attribute "src"`},
+		{"gallery caption too long", gallery(`3`, galleryImage(`"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"`, `"`+strings.Repeat("a", MaxAltLength+1)+`"`)), `caption=`},
 		{"attachment at the top", `{"type":"doc","content":[{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":"a"}}]}`, `puts a "attachment"`},
 		{"attachment without name", para(`{"type":"attachment","attrs":{"attachmentId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b","fileName":" "}}`), `fileName=`},
 		{"issue key lower case", para(`{"type":"armatureIssue","attrs":{"key":"cp-12"}}`), `key="cp-12"`},
@@ -431,4 +444,12 @@ func columns(cols ...string) string {
 
 func column(width string) string {
 	return `{"type":"column","attrs":{"width":` + width + `},"content":[{"type":"paragraph"}]}`
+}
+
+func gallery(columns string, pictures ...string) string {
+	return `{"type":"doc","content":[{"type":"gallery","attrs":{"columns":` + columns + `},"content":[` + strings.Join(pictures, ",") + `]}]}`
+}
+
+func galleryImage(id, caption string) string {
+	return `{"type":"galleryImage","attrs":{"attachmentId":` + id + `,"caption":` + caption + `}}`
 }
