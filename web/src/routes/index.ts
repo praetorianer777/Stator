@@ -23,7 +23,7 @@ import { publicLinkRoute, publicRoutes } from "./public";
 import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
 import { spaceDecisionsRoute } from "./decisions";
 import { spaceBlogRoute } from "./blog";
-import { personalSpaceNewRoute, spaceNewRoute, spacesRoute } from "./spaces";
+import { personalSpaceNewRoute, spaceImportRoute, spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
 import { searchRoute } from "./search";
 import { staleRoute } from "./stale";
@@ -48,6 +48,7 @@ const routeTree = rootRoute.addChildren([
     spacesRoute,
     spaceNewRoute,
     personalSpaceNewRoute,
+    spaceImportRoute,
     spaceRoute.addChildren([
       spaceHomeRoute,
       pageRoute,
