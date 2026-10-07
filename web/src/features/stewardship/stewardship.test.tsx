@@ -54,7 +54,11 @@ async function openFromMenu() {
 
 describe("the page header", () => {
   it("shows the owner and a verified badge that opens who verified it", async () => {
-    stubPage({ owner: ann, verification: verified, can: { edit: false, delete: false, restrict: false, comment: true, archive: false } });
+    stubPage({
+      owner: ann,
+      verification: verified,
+      can: { edit: false, delete: false, restrict: false, comment: true, archive: false, add: false, grantEdit: false },
+    });
     await renderAt(PATH);
     expect(await screen.findByText("Owner: Ann Owner")).toBeInTheDocument();
     const badge = screen.getByRole("button", { name: /^Verified until/ });

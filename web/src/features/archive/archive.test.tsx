@@ -22,7 +22,7 @@ const plansId = "0195f000-0000-7000-8000-0000000000c1";
 const oldId = "0195f000-0000-7000-8000-0000000000c2";
 const PLANS = `/s/DOCS/p/${plansId}/plans`;
 const OLD = `/s/DOCS/p/${oldId}/old-roadmap`;
-const reader = { edit: false, delete: false, restrict: false, comment: false, archive: false };
+const reader = { edit: false, delete: false, restrict: false, comment: false, archive: false, add: false, grantEdit: false };
 const ofPlans: Archive = {
   page: { id: plansId, title: "Plans", home: false },
   space: false,
@@ -69,7 +69,9 @@ describe("an archived page", () => {
               parentId: home.id,
               ancestors: [{ id: home.id, title: "Handbook", home: true }],
               archived,
-              can: archived ? { ...reader, archive: true } : { edit: true, delete: true, restrict: true, comment: true, archive: true },
+              can: archived
+                ? { ...reader, archive: true }
+                : { edit: true, delete: true, restrict: true, comment: true, archive: true, add: true, grantEdit: false },
             }),
             space,
           },
@@ -134,7 +136,7 @@ describe("an archived page", () => {
   });
 
   it("is not offered to somebody who may not archive", async () => {
-    stubPage(plansId, "Plans", { can: { edit: true, delete: true, restrict: true, comment: true, archive: false } });
+    stubPage(plansId, "Plans", { can: { edit: true, delete: true, restrict: true, comment: true, archive: false, add: true, grantEdit: false } });
     await renderAt(PLANS);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     expect(screen.queryByRole("menuitem", { name: "Archive" })).toBeNull();
