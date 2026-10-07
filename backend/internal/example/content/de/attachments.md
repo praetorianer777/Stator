@@ -16,6 +16,7 @@ labels: anleitung, schreiben
 - Unter jeder Seite listet **Anhänge** ihre Dateien und nimmt weitere an: **Dateien anhängen**, oder ziehen Sie sie dorthin.
 - Im Editor setzen **Dateien anhängen** in der Werkzeugleiste, Einfügen oder Hineinziehen Bilder in den Text und andere Dateien als Chips.
 - Ein im Editor ausgewähltes Bild bekommt eine Leiste für seine Beschreibung, die Screenreader vorlesen, und seine Breite.
+- **Markieren** schneidet ein PNG-, JPEG- oder WebP-Bild zu und zeichnet Pfeile, Rahmen und Text darauf, aus der Leiste des Bildes oder seiner Zeile unter **Anhänge**. Beim Speichern wird das Ergebnis die nächste Version des Bildes, und die bearbeitete bleibt erhalten.
 - Der Block **Dateien** listet die Dateien der Seite an beliebiger Stelle, mit ihren Versionen.
 
 ## Versionen

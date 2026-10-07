@@ -16,6 +16,7 @@ labels: guide, writing
 - Below each page, **Attachments** lists its files and takes more: **Attach files**, or drop them there.
 - In the editor, the toolbar's **Attach files**, or pasting or dropping files into the text, puts pictures in the text and other files as chips.
 - A picture selected in the editor gets a toolbar row for its description, which screen readers read out, and its width.
+- **Annotate** crops a PNG, JPEG or WebP picture and draws arrows, boxes and text on it, from the picture's toolbar row or its row under **Attachments**. Saving makes the result the picture's next version and keeps the one drawn on.
 - The **Files** block lists the page's files anywhere on the page, with their versions.
 
 ## Versions
