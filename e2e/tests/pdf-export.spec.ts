@@ -39,6 +39,32 @@ function expectPdf(bytes: Buffer, title: string) {
   expect(titleOf(bytes)).toBe(title);
 }
 
+/**
+ * Starts an export and waits for its file. On a stack the whole suite keeps
+ * busy a print may run out of the api's time; the dialog then says so and
+ * offers Retry, which a reader would press, and this presses it once.
+ */
+async function exportPdf(page: Page, start: () => Promise<unknown>): Promise<Download> {
+  const alert = pdfDialog(page).getByRole("alert");
+  const retrying = (await alert.count()) > 0;
+  const downloading = page.waitForEvent("download", PRINTED).catch(() => null);
+  await start();
+  // A retry takes the last failure away before it prints again.
+  if (retrying) await expect(alert).toHaveCount(0);
+  const file = await Promise.race([
+    downloading,
+    alert.waitFor(PRINTED).then(
+      () => null,
+      () => null,
+    ),
+  ]);
+  if (file) return file;
+  await expect(alert).toContainText(/took too long to print|Too many PDFs are being made/);
+  const again = page.waitForEvent("download", PRINTED);
+  await pdfDialog(page).getByRole("button", { name: "Retry" }).click();
+  return again;
+}
+
 async function openPageMenuItem(page: Page, action: string) {
   await page.locator('[data-action="page-menu"]').click();
   await page.locator(`[data-action="${action}"]`).click();
@@ -83,10 +109,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
       const guide = await createPage(api, space.homePageId, `Guide ${word}`, richBody(word, included.id));
       await openTitled(page, `/s/${key}/p/${guide.id}/guide`, guide.title);
 
-      const downloading = page.waitForEvent("download", PRINTED);
-      await openPageMenuItem(page, "export-pdf");
-      await expect(pdfDialog(page)).toBeVisible();
-      const file = await downloading;
+      const file = await exportPdf(page, () => openPageMenuItem(page, "export-pdf"));
       await expect(pdfDialog(page)).toHaveCount(0);
       expect(file.suggestedFilename()).toMatch(new RegExp(`^${key}-guide-${word}-\\d{4}-\\d{2}-\\d{2}\\.pdf$`));
       expectPdf(await bytesOf(file), guide.title);
@@ -121,17 +144,13 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
       const reader = await context.newPage();
 
       await openTitled(reader, `/public/${org}/s/${key}/p/${guide.id}/open`, guide.title);
-      const downloading = reader.waitForEvent("download", PRINTED);
-      await reader.locator('[data-action="export-pdf"]').click();
-      const file = await downloading;
+      const file = await exportPdf(reader, () => reader.locator('[data-action="export-pdf"]').click());
       expect(file.suggestedFilename()).toMatch(new RegExp(`^${key}-open-${word}-`));
       expectPdf(await bytesOf(file), guide.title);
 
       const link = must(await api.POST("/pages/{pageID}/public-links", { params: { path: { pageID: guide.id } }, body: {} }));
       await openTitled(reader, link.path, guide.title);
-      const linked = reader.waitForEvent("download", PRINTED);
-      await reader.locator('[data-action="export-pdf"]').click();
-      const linkedFile = await linked;
+      const linkedFile = await exportPdf(reader, () => reader.locator('[data-action="export-pdf"]').click());
       expect(linkedFile.suggestedFilename()).toMatch(new RegExp(`^open-${word}-`));
       expectPdf(await bytesOf(linkedFile), guide.title);
     } finally {
@@ -163,9 +182,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
         await openPageMenuItem(page, "export-pdf");
         await expect(pdfDialog(page).getByRole("status")).toBeVisible();
         await expectAccessible(page);
-        const downloading = page.waitForEvent("download", PRINTED);
-        release();
-        await downloading;
+        await exportPdf(page, async () => release());
         await expect(pdfDialog(page)).toHaveCount(0);
         await page.unroute("**/api/v1/pages/*/pdf");
 
@@ -175,9 +192,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
         await expect(pdfDialog(page).getByRole("alert")).toContainText("Check your connection and try again.");
         await expectAccessible(page);
         await page.unroute("**/api/v1/pages/*/pdf");
-        const retried = page.waitForEvent("download", PRINTED);
-        await pdfDialog(page).getByRole("button", { name: "Retry" }).click();
-        await retried;
+        await exportPdf(page, () => pdfDialog(page).getByRole("button", { name: "Retry" }).click());
         await expect(pdfDialog(page)).toHaveCount(0);
         await expect(page.locator('[data-action="page-menu"]')).toBeFocused();
       } finally {

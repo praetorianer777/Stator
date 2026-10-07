@@ -24,7 +24,11 @@ const VIEWPORT = { width: 1024, height: 1400, deviceScaleFactor: 1 };
 /** The running header and footer's type, in CSS pixels; Chromium's own default is too small to read. */
 const MARGIN_FONT_PX = 8;
 
+/** How long Chromium may take to start; a busy host has taken longer than puppeteer's thirty seconds. */
+const LAUNCH_TIMEOUT_MS = Number(process.env.RENDER_LAUNCH_TIMEOUT_MS ?? 120_000);
+
 const browser = await puppeteer.launch({
+  timeout: LAUNCH_TIMEOUT_MS,
   executablePath: process.env.RENDER_CHROME ?? "/usr/bin/chromium-browser",
   args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-crash-reporter", "--disable-crashpad", `--user-data-dir=/tmp/chrome-render-${process.pid}`],
 });

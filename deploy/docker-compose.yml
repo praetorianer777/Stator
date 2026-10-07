@@ -226,6 +226,9 @@ services:
     entrypoint: ["node"]
     command: ["/usr/src/app/render/server.mjs"]
     working_dir: /usr/src/app
+    # A browser that could not start leaves nothing to print with, so the
+    # service starts again rather than staying down for the rest of a run.
+    restart: on-failure
     depends_on:
       web:
         condition: service_healthy
@@ -240,7 +243,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-      start_period: 20s
+      start_period: 120s
       start_interval: 1s
 
   # The identity provider. The realm is imported afresh on every start, so no
