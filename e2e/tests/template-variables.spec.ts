@@ -2,9 +2,10 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { orgTest as test } from "../fixtures/org";
+import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
 
 const dialog = (page: Page) => page.locator("[data-new-page-dialog]");
 const option = (page: Page, name: string) => dialog(page).getByRole("radio", { name: new RegExp(`^${name}`) });
@@ -40,11 +41,10 @@ async function kickoffIn(api: StatorApi, space: Space, name: string) {
 
 /** Opens the new page dialog under the space's home page once the template is offered, which a replica may still be catching up on. */
 async function openNewPage(page: Page, space: Space, template: string) {
-  await expect(async () => {
-    await page.goto(`/s/${space.key}`);
+  await openUntil(page, `/s/${space.key}`, async () => {
     await page.locator('[data-action="new-page"]').click();
-    await expect(option(page, template)).toBeVisible({ timeout: 2_000 });
-  }).toPass();
+    await expect(option(page, template)).toBeVisible(ONE_LOOK);
+  });
 }
 
 test.describe("templates with variables", { tag: ["@auth", "@desktop"] }, () => {
@@ -65,6 +65,7 @@ test.describe("templates with variables", { tag: ["@auth", "@desktop"] }, () => 
     apiAs,
     pageAs,
   }, testInfo) => {
+    test.slow();
     const space = await freshSpace(api, testInfo, "Kickoffs");
     const alice = must(await api.GET("/auth/me")).user;
     await page.goto(`/s/${space.key}/settings?tab=templates`);
@@ -145,15 +146,36 @@ test.describe("templates with variables", { tag: ["@auth", "@desktop"] }, () => 
     await expect(doc).not.toContainText("Anything else");
   });
 
+  test("a template button asks for the template's variables, then opens the page with their values", async ({ page, api }, testInfo) => {
+    const space = await freshSpace(api, testInfo, "Buttons");
+    const template = await kickoffIn(api, space, "Kickoff");
+    const board = await createPage(api, space.homePageId, "Customers", {
+      type: "doc",
+      content: [{ type: "templateButton", attrs: { template: template.key, space: null, parent: null, label: "New kickoff", title: "" } }],
+    });
+    await openShowing(page, `/s/${space.key}/p/${board.id}/customers`, page.locator('main [data-template-button] [data-action="create-from-template"]'));
+    const button = page.locator("main [data-template-button]").getByRole("button", { name: "New kickoff" });
+    await expect(button).toBeEnabled();
+    await expect(button).toHaveAccessibleDescription(/^Asks what Kickoff needs/);
+    await button.click();
+    const asking = page.getByRole("dialog", { name: "New page from Kickoff" });
+    await asking.getByRole("button", { name: "Create page" }).click();
+    await expect(asking.getByRole("alert")).toHaveText("Fill in Customer first; the template needs it.");
+    await asking.getByLabel("Customer (required)", { exact: true }).fill("Gamma");
+    await asking.getByLabel("Stage", { exact: true }).selectOption("Won");
+    await expectAccessible(page);
+    await asking.getByRole("button", { name: "Create page" }).click();
+    await expect(page).toHaveURL(/\/p\/[0-9a-f-]+\/kickoff-with-gamma\/edit$/);
+    await expect(page.locator("#page-body")).toContainText("Customer: Gamma");
+    await expect(page.locator("#page-body")).toContainText("Stage: Won");
+  });
+
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
     test(`the template editor and the form pass axe in ${scheme}`, async ({ page, api }, testInfo) => {
       const space = await freshSpace(api, testInfo, "Axe");
       const template = await kickoffIn(api, space, "Kickoff");
       await startInScheme(page, scheme);
-      await expect(async () => {
-        await page.goto(`/settings/templates/${template.key}`);
-        await expect(page.locator("#template-body [data-template-variable=customer]")).toBeVisible({ timeout: 2_000 });
-      }).toPass();
+      await openShowing(page, `/settings/templates/${template.key}`, page.locator("#template-body [data-template-variable=customer]"));
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
       await expectAccessible(page);
       await openNewPage(page, space, "Kickoff");
@@ -176,10 +198,7 @@ test.describe("templates with variables on a phone", { tag: ["@auth", "@mobile"]
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Phone"));
     const template = await kickoffIn(api, space, "Kickoff");
-    await expect(async () => {
-      await page.goto(`/settings/templates/${template.key}`);
-      await expect(page.locator("[data-template-variables]")).toBeVisible({ timeout: 2_000 });
-    }).toPass();
+    await openShowing(page, `/settings/templates/${template.key}`, page.locator("[data-template-variables]"));
     await expect(page.locator('[data-action="save-template"]')).toBeVisible();
     expect(await scrollsSideways(page)).toBe(false);
     await openNewPage(page, space, "Kickoff");
