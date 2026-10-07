@@ -336,10 +336,16 @@ export function AnnotateDialog({
       return;
     }
     setProblem(null);
-    edit.mutate(
-      { id: file.id, file: new File([blob], file.fileName, { type }) },
-      { onSuccess: (made) => onSaved(made, offerInPage && showInPage), onError: (error) => setProblem(saveError(file.fileName, error)) },
-    );
+    // Awaited rather than told by mutate's callbacks: the new version takes
+    // the place of the list's row that opened this, which unmounts it.
+    let made: Attachment;
+    try {
+      made = await edit.mutateAsync({ id: file.id, file: new File([blob], file.fileName, { type }) });
+    } catch (error) {
+      setProblem(saveError(file.fileName, error));
+      return;
+    }
+    onSaved(made, offerInPage && showInPage);
   }
 
   const selectedName = selected === CROP ? a.tool.crop : a.tool[present.shapes.find((s) => s.id === selected)?.kind ?? ""];
@@ -428,7 +434,7 @@ export function AnnotateDialog({
         role="application"
         aria-label={a.stage(file.fileName)}
         aria-describedby={hintId}
-        tabIndex={0}
+        tabIndex={size ? 0 : -1}
         className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2 outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset sm:p-6"
         onKeyDown={onStageKeyDown}
         data-annotate-stage=""
