@@ -30,6 +30,7 @@ func clean(t *testing.T) {
 		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
 		"STATOR_VERIFICATION_CHECK_INTERVAL", "STATOR_TASK_DUE_CHECK_INTERVAL", "STATOR_SCHEDULE_CHECK_INTERVAL",
 		"STATOR_EXAMPLE_CHECK_INTERVAL",
+		"STATOR_SPACE_TRANSFER_CHECK_INTERVAL", "STATOR_SPACE_EXPORT_TTL", "STATOR_SPACE_IMPORT_LIMIT",
 	} {
 		t.Setenv(key, "")
 	}
@@ -617,6 +618,34 @@ func TestTheExampleCheckIsAnInterval(t *testing.T) {
 		var cfgErr *Error
 		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_EXAMPLE_CHECK_INTERVAL") {
 			t.Errorf("%s was not refused by name: %v", bad, err)
+		}
+	}
+}
+
+// Space exports and imports are looked for at least every second, an export
+// is kept at least a minute, and an import takes some bytes.
+func TestSpaceTransfersHaveSaneBounds(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.SpaceTransferCheck != DefaultSpaceTransferCheck || c.SpaceExportTTL != DefaultSpaceExportTTL || c.SpaceImportLimit != DefaultSpaceImportLimit {
+		t.Errorf("the defaults read as %s, %s, %d", c.SpaceTransferCheck, c.SpaceExportTTL, c.SpaceImportLimit)
+	}
+	t.Setenv("STATOR_SPACE_IMPORT_LIMIT", "1GB")
+	t.Setenv("STATOR_SPACE_EXPORT_TTL", "72h")
+	if c, err = Load(); err != nil || c.SpaceImportLimit != 1<<30 || c.SpaceExportTTL != 72*time.Hour {
+		t.Errorf("1GB and 72h read as %d and %s, %v", c.SpaceImportLimit, c.SpaceExportTTL, err)
+	}
+	for key, bad := range map[string]string{
+		"STATOR_SPACE_TRANSFER_CHECK_INTERVAL": "10ms",
+		"STATOR_SPACE_EXPORT_TTL":              "5s",
+	} {
+		clean(t)
+		t.Setenv(key, bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), key) {
+			t.Errorf("%s=%s should be refused by name, got %v", key, bad, err)
 		}
 	}
 }

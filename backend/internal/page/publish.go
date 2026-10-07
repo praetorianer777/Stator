@@ -103,7 +103,8 @@ const selectVersions = `
 SELECT v.number, v.title, v.comment, u.id, COALESCE(u.name, ''), v.created_at, v.restored_from, v.live, v.updated_at,
        ARRAY(SELECT e.name FROM page_version_editor pe JOIN app_user e ON e.id = pe.user_id
              WHERE pe.page_id = v.page_id AND pe.number = v.number AND pe.user_id IS DISTINCT FROM v.created_by
-             ORDER BY pe.created_at, e.id)
+             ORDER BY pe.created_at, e.id),
+       v.original_author
 FROM page_version v
 LEFT JOIN app_user u ON u.id = v.created_by`
 

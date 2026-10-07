@@ -58,6 +58,11 @@ const (
 	// DefaultExampleCheck is example.DefaultWatchInterval, which a test
 	// holds the two to.
 	DefaultExampleCheck = 2 * time.Second
+	// DefaultSpaceTransferCheck, DefaultSpaceExportTTL and
+	// DefaultSpaceImportLimit are spaceio's, which a test holds these to.
+	DefaultSpaceTransferCheck       = 2 * time.Second
+	DefaultSpaceExportTTL           = 24 * time.Hour
+	DefaultSpaceImportLimit   int64 = 200 << 20
 	// DefaultUploadLimit is attachment.DefaultMaxSize, which a test holds
 	// the two to; this package cannot import that one.
 	DefaultUploadLimit int64 = 50 << 20
@@ -123,6 +128,12 @@ type Config struct {
 	// ExampleCheck is how often the worker looks for an example space to
 	// make, while an administrator waits for it.
 	ExampleCheck time.Duration
+	// SpaceTransferCheck is how often the worker looks for space exports and
+	// imports to run; SpaceExportTTL how long it keeps an export's file.
+	SpaceTransferCheck time.Duration
+	SpaceExportTTL     time.Duration
+	// SpaceImportLimit is the largest archive a space import takes, in bytes.
+	SpaceImportLimit int64
 
 	// SecretKey encrypts secrets stored in the database, such as an identity
 	// provider's client secret. Nil in development when it is not set.
@@ -341,12 +352,15 @@ func Load() (Config, error) {
 			Enabled: l.boolean("STATOR_TEST_ENDPOINTS", false),
 			Token:   l.str("STATOR_TEST_ENDPOINTS_TOKEN", ""),
 		},
-		RetainAudit:       l.duration("STATOR_RETAIN_AUDIT", DefaultRetainAudit),
-		RetainPageViews:   l.duration("STATOR_RETAIN_PAGE_VIEWS", DefaultRetainPageViews),
-		VerificationCheck: l.duration("STATOR_VERIFICATION_CHECK_INTERVAL", DefaultVerificationCheck),
-		TaskDueCheck:      l.duration("STATOR_TASK_DUE_CHECK_INTERVAL", DefaultTaskDueCheck),
-		ScheduleCheck:     l.duration("STATOR_SCHEDULE_CHECK_INTERVAL", DefaultScheduleCheck),
-		ExampleCheck:      l.duration("STATOR_EXAMPLE_CHECK_INTERVAL", DefaultExampleCheck),
+		RetainAudit:        l.duration("STATOR_RETAIN_AUDIT", DefaultRetainAudit),
+		RetainPageViews:    l.duration("STATOR_RETAIN_PAGE_VIEWS", DefaultRetainPageViews),
+		VerificationCheck:  l.duration("STATOR_VERIFICATION_CHECK_INTERVAL", DefaultVerificationCheck),
+		TaskDueCheck:       l.duration("STATOR_TASK_DUE_CHECK_INTERVAL", DefaultTaskDueCheck),
+		ScheduleCheck:      l.duration("STATOR_SCHEDULE_CHECK_INTERVAL", DefaultScheduleCheck),
+		ExampleCheck:       l.duration("STATOR_EXAMPLE_CHECK_INTERVAL", DefaultExampleCheck),
+		SpaceTransferCheck: l.duration("STATOR_SPACE_TRANSFER_CHECK_INTERVAL", DefaultSpaceTransferCheck),
+		SpaceExportTTL:     l.duration("STATOR_SPACE_EXPORT_TTL", DefaultSpaceExportTTL),
+		SpaceImportLimit:   l.size("STATOR_SPACE_IMPORT_LIMIT", DefaultSpaceImportLimit),
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
 	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
@@ -432,6 +446,15 @@ func Load() (Config, error) {
 	}
 	if c.ExampleCheck < time.Second {
 		l.problem(fmt.Sprintf("STATOR_EXAMPLE_CHECK_INTERVAL is %s; set it to a second or more, such as 2s.", c.ExampleCheck))
+	}
+	if c.SpaceTransferCheck < time.Second {
+		l.problem(fmt.Sprintf("STATOR_SPACE_TRANSFER_CHECK_INTERVAL is %s; set it to a second or more, such as 2s.", c.SpaceTransferCheck))
+	}
+	if c.SpaceExportTTL < time.Minute {
+		l.problem(fmt.Sprintf("STATOR_SPACE_EXPORT_TTL is %s; set it to a minute or more, such as 24h, so an export can be downloaded.", c.SpaceExportTTL))
+	}
+	if c.SpaceImportLimit <= 0 {
+		l.problem("STATOR_SPACE_IMPORT_LIMIT must be a size above zero, such as 200MB.")
 	}
 	if c.Telemetry.SampleRatio < 0 || c.Telemetry.SampleRatio > 1 {
 		l.problem("STATOR_OTEL_SAMPLE_RATIO must be between 0 and 1.")

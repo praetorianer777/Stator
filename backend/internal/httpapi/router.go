@@ -37,6 +37,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/shortcut"
 	"github.com/praetorianer777/stator/backend/internal/space"
+	"github.com/praetorianer777/stator/backend/internal/spaceio"
 	"github.com/praetorianer777/stator/backend/internal/stale"
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
@@ -92,6 +93,9 @@ type Server struct {
 	Templates *template.Service
 	// ExampleJobs queues the example space for the worker and reads how it goes.
 	ExampleJobs *example.Jobs
+	// SpaceTransfers queues space exports and imports for the worker, reads
+	// how they go and hands out exported files; nil answers that they are off.
+	SpaceTransfers *spaceio.Jobs
 	// Stale reads the stale content report for administrators.
 	Stale *stale.Service
 	// Tasks reads the tasks people are assigned on published pages.
@@ -331,6 +335,13 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.With(requireWholeOrg).Post("/spaces", s.handleCreateSpace)
 			r.With(requireWholeOrg).Get("/example-space", s.handleGetExampleSpace)
 			r.With(requireWholeOrg).Post("/example-space", s.handleCreateExampleSpace)
+			// An import makes a new space, outside every space a limited token names.
+			r.With(requireWholeOrg).Post("/space-imports", s.handleCreateSpaceImport)
+			r.With(requireWholeOrg).Get("/space-imports", s.handleListSpaceImports)
+			r.With(requireWholeOrg).Get("/space-imports/{importID}", s.handleGetSpaceImport)
+			r.Post("/spaces/{spaceKey}/exports", s.handleCreateSpaceExport)
+			r.Get("/spaces/{spaceKey}/exports", s.handleListSpaceExports)
+			r.Get("/space-exports/{exportID}/file", s.handleDownloadSpaceExport)
 			r.Get("/spaces/{spaceKey}", s.handleGetSpace)
 			r.Patch("/spaces/{spaceKey}", s.handleUpdateSpace)
 			r.Delete("/spaces/{spaceKey}", s.handleDeleteSpace)

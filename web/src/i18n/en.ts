@@ -2665,6 +2665,8 @@ export const en = {
       "space.permissions_copied": "Space permissions copied from another space",
       "page.mode_changed": "Page switched between drafts and live",
       "space.example_created": "Example space created",
+      "space.exported": "Space exported",
+      "space.imported": "Space imported",
       "template.created": "Template made",
       "template.updated": "Template changed",
       "template.deleted": "Template deleted",

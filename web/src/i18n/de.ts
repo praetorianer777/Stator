@@ -2738,6 +2738,8 @@ export const de: Messages = {
       "space.permissions_copied": "Bereichsberechtigungen aus einem anderen Bereich kopiert",
       "page.mode_changed": "Seite zwischen Entwürfen und live umgestellt",
       "space.example_created": "Beispielbereich angelegt",
+      "space.exported": "Bereich exportiert",
+      "space.imported": "Bereich importiert",
       "template.created": "Vorlage angelegt",
       "template.updated": "Vorlage geändert",
       "template.deleted": "Vorlage gelöscht",
