@@ -40,6 +40,7 @@ function fromWire<T extends { spec: Wire["Spec"] }>(value: T): Omit<T, "spec"> &
 
 export const themesQueryKey = ["themes"] as const;
 export const activeThemeQueryKey = ["themes", "active"] as const;
+export const defaultThemeQueryKey = ["themes", "default"] as const;
 export const themeExamplesQueryKey = ["themes", "examples"] as const;
 /** Whether the reader follows their Armature theme; kept here so choosing a theme can forget it. */
 export const armatureThemeQueryKey = ["armature", "theme"] as const;
@@ -83,6 +84,18 @@ export function useActiveTheme() {
     queryFn: async () => {
       const { data } = await api.GET("/themes/active");
       return { theme: data?.theme ? fromWire(data.theme) : null, source: (data?.source ?? "") as ThemeSource };
+    },
+  });
+}
+
+/** The organization's own theme, whatever the reader chose; null is the built-in one. */
+export function useDefaultTheme(enabled = true) {
+  return useQuery({
+    queryKey: defaultThemeQueryKey,
+    enabled,
+    queryFn: async () => {
+      const { data } = await api.GET("/themes/default");
+      return data?.theme ? fromWire(data.theme) : null;
     },
   });
 }

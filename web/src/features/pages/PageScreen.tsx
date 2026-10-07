@@ -17,6 +17,8 @@ import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSectio
 import { InlineComments } from "@/features/comments/InlineComments";
 import { ExportDialog, ImportDialog } from "@/features/markdown/MarkdownDialogs";
 import { PageViewsButton, PageViewsDialog } from "@/features/pageviews/PageViews";
+import { PdfExportDialog } from "@/features/print/PdfExport";
+import { pagePdfHref } from "@/api/pdf";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { ChildPagesList, DocPageContext } from "@/features/editor/BlockViews";
@@ -93,6 +95,7 @@ type Dialog =
   | "restrictions"
   | "access"
   | "export"
+  | "pdf"
   | "import"
   | "stewardship"
   | "share"
@@ -192,6 +195,10 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   if (!post && space.can.editPages) actions.push({ label: t.page.copy, onSelect: () => setDialog("copy"), attrs: { "data-action": "copy-page" } });
   if (!folder) {
     actions.push({ label: t.markdown.exportMenu, icon: <Icon.Download />, onSelect: () => setDialog("export"), attrs: { "data-action": "export-markdown" } });
+  }
+  // Only what is published is printed, never a draft.
+  if (!folder && !page.unpublished) {
+    actions.push({ label: t.pdf.exportMenu, icon: <Icon.File />, onSelect: () => setDialog("pdf"), attrs: { "data-action": "export-pdf" } });
   }
   if (page.can.add && !folder && !post) {
     actions.push({ label: t.markdown.importMenu, icon: <Icon.Upload />, onSelect: () => setDialog("import"), attrs: { "data-action": "import-markdown" } });
@@ -426,6 +433,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       {dialog === "views" && <PageViewsDialog pageId={page.id} onClose={() => setDialog(undefined)} />}
       {dialog === "access" && <AccessDialog pageId={page.id} pageTitle={page.title} onClose={() => setDialog(undefined)} />}
       {dialog === "export" && <ExportDialog page={page} onClose={() => setDialog(undefined)} />}
+      {dialog === "pdf" && <PdfExportDialog href={pagePdfHref(page.id)} title={page.title} onClose={() => setDialog(undefined)} />}
       {dialog === "import" && (
         <ImportDialog parent={page.home ? { id: page.id, title: space.name } : page} spaceKey={space.key} onClose={() => setDialog(undefined)} />
       )}

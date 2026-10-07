@@ -2099,6 +2099,22 @@
   .doc-content .doc-expand .doc-expand-chevron {
     display: none;
   }
+  /* A block is cut between sheets only when it is taller than one, and a
+     heading stays with what follows it. */
+  .doc-content :is(pre, table, figure, img, .doc-diagram, div.doc-math, .doc-table-chart, .doc-chart, .doc-link-card, .doc-columns) {
+    break-inside: avoid;
+  }
+  .doc-content :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+  }
+}
+
+/* The view the render service prints a page from: the page alone, on the
+   theme's surface, as wide as the sheet's margins leave it. */
+.print-view {
+  min-height: 100%;
+  background: var(--color-surface);
+  color: var(--color-ink);
 }
 
 /* A page's verification badge: words in ink on a tint of the role its state

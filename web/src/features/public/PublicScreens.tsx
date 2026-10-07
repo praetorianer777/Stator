@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { linkedPdfHref, publicPdfHref } from "@/api/pdf";
+import { PdfExportDialog } from "@/features/print/PdfExport";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -15,7 +17,7 @@ import {
   type PublicPage,
   type PublicTreePage,
 } from "@/api/public";
-import { Breadcrumbs, ButtonLink, EmptyState, ErrorBanner, IconButton, Input, PageHeader, Skeleton, cx } from "@/components/ui";
+import { Breadcrumbs, Button, ButtonLink, EmptyState, ErrorBanner, IconButton, Input, PageHeader, Skeleton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { APP_NAME, PUBLIC_PATH } from "@/config";
 import { DocView } from "@/features/editor/DocView";
@@ -178,6 +180,19 @@ export function PublicLinkScreen({ org, token }: { org: string; token: string })
   );
 }
 
+/** Prints the page shown as PDF, from a button beside its title. */
+function PdfButton({ href, title }: { href: string; title: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="secondary" icon={<Icon.File />} onClick={() => setOpen(true)} aria-label={t.pdf.exportLabel} data-action="export-pdf">
+        {t.pdf.exportButton}
+      </Button>
+      {open && <PdfExportDialog href={href} title={title} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
 function LinkedArticle({ org, token, page }: { org: string; token: string; page: LinkedPage }) {
   return (
     <article {...pageSheet(page.appearance.width)} data-public-page={page.id}>
@@ -198,6 +213,7 @@ function LinkedArticle({ org, token, page }: { org: string; token: string; page:
           </>
         }
         meta={<span>{t.publicReading.updated(updatedAt.format(new Date(page.updatedAt)))}</span>}
+        actions={page.kind !== "folder" && <PdfButton href={linkedPdfHref(org, token)} title={page.title} />}
       />
       <DocView doc={page.body as DocNode} />
     </article>
@@ -325,6 +341,7 @@ function PageArticle({ org, pageId }: { org: string; pageId: string }) {
           </>
         }
         meta={<span>{t.publicReading.updated(updatedAt.format(new Date(page.updatedAt)))}</span>}
+        actions={page.kind !== "folder" && <PdfButton href={publicPdfHref(org, page.id)} title={page.title} />}
       />
       {page.kind === "folder" ? <FolderChildren org={org} page={page} /> : <DocView doc={page.body as DocNode} />}
     </article>

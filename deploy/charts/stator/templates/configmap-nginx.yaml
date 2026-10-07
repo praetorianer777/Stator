@@ -75,6 +75,16 @@ data:
             add_header X-Frame-Options "DENY" always;
             add_header Referrer-Policy "no-referrer" always;
         }
+        # The render service's print views: one may carry a link's token.
+        location ^~ /print/ {
+            access_log off;
+            try_files /index.html =404;
+            add_header Cache-Control "no-store" always;
+            add_header Content-Security-Policy "{{ $csp }}" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header X-Frame-Options "DENY" always;
+            add_header Referrer-Policy "no-referrer" always;
+        }
         location / {
             try_files $uri $uri/ /index.html;
             add_header Content-Security-Policy "{{ $csp }}" always;
