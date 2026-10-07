@@ -149,6 +149,10 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
 - a page as a Word document (`GET /pages/{pageID}/docx`), a file for a
   person to edit offline or hand on; `get_page` and `get_page_markdown`
   carry the same words to a model;
+- Word import (`POST /pages/{pageID}/import/docx`, `/word-imports` and
+  `GET /word-imports/{importID}`): a Word document is a file a person
+  uploads, and several are imported by the worker; `import_markdown`
+  carries a model's words into a new page;
 - Armature's issues, which Armature's own MCP endpoint serves as the person;
 - the reading view for people who are not signed in (`/public/{orgSlug}`
   and below, a public link's page and both their PDFs and Word documents

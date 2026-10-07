@@ -908,6 +908,21 @@ and the versioning [Semantic Versioning](https://semver.org/).
   six times a minute per page from one address. The api writes the document
   itself; no service is needed. Member exports are audited as
   `page.exported` with scope `docx`. `docs/word.md` lists every block.
+- Word import (#89). Import Word documents in the page menu makes pages of
+  .docx files under the page, read natively by the api: headings by outline
+  level, nested numbered and bulleted lists, tables with header rows and
+  merged cells, pictures as the new page's files with their descriptions,
+  links, code and quotes, check boxes as tasks, footnotes as a numbered
+  list at the end, text boxes' text, and tracked changes accepted. What a
+  page cannot hold, such as underline, comments, charts or headers, is
+  listed to the author. One document becomes a published page at once
+  (`POST /pages/{id}/import/docx`); several, or a .zip whose folders become
+  pages too, are imported by the worker (`POST /pages/{id}/word-imports`,
+  followed at `GET /word-imports/{id}`) with a report per file, checked
+  every `STATOR_WORD_IMPORT_CHECK_INTERVAL`. The database lets only whoever
+  may add pages under the parent queue an import. A document Stator
+  exported imports back as the page it was. `docs/word.md` lists every
+  mapping.
 
 ### Changed
 

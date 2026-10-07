@@ -35,5 +35,7 @@ Ein archivierter Bereich bleibt unter jeder Adresse lesbar, verschwindet aber au
 
 Eine Seite hat einen Titel und einen Inhalt aus Blöcken: Text, Listen, Tabellen, Hinweisfelder und vieles mehr, alles gezeigt in [Alle Blöcke einer Seite](showcase.md). **Neue Seite** im Kopf einer Seite legt eine Seite darunter an, leer oder aus einer Vorlage. Eine neue Seite gehört Ihnen allein, bis Sie sie veröffentlichen; siehe [Entwürfe, Veröffentlichen und Verlauf](drafts-and-history.md).
 
+**Word-Dokumente importieren** in den **Seitenaktionen** legt aus .docx-Dateien Seiten unter einer Seite an: Überschriften, Listen, Tabellen, Bilder und Links werden übernommen, und der Import nennt, was nicht. Ein Dokument wird sofort zur Seite; mehrere oder eine .zip-Datei mit Ordnern werden im Hintergrund importiert, jeder Ordner als eigene Seite.
+
 > [!NOTE]
 > Die Worte oben, im Rahmen des Auszugs, sind ein **Auszug**. Die Blockübersicht bindet sie ein und zeigt sie geändert, sobald diese Seite mit anderen Worten veröffentlicht wird.

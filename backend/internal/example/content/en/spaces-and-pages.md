@@ -35,5 +35,7 @@ An archived space stays readable at every address but leaves the space list, sea
 
 A page has a title and a body made of blocks: text, lists, tables, panels and many more, all shown in [Every block a page can hold](showcase.md). **New page** in a page's header makes a page below it, blank or from a template. A new page is yours alone until you publish it; see [Drafts, publishing and history](drafts-and-history.md).
 
+**Import Word documents** in the **Page actions** makes pages below a page from .docx files: headings, lists, tables, pictures and links come across, and the import lists what did not. One document becomes a page at once; several, or a .zip with folders, are imported in the background, each folder a page of its own.
+
 > [!NOTE]
 > The words above, between the excerpt's frame, are an **excerpt**. The showcase page includes them, and shows them changed as soon as this page is published with other words.

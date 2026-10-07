@@ -71,3 +71,81 @@ the reader's language, English or German, and Word checks spelling in it.
 | `date` | the day in words, in the reader's language |
 | `mathInline` | its TeX source in the Formula style |
 | `hint`, `inlineComment` | their words alone: a template's placeholder is never published, and a passage's thread stays in Stator |
+
+# Word import
+
+Word documents (`.docx`) become pages under a page, read natively by the
+api (`backend/internal/docx`, the reading half) and made through the page
+and file services as the person importing (`backend/internal/wordio`).
+`docs/decisions.md` says why.
+
+## Operations
+
+| Operation | Who | Answers |
+|---|---|---|
+| `POST /pages/{pageID}/import/docx` | whoever may add pages under the page and edit it | 201 with the page made and the warnings, at once |
+| `POST /pages/{pageID}/word-imports` | the same | 202 with an import the worker runs: up to 50 documents, or `.zip` archives of them |
+| `GET /word-imports/{importID}` | whoever queued it | how many pages it made of how many, and for each file the page with its warnings, or why it made none |
+
+A page made is published, as a Markdown import publishes its pages, titled
+by the document's title property, else its Title paragraph, else its one
+leading heading of level 1 (which then leaves the body, the headings below
+moving up a level), else its file name. A document's pictures are files of
+its page. In an archive each folder is a page holding its documents, or,
+when a document beside it has its name, that document's page holds them.
+Files that are no Word documents are listed as left out.
+
+Refusals, each a sentence naming the file: a document over 50 MB, pictures
+over 50 MB in one document, a part unpacking to more than 32 MB, an upload
+over 200 MB or of more than 50 documents or 200 pages, a Word 97-2003
+document or one protected by a password, and anything that is no Word
+document. In an import of several, a document that cannot be read is
+reported and passed over; the others are made.
+
+## Blocks
+
+| In Word | On the page |
+|---|---|
+| Title paragraph | the page's title, when the properties name none |
+| a paragraph whose style or own setting has an outline level (Heading 1 to 9) | a heading; levels below 3 become 3, said once |
+| a paragraph | a paragraph; an empty one is left out |
+| numbered and bulleted paragraphs (`numbering.xml`) | ordered and bullet lists, nested by level; an ordered list keeps its counting style and start, and counts on across a break in it; a paragraph set in as far as an item's text stays in the item |
+| a paragraph starting with a check box (☐, ☑, ☒) | a task, ticked or not |
+| a code style (Code, Source Code, HTML Preformatted, Plain Text) or a paragraph all in a monospaced font | a code block; consecutive ones join, tabs and spaces kept |
+| Quote and Intense Quote | a quote; consecutive ones join |
+| a paragraph with a line beneath and nothing in it | a horizontal rule |
+| a table | a table: a header row where Word repeats it or its words are all bold, cells merged across (`gridSpan`) and down (`vMerge`), the fills the editor offers and a shared alignment |
+| a table of one cell | a quote around its blocks, or a panel when it has a panel's fill |
+| a picture (inline or anchored, DrawingML or VML) | a picture of the page, a file of it, its description kept; its width where it is shown smaller or larger than it is |
+| a table of contents (a field or a contents control) | a table of contents |
+| footnotes and endnotes | the reference as its number in brackets, the notes as a numbered list at the end of the page under a rule |
+| a text box | its text where it is anchored, said once |
+| Stator's own Formula style | a formula |
+
+## Inline
+
+| In Word | On the page |
+|---|---|
+| bold, italic, strike and double strike, by the run or its character style | bold, italic, strike |
+| a monospaced font or a code character style | code |
+| a hyperlink, or a HYPERLINK field | a link, if it is a web or mail address; one to a heading's bookmark goes to the heading |
+| a line break | a line break; page and column breaks are left out |
+| a tab | a space, or a tab in code |
+| a footnote reference | its number in brackets |
+
+## Said and left out
+
+Each of these is a warning, once per document: underline and superscript or
+subscript, which a page has no mark for (their words kept); hidden text;
+comments (counted); tracked changes, accepted as the document reads with
+every change made; headers and footers; charts, SmartArt and shapes without
+text; embedded objects; equations, kept as their text; pictures in a format
+browsers do not show, such as EMF, or larger than a file may be; pictures
+linked from outside the document; links that are not web or mail addresses,
+and links to bookmarks that are no heading's; symbols from a symbol font;
+parts kept in another format. Fonts, colours, sizes, spacing, alignment of
+paragraphs and page layout follow the page's theme and are not reported.
+
+A document Stator exported (its properties name Stator) comes back as the
+page it was for the blocks Word carries: the line under its title is left
+out, panels come back by their fill, and the unit tests hold the round trip.
