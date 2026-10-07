@@ -29,7 +29,7 @@ func clean(t *testing.T) {
 		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
 		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
 		"STATOR_VERIFICATION_CHECK_INTERVAL", "STATOR_TASK_DUE_CHECK_INTERVAL", "STATOR_SCHEDULE_CHECK_INTERVAL",
-		"STATOR_EXAMPLE_CHECK_INTERVAL",
+		"STATOR_EXAMPLE_CHECK_INTERVAL", "STATOR_WORD_IMPORT_CHECK_INTERVAL",
 	} {
 		t.Setenv(key, "")
 	}
@@ -593,6 +593,22 @@ func TestTheScheduleCheckIsAnInterval(t *testing.T) {
 		if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_SCHEDULE_CHECK_INTERVAL") {
 			t.Errorf("%s was not refused by name: %v", bad, err)
 		}
+	}
+}
+
+// Word imports are looked for every two seconds unless told otherwise, and
+// an interval too short to be meant is refused by name.
+func TestTheWordImportCheckIsAnInterval(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil || c.WordImportCheck != DefaultWordImportCheck {
+		t.Fatalf("Word imports are looked for every %s, want %s: %v", c.WordImportCheck, DefaultWordImportCheck, err)
+	}
+	t.Setenv("STATOR_WORD_IMPORT_CHECK_INTERVAL", "500ms")
+	_, err = Load()
+	var cfgErr *Error
+	if !errors.As(err, &cfgErr) || !strings.Contains(err.Error(), "STATOR_WORD_IMPORT_CHECK_INTERVAL") {
+		t.Errorf("500ms was not refused by name: %v", err)
 	}
 }
 

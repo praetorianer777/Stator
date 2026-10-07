@@ -38,6 +38,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
+	"github.com/praetorianer777/stator/backend/internal/wordio"
 )
 
 // APIError is the single error shape every endpoint returns, so that clients
@@ -533,9 +534,11 @@ func toAPIError(err error) *APIError {
 		return ErrConflict("Somebody published this page after you opened its history. Reload the history and restore again.")
 	case errors.Is(err, page.ErrRestoreLatest):
 		return ErrConflict("That is already the latest version of the page. Pick an older version to restore.")
-	case errors.Is(err, mdio.ErrNoMarkdown):
+	case errors.Is(err, mdio.ErrNoMarkdown), errors.Is(err, wordio.ErrNoWord), errors.Is(err, wordio.ErrOneOnly):
 		msg := sentence(err.Error())
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: msg, Fields: map[string]string{"file": msg}}
+	case errors.Is(err, wordio.ErrJobNotFound):
+		return ErrNotFound("That import is not here. Only whoever started an import follows it; start the import again from the page's menu.")
 	case errors.Is(err, mdio.ErrTooManyBelow):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(err.Error())}
 	case errors.Is(err, webhook.ErrNotFound):

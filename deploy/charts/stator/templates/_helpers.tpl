@@ -240,6 +240,7 @@ STATOR_VERIFICATION_CHECK_INTERVAL: {{ .Values.verification.checkInterval | quot
 STATOR_TASK_DUE_CHECK_INTERVAL: {{ .Values.tasks.dueCheckInterval | quote }}
 STATOR_SCHEDULE_CHECK_INTERVAL: {{ .Values.publishing.scheduleCheckInterval | quote }}
 STATOR_EXAMPLE_CHECK_INTERVAL: {{ .Values.exampleSpace.checkInterval | quote }}
+STATOR_WORD_IMPORT_CHECK_INTERVAL: {{ .Values.wordImport.checkInterval | quote }}
 {{- with .Values.mail.smtpAddr }}
 STATOR_SMTP_ADDR: {{ . | quote }}
 STATOR_MAIL_FROM: {{ $.Values.mail.from | quote }}

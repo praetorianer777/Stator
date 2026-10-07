@@ -1378,6 +1378,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/import/docx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make one Word document, sent in a part named file, a published page under a page, with its pictures as the page's files. The page is titled by the document's title property, else its Title paragraph, else its one leading heading, else its file name; warnings say what did not come across as written. Refused with validation_failed, naming the file, when it is no .docx Stator can read. */
+        post: operations["importWord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/included": {
         parameters: {
             query?: never;
@@ -1926,6 +1943,23 @@ export interface paths {
         get: operations["listWatchers"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/word-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask the worker to make Word documents pages under a page: up to 50 .docx files in parts named file, or .zip archives of them whose folders become pages too. Answers 202 with the import at once; GET /word-imports/{importID} follows it to its report. */
+        post: operations["queueWordImport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3227,6 +3261,23 @@ export interface paths {
         put?: never;
         /** Post a ping now, even while the webhook is off, and answer the attempt as logged. For administrators. */
         post: operations["testWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/word-imports/{importID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An import of Word documents the caller started: how many pages it has made of how many, and for each file the page it made with its warnings, or why it made none. */
+        get: operations["getWordImport"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5305,6 +5356,43 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+        };
+        WordImport: {
+            done: number;
+            failure: ("forbidden" | "parent_gone" | "failed") | null;
+            files: components["schemas"]["WordImportFile"][];
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            message: string | null;
+            /** Format: uuid */
+            parentId: string;
+            /** Format: date-time */
+            requestedAt: string;
+            skipped: string[];
+            /** Format: date-time */
+            startedAt: string | null;
+            /** @enum {string} */
+            state: "queued" | "running" | "done" | "failed";
+            total: number;
+        };
+        WordImportFile: {
+            error: string | null;
+            page: components["schemas"]["WordImportPage"] | null;
+            path: string;
+            warnings: string[];
+        };
+        WordImportPage: {
+            depth: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parentId: string;
+            title: string;
+        };
+        WordImportResponse: {
+            job: components["schemas"]["WordImport"] | null;
         };
     };
     responses: never;
@@ -9355,6 +9443,74 @@ export interface operations {
             };
         };
     };
+    importWord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        pages: components["schemas"]["Imported"][];
+                        warnings: string[];
+                    };
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getIncluded: {
         parameters: {
             query?: {
@@ -11085,6 +11241,71 @@ export interface operations {
                         total: number;
                         watchers: components["schemas"]["Watcher"][];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    queueWordImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WordImportResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -15052,6 +15273,37 @@ export interface operations {
                     "application/json": {
                         delivery: components["schemas"]["WebhookDelivery"];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getWordImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WordImportResponse"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

@@ -89,7 +89,7 @@ func (s *Server) handleReplacePageMarkdown(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	svc := s.markdown()
-	files, err := readUploadedFiles(w, r, svc.MaxBytes)
+	files, err := readUploadedFiles(w, r, svc.MaxBytes, markdownUploads)
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -110,7 +110,7 @@ func (s *Server) handleImportMarkdown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	svc := s.markdown()
-	files, err := readUploadedFiles(w, r, svc.MaxBytes)
+	files, err := readUploadedFiles(w, r, svc.MaxBytes, markdownUploads)
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -124,13 +124,17 @@ func (s *Server) handleImportMarkdown(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusCreated, imported)
 }
 
+// markdownUploads names what an upload of Markdown holds, in refusals.
+const markdownUploads = "Markdown files"
+
 // readUploadedFiles reads every part named file with the path it was sent
-// with, which the part's own FileName cuts to its last name.
-func readUploadedFiles(w http.ResponseWriter, r *http.Request, limit int64) ([]mdio.File, error) {
+// with, which the part's own FileName cuts to its last name; what names the
+// files in a refusal.
+func readUploadedFiles(w http.ResponseWriter, r *http.Request, limit int64, what string) ([]mdio.File, error) {
 	r.Body = http.MaxBytesReader(w, r.Body, limit+uploadSlack)
 	reader, err := r.MultipartReader()
 	if err != nil {
-		return nil, ErrBadRequest("Send the Markdown files as multipart form data, each in a part named file.")
+		return nil, ErrBadRequest("Send the " + what + " as multipart form data, each in a part named file.")
 	}
 	var files []mdio.File
 	var total int64
@@ -172,7 +176,7 @@ func readUploadedFiles(w http.ResponseWriter, r *http.Request, limit int64) ([]m
 		files = append(files, mdio.File{Path: name, Data: data})
 	}
 	if len(files) == 0 {
-		return nil, ErrBadRequest("The upload has no part named file. Send each Markdown file in a part named file.")
+		return nil, ErrBadRequest("The upload has no part named file. Send each of the " + what + " in a part named file.")
 	}
 	return files, nil
 }

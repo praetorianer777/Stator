@@ -2,7 +2,8 @@
 // with the notifications it fans out and the page links it syncs to Armature,
 // the notifications' digests, the file reaper, the audit log's retention,
 // the watch on page verifications that run out, the publishes scheduled for a
-// time, the example spaces administrators ask for, and the outbound webhooks.
+// time, the example spaces administrators ask for, the Word documents
+// imported several at once, and the outbound webhooks.
 package main
 
 import (
@@ -36,6 +37,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
+	"github.com/praetorianer777/stator/backend/internal/wordio"
 )
 
 // flushTimeout bounds sending the traces still in hand at shutdown.
@@ -139,6 +141,11 @@ func run() error {
 		Calendars: calendar.NewService(cluster), Comments: comment.NewService(cluster), Reactions: reaction.NewService(cluster),
 		Attachments: files, Armature: armatures,
 	}, log, cfg.ExampleCheck).Run(ctx)
+	if files == nil {
+		log.Warn("importing several Word documents at once is off: STATOR_S3_ENDPOINT is not set")
+	} else {
+		go wordio.NewWatch(wordio.NewService(cluster, pages, files, store), log, cfg.WordImportCheck).Run(ctx)
+	}
 	if mailer != nil {
 		go notify.NewDigester(cluster, mailer, cfg.AppBaseURL, log).Run(ctx)
 	}

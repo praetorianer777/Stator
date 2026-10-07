@@ -34,6 +34,7 @@ const (
 	whyPublic     = "the reading view for people who are not signed in; an assistant acts for a member, whom get_page and search serve"
 	whyPrint      = "a PDF is a file for a person to keep or hand on, printed by a browser; get_page and get_page_markdown carry the same words to a model"
 	whyWord       = "a Word document is a file for a person to edit offline or hand on; get_page and get_page_markdown carry the same words to a model"
+	whyWordImport = "a Word document is a file a person uploads, and several are imported by the worker; import_markdown carries a model's words into a new page"
 	whyLinks      = "opens a page to anybody outside the organization, a decision its editors make in the share dialog; the token is shown once, to a person"
 )
 
@@ -185,6 +186,9 @@ var notTools = map[string]string{
 	"GET /pages/{pageID}/export":                                   whyFiles,
 	"GET /pages/{pageID}/pdf":                                      whyPrint,
 	"GET /pages/{pageID}/docx":                                     whyWord,
+	"POST /pages/{pageID}/import/docx":                             whyWordImport,
+	"POST /pages/{pageID}/word-imports":                            whyWordImport,
+	"GET /word-imports/{importID}":                                 whyWordImport,
 	"POST /pages/{pageID}/attachments":                             whyFiles,
 	"GET /attachments/{attachmentID}":                              whyFiles,
 	"GET /attachments/{attachmentID}/preview":                      whyFiles,

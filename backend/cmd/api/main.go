@@ -60,6 +60,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
+	"github.com/praetorianer777/stator/backend/internal/wordio"
 )
 
 // Server timeouts. The write timeout outlasts the request timeout, so a slow
@@ -185,6 +186,7 @@ func run() error {
 		Pages:             pages,
 		Attachments:       files,
 		Markdown:          mdio.NewService(pages, files),
+		Word:              wordio.NewService(cluster, pages, files, store),
 		Perms:             perm.NewService(cluster),
 		Search:            search.NewService(cluster),
 		Labels:            label.NewService(cluster, pages),
