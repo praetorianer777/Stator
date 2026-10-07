@@ -233,6 +233,36 @@ export const LIGHTBOX_WHEEL_ZOOM_PER_PX = 0.0015;
 export const LIGHTBOX_PAN_STEP_PX = 64;
 /** How far a finger must sweep sideways across an unzoomed picture to go to the next or previous one. */
 export const LIGHTBOX_SWIPE_PX = 48;
+
+/** The colours a picture is annotated in: strong on a screenshot of either theme, and each edged in black or white besides. */
+export const ANNOTATION_COLOURS = { red: "#e5191f", yellow: "#ffd60a", green: "#12a150", blue: "#1f6fe5", black: "#111111", white: "#ffffff" } as const;
+/** The colour the annotation editor starts with. */
+export const ANNOTATION_DEFAULT_COLOUR: keyof typeof ANNOTATION_COLOURS = "red";
+/** How thick a box or an arrow is: this share of the picture's shorter side, and never thinner than the floor in picture pixels. */
+export const ANNOTATION_STROKE_SHARE = 0.006;
+export const ANNOTATION_STROKE_MIN_PX = 3;
+/** How tall text is: this share of the picture's shorter side, and never smaller than the floor in picture pixels. */
+export const ANNOTATION_TEXT_SHARE = 0.045;
+export const ANNOTATION_TEXT_MIN_PX = 16;
+/** The longest text one label holds. */
+export const ANNOTATION_TEXT_MAX_LENGTH = 200;
+/** How far a press must drag, in screen pixels, to draw a shape rather than click. */
+export const ANNOTATION_MIN_DRAG_PX = 6;
+/** How near, in screen pixels, a press must land to pick a shape's line. */
+export const ANNOTATION_HIT_PX = 12;
+/** How far one arrow key press moves or resizes a shape, as a share of the picture's shorter side. */
+export const ANNOTATION_KEY_STEP_SHARE = 0.02;
+/** The smallest crop, in picture pixels. */
+export const ANNOTATION_MIN_CROP_PX = 8;
+/** The most pixels a picture may have to be edited, what a phone's browser draws on one canvas. */
+export const ANNOTATION_MAX_PIXELS = 16_777_216;
+/** How much detail a JPEG or WebP keeps when the edited picture is saved. */
+export const ANNOTATION_QUALITY = 0.92;
+/** How many steps undo goes back. */
+export const ANNOTATION_HISTORY_LIMIT = 100;
+/** The pictures that can be annotated, with the name a person knows each type by, matching the API's attachment.Editable. */
+export const ANNOTATION_TYPES: Readonly<Record<string, string>> = { "image/png": "PNG", "image/jpeg": "JPEG", "image/webp": "WebP" };
+
 /** The videos the API shows in place, which a browser's own player plays. */
 export const VIDEO_TYPES: readonly string[] = ["video/mp4", "video/webm", "video/ogg"];
 /** The names a file chip offers to play by, since a chip does not carry the file's type. */

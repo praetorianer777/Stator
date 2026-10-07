@@ -13,6 +13,7 @@ import {
 import { Button, ButtonLink, ErrorBanner, IconButton, SectionTitle, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
+import { AnnotateButton } from "@/features/annotate/AnnotateButton";
 import { PreviewButton } from "./PreviewDialog";
 import { byName, versionNote } from "./versions";
 
@@ -177,6 +178,7 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
             <li key={latest.id} className="px-3 py-2 text-sm" data-attachment={latest.fileName} data-attachment-id={latest.id} data-version={latest.version}>
               <div className="flex items-center gap-3">
                 <FileRow file={latest} label={latest.fileName} media={media}>
+                  {editable && <AnnotateButton file={latest} onSaved={(made) => setNotice(t.annotate.saved(made.fileName, made.version))} />}
                   {editable && (
                     <IconButton
                       icon={<Icon.Trash />}
@@ -206,6 +208,7 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
                           <FileRow file={file} label={label}>
                             {editable && (
                               <>
+                                <AnnotateButton file={file} label={label} onSaved={(made) => setNotice(t.annotate.saved(made.fileName, made.version))} />
                                 <Button
                                   size="sm"
                                   variant="ghost"

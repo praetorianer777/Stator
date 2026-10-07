@@ -260,6 +260,15 @@ describe("the attachments of a page", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("offers its editors to annotate the pictures, and no other file", async () => {
+    stubPage();
+    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    const list = await panel();
+    expect(await list.findByRole("button", { name: "Annotate screen.png" })).toBeInTheDocument();
+    expect(list.queryByRole("button", { name: "Annotate plan.pdf" })).toBeNull();
+    expect(list.queryByRole("button", { name: "Annotate logs.zip" })).toBeNull();
+  });
+
   it("shows a reader who may not edit the files, but no way to add or delete them", async () => {
     stubPage({ edit: false });
     await renderAt(`/s/DOCS/p/${pageId}/notes`);
@@ -268,6 +277,7 @@ describe("the attachments of a page", () => {
     expect(list.queryByRole("button", { name: "Attach files" })).toBeNull();
     expect(list.queryByRole("button", { name: /Delete/ })).toBeNull();
     expect(document.querySelector("[data-attachment-input]")).toBeNull();
+    expect(list.queryByRole("button", { name: /^Annotate/ })).toBeNull();
     const region = await screen.findByRole("region", { name: /Attachments/ });
     fireEvent.drop(region, { dataTransfer: { types: ["Files"], files: [new File(["x"], "x.txt")] } });
     expect(list.queryByRole("progressbar")).toBeNull();

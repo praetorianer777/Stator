@@ -95,14 +95,22 @@ function envelope(xhr: XMLHttpRequest): ApiErrorBody | undefined {
   }
 }
 
-/**
- * Sends one file to a page. XMLHttpRequest rather than fetch, because only it
- * reports how much of the body has gone, which a large file needs to show.
- */
+/** Sends one file to a page. */
 export function uploadAttachment(pageId: string, file: File, onProgress?: Progress): Promise<Attachment> {
+  return sendFile(`/pages/${encodeURIComponent(pageId)}/attachments`, file, onProgress);
+}
+
+/** Sends a picture cropped or drawn on, to be the next version of the file it was drawn on. */
+export function editAttachment(id: string, file: File, onProgress?: Progress): Promise<Attachment> {
+  return sendFile(`/attachments/${encodeURIComponent(id)}/edit`, file, onProgress);
+}
+
+// XMLHttpRequest rather than fetch, because only it reports how much of the
+// body has gone, which a large file needs to show.
+function sendFile(path: string, file: File, onProgress?: Progress): Promise<Attachment> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE}/pages/${encodeURIComponent(pageId)}/attachments`);
+    xhr.open("POST", `${API_BASE}${path}`);
     xhr.withCredentials = true;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total);
@@ -219,6 +227,18 @@ export function useRestoreAttachment(pageId: string) {
   return useMutation({
     mutationFn: async (id: string): Promise<Attachment> =>
       (await api.POST("/attachments/{attachmentID}/restore", { params: { path: { attachmentID: id } } })).data!.attachment,
+    onSuccess: (made) => {
+      queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => (list ? [made, ...list.filter((a) => a.id !== made.id)] : list));
+      return queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
+    },
+  });
+}
+
+/** Saves a picture cropped or drawn on as the next version of the file it was drawn on. */
+export function useEditAttachment(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }): Promise<Attachment> => editAttachment(id, file),
     onSuccess: (made) => {
       queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => (list ? [made, ...list.filter((a) => a.id !== made.id)] : list));
       return queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });

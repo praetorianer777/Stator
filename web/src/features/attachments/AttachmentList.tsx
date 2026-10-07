@@ -4,6 +4,7 @@ import { Button, ErrorBanner } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
+import { AnnotateButton } from "@/features/annotate/AnnotateButton";
 import { PreviewButton } from "./PreviewDialog";
 import { byName, versionNote } from "./versions";
 
@@ -75,6 +76,7 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
             <span className="flex items-center gap-1">
               <FileLink file={latest} label={latest.fileName} />
               <PreviewButton file={latest} media={latestOfEach} />
+              {editable && <AnnotateButton file={latest} onSaved={(made) => setNotice(t.annotate.saved(made.fileName, made.version))} />}
             </span>
             <span className="doc-page-list-meta">{meta(latest)}</span>
             {earlier.length > 0 && (
