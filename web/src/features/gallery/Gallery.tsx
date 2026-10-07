@@ -53,7 +53,8 @@ export function Gallery({
         const img = (
           <img
             src={url(picture.attachmentId, true)}
-            alt={editing ? caption : ""}
+            // The caption is written beside it and the button names it; only an editor's picture without one needs a name.
+            alt={editing && !caption ? t.lightbox.picture : ""}
             loading="lazy"
             decoding="async"
             onError={() => setBroken((was) => new Set(was).add(picture.attachmentId))}
