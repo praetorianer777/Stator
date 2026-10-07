@@ -250,6 +250,13 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if kept := want(t, other.get(t, "/api/v1/themes/active"), http.StatusOK, "built-in kept"); kept.Body["theme"] != nil || kept.Body["source"] != "" {
 			t.Fatalf("the built-in theme was not kept: %s", kept.Raw)
 		}
+		// A print shows the organization's own, whatever its reader chose.
+		if org := want(t, other.get(t, "/api/v1/themes/default"), http.StatusOK, "the organization's theme"); obj(t, org, "theme")["id"] != themeID {
+			t.Fatalf("the organization's theme reads %s for a member who keeps the built-in", org.Raw)
+		}
+		if got := want(t, stranger.get(t, "/api/v1/themes/default"), http.StatusOK, "another organization's"); got.Body["theme"] != nil {
+			t.Fatalf("another organization reads this one's theme: %s", got.Raw)
+		}
 		want(t, other.put(t, "/api/v1/themes/active", map[string]any{"themeId": nil}), http.StatusOK, "back to the default")
 		if back := want(t, other.get(t, "/api/v1/themes/active"), http.StatusOK, "default again"); back.Body["source"] != "organization" {
 			t.Fatalf("the default did not come back: %s", back.Raw)

@@ -285,6 +285,9 @@ func (c *client) upload(t *testing.T, path, name string, data []byte) response {
 func (c *client) download(t *testing.T, path string) (*http.Response, []byte) {
 	t.Helper()
 	req, _ := http.NewRequest(http.MethodGet, c.api.srv.URL+path, nil)
+	if c.bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+c.bearer)
+	}
 	c.api.handOver(t, c, req.Method)
 	resp, err := c.http.Do(req)
 	if err != nil {
