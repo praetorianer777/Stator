@@ -406,6 +406,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/compare", s.handleCompareVersions)
 			r.Get("/pages/{pageID}/restrictions", s.handleGetPageRestrictions)
 			r.Put("/pages/{pageID}/restrictions", s.handleSetPageRestrictions)
+			r.Post("/pages/{pageID}/restrictions/check", s.handleCheckPageRestrictions)
 			r.Get("/pages/{pageID}/access/{userID}", s.handleInspectPageAccess)
 			r.Post("/pages/{pageID}/visit", s.handleVisitPage)
 			r.Get("/pages/{pageID}/views", s.handlePageViews)

@@ -15,7 +15,7 @@ func inspected(f Facts, published bool, chain ...InspectLink) InspectFacts {
 	for i := len(chain) - 1; i >= 0; i-- {
 		l := chain[i]
 		links = append(links, ChainLink{PageID: l.Page.ID, HiddenDraft: l.Hidden,
-			ViewListed: len(l.View.Listed) > 0, OnViewList: l.View.On, EditListed: len(l.Edit.Listed) > 0, OnEditList: l.Edit.On})
+			ViewListed: len(l.View.Listed) > 0, OnViewList: l.View.On, EditListed: len(l.Edit.Listed) > 0, OnEditList: l.Edit.On, Granted: l.Grant.On})
 	}
 	a := PageRules(f, links)
 	trashable := !chain[len(chain)-1].Page.Home
@@ -71,6 +71,12 @@ func TestEveryRefusalNamesTheStepThatDecidesIt(t *testing.T) {
 	draft.Hidden = true
 	admin := Facts{Member: true, Role: auth.RoleAdmin}
 	noUse := Facts{Member: true, Role: auth.RoleMember, Space: openSpace}
+	granted := chainPage("Granted", false)
+	granted.Grant = listed(true, "Bob")
+	grantedLocked := chainPage("Granted and locked", false)
+	grantedLocked.Grant = listed(true, "Bob")
+	grantedLocked.Edit = listed(false, "Ann")
+	reader := member(SpaceView, SpaceAddComments)
 
 	type verdict struct {
 		allowed bool
@@ -105,6 +111,14 @@ func TestEveryRefusalNamesTheStepThatDecidesIt(t *testing.T) {
 			RightView: {true, ""}, RightEdit: {true, ""}, RightDelete: {false, StepHome}, RightComment: {true, ""}}},
 		{"nor does it for somebody who cannot see it", inspected(noUse, true, home), map[Right]verdict{
 			RightDelete: {false, StepView}}},
+		{"a grant lets a reader edit, and nothing more", inspected(reader, true, home, granted, chainPage("Below", false)), map[Right]verdict{
+			RightView: {true, ""}, RightEdit: {true, ""}, RightDelete: {false, StepSpace}, RightComment: {true, ""}}},
+		{"a grant passes its own page's edit list", inspected(reader, true, home, grantedLocked), map[Right]verdict{
+			RightEdit: {true, ""}}},
+		{"a grant does not pass an edit list above it", inspected(reader, true, home, locked, granted), map[Right]verdict{
+			RightEdit: {false, StepList}}},
+		{"a grant does not let anybody past a view list", inspected(reader, true, home, secret, granted), map[Right]verdict{
+			RightView: {false, StepList}, RightEdit: {false, StepView}}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			rights := Explain(tt.facts)
@@ -176,5 +190,29 @@ func TestTheStepsNameTheirPagesListsAndGrants(t *testing.T) {
 				t.Errorf("%s: a %s step answers null for a list", r.Right, s.Kind)
 			}
 		}
+	}
+}
+
+func TestTheEditStepsNameTheGrantThatDecidesThem(t *testing.T) {
+	home := chainPage("Home", true)
+	granted := chainPage("Granted", false)
+	granted.Grant = listed(true, "Bob", "Team")
+	edit := Explain(inspected(member(SpaceView), true, home, granted, chainPage("Below", false)))[1]
+	var grant *AccessStep
+	for i := range edit.Steps {
+		if edit.Steps[i].Kind == StepSpace {
+			t.Errorf("the edit right names add pages, which the person does not need: %+v", edit.Steps[i])
+		}
+		if edit.Steps[i].Kind == StepGrant {
+			grant = &edit.Steps[i]
+		}
+	}
+	if grant == nil || !grant.Passed || grant.Page == nil || grant.Page.Title != "Granted" || grant.List == nil || *grant.List != ListEditGrant ||
+		len(grant.Via) != 1 || len(grant.Listed) != 2 {
+		t.Fatalf("the grant step is %+v", grant)
+	}
+	adds := Explain(inspected(member(openSpace...), true, home, granted))[1]
+	if adds.Steps[1].Kind != StepSpace {
+		t.Errorf("somebody who adds pages is told of a grant first: %+v", adds.Steps[1])
 	}
 }

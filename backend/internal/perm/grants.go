@@ -110,6 +110,12 @@ type PageCan struct {
 	Delete   bool `json:"delete"`
 	Restrict bool `json:"restrict"`
 	Comment  bool `json:"comment"`
+	// Add is adding pages below this one, and moving or copying it, which
+	// takes add pages in the space besides editing the page.
+	Add bool `json:"add"`
+	// GrantEdit is changing who else may edit the page and the pages below
+	// it, which the space's administrators may.
+	GrantEdit bool `json:"grantEdit"`
 	// Archive is archiving the page with the pages below it, or unarchiving it.
 	Archive bool `json:"archive"`
 }

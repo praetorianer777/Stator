@@ -152,6 +152,25 @@ func (s *Server) handleSetPageRestrictions(w http.ResponseWriter, r *http.Reques
 	respondJSON(w, r, http.StatusOK, map[string]any{"restrictions": restrictions})
 }
 
+func (s *Server) handleCheckPageRestrictions(w http.ResponseWriter, r *http.Request) {
+	id, apiErr := pathUUID(r, "pageID", "page")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req page.RestrictionsInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	check, err := s.Pages.CheckRestrictions(r.Context(), actorFrom(r), id, req)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"check": check})
+}
+
 func (s *Server) handleInspectPageAccess(w http.ResponseWriter, r *http.Request) {
 	id, apiErr := pathUUID(r, "pageID", "page")
 	if apiErr != nil {

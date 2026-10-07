@@ -140,6 +140,13 @@ func (p *Page) must(action perm.Action) error {
 	switch action {
 	case perm.EditPages:
 		allowed = p.access.Edit
+	case perm.ArrangePages:
+		if !p.access.Edit {
+			return p.Refusal(perm.EditPages)
+		}
+		allowed = p.access.Add
+	case perm.GrantEdit:
+		allowed = p.access.GrantEdit
 	case perm.DeletePages:
 		allowed = p.access.Delete
 	case perm.AddComments:

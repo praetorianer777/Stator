@@ -15,7 +15,7 @@ const (
 // Frozen takes away every right that would change an archived page.
 func (a PageAccess) Frozen() PageAccess {
 	if a.Archived != NotArchived {
-		a.Edit, a.Delete, a.Comment = false, false, false
+		a.Edit, a.Delete, a.Comment, a.Add, a.GrantEdit = false, false, false, false, false
 	}
 	return a
 }

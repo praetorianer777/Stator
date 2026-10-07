@@ -111,7 +111,7 @@ func (s *Service) TemplateButton(ctx context.Context, actor perm.Actor, in Templ
 			Template: TemplateRef{Key: tpl.Key, Name: tpl.Name, Title: tpl.Title},
 			SpaceKey: sp.Key, SpaceName: sp.Name,
 			Parent:    Ref{ID: p.ID, Title: p.Title, Home: p.Home},
-			CanCreate: p.must(perm.EditPages) == nil,
+			CanCreate: p.must(perm.ArrangePages) == nil,
 		}
 		return nil
 	})
