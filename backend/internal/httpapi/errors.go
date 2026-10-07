@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/docx"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/label"
@@ -472,6 +473,9 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(err.Error())}
 	case errors.Is(err, attachment.ErrEmpty):
 		return ErrValidation(map[string]string{"file": sentence(attachment.ErrEmpty.Error())})
+	case errors.Is(err, docx.ErrTooLarge):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "docx_too_large",
+			Message: "The Word file came out larger than this server hands out. Make the pictures on the page smaller, or split the page, and export it again.", cause: err}
 	case errors.Is(err, render.ErrUnavailable):
 		return &APIError{Status: http.StatusServiceUnavailable, Code: "render_unavailable",
 			Message: "PDF export is not set up on this server. Export the page as Markdown instead, or ask whoever runs Stator to start the render service.", cause: err}

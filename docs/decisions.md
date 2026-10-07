@@ -3,6 +3,83 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: A Word document is written by the api from the page's document, as its reader may read it
+
+A reader exports a page to .docx to edit it offline (#87).
+
+- **Written natively, in Go.** `internal/docx` writes Office Open XML
+  straight from the document tree: the parts of the package, Word's own
+  heading, list and table structures, and the page's pictures inside. It
+  needs nothing beyond the standard library and `golang.org/x/image`,
+  which the api already carries for WebP. The Go libraries that write
+  Word documents were no better: the complete one is sold under a
+  commercial licence, and the free ones cover a few paragraph types and
+  would still need every Stator block mapped by hand. Writing the XML
+  ourselves keeps the output predictable byte for byte, which the unit
+  tests read, and the format's rules (part order, element order, a cell
+  ending in a paragraph) are few once known.
+- **Not the converter.** The conversion service is a headless office suite
+  behind an API that turns office documents into PDF; it makes no Word
+  documents, and making one through it would mean writing HTML first and
+  trusting a third program's reading of it. It would also make export
+  depend on a service that is optional and off in the chart by default.
+  The integration test does hand the stack's converter each exported
+  document, as proof that an office suite opens it.
+- **What is exported.** The published page as the reader may read it,
+  never a draft, exactly as the PDF: the page through the page service
+  as the caller, an include through the same service with the chain it
+  sits in, so restrictions and cycles hold as they do on screen, and each
+  picture through the file service, which leaves out a file the reader
+  may not open with a sentence. A folder and a page never published are
+  refused with `not_exportable`; the menu does not offer them.
+- **Every block maps.** Headings are Word's heading styles by their
+  built-in names, so the navigation pane and Word's own contents find
+  them; each heading is bookmarked and the contents block lists the
+  headings as links to them. Lists use Word numbering, nested by level,
+  each numbered list counting from its own start; tasks are check box
+  characters. Tables keep header rows (repeated on each sheet), merged
+  cells and cell colours. Code is a monospace paragraph style. Panels,
+  quotes, expands and includes are one-cell tables with a coloured bar,
+  so they may hold lists, tables and pictures; columns and galleries are
+  tables without borders. `docs/word.md` lists every node, and a unit
+  test fails when the allowlist gains one without a mapping.
+- **Formulas and diagrams as their source.** A formula is its TeX in a
+  formula style: Word's equations are another language, and a translation
+  of TeX into it would be a second typesetter to keep right. A diagram is
+  drawn in the reader's browser; the render service prints whole pages
+  and has no way to hand back one diagram as a picture, so a diagram is
+  its Mermaid source under a sentence saying Stator draws it. Both stay
+  editable, which is what an offline copy is for.
+- **Generated blocks as a sentence.** What a task report, a list of pages,
+  a calendar, contributors or an Armature block shows is read for each
+  reader when they open the page, and goes stale in a file; the document
+  says what the block shows and that the page in Stator has it as it is
+  now, as a comparison of versions does. A chart from a table keeps its
+  table.
+- **The reader's words.** The added words, the dates and the language
+  Word checks spelling in follow the reader's language, chosen or else
+  their browser's, as the PDF's. The document's properties carry the
+  title, the space, who made the page and who changed it last, the
+  version and the days; for anybody, who is told nothing about who wrote
+  a page, without the people.
+- **Anybody, and a public link.** What anybody may read anybody may
+  export, from the public view and from a public link, as anybody reads
+  it: `GET /public/{org}/pages/{id}/docx` and
+  `GET /public/{org}/links/{token}/docx`, braked at six a minute per page
+  from one address as prints are, since each export reads every picture.
+  For anybody an include is a link to the page; for a link's holder it is
+  a sentence, and a link's document carries no address with its token,
+  since a file travels further than a link is meant to.
+- **Limits.** Pictures are read up to 50 MB in all, as large as a PDF
+  may be; past that the export is refused with `docx_too_large` and a
+  sentence. PNG, JPEG and GIF go in as they are and WebP is drawn again
+  as PNG; other files are left out with a sentence.
+- **Audited as PDF is.** A member's export is `page.exported` with scope
+  `docx`; an export by anybody is not.
+- **Not an MCP tool.** A Word document is a file for a person to edit or
+  hand on; `get_page` and `get_page_markdown` carry the same words to a
+  model.
+
 ## 2026-10-07: The worker makes the example space, and the page follows its job
 
 Making the example space (#288) took one request: some twenty pages, their
