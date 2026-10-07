@@ -1439,6 +1439,16 @@ export const de: Messages = {
     removed: (name: string) => `${name} gelöscht.`,
     confirmRemove: (name: string) =>
       `${name} endgültig löschen? Die Datei lässt sich nicht wiederherstellen, und die Seite und ihre älteren Versionen zeigen sie als fehlende Datei.`,
+    confirmRemoveAll: (name: string, n: number) =>
+      `${name} mit allen ${n} Versionen endgültig löschen? Keine davon lässt sich wiederherstellen, und die Seite und ihre älteren Versionen zeigen sie als fehlende Dateien.`,
+    removeVersion: (name: string, n: number) => `${name}, Version ${n} löschen`,
+    confirmRemoveVersion: (name: string, n: number) =>
+      `Version ${n} von ${name} endgültig löschen? Die anderen Versionen bleiben, und wo die Seite diese Version zeigt, zeigt sie eine fehlende Datei.`,
+    removedVersion: (name: string, n: number) => `Version ${n} von ${name} gelöscht.`,
+    restore: "Wiederherstellen",
+    restoreVersion: (name: string, n: number) => `${name}, Version ${n} wiederherstellen`,
+    restored: (name: string, from: number, to: number) => `Version ${from} von ${name} als Version ${to} wiederhergestellt.`,
+    restoredFrom: (n: number) => `wiederhergestellt aus Version ${n}`,
     uploadedBy: (who: string, when: string) => `${who}, ${when}`,
     tooLarge: (name: string, size: string, limit: string) =>
       `${name} (${size}) ist größer, als diese Website annimmt.${limit ? ` ${limit}` : ""} Verkleinern Sie die Datei oder teilen Sie sie auf, und hängen Sie sie erneut an.`,

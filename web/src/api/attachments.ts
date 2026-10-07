@@ -188,15 +188,39 @@ export function useUploadAttachments(pageId: string) {
   return { upload, pending, errors, clearErrors };
 }
 
+/** What to delete: one version of a file, or with every set all the versions of its name. */
+export interface DeleteAttachment {
+  id: string;
+  every?: boolean;
+}
+
 export function useDeleteAttachment(pageId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      await api.DELETE("/attachments/{attachmentID}", { params: { path: { attachmentID: id } } });
-      return id;
+    mutationFn: async (target: DeleteAttachment) => {
+      await api.DELETE("/attachments/{attachmentID}", {
+        params: { path: { attachmentID: target.id }, query: target.every ? { versions: "all" } : {} },
+      });
+      return target;
     },
-    onSuccess: (id) => {
-      queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => list?.filter((a) => a.id !== id));
+    onSuccess: ({ id, every }) => {
+      queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => {
+        const name = list?.find((a) => a.id === id)?.fileName.toLowerCase();
+        return list?.filter((a) => a.id !== id && !(every && a.fileName.toLowerCase() === name));
+      });
+      return queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
+    },
+  });
+}
+
+/** Brings an earlier version of a file back as its name's next version. */
+export function useRestoreAttachment(pageId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<Attachment> =>
+      (await api.POST("/attachments/{attachmentID}/restore", { params: { path: { attachmentID: id } } })).data!.attachment,
+    onSuccess: (made) => {
+      queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => (list ? [made, ...list.filter((a) => a.id !== made.id)] : list));
       return queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
     },
   });

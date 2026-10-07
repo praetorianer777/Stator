@@ -488,8 +488,11 @@ var operations = []operation{
 		query: []param{{name: "inline", description: "1 to show images, videos, PDFs and text in place."}}, responses: map[int]any{200: nil, 206: nil, 416: errorEnvelope{}}},
 	{method: "GET", path: "/attachments/{attachmentID}/preview", handler: "handlePreviewAttachment", tag: "attachments", summary: "A file as a PDF to show in place: a PDF itself, or an office document converted once and kept. Refused with no_preview for any other file, and with preview_failed, preview_too_large, preview_off or preview_unavailable when there is no PDF to show.", binary: true,
 		responses: map[int]any{200: nil, 413: errorEnvelope{}, 415: errorEnvelope{}, 422: errorEnvelope{}, 503: errorEnvelope{}}},
-	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a file off its page for good.",
+	{method: "DELETE", path: "/attachments/{attachmentID}", handler: "handleDeleteAttachment", tag: "attachments", summary: "Take a version of a file off its page for good, or with versions=all every version of its name.",
+		query:     []param{{name: "versions", schema: &openapi.Schema{Type: "string", Enum: []string{"all"}}, description: "all deletes every version of the file's name; absent deletes this version alone."}},
 		responses: none()},
+	{method: "POST", path: "/attachments/{attachmentID}/restore", handler: "handleRestoreAttachment", tag: "attachments", summary: "Bring an earlier version of a file back as its name's next version, with that version's bytes. Refused with already_latest for the latest version.",
+		responses: map[int]any{201: env{"attachment": attachment.Attachment{}}, 409: errorEnvelope{}}},
 
 	// Comments (#22) and inline comments (#23); see docs/api-contract-m2.md.
 	{method: "GET", path: "/pages/{pageID}/comments", handler: "handleListComments", tool: "list_comments", toolHelp: "A page's comment threads, oldest first.", tag: "comments",

@@ -843,6 +843,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   read them. `get_blog`, `list_posts` and `create_post` are MCP tools. The
   database holds a post outside the tree, unpublished when written, to
   whoever may add pages to a space not archived, and keeps its date.
+- Restoring a file's version (#95). The attachments below a page list each
+  name once, latest first, with its earlier versions under it to download,
+  preview, restore or delete; the files block restores too. A restore
+  (`POST /attachments/{id}/restore`) uploads that version's bytes again as
+  the name's next version, marked `restoredFrom`, so nothing is
+  overwritten; the latest is refused with `already_latest`. Deleting a
+  name deletes all its versions (`DELETE /attachments/{id}?versions=all`).
+  The database holds a restore to an earlier version of the same file, by
+  whoever may edit the page.
 
 ### Changed
 

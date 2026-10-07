@@ -3,6 +3,55 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-07: Restoring a file's version uploads it again, and a file is deleted with all its versions
+
+Re-uploads were versions already (#58): each upload of a name to a page is
+its own row with its own bytes, numbered by a trigger. #95 adds the list of
+a name's versions below the page and the way back to an earlier one.
+
+- **A restore is a new version.** `POST /attachments/{id}/restore` reads
+  that version's bytes and writes them as the name's next version, by the
+  same path an upload takes (`add` in the service, which an edited picture
+  of #94 will take too). Nothing moves and nothing is overwritten: the app
+  role has no UPDATE on `attachment`, and a pointer to the "current"
+  version would be a column the database had to keep right on every
+  upload, delete and copy. The history only grows, as a page's does.
+- **The new row says where it came from.** `restored_from` holds the
+  version it brought back, and the stamping trigger refuses a row whose
+  `restored_from` is not an earlier version of the same name on the same
+  page, the latest included, so a raw INSERT cannot claim a restore that
+  never was. It is a number, not a reference: deleting the version later
+  leaves the restore's word for where it came from. A copy of a page
+  renumbers its versions, so its rows carry no `restored_from`.
+- **The latest is not restored.** It would add a copy of what is already
+  shown; the API answers 409 `already_latest` with a sentence naming the
+  version.
+- **Who restores** is who may upload to the page: the page's edit rule,
+  checked by the service and held by the insert policy that every upload
+  meets. The restore is that person's upload, dated when they made it.
+- **Not audited.** Uploads, deletes and restores of a page's versions are
+  not in the audit log, and neither is a file's; both are the page's own
+  history, which its editors read.
+- **What pages show after a restore.** A picture or a chip names one
+  version by id, so it goes on showing exactly that version, as an older
+  page version does. The files block shows each name's latest, so it
+  shows the restored one. Nothing names a file by its name alone.
+- **Deleting.** The panel's delete on a name removes every version of it
+  (`DELETE /attachments/{id}?versions=all`), in one transaction, with
+  their previews, and each object goes after the commit or to the reaper.
+  An earlier version is deleted on its own from its row in the list, and
+  the others keep their numbers. Deleting only the latest from the name's
+  row would have quietly made the previous version current, which a
+  restore does openly.
+- **No quota.** Files are limited per upload (`STATOR_UPLOAD_LIMIT`) and
+  not per page or organization; a restore weighs what the version did,
+  and the same limit already held it.
+
+The panel below a page now lists each name once, latest first, with its
+earlier versions in a disclosure to download, preview, restore or delete;
+the files block offers the restore too. Both read the one list the API
+already served.
+
 ## 2026-10-07: Pictures and videos open in a lightbox of our own, and files are served by the range
 
 A reader looks at a picture or a video of a page without downloading it

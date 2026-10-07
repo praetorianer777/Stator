@@ -162,6 +162,7 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &pgErr) && (pgErr.ConstraintName == underPostConstraint || pgErr.ConstraintName == postTreeConstraint) {
 		err = page.ErrPostPlace
 	}
+	var alreadyLatest *attachment.AlreadyLatestError
 	var scheduled *page.ScheduleTakenError
 	if errors.As(err, &scheduled) {
 		return &APIError{Status: http.StatusConflict, Code: "schedule_taken", Message: scheduled.Error()}
@@ -448,6 +449,8 @@ func toAPIError(err error) *APIError {
 		return ErrConflict("Somebody else saved this page after you opened it. Copy your changes, reload the page and make them again.")
 	case errors.Is(err, attachment.ErrNotFound):
 		return ErrNotFound("That file was not found. It may have been deleted, or its page moved to the trash.")
+	case errors.As(err, &alreadyLatest):
+		return &APIError{Status: http.StatusConflict, Code: "already_latest", Message: sentence(alreadyLatest.Error())}
 	case errors.Is(err, attachment.ErrTooLarge):
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(err.Error())}
 	case errors.Is(err, attachment.ErrEmpty):

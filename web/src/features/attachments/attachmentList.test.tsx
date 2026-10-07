@@ -8,7 +8,7 @@ import { axeViolations } from "@/test/axe";
 import { allowlist } from "@/test/allowlist";
 import { stubUploads, upload } from "@/test/xhr";
 import { AttachmentList } from "./AttachmentList";
-import { byName } from "./versions";
+import { byName, versionNote } from "./versions";
 
 afterEach(() => {
   cleanup();
@@ -28,6 +28,7 @@ const file = (over: Partial<Attachment>): Attachment => ({
   createdAt: "2026-09-29T09:00:00Z",
   version: 1,
   versions: 1,
+  restoredFrom: null,
   preview: "office",
   ...over,
 });
@@ -93,6 +94,55 @@ describe("the list of files", () => {
     expect(upload(uploads, 0).url).toBe(`/api/v1/pages/${pageId}/attachments`);
     act(() => upload(uploads, 0).respond(201, { attachment: { ...notes, id: "0195f000-0000-7000-8000-0000000000f4", version: 2, versions: 2 } }));
     await waitFor(() => expect(within(list).getByRole("status")).toHaveTextContent("Uploaded notes.txt as version 2."));
+  });
+
+  it("restores an earlier version for whoever may edit, and says what the restore refused", async () => {
+    const restored = file({ id: "0195f000-0000-7000-8000-0000000000f5", version: 4, versions: 3, restoredFrom: 1 });
+    let listed = [third, first];
+    const sent = stubApi({
+      [`GET /pages/${pageId}/attachments`]: () => ({ status: 200, body: { attachments: listed } }),
+      [`POST /attachments/${first.id}/restore`]: () => {
+        listed = [restored, third, first];
+        return { status: 201, body: { attachment: restored } };
+      },
+    });
+    const user = userEvent.setup();
+    shown(true);
+    const list = await screen.findByRole("region", { name: "Files on this page" });
+    await user.click(await within(list).findByText("1 earlier version"));
+    await user.click(within(list).getByRole("button", { name: "Restore Budget.XLSX, version 1" }));
+    await waitFor(() => expect(within(list).getByRole("status")).toHaveTextContent("Restored version 1 of Budget.XLSX as version 4."));
+    expect(sent.some((r) => r.method === "POST" && r.path === `/attachments/${first.id}/restore`)).toBe(true);
+    await waitFor(() => expect(within(list).getByText(/Version 4, restored from version 1/)).toBeInTheDocument());
+
+    cleanup();
+    stubApi({
+      [`GET /pages/${pageId}/attachments`]: { status: 200, body: { attachments: [third, first] } },
+      [`POST /attachments/${first.id}/restore`]: {
+        status: 409,
+        body: { error: { code: "already_latest", message: "Version 1 of Budget.XLSX is already the latest; restore an earlier version instead." } },
+      },
+    });
+    shown(true);
+    const again = await screen.findByRole("region", { name: "Files on this page" });
+    await user.click(await within(again).findByText("1 earlier version"));
+    await user.click(within(again).getByRole("button", { name: "Restore Budget.XLSX, version 1" }));
+    expect(await within(again).findByRole("alert")).toHaveTextContent("restore an earlier version instead.");
+  });
+
+  it("offers a reader no restore", async () => {
+    stubApi({ [`GET /pages/${pageId}/attachments`]: { status: 200, body: { attachments: [third, first] } } });
+    const user = userEvent.setup();
+    shown(false);
+    const list = await screen.findByRole("region", { name: "Files on this page" });
+    await user.click(await within(list).findByText("1 earlier version"));
+    expect(within(list).queryByRole("button", { name: /^Restore/ })).toBeNull();
+  });
+
+  it("says which version a file is and where a restored one came from", () => {
+    expect(versionNote({ version: 1, restoredFrom: null })).toBe("");
+    expect(versionNote({ version: 2, restoredFrom: null })).toBe("Version 2");
+    expect(versionNote({ version: 5, restoredFrom: 2 })).toBe("Version 5, restored from version 2");
   });
 
   it("says when there are no files, and asks an unsaved page to be saved first", async () => {

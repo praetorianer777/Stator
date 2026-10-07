@@ -20,7 +20,11 @@ labels: anleitung, schreiben
 
 ## Versionen
 
-Eine Datei, die unter einem Namen hochgeladen wird, den die Seite schon hat, gleich in welcher Schreibung, wird dessen nächste Version. Die älteren Versionen bleiben, so zeigt eine ältere Version der Seite weiter die Datei, die sie gezeigt hat. Eine Datei zu löschen ist endgültig; die Seite zeigt sie dann als fehlend.
+Eine Datei, die unter einem Namen hochgeladen wird, den die Seite schon hat, gleich in welcher Schreibung, wird dessen nächste Version. Die älteren Versionen bleiben, so zeigt eine ältere Version der Seite weiter die Datei, die sie gezeigt hat.
+
+- **Anhänge** listet jeden Namen einmal, mit seinen früheren Versionen darunter zum Herunterladen, Wiederherstellen oder Löschen.
+- **Wiederherstellen** holt eine frühere Version mit ihrem Inhalt als neueste zurück. Aus der Geschichte geht nichts verloren, und der Block **Dateien** zeigt von da an die wiederhergestellte Version.
+- Eine Datei zu löschen löscht alle ihre Versionen endgültig; die Seite zeigt sie dann als fehlend. Eine frühere Version lässt sich auch einzeln löschen.
 
 ## Vorschauen
 

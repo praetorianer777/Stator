@@ -276,7 +276,7 @@ export interface paths {
         get: operations["downloadAttachment"];
         put?: never;
         post?: never;
-        /** Take a file off its page for good. */
+        /** Take a version of a file off its page for good, or with versions=all every version of its name. */
         delete: operations["deleteAttachment"];
         options?: never;
         head?: never;
@@ -294,6 +294,23 @@ export interface paths {
         get: operations["previewAttachment"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachmentID}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bring an earlier version of a file back as its name's next version, with that version's bytes. Refused with already_latest for the latest version. */
+        post: operations["restoreAttachment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3222,6 +3239,7 @@ export interface components {
             pageId: string;
             /** @enum {string} */
             preview: "none" | "pdf" | "office";
+            restoredFrom: number | null;
             size: number;
             uploadedByName: string;
             version: number;
@@ -5955,7 +5973,10 @@ export interface operations {
     };
     deleteAttachment: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description all deletes every version of the file's name; absent deletes this version alone. */
+                versions?: "all";
+            };
             header?: never;
             path: {
                 attachmentID: string;
@@ -6031,6 +6052,48 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    restoreAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attachment: components["schemas"]["Attachment"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

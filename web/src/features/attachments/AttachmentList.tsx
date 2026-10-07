@@ -1,11 +1,11 @@
 import { useRef, useState, type ReactNode } from "react";
-import { attachmentUrl, canPreview, formatSize, useAttachments, useUploadAttachments, type Attachment } from "@/api/attachments";
+import { attachmentUrl, canPreview, formatSize, useAttachments, useRestoreAttachment, useUploadAttachments, type Attachment } from "@/api/attachments";
 import { Button, ErrorBanner } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 import { PreviewButton } from "./PreviewDialog";
-import { byName } from "./versions";
+import { byName, versionNote } from "./versions";
 
 const day = localDateFormat({ dateStyle: "medium" });
 
@@ -28,19 +28,20 @@ function FileLink({ file, label }: { file: Attachment; label: string }) {
 function meta(file: Attachment): string {
   return [
     formatSize(file.size),
-    t.attachmentList.version(file.version),
+    versionNote(file) || t.attachmentList.version(file.version),
     t.attachments.uploadedBy(file.uploadedByName || t.attachmentList.someone, day.format(new Date(file.createdAt))),
   ].join(" · ");
 }
 
 /**
- * The files of a page in its content, the latest version of each name with
- * the earlier ones a click away; whoever may edit the page uploads here too.
+ * The files of a page in its content, the latest version of each name with the
+ * earlier ones a click away; whoever may edit the page uploads and restores here too.
  */
 export function AttachmentList({ pageId, editable }: { pageId: string | undefined; editable: boolean }) {
   const l = t.attachmentList;
   const files = useAttachments(pageId);
   const { upload, pending, errors, clearErrors } = useUploadAttachments(pageId ?? "");
+  const restore = useRestoreAttachment(pageId ?? "");
   const input = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState("");
 
@@ -84,6 +85,22 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
                     <li key={file.id} data-earlier-version={file.version}>
                       <FileLink file={file} label={l.versionOf(file.fileName, file.version)} />
                       <PreviewButton file={file} label={l.versionOf(file.fileName, file.version)} />
+                      {editable && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={restore.isPending}
+                          aria-label={t.attachments.restoreVersion(file.fileName, file.version)}
+                          onClick={() => {
+                            clearErrors();
+                            restore.reset();
+                            restore.mutate(file.id, { onSuccess: (made) => setNotice(t.attachments.restored(file.fileName, file.version, made.version)) });
+                          }}
+                          data-action="restore-attachment"
+                        >
+                          {t.attachments.restore}
+                        </Button>
+                      )}
                       <span className="doc-page-list-meta"> {meta(file)}</span>
                     </li>
                   ))}
@@ -127,6 +144,7 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
       {errors.map((message) => (
         <ErrorBanner key={message}>{message}</ErrorBanner>
       ))}
+      {restore.error && <ErrorBanner>{restore.error.message}</ErrorBanner>}
       {pending.map((each) => {
         const percent = Math.round(each.progress * 100);
         const label = t.attachments.uploading(each.fileName, percent);

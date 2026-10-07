@@ -177,13 +177,42 @@ func (s *Server) handleDeleteAttachment(w http.ResponseWriter, r *http.Request) 
 		respondError(w, r, apiErr)
 		return
 	}
-	lsn, err := s.Attachments.Delete(r.Context(), actorFrom(r), id)
+	every := false
+	switch r.URL.Query().Get("versions") {
+	case "":
+	case "all":
+		every = true
+	default:
+		respondError(w, r, ErrValidation(map[string]string{"versions": "Say all to delete every version of the file, or leave it out to delete this version alone."}))
+		return
+	}
+	lsn, err := s.Attachments.Delete(r.Context(), actorFrom(r), id, every)
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
 	respondNoContent(w)
+}
+
+// handleRestoreAttachment brings an earlier version back as the latest, as a
+// new version with its bytes.
+func (s *Server) handleRestoreAttachment(w http.ResponseWriter, r *http.Request) {
+	if !s.attachmentsOn(w, r) {
+		return
+	}
+	id, apiErr := pathUUID(r, "attachmentID", "file")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	restored, lsn, err := s.Attachments.Restore(r.Context(), actorFrom(r), id)
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusCreated, map[string]any{"attachment": restored})
 }
 
 // attachmentsOn answers for a server built without the file service, such as

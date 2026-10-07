@@ -26,6 +26,7 @@ const file = (over: Partial<Attachment>): Attachment => ({
   createdAt: "2026-09-29T09:00:00Z",
   version: 2,
   versions: 2,
+  restoredFrom: null,
   preview: "office",
   ...over,
 });

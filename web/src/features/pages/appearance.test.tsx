@@ -31,6 +31,7 @@ const picture: Attachment = {
   uploadedByName: "Ada",
   version: 1,
   versions: 1,
+  restoredFrom: null,
   preview: "none",
 };
 const node: TreeNode = {

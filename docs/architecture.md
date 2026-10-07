@@ -110,7 +110,7 @@ process, which is only right for a single api process. `/readyz` and
 | `template` | page templates, and the space templates a new space starts from |
 | `example` | the example space that explains Stator: its pages as Markdown per language, made through the other services |
 | `search` | PostgreSQL full-text search (`tsvector`, GIN, `websearch_to_tsquery`) |
-| `attachment` | uploads to S3-compatible storage, served whole or by the byte range a video player asks for, and their PDF previews, converted once and kept |
+| `attachment` | uploads to S3-compatible storage, each upload of a name its next version and a restore an upload of an earlier one, served whole or by the byte range a video player asks for, and their PDF previews, converted once and kept |
 | `convert` | the client of the conversion service that turns office documents into PDF |
 | `markdown` | a document as Markdown and Markdown as a document, held to the allowlist |
 | `mdio` | Markdown import and export of pages, subtrees and their files, through the page and file services |

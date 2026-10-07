@@ -20,7 +20,11 @@ labels: guide, writing
 
 ## Versions
 
-A file uploaded under a name the page has already, whatever its capitals, becomes that file's next version. The older versions stay, so an older version of the page still shows the file it showed. Deleting a file is for good; the page then shows it as missing.
+A file uploaded under a name the page has already, whatever its capitals, becomes that file's next version. The older versions stay, so an older version of the page still shows the file it showed.
+
+- **Attachments** lists each name once, with its earlier versions under it to download, restore or delete.
+- **Restore** brings an earlier version back as the newest one, with its contents. Nothing in the history is lost, and the **Files** block shows the restored version from then on.
+- Deleting a file deletes all its versions for good, and the page then shows it as missing. An earlier version can be deleted on its own.
 
 ## Previews
 

@@ -73,6 +73,14 @@ func TestAnUploadNeedsAPartNamedFile(t *testing.T) {
 
 // Every way a preview can be missing reads as a sentence that says to
 // download the file, under a code of its own the client can tell apart.
+func TestRestoringTheLatestVersionSaysWhichToRestore(t *testing.T) {
+	got := toAPIError(fmt.Errorf("restore: %w", &attachment.AlreadyLatestError{Name: "budget.csv", Version: 3}))
+	want := "Version 3 of budget.csv is already the latest; restore an earlier version instead."
+	if got.Status != http.StatusConflict || got.Code != "already_latest" || got.Message != want {
+		t.Errorf("answered %d %s %q, want 409 already_latest %q", got.Status, got.Code, got.Message, want)
+	}
+}
+
 func TestAMissingPreviewSaysToDownloadTheFile(t *testing.T) {
 	for _, c := range []struct {
 		err    error
