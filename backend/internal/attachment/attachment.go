@@ -31,6 +31,9 @@ type Attachment struct {
 	// 1 for the first; Versions is how many of them the page still holds.
 	Version  int `json:"version"`
 	Versions int `json:"versions"`
+	// RestoredFrom is the earlier version whose bytes a restore brought back
+	// as this one; null for an upload.
+	RestoredFrom *int `json:"restoredFrom"`
 	// Preview says whether the file can be shown in place as a PDF, and how.
 	Preview PreviewKind `json:"preview"`
 }

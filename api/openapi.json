@@ -1360,7 +1360,7 @@
     "/attachments/{attachmentID}": {
       "delete": {
         "operationId": "deleteAttachment",
-        "summary": "Take a file off its page for good.",
+        "summary": "Take a version of a file off its page for good, or with versions=all every version of its name.",
         "tags": [
           "attachments"
         ],
@@ -1372,6 +1372,17 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "versions",
+            "in": "query",
+            "description": "all deletes every version of the file's name; absent deletes this version alone.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all"
+              ]
             }
           }
         ],
@@ -1524,6 +1535,66 @@
           },
           "503": {
             "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachments/{attachmentID}/restore": {
+      "post": {
+        "operationId": "restoreAttachment",
+        "summary": "Bring an earlier version of a file back as its name's next version, with that version's bytes. Refused with already_latest for the latest version.",
+        "tags": [
+          "attachments"
+        ],
+        "parameters": [
+          {
+            "name": "attachmentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachment": {
+                      "$ref": "#/components/schemas/Attachment"
+                    }
+                  },
+                  "required": [
+                    "attachment"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -14453,6 +14524,12 @@
               "office"
             ]
           },
+          "restoredFrom": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "size": {
             "type": "integer"
           },
@@ -14484,6 +14561,7 @@
           "createdAt",
           "version",
           "versions",
+          "restoredFrom",
           "preview"
         ]
       },
