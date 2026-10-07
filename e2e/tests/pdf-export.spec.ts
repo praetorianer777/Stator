@@ -8,6 +8,8 @@ import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spa
 import { WEB_URL } from "../fixtures/stack";
 
 const ANONYMOUS = { cookies: [], origins: [] };
+/** A print may take as long as the api gives it, STATOR_RENDER_TIMEOUT's 20 seconds, while the suite keeps the stack busy. */
+const PRINTED = { timeout: 25_000 } as const;
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const pdfDialog = (page: Page) => page.locator("[data-pdf-export]");
@@ -81,7 +83,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
       const guide = await createPage(api, space.homePageId, `Guide ${word}`, richBody(word, included.id));
       await openTitled(page, `/s/${key}/p/${guide.id}/guide`, guide.title);
 
-      const downloading = page.waitForEvent("download");
+      const downloading = page.waitForEvent("download", PRINTED);
       await openPageMenuItem(page, "export-pdf");
       await expect(pdfDialog(page)).toBeVisible();
       const file = await downloading;
@@ -119,7 +121,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
       const reader = await context.newPage();
 
       await openTitled(reader, `/public/${org}/s/${key}/p/${guide.id}/open`, guide.title);
-      const downloading = reader.waitForEvent("download");
+      const downloading = reader.waitForEvent("download", PRINTED);
       await reader.locator('[data-action="export-pdf"]').click();
       const file = await downloading;
       expect(file.suggestedFilename()).toMatch(new RegExp(`^${key}-open-${word}-`));
@@ -127,7 +129,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
 
       const link = must(await api.POST("/pages/{pageID}/public-links", { params: { path: { pageID: guide.id } }, body: {} }));
       await openTitled(reader, link.path, guide.title);
-      const linked = reader.waitForEvent("download");
+      const linked = reader.waitForEvent("download", PRINTED);
       await reader.locator('[data-action="export-pdf"]').click();
       const linkedFile = await linked;
       expect(linkedFile.suggestedFilename()).toMatch(new RegExp(`^open-${word}-`));
@@ -161,7 +163,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
         await openPageMenuItem(page, "export-pdf");
         await expect(pdfDialog(page).getByRole("status")).toBeVisible();
         await expectAccessible(page);
-        const downloading = page.waitForEvent("download");
+        const downloading = page.waitForEvent("download", PRINTED);
         release();
         await downloading;
         await expect(pdfDialog(page)).toHaveCount(0);
@@ -173,7 +175,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
         await expect(pdfDialog(page).getByRole("alert")).toContainText("Check your connection and try again.");
         await expectAccessible(page);
         await page.unroute("**/api/v1/pages/*/pdf");
-        const retried = page.waitForEvent("download");
+        const retried = page.waitForEvent("download", PRINTED);
         await pdfDialog(page).getByRole("button", { name: "Retry" }).click();
         await retried;
         await expect(pdfDialog(page)).toHaveCount(0);
