@@ -1,6 +1,6 @@
 {{- if .Values.jobs.seed.enabled }}
 {{- if eq .Values.env "production" }}
-{{- fail "jobs.seed.enabled is true but env is production. The seed makes the development organization and its people, which have no place in production: turn jobs.seed.enabled off." }}
+{{- fail "jobs.seed.enabled is true but env is production. The seed makes the development organization and its people, which have no place in production: turn jobs.seed.enabled off, and set jobs.bootstrap.enabled to make the organization and its administrator." }}
 {{- end }}
 apiVersion: batch/v1
 kind: Job

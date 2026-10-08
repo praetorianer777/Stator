@@ -25,7 +25,7 @@ func clean(t *testing.T) {
 		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
-		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
+		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_BOOTSTRAP_ORG_SLUG", "STATOR_BOOTSTRAP_ORG_NAME", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
 		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
 		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
 		"STATOR_VERIFICATION_CHECK_INTERVAL", "STATOR_TASK_DUE_CHECK_INTERVAL", "STATOR_SCHEDULE_CHECK_INTERVAL",
@@ -662,6 +662,32 @@ func TestSpaceTransfersHaveSaneBounds(t *testing.T) {
 		t.Setenv(key, bad)
 		if _, err := Load(); err == nil || !strings.Contains(err.Error(), key) {
 			t.Errorf("%s=%s should be refused by name, got %v", key, bad, err)
+		}
+	}
+}
+
+func TestTheBootstrapOrganizationIsNamedOrDefaultsToTheDemo(t *testing.T) {
+	clean(t)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Bootstrap.OrgSlug != "demo" || c.Bootstrap.OrgName != "Demo" {
+		t.Errorf("default organization = %q %q", c.Bootstrap.OrgSlug, c.Bootstrap.OrgName)
+	}
+	t.Setenv("STATOR_BOOTSTRAP_ORG_SLUG", "acme")
+	t.Setenv("STATOR_BOOTSTRAP_ORG_NAME", "Acme Corp")
+	if c, err = Load(); err != nil || c.Bootstrap.OrgSlug != "acme" || c.Bootstrap.OrgName != "Acme Corp" {
+		t.Fatalf("named organization = %+v, %v", c.Bootstrap, err)
+	}
+}
+
+func TestABootstrapSlugTheDatabaseWouldRefuseIsRefusedAtOnce(t *testing.T) {
+	for _, slug := range []string{"A", "ab", "-acme", "acme-", "Acme", "acme corp", "a_b_c"} {
+		clean(t)
+		t.Setenv("STATOR_BOOTSTRAP_ORG_SLUG", slug)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_BOOTSTRAP_ORG_SLUG") {
+			t.Errorf("slug %q should be refused by name: %v", slug, err)
 		}
 	}
 }
