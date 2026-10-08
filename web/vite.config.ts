@@ -49,7 +49,8 @@ function excalidrawAssets(): Plugin {
     },
     transform(code, id) {
       if (!id.includes("@excalidraw/excalidraw") || !code.includes("ASSETS_FALLBACK_URL")) return null;
-      if (!fallback.test(code)) this.error("Excalidraw no longer names its font CDN as this build expects; find its ASSETS_FALLBACK_URL and point it at our own fonts again.");
+      if (!fallback.test(code))
+        this.error("Excalidraw no longer names its font CDN as this build expects; find its ASSETS_FALLBACK_URL and point it at our own fonts again.");
       return { code: code.replace(fallback, ownFallback), map: null };
     },
     generateBundle() {

@@ -107,13 +107,23 @@ export const Sketch = Node.create({
         getAttrs: (el) => {
           const scene = (el as HTMLElement).getAttribute("data-scene");
           const drawing = (el as HTMLElement).getAttribute("data-drawing");
-          return scene && readScene(scene) ? { scene, drawing: drawing ? cleanDrawing(drawing) : null, title: sketchTitle((el as HTMLElement).getAttribute("data-title")) } : false;
+          return scene && readScene(scene)
+            ? { scene, drawing: drawing ? cleanDrawing(drawing) : null, title: sketchTitle((el as HTMLElement).getAttribute("data-title")) }
+            : false;
         },
       },
     ];
   },
   renderHTML({ node }) {
-    return ["figure", { "data-sketch": "", "data-scene": String(node.attrs.scene ?? ""), "data-drawing": String(node.attrs.drawing ?? ""), "data-title": String(node.attrs.title ?? "") }];
+    return [
+      "figure",
+      {
+        "data-sketch": "",
+        "data-scene": String(node.attrs.scene ?? ""),
+        "data-drawing": String(node.attrs.drawing ?? ""),
+        "data-title": String(node.attrs.title ?? ""),
+      },
+    ];
   },
   renderText({ node }) {
     return String(node.attrs.title ?? "");

@@ -663,7 +663,8 @@ export const PUBLIC_LINK_LABEL_MAX_LENGTH = 60;
 /** How long a print view stays quiet, nothing loading or drawing, before it says it is ready to print. */
 export const PRINT_SETTLE_MS = 300;
 /** What a print view waits out: a skeleton, a busy region, a diagram or sketch being drawn or a preview loading. */
-export const PRINT_PENDING_SELECTOR = '[data-skeleton], [aria-busy="true"], [data-diagram-state="drawing"], [data-sketch-state="drawing"], [data-preview-loading]';
+export const PRINT_PENDING_SELECTOR =
+  '[data-skeleton], [aria-busy="true"], [data-diagram-state="drawing"], [data-sketch-state="drawing"], [data-preview-loading]';
 
 /** How often a page following a space's export or import asks how it goes. */
 export const SPACE_TRANSFER_POLL_MS = 1000;
