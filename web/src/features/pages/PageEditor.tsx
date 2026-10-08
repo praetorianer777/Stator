@@ -27,7 +27,7 @@ import type { CollabSession, CollabSnapshot, CollabUser, SeedContent } from "@/f
 import { colorFor, setSharedTitle, titleOf } from "@/features/collab/shared";
 import { useCollab } from "@/features/collab/useCollab";
 import { DocPageContext } from "@/features/editor/BlockViews";
-import { Editor } from "@/features/editor/Editor";
+import { Editor, type EditorHandle } from "@/features/editor/Editor";
 import { emptyDoc, type Doc } from "@/features/editor/schema";
 import { fillSharedDraft, sharedBody } from "@/features/editor/sharedDraft";
 import { DRAFT_AUTOSAVE_MS, PAGE_TITLE_MAX_LENGTH } from "@/config";
@@ -133,6 +133,10 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   const issueKeys = useMemo(() => issueKeysOf(body), [body]);
   const [dialog, setDialog] = useState(false);
   const [conflict, setConflict] = useState<{ latest: number; options: PublishOptions } | null>(null);
+  const editorHandle = useRef<EditorHandle | null>(null);
+  const keepHandle = useCallback((handle: EditorHandle) => {
+    editorHandle.current = handle;
+  }, []);
 
   // The timer and the save chain outlive renders, and the last save has to
   // run even as the editor goes, so they live in refs and read the latest.
@@ -290,11 +294,20 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
     });
   }
 
+  // Together, a sketch somebody is still drawing on goes out as it stands,
+  // not as the last person to leave it left it.
+  async function settleSketches() {
+    if (!together) return;
+    const settled = await editorHandle.current?.settleSketches();
+    if (settled) latest.current = { ...latest.current, body: settled };
+  }
+
   async function onPublish(options: PublishOptions) {
     setConflict(null);
     // Together, the shared draft as it stands now is what is published,
     // whoever wrote the last of it.
     if (together) dirty.current = true;
+    await settleSketches();
     if (await flush()) publishWith(options);
     else setDialog(false);
   }
@@ -304,6 +317,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   async function onSchedule(options: ScheduleOptions) {
     setConflict(null);
     if (together) dirty.current = true;
+    await settleSketches();
     if (!(await flush())) {
       setDialog(false);
       return;
@@ -480,6 +494,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
               collab={together && doc && together.snapshot.awareness ? { doc, awareness: together.snapshot.awareness, user: together.user } : undefined}
               readOnly={stopped !== null}
               taskIds={liveMode}
+              handle={keepHandle}
               onChange={(next, remote) => {
                 setBody(next);
                 if (!remote) changed();

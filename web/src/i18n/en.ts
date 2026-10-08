@@ -2065,6 +2065,8 @@ export const en = {
       picturesLeftOut: "Pictures cannot go in a sketch yet, so they were left out. Put the picture on the page beside the sketch instead.",
       tooLarge: "This sketch is too large to keep. Take some shapes out, or split it into two sketches.",
       canvasHint: "Escape inside the canvas lets go of what is selected; Tab leaves the canvas for Done and Cancel.",
+      liveHint: "Everybody with this sketch open draws on it with you. Done puts the drawing in the page; Tab leaves the canvas for it.",
+      drawingNow: (names: string) => `Drawing on this sketch now: ${names}`,
     },
     math: {
       edit: "Click to change the formula",

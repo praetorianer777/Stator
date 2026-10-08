@@ -66,6 +66,14 @@ export interface KeptScene {
   tooLarge: boolean;
 }
 
+/** One element as a sketch keeps it, without data of other programs or links it does not take; null for a kind it does not take. */
+export function keepElement(element: SketchElement): SketchElement | null {
+  if (!KEPT_TYPES.includes(element.type) || (element.fileId !== undefined && element.fileId !== null)) return null;
+  const { customData: _customData, ...rest } = element;
+  const link = typeof rest.link === "string" && safeHref(rest.link) ? rest.link : null;
+  return { ...rest, link };
+}
+
 /**
  * What a sketch keeps of the canvas: the elements still on it, of the kinds
  * the API takes, with links only to addresses it takes and no data of other
@@ -76,18 +84,43 @@ export function keepScene(elements: readonly SketchElement[], appState: Record<s
   const kept: SketchElement[] = [];
   for (const element of elements) {
     if (element.isDeleted) continue;
-    if (!KEPT_TYPES.includes(element.type) || (element.fileId !== undefined && element.fileId !== null)) {
-      leftOut = true;
-      continue;
-    }
-    const { customData: _customData, ...rest } = element;
-    const link = typeof rest.link === "string" && safeHref(rest.link) ? rest.link : null;
-    kept.push({ ...rest, link });
+    const one = keepElement(element);
+    if (one) kept.push(one);
+    else leftOut = true;
   }
   const state: Record<string, unknown> = {};
   for (const key of SKETCH_APP_STATE_KEYS) if (typeof appState[key] === "string") state[key] = appState[key];
   const scene = JSON.stringify({ elements: kept, appState: state });
   return { scene, leftOut, tooLarge: kept.length > SKETCH_MAX_ELEMENTS || [...scene].length > SKETCH_SCENE_MAX_LENGTH };
+}
+
+/** An element's version, as Excalidraw reads one a scene left out. */
+export function versionOf(element: SketchElement): number {
+  return typeof element.version === "number" && element.version > 0 ? element.version : 1;
+}
+
+/** An element's version nonce, which settles two copies of one version. */
+export function versionNonceOf(element: SketchElement): number {
+  return typeof element.versionNonce === "number" ? element.versionNonce : 0;
+}
+
+/**
+ * Whether two scenes draw the same: the same background and the same
+ * version of every shape still on them. Excalidraw gives a shape a new
+ * version with every change, so this is what changed means.
+ */
+export function sameDrawing(a: SketchScene | null, b: SketchScene | null): boolean {
+  const mark = (scene: SketchScene | null) =>
+    scene
+      ? [
+          scene.appState.viewBackgroundColor,
+          ...scene.elements
+            .filter((element) => !element.isDeleted)
+            .map((element) => `${element.id} ${versionOf(element)} ${versionNonceOf(element)}`)
+            .sort(),
+        ].join("\n")
+      : "";
+  return mark(a) === mark(b);
 }
 
 /** Whether a scene has anything drawn in it. */

@@ -3,9 +3,14 @@ import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Editor } from "@tiptap/core";
+import * as Y from "yjs";
+import { editorExtensions } from "@/features/editor/extensions";
 import { SKETCH_ASSET_PATH, SKETCH_DRAWING_MAX_LENGTH, SKETCH_MAX_ELEMENTS, SKETCH_SCENE_MAX_LENGTH, SKETCH_TITLE_MAX_LENGTH } from "@/config";
 import { allowlist } from "@/test/allowlist";
 import { DRAWING_RULES, cleanDrawing, drawingSrc } from "./drawing";
+import { SketchLink, keepShared, sketchMap } from "./live";
+import { settleSketches } from "./settle";
 import { SketchFigure } from "./SketchViews";
 import { emptyScene, hasDrawing, keepScene, readScene, sketchTitle, type SketchElement } from "./scene";
 
@@ -154,5 +159,42 @@ describe("SketchFigure", () => {
     expect(await screen.findByText(/cannot be drawn here/)).toBeInTheDocument();
     const { container } = render(<SketchFigure attrs={{ scene: emptyScene(), drawing: null, title: "Empty" }} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("settleSketches", () => {
+  const SKETCH = "5f0c6a2e-9a8b-4c1d-8e2f-0a1b2c3d4e5f";
+  const box = (version: number) => ({ id: "box", type: "rectangle", x: 0, y: 0, width: 10, height: 10, index: "a0", version, versionNonce: 1 });
+  const scene = (version: number) => JSON.stringify({ elements: [box(version)], appState: { viewBackgroundColor: "#ffffff" } });
+
+  it("puts what is drawn together into the page, and leaves sketches that are current or never drawn together", async () => {
+    drawScene.mockReset();
+    drawScene.mockResolvedValue('<svg xmlns="http://www.w3.org/2000/svg"><rect width="2"/></svg>');
+    const doc = new Y.Doc();
+    const shapes = [box(3)];
+    new SketchLink(doc, SKETCH, { elements: () => shapes, background: () => "#ffffff", apply: () => {} }, 0);
+    const editor = new Editor({
+      element: document.createElement("div"),
+      extensions: editorExtensions(),
+      content: {
+        type: "doc",
+        content: [
+          { type: "sketch", attrs: { scene: scene(1), drawing: "<svg/>", title: "Drawn together", sketchId: SKETCH } },
+          { type: "sketch", attrs: { scene: scene(1), drawing: "<svg/>", title: "Alone", sketchId: null } },
+        ],
+      },
+    });
+    expect(await settleSketches(editor, doc)).toBe(true);
+    const [together, alone] = (editor.getJSON().content ?? []).map((node) => node.attrs ?? {});
+    expect(together?.scene).toBe(keepShared(sketchMap(doc, SKETCH))?.scene);
+    expect(readScene(together?.scene)?.elements[0]?.version).toBe(3);
+    expect(together?.drawing).toBe('<svg xmlns="http://www.w3.org/2000/svg"><rect width="2"/></svg>');
+    expect(together?.title).toBe("Drawn together");
+    expect(alone?.scene).toBe(scene(1));
+    expect(drawScene).toHaveBeenCalledTimes(1);
+
+    expect(await settleSketches(editor, doc)).toBe(false);
+    expect(drawScene).toHaveBeenCalledTimes(1);
+    editor.destroy();
   });
 });
