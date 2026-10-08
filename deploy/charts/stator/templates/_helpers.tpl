@@ -125,7 +125,7 @@ The basic-auth Secrets holding one password each. CNPG reads them in exactly
 this shape, and the bundled database and the Jobs read the same ones.
 */}}
 {{- define "stator.credentialSecret" -}}
-{{- $suffix := dict "dbOwner" "db-owner" "dbApp" "db-app" "dbAdmin" "db-admin" "valkey" "valkey" "secretKey" "secret-key" -}}
+{{- $suffix := dict "dbOwner" "db-owner" "dbApp" "db-app" "dbAdmin" "db-admin" "valkey" "valkey" "secretKey" "secret-key" "bootstrapAdmin" "bootstrap-admin" -}}
 {{- default (printf "%s-%s" (include "stator.fullname" .root) (get $suffix .name)) (get .root.Values.secrets.names .name) -}}
 {{- end -}}
 
@@ -292,4 +292,9 @@ STATOR_S3_USE_SSL: {{ .Values.s3.useSSL | quote }}
       name: {{ include "stator.secretName" . }}
       key: s3-secret-key
 {{- end }}
+{{- end -}}
+
+{{/* The administrator's address when none is set: a name at the chart's own host. */}}
+{{- define "stator.bootstrapEmail" -}}
+{{- default (printf "admin@%s" .Values.ingress.host) .Values.bootstrap.admin.email -}}
 {{- end -}}

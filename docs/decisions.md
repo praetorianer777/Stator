@@ -85,9 +85,13 @@ fresh production install had no organization and nobody who could sign in.
   slug is checked at start against the shape the `org` table accepts, so a bad
   one is refused by name instead of by a database constraint halfway through.
 - **Secrets are keys in Secrets.** The chart reads the administrator's password
-  and the provider's client secret with `secretKeyRef` from Secrets the
-  operator made; neither is a chart value, so neither reaches a values file or
-  a ConfigMap.
+  and the provider's client secret with `secretKeyRef`; neither is a chart
+  value, so neither reaches a values file or a ConfigMap. With no Secret
+  named, the secrets Job makes `<fullname>-bootstrap-admin` with a random
+  password the first time, as it does the database passwords, and never
+  touches it after; naming one chooses the password. Organization and
+  administrator default to `stator` and `admin@<ingress.host>`, so the switch
+  alone is enough for a first install.
 - **Every install and upgrade.** The Job runs `post-install,post-upgrade` after
   the migrate Job, and is safe to repeat: existing organizations, accounts and
   providers are left alone, and only a changed bootstrap password is applied
