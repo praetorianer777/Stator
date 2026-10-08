@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -330,13 +331,15 @@ type losses struct {
 	count int
 }
 
+// add notes a loss; the same one twice on a page is listed once and counted twice.
 func (l *losses) add(page string, kind LossKind, detail string) {
 	l.count++
-	if len(l.list) < MaxLosses {
-		if len([]rune(detail)) > maxDetail {
-			detail = string([]rune(detail)[:maxDetail]) + "..."
-		}
-		l.list = append(l.list, Loss{Page: page, Kind: kind, Detail: detail})
+	if len([]rune(detail)) > maxDetail {
+		detail = string([]rune(detail)[:maxDetail]) + "..."
+	}
+	loss := Loss{Page: page, Kind: kind, Detail: detail}
+	if len(l.list) < MaxLosses && !slices.Contains(l.list, loss) {
+		l.list = append(l.list, loss)
 	}
 }
 

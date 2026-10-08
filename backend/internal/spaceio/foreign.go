@@ -3,6 +3,7 @@ package spaceio
 import (
 	"archive/zip"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -105,8 +106,9 @@ func (s *exportSource) fileBytes(f File) ([]byte, error) {
 
 func (s *exportSource) lose(pageTitle string, kind wikiread.LossKind, detail string) {
 	s.lostCount++
-	if len(s.listed) < wikiread.MaxLosses {
-		s.listed = append(s.listed, wikiread.Loss{Page: pageTitle, Kind: kind, Detail: detail})
+	loss := wikiread.Loss{Page: pageTitle, Kind: kind, Detail: detail}
+	if len(s.listed) < wikiread.MaxLosses && !slices.Contains(s.listed, loss) {
+		s.listed = append(s.listed, loss)
 	}
 }
 
