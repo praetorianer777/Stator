@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
@@ -96,9 +97,45 @@ func tooLarge(format string, args ...any) error {
 	return &TooLargeArchiveError{Message: fmt.Sprintf(format, args...)}
 }
 
+// source is where an import reads pages and files: a Stator archive, or a
+// space export of another wiki read into the same shapes beforehand.
+type source interface {
+	page(id uuid.UUID) (*ArchivePage, error)
+	// fileSize is what a file's bytes weigh as the source holds them.
+	fileSize(f File) (int64, bool)
+	fileBytes(f File) ([]byte, error)
+}
+
+type archiveSource struct{ a *archive }
+
+func (s archiveSource) page(id uuid.UUID) (*ArchivePage, error) {
+	data, err := s.a.read(pagePath(id), MaxJSONBytes)
+	if err != nil {
+		return nil, err
+	}
+	var p ArchivePage
+	if err := json.Unmarshal(data, &p); err != nil {
+		return nil, invalid("The archive's entry for the page %s is not one Stator reads. Export the space again and import the new file.", id)
+	}
+	if p.ID != id {
+		return nil, invalid("The archive's entry for the page %s describes another page. Export the space again and import the new file.", id)
+	}
+	return &p, nil
+}
+
+func (s archiveSource) fileSize(f File) (int64, bool) {
+	entry := s.a.entries[filePath(f.ID)]
+	if entry == nil {
+		return 0, false
+	}
+	return int64(entry.UncompressedSize64), true
+}
+
+func (s archiveSource) fileBytes(f File) ([]byte, error) { return s.a.read(filePath(f.ID), f.Size) }
+
 // importer makes one space of one archive, as the person who asked for it.
 type importer struct {
-	a        *archive
+	src      source
 	m        *Manifest
 	store    objectstore.Store
 	org      uuid.UUID
@@ -119,6 +156,9 @@ type importer struct {
 	// uploaded are the objects stored so far, deleted again if the import fails.
 	uploaded []string
 	step     func()
+	// from is what the space was made of; an export of another wiki brings
+	// no permissions, so the space keeps those every new space starts with.
+	from ImportSource
 }
 
 // scan reads every page once, before anything is written, and refuses an
@@ -135,7 +175,7 @@ func (im *importer) scan() error {
 		if _, dup := seen[id]; dup {
 			return invalid("The archive lists the page %s twice. Export the space again and import the new file.", id)
 		}
-		p, err := im.page(id)
+		p, err := im.src.page(id)
 		if err != nil {
 			return err
 		}
@@ -148,8 +188,7 @@ func (im *importer) scan() error {
 			if _, dup := im.r.files[f.ID]; dup {
 				return invalid("The archive names the file %s twice. Export the space again and import the new file.", f.ID)
 			}
-			entry := im.a.entries[filePath(f.ID)]
-			if entry == nil || int64(entry.UncompressedSize64) != f.Size || f.Size <= 0 {
+			if size, ok := im.src.fileSize(f); !ok || size != f.Size || f.Size <= 0 {
 				return invalid("The file %q of the page %q is missing from the archive, or not as large as it says. Export the space again and import the new file.", f.Name, p.Title)
 			}
 			im.r.files[f.ID] = uuid.Must(uuid.NewV7())
@@ -170,21 +209,6 @@ func (im *importer) scan() error {
 		im.r.calendars[c.ID] = uuid.Must(uuid.NewV7())
 	}
 	return nil
-}
-
-func (im *importer) page(id uuid.UUID) (*ArchivePage, error) {
-	data, err := im.a.read(pagePath(id), MaxJSONBytes)
-	if err != nil {
-		return nil, err
-	}
-	var p ArchivePage
-	if err := json.Unmarshal(data, &p); err != nil {
-		return nil, invalid("The archive's entry for the page %s is not one Stator reads. Export the space again and import the new file.", id)
-	}
-	if p.ID != id {
-		return nil, invalid("The archive's entry for the page %s describes another page. Export the space again and import the new file.", id)
-	}
-	return &p, nil
 }
 
 var (
@@ -416,7 +440,7 @@ func (im *importer) write(ctx context.Context, tx db.DBTX) error {
 		}
 	}
 	for _, id := range im.m.Pages {
-		p, err := im.page(id)
+		p, err := im.src.page(id)
 		if err != nil {
 			return err
 		}
@@ -439,18 +463,27 @@ func (im *importer) write(ctx context.Context, tx db.DBTX) error {
 	}
 	im.report.Pages, im.report.Templates, im.report.Calendars = len(im.m.Pages), len(im.m.Templates), len(im.m.Calendars)
 	im.report.MentionsAsText = im.r.asText
+	data := map[string]any{
+		"key": im.key, "name": im.name, "source": string(im.from), "pages": im.report.Pages, "versions": im.report.Versions,
+		"files": im.report.Files, "peopleNotFound": len(im.report.People), "groupsNotFound": len(im.report.Groups),
+	}
+	if im.m.Space.Key != "" {
+		data["from"] = im.m.Space.Key
+	}
+	if im.from != SourceArchive {
+		data["lost"] = im.report.LostCount
+	}
 	return audit.Write(ctx, tx, im.org, audit.Entry{
-		Action: audit.ActionSpaceImported, TargetType: "space", TargetID: &im.spaceID, Actor: im.importer,
-		Data: map[string]any{
-			"key": im.key, "name": im.name, "from": im.m.Space.Key, "pages": im.report.Pages, "versions": im.report.Versions,
-			"files": im.report.Files, "peopleNotFound": len(im.report.People), "groupsNotFound": len(im.report.Groups),
-		},
+		Action: audit.ActionSpaceImported, TargetType: "space", TargetID: &im.spaceID, Actor: im.importer, Data: data,
 	})
 }
 
 // writeGrants replaces the permissions every new space starts with by the
 // archive's, keeping the importer an administrator so the space is theirs.
 func (im *importer) writeGrants(ctx context.Context, tx db.DBTX) error {
+	if im.from != SourceArchive {
+		return nil
+	}
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM space_grant WHERE space_id = $1
 		AND NOT (permission = 'administer' AND subject_type = 'user' AND user_id = $2)`, im.spaceID, im.importer); err != nil {
@@ -646,7 +679,7 @@ func clip(s string, n int) string {
 // as the archive's order of versions does.
 func (im *importer) writeFile(ctx context.Context, tx db.DBTX, pageID uuid.UUID, f File) error {
 	id := im.r.files[f.ID]
-	data, err := im.a.read(filePath(f.ID), f.Size)
+	data, err := im.src.fileBytes(f)
 	if err != nil {
 		return err
 	}
@@ -656,7 +689,10 @@ func (im *importer) writeFile(ctx context.Context, tx db.DBTX, pageID uuid.UUID,
 	}
 	contentType := f.ContentType
 	if contentType == "" {
-		contentType = "application/octet-stream"
+		contentType = attachment.ContentTypeFor("", data)
+	}
+	if f.Width == nil && f.Height == nil {
+		f.Width, f.Height = attachment.Measure(contentType, data)
 	}
 	key := "org/" + im.org.String() + "/page/" + pageID.String() + "/" + id.String()
 	if err := im.store.Put(ctx, key, bytes.NewReader(data), int64(len(data)), contentType); err != nil {

@@ -10575,7 +10575,7 @@
       },
       "post": {
         "operationId": "createSpaceImport",
-        "summary": "Upload a space archive, as a multipart part named file, and ask the worker to make a new space of it: under the key and name given, else the archive's own. Refused at once when the file is no archive of Stator or the key is taken; 202 with the job, which GET /space-imports/{importID} follows to its report. For whoever may create spaces.",
+        "summary": "Upload a zip, as a multipart part named file, and ask the worker to make a new space of it: a space archive of Stator, under the key and name given, else the archive's own; or a space export of another wiki, HTML or XML, under the key given and the name given, else the export's own (docs/wiki-import.md). Refused at once when the file is neither, or the key is taken or, for an export, missing; 202 with the job, which GET /space-imports/{importID} follows to its report. For whoever may create spaces.",
         "tags": [
           "spaces"
         ],
@@ -10583,7 +10583,7 @@
           {
             "name": "key",
             "in": "query",
-            "description": "The new space's key; the archive's own when absent.",
+            "description": "The new space's key; the archive's own when absent, and required for another wiki's export.",
             "schema": {
               "type": "string"
             }
@@ -10591,7 +10591,7 @@
           {
             "name": "name",
             "in": "query",
-            "description": "The new space's name; the archive's own when absent.",
+            "description": "The new space's name; the archive's or the export's own when absent.",
             "schema": {
               "type": "string"
             }
@@ -10671,7 +10671,7 @@
     "/space-imports/{importID}": {
       "get": {
         "operationId": "getSpaceImport",
-        "summary": "One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, or why it failed.",
+        "summary": "One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, page by page for another wiki's export, or why it failed.",
         "tags": [
           "spaces"
         ],
@@ -21802,6 +21802,14 @@
             "type": "string",
             "format": "date-time"
           },
+          "source": {
+            "type": "string",
+            "enum": [
+              "archive",
+              "html",
+              "xml"
+            ]
+          },
           "spaceKey": {
             "type": [
               "string",
@@ -21829,6 +21837,7 @@
           "id",
           "key",
           "name",
+          "source",
           "state",
           "progress",
           "spaceKey",
@@ -21838,6 +21847,36 @@
           "requestedAt",
           "startedAt",
           "finishedAt"
+        ]
+      },
+      "SpaceImportLoss": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "embed",
+              "macro",
+              "externalImage",
+              "missingFile",
+              "outsideLink",
+              "plainText",
+              "label",
+              "unreadPage",
+              "format"
+            ]
+          },
+          "page": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "page",
+          "kind",
+          "detail"
         ]
       },
       "SpaceImportReport": {
@@ -21866,6 +21905,15 @@
             "items": {
               "type": "string"
             }
+          },
+          "lost": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceImportLoss"
+            }
+          },
+          "lostCount": {
+            "type": "integer"
           },
           "mentionsAsText": {
             "type": "integer"
@@ -21901,7 +21949,9 @@
           "dropped",
           "reattributed",
           "droppedReactions",
-          "mentionsAsText"
+          "mentionsAsText",
+          "lost",
+          "lostCount"
         ]
       },
       "SpaceOwner": {

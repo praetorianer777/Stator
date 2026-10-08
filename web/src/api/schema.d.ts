@@ -2265,7 +2265,7 @@ export interface paths {
         /** The caller's latest imports of spaces, newest first. */
         get: operations["listSpaceImports"];
         put?: never;
-        /** Upload a space archive, as a multipart part named file, and ask the worker to make a new space of it: under the key and name given, else the archive's own. Refused at once when the file is no archive of Stator or the key is taken; 202 with the job, which GET /space-imports/{importID} follows to its report. For whoever may create spaces. */
+        /** Upload a zip, as a multipart part named file, and ask the worker to make a new space of it: a space archive of Stator, under the key and name given, else the archive's own; or a space export of another wiki, HTML or XML, under the key given and the name given, else the export's own (docs/wiki-import.md). Refused at once when the file is neither, or the key is taken or, for an export, missing; 202 with the job, which GET /space-imports/{importID} follows to its report. For whoever may create spaces. */
         post: operations["createSpaceImport"];
         delete?: never;
         options?: never;
@@ -2280,7 +2280,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, or why it failed. */
+        /** One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, page by page for another wiki's export, or why it failed. */
         get: operations["getSpaceImport"];
         put?: never;
         post?: never;
@@ -4960,11 +4960,19 @@ export interface components {
             report: components["schemas"]["SpaceImportReport"] | null;
             /** Format: date-time */
             requestedAt: string;
+            /** @enum {string} */
+            source: "archive" | "html" | "xml";
             spaceKey: string | null;
             /** Format: date-time */
             startedAt: string | null;
             /** @enum {string} */
             state: "queued" | "running" | "done" | "failed";
+        };
+        SpaceImportLoss: {
+            detail: string;
+            /** @enum {string} */
+            kind: "embed" | "macro" | "externalImage" | "missingFile" | "outsideLink" | "plainText" | "label" | "unreadPage" | "format";
+            page: string;
         };
         SpaceImportReport: {
             calendars: number;
@@ -4973,6 +4981,8 @@ export interface components {
             droppedReactions: number;
             files: number;
             groups: string[];
+            lost: components["schemas"]["SpaceImportLoss"][];
+            lostCount: number;
             mentionsAsText: number;
             pages: number;
             people: components["schemas"]["MissingPerson"][];
@@ -12312,9 +12322,9 @@ export interface operations {
     createSpaceImport: {
         parameters: {
             query?: {
-                /** @description The new space's key; the archive's own when absent. */
+                /** @description The new space's key; the archive's own when absent, and required for another wiki's export. */
                 key?: string;
-                /** @description The new space's name; the archive's own when absent. */
+                /** @description The new space's name; the archive's or the export's own when absent. */
                 name?: string;
             };
             header?: never;

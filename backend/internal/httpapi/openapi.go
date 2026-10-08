@@ -42,6 +42,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
+	"github.com/praetorianer777/stator/backend/internal/wikiread"
 )
 
 // The API described in terms of the code that serves it. Every route in Routes
@@ -202,17 +203,17 @@ var operations = []operation{
 		summary:   "The file an export made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after.",
 		responses: map[int]any{200: nil, 409: errorEnvelope{}, 410: errorEnvelope{}}},
 	{method: "POST", path: "/space-imports", handler: "handleCreateSpaceImport", orgWide: true, tag: "spaces", multipart: true,
-		summary: "Upload a space archive, as a multipart part named file, and ask the worker to make a new space of it: under the key and name given, else the archive's own. Refused at once when the file is no archive of Stator or the key is taken; 202 with the job, which GET /space-imports/{importID} follows to its report. For whoever may create spaces.",
+		summary: "Upload a zip, as a multipart part named file, and ask the worker to make a new space of it: a space archive of Stator, under the key and name given, else the archive's own; or a space export of another wiki, HTML or XML, under the key given and the name given, else the export's own (docs/wiki-import.md). Refused at once when the file is neither, or the key is taken or, for an export, missing; 202 with the job, which GET /space-imports/{importID} follows to its report. For whoever may create spaces.",
 		query: []param{
-			{name: "key", description: "The new space's key; the archive's own when absent."},
-			{name: "name", description: "The new space's name; the archive's own when absent."},
+			{name: "key", description: "The new space's key; the archive's own when absent, and required for another wiki's export."},
+			{name: "name", description: "The new space's name; the archive's or the export's own when absent."},
 		},
 		responses: map[int]any{202: env{"import": spaceio.ImportJob{}}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/space-imports", handler: "handleListSpaceImports", orgWide: true, tag: "spaces",
 		summary:   "The caller's latest imports of spaces, newest first.",
 		responses: ok(env{"imports": []spaceio.ImportJob{}})},
 	{method: "GET", path: "/space-imports/{importID}", handler: "handleGetSpaceImport", orgWide: true, tag: "spaces",
-		summary:   "One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, or why it failed.",
+		summary:   "One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, page by page for another wiki's export, or why it failed.",
 		responses: ok(env{"import": spaceio.ImportJob{}})},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
@@ -978,6 +979,9 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(spaceio.ImportJob{})] = "SpaceImport"
 	b.Names[reflect.TypeOf(spaceio.Report{})] = "SpaceImportReport"
 	b.Names[reflect.TypeOf(spaceio.Progress{})] = "SpaceTransferProgress"
+	b.Names[reflect.TypeOf(wikiread.Loss{})] = "SpaceImportLoss"
+	b.Enums[reflect.TypeOf(spaceio.ImportSource(""))] = enumStrings(spaceio.ImportSources)
+	b.Enums[reflect.TypeOf(wikiread.LossKind(""))] = enumStrings(wikiread.LossKinds)
 	b.Enums[reflect.TypeOf(spaceio.ExportFormat(""))] = enumStrings(spaceio.Formats)
 	b.FieldOverrides["SpaceExport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ExportStates)}
 	b.FieldOverrides["SpaceImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}

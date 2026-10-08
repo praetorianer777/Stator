@@ -433,3 +433,9 @@ func contentTypeFor(declared string, data []byte) string {
 	}
 	return http.DetectContentType(data)
 }
+
+// ContentTypeFor is the type a file is stored with: the one declared when it
+// says something, else what its bytes look like.
+func ContentTypeFor(declared string, data []byte) string {
+	return contentTypeFor(declared, data)
+}

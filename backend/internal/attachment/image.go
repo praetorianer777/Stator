@@ -28,3 +28,9 @@ func dimensions(contentType string, data []byte) (width, height *int) {
 	}
 	return &cfg.Width, &cfg.Height
 }
+
+// Measure is a picture's size in pixels, for a file stored without the
+// upload, as an import stores one; anything else has none.
+func Measure(contentType string, data []byte) (width, height *int) {
+	return dimensions(contentType, data)
+}
