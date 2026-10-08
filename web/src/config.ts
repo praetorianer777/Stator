@@ -510,6 +510,10 @@ export const SKETCH_PADDING_PX = 16;
 export const SKETCH_ASSET_PATH = "/assets/excalidraw/";
 /** The name a sketch's drawing is saved under from the lightbox. */
 export const SKETCH_FILE_NAME = "sketch.svg";
+/** How often shapes changed on a shared sketch go to the others; every send is an update the api stores. */
+export const SKETCH_SYNC_INTERVAL_MS = 150;
+/** How often a pointer moving over a shared sketch is shown to the others, who are only told. */
+export const SKETCH_POINTER_INTERVAL_MS = 50;
 /** How long a link's card is shown before it is asked for again; the server keeps it an hour. */
 export const LINK_PREVIEW_STALE_MS = 5 * 60_000;
 /** The views a link card offers, in the order its toolbar lists them. */

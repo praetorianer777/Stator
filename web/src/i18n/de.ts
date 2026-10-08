@@ -2121,6 +2121,9 @@ export const de: Messages = {
       picturesLeftOut: "Bilder können noch nicht in eine Skizze, daher wurden sie weggelassen. Setzen Sie das Bild stattdessen neben die Skizze auf die Seite.",
       tooLarge: "Diese Skizze ist zu groß zum Speichern. Nehmen Sie einige Formen heraus oder teilen Sie sie auf zwei Skizzen auf.",
       canvasHint: "Escape in der Zeichenfläche hebt die Auswahl auf; Tab verlässt sie zu Fertig und Abbrechen.",
+      liveHint:
+        "Alle, die diese Skizze geöffnet haben, zeichnen mit Ihnen darauf. Fertig setzt die Zeichnung in die Seite; Tab verlässt die Zeichenfläche dorthin.",
+      drawingNow: (names: string) => `Zeichnen gerade an dieser Skizze: ${names}`,
     },
     math: {
       edit: "Klicken Sie, um die Formel zu ändern",

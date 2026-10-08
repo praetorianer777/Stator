@@ -19,6 +19,7 @@ import type { AttachmentIndex } from "./attachmentIndex";
 import type { UploadFile } from "./attachments";
 import type { IssueSource } from "./armatureIssue";
 import { IssuePicker } from "@/features/armature/IssuePicker";
+import { settleSketches } from "@/features/sketch/settle";
 import { IssueListDialog } from "@/features/armature/IssueListDialog";
 import { IssueChartDialog } from "@/features/armature/IssueChartDialog";
 import { newChartSettings } from "@/features/armature/chart";
@@ -70,6 +71,8 @@ export interface EditorHandle {
   /** Puts the blank for a variable where the caret is, in a template's editor. */
   insertVariable: (name: string) => void;
   clear: () => void;
+  /** Puts what is drawn on each sketch together into the page; the document when any changed, else null. */
+  settleSketches: () => Promise<Doc | null>;
 }
 
 export interface EditorProps {
@@ -171,6 +174,7 @@ export function Editor({
   const slash = useSuggestion<SlashItem>((item) => item);
   const mention = useSuggestion<Mentionable, MentionNodeAttrs>((person) => ({ id: person.id, label: person.name }));
   const { copy, status } = useCopyHeadingLink();
+  const sharedDoc = collab?.doc ?? null;
 
   const editor = useEditor({
     extensions: editorExtensions({
@@ -309,8 +313,9 @@ export function Editor({
       clear: () => {
         editor.commands.clearContent(true);
       },
+      settleSketches: async () => (sharedDoc && (await settleSketches(editor, sharedDoc)) ? (editor.getJSON() as Doc) : null),
     });
-  }, [handle, editor]);
+  }, [handle, editor, sharedDoc]);
 
   return (
     <div className="rounded-control border border-border bg-surface" data-editor-frame>

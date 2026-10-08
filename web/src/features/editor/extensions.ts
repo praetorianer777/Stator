@@ -567,7 +567,7 @@ export function editorExtensions({
     MathInline.configure({ edit: editInlineValue }),
     MathBlock.configure({ edit: editInlineValue }),
     Diagram,
-    Sketch,
+    Sketch.configure({ live: collab ? { doc: collab.doc, awareness: collab.awareness } : null }),
     LinkCardNode.configure({ pick: pickLinkCard }),
     Excerpt,
     Include.configure({ pick: pickInclude, pageId }),
