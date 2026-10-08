@@ -64,7 +64,7 @@ trap finish EXIT
 run_layer() {
   local name="$1" label="$1" start=$SECONDS status=passed
   shift
-  [[ "$name" != test-e2e || -z "${SHARD:-}" ]] || label="$name $SHARD"
+  case "$name" in test-e2e | stack-up) label="$name${SHARD:+ $SHARD}" ;; esac
   echo "🧪 $label"
   "$@" || status=failed
   printf '%s\t%s\t%s\n' "$label" "$status" "$((SECONDS - start))" >> "$LAYER_LOG"
