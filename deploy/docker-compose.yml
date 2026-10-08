@@ -375,6 +375,8 @@ services:
       STATOR_EXAMPLE_CHECK_INTERVAL: 1s
       # So is a space export or import.
       STATOR_SPACE_TRANSFER_CHECK_INTERVAL: 1s
+      # So is an import of several Word documents.
+      STATOR_WORD_IMPORT_CHECK_INTERVAL: 1s
     healthcheck:
       # The worker serves nothing but its metrics, so they are its sign of life.
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/metrics"]

@@ -3,7 +3,8 @@
 // the notifications' digests, the file reaper, the audit log's retention,
 // the watch on page verifications that run out, the publishes scheduled for a
 // time, the example spaces administrators ask for, the spaces exported and
-// imported, and the outbound webhooks.
+// imported, the Word documents imported several at once, and the outbound
+// webhooks.
 package main
 
 import (
@@ -38,6 +39,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
+	"github.com/praetorianer777/stator/backend/internal/wordio"
 )
 
 // flushTimeout bounds sending the traces still in hand at shutdown.
@@ -145,6 +147,11 @@ func run() error {
 		log.Warn("space export and import are off: STATOR_S3_ENDPOINT is not set")
 	} else {
 		go spaceio.NewWatch(cluster, store, log, cfg.SpaceTransferCheck, cfg.SpaceExportTTL).Run(ctx)
+	}
+	if files == nil {
+		log.Warn("importing several Word documents at once is off: STATOR_S3_ENDPOINT is not set")
+	} else {
+		go wordio.NewWatch(wordio.NewService(cluster, pages, files, store), log, cfg.WordImportCheck).Run(ctx)
 	}
 	if mailer != nil {
 		go notify.NewDigester(cluster, mailer, cfg.AppBaseURL, log).Run(ctx)

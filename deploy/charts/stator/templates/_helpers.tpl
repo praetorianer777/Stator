@@ -243,6 +243,7 @@ STATOR_EXAMPLE_CHECK_INTERVAL: {{ .Values.exampleSpace.checkInterval | quote }}
 STATOR_SPACE_TRANSFER_CHECK_INTERVAL: {{ .Values.spaceTransfers.checkInterval | quote }}
 STATOR_SPACE_EXPORT_TTL: {{ .Values.spaceTransfers.exportTTL | quote }}
 STATOR_SPACE_IMPORT_LIMIT: {{ .Values.spaceTransfers.importLimit | quote }}
+STATOR_WORD_IMPORT_CHECK_INTERVAL: {{ .Values.wordImport.checkInterval | quote }}
 {{- with .Values.mail.smtpAddr }}
 STATOR_SMTP_ADDR: {{ . | quote }}
 STATOR_MAIL_FROM: {{ $.Values.mail.from | quote }}

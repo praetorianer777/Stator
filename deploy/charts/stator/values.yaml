@@ -212,6 +212,11 @@ spaceTransfers:
   # Ingress in front must allow at least this much.
   importLimit: 200MB
 
+wordImport:
+  # How often the worker looks for Word documents somebody imported several
+  # of at once, who waits on the page meanwhile. A second or more.
+  checkInterval: 2s
+
 mail:
   # The SMTP relay the worker sends notifications through, as host:port.
   # Blank turns mail off: notifications are then shown in the app only.

@@ -14,7 +14,7 @@ browser ──> web (nginx, React SPA) ──> api (Go) ──> PostgreSQL (prim
                                         │  ├──> converter (office documents to PDF, for previews)
                                         │  ├──> render (headless Chromium: a page's print view to PDF) ──> web
                                         │  └──> Armature API (as the viewing user)
-                                        └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks, scheduled publishes, example spaces, space exports and imports
+                                        └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks, scheduled publishes, example spaces, space exports and imports, Word imports
 Keycloak / any OIDC provider <── login ──┘
 ```
 
@@ -115,7 +115,8 @@ process, which is only right for a single api process. `/readyz` and
 | `convert` | the client of the conversion service that turns office documents into PDF |
 | `render` | the client of the render service, which prints a page's print view as PDF; the api hands it a path and, for a signed-in reader, a read-only token made for that one print |
 | `markdown` | a document as Markdown and Markdown as a document, held to the allowlist |
-| `docx` | a published page as a Word document, written from its document with its pictures inside, as its reader may read it; `docs/word.md` lists how each block comes out |
+| `docx` | a published page as a Word document, written from its document with its pictures inside, as its reader may read it, and a Word document read as a page with its pictures and warnings; `docs/word.md` lists how each block comes out and comes in |
+| `wordio` | Word import: one document as a page in the request, several and folders of them by the worker as the importer, through the page and file services |
 | `mdio` | Markdown import and export of pages, subtrees and their files, through the page and file services |
 | `spaceio` | a whole space exported as an archive or as HTML pages, and an archive imported as a new space, run by the worker as leased jobs |
 | `theme` | custom themes in the `armature-theme/1` format |
