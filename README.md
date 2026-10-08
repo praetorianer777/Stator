@@ -58,11 +58,16 @@ administrator of `demo` for the password form: `admin@stator.test` with
 stack's network. `make help` lists every target.
 
 `./run-tests.sh` uses the same compose project as `make up` in the same
-checkout and removes it, data included, when it finishes.
+checkout and removes it, data included, when it finishes. Given layer names,
+such as `./run-tests.sh check-go check-web`, it runs only those; `--list`
+names them all. Every run leaves its results in `reports/`: each suite's
+timings as JSON and `summary.md` with every layer's duration, the counts and
+the slowest tests.
 
 The browser suite in `e2e/` runs against a running stack:
 `make test-e2e` runs all of it, `ONLY=drawer` the tests whose title or tag
-matches, `WORKERS=1` one at a time. `make e2e-report` serves the last run's
+matches, `WORKERS=1` one at a time, `SHARD=2/4` the second of four parts, as CI
+splits it. `make e2e-report` serves the last run's
 report with its traces on `http://localhost:9323`.
 
 ## Deployment

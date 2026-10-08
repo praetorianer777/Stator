@@ -3,6 +3,49 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-08: CI runs the gate as parallel jobs and keeps its reports
+
+The gate took 35 to 38 minutes in CI, 22 of them in the browser suite, and
+every push waited for it (#323).
+
+- **The same script, split across jobs.** Each CI job runs
+  `./run-tests.sh` for some of its layers: shell tests and formatting,
+  `check-go`, `check-web`, the integration suite, and the browser suite in
+  four parts (`SHARD=i/4`), each part with a stack of its own. No layer
+  runs any other way in CI than before a push, which is why the gate was
+  one step before. `tests/test-ci.sh`, in the shell layer, fails when the
+  jobs between them leave a layer or a part out, so splitting cannot drop
+  coverage unnoticed.
+- **Four parts of the browser suite.** A hosted runner has four cores, and
+  the stack and four browsers already fill them, so more workers on one
+  runner would only slow each test; the suite scales across runners
+  instead. Four parts bring it to about a quarter of its time, next to the
+  integration job the longest, and keep a run at eight jobs, which leaves
+  room for other pull requests within the account's concurrent jobs.
+  Playwright splits by count, and its setup and teardown run in every
+  part.
+- **Both widths stay.** Most specs run in the desktop and the mobile
+  project. Running the ones that do not depend on width at one width only
+  would save about a third of the browser suite, but a spec wrongly judged
+  width-independent loses its mobile coverage silently. Sharding meets the
+  target without that trade; tagging stays a lever for later.
+- **Caches from main.** The Go module and build caches and the npm caches
+  are restored on every run and saved only from `main`, so a pull request
+  starts from main's and does not crowd them out. Docker images are pulled
+  and built in each stack job; that runs alongside the other jobs and was
+  left as it is.
+- **`-race` stays in every run** of both Go suites: they are no longer on
+  the longest path, so a nightly-only race check would buy nothing.
+- **Reports, green or red.** Each suite writes its timings as JSON
+  (`go test -json`, vitest's and Playwright's JSON reporters) into
+  `reports/`, and `run-tests.sh` a line per layer with its duration.
+  `scripts/test-summary.sh` turns them into the run's summary: durations,
+  counts and the slowest tests. In CI the browser jobs leave Playwright
+  blobs that the last job merges into one HTML report; the report and the
+  timings are kept as artifacts of every run.
+- **The local gate is unchanged**: one machine runs one stack, so the
+  hook runs every layer in order as before.
+
 ## 2026-10-08: A sketch is its Excalidraw scene and the SVG drawn from it, shown as a picture
 
 A sketch (#312) is one block, `sketch`, drawn on an Excalidraw canvas (MIT),
