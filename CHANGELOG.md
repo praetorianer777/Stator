@@ -937,6 +937,20 @@ and the versioning [Semantic Versioning](https://semver.org/).
   may add pages under the parent queue an import. A document Stator
   exported imports back as the page it was. `docs/word.md` lists every
   mapping.
+- Import from other wikis (#91). Import space takes the HTML or XML space
+  export another wiki writes, zipped, as well as a Stator archive, told
+  apart by what the zip holds (`POST /space-imports`, whose job now names
+  its `source`). An export becomes a new space under a key the importer
+  chooses, which the database requires: the page tree, content held to the
+  allowlist (headings, lists, tables, code, panels from callout markup,
+  expands, tasks, columns), links between pages and to files pointed at the
+  new space, pictures and files as files of their pages, labels, and
+  comments with their replies; the XML export brings every version and
+  every file version too. Authors are found by address, everybody else's
+  work is the importer's with their name kept, which comments now show as
+  versions did. The space keeps the permissions every new space starts
+  with, and the report lists page by page what came across only in part.
+  `docs/wiki-import.md` describes both formats by their structure.
 
 ### Changed
 
