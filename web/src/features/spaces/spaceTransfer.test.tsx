@@ -169,6 +169,59 @@ describe("importing a space", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("shows, for another wiki's export, what did not come across page by page", async () => {
+    const uploads = stubUploads();
+    stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [] } },
+      "GET /space-imports/i-2": {
+        status: 200,
+        body: {
+          import: anImport({
+            id: "i-2",
+            key: "WIKI",
+            source: "html",
+            state: "done",
+            spaceKey: "WIKI",
+            report: {
+              pages: 3,
+              versions: 3,
+              files: 1,
+              comments: 2,
+              templates: 0,
+              calendars: 0,
+              people: [{ name: "Bob Example", email: "" }],
+              groups: [],
+              dropped: [],
+              reattributed: 2,
+              droppedReactions: 0,
+              mentionsAsText: 0,
+              lost: [
+                { page: "Packing", kind: "embed", detail: "iframe" },
+                { page: "Packing", kind: "outsideLink", detail: "Elsewhere_999.html" },
+                { page: "Routes", kind: "macro", detail: "roadmap" },
+              ],
+              lostCount: 5,
+            },
+          }),
+        },
+      },
+    });
+    await renderAt("/spaces/import");
+    await userEvent.upload(document.querySelector<HTMLInputElement>("[data-import-file]")!, new File(["zip"], "wiki-html.zip"));
+    await userEvent.type(screen.getByLabelText("Key"), "wiki");
+    await userEvent.click(screen.getByRole("button", { name: "Import space" }));
+    upload(uploads, 0).respond(202, { import: anImport({ id: "i-2", key: "WIKI", source: "html" }) });
+    const lost = await screen.findByRole("heading", { name: "Not brought across as it was" });
+    const card = lost.closest("[data-import-report]") as HTMLElement;
+    expect(within(card).getByText("Packing: Embedded content (iframe) was left out.")).toBeInTheDocument();
+    expect(within(card).getByText("Packing: A link to a page outside the export kept only its words: Elsewhere_999.html")).toBeInTheDocument();
+    expect(within(card).getByText(/Routes: The block "roadmap" has nothing like it here/)).toBeInTheDocument();
+    expect(within(card).getByText("And 2 more.")).toBeInTheDocument();
+    expect(within(card).getByText("An HTML export holds no history, so each page starts with one version.")).toBeInTheDocument();
+    expect(within(card).getByText("Bob Example")).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+  });
+
   it("says in a sentence why an archive is refused, by the field it is about", async () => {
     const uploads = stubUploads();
     stubApi({ "GET /spaces": { status: 200, body: { spaces: [] } } });

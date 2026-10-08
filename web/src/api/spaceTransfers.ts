@@ -15,6 +15,8 @@ export type SpaceExport = Wire["SpaceExport"];
 export type SpaceImport = Wire["SpaceImport"];
 /** What an import could not bring across as it was. */
 export type SpaceImportReport = Wire["SpaceImportReport"];
+/** What an import made its space of: an archive of Stator, or another wiki's HTML or XML export. */
+export type ImportSource = SpaceImport["source"];
 /** An archive to import again, or pages to read offline. */
 export type ExportFormat = SpaceExport["format"];
 

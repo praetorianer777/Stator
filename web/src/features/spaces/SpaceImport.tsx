@@ -1,14 +1,14 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
-import { transferOpen, useImportSpace, useSpaceImport, type SpaceImportReport } from "@/api/spaceTransfers";
+import { transferOpen, useImportSpace, useSpaceImport, type ImportSource, type SpaceImportReport } from "@/api/spaceTransfers";
 import { Button, Card, ErrorBanner, Field, PageHeader, SectionTitle } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { SPACE_KEY_MAX_LENGTH, SPACE_NAME_MAX_LENGTH } from "@/config";
 import { useCanCreateSpace } from "@/features/permissions/access";
 import { t } from "@/i18n";
 
-/** Makes a new space of an archive: the upload, the worker's progress, and at the end what could not come across. */
+/** Makes a new space of an archive or another wiki's export: the upload, the worker's progress, and at the end what could not come across. */
 export function SpaceImportPage() {
   const mayCreate = useCanCreateSpace();
   const [file, setFile] = useState<File | null>(null);
@@ -71,7 +71,7 @@ export function SpaceImportPage() {
                 {t.spaceTransfer.open(current.spaceKey)}
               </Link>
             </p>
-            {current.report && <ImportReport report={current.report} />}
+            {current.report && <ImportReport report={current.report} source={current.source} />}
           </>
         )}
       </div>
@@ -142,13 +142,20 @@ function spaceName(permission: string): string {
 }
 
 /** What the import could not bring across as it was, as the importer reads it at the end. */
-function ImportReport({ report }: { report: SpaceImportReport }) {
+function ImportReport({ report, source }: { report: SpaceImportReport; source: ImportSource }) {
   const r = t.spaceTransfer.report;
+  const exported = source !== "archive";
   return (
     <Card className="space-y-4 p-4" data-import-report="">
       <p className="text-sm text-ink">{r.counts(report.pages, report.versions, report.files, report.comments)}</p>
+      {exported && (
+        <ul className="list-disc pl-5 text-sm text-ink-muted" data-import-notes="">
+          {source === "html" && <li>{r.noHistory}</li>}
+          <li>{r.exportPermissions}</li>
+        </ul>
+      )}
       {report.people.length === 0 && report.groups.length === 0 && report.dropped.length === 0 ? (
-        <p className="text-sm text-ink-muted">{r.allFound}</p>
+        <p className="text-sm text-ink-muted">{exported ? r.allFoundExport : r.allFound}</p>
       ) : (
         <>
           {report.people.length > 0 && (
@@ -188,6 +195,7 @@ function ImportReport({ report }: { report: SpaceImportReport }) {
           )}
         </>
       )}
+      {report.lost.length > 0 && <LostList report={report} />}
       {(report.reattributed > 0 || report.droppedReactions > 0 || report.mentionsAsText > 0) && (
         <ul className="list-disc pl-5 text-sm text-ink-muted">
           {report.reattributed > 0 && <li>{r.reattributed(report.reattributed)}</li>}
@@ -196,5 +204,28 @@ function ImportReport({ report }: { report: SpaceImportReport }) {
         </ul>
       )}
     </Card>
+  );
+}
+
+/** What an export of another wiki held that did not come across as it was, page by page. */
+function LostList({ report }: { report: SpaceImportReport }) {
+  const r = t.spaceTransfer.report;
+  const more = report.lostCount - report.lost.length;
+  return (
+    <section aria-labelledby="import-lost" className="space-y-1">
+      <SectionTitle id="import-lost">{r.lost}</SectionTitle>
+      <p className="text-xs text-ink-muted">{r.lostHint}</p>
+      <ul className="list-disc pl-5 text-sm" data-import-lost="">
+        {report.lost.map((l) => {
+          const sentence = r.lostKinds[l.kind];
+          return (
+            <li key={`${l.page}/${l.kind}/${l.detail}`} data-lost-kind={l.kind} className="break-words">
+              {r.lostEntry(l.page, sentence ? sentence(l.detail) : l.detail)}
+            </li>
+          );
+        })}
+      </ul>
+      {more > 0 && <p className="text-sm text-ink-muted">{r.lostMore(more)}</p>}
+    </section>
   );
 }
