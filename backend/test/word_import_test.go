@@ -289,6 +289,9 @@ func queueWordImport(t *testing.T, h *harness, org, requester uuid.UUID, parent 
 	if _, err := h.super.Exec(context.Background(), `INSERT INTO word_import (id, org_id, requested_by, parent_id, file_count, size_bytes`+extra, all...); err != nil {
 		t.Fatal(err)
 	}
+	// Planted as the superuser, the row is nobody's own write, so the
+	// requester's first look may reach a replica that has not replayed it.
+	h.settle(t)
 	return id
 }
 

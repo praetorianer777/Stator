@@ -126,6 +126,7 @@ function aComment(threadId: string, words: string, over: Partial<Comment> = {}):
     threadId,
     authorId: "u-grace",
     authorName: "Grace Hopper",
+    originalAuthor: null,
     body: say(words),
     deleted: false,
     createdAt: "2026-09-29T08:00:00Z",

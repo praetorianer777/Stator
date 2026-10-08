@@ -117,7 +117,7 @@ func cleanBody(body json.RawMessage) (json.RawMessage, error) {
 
 const selectComments = `
 SELECT t.id, t.page_id, t.kind, t.quote, t.detached_at IS NOT NULL, t.resolved_at, COALESCE(r.name, ''),
-       c.id, c.author_id, COALESCE(u.name, ''), c.body, c.deleted_at IS NOT NULL, c.created_at, c.edited_at
+       c.id, c.author_id, COALESCE(u.name, ''), c.original_author, c.body, c.deleted_at IS NOT NULL, c.created_at, c.edited_at
 FROM comment_thread t
 JOIN comment c ON c.org_id = t.org_id AND c.thread_id = t.id
 LEFT JOIN app_user u ON u.id = c.author_id
@@ -144,7 +144,7 @@ func threads(ctx context.Context, tx db.DBTX, actor perm.Actor, p *onPage, where
 			body             []byte
 		)
 		if err := rows.Scan(&threadID, &pageID, &kind, &quote, &detached, &resolvedAt, &resolvedBy,
-			&c.ID, &c.AuthorID, &c.AuthorName, &body, &c.Deleted, &c.CreatedAt, &c.EditedAt); err != nil {
+			&c.ID, &c.AuthorID, &c.AuthorName, &c.OriginalAuthor, &body, &c.Deleted, &c.CreatedAt, &c.EditedAt); err != nil {
 			return nil, err
 		}
 		c.ThreadID = threadID

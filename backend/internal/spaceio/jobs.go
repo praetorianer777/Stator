@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/wikiread"
 )
 
 // State is where an export or an import stands.
@@ -152,11 +153,13 @@ func scanExport(row pgx.Row) (*ExportJob, error) {
 
 // ImportJob is one import of an archive, as its requester follows it.
 type ImportJob struct {
-	ID       uuid.UUID `json:"id"`
-	Key      *string   `json:"key"`
-	Name     *string   `json:"name"`
-	State    State     `json:"state"`
-	Progress Progress  `json:"progress"`
+	ID   uuid.UUID `json:"id"`
+	Key  *string   `json:"key"`
+	Name *string   `json:"name"`
+	// Source is what the upload was: an archive, or another wiki's export.
+	Source   ImportSource `json:"source"`
+	State    State        `json:"state"`
+	Progress Progress     `json:"progress"`
 	// SpaceKey is the new space's key once it is made.
 	SpaceKey    *string    `json:"spaceKey"`
 	Report      *Report    `json:"report"`
@@ -170,7 +173,7 @@ type ImportJob struct {
 }
 
 const selectImport = `
-SELECT i.id, i.key, i.name, i.state, i.done_steps, i.total_steps, s.key, i.report, i.failure, COALESCE(i.detail, ''),
+SELECT i.id, i.key, i.name, i.source, i.state, i.done_steps, i.total_steps, s.key, i.report, i.failure, COALESCE(i.detail, ''),
        i.requested_at, i.started_at, i.finished_at, COALESCE(i.written_lsn::text, '')
 FROM space_import i LEFT JOIN space s ON s.id = i.space_id AND i.state = 'done'`
 
@@ -181,7 +184,7 @@ func scanImport(row pgx.Row) (*ImportJob, error) {
 		detail  string
 		written string
 	)
-	if err := row.Scan(&j.ID, &j.Key, &j.Name, &j.State, &j.Progress.Done, &j.Progress.Total, &j.SpaceKey, &report, &j.Failure, &detail,
+	if err := row.Scan(&j.ID, &j.Key, &j.Name, &j.Source, &j.State, &j.Progress.Done, &j.Progress.Total, &j.SpaceKey, &report, &j.Failure, &detail,
 		&j.RequestedAt, &j.StartedAt, &j.FinishedAt, &written); err != nil {
 		return nil, err
 	}
@@ -189,6 +192,9 @@ func scanImport(row pgx.Row) (*ImportJob, error) {
 		j.Report = &Report{}
 		if err := json.Unmarshal(report, j.Report); err != nil {
 			return nil, err
+		}
+		if j.Report.Lost == nil {
+			j.Report.Lost = []wikiread.Loss{}
 		}
 	}
 	if j.Failure != nil {
@@ -226,6 +232,10 @@ type Report struct {
 	DroppedReactions int `json:"droppedReactions"`
 	// MentionsAsText counts the mentions of somebody not found, kept as words.
 	MentionsAsText int `json:"mentionsAsText"`
+	// Lost is what an export of another wiki held that did not come across
+	// as it was, page by page; LostCount counts all of it.
+	Lost      []wikiread.Loss `json:"lost"`
+	LostCount int             `json:"lostCount"`
 }
 
 // MissingPerson is somebody the archive names who is not found here.
@@ -397,11 +407,25 @@ func (j *Jobs) QueueImport(ctx context.Context, actor perm.Actor, in ImportInput
 	if err != nil {
 		return nil, 0, err
 	}
-	m, err := peekManifest(archive, size)
+	zr, err := zip.NewReader(archive, size)
+	if err != nil {
+		return nil, 0, invalid("This file is no zip. Export the space from Stator as an archive, or from the other wiki as HTML or XML, then import that zip.")
+	}
+	from, err := detect(zr)
 	if err != nil {
 		return nil, 0, err
 	}
-	wanted := m.Space.Key
+	var wanted string
+	switch {
+	case from == SourceArchive:
+		m, err := readManifest(zr)
+		if err != nil {
+			return nil, 0, err
+		}
+		wanted = m.Space.Key
+	case key == nil:
+		return nil, 0, &space.FieldError{Field: "key", Message: "An export of another wiki names no key a space here takes. Choose a key for the new space."}
+	}
 	if key != nil {
 		wanted = *key
 	}
@@ -423,8 +447,8 @@ func (j *Jobs) QueueImport(ctx context.Context, actor perm.Actor, in ImportInput
 	var out *ImportJob
 	lsn, err := j.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO space_import (id, org_id, requested_by, key, name, size_bytes)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5)`, id, actor.UserID, key, name, size); err != nil {
+			INSERT INTO space_import (id, org_id, requested_by, key, name, size_bytes, source)
+			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6)`, id, actor.UserID, key, name, size, string(from)); err != nil {
 			return fmt.Errorf("queue the import: %w", err)
 		}
 		var err error
@@ -455,16 +479,6 @@ func (j *Jobs) keyFree(ctx context.Context, key string) error {
 		return &space.FieldError{Field: "key", Message: fmt.Sprintf("The key %s is taken by another space. Choose another key for the imported space.", key)}
 	}
 	return nil
-}
-
-// peekManifest reads the manifest of an uploaded archive, so a file that is
-// no archive of ours is refused while its uploader waits.
-func peekManifest(f *os.File, size int64) (*Manifest, error) {
-	zr, err := zip.NewReader(f, size)
-	if err != nil {
-		return nil, invalid("This file is no zip archive. Export the space from Stator as an archive, then import that file.")
-	}
-	return readManifest(zr)
 }
 
 // Import is one import the caller may read.

@@ -253,6 +253,7 @@ function CommentView({ pageId, comment, canReact }: { pageId: string; comment: C
           </span>
           <time dateTime={comment.createdAt}>{when.format(new Date(comment.createdAt))}</time>
           {comment.editedAt && !comment.deleted && <span data-comment-edited="">· {t.comments.edited}</span>}
+          {comment.originalAuthor && <span data-comment-original="">· {t.comments.originalAuthor(comment.originalAuthor)}</span>}
         </p>
         {comment.deleted || !comment.body ? (
           <p className="mt-1 text-sm text-ink-muted italic" data-comment-placeholder="">

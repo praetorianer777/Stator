@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/wikiread"
 )
 
 const (
@@ -67,6 +68,7 @@ type claim struct {
 	key      *string
 	name     *string
 	size     int64
+	source   ImportSource
 	leftover *uuid.UUID
 	object   string
 }
@@ -160,11 +162,11 @@ func (w *Watch) claim(ctx context.Context, k kind) (*claim, error) {
 	_, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		out := claim{kind: k}
 		var role string
-		extra := `j.space_id, j.format, NULL::text, NULL::text, 0::bigint`
+		extra := `j.space_id, j.format, NULL::text, NULL::text, 0::bigint, ''`
 		if k == kindImport {
-			extra = `j.space_id, '', j.key, j.name, j.size_bytes`
+			extra = `j.space_id, '', j.key, j.name, j.size_bytes, j.source`
 		}
-		var format string
+		var format, source string
 		// Materialized, so the pick runs once: joined as a subquery, it was
 		// scanned again for the update and, skipping the row it had just
 		// locked, handed this worker a second job it never ran.
@@ -181,14 +183,14 @@ func (w *Watch) claim(ctx context.Context, k kind) (*claim, error) {
 			RETURNING j.id, j.org_id, (SELECT slug FROM org WHERE id = j.org_id), j.requested_by,
 			          COALESCE((SELECT org_role FROM org_member m WHERE m.org_id = j.org_id AND m.user_id = j.requested_by), ''),
 			          j.attempts, j.object_key, %[2]s`, k, extra), Lease.Seconds()).
-			Scan(&out.id, &out.org, &out.slug, &out.user, &role, &out.attempts, &out.object, &out.spaceID, &format, &out.key, &out.name, &out.size)
+			Scan(&out.id, &out.org, &out.slug, &out.user, &role, &out.attempts, &out.object, &out.spaceID, &format, &out.key, &out.name, &out.size, &source)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		out.role, out.format = auth.OrgRole(role), ExportFormat(format)
+		out.role, out.format, out.source = auth.OrgRole(role), ExportFormat(format), ImportSource(source)
 		if k == kindImport {
 			out.leftover, out.spaceID = out.spaceID, nil
 		}
@@ -454,14 +456,39 @@ func (w *Watch) importArchive(ctx context.Context, c *claim) (*importer, db.LSN,
 	}
 	zr, err := zip.NewReader(f, size)
 	if err != nil {
-		return nil, 0, invalid("This file is no zip archive. Export the space from Stator as an archive, then import that file.")
+		return nil, 0, invalid("This file is no zip. Export the space from Stator as an archive, or from the other wiki as HTML or XML, then import that zip.")
 	}
-	m, err := readManifest(zr)
-	if err != nil {
-		return nil, 0, err
+	var (
+		m        *Manifest
+		src      source
+		exported *exportSource
+	)
+	if c.source == SourceArchive {
+		if m, err = readManifest(zr); err != nil {
+			return nil, 0, err
+		}
+		src = archiveSource{openArchive(zr)}
+	} else {
+		var key, name string
+		if c.key != nil {
+			key = space.NormalizeKey(*c.key)
+		}
+		if c.name != nil {
+			name = *c.name
+		}
+		if m, exported, err = readExport(zr, c.source, key, name); err != nil {
+			return nil, 0, err
+		}
+		src = exported
 	}
-	im := &importer{a: openArchive(zr), m: m, store: w.store, org: c.org, importer: c.user, spaceID: uuid.Must(uuid.NewV7()),
-		report: Report{People: []MissingPerson{}, Groups: []string{}, Dropped: []DroppedEntry{}}}
+	im := &importer{src: src, m: m, store: w.store, org: c.org, importer: c.user, spaceID: uuid.Must(uuid.NewV7()), from: c.source,
+		report: Report{People: []MissingPerson{}, Groups: []string{}, Dropped: []DroppedEntry{}, Lost: []wikiread.Loss{}}}
+	if exported != nil {
+		im.report.Lost, im.report.LostCount = exported.listed, exported.lostCount
+		if im.report.Lost == nil {
+			im.report.Lost = []wikiread.Loss{}
+		}
+	}
 	im.key, im.name = m.Space.Key, m.Space.Name
 	if c.key != nil {
 		im.key = *c.key

@@ -118,7 +118,8 @@ process, which is only right for a single api process. `/readyz` and
 | `docx` | a published page as a Word document, written from its document with its pictures inside, as its reader may read it, and a Word document read as a page with its pictures and warnings; `docs/word.md` lists how each block comes out and comes in |
 | `wordio` | Word import: one document as a page in the request, several and folders of them by the worker as the importer, through the page and file services |
 | `mdio` | Markdown import and export of pages, subtrees and their files, through the page and file services |
-| `spaceio` | a whole space exported as an archive or as HTML pages, and an archive imported as a new space, run by the worker as leased jobs |
+| `spaceio` | a whole space exported as an archive or as HTML pages, and an archive, or another wiki's space export, imported as a new space, run by the worker as leased jobs |
+| `wikiread` | another wiki's space export, HTML or XML, read into pages, versions, files, labels and comments held to the allowlist, with what did not come across; `docs/wiki-import.md` |
 | `theme` | custom themes in the `armature-theme/1` format |
 | `armature` | Armature client: issues, queries, issue creation, link sync |
 | `events` | transactional outbox, drained by the worker |

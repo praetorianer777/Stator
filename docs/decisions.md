@@ -3,6 +3,84 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-08: Another wiki's space export is imported as an archive is, read into its shapes first
+
+An administrator moving to Stator brings the spaces of the wiki they leave
+(#91). Wikis export a space in one of two shapes, and both are read;
+`docs/wiki-import.md` describes them by their structure and lists what
+becomes of each block.
+
+- **Both formats, the HTML export first.** The HTML export, a page file
+  each with the tree in the index's nested lists, is the one every wiki of
+  this kind writes and the one people keep, and it reads without the other
+  wiki's model; it was built first and carries the main flow. It has no
+  history, and names people only as words. The XML export, one document of
+  objects with the files beside it, carries what the HTML one lacks: every
+  version with its author, comments with their replies, labels, every
+  version of every file, and people with their addresses. It fit in scope,
+  so it is read too, by the same converter.
+- **The same job as an archive's.** An import of an export is a row of
+  `space_import` with a `source` of `html` or `xml`, run by the same worker
+  with its lease, progress, report and refusals, under the policies the
+  integration suite already proves. A table of its own would have repeated
+  all of them. The api tells the formats apart by what the zip holds
+  (`manifest.json`, `entities.xml`, `index.html`) rather than asking, so an
+  administrator uploads whatever they have; anything else is refused at once
+  in a sentence that names the three.
+- **A new space, under a key the importer chooses.** The issue moves
+  spaces, and a space of its own keeps the other wiki's tree whole, with its
+  home page as the home page. Importing below a page of an existing space is
+  left out: it would merge two trees and two sets of permissions, and the
+  Markdown import already brings loose pages into a tree. The other wiki's
+  key is its own and may clash with any here, so a key is required for an
+  export, which the database holds as well; the name is the export's unless
+  another is given.
+- **Read into the archive's shapes, written by its importer.** The worker
+  reads the whole export into a manifest and pages with versions, files,
+  labels and threads (`internal/wikiread`, then `spaceio/foreign.go`) and
+  hands them to the importer an archive goes through. Ids are rewritten,
+  every document is held to the allowlist, files are stored and the space is
+  made in one transaction exactly as for an archive; a failure leaves
+  nothing behind. The XML document is read object by object and only the
+  classes an import uses are kept.
+- **One converter, of our own.** Both formats are HTML at heart: the HTML
+  export's pages through `x/net/html`, the XML export's bodies, XHTML with
+  undeclared namespaces, through `encoding/xml` without strictness. Both
+  are read into one element tree that one converter turns into a document.
+  The Markdown import's HTML handling reads back only the elements Stator's
+  own Markdown writes and leaves every other tag out, so it could not read
+  another wiki's pages; the converter follows its rules instead: pictures
+  end a paragraph, text keeps a browser's white space, marks keep one order.
+  Callouts are recognised by the words of their class names, so a box marked
+  warning is a warning panel whatever the wiki calls the rest. A container
+  nested past what a document holds becomes its words, and a page or
+  comment that still is no document the allowlist takes is kept as its
+  words, so one odd page never fails a whole space.
+- **People found by address, else named.** As for an archive, an author is
+  found by address among the members; everybody else's versions, comments
+  and files are the importer's with their name in `original_author`. A
+  comment now shows that name beside the importer, as the history already
+  did for versions. An HTML export names people only by their words, unless
+  a mail link carries an address.
+- **No permissions come along.** An export carries none Stator could read,
+  so the space keeps those every new space starts with, the importer its
+  administrator, where an archive's own replace them. The report says so,
+  and where to set them.
+- **A report of what was lost, page by page.** Beside the archive's
+  counts and the people not found, an export's report lists by page what
+  did not come across as it was: frames and forms, macros with nothing like
+  them, pictures from other sites, files the export lacks, links to pages
+  outside it, labels Stator does not take, content kept as words. The kinds
+  are words of the interface, each with the detail it quotes; the same loss
+  on a page is listed once, and past 200 the rest are counted.
+- **Limits and refusals.** An export is held to an archive's limits (the
+  upload, 5000 pages, 100000 versions, 20000 files, 8 GB unpacked) and
+  further to 8 MB per HTML page file and 1 GB for the XML document. Every
+  refusal is a sentence that says what to export or choose instead.
+- **Audited as an archive's import.** `space.imported`, written with the
+  space, now says its `source` and, for an export, how much was lost.
+- **Not MCP tools**, as an archive's import is not.
+
 ## 2026-10-08: Word documents are read natively, one in the request and several by the worker
 
 An author imports .docx files so that existing documents move into the

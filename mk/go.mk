@@ -23,6 +23,9 @@ go_run = docker run --rm \
 	-w /work/backend $(GO_IMAGE)
 DOCKER_GO = $(call go_run,)
 
+# The packages test-go runs; PKG=./internal/spaceio/... runs one while working on it.
+PKG ?= ./...
+
 $(GO_CACHE):
 	@mkdir -p $@
 
@@ -36,7 +39,7 @@ vet: | $(GO_CACHE) ## Run go vet over the backend
 
 .PHONY: test-go
 test-go: | $(GO_CACHE) ## Run the Go unit tests with the race detector
-	$(DOCKER_GO) go test -race $(TESTFLAGS) ./...
+	$(DOCKER_GO) go test -race $(TESTFLAGS) $(PKG)
 
 .PHONY: build-go
 build-go: | $(GO_CACHE) ## Build every backend binary into backend/bin, stamped with VERSION

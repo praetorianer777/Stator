@@ -31,7 +31,7 @@ Stator keeps a team's knowledge as pages. Pages live in **spaces**, one for each
 
 An archived space stays readable at every address but leaves the space list, search and Home, and nothing in it changes until an administrator takes it out of the archive again. Deleting a space deletes every page in it, for good.
 
-**Export** writes the whole space to a file in the background, for its administrators to download within a day: an **archive** with every published page, its history, files, comments and permissions, to keep as a backup or to bring into another organization, or **HTML pages** to read offline in any browser. **Import space** on the spaces overview makes a new space of such an archive, finds people by their email address and groups by their name, and says at the end what it could not bring across.
+**Export** writes the whole space to a file in the background, for its administrators to download within a day: an **archive** with every published page, its history, files, comments and permissions, to keep as a backup or to bring into another organization, or **HTML pages** to read offline in any browser. **Import space** on the spaces overview makes a new space of such an archive, finds people by their email address and groups by their name, and says at the end what it could not bring across. It also takes the HTML or XML export another wiki makes of a space, zipped, under a key you choose: the pages keep their tree, pictures, files, labels and comments, and the report lists page by page what came across only in part.
 
 ## Pages
 
