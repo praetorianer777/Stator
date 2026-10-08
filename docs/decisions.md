@@ -3,6 +3,71 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-08: A sketch is drawn together in the page's shared draft, and the page keeps what was last left or published
+
+People who have one sketch open in a page edited together (#65) draw on
+one canvas (#325), where before each drew alone and the last Done won.
+
+- **Shapes in the shared draft, one map per sketch.** Each sketch's shapes
+  are a top-level map of the page's Yjs document, `sketch:<sketchId>`,
+  keyed by shape id, each value the shape as Excalidraw keeps it, deleted
+  ones included so a deletion reaches everybody; the background is one key
+  beside them. The shapes so share the room, its storage, its permissions
+  and its offline merge with the body, and the api stores and relays them
+  without reading, as it does the body. A top-level map rather than one
+  map of sketches holding a map each: two browsers making a sketch's map at
+  the same moment would each make their own, and one would lose every shape
+  in it. A shape rather than its every field is one value: Excalidraw
+  changes a shape whole and versions it whole.
+- **Excalidraw's versions settle a clash.** Every change gives a shape a new
+  `version` and a random `versionNonce`. A browser writes a shape only when
+  its copy supersedes the shared one, a later version or of the same
+  version the lower nonce, and takes the others' in through Excalidraw's
+  own `reconcileElements`, which also keeps a shape somebody is still
+  drawing. Yjs picks one of two values written at once by its own rule; the
+  browser whose copy Excalidraw would keep sees it lost and writes it
+  again, so every canvas ends on Excalidraw's choice. The canvas sends at
+  most every 150 ms (`SKETCH_SYNC_INTERVAL_MS`), since every send is a row
+  the api stores.
+- **A sketch is named when it is first drawn together.** The node has a
+  `sketchId` attribute, a UUID or null, which the allowlist takes. A new
+  sketch gets one as it is inserted in a page edited together; an older
+  one, an imported one or a pasted copy (whose HTML carries no id) gets one
+  when it is first opened, and so does one whose id another sketch of the
+  page already carries. Opening gives an id rather than every load, so
+  sketches nobody draws on never change. The first person on a sketch
+  brings its saved shapes into the map by sending their canvas, which
+  opened on the saved scene; everybody after opens on the map.
+- **Pointers and selections are awareness.** The awareness field `sketch`
+  holds which sketch a person has open, their pointer in the scene's
+  coordinates and the shapes they selected, sent at most every 50 ms. The
+  canvas draws everybody else's as Excalidraw's collaborators, in the
+  colour and with the name the body's carets have, and the page's sketch
+  and the canvas's header list who is drawing on it.
+- **The page keeps what was last left or published.** Readers, the public
+  page, exports and search read the node's `scene` and `drawing`, which the
+  server checks as before; the map is the editors' alone. Two moments write
+  them. Whoever leaves the canvas with Done, or Escape outside it, writes
+  the scene the map holds and the SVG drawn from it, when the page's is
+  behind, so the last to leave leaves the last word. And a publish from a
+  page edited together first draws every sketch whose map is ahead of its
+  attributes, so it carries what is on the canvas even while somebody is
+  still drawing on it. Drawing on every change instead would put an SVG of
+  tens of kilobytes into the shared draft every few seconds, kept by the
+  api until the room is compacted, and would need a browser to be chosen to
+  draw; drawing only on leaving would publish an old drawing beside a
+  canvas somebody is still busy on. Behind means the shapes on the map,
+  less the deleted ones, differ from the scene's in id, version or nonce.
+- **Nothing to cancel, and undo is one's own.** Every change is shared as
+  it is made, so the canvas drawn together has no Cancel and leaving asks
+  nothing. The others' shapes come in as updates Excalidraw never records
+  (`CaptureUpdateAction.NEVER`), so undo takes back only this person's
+  changes, and Excalidraw's undo is a new version the others take in like
+  any change. The body's undo does not track the sketch maps.
+- **Editing alone stays as it was.** An editor that edits alone, because
+  the shared draft is out of reach or the page has none, keeps the canvas
+  of #312: Done writes, Cancel asks before it discards.
+
 ## 2026-10-08: A sketch is its Excalidraw scene and the SVG drawn from it, shown as a picture
 
 A sketch (#312) is one block, `sketch`, drawn on an Excalidraw canvas (MIT),
