@@ -951,6 +951,22 @@ and the versioning [Semantic Versioning](https://semver.org/).
   versions did. The space keeps the permissions every new space starts
   with, and the report lists page by page what came across only in part.
   `docs/wiki-import.md` describes both formats by their structure.
+- Sketches (#312). "Sketch" in the slash menu opens an Excalidraw canvas
+  over the window for boxes, arrows, text and freehand lines; Done keeps
+  the scene and an SVG drawn from it, and a title is its text alternative.
+  Readers see the drawing as a picture, in includes, the public and link
+  views, the print view and history comparisons too, and open it larger,
+  without loading Excalidraw; a dark theme turns it as Excalidraw's dark
+  mode does. The API holds the scene to Excalidraw's shape and 500000
+  characters, and the drawing to an SVG table of shapes and words without
+  scripts, handlers or other hosts (`api/sketch-drawing-allowlist.json`),
+  which the browser cleans to again before it shows it. Pictures cannot go
+  in a sketch yet. Excalidraw and its fonts come from Stator's own build,
+  its font CDN rewritten to Stator's own path, so nothing is fetched from
+  another host. Search
+  reads a sketch's title and words (migration 00630); the Markdown export
+  writes an `excalidraw` fence the import reads back, the HTML export the
+  drawing as an SVG file, and the Word export a sentence.
 
 ### Changed
 

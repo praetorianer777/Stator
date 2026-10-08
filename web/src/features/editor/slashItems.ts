@@ -48,6 +48,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("include", Icon.Include, ["include", "embed page", "reuse", "transclude", "excerpt", "shared"], (c) => c.pickInclude()),
   item("linkCard", Icon.Link, ["link", "url", "preview", "card", "embed", "video", "bookmark"], (c) => c.pickLinkCard()),
   item("diagram", Icon.Diagram, ["diagram", "mermaid", "flowchart", "chart", "sequence", "graph", "architecture"], (c) => c.insertDiagram()),
+  item("sketch", Icon.Sketch, ["sketch", "draw", "drawing", "whiteboard", "excalidraw", "freehand", "architecture"], (c) => c.insertSketch()),
   item("mathBlock", Icon.Sigma, ["math", "formula", "equation", "latex", "tex", "katex"], (c) => c.insertMathBlock()),
   item("expand", Icon.Disclosure, ["expand", "collapse", "toggle", "details", "fold"], (c) => c.setExpand()),
   item("columns2", Icon.Columns, ["columns", "layout", "side by side", "two", "split"], (c) => c.setColumns(2)),

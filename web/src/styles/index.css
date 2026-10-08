@@ -372,6 +372,7 @@
       .doc-table-wrap,
       .doc-table-chart,
       .doc-diagram,
+      .doc-sketch,
       div.doc-math,
       .doc-columns,
       .doc-link-card,
@@ -383,6 +384,7 @@
       div[data-armature-issue-list],
       .node-tableChart,
       .node-diagram,
+      .node-sketch,
       .node-mathBlock,
       .node-linkCard,
       .node-armatureChart,
@@ -398,6 +400,7 @@
           .doc-table-wrap,
           .doc-table-chart,
           .doc-diagram,
+          .doc-sketch,
           div.doc-math,
           .doc-columns,
           .doc-link-card,
@@ -1960,6 +1963,90 @@
     outline: 2px solid var(--color-focus);
     outline-offset: 1px;
   }
+  /* A sketch draws at its own size up to the sheet's width, on the
+   * background it was drawn on; a dark theme turns it as Excalidraw's own
+   * dark mode turns its canvas, so it looks as it did while it was drawn. */
+  .doc-content .doc-sketch {
+    margin: 0;
+  }
+  .doc-sketch-open {
+    display: block;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    border-radius: var(--radius-control);
+    cursor: zoom-in;
+  }
+  .doc-sketch-open:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  .doc-sketch-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+  }
+  :root[data-theme="dark"] .doc-sketch-image {
+    filter: invert(93%) hue-rotate(180deg);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .doc-sketch-image {
+      filter: invert(93%) hue-rotate(180deg);
+    }
+  }
+  .doc-sketch-title {
+    margin-top: 0.25rem;
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+  .doc-sketch-note {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+  .doc-sketch-error {
+    color: var(--color-danger);
+  }
+  .doc-sketch-edit {
+    display: grid;
+    gap: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    padding: 0.5rem 0.75rem;
+  }
+  .doc-sketch-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .doc-sketch-tools input {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+  .doc-sketch-label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-ink-muted);
+  }
+  .doc-sketch-hint {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+  .ProseMirror-selectednode.doc-sketch-edit,
+  .ProseMirror-selectednode > .doc-sketch-edit {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
   div.doc-math-edit {
     border-radius: var(--radius-control);
   }
@@ -2101,7 +2188,7 @@
   }
   /* A block is cut between sheets only when it is taller than one, and a
      heading stays with what follows it. */
-  .doc-content :is(pre, table, figure, img, .doc-diagram, div.doc-math, .doc-table-chart, .doc-chart, .doc-link-card, .doc-columns) {
+  .doc-content :is(pre, table, figure, img, .doc-diagram, .doc-sketch, div.doc-math, .doc-table-chart, .doc-chart, .doc-link-card, .doc-columns) {
     break-inside: avoid;
   }
   .doc-content :is(h1, h2, h3, h4, h5, h6) {

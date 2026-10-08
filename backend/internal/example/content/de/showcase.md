@@ -181,6 +181,27 @@ flowchart LR
     Verlauf -->|Wiederherstellen| Veröffentlichen
 ```
 
+## Skizzen
+
+Eine **Skizze** zeichnen Sie von Hand: Kästen, Pfeile, Text und freie Linien auf einer Zeichenfläche. Wählen Sie **Skizze** im Menü, zeichnen Sie und wählen Sie dann **Fertig**; geben Sie ihr einen Titel, den Screenreader und die Suche von ihr lesen. Lesende sehen die Zeichnung und können sie vergrößert öffnen.
+
+```excalidraw "Vom Entwurf zur Veröffentlichung"
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "stator",
+  "elements": [
+    {"id": "draft-box", "type": "rectangle", "x": 0, "y": 0, "width": 180, "height": 80, "backgroundColor": "#a5d8ff", "strokeColor": "#1e1e1e", "fillStyle": "solid", "strokeWidth": 2, "roughness": 1, "roundness": {"type": 3}},
+    {"id": "draft-text", "type": "text", "x": 0, "y": 27, "width": 180, "height": 25, "text": "Entwurf", "originalText": "Entwurf", "strokeColor": "#1e1e1e", "fontSize": 20, "fontFamily": 5, "textAlign": "center", "verticalAlign": "middle"},
+    {"id": "publish-arrow", "type": "arrow", "x": 190, "y": 40, "width": 110, "height": 0, "points": [[0, 0], [110, 0]], "strokeColor": "#1e1e1e", "strokeWidth": 2, "roughness": 1, "endArrowhead": "arrow"},
+    {"id": "published-box", "type": "rectangle", "x": 310, "y": 0, "width": 180, "height": 80, "backgroundColor": "#b2f2bb", "strokeColor": "#1e1e1e", "fillStyle": "solid", "strokeWidth": 2, "roughness": 1, "roundness": {"type": 3}},
+    {"id": "published-text", "type": "text", "x": 310, "y": 27, "width": 180, "height": 25, "text": "Veröffentlicht", "originalText": "Veröffentlicht", "strokeColor": "#1e1e1e", "fontSize": 20, "fontFamily": 5, "textAlign": "center", "verticalAlign": "middle"}
+  ],
+  "appState": {"viewBackgroundColor": "#ffffff"},
+  "files": {}
+}
+```
+
 ## Entscheidungen
 
 Eine **Entscheidung** ist eine Zeile, die sagt, was entschieden ist oder was noch offen ist. **Entscheidungen** in der Seitenleiste des Bereichs listet jede aus seinen veröffentlichten Seiten.

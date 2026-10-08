@@ -60,6 +60,16 @@ func writeBlocks(b *strings.Builder, blocks []Node, depth int) {
 				b.WriteString(source)
 				b.WriteByte('\n')
 			}
+		case NodeSketch:
+			if title, _ := n.Attrs["title"].(string); title != "" {
+				b.WriteString(title)
+				b.WriteByte('\n')
+			}
+			scene, _ := n.Attrs["scene"].(string)
+			for _, words := range SketchWords(scene) {
+				b.WriteString(words)
+				b.WriteByte('\n')
+			}
 		case armature.NodeIssueBlock:
 			if key, _ := n.Attrs["key"].(string); key != "" {
 				b.WriteString(key)

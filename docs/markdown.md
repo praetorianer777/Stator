@@ -85,6 +85,7 @@ each marked `data-stator`. Nothing else in HTML reaches a page.
 | task list | `- [x]`, `- [ ]` | same, when every item has a box |
 | blockquote | `>` | same |
 | code block | fenced, with its language | same |
+| sketch | an `excalidraw` fence holding its scene as an Excalidraw file, its title after the language as a JSON string | the sketch |
 | horizontal rule | `---` | same |
 | table | GFM table, alignment per column | same |
 | panel | an alert quote: info `[!NOTE]`, note `[!IMPORTANT]`, success `[!TIP]`, warning `[!WARNING]`, error `[!CAUTION]` | the panel of that kind |
@@ -120,6 +121,8 @@ hold:
 - A template's hint mark and an inline comment's passage mark are left out,
   their words kept.
 - A picture or file the page no longer has is written as its words.
+- A sketch's drawing is left out: readers draw the sketch from its scene,
+  and saving it in the editor draws it again for the page.
 
 ### Reading Markdown from elsewhere
 
@@ -129,6 +132,9 @@ hold:
 - An HTML block that is not one of the forms above is kept as its source in a
   code block marked `html`, where it shows and never runs. An unknown inline
   tag is left out and its words kept; `<br>` is a line break.
+- An `excalidraw` fence holding an Excalidraw file becomes a sketch of its
+  elements that are not deleted and its background; one holding a picture
+  or an embedded site, or no scene, stays a code block.
 - A link or picture whose address is not a web, mail or site address
   (`javascript:`, `data:`, `//host`) keeps its words only.
 - A `data-stator` element whose values the allowlist refuses (a mention that

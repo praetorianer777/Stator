@@ -156,6 +156,11 @@ func (v validator) node(n Node, parent NodeSpec, depth int) error {
 	if err := v.checkAttrs(n.Attrs, spec.Attrs, fmt.Sprintf("a %q", n.Type)); err != nil {
 		return err
 	}
+	if n.Type == NodeSketch {
+		if err := checkSketch(n.Attrs); err != nil {
+			return err
+		}
+	}
 	if n.Type == "heading" {
 		if id, _ := n.Attrs["id"].(string); id != "" {
 			if v.anchors[id] {

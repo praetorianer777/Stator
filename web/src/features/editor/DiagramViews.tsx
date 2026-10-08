@@ -51,7 +51,8 @@ export function diagramTheme(style: CSSStyleDeclaration, dark: boolean): { theme
   return { theme: dark ? "dark" : "default" };
 }
 
-function pageIsDark(): boolean {
+/** Whether the page shows in its dark theme, chosen or followed from the system. */
+export function pageIsDark(): boolean {
   const chosen = document.documentElement.getAttribute("data-theme");
   if (chosen === "dark" || chosen === "light") return chosen === "dark";
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;

@@ -46,6 +46,103 @@ every push waited for it (#323).
 - **The local gate is unchanged**: one machine runs one stack, so the
   hook runs every layer in order as before.
 
+## 2026-10-08: A sketch is its Excalidraw scene and the SVG drawn from it, shown as a picture
+
+A sketch (#312) is one block, `sketch`, drawn on an Excalidraw canvas (MIT),
+holding three attributes: `scene`, `drawing` and `title`.
+
+- **The scene is what is kept and edited.** `scene` holds Excalidraw's
+  elements and the one setting a drawing needs, its background, as JSON in
+  a string, up to 500000 characters and 5000 shapes
+  (`document.MaxSketchSceneLength`, `SKETCH_SCENE_MAX_LENGTH`). A string
+  rather than nested attributes, since the allowlist types attributes one
+  by one and the scene is Excalidraw's own format, which grows fields from
+  one version to the next. The server parses it and holds it to the shape a
+  scene has: an object of `elements` and `appState` only, each element with
+  an id of its own and a type the block takes, links only to web and mail
+  addresses, no data of other programs, numbers where positions go and
+  colours where colours go. It does not judge every one of Excalidraw's
+  fields; Excalidraw restores a scene with the ones it misses.
+- **The drawing is made when the sketch is saved.** Done in the editor
+  draws the scene with Excalidraw's own `exportToSvg`, with the slices of
+  its fonts that hold the letters it uses written into it, and keeps the SVG
+  in `drawing`,
+  up to 1000000 characters. The page, an include, the public and link views,
+  the print view and history comparisons show that SVG and never load
+  Excalidraw, 1.1 MB of script besides its fonts. Drawing on the server
+  would take a browser engine in the API, as it would for diagrams; drawing
+  for each reader, as diagrams are, would load Excalidraw for every reader,
+  and Excalidraw's drawing is its own, so the one it made is the one to keep.
+- **The drawing is never trusted as markup.** SVG can carry scripts,
+  handlers, HTML and references to other hosts. Three things stand between a
+  stored drawing and a reader. The API refuses a drawing outside
+  `document.SketchDrawing`: shapes, text, groups, masks and clip paths, a
+  list of attributes without handlers or links, `url()` only to the
+  drawing's own elements, and a style element only of fonts written into it
+  as data; the refusal says what was found. The browser cleans a drawing to
+  the same table again before it shows it, so one put into the database past
+  the API is cleaned too. And it is shown as a picture, an `img` of a `data:`
+  address, in which a browser runs no script and fetches nothing, whatever
+  the table might miss. The table is one Go value, written to
+  `api/sketch-drawing-allowlist.json` with the allowlists, and a vitest test
+  holds the browser's copy to it. Rewriting a drawing on the server instead
+  was left: a cleaner that rewrites has to be right for every input, one
+  that refuses only for those it takes, and the editor sends nothing else.
+- **One look in both themes.** The drawing is light, on its background, and
+  a dark theme turns it with the filter Excalidraw's dark mode puts on its
+  canvas, so it reads as it did while it was drawn. Readers open it larger
+  in the lightbox, which also saves it as an SVG file.
+- **No pictures in a sketch yet.** Excalidraw keeps a picture as a data
+  address in the scene, a file outside the page's own, past its permissions
+  and its copies, and many times the size of the shapes. The image tool is
+  hidden; a picture or embedded site that reaches the canvas anyway is taken
+  off it on Done with a sentence that says to put it beside the sketch, and
+  the API refuses image elements and file ids. Pictures as the page's files,
+  with the scene's references rewritten on copy, export and import as the
+  attachment nodes' are, are left for a later issue.
+- **Nothing from another host.** Excalidraw is bundled by the app's build
+  and loads with the first sketch opened or drawn. It fetches its fonts from
+  `window.EXCALIDRAW_ASSET_PATH`, so the build writes them under
+  `/assets/excalidraw/fonts/` and the page points the path there before
+  Excalidraw loads. Excalidraw names a public CDN beside that path as a
+  fallback, and the browser asked it for every font even with ours at hand,
+  so the build rewrites the fallback to our own path and fails when it no
+  longer finds it; the browser suite fails on any request that leaves the
+  origin, and the Content-Security-Policy refuses other hosts anyway.
+  Excalidraw would cut each font down to the letters a drawing uses, but its
+  WebAssembly glue evaluates strings as script, which the policy refuses and
+  keeps refusing; it writes the font's whole slice for those letters instead,
+  tens of kilobytes. The canvas's menu keeps clearing it, its background and
+  help, and leaves out files, export and links to other sites.
+- **Editing together.** A sketch's attributes are one element's attributes
+  in the shared draft, each written whole. Two people saving one sketch at
+  once keep the last write of scene and drawing alike: Yjs settles a clash
+  of every key written in one moment the same way, so a scene never pairs
+  with another person's drawing. Merging their strokes element by element,
+  as Excalidraw's own collaboration does, would need the scene in the shared
+  document as elements rather than as a string, and is left for later; the
+  canvas is one person's while it is open.
+- **Where a sketch goes.** Search reads its title and the words written in
+  it, as typed rather than as they wrap, in `document.PlainText` and
+  `page_plain_blocks` alike (migration 00630), which passes over a scene
+  that is no JSON rather than failing a write. The Markdown export writes an
+  `excalidraw` fence holding the scene as an Excalidraw file, which
+  Excalidraw opens, with the title after the language, and the import reads
+  it back without a drawing: readers draw such a sketch with Excalidraw,
+  the print view waiting for it, until somebody saves it in the editor. The
+  example space's sketch comes in the same way. The HTML export writes the
+  drawing beside the page as an SVG file and shows it as a picture; the
+  Word export says in a sentence, with the title, that Stator draws it,
+  since Word takes SVG only beside a raster copy, which the server does not
+  draw. A copy, a template, an archive and a version carry the attributes as
+  they are.
+- **By keyboard and on a phone.** The title is the drawing's text
+  alternative and its caption; a sketch without one is named as such. A new
+  sketch opens its canvas at once, over the whole window on a phone too.
+  Done and Cancel come before the canvas; Tab leaves the canvas for them,
+  Escape outside it cancels, asking first when something changed, and inside
+  it Escape is Excalidraw's, letting go of what is selected.
+
 ## 2026-10-08: Another wiki's space export is imported as an archive is, read into its shapes first
 
 An administrator moving to Stator brings the spaces of the wiki they leave

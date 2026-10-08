@@ -135,6 +135,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",
@@ -254,6 +255,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",
@@ -360,6 +362,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",
@@ -412,6 +415,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",
@@ -459,6 +463,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",
@@ -641,6 +646,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",
@@ -756,6 +762,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",
@@ -855,6 +862,25 @@
         }
       }
     },
+    "sketch": {
+      "attrs": {
+        "drawing": {
+          "kind": "string",
+          "nullable": true,
+          "maxLength": 1000000
+        },
+        "scene": {
+          "kind": "string",
+          "maxLength": 500000,
+          "pattern": "\\S"
+        },
+        "title": {
+          "kind": "string",
+          "nullable": true,
+          "maxLength": 500
+        }
+      }
+    },
     "status": {
       "attrs": {
         "color": {
@@ -935,6 +961,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",
@@ -1034,6 +1061,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",
@@ -1100,6 +1128,7 @@
         "decision",
         "mathBlock",
         "diagram",
+        "sketch",
         "linkCard",
         "excerpt",
         "include",

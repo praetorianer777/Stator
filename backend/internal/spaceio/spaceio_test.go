@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -238,7 +239,9 @@ func snapshotOf(t *testing.T) (*snapshot, map[string]uuid.UUID) {
 			{"type":"paragraph","content":[{"type":"text","text":"<b>not bold</b>"}]},
 			{"type":"include","attrs":{"pageId":"` + home.String() + `","excerptId":null}}]}`)})
 	add(&ArchivePage{ID: folder, Parent: &home, Kind: "folder", Title: "Folder", Body: json.RawMessage(emptyDoc)})
-	add(&ArchivePage{ID: post, Kind: "post", Title: "News", Body: json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Out now"}]}]}`)})
+	add(&ArchivePage{ID: post, Kind: "post", Title: "News", Body: json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Out now"}]},
+		{"type":"sketch","attrs":{"scene":"{\"elements\":[]}","drawing":"<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"1\"></rect></svg>","title":"Flow"}},
+		{"type":"sketch","attrs":{"scene":"{\"elements\":[]}","drawing":null,"title":null}}]}`)})
 	return s, map[string]uuid.UUID{"home": home, "child": child, "folder": folder, "post": post, "picture": picture}
 }
 
@@ -294,6 +297,13 @@ func TestTheHTMLPagesReadOffline(t *testing.T) {
 		if !strings.Contains(child, want) {
 			t.Errorf("the child's page lacks %s:\n%s", want, child)
 		}
+	}
+	news := read("news.html")
+	drawing := regexp.MustCompile(`<img src="(files/sketches/[0-9a-f]{32}\.svg)" alt="Flow"`).FindStringSubmatch(news)
+	if drawing == nil || !strings.Contains(news, sketchNote) {
+		t.Errorf("the post shows its sketches as:\n%s", news)
+	} else if svg := read(drawing[1]); !strings.Contains(svg, `<rect width="1">`) {
+		t.Errorf("the drawing was written as %s", svg)
 	}
 	if strings.Contains(child, "<script") || strings.Contains(index, "<script") {
 		t.Error("a page holds a script")

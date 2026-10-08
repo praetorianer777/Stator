@@ -4,6 +4,7 @@ import { Slice } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { DIAGRAM_DEFAULT_SOURCE } from "@/config";
+import { emptyScene } from "@/features/sketch/scene";
 import { editorExtensions, type ExtensionOptions } from "./extensions";
 import type { DocNode } from "./schema";
 import { SLASH_ITEMS } from "./slashItems";
@@ -89,6 +90,7 @@ describe("the slash menu's blocks", () => {
       date: (d) => JSON.stringify(find(d, "date")[0]?.attrs) === JSON.stringify({ date: "2026-11-02" }),
       emoji: (d) => find(d, "text")[0]?.text === ":",
       diagram: (d) => find(d, "diagram")[0]?.attrs?.source === DIAGRAM_DEFAULT_SOURCE,
+      sketch: (d) => find(d, "sketch")[0]?.attrs?.scene === emptyScene() && find(d, "sketch")[0]?.attrs?.drawing === null,
       armatureChart: (d) =>
         JSON.stringify(find(d, "armatureChart")[0]?.attrs) ===
         JSON.stringify({ project: "CP", query: "project = CP", chart: "pie", groupBy: "type", days: 30 }),
