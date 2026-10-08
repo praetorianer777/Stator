@@ -112,10 +112,8 @@ func (s *exportSource) lose(pageTitle string, kind wikiread.LossKind, detail str
 	}
 }
 
-// fromExport gives an export the shapes of an archive: a manifest without
-// grants, groups, templates or calendars, and pages with one or more
-// versions, their files, labels and comments. Every page gets a rank among
-// its siblings in the order the export gave.
+// fromExport gives an export an archive's shapes: a manifest without grants,
+// and pages ranked among their siblings in the export's order.
 func fromExport(sp *wikiread.Space, key, name string) (*Manifest, *exportSource, error) {
 	if len(sp.Pages) == 0 {
 		return nil, nil, invalid("The export holds no pages. Export the space again and import the new zip.")

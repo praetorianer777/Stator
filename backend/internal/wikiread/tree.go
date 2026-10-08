@@ -268,9 +268,8 @@ func parseXHTML(body string) (*node, error) {
 	return root, nil
 }
 
-// voidElements are the HTML elements a body may leave open. The decoder
-// matches them by local name, so link and param, which name elements of the
-// other wiki's own, are left out.
+// voidElements are the HTML elements a body may leave open; link and param
+// are left out, as the decoder would match the other wiki's own by local name.
 var voidElements = []string{"br", "hr", "img", "area", "input", "col", "wbr", "basefont", "isindex"}
 
 func xmlName(n xml.Name) string {

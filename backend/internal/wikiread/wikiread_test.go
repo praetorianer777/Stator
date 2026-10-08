@@ -67,9 +67,8 @@ func lossKinds(sp *Space) map[LossKind][]string {
 	return out
 }
 
-// page is a page file of an HTML export, as the structure the reader
-// follows has it: breadcrumbs, a title, who wrote it, the content, labels
-// and comments.
+// page is a page file of an HTML export in the structure the reader follows:
+// breadcrumbs, a title, who wrote it, the content, labels and comments.
 func page(title, crumbs, meta, content, labels, comments string) string {
 	return `<!DOCTYPE html><html><head><title>Travel Guide : ` + title + `</title></head><body>
 <div id="breadcrumbs"><ul>` + crumbs + `</ul></div>

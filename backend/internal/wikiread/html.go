@@ -86,8 +86,15 @@ func readHTML(b *bundle, opts Options) (*Space, error) {
 		pages[name] = &hpage{file: name, page: &Page{ID: uuid.Must(uuid.NewV7())}, order: len(names), extra: map[string]*File{}}
 	}
 
+	byDir := map[string][]string{}
+	for _, name := range b.names {
+		if rest, ok := strings.CutPrefix(name, attachDir); ok {
+			if dir, _, ok := strings.Cut(rest, "/"); ok && b.files[name].UncompressedSize64 > 0 {
+				byDir[dir] = append(byDir[dir], name)
+			}
+		}
+	}
 	files := map[string]*File{}
-	owner := map[string]*hpage{}
 	count := 0
 	for _, name := range names {
 		hp := pages[name]
@@ -97,9 +104,8 @@ func readHTML(b *bundle, opts Options) (*Space, error) {
 			dirs = append(dirs, m[1])
 		}
 		for _, dir := range dirs {
-			prefix := attachDir + dir + "/"
-			for _, fname := range b.names {
-				if !strings.HasPrefix(fname, prefix) || files[fname] != nil || b.files[fname].UncompressedSize64 == 0 {
+			for _, fname := range byDir[dir] {
+				if files[fname] != nil {
 					continue
 				}
 				count++
@@ -108,7 +114,6 @@ func readHTML(b *bundle, opts Options) (*Space, error) {
 				}
 				f := newFile(b, fname)
 				files[fname] = f
-				owner[fname] = hp
 				hp.page.Files = append(hp.page.Files, *f)
 			}
 		}
@@ -207,16 +212,17 @@ func newFile(b *bundle, name string) *File {
 	}
 }
 
-// typeOf is a file's type by its name, empty when its name says none.
+// typeOf is a file's type by its name, empty when its name says none; only
+// text keeps its parameters, which name its character set.
 func typeOf(name string) string {
 	t := mime.TypeByExtension(strings.ToLower(path.Ext(name)))
-	if t == "" {
+	media, _, err := mime.ParseMediaType(t)
+	switch {
+	case t == "" || err != nil:
 		return ""
-	}
-	if media, _, err := mime.ParseMediaType(t); err == nil && strings.HasPrefix(media, "text/") {
+	case strings.HasPrefix(media, "text/"):
 		return t
 	}
-	media, _, _ := mime.ParseMediaType(t)
 	return media
 }
 
@@ -455,9 +461,8 @@ func contentOf(doc *node) *node {
 	return doc
 }
 
-// pageTitleOf is the page's title: an element marked as it, the first
-// level 1 heading outside the content, or the document's title without the
-// space's name before it.
+// pageTitleOf is the page's title: an element marked as it, a level 1
+// heading outside the content, or the document's title less the space's name.
 func pageTitleOf(doc, content *node, spaceName string) (string, *node) {
 	if n := doc.find(func(n *node) bool {
 		return n.attr("id") == "title-text" || n.hasClass("title-text") || n.hasClass("page-title")
@@ -629,9 +634,8 @@ func homeOf(index, treeList *node, pages map[string]*hpage, sp *Space, opts Opti
 	return home
 }
 
-// arrange lists the pages home first and each below the page it hangs
-// from, siblings in the tree's order and then by title; a page whose
-// parents run in a circle hangs from the home page.
+// arrange lists the pages home first, each after its parent, siblings in
+// the tree's order then by title; parents in a circle hang from the home page.
 func arrange(home *hpage, pages map[string]*hpage) []*Page {
 	children := map[string][]*hpage{}
 	for _, hp := range pages {
