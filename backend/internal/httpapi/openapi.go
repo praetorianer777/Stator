@@ -43,6 +43,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 	"github.com/praetorianer777/stator/backend/internal/wikiread"
+	"github.com/praetorianer777/stator/backend/internal/wordio"
 )
 
 // The API described in terms of the code that serves it. Every route in Routes
@@ -322,6 +323,17 @@ var operations = []operation{
 		responses: map[int]any{200: env{"page": page.Page{}, "warnings": []string{}}, 409: errorEnvelope{}, 413: errorEnvelope{}}},
 	{method: "POST", path: "/pages/{pageID}/import", handler: "handleImportMarkdown", tool: "import_markdown", toolHelp: "Make a new published page under pageID from Markdown in content; its leading level 1 heading becomes the title.", toolFile: "page.md", tag: "markdown", summary: "Make pages under a page from Markdown files and their folders, sent as parts named file with their paths, or as a .zip; each folder of Markdown is a page too.", multipart: true,
 		responses: map[int]any{201: env{"pages": []mdio.Imported{}, "warnings": []string{}}, 413: errorEnvelope{}}},
+
+	// Word import (#89); docs/word.md says how each of Word's structures comes in.
+	{method: "POST", path: "/pages/{pageID}/import/docx", handler: "handleImportWord", tag: "docx", multipart: true,
+		summary:   "Make one Word document, sent in a part named file, a published page under a page, with its pictures as the page's files. The page is titled by the document's title property, else its Title paragraph, else its one leading heading, else its file name; warnings say what did not come across as written. Refused with validation_failed, naming the file, when it is no .docx Stator can read.",
+		responses: map[int]any{201: env{"pages": []mdio.Imported{}, "warnings": []string{}}, 413: errorEnvelope{}, 422: errorEnvelope{}, 503: errorEnvelope{}}},
+	{method: "POST", path: "/pages/{pageID}/word-imports", handler: "handleQueueWordImport", tag: "docx", multipart: true,
+		summary:   "Ask the worker to make Word documents pages under a page: up to 50 .docx files in parts named file, or .zip archives of them whose folders become pages too. Answers 202 with the import at once; GET /word-imports/{importID} follows it to its report.",
+		responses: map[int]any{202: wordImportResponse{}, 413: errorEnvelope{}, 422: errorEnvelope{}, 503: errorEnvelope{}}},
+	{method: "GET", path: "/word-imports/{importID}", handler: "handleGetWordImport", tag: "docx",
+		summary:   "An import of Word documents the caller started: how many pages it has made of how many, and for each file the page it made with its warnings, or why it made none.",
+		responses: ok(wordImportResponse{})},
 
 	// Templates (#15), and the organization's own with variables (#63).
 	{method: "GET", path: "/templates", handler: "handleListTemplates", tool: "list_templates", toolHelp: "The templates a new page can start from, with the variables each asks for; space names a space to include its own.", tag: "templates", summary: "The templates a new page can start from, in the order to offer them: the space's own when space is given, the organization's, then the built-ins. Send one's key and values with POST /pages.",
@@ -987,6 +999,11 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["SpaceImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}
 	b.FieldOverrides["SpaceExport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ExportFailures)}, {Type: "null"}}}
 	b.FieldOverrides["SpaceImport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ImportFailures)}, {Type: "null"}}}
+	b.Names[reflect.TypeOf(wordio.Job{})] = "WordImport"
+	b.Names[reflect.TypeOf(wordio.FileReport{})] = "WordImportFile"
+	b.Names[reflect.TypeOf(wordio.Made{})] = "WordImportPage"
+	b.Enums[reflect.TypeOf(wordio.State(""))] = enumStrings(wordio.States)
+	b.FieldOverrides["WordImport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(wordio.Failures)}, {Type: "null"}}}
 	b.Enums[reflect.TypeOf(example.State(""))] = enumStrings(example.States)
 	b.FieldOverrides["ExampleSpaceJob.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(example.Failures)}, {Type: "null"}}}
 	b.FieldOverrides["ExampleSpaceJob.language"] = &openapi.Schema{Type: "string", Enum: example.Languages}

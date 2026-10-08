@@ -16,6 +16,7 @@ import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSection";
 import { InlineComments } from "@/features/comments/InlineComments";
 import { ExportDialog, ImportDialog } from "@/features/markdown/MarkdownDialogs";
+import { WordImportDialog } from "@/features/word/WordImportDialog";
 import { PageViewsButton, PageViewsDialog } from "@/features/pageviews/PageViews";
 import { FileExportDialog } from "@/features/print/FileExport";
 import { pagePdfHref } from "@/api/pdf";
@@ -99,6 +100,7 @@ type Dialog =
   | "pdf"
   | "docx"
   | "import"
+  | "wordImport"
   | "stewardship"
   | "share"
   | "views";
@@ -205,6 +207,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   }
   if (page.can.add && !folder && !post) {
     actions.push({ label: t.markdown.importMenu, icon: <Icon.Upload />, onSelect: () => setDialog("import"), attrs: { "data-action": "import-markdown" } });
+    actions.push({ label: t.wordImport.menu, icon: <Icon.Upload />, onSelect: () => setDialog("wordImport"), attrs: { "data-action": "import-word" } });
   }
   if (page.can.restrict) {
     actions.push({ label: t.restrictions.menu, icon: <Icon.Lock />, onSelect: () => setDialog("restrictions"), attrs: { "data-action": "page-restrictions" } });
@@ -440,6 +443,9 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       {dialog === "docx" && <FileExportDialog format="docx" href={pageWordHref(page.id)} title={page.title} onClose={() => setDialog(undefined)} />}
       {dialog === "import" && (
         <ImportDialog parent={page.home ? { id: page.id, title: space.name } : page} spaceKey={space.key} onClose={() => setDialog(undefined)} />
+      )}
+      {dialog === "wordImport" && (
+        <WordImportDialog parent={page.home ? { id: page.id, title: space.name } : page} spaceKey={space.key} onClose={() => setDialog(undefined)} />
       )}
       {dialog === "new" && <NewPageDialog parent={page} onClose={() => setDialog(undefined)} onDone={(made) => open(made, true)} />}
       {dialog === "newFolder" && <NewPageDialog parent={page} folder onClose={() => setDialog(undefined)} onDone={(made) => open(made)} />}

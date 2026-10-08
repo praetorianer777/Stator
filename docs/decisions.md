@@ -81,6 +81,84 @@ becomes of each block.
   space, now says its `source` and, for an export, how much was lost.
 - **Not MCP tools**, as an archive's import is not.
 
+## 2026-10-08: Word documents are read natively, one in the request and several by the worker
+
+An author imports .docx files so that existing documents move into the
+wiki (#89).
+
+- **Read natively, in Go.** `internal/docx` reads Office Open XML with the
+  standard library's zip and XML and nothing else, as it writes it
+  (2026-10-07 below): the free Go libraries read paragraphs and runs and
+  leave lists, merged cells, notes and pictures to the caller, and the one
+  that reads everything is sold under a commercial licence. Nothing was
+  added to `go.mod`. The converter is no way in either: it turns office
+  documents into PDF, and is optional. The reader holds every part to 32
+  MB unpacked and 200 levels deep, whatever the zip claims, so a crafted
+  file costs a bounded read.
+- **Word's structures map onto the allowlist.** Headings by outline level,
+  from the paragraph or its style chain, as Word's navigation pane finds
+  them; lists from `numbering.xml`, nested by level, counting on across a
+  break as Word counts; tables with header rows and merged cells; pictures
+  as files of the new page, with their descriptions; links, and links to
+  headings by their bookmarks; code and quote styles; check boxes as
+  tasks. `docs/word.md` lists every mapping.
+- **Footnotes become a list at the end.** A reference is its number in
+  brackets and the notes a numbered list after a rule, in the order they
+  are referred to: a page has no footnotes, and a sentence spliced into
+  the text would break the sentence it sits in.
+- **Changes accepted, comments left out.** Tracked changes are read as the
+  document reads with every change made, the text its author sees in
+  Word's simple markup; comments are the discussion of a draft and stay
+  in the Word document. Each is said in a warning.
+- **Text boxes kept, shapes said.** A text box's text comes in where it is
+  anchored; a chart, SmartArt or shape without text is a warning that
+  asks for a picture of it.
+- **Every loss is a warning, as in a Markdown import.** Underline and
+  superscript have no mark on a page; their words stay and a warning says
+  so once per document. Fonts, colours and page layout are the theme's and
+  pass without a word, or every document would warn of them.
+- **The round trip holds.** A document Stator exported, which its
+  properties name, comes back as the page it was for the blocks Word
+  carries, its added line under the title left out and its panels found
+  by their fill; a unit test exports a page with each such block and
+  imports it again.
+- **One at once, as Markdown is.** `POST /pages/{pageID}/import/docx`
+  makes one document a published page under the page in the request:
+  the page first, unpublished, then its pictures, then its body, which
+  needs their ids, and on a failure the page is trashed, exactly as a
+  Markdown import does. The title is the document's title property, else
+  its Title paragraph, else its one leading heading of level 1, else its
+  file name.
+- **Several by the worker.** `POST /pages/{pageID}/word-imports` takes up
+  to 50 documents or archives of them, 200 MB in all, and refuses at once
+  what is too large or too many, or a parent the caller may not add pages
+  under. It stores the upload under the organization's prefix and queues a
+  `word_import` row; the worker claims it with a lease, as it does the
+  example space (2026-10-07), and makes the pages as the importer through
+  the services, writing its progress and a report per file as it goes.
+  Each folder of an archive is a page holding its documents, as in a
+  Markdown import. A document that cannot be read is reported and passed
+  over: one broken file of fifty should not cost the other forty-nine. A
+  requester who may no longer add pages there, or a parent deleted, stops
+  the import, and what it made goes to the trash; a worker that dies
+  leaves the pages it made named on the row, and the next trashes them
+  before it begins again. The upload is deleted once the import ends.
+  `GET /word-imports/{importID}` is the requester's alone, and the dialog
+  asks every second, as the example space's page does.
+- **The database holds the jobs.** As `stator_app` an import is queued
+  only by whoever may add pages under its parent and edit it, for
+  themselves, as one still to run, with nothing but what they asked for;
+  only its requester reads it, and only the worker's admin role changes
+  it. The integration suite tries each through SQL.
+- **Limits.** 50 MB a document, as an export may weigh; 50 MB of pictures
+  in one document; a picture larger than a file of a page may be is left
+  out with a warning; 200 MB, 50 documents and 200 pages an import of
+  several. Each refusal is a sentence naming the file and what to do.
+- **Not audited, not an MCP tool.** A Markdown import is not audited, and
+  neither is this: the pages it makes are the importer's like any others.
+  A Word document is a file a person uploads, and several are imported by
+  the worker; `import_markdown` carries a model's words into a new page.
+
 ## 2026-10-07: A space travels as an archive of everything readers read, and arrives as a new space
 
 An administrator exports a whole space to back it up or to move it, and

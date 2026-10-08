@@ -605,6 +605,21 @@ export const MARKDOWN_FILE_PATTERN = /\.(md|markdown)$/i;
 /** An archive the API unpacks before it reads the pages in it. */
 export const ZIP_FILE_PATTERN = /\.zip$/i;
 
+/** The file names a Word import reads as documents. */
+export const WORD_FILE_PATTERN = /\.docx$/i;
+/** What one Word document may weigh, matching the API's limit. */
+export const WORD_IMPORT_MAX_BYTES = 50 * 1024 * 1024;
+/** What one import of several Word documents may weigh, matching the API's limit. */
+export const WORD_IMPORTS_MAX_BYTES = 200 * 1024 * 1024;
+/** How many Word documents one import takes, matching the API's limit. */
+export const WORD_IMPORTS_MAX_FILES = 50;
+/** How often a page that queued Word documents asks how their import goes. */
+export const WORD_IMPORT_POLL_MS = 1000;
+/** After this long without the worker beginning an import, the page says it may not be running. */
+export const WORD_IMPORT_SLOW_MS = 60_000;
+/** After this long, past the API's limit on one import, the page stops asking and says what to do. */
+export const WORD_IMPORT_GIVE_UP_MS = 20 * 60_000;
+
 /** The terms a page's verification is offered for, in days; the API allows 1 to 730. */
 export const VERIFY_TERM_DAYS = [30, 90, 180, 365] as const;
 /** The term offered first, as the API's own default. */

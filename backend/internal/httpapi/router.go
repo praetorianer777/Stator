@@ -46,6 +46,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
+	"github.com/praetorianer777/stator/backend/internal/wordio"
 )
 
 // readinessTimeout bounds the database round trip behind /readyz, so a probe
@@ -124,6 +125,9 @@ type Server struct {
 	Attachments *attachment.Service
 	// Markdown imports and exports pages; nil makes one of Pages and Attachments.
 	Markdown *mdio.Service
+	// Word imports Word documents as pages, several at once through the
+	// worker; nil answers that importing them is not set up.
+	Word *wordio.Service
 	// Renderer prints pages as PDF; nil answers that PDF export is not set up.
 	Renderer render.Renderer
 	// Armature keeps the organization's connection and the members' tokens;
@@ -394,6 +398,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/docx", s.handlePageWord)
 			r.Put("/pages/{pageID}/markdown", s.handleReplacePageMarkdown)
 			r.Post("/pages/{pageID}/import", s.handleImportMarkdown)
+			r.Post("/pages/{pageID}/import/docx", s.handleImportWord)
+			r.Post("/pages/{pageID}/word-imports", s.handleQueueWordImport)
+			r.Get("/word-imports/{importID}", s.handleGetWordImport)
 			r.Get("/templates", s.handleListTemplates)
 			r.Post("/templates", s.handleCreateTemplate)
 			r.Get("/templates/{templateKey}", s.handleGetTemplate)
