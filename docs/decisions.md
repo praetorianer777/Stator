@@ -27,6 +27,14 @@ fresh production install had no organization and nobody who could sign in.
   touches it after; naming one chooses the password. Organization and
   administrator default to `stator` and `admin@<ingress.host>`, so the switch
   alone is enough for a first install.
+- **A new organization works where the owner is an ordinary role.** The trigger
+  that gives a new organization its `use` grant is `SECURITY DEFINER`, so it
+  runs as the migration owner. A superuser, as in the compose stack, is not
+  bound by row level security; under CloudNativePG the owner is, and the tenant
+  policy refused the grant because no tenant was named yet. Migration 00640
+  names the new organization for that one insert and puts back what was set. An
+  integration test makes the owner a role row level security binds, which is
+  the only way the suite can see this.
 - **Every install and upgrade.** The Job runs `post-install,post-upgrade` after
   the migrate Job, and is safe to repeat: existing organizations, accounts and
   providers are left alone, and only a changed bootstrap password is applied
