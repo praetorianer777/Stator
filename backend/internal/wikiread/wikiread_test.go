@@ -104,6 +104,7 @@ func htmlExport() map[string]string {
 echo done</pre>
 <ul><li>Shoes<ul><li>Boots</li></ul></li><li>Hat</li></ul>
 <ul class="task-list"><li class="checked">Passport</li><li>Tickets</li></ul>
+<p>State: <span class="status-macro lozenge lozenge-success">Ready</span></p>
 <p>See the <a href="Routes_103.html#north">routes</a>, the <a href="attachments/101/202.pdf">plan.pdf</a> and <a href="Elsewhere_999.html">a page we lost</a>.</p>
 <p><img src="https://pictures.example.com/sun.png" alt="The sun"></p>
 <iframe src="https://video.example.com/embed/1"></iframe>
@@ -199,6 +200,7 @@ func TestAnHTMLExportIsReadWithItsTreeFilesLabelsAndComments(t *testing.T) {
 		`{"type":"text","text":" and a page we lost."}`,
 		`{"type":"text","text":"The sun","marks":[{"type":"link","attrs":{"href":"https://pictures.example.com/sun.png"}}]}`,
 		`{"type":"expand","attrs":{"title":"More tips"}`,
+		`{"type":"status","attrs":{"color":"success","label":"Ready"}}`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Packing lacks %s:\n%s", want, body)
@@ -328,7 +330,8 @@ func xmlExport() map[string]string {
 <p><ac:link><ri:attachment ri:filename="notes.txt" /></ac:link> and <ac:link><ri:page ri:space-key="ELSE" ri:content-title="Other" /><ac:plain-text-link-body><![CDATA[elsewhere]]></ac:plain-text-link-body></ac:link></p>
 <ac:structured-macro ac:name="roadmap"><ac:parameter ac:name="x">y</ac:parameter></ac:structured-macro>
 <ac:layout><ac:layout-section ac:type="two_equal"><ac:layout-cell><p>Left</p></ac:layout-cell><ac:layout-cell><p>Right</p></ac:layout-cell></ac:layout-section></ac:layout>
-<p>Done&nbsp;<ac:emoticon ac:name="smile" /></p>`)),
+<p>Done&nbsp;<ac:emoticon ac:name="smile" /></p>
+<ac:adf-extension><ac:adf-node type="panel"><ac:adf-attribute key="panel-type">custom</ac:adf-attribute></ac:adf-node><ac:adf-fallback><p>Fallback words</p></ac:adf-fallback></ac:adf-extension>`)),
 			obj("Page", "12", text("title", "Build"), ref("space", "Space", "1"), text("version", "1"), ref("originalVersion", "Page", "11"),
 				text("contentStatus", "current"), keyRef("creator", "k-bob"), text("creationDate", "2026-02-01 09:00:00.000"),
 				keyRef("lastModifier", "k-bob"), text("lastModificationDate", "2026-02-01 09:00:00.000")),
@@ -424,6 +427,7 @@ func TestAnXMLExportIsReadWithItsHistory(t *testing.T) {
 		`{"type":"attachment","attrs":{"attachmentId":"` + build.Files[2].ID.String() + `","fileName":"notes.txt"}}`,
 		`{"type":"columns","content":[{"type":"column"`,
 		"Done\u00a0🙂",
+		`{"type":"paragraph","content":[{"type":"text","text":"Fallback words"}]}`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Build lacks %s:\n%s", want, body)

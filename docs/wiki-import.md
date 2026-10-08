@@ -93,7 +93,7 @@ root hangs from it.
 | an element whose class is `toc`, and the toc macro | table of contents |
 | the children macro | child pages |
 | the attachments macro | the files list |
-| the status macro | status in its colour |
+| the status macro, and an element whose class says lozenge | status in its colour |
 | a page layout's sections, and section macros, of two or three columns | columns |
 | `img` of a file of the export, and pictures of the XML export by file name | picture of its page, its description and width kept |
 | `time datetime` | date |
@@ -103,6 +103,7 @@ root hangs from it.
 | a link to the web or an address | the link as it was |
 | a mention of a person | their name after an @, as words |
 | emoticons | the emoji they stand for, or their words |
+| a block of the XML export with content to fall back on | that content |
 
 A comment holds what a comment may: a block a comment cannot hold gives up
 its content, a table its rows as lines of words. A page or comment that

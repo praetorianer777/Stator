@@ -303,6 +303,11 @@ func (c *converter) block(k *node) []document.Node {
 		return c.layoutSection(k)
 	case "ac:plain-text-body":
 		return []document.Node{codeBlock(rawText(k), nil)}
+	case "ac:adf-extension":
+		if fallback := k.child("ac:adf-fallback"); fallback != nil {
+			return c.blocks(fallback.kids)
+		}
+		return nil
 	}
 	if skipped[k.tag] {
 		return nil
@@ -779,6 +784,11 @@ func (c *converter) inline(k *node, marks []document.Mark) []item {
 		return c.inlineMacro(k, marks)
 	case "ac:placeholder":
 		return nil
+	case "ac:adf-extension":
+		if fallback := k.child("ac:adf-fallback"); fallback != nil {
+			return c.inlines(fallback.kids, marks)
+		}
+		return nil
 	}
 	if skipped[k.tag] || strings.HasPrefix(k.tag, "ri:") {
 		return nil
@@ -796,6 +806,12 @@ func (c *converter) inline(k *node, marks []document.Mark) []item {
 	}
 	words := k.classWords()
 	if words["icon"] {
+		return nil
+	}
+	if words["lozenge"] || (words["status"] && words["macro"]) {
+		if label := clipRunes(k.words(), document.MaxStatusLength); label != "" {
+			return []item{{node: document.Node{Type: document.NodeStatus, Attrs: map[string]any{"label": label, "color": lozengeColour(words)}}}}
+		}
 		return nil
 	}
 	style := strings.ToLower(strings.ReplaceAll(k.attr("style"), " ", ""))
@@ -1189,6 +1205,22 @@ func (c *converter) inlineMacro(k *node, marks []document.Mark) []item {
 		out = append(out, item{node: b, block: true})
 	}
 	return out
+}
+
+// lozengeColours pair the words of a status lozenge's class names with a
+// status's colour.
+var lozengeColours = []struct{ colour, word string }{
+	{"success", "success"}, {"success", "complete"}, {"danger", "error"}, {"danger", "removed"},
+	{"warning", "moved"}, {"warning", "warning"}, {"accent", "current"}, {"accent", "progress"},
+}
+
+func lozengeColour(words map[string]bool) string {
+	for _, l := range lozengeColours {
+		if words[l.word] {
+			return l.colour
+		}
+	}
+	return "neutral"
 }
 
 // panelMacros pair the XML export's callout macros with a panel's kind.
