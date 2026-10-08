@@ -37,9 +37,12 @@ web-install: | $(NPM_CACHE) ## Install the web client's dependencies from the lo
 web-schema: | $(NPM_CACHE) ## Regenerate web/src/api/schema.d.ts from api/openapi.json
 	$(DOCKER_NODE) sh -c '[ -d node_modules ] || npm ci --no-audit --no-fund; npm run schema'
 
+# The usual output, and the timings as JSON for the run's summary.
+VITEST_REPORT = --reporter=default --reporter=json --outputFile.json=/src/reports/vitest.json
+
 .PHONY: check-web
 check-web: | $(NPM_CACHE) ## Lint, type-check and unit-test the web client; check its API types are current
-	$(DOCKER_NODE) sh -c 'npm ci --no-audit --no-fund && npm run lint && npm run typecheck && npm test && npm run schema:check'
+	$(DOCKER_NODE) sh -c 'npm ci --no-audit --no-fund && npm run lint && npm run typecheck && npm test -- $(VITEST_REPORT) && npm run schema:check'
 
 .PHONY: test-web
 test-web: | $(NPM_CACHE) ## Run the web client's unit tests

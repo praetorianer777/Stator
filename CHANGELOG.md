@@ -996,6 +996,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   comparison and the public view, and a phone is unchanged. Full width now
   widens the text too (#287).
 
+- The CI gate runs as parallel jobs, each running `./run-tests.sh` for some
+  of the layers, and the browser suite in four parts with a stack each. The
+  run's page shows every layer's duration, the counts per suite and the
+  slowest tests, and the run keeps the Playwright report and the timings as
+  JSON, green or red. `./run-tests.sh` takes the layers to run, and leaves
+  the same reports in `reports/` (#323).
+
 - The CI gate may run 45 minutes rather than 30, since the suite had grown
   to fill the old limit, and a cancelled run now says it was stopped rather
   than failed (#283).

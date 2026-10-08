@@ -11,6 +11,9 @@ node_modules/
 /web/dist/
 /web/coverage/
 
+# What the last gate run left: timings as JSON and its summary
+/reports/
+
 # Playwright
 /e2e/test-results/
 /e2e/playwright-report/
