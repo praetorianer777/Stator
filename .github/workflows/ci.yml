@@ -1,7 +1,9 @@
-# The PR gate. It holds nothing but run-tests.sh on purpose: whatever gates a
-# push locally through the branch-guard hook is exactly what gates it here, so
-# the two can never drift apart. Toolchains run in containers through the
-# Makefile, so the runner needs only Docker.
+# The PR gate. Every job runs ./run-tests.sh for some of its layers, so
+# whatever gates a push locally through the branch-guard hook is exactly what
+# gates it here, split across jobs that run side by side; tests/test-ci.sh
+# fails when the jobs between them leave a layer or a part of the browser
+# suite out. Toolchains run in containers through the Makefile, so a runner
+# needs only Docker. See docs/decisions.md for why the gate is split this way.
 name: CI
 
 on:
@@ -15,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       runs:
-        description: How many times in a row to run the gate (at most 5)
+        description: How many times in a row each job runs its layers (at most 5)
         type: number
         default: 1
 
@@ -27,25 +29,80 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  gate:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
-    # One gate takes 22 to 30 minutes on a hosted runner and grows with every
-    # feature, so a run gets 45 and a run by hand of up to 5 gates gets 5 times
-    # that. Expressions here cannot multiply, nor read env.
-    timeout-minutes: ${{ inputs.runs > 1 && 225 || 45 }}
+    # The slowest job takes about 10 minutes, so a run gets 30 and a run by
+    # hand of up to 5 gates 4 times that. Expressions here cannot multiply.
+    timeout-minutes: ${{ inputs.runs > 1 && 120 || 30 }}
+    strategy:
+      # Every job runs to its end, so a red run still reports every layer.
+      fail-fast: false
+      matrix:
+        include:
+          - name: shell and format
+            layers: shell check-format
+          - name: check-go
+            layers: check-go
+            go-cache: unit
+          - name: check-web
+            layers: check-web
+            npm-cache: web
+          - name: test-integration
+            layers: test-integration
+            go-cache: integration
+          # Each part brings up a stack of its own; Playwright splits the
+          # tests between them by count.
+          - name: test-e2e 1/4
+            layers: test-e2e
+            shard: 1/4
+            npm-cache: e2e
+          - name: test-e2e 2/4
+            layers: test-e2e
+            shard: 2/4
+            npm-cache: e2e
+          - name: test-e2e 3/4
+            layers: test-e2e
+            shard: 3/4
+            npm-cache: e2e
+          - name: test-e2e 4/4
+            layers: test-e2e
+            shard: 4/4
+            npm-cache: e2e
     steps:
       # The release tests read tags, which a shallow checkout does not carry.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Run the gate
+      # Restored on every run, saved only from main: a pull request reads
+      # main's caches, and its own would only crowd them out.
+      - name: Restore the Go module and build cache
+        if: matrix.go-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/go
+          key: go-${{ matrix.go-cache }}-${{ hashFiles('backend/go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ matrix.go-cache }}-${{ hashFiles('backend/go.sum') }}-
+            go-${{ matrix.go-cache }}-
+
+      - name: Restore the npm cache
+        if: matrix.npm-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/npm
+          key: npm-${{ matrix.npm-cache }}-${{ hashFiles(format('{0}/package-lock.json', matrix.npm-cache)) }}
+          restore-keys: npm-${{ matrix.npm-cache }}-
+
+      - name: Run ${{ matrix.layers }}
         env:
           RUNS: ${{ inputs.runs || 1 }}
+          SHARD: ${{ matrix.shard }}
         run: |
           for run in $(seq "$RUNS"); do
-            echo "::group::Gate run $run of $RUNS"
-            ./run-tests.sh
+            echo "::group::Run $run of $RUNS"
+            ./run-tests.sh ${{ matrix.layers }}
             echo "::endgroup::"
           done
 
@@ -55,12 +112,75 @@ jobs:
         if: cancelled()
         run: echo "::error title=Gate stopped::The gate was cancelled before it finished, by the job's time limit or by a newer push to this branch. No test failed; look at the run's duration, and if it reached the limit, raise timeout-minutes or make the suite faster."
 
-      - name: Keep Playwright traces
-        if: failure()
+      - name: Save the Go module and build cache
+        if: matrix.go-cache && success() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/go
+          key: go-${{ matrix.go-cache }}-${{ hashFiles('backend/go.sum') }}-${{ github.sha }}
+
+      # One job per key saves, so the browser jobs do not race to write theirs.
+      - name: Save the npm cache
+        if: (matrix.name == 'check-web' || matrix.shard == '1/4') && success() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/npm
+          key: npm-${{ matrix.npm-cache }}-${{ hashFiles(format('{0}/package-lock.json', matrix.npm-cache)) }}
+
+      # Green or red, the report job reads these for the run's summary.
+      - name: Keep the layer's reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ strategy.job-index }}
+          path: reports/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  report:
+    needs: gate
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gather the jobs' reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: reports-*
+          path: reports
+
+      - name: Restore the npm cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/npm
+          key: npm-e2e-${{ hashFiles('e2e/package-lock.json') }}
+          restore-keys: npm-e2e-
+
+      # One HTML report for the whole browser suite, traces of failed tests
+      # included, and its timings as JSON.
+      - name: Merge the browser suite's reports
+        run: |
+          mkdir -p reports/e2e-blobs
+          find reports -path '*/e2e-blob/*.zip' -exec cp {} reports/e2e-blobs/ \;
+          if [ -n "$(ls reports/e2e-blobs)" ]; then make e2e-merge-reports; fi
+
+      - name: Write the summary
+        run: ./scripts/test-summary.sh reports | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the Playwright report
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
+          path: e2e/playwright-report
+          if-no-files-found: ignore
+
+      - name: Keep the timings
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-timings
           path: |
-            e2e/playwright-report
-            e2e/test-results
+            reports/**/*.json
+            reports/**/layers.tsv
           if-no-files-found: ignore

@@ -6,6 +6,9 @@
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 VERSION := $(shell cat $(ROOT)/VERSION)
 UID_GID := $(shell id -u):$(shell id -g)
+# Machine-readable results of the last run of each suite, which
+# scripts/test-summary.sh turns into durations, counts and the slowest tests.
+REPORTS := $(ROOT)/reports
 
 include $(wildcard $(ROOT)/mk/*.mk)
 

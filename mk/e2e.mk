@@ -10,6 +10,8 @@ WORKERS ?= 4
 ONLY ?=
 # Runs each chosen test this many times, to shake out a flake: REPEAT=20 ONLY=<grep>.
 REPEAT ?=
+# One part of the suite, as CI splits it across jobs: SHARD=2/4.
+SHARD ?=
 # DEBUG=pw:browser prints what Chromium writes to stderr, which names the
 # failed check when a tab crashes.
 DEBUG ?=
@@ -34,6 +36,7 @@ DOCKER_PLAYWRIGHT = docker run --rm --init --ipc=host --network host --tmpfs /tm
 	-e DEBUG='$(DEBUG)' \
 	-e ONLY='$(ONLY)' \
 	-e REPEAT='$(REPEAT)' \
+	-e SHARD='$(SHARD)' \
 	-w /src/e2e $(PLAYWRIGHT_IMAGE)
 
 # "Target crashed" says only that a tab died. These two say how: the kernel
@@ -56,15 +59,23 @@ e2e-npm: ## Run an npm command in the Playwright container: make e2e-npm ARGS="i
 	$(DOCKER_PLAYWRIGHT) npm $(ARGS)
 
 .PHONY: test-e2e
-test-e2e: ## Run the browser suite against this checkout's running stack: ONLY=<grep> WORKERS=<n> REPEAT=<n>
+test-e2e: ## Run the browser suite against this checkout's running stack: ONLY=<grep> WORKERS=<n> REPEAT=<n> SHARD=<i>/<n>
 	@[ -f $(STACK_ENV_FILE) ] && docker compose ps --status running --services 2>/dev/null | grep -qx web \
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
 	@mkdir -p $(E2E_NPM_CACHE)
 	@since=$$(date +%s); \
-	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx tsc --noEmit && { npx playwright test --workers=$(WORKERS) $${ONLY:+--grep "$$ONLY"} $${REPEAT:+--repeat-each "$$REPEAT"}; rc=$$?; $(E2E_OOM_REPORT); exit $$rc; }'; \
+	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx tsc --noEmit && { npx playwright test --workers=$(WORKERS) $${ONLY:+--grep "$$ONLY"} $${REPEAT:+--repeat-each "$$REPEAT"} $${SHARD:+--shard "$$SHARD"}; rc=$$?; $(E2E_OOM_REPORT); exit $$rc; }'; \
 	rc=$$?; [ $$rc -eq 0 ] || $(E2E_CORE_REPORT); exit $$rc
 
 .PHONY: e2e-report
 e2e-report: ## Serve the last browser run's HTML report, traces included
 	@echo "Report on http://localhost:$(E2E_REPORT_PORT)"
 	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx playwright show-report playwright-report --host 127.0.0.1 --port $(E2E_REPORT_PORT)'
+
+# Where the report job of CI gathers the blobs of its browser jobs.
+E2E_BLOBS ?= reports/e2e-blobs
+
+.PHONY: e2e-merge-reports
+e2e-merge-reports: ## Merge the blob reports in E2E_BLOBS into one HTML report and reports/e2e.json
+	@mkdir -p $(E2E_NPM_CACHE)
+	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx playwright merge-reports --config merge.config.ts /src/$(E2E_BLOBS)'

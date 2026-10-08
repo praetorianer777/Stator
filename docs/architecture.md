@@ -194,7 +194,10 @@ process, which is only right for a single api process. `/readyz` and
 | End to end | Playwright | the compose stack, Keycloak login, `armature-stub` |
 
 `./run-tests.sh` runs all four; the branch-guard hook runs it before every
-push, and CI runs nothing else. Each checkout gets its own compose project and
+push, and CI runs nothing else: its jobs run the script side by side, each
+for some of the layers, the browser suite in four parts with a stack each,
+and a last job merges their reports into the run's summary and one
+Playwright report. Each checkout gets its own compose project and
 ports, so parallel worktrees do not collide.
 
 ## Deployment

@@ -39,7 +39,7 @@ vet: | $(GO_CACHE) ## Run go vet over the backend
 
 .PHONY: test-go
 test-go: | $(GO_CACHE) ## Run the Go unit tests with the race detector
-	$(DOCKER_GO) go test -race $(TESTFLAGS) $(PKG)
+	$(ROOT)/scripts/go-test.sh $(REPORTS)/go-unit.json $(DOCKER_GO) go test -race -json $(TESTFLAGS) $(PKG)
 
 .PHONY: build-go
 build-go: | $(GO_CACHE) ## Build every backend binary into backend/bin, stamped with VERSION
@@ -81,4 +81,4 @@ check-go: fmt-check vet test-go openapi-check document-allowlist-check ## The ba
 test-integration: | $(GO_CACHE) ## Run the integration suite against this checkout's running stack
 	@docker compose ps --status running --services 2>/dev/null | grep -qx api \
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
-	$(DOCKER_GO_STACK) go test -race -tags integration -count=1 $(TESTFLAGS) ./test/...
+	$(ROOT)/scripts/go-test.sh $(REPORTS)/integration.json $(DOCKER_GO_STACK) go test -race -json -tags integration -count=1 $(TESTFLAGS) ./test/...
