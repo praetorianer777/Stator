@@ -1,5 +1,6 @@
-// Command docallowlist writes the page, comment and template allowlists as
-// JSON to the paths given, in that order, or the page's to stdout.
+// Command docallowlist writes the page, comment and template allowlists and
+// the rules of a sketch's drawing as JSON to the paths given, in that order,
+// or the page's allowlist to stdout.
 package main
 
 import (
@@ -10,7 +11,7 @@ import (
 )
 
 func main() {
-	lists := []document.Allowlist{document.Allowed, document.CommentAllowed, document.TemplateAllowed}
+	lists := []func() ([]byte, error){document.Allowed.JSON, document.CommentAllowed.JSON, document.TemplateAllowed.JSON, document.SketchDrawing.JSON}
 	if len(os.Args) == 1 {
 		encoded, err := document.Allowed.JSON()
 		if err != nil {
@@ -23,7 +24,7 @@ func main() {
 		if i >= len(lists) {
 			fail(fmt.Errorf("give at most %d paths", len(lists)))
 		}
-		encoded, err := lists[i].JSON()
+		encoded, err := lists[i]()
 		if err != nil {
 			fail(err)
 		}

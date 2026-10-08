@@ -44,12 +44,15 @@ func init() {
 		"table": func(w *writer, n document.Node, f frame, depth int) {
 			w.table(n, f, depth)
 		},
-		"panel":                 (*writer).panel,
-		"expand":                (*writer).expand,
-		"columns":               (*writer).columns,
-		document.NodeDecision:   (*writer).decision,
-		document.NodeMathBlock:  (*writer).mathBlock,
-		document.NodeDiagram:    (*writer).diagram,
+		"panel":                (*writer).panel,
+		"expand":               (*writer).expand,
+		"columns":              (*writer).columns,
+		document.NodeDecision:  (*writer).decision,
+		document.NodeMathBlock: (*writer).mathBlock,
+		document.NodeDiagram:   (*writer).diagram,
+		document.NodeSketch: func(w *writer, n document.Node, f frame, _ int) {
+			w.note(f, w.words.sketch(stringAttr(n, "title")))
+		},
 		document.NodeLinkCard:   (*writer).linkCard,
 		document.NodeExcerpt:    func(w *writer, n document.Node, f frame, depth int) { w.blocks(n.Content, f, depth+1) },
 		document.NodeInclude:    (*writer).include,

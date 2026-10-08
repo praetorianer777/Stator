@@ -413,6 +413,7 @@ func TestMarksAndLinksBecomeRunsAndHyperlinks(t *testing.T) {
 func TestBlocksWithoutWordsOfTheirOwnAreSaidInTheReadersLanguage(t *testing.T) {
 	body := doc(
 		node(document.NodeDiagram, map[string]any{"source": "graph TD; A --> B"}),
+		node(document.NodeSketch, map[string]any{"scene": `{"elements":[]}`, "drawing": nil, "title": "Ablauf"}),
 		node(document.NodeTaskReport, map[string]any{"space": "DOC", "due": "any", "state": "open"}),
 		node(document.NodeInclude, map[string]any{"pageId": uuid.NewString()}),
 		node("panel", map[string]any{"kind": "warning"}, para(text("Careful"))),
@@ -424,7 +425,7 @@ func TestBlocksWithoutWordsOfTheirOwnAreSaidInTheReadersLanguage(t *testing.T) {
 	}
 	parts := open(t, data)
 	got := parts.doc()
-	for _, want := range []string{"Ein Diagramm", "graph TD; A --&gt; B", "Ein Bericht über Aufgaben in DOC.", "Hier zeigt Stator eine andere Seite", "Warnung", "Entschieden: "} {
+	for _, want := range []string{"Ein Diagramm", "graph TD; A --&gt; B", "Ein Bericht über Aufgaben in DOC.", "Hier zeigt Stator eine andere Seite", "Warnung", "Entschieden: ", "Eine Skizze, die Stator zeichnet: Ablauf."} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the German document lacks %q", want)
 		}

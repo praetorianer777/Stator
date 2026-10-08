@@ -204,3 +204,13 @@ func (w words) issueChart(project, query string) string {
 func (w words) roadmap(project, query string) string {
 	return w.pick("An Armature roadmap of ", "Eine Armature-Roadmap von ") + project + ": " + query + "." + w.see()
 }
+
+// sketch says a sketch is drawn in Stator, by its title when it has one: a
+// Word picture would need a raster of it, which the server does not draw.
+func (w words) sketch(title string) string {
+	see := w.pick(" Open the page in Stator to see it.", " Öffnen Sie die Seite in Stator, um sie zu sehen.")
+	if title == "" {
+		return w.pick("A sketch, drawn in Stator.", "Eine Skizze, die Stator zeichnet.") + see
+	}
+	return w.pick("A sketch, drawn in Stator: ", "Eine Skizze, die Stator zeichnet: ") + title + "." + see
+}

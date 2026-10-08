@@ -4,7 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"html/template"
 	"strings"
 	"time"
@@ -56,6 +58,14 @@ var drawnInStator = map[string]bool{
 // drawnNote is what stands in their place.
 const drawnNote = "This block is drawn when the page is read in Stator."
 
+// sketchNote stands in place of a sketch nobody has drawn since it was
+// imported, which only the editor can draw.
+const sketchNote = "A sketch is drawn here when the page is read in Stator."
+
+// htmlSketches is where the drawings of sketches are written, each named by
+// its content so a drawing on two pages is written once.
+const htmlSketches = htmlFiles + "sketches/"
+
 // site is the snapshot laid out as files: each page's file name, each
 // file's path, and the tree to walk.
 type site struct {
@@ -64,10 +74,14 @@ type site struct {
 	files    map[uuid.UUID]string
 	children map[uuid.UUID][]*ArchivePage
 	posts    []*ArchivePage
+	// drawings are the sketches' SVG by path, waiting to be written, and
+	// drawn the paths already in the archive.
+	drawings map[string][]byte
+	drawn    map[string]bool
 }
 
 func layout(s *snapshot) *site {
-	out := &site{s: s, names: map[uuid.UUID]string{}, files: map[uuid.UUID]string{}, children: map[uuid.UUID][]*ArchivePage{}}
+	out := &site{s: s, names: map[uuid.UUID]string{}, files: map[uuid.UUID]string{}, children: map[uuid.UUID][]*ArchivePage{}, drawings: map[string][]byte{}, drawn: map[string]bool{}}
 	taken := map[string]bool{"index": true, "style": true, "files": true}
 	for _, p := range s.pages {
 		switch {
@@ -152,6 +166,15 @@ func (w *site) writePage(zw *zip.Writer, p *ArchivePage) error {
 		return err
 	}
 	view.Content = content
+	for path, svg := range w.drawings {
+		if !w.drawn[path] {
+			if err := writeBytes(zw, path, svg); err != nil {
+				return err
+			}
+			w.drawn[path] = true
+		}
+		delete(w.drawings, path)
+	}
 	for up := p.Parent; up != nil; {
 		parent := w.s.byID[*up]
 		if parent == nil {
@@ -269,6 +292,9 @@ func (w *site) offline(p *ArchivePage, nodes []document.Node, depth int) []docum
 			continue
 		case n.Type == document.NodeTemplateButton:
 			continue
+		case n.Type == document.NodeSketch:
+			out = append(out, w.sketch(n))
+			continue
 		case drawnInStator[n.Type]:
 			out = append(out, paragraph(text(drawnNote)))
 			continue
@@ -279,6 +305,23 @@ func (w *site) offline(p *ArchivePage, nodes []document.Node, depth int) []docum
 		out = append(out, n)
 	}
 	return out
+}
+
+// sketch is a sketch's drawing as a picture beside the page, named in
+// files as a page's file is so the Markdown links it, or a sentence when it
+// has none yet.
+func (w *site) sketch(n document.Node) document.Node {
+	drawing, _ := n.Attrs["drawing"].(string)
+	if drawing == "" {
+		return paragraph(text(sketchNote))
+	}
+	sum := sha256.Sum256([]byte(drawing))
+	path := htmlSketches + hex.EncodeToString(sum[:16]) + ".svg"
+	w.drawings[path] = []byte(drawing)
+	ref := uuid.NewSHA1(uuid.NameSpaceURL, []byte(path))
+	w.files[ref] = path
+	title, _ := n.Attrs["title"].(string)
+	return document.Node{Type: "image", Attrs: map[string]any{"attachmentId": ref.String(), "alt": title}}
 }
 
 // include shows the included page, or its excerpt, as it is in the export;

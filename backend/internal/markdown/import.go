@@ -460,6 +460,11 @@ func (c *converter) block(n ast.Node, depth int) ([]document.Node, error) {
 						return []document.Node{n}, nil
 					}
 				}
+				if lang == sketchLanguage {
+					if n, ok := sketch(c.lines(n), sketchTitle(string(n.Info.Segment.Value(c.src)))); ok {
+						return []document.Node{n}, nil
+					}
+				}
 				if languagePattern.MatchString(lang) && len(lang) <= maxLanguageLength {
 					language = lang
 				}
@@ -510,6 +515,32 @@ func diagram(code string) (document.Node, bool) {
 		return document.Node{}, false
 	}
 	return document.Node{Type: document.NodeDiagram, Attrs: map[string]any{"source": source}}, true
+}
+
+// sketch reads an Excalidraw file as a sketch, drawn again when it is next
+// edited; a file that is no scene a sketch keeps stays code.
+func sketch(code, title string) (document.Node, bool) {
+	scene, ok := document.SketchFromFile(code)
+	if !ok {
+		return document.Node{}, false
+	}
+	var kept any
+	if title = strings.TrimSpace(title); title != "" {
+		kept = string([]rune(title)[:min(utf8.RuneCountInString(title), document.MaxAltLength)])
+	}
+	return document.Node{Type: document.NodeSketch, Attrs: map[string]any{"scene": scene, "drawing": nil, "title": kept}}, true
+}
+
+// sketchTitle is what follows the language of a sketch fence: a JSON string
+// as the export writes it, else the words as somebody typed them.
+func sketchTitle(info string) string {
+	_, rest, _ := strings.Cut(strings.TrimSpace(info), " ")
+	rest = strings.TrimSpace(rest)
+	var title string
+	if strings.HasPrefix(rest, `"`) && json.Unmarshal([]byte(rest), &title) == nil {
+		return title
+	}
+	return rest
 }
 
 var uuidText = regexp.MustCompile(document.UUIDPattern)

@@ -362,7 +362,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeBlogPosts, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", NodeGallery, "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeSketch, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeBlogPosts, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", NodeGallery, "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -625,6 +625,13 @@ var Allowed = Allowlist{
 			"view": {Kind: KindString, Enum: LinkCardViews},
 		}},
 		NodeDiagram: {Attrs: map[string]Attr{"source": {Kind: KindString, MaxLength: MaxDiagramLength, Pattern: `\S`}}},
+		// The scene is what is edited and kept; the drawing is made from it on
+		// each save, so readers see it without the editor, and is checked as SVG.
+		NodeSketch: {Attrs: map[string]Attr{
+			"scene":   {Kind: KindString, MaxLength: MaxSketchSceneLength, Pattern: `\S`},
+			"drawing": {Kind: KindString, Nullable: true, MaxLength: MaxSketchDrawingLength},
+			"title":   {Kind: KindString, Nullable: true, MaxLength: MaxAltLength},
+		}},
 		"attachment": {
 			Inline: true,
 			Attrs: map[string]Attr{
