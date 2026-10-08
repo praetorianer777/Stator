@@ -249,6 +249,45 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 	}
 }
 
+// Where the role that ran the migrations is an ordinary owner, as under
+// CloudNativePG, row level security applies to the trigger that lets everyone
+// use a new organization; the stack's owner is a superuser, which it does not.
+// So the trigger is run as an owner row level security binds, and an
+// organization made by the admin role must still get its grant.
+func TestANewOrganizationGetsItsGrantWhereTheOwnerIsBoundByRowLevelSecurity(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	tx, err := h.super.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	for _, q := range []string{
+		`CREATE ROLE rls_bound_owner NOLOGIN NOSUPERUSER NOBYPASSRLS`,
+		`GRANT USAGE ON SCHEMA public TO rls_bound_owner`,
+		`GRANT INSERT, SELECT ON global_grant TO rls_bound_owner`,
+		`ALTER FUNCTION org_default_grants() OWNER TO rls_bound_owner`,
+	} {
+		if _, err := tx.Exec(ctx, q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	slug := "rls-" + strings.ToLower(strconv.FormatInt(time.Now().UnixNano(), 36))
+	if _, err := tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ($1, 'Bound')`, slug); err != nil {
+		t.Fatalf("making an organization where the owner is bound by row level security: %v", err)
+	}
+	var grants int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*) FROM global_grant g JOIN org o ON o.id = g.org_id
+		WHERE o.slug = $1 AND g.permission = 'use' AND g.subject_type = 'everyone'`, slug).Scan(&grants); err != nil || grants != 1 {
+		t.Fatalf("grants of the new organization: %d (%v), want 1", grants, err)
+	}
+	var tenant *string
+	if err := tx.QueryRow(ctx, `SELECT NULLIF(current_setting('app.org_id', true), '')`).Scan(&tenant); err != nil || tenant != nil {
+		t.Fatalf("the trigger left the tenant set to %v (%v)", tenant, err)
+	}
+}
+
 // The realm the stack imports is the one sign-in is built against: both
 // clients sign the test users in, and their tokens carry the groups claim.
 func TestTheRealmSignsInTheTestUsersWithTheirGroups(t *testing.T) {
