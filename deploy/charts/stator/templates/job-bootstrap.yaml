@@ -3,10 +3,13 @@
 {{- if .Values.jobs.seed.enabled }}
 {{- fail "jobs.seed.enabled and jobs.bootstrap.enabled are both true. The seed is for a development stack and the bootstrap for a real install: turn one of them off." }}
 {{- end }}
-{{- $slug := required "jobs.bootstrap.enabled is true, so set bootstrap.org.slug, the organization people sign in to." $b.org.slug }}
-{{- $name := required "jobs.bootstrap.enabled is true, so set bootstrap.org.name." $b.org.name }}
-{{- $_ := required "jobs.bootstrap.enabled is true, so set bootstrap.admin.email, the first administrator." $b.admin.email }}
-{{- $_ := required "Set bootstrap.admin.passwordSecret.name to a Secret holding the administrator's password; the password itself is never a chart value." $b.admin.passwordSecret.name }}
+{{- $slug := default "stator" $b.org.slug }}
+{{- $name := default "Stator" $b.org.name }}
+{{- $email := required "jobs.bootstrap.enabled is true, so set bootstrap.admin.email, or ingress.host so the administrator can be admin@ that host." (include "stator.bootstrapEmail" .) }}
+{{- if and (not $b.admin.passwordSecret.name) (not .Values.secrets.generate) }}
+{{- fail "secrets.generate is off and bootstrap.admin.passwordSecret.name is blank, so nothing can make the administrator's password. Name a Secret that holds it, or turn secrets.generate on." }}
+{{- end }}
+{{- $pwSecret := default (include "stator.credentialSecret" (dict "root" . "name" "bootstrapAdmin")) $b.admin.passwordSecret.name }}
 {{- if $b.oidc.issuer }}
 {{- $_ := required "bootstrap.oidc.issuer is set, so set bootstrap.oidc.clientId." $b.oidc.clientId }}
 {{- end }}
@@ -66,11 +69,11 @@ spec:
             - name: STATOR_BOOTSTRAP_ORG_NAME
               value: {{ $name | quote }}
             - name: STATOR_BOOTSTRAP_ADMIN_EMAIL
-              value: {{ $b.admin.email | quote }}
+              value: {{ $email | quote }}
             - name: STATOR_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $b.admin.passwordSecret.name | quote }}
+                  name: {{ $pwSecret | quote }}
                   key: {{ default "password" $b.admin.passwordSecret.key | quote }}
             {{- if $b.oidc.issuer }}
             - name: STATOR_BOOTSTRAP_OIDC_ISSUER
