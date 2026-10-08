@@ -20,6 +20,8 @@ import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, sta
 import { Blank, TEMPLATE_VARIABLE_NODE, variableName } from "./blanks";
 import { MATH_BLOCK_NODE, MATH_INLINE_NODE, MathFormula, mathSource } from "./MathViews";
 import { DIAGRAM_NODE, DiagramFigure, diagramSource } from "./DiagramViews";
+import { SketchFigure } from "@/features/sketch/SketchViews";
+import { SKETCH_NODE } from "@/features/sketch/scene";
 import { LINK_CARD_NODE, LinkCard, linkCardView, webAddress } from "./LinkCardViews";
 import { INCLUDE_NODE, IncludeBlock, IncludeChain, includeId } from "./IncludeViews";
 import { PassagesContext } from "./passages";
@@ -416,6 +418,8 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       const source = diagramSource(node.attrs?.source);
       return source ? <DiagramFigure source={source} /> : null;
     }
+    case SKETCH_NODE:
+      return <SketchFigure attrs={node.attrs} />;
     case MATH_BLOCK_NODE: {
       const latex = mathSource(node.attrs?.latex);
       return latex ? <MathFormula latex={latex} display /> : null;

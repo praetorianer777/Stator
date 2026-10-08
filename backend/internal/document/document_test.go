@@ -82,6 +82,7 @@ const richDoc = `{"type":"doc","content":[
  {"type":"paragraph","content":[{"type":"text","text":"Energy is "},{"type":"mathInline","attrs":{"latex":"E = mc^2"},"marks":[{"type":"bold"}]}]},
  {"type":"mathBlock","attrs":{"latex":"\\int_0^1 x\\,dx = \\frac{1}{2}"}},
  {"type":"diagram","attrs":{"source":"flowchart LR\n  A[Draft] --> B[Published]"}},
+ {"type":"sketch","attrs":{"scene":"{\"elements\":[]}","drawing":"<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>","title":"An empty sketch"}},
  {"type":"linkCard","attrs":{"url":"https://example.test/post","view":"card"}},
  {"type":"include","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80","excerptId":null}},
  {"type":"include","attrs":{"pageId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a80","excerptId":"0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a81"}},
@@ -375,6 +376,7 @@ func TestPlainTextReadsEveryBlock(t *testing.T) {
 		`\int_0^1 x\,dx = \frac{1}{2}`,
 		"flowchart LR",
 		"  A[Draft] --> B[Published]",
+		"An empty sketch",
 		"Nine to five",
 		"Plan",
 	}, "\n")
@@ -435,6 +437,20 @@ func TestAllowlistFileIsCurrent(t *testing.T) {
 	}
 	if string(committed) != string(fresh) {
 		t.Fatal("api/document-allowlist.json is out of date; run make document-allowlist and commit it.")
+	}
+}
+
+func TestSketchDrawingRulesFileIsCurrent(t *testing.T) {
+	committed, err := os.ReadFile("../../../api/sketch-drawing-allowlist.json")
+	if err != nil {
+		t.Fatalf("api/sketch-drawing-allowlist.json is missing; run make document-allowlist: %v", err)
+	}
+	fresh, err := SketchDrawing.JSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(committed) != string(fresh) {
+		t.Fatal("api/sketch-drawing-allowlist.json is out of date; run make document-allowlist and commit it.")
 	}
 }
 

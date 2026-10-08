@@ -78,6 +78,17 @@ license web/package-lock.json names for it:
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 
+The web client draws sketches with Excalidraw
+(https://github.com/excalidraw/excalidraw), under the MIT License, Copyright
+(c) 2020 Excalidraw; its license text is the one quoted for Mermaid above.
+The libraries Excalidraw brings along are each under the license
+web/package-lock.json names for it (MIT, ISC, BSD-3-Clause, Apache-2.0 or
+CC0-1.0). The fonts it draws words with, which the web client serves itself,
+are under the SIL Open Font License 1.1 (https://openfontlicense.org):
+Excalifont, Virgil, Xiaolai, Nunito, Lilita One, Cascadia Code, Liberation
+Sans and Assistant, each with its authors' copyright in the font file; Comic
+Shanns is under the MIT License.
+
 The backend reads Markdown with goldmark (https://github.com/yuin/goldmark),
 under the MIT License:
 

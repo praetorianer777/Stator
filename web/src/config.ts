@@ -490,6 +490,26 @@ export const DIAGRAM_SOURCE_ROWS = 6;
 export const DIAGRAM_DEFAULT_SOURCE = "flowchart LR\n  idea[Idea] --> draft[Draft] --> published[Published]";
 /** The name a downloaded diagram is saved under. */
 export const DIAGRAM_FILE_NAME = "diagram.svg";
+/** The longest scene a sketch keeps, as JSON, matching the API's MaxSketchSceneLength. */
+export const SKETCH_SCENE_MAX_LENGTH = 500_000;
+/** The longest SVG drawn from a sketch, matching the API's MaxSketchDrawingLength. */
+export const SKETCH_DRAWING_MAX_LENGTH = 1_000_000;
+/** The most shapes one sketch holds, matching the API's MaxSketchElements. */
+export const SKETCH_MAX_ELEMENTS = 5_000;
+/** The longest title of a sketch, which is its text alternative, as an image's. */
+export const SKETCH_TITLE_MAX_LENGTH = 500;
+/** The Excalidraw elements a sketch keeps, as the API's document.SketchElementTypes. */
+export const SKETCH_ELEMENT_TYPES = ["rectangle", "diamond", "ellipse", "arrow", "line", "freedraw", "text", "frame"] as const;
+/** The parts of Excalidraw's state a sketch keeps beside its elements. */
+export const SKETCH_APP_STATE_KEYS = ["viewBackgroundColor"] as const;
+/** What a new sketch is drawn on. */
+export const SKETCH_BACKGROUND = "#ffffff";
+/** The room around a drawing, in its own pixels. */
+export const SKETCH_PADDING_PX = 16;
+/** Where the build puts Excalidraw's fonts, so the canvas never asks another host for them. */
+export const SKETCH_ASSET_PATH = "/assets/excalidraw/";
+/** The name a sketch's drawing is saved under from the lightbox. */
+export const SKETCH_FILE_NAME = "sketch.svg";
 /** How long a link's card is shown before it is asked for again; the server keeps it an hour. */
 export const LINK_PREVIEW_STALE_MS = 5 * 60_000;
 /** The views a link card offers, in the order its toolbar lists them. */
@@ -642,8 +662,9 @@ export const PUBLIC_LINK_LABEL_MAX_LENGTH = 60;
 
 /** How long a print view stays quiet, nothing loading or drawing, before it says it is ready to print. */
 export const PRINT_SETTLE_MS = 300;
-/** What a print view waits out: a skeleton, a busy region, a diagram being drawn or a preview loading. */
-export const PRINT_PENDING_SELECTOR = '[data-skeleton], [aria-busy="true"], [data-diagram-state="drawing"], [data-preview-loading]';
+/** What a print view waits out: a skeleton, a busy region, a diagram or sketch being drawn or a preview loading. */
+export const PRINT_PENDING_SELECTOR =
+  '[data-skeleton], [aria-busy="true"], [data-diagram-state="drawing"], [data-sketch-state="drawing"], [data-preview-loading]';
 
 /** How often a page following a space's export or import asks how it goes. */
 export const SPACE_TRANSFER_POLL_MS = 1000;

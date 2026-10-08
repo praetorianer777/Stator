@@ -113,6 +113,12 @@ func txt(s string, marks ...string) string {
 	return `{"type":"text","text":` + string(q) + `,"marks":[` + strings.Join(marks, ",") + `]}`
 }
 
+// quoted is a string as a JSON value.
+func quoted(s string) string {
+	q, _ := json.Marshal(s)
+	return string(q)
+}
+
 func roundTrip(t *testing.T, body string) (string, *Result) {
 	t.Helper()
 	md := Render("Plan", parseDoc(t, body), testLinks)
@@ -228,6 +234,10 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 		"diagrams": doc(
 			`{"type":"diagram","attrs":{"source":"flowchart LR\n  A[\"Draft <b>\"] --> B[Published]\n\n  B -.-> A"}}`,
 			`{"type":"diagram","attrs":{"source":"sequenceDiagram\n  Ada->>Bob: `+"```"+`"}}`,
+		),
+		"sketches": doc(
+			`{"type":"sketch","attrs":{"scene":`+quoted(`{"elements":[{"id":"t1","type":"text","x":1.5,"y":-2,"text":"Say `+"```"+` <b> & \"hi\"","originalText":"Say `+"```"+` <b> & \"hi\""}],"appState":{"viewBackgroundColor":"#ffffff"}}`)+`,"drawing":null,"title":"Flow with a `+"`"+` and \"quotes\""}}`,
+			`{"type":"sketch","attrs":{"scene":`+quoted(`{"elements":[],"appState":{}}`)+`,"drawing":null,"title":null}}`,
 		),
 		"breaks and links to pages": doc(
 			para(txt("line one"), `{"type":"hardBreak"}`, txt("line two")),
@@ -386,6 +396,28 @@ func TestTheTitleIsTheOneLeadingHeading(t *testing.T) {
 		if strings.Contains(string(got.Body), `"level":4`) {
 			t.Errorf("%q: a heading deeper than a page has: %s", c.md, got.Body)
 		}
+	}
+}
+
+// The drawing is the editor's to make from the scene, so it is not written,
+// and a fence that is no scene a sketch keeps stays code.
+func TestASketchIsAnExcalidrawFence(t *testing.T) {
+	scene := `{"elements":[{"id":"b1","type":"rectangle","x":0,"y":0,"width":10,"height":10}],"appState":{"viewBackgroundColor":"#ffffff"}}`
+	body := doc(`{"type":"sketch","attrs":{"scene":` + quoted(scene) + `,"drawing":"<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>","title":"Boxes"}}`)
+	md, got := roundTrip(t, body)
+	if !strings.Contains(md, "```excalidraw \"Boxes\"\n{\n  \"type\": \"excalidraw\",") || strings.Contains(md, "<svg") {
+		t.Errorf("the sketch was written as\n%s", md)
+	}
+	if want := doc(`{"type":"sketch","attrs":{"scene":` + quoted(scene) + `,"drawing":null,"title":"Boxes"}}`); !reflect.DeepEqual(canon(t, []byte(want)), canon(t, got.Body)) {
+		t.Errorf("came back as %s", got.Body)
+	}
+
+	typed, err := Convert([]byte("```excalidraw  Typed by hand \n{\"elements\":[]}\n```\n\n```excalidraw\n{\"elements\":[{\"id\":\"i\",\"type\":\"image\"}]}\n```\n"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out := string(typed.Body); !strings.Contains(out, `"title":"Typed by hand"`) || !strings.Contains(out, `"type":"codeBlock","attrs":{"language":"excalidraw"}`) {
+		t.Errorf("read as %s", out)
 	}
 }
 

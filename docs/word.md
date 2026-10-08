@@ -44,6 +44,7 @@ the reader's language, English or German, and Word checks spelling in it.
 | `decision` | its line after Decided or Undecided in colour |
 | `mathBlock` | its TeX source, centred in the Formula style |
 | `diagram` | a sentence saying Stator draws it, then its Mermaid source in the Code style |
+| `sketch` | a sentence saying Stator draws it, with its title; Word would need a raster of the drawing, which the server does not draw |
 | `linkCard` | its address as a link |
 | `excerpt` | the blocks it marks |
 | `include` | for a member, what the include shows them in a box under a link to its page, or a sentence when they may not read it; for anybody, a link to the page; for a link's holder, a sentence |

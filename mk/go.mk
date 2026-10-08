@@ -60,12 +60,12 @@ openapi-check: | $(GO_CACHE) ## Fail when api/openapi.json differs from what the
 		|| { echo "api/openapi.json is out of date. Run make openapi and commit the result."; exit 1; }
 
 .PHONY: document-allowlist
-document-allowlist: | $(GO_CACHE) ## Regenerate api/document-allowlist.json, api/comment-allowlist.json and api/template-allowlist.json from the Go allowlist
-	$(DOCKER_GO) go run ./cmd/docallowlist ../api/document-allowlist.json ../api/comment-allowlist.json ../api/template-allowlist.json
+document-allowlist: | $(GO_CACHE) ## Regenerate the document, comment and template allowlists and the sketch drawing rules in api/ from the Go tables
+	$(DOCKER_GO) go run ./cmd/docallowlist ../api/document-allowlist.json ../api/comment-allowlist.json ../api/template-allowlist.json ../api/sketch-drawing-allowlist.json
 
 .PHONY: document-allowlist-check
 document-allowlist-check: | $(GO_CACHE) ## Fail when an allowlist in api/ differs from what the code generates
-	@$(DOCKER_GO) sh -c 'go run ./cmd/docallowlist /tmp/document-allowlist.json /tmp/comment-allowlist.json /tmp/template-allowlist.json && diff -u ../api/document-allowlist.json /tmp/document-allowlist.json && diff -u ../api/comment-allowlist.json /tmp/comment-allowlist.json && diff -u ../api/template-allowlist.json /tmp/template-allowlist.json' \
+	@$(DOCKER_GO) sh -c 'go run ./cmd/docallowlist /tmp/document-allowlist.json /tmp/comment-allowlist.json /tmp/template-allowlist.json /tmp/sketch-drawing-allowlist.json && diff -u ../api/document-allowlist.json /tmp/document-allowlist.json && diff -u ../api/comment-allowlist.json /tmp/comment-allowlist.json && diff -u ../api/template-allowlist.json /tmp/template-allowlist.json && diff -u ../api/sketch-drawing-allowlist.json /tmp/sketch-drawing-allowlist.json' \
 		|| { echo "The allowlists in api/ are out of date. Run make document-allowlist and commit the result."; exit 1; }
 
 .PHONY: fmt-check

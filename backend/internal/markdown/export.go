@@ -119,6 +119,14 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 	// reads as its source everywhere else.
 	case document.NodeDiagram:
 		return codeFence(stringAttr(n, "source"), diagramLanguage), true
+	// An excalidraw fence holds the scene as an Excalidraw file, which
+	// Excalidraw opens, and its title after the language.
+	case document.NodeSketch:
+		file, ok := document.SketchFile(stringAttr(n, "scene"))
+		if !ok {
+			return "", false
+		}
+		return codeFence(file, sketchInfo(stringAttr(n, "title"))), true
 	// A card's words are read for each reader, so its address stands alone
 	// on its line, where Markdown readers that draw cards draw one.
 	case document.NodeLinkCard:
@@ -750,12 +758,23 @@ func (r renderer) atom(n document.Node, ctx inlineCtx) string {
 	return ""
 }
 
-// mathLanguage and diagramLanguage are the fence languages a formula on its
-// own line and a diagram are written with.
+// mathLanguage, diagramLanguage and sketchLanguage are the fence languages a
+// formula on its own line, a diagram and a sketch are written with.
 const (
 	mathLanguage    = "math"
 	diagramLanguage = "mermaid"
+	sketchLanguage  = "excalidraw"
 )
+
+// sketchInfo is a sketch fence's info: the language, then the title as a
+// JSON string, whose backticks are escaped since a fence's info may hold none.
+func sketchInfo(title string) string {
+	if title == "" {
+		return sketchLanguage
+	}
+	quoted, _ := json.Marshal(title)
+	return sketchLanguage + " " + strings.ReplaceAll(string(quoted), "`", `\u0060`)
+}
 
 // inlineMath writes a formula between dollar signs, its source as it is: TeX
 // already writes a dollar inside a formula as \$, so a bare one is escaped

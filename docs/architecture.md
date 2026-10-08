@@ -93,7 +93,7 @@ process, which is only right for a single api process. `/readyz` and
 | `guest` | guests: people from outside invited into one space, and taken out again |
 | `public` | reading without signing in: the organization's switches, the spaces, pages and files anybody may read, and the public links that open one page each, with nobody named in them |
 | `space` | spaces, space settings |
-| `document` | page document allowlist and validation, plain text for search, headings for the table of contents |
+| `document` | page document allowlist and validation, a sketch's scene and drawing included, plain text for search, headings for the table of contents |
 | `page` | page tree (parent plus rank), blog posts outside it by date, move, copy, trash, archive, drafts, the shared draft of a page edited together, live pages and the open version their saves amend, published versions, diff, restore, restrictions, owners and verification, pages made from a template, the people who published a page or a tree, publishes scheduled for a time, and the worker's watches on verifications that run out and on scheduled publishes that came due |
 | `collab` | editing together: the WebSocket of a page's shared draft, in y-protocols' framing, its updates stored and passed on unread, awareness, and the bus between api processes: Valkey when configured, else Postgres's LISTEN and NOTIFY, with catching up after a lost connection |
 | `version` | which build is running |
@@ -140,7 +140,10 @@ process, which is only right for a single api process. `/readyz` and
   Go table; `make document-allowlist` writes it to
   `api/document-allowlist.json`, which a vitest test holds the editor to.
   The editor arrives with the route that edits, through the router's
-  `lazy()`, so a reader never downloads it.
+  `lazy()`, so a reader never downloads it. A sketch is drawn on an
+  Excalidraw canvas, bundled with its fonts by the build and loaded with
+  the first sketch opened; readers see the SVG it drew, checked by the
+  API against `api/sketch-drawing-allowlist.json`, as a picture.
 - Editing together: the editor binds the body and title to a Yjs document
   kept in step over a WebSocket (`web/src/features/collab`), with y-protocols'
   awareness for avatars and carets and y-indexeddb for what is written

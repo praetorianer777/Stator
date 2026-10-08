@@ -181,6 +181,27 @@ flowchart LR
     History -->|Restore| Publish
 ```
 
+## Sketches
+
+A **Sketch** is drawn by hand: boxes, arrows, text and freehand lines on a canvas. Pick **Sketch** from the slash menu and draw, then choose **Done**; give it a title, which is what screen readers and search read of it. Readers see the drawing and can open it larger.
+
+```excalidraw "From draft to published"
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "stator",
+  "elements": [
+    {"id": "draft-box", "type": "rectangle", "x": 0, "y": 0, "width": 180, "height": 80, "backgroundColor": "#a5d8ff", "strokeColor": "#1e1e1e", "fillStyle": "solid", "strokeWidth": 2, "roughness": 1, "roundness": {"type": 3}},
+    {"id": "draft-text", "type": "text", "x": 0, "y": 27, "width": 180, "height": 25, "text": "Draft", "originalText": "Draft", "strokeColor": "#1e1e1e", "fontSize": 20, "fontFamily": 5, "textAlign": "center", "verticalAlign": "middle"},
+    {"id": "publish-arrow", "type": "arrow", "x": 190, "y": 40, "width": 110, "height": 0, "points": [[0, 0], [110, 0]], "strokeColor": "#1e1e1e", "strokeWidth": 2, "roughness": 1, "endArrowhead": "arrow"},
+    {"id": "published-box", "type": "rectangle", "x": 310, "y": 0, "width": 180, "height": 80, "backgroundColor": "#b2f2bb", "strokeColor": "#1e1e1e", "fillStyle": "solid", "strokeWidth": 2, "roughness": 1, "roundness": {"type": 3}},
+    {"id": "published-text", "type": "text", "x": 310, "y": 27, "width": 180, "height": 25, "text": "Published", "originalText": "Published", "strokeColor": "#1e1e1e", "fontSize": 20, "fontFamily": 5, "textAlign": "center", "verticalAlign": "middle"}
+  ],
+  "appState": {"viewBackgroundColor": "#ffffff"},
+  "files": {}
+}
+```
+
 ## Decisions
 
 A **Decision** is a line that says what was decided, or what still is open. The space's **Decisions** log in the sidebar lists every one from its published pages.
