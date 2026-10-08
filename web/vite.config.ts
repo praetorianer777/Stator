@@ -13,13 +13,17 @@ import { fileURLToPath, URL } from "node:url";
 // rather than keeping a second copy in package.json.
 const version = readFileSync(fileURLToPath(new URL("../VERSION", import.meta.url)), "utf8").trim();
 
-// Excalidraw fetches its fonts from window.EXCALIDRAW_ASSET_PATH, else from a
-// public CDN. The build writes them under that path and the dev server serves
-// them there, so a sketch never reaches another host.
+// Excalidraw fetches its fonts from window.EXCALIDRAW_ASSET_PATH, and names a
+// public CDN beside it as a fallback, which the browser asks for fonts it
+// loads before the path is read. The build writes the fonts under that path,
+// the dev server serves them there, and the fallback is rewritten to the same
+// path, so a sketch never reaches another host.
 const excalidrawFonts = fileURLToPath(new URL("./node_modules/@excalidraw/excalidraw/dist/prod/fonts", import.meta.url));
 // SKETCH_ASSET_PATH in src/config.ts, which cannot be imported here since it
 // reads the build's own constants; sketch.test.ts holds the two together.
 const fontsPath = "/assets/excalidraw/fonts/";
+const fallback = /`https:\/\/esm\.sh\/\$\{.*?\}\/dist\/prod\/`/;
+const ownFallback = `\`\${window.location.origin}${fontsPath.slice(0, -"fonts/".length)}\``;
 
 function filesUnder(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -42,6 +46,11 @@ function excalidrawAssets(): Plugin {
           next();
         }
       });
+    },
+    transform(code, id) {
+      if (!id.includes("@excalidraw/excalidraw") || !code.includes("ASSETS_FALLBACK_URL")) return null;
+      if (!fallback.test(code)) this.error("Excalidraw no longer names its font CDN as this build expects; find its ASSETS_FALLBACK_URL and point it at our own fonts again.");
+      return { code: code.replace(fallback, ownFallback), map: null };
     },
     generateBundle() {
       for (const path of filesUnder(excalidrawFonts)) {
