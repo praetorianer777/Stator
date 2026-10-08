@@ -47,6 +47,7 @@ import { ContributorsNode } from "./contributors";
 import { DateNode, Status, type InlineValueTarget } from "./inlineValues";
 import { MathBlock, MathInline } from "./math";
 import { Diagram } from "./diagram";
+import { Sketch } from "./sketch";
 import { LinkCardNode } from "./linkCard";
 import { Excerpt } from "./excerpt";
 import { Include } from "./include";
@@ -566,6 +567,7 @@ export function editorExtensions({
     MathInline.configure({ edit: editInlineValue }),
     MathBlock.configure({ edit: editInlineValue }),
     Diagram,
+    Sketch,
     LinkCardNode.configure({ pick: pickLinkCard }),
     Excerpt,
     Include.configure({ pick: pickInclude, pageId }),

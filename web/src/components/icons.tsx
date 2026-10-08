@@ -83,6 +83,8 @@ export const Icon = {
   Sigma: makeIcon("sigma", ["M12.5 3.5v-1h-9L8 8l-4.5 5.5h9v-1"]),
   // Two boxes and the arrow between them, as a flowchart draws them.
   Diagram: makeIcon("diagram", ["M2 2.5h5v3.5H2z", "M9 10h5v3.5H9z", "M4.5 6v5.75H9"]),
+  // A pencil above the wavy line it drew, as a sketch is drawn by hand.
+  Sketch: makeIcon("sketch", ["m9.5 2 3 3-5 5h-3V7z", "M2 13.5c1.5-1.5 3-1.5 4 0s2.5 1.5 4 0 2.5-1.5 4 0"]),
   // A block cut out between two marks, as a passage lifted from a page.
   Excerpt: makeIcon("excerpt", ["M2.5 3.5h2", "M11.5 3.5h2", "M2.5 12.5h2", "M11.5 12.5h2", "M5 6.5h6", "M5 9.5h4"]),
   // A page with another page's lines brought into it.

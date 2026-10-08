@@ -1,15 +1,56 @@
 // vitest/config re-exports Vite's defineConfig with the `test` block typed,
 // which keeps one config file instead of two that can drift apart.
 import { defineConfig } from "vitest/config";
+import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import { availableParallelism, loadavg } from "node:os";
 import { fileURLToPath, URL } from "node:url";
 
 // The root VERSION file is the one release.sh bumps, so the client reads it
 // rather than keeping a second copy in package.json.
 const version = readFileSync(fileURLToPath(new URL("../VERSION", import.meta.url)), "utf8").trim();
+
+// Excalidraw fetches its fonts from window.EXCALIDRAW_ASSET_PATH, else from a
+// public CDN. The build writes them under that path and the dev server serves
+// them there, so a sketch never reaches another host.
+const excalidrawFonts = fileURLToPath(new URL("./node_modules/@excalidraw/excalidraw/dist/prod/fonts", import.meta.url));
+// SKETCH_ASSET_PATH in src/config.ts, which cannot be imported here since it
+// reads the build's own constants; sketch.test.ts holds the two together.
+const fontsPath = "/assets/excalidraw/fonts/";
+
+function filesUnder(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? filesUnder(path) : [path];
+  });
+}
+
+function excalidrawAssets(): Plugin {
+  return {
+    name: "stator-excalidraw-assets",
+    configureServer(server) {
+      server.middlewares.use(fontsPath, (req, res, next) => {
+        const path = join(excalidrawFonts, decodeURIComponent((req.url ?? "").split("?")[0] ?? ""));
+        if (!path.startsWith(excalidrawFonts + sep) || !path.endsWith(".woff2")) return next();
+        try {
+          res.setHeader("Content-Type", "font/woff2");
+          res.end(readFileSync(path));
+        } catch {
+          next();
+        }
+      });
+    },
+    generateBundle() {
+      for (const path of filesUnder(excalidrawFonts)) {
+        const name = relative(excalidrawFonts, path).split(sep).join("/");
+        this.emitFile({ type: "asset", fileName: `${fontsPath.slice(1)}${name}`, source: readFileSync(path) });
+      }
+    },
+  };
+}
 
 // Gates in parallel worktrees share one machine, and with vitest's default of
 // a worker per core three of them starved one another past the test timeout.
@@ -22,7 +63,7 @@ const idleCores = cores - Math.round(busyCores);
 const testWorkers = Math.max(TEST_MIN_WORKERS, Math.min(Math.floor(cores * TEST_CORE_SHARE), idleCores));
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), excalidrawAssets()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
