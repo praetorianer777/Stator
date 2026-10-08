@@ -1,9 +1,14 @@
-// Command seed makes the development database worth opening: the demo
-// organization and, when configured, its first local administrator.
+// Command seed makes a database worth opening. Bare, it makes the demo
+// organization of a development stack; `seed bootstrap` makes the organization
+// STATOR_BOOTSTRAP_ORG_* names, its first local administrator and, when
+// configured, its identity provider and members, which is what a fresh
+// production install needs and nothing more.
 package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -24,10 +29,21 @@ func main() {
 }
 
 func run() error {
+	bootstrap := len(os.Args) > 1 && os.Args[1] == "bootstrap"
+	if len(os.Args) > 1 && !bootstrap {
+		return fmt.Errorf("unknown command %q; run seed bare for the development organization, or seed bootstrap", os.Args[1])
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
+	if cfg.IsProduction() && !bootstrap {
+		return errors.New("seed makes the development organization, which has no place in production; run seed bootstrap instead")
+	}
+	if bootstrap && cfg.Bootstrap.AdminEmail == "" {
+		return errors.New("seed bootstrap needs STATOR_BOOTSTRAP_ADMIN_EMAIL and STATOR_BOOTSTRAP_ADMIN_PASSWORD: without them nobody could sign in to the organization it makes")
+	}
+	boot := cfg.Bootstrap
 	log := observability.NewLogger(cfg.LogLevel, cfg.IsProduction())
 	slog.SetDefault(log)
 
@@ -38,21 +54,21 @@ func run() error {
 	}
 	defer cluster.Close()
 
-	res, err := seed.Run(ctx, cluster)
+	res, err := seed.Ensure(ctx, cluster, boot.OrgSlug, boot.OrgName)
 	if err != nil {
 		return err
 	}
-	log.Info("seed done", "org", seed.DemoOrgSlug, "created", res.OrgCreated)
+	log.Info("seed done", "org", boot.OrgSlug, "created", res.OrgCreated)
 
 	accounts := auth.NewService(cluster, auth.DefaultPasswordParams(), cfg.Auth.SessionTTL)
 	// Somebody has to be able to get in before any identity provider is set
 	// up, and that somebody is named by the operator rather than invented here.
 	if cfg.Bootstrap.AdminEmail != "" {
-		made, err := accounts.EnsureAdmin(ctx, seed.DemoOrgSlug, cfg.Bootstrap.AdminEmail, bootstrapAdminName, cfg.Bootstrap.AdminPassword)
+		made, err := accounts.EnsureAdmin(ctx, boot.OrgSlug, cfg.Bootstrap.AdminEmail, bootstrapAdminName, cfg.Bootstrap.AdminPassword)
 		if err != nil {
 			return err
 		}
-		log.Info("bootstrap administrator ready", "email", cfg.Bootstrap.AdminEmail, "org", seed.DemoOrgSlug, "created", made)
+		log.Info("bootstrap administrator ready", "email", cfg.Bootstrap.AdminEmail, "org", boot.OrgSlug, "created", made)
 	}
 
 	var box *secret.Box
@@ -61,7 +77,7 @@ func run() error {
 			return err
 		}
 	}
-	org, err := accounts.OrgBySlug(ctx, seed.DemoOrgSlug)
+	org, err := accounts.OrgBySlug(ctx, boot.OrgSlug)
 	if err != nil {
 		return err
 	}
@@ -73,13 +89,13 @@ func run() error {
 		return err
 	}
 	for _, m := range done.Added {
-		log.Info("member let in ahead of sign-in", "email", m.Email, "role", m.Role, "org", seed.DemoOrgSlug)
+		log.Info("member let in ahead of sign-in", "email", m.Email, "role", m.Role, "org", boot.OrgSlug)
 	}
 	switch {
 	case done.ProviderCreated:
-		log.Info("identity provider configured", "org", seed.DemoOrgSlug, "issuer", cfg.Bootstrap.OIDCIssuer)
+		log.Info("identity provider configured", "org", boot.OrgSlug, "issuer", cfg.Bootstrap.OIDCIssuer)
 	case done.ProviderExisting:
-		log.Info("the demo organization's identity provider is already set up", "org", seed.DemoOrgSlug)
+		log.Info("the organization's identity provider is already set up", "org", boot.OrgSlug)
 	}
 	return nil
 }

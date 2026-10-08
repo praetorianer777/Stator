@@ -304,6 +304,36 @@ jobs:
   seed:
     # The development organization and its people. Refused with env production.
     enabled: false
+  bootstrap:
+    # What a fresh install needs to be entered: the organization named in
+    # bootstrap.org, its first local administrator and, when named, the
+    # identity provider and the members let in ahead of their first sign-in.
+    # Runs after every install and upgrade and changes nothing that exists,
+    # except a bootstrap password that was changed in its Secret. Allowed in
+    # production; the seed above is not.
+    enabled: false
+
+# Read by the bootstrap Job. The password and the provider's client secret are
+# never values: each is a key in a Secret you made, so neither lands in a
+# values file or a ConfigMap.
+bootstrap:
+  org:
+    # Lowercase letters, digits and hyphens, 3 to 40 characters.
+    slug: ""
+    name: ""
+  admin:
+    email: ""
+    passwordSecret: { name: "", key: password }
+  # Optional. With an issuer the organization signs in through it, and the
+  # administrator's password is only for getting in to change that.
+  oidc:
+    issuer: ""
+    clientId: ""
+    # Needs secrets.names.secretKey to be set, since the client secret is
+    # stored sealed. Leave name blank for a public client.
+    clientSecret: { name: "", key: client-secret }
+  # [{ email: alice@example.com, role: admin }], each role owner, admin or member.
+  members: []
 
 serviceAccount:
   create: true

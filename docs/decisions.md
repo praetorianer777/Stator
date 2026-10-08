@@ -3,6 +3,31 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-08: A production install is entered through `seed bootstrap`, not the development seed (#330)
+
+Nothing but `cmd/seed` made an organization, and only it applied
+`STATOR_BOOTSTRAP_ADMIN_*`, while the chart refused the seed in production: a
+fresh production install had no organization and nobody who could sign in.
+
+- **A subcommand of the seed, not a new binary.** `seed bootstrap` reuses
+  `EnsureAdmin`, `Populate` and the `STATOR_BOOTSTRAP_*` settings, and the one
+  backend image the Dockerfile builds already carries it. Bare `seed` now
+  refuses `STATOR_ENV=production` itself, so the chart's refusal is no longer
+  the only guard, and `seed bootstrap` refuses to run without an administrator,
+  since an organization nobody can enter helps no one.
+- **The organization is named, not fixed.** `STATOR_BOOTSTRAP_ORG_SLUG` and
+  `_NAME` default to the demo's, so the development stack is unchanged. The
+  slug is checked at start against the shape the `org` table accepts, so a bad
+  one is refused by name instead of by a database constraint halfway through.
+- **Secrets are keys in Secrets.** The chart reads the administrator's password
+  and the provider's client secret with `secretKeyRef` from Secrets the
+  operator made; neither is a chart value, so neither reaches a values file or
+  a ConfigMap.
+- **Every install and upgrade.** The Job runs `post-install,post-upgrade` after
+  the migrate Job, and is safe to repeat: existing organizations, accounts and
+  providers are left alone, and only a changed bootstrap password is applied
+  again, which is how an operator rotates it.
+
 ## 2026-10-08: CI runs the gate as parallel jobs and keeps its reports
 
 The gate took 35 to 38 minutes in CI, 22 of them in the browser suite, and
