@@ -255,3 +255,17 @@ func TestSketchWordsAreReadForSearch(t *testing.T) {
 		t.Errorf("SketchWords of no JSON = %v", words)
 	}
 }
+
+func TestSketchIDIsAnIDOrNothing(t *testing.T) {
+	scene := sceneOf(sketchBox)
+	for _, id := range []any{nil, "5f0c6a2e-9a8b-4c1d-8e2f-0a1b2c3d4e5f"} {
+		if err := Validate(sketchDoc(t, map[string]any{"scene": scene, "drawing": nil, "title": nil, "sketchId": id})); err != nil {
+			t.Errorf("sketchId %v: %v", id, err)
+		}
+	}
+	for _, id := range []any{"box", "", 7, "5F0C6A2E-9A8B-4C1D-8E2F-0A1B2C3D4E5F"} {
+		if err := Validate(sketchDoc(t, map[string]any{"scene": scene, "drawing": nil, "title": nil, "sketchId": id})); !errors.Is(err, ErrInvalid) {
+			t.Errorf("sketchId %v: got %v, want a refusal", id, err)
+		}
+	}
+}
