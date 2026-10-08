@@ -3628,6 +3628,7 @@ export interface components {
             editedAt: string | null;
             /** Format: uuid */
             id: string;
+            originalAuthor: string | null;
             reactions: components["schemas"]["Reaction"][];
             /** Format: uuid */
             threadId: string;

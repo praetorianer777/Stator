@@ -2607,6 +2607,7 @@ export const en = {
     confirmDeleteOthers: (name: string) => `Delete ${name}'s comment? Its words go for good, and the deletion is recorded.`,
     deleted: "This comment was deleted.",
     edited: "edited",
+    originalAuthor: (name: string) => `imported; written by ${name}`,
     formerMember: "A former member",
     thread: (name: string) => `Thread started by ${name}`,
     replies: (n: number) => (n === 1 ? "1 reply" : `${n} replies`),

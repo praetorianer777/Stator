@@ -16635,6 +16635,12 @@
             "type": "string",
             "format": "uuid"
           },
+          "originalAuthor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "reactions": {
             "type": "array",
             "items": {
@@ -16651,6 +16657,7 @@
           "threadId",
           "authorId",
           "authorName",
+          "originalAuthor",
           "body",
           "deleted",
           "createdAt",

@@ -2684,6 +2684,7 @@ export const de: Messages = {
     confirmDeleteOthers: (name: string) => `Den Kommentar von ${name} löschen? Sein Text ist dann endgültig weg, und das Löschen wird protokolliert.`,
     deleted: "Dieser Kommentar wurde gelöscht.",
     edited: "bearbeitet",
+    originalAuthor: (name: string) => `importiert; geschrieben von ${name}`,
     formerMember: "Ein ehemaliges Mitglied",
     thread: (name: string) => `Diskussion, begonnen von ${name}`,
     replies: (n: number) => (n === 1 ? "1 Antwort" : `${n} Antworten`),

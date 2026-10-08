@@ -33,6 +33,7 @@ function aComment(over: Partial<Comment> = {}): Comment {
     threadId,
     authorId: "u-grace",
     authorName: "Grace Hopper",
+    originalAuthor: null,
     body: say("Should we ship Friday?"),
     deleted: false,
     createdAt: "2026-09-29T08:00:00Z",
@@ -144,6 +145,16 @@ describe("the comments below a page", () => {
     expect(within(threads[1]!).getByRole("button", { name: "Reply" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "2 comments, go to the comments" })).toHaveAttribute("href", "#comments");
     expect(await axeViolations()).toEqual([]);
+  });
+
+  it("names who wrote an imported comment that the importer stands in for", async () => {
+    stubPage({
+      threads: [aThread({ comments: [aComment({ authorName: "Ada Lovelace", originalAuthor: "Bob Example", body: say("Bring socks.") })] })],
+      count: 1,
+    });
+    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    const section = await screen.findByRole("region", { name: /Comments/ });
+    expect(await within(section).findByText("· imported; written by Bob Example")).toBeInTheDocument();
   });
 
   it("starts a thread with the comment editor, which holds a comment to its allowlist", async () => {

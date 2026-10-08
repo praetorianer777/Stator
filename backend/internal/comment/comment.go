@@ -80,6 +80,9 @@ type Comment struct {
 	// AuthorID is null once the author is gone.
 	AuthorID   *uuid.UUID `json:"authorId"`
 	AuthorName string     `json:"authorName"`
+	// OriginalAuthor names who wrote an imported comment when nobody of
+	// their address is here and the importer stands in for them.
+	OriginalAuthor *string `json:"originalAuthor"`
 	// Body is the document, null once the comment is deleted.
 	Body      json.RawMessage `json:"body"`
 	Deleted   bool            `json:"deleted"`

@@ -34,6 +34,7 @@ function aThread(reactions: Reaction[]): Thread {
     threadId: commentId,
     authorId: grace.id,
     authorName: grace.name,
+    originalAuthor: null,
     body: say("Ship it Friday?"),
     deleted: false,
     createdAt: "2026-10-01T08:00:00Z",
