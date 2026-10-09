@@ -64,8 +64,23 @@ export function AddMember() {
         <form onSubmit={submit} className="space-y-3 rounded-control border border-border p-3" aria-label={t.sso.addPerson}>
           <p className="text-sm text-ink-muted">{t.sso.addPersonIntro}</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={t.sso.addEmail} type="email" autoComplete="off" required value={email} onChange={(event) => setEmail(event.target.value)} error={fields.email} />
-            <Field label={t.sso.addName} autoComplete="off" value={name} onChange={(event) => setName(event.target.value)} hint={t.sso.addNameHint} error={fields.name} />
+            <Field
+              label={t.sso.addEmail}
+              type="email"
+              autoComplete="off"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              error={fields.email}
+            />
+            <Field
+              label={t.sso.addName}
+              autoComplete="off"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              hint={t.sso.addNameHint}
+              error={fields.name}
+            />
             <Select label={t.sso.role} value={role} onChange={(event) => setRole(event.target.value as Role)} error={fields.role}>
               <option value="member">{t.sso.roleNames.member}</option>
               <option value="admin">{t.sso.roleNames.admin}</option>

@@ -6,7 +6,15 @@ import { axeViolations } from "@/test/axe";
 
 afterEach(() => vi.unstubAllGlobals());
 
-const owner = { userId: "0195f000-0000-7000-8000-000000000001", email: "owner@stator.test", name: "Olive Owner", role: "owner", roleSource: "manual", joinedAt: "2026-09-01T08:00:00Z", guestSpace: null };
+const owner = {
+  userId: "0195f000-0000-7000-8000-000000000001",
+  email: "owner@stator.test",
+  name: "Olive Owner",
+  role: "owner",
+  roleSource: "manual",
+  joinedAt: "2026-09-01T08:00:00Z",
+  guestSpace: null,
+};
 const provider = { provider: null, callbackUrl: "http://localhost:5173/api/v1/auth/oidc/callback" };
 
 const settings = (extra: Parameters<typeof stubApi>[0] = {}) =>
@@ -28,7 +36,16 @@ describe("adding a person with a password", () => {
     const sent = settings({
       "POST /users": {
         status: 201,
-        body: { member: { userId: "0195f000-0000-7000-8000-000000000002", email: "ada@stator.test", name: "Ada", role: "member", newAccount: true, password: "Kx7mQ2pRt9WvZa4Nb6Hc" } },
+        body: {
+          member: {
+            userId: "0195f000-0000-7000-8000-000000000002",
+            email: "ada@stator.test",
+            name: "Ada",
+            role: "member",
+            newAccount: true,
+            password: "Kx7mQ2pRt9WvZa4Nb6Hc",
+          },
+        },
       },
     });
     await renderAt("/settings/sso");
@@ -70,7 +87,13 @@ describe("adding a person with a password", () => {
     settings({
       "POST /users": {
         status: 422,
-        body: { error: { code: "validation_failed", message: "Check the form.", fields: { password: "Password must be at least 12 characters. Leave it empty to have one made." } } },
+        body: {
+          error: {
+            code: "validation_failed",
+            message: "Check the form.",
+            fields: { password: "Password must be at least 12 characters. Leave it empty to have one made." },
+          },
+        },
       },
     });
     await renderAt("/settings/sso");
