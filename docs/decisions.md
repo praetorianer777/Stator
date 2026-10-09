@@ -3,6 +3,29 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-09: The logo is a resized picture and the icons are a crop of it (#342)
+
+Stator had neither a logo nor a favicon. The picture given is a detailed
+illustration with small text, which is clear at a few hundred pixels and a
+smudge at sixteen.
+
+- **Two kinds of image from one source.** The whole picture, resized to 128,
+  256 and 512 pixels in WebP, is the logo, with `srcset` so a screen takes the
+  one it needs; a 700 KB JPEG is not shipped to anybody. The favicon, touch
+  icon, manifest icons and the sidebar's mark are a square cut of the
+  gopher's face, which is what still reads small.
+- **Made by a target, from a container.** `make branding` runs ImageMagick in
+  an Alpine image and writes `web/public`, so nothing is installed on the host
+  and the source, `assets/branding/logo.jpg`, stays the one thing to replace.
+  The made files are committed, so a build needs no ImageMagick.
+- **Served from the site's own origin.** The Content-Security-Policy already
+  allows `img-src 'self'`, so it needed nothing. nginx has no type for a web
+  app manifest and served it as a download; the config and the chart name
+  `application/manifest+json` for that one file, without an `add_header` of
+  its own, which would have dropped the server's security headers.
+- **An organization's own logo is separate.** Themes carry colours; a logo an
+  organization sets for itself is a later issue, and this one is its default.
+
 ## 2026-10-09: An administrator adds people with a password; self-registration waits (#334)
 
 Nobody could make an account in Stator itself: the one password account was the

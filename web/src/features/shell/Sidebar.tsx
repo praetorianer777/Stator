@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { IconButton } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
+import { LogoMark } from "@/components/Logo";
 import { APP_NAME, APP_VERSION, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { t } from "@/i18n";
 import { SpaceNav } from "@/features/spaces/SpaceNav";
@@ -41,7 +42,8 @@ export function Sidebar({ narrow, drawerOpen, onCloseDrawer }: { narrow: boolean
           data-print-hide
           aria-label={t.nav.whereYouAre}
         >
-          <div className="flex h-12 items-center border-b border-border px-3">
+          <div className="flex h-12 items-center gap-2 border-b border-border px-3">
+            <LogoMark className="shrink-0 rounded-control" />
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{APP_NAME}</span>
           </div>
 

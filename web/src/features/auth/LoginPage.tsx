@@ -3,6 +3,7 @@ import { useNavigate, useRouter } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { ssoStartURL, useLogin } from "@/api/auth";
 import { Button, ButtonLink, Card, ErrorBanner, Field } from "@/components/ui";
+import { Logo } from "@/components/Logo";
 import { APP_NAME, LAST_ORG_KEY } from "@/config";
 import { t } from "@/i18n";
 import { safeNext } from "@/lib/session";
@@ -69,6 +70,7 @@ export function LoginPage({ next, sso, org: named }: { next?: string; sso?: stri
     <main className="flex min-h-full items-center justify-center bg-backdrop px-4 py-12" data-login>
       <div className="w-full max-w-sm">
         <div className="mb-6">
+          <Logo className="mb-3 rounded-overlay" />
           <p className="font-mono text-sm font-medium tracking-wide text-ink-muted">{APP_NAME}</p>
           <h1 className="mt-3 text-xl font-semibold tracking-tight text-ink">{t.login.title}</h1>
           <p className="mt-1 text-sm text-ink-muted">{t.login.subtitle}</p>
