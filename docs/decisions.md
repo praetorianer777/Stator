@@ -3,6 +3,43 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-08: A production install is entered through `seed bootstrap`, not the development seed (#330)
+
+Nothing but `cmd/seed` made an organization, and only it applied
+`STATOR_BOOTSTRAP_ADMIN_*`, while the chart refused the seed in production: a
+fresh production install had no organization and nobody who could sign in.
+
+- **A subcommand of the seed, not a new binary.** `seed bootstrap` reuses
+  `EnsureAdmin`, `Populate` and the `STATOR_BOOTSTRAP_*` settings, and the one
+  backend image the Dockerfile builds already carries it. Bare `seed` now
+  refuses `STATOR_ENV=production` itself, so the chart's refusal is no longer
+  the only guard, and `seed bootstrap` refuses to run without an administrator,
+  since an organization nobody can enter helps no one.
+- **The organization is named, not fixed.** `STATOR_BOOTSTRAP_ORG_SLUG` and
+  `_NAME` default to the demo's, so the development stack is unchanged. The
+  slug is checked at start against the shape the `org` table accepts, so a bad
+  one is refused by name instead of by a database constraint halfway through.
+- **Secrets are keys in Secrets.** The chart reads the administrator's password
+  and the provider's client secret with `secretKeyRef`; neither is a chart
+  value, so neither reaches a values file or a ConfigMap. With no Secret
+  named, the secrets Job makes `<fullname>-bootstrap-admin` with a random
+  password the first time, as it does the database passwords, and never
+  touches it after; naming one chooses the password. Organization and
+  administrator default to `stator` and `admin@<ingress.host>`, so the switch
+  alone is enough for a first install.
+- **A new organization works where the owner is an ordinary role.** The trigger
+  that gives a new organization its `use` grant is `SECURITY DEFINER`, so it
+  runs as the migration owner. A superuser, as in the compose stack, is not
+  bound by row level security; under CloudNativePG the owner is, and the tenant
+  policy refused the grant because no tenant was named yet. Migration 00640
+  names the new organization for that one insert and puts back what was set. An
+  integration test makes the owner a role row level security binds, which is
+  the only way the suite can see this.
+- **Every install and upgrade.** The Job runs `post-install,post-upgrade` after
+  the migrate Job, and is safe to repeat: existing organizations, accounts and
+  providers are left alone, and only a changed bootstrap password is applied
+  again, which is how an operator rotates it.
+
 ## 2026-10-08: A sketch is drawn together in the page's shared draft, and the page keeps what was last left or published
 
 People who have one sketch open in a page edited together (#65) draw on

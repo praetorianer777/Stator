@@ -8,10 +8,14 @@ import (
 	"net/mail"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// bootstrapSlug is the shape the org table's org_slug_shape check accepts.
+var bootstrapSlug = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`)
 
 // Environments a deployment may declare itself as.
 const (
@@ -37,7 +41,11 @@ const (
 	DefaultS3Bucket        = "stator-files"
 	DefaultS3Region        = "us-east-1"
 	DefaultMailFrom        = "Stator <no-reply@stator.localhost>"
-	DefaultSessionTTL      = 720 * time.Hour
+	// DefaultBootstrapOrgSlug and DefaultBootstrapOrgName are seed.DemoOrgSlug
+	// and seed.DemoOrgName, which a test holds the two to.
+	DefaultBootstrapOrgSlug = "demo"
+	DefaultBootstrapOrgName = "Demo"
+	DefaultSessionTTL       = 720 * time.Hour
 	// DefaultRetainAudit and MinRetainAudit are audit.DefaultRetention and
 	// audit.MinRetention, which a test holds the two to.
 	DefaultRetainAudit = 365 * 24 * time.Hour
@@ -216,6 +224,11 @@ type Armature struct {
 // Bootstrap is what cmd/seed sets up in the demo organization: a first local
 // administrator, and an identity provider when it has none yet.
 type Bootstrap struct {
+	// OrgSlug and OrgName name the organization the administrator and the
+	// provider belong to; the development seed leaves them as the demo's.
+	OrgSlug string
+	OrgName string
+
 	AdminEmail    string
 	AdminPassword string
 
@@ -342,6 +355,8 @@ func Load() (Config, error) {
 			MaxSize:     l.size("STATOR_RENDER_MAX_SIZE", DefaultRenderMaxSize),
 		},
 		Bootstrap: Bootstrap{
+			OrgSlug:    l.str("STATOR_BOOTSTRAP_ORG_SLUG", DefaultBootstrapOrgSlug),
+			OrgName:    l.str("STATOR_BOOTSTRAP_ORG_NAME", DefaultBootstrapOrgName),
 			AdminEmail: l.str("STATOR_BOOTSTRAP_ADMIN_EMAIL", ""),
 			// Not trimmed: a password is exactly what was typed.
 			AdminPassword:    os.Getenv("STATOR_BOOTSTRAP_ADMIN_PASSWORD"),
@@ -412,6 +427,12 @@ func Load() (Config, error) {
 	}
 	if u, err := url.Parse(c.Auth.OIDCRedirectURL); err != nil || u.Scheme == "" || u.Host == "" {
 		l.problem(fmt.Sprintf("STATOR_OIDC_REDIRECT_URL is %q; set it to an absolute URL ending in %s.", c.Auth.OIDCRedirectURL, OIDCCallbackPath))
+	}
+	if !bootstrapSlug.MatchString(c.Bootstrap.OrgSlug) {
+		l.problem(fmt.Sprintf("STATOR_BOOTSTRAP_ORG_SLUG is %q; use 3 to 40 lowercase letters, digits and hyphens, not starting or ending with a hyphen.", c.Bootstrap.OrgSlug))
+	}
+	if c.Bootstrap.OrgName == "" {
+		l.problem("STATOR_BOOTSTRAP_ORG_NAME is empty; give the organization a name.")
 	}
 	if (c.Bootstrap.AdminEmail == "") != (c.Bootstrap.AdminPassword == "") {
 		l.problem("Set both STATOR_BOOTSTRAP_ADMIN_EMAIL and STATOR_BOOTSTRAP_ADMIN_PASSWORD, or neither.")

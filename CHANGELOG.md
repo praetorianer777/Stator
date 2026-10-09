@@ -9,6 +9,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A production install can be entered (#330). `jobs.bootstrap.enabled` runs
+  `seed bootstrap` after every install and upgrade: it makes the
+  organization named in `bootstrap.org`, its first local administrator with
+  the password made by the secrets Job or read from a Secret you name, and,
+  when named, the identity
+  provider and the members let in ahead of sign-in. It changes nothing that
+  exists. The development seed still refuses to run in production.
 - Backend skeleton: configuration from `STATOR_*` variables, a Postgres
   cluster with tenant-scoped transactions and row level security, the
   foundation migration, and an HTTP API with `/healthz`, `/readyz`, `/metrics`

@@ -195,6 +195,40 @@ refused "postgres as the owner under cnpg" "database.ownerRole is postgres, whic
 refused "the seed in production" "jobs.seed.enabled is true but env is production" \
     --set database.host=db.example --set jobs.seed.enabled=true "${VALKEY[@]}"
 
+BOOT=(--set database.host=db.example "${VALKEY[@]}" --set jobs.bootstrap.enabled=true
+    --set bootstrap.org.slug=acme --set bootstrap.org.name="Acme Corp"
+    --set bootstrap.admin.email=root@acme.example --set bootstrap.admin.passwordSecret.name=acme-admin)
+
+echo "⎈ The bootstrap Job in production"
+render "bootstrap" "${BOOT[@]}"
+check "it runs seed bootstrap" "$(grep -c 'command: \["/app/seed", "bootstrap"\]' <<<"${RENDERED}")" "1"
+check "the organization is named" "$(env_value "${RENDERED}" STATOR_BOOTSTRAP_ORG_SLUG)" "acme"
+check "the password is read from its Secret, not written" "$(grep -A4 'name: STATOR_BOOTSTRAP_ADMIN_PASSWORD$' <<<"${RENDERED}" | grep -c 'name: "acme-admin"')" "1"
+check "no provider unless named" "$(grep -c 'STATOR_BOOTSTRAP_OIDC' <<<"${RENDERED}")" "0"
+render "bootstrap with a provider and members" "${BOOT[@]}" \
+    --set bootstrap.oidc.issuer=https://sso.example/realms/acme --set bootstrap.oidc.clientId=stator \
+    --set bootstrap.oidc.clientSecret.name=acme-oidc \
+    --set "bootstrap.members[0].email=a@acme.example" --set "bootstrap.members[0].role=admin"
+check "the provider's client secret is read from its Secret" "$(grep -A4 'name: STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET$' <<<"${RENDERED}" | grep -c 'name: "acme-oidc"')" "1"
+check "members are let in" "$(env_value "${RENDERED}" STATOR_BOOTSTRAP_MEMBERS)" "a@acme.example=admin"
+render "bootstrap with nothing but the switch" --set database.host=db.example "${VALKEY[@]}" --set jobs.bootstrap.enabled=true
+check "the organization defaults to stator" "$(env_value "${RENDERED}" STATOR_BOOTSTRAP_ORG_SLUG)" "stator"
+check "the administrator is admin@ the chart's host" "$(env_value "${RENDERED}" STATOR_BOOTSTRAP_ADMIN_EMAIL)" "admin@stator.example.com"
+check "the password is read from the generated Secret" "$(grep -A4 'name: STATOR_BOOTSTRAP_ADMIN_PASSWORD$' <<<"${RENDERED}" | grep -c 'name: "r-stator-bootstrap-admin"')" "1"
+check "the secrets Job makes that Secret" "$(grep -c 'if exists "r-stator-bootstrap-admin"' <<<"${RENDERED}")" "1"
+render "bootstrap with a Secret of one's own" "${BOOT[@]}"
+check "the generator leaves it out" "$(grep -c 'bootstrap-admin' <<<"${RENDERED}")" "0"
+refused "the bootstrap with nobody to make the password" "nothing can make the administrator's password" \
+    --set database.host=db.example "${VALKEY[@]}" --set jobs.bootstrap.enabled=true --set secrets.generate=false
+refused "a provider without its client id" "set bootstrap.oidc.clientId" \
+    "${BOOT[@]}" --set bootstrap.oidc.issuer=https://sso.example
+refused "a client id without a provider" "without bootstrap.oidc.issuer" \
+    "${BOOT[@]}" --set bootstrap.oidc.clientId=stator
+refused "a member with no such role" "use owner, admin or member" \
+    "${BOOT[@]}" --set "bootstrap.members[0].email=a@acme.example" --set "bootstrap.members[0].role=root"
+refused "the seed and the bootstrap together" "turn one of them off" \
+    "${BOOT[@]}" --set jobs.seed.enabled=true --set env=development
+
 if [[ ${FAILED} -ne 0 ]]; then
     echo "❌ chart tests failed"
     exit 1

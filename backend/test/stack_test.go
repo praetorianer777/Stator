@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/migrations"
 )
@@ -200,6 +201,90 @@ func TestTheSeedIsIdempotent(t *testing.T) {
 	}
 	if n := demoOrgs(); n != 1 {
 		t.Fatalf("after seeding again there are %d demo organizations, want 1", n)
+	}
+}
+
+// A production install runs the bootstrap on every install and upgrade: it
+// makes the named organization and its administrator once, leaves them alone
+// after, and a changed password is the one thing it applies again.
+func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	accounts := auth.NewService(h.cluster, cheapPasswords(), time.Hour)
+	slug := "boot-" + strings.ToLower(strconv.FormatInt(time.Now().UnixNano(), 36))
+	email := slug + "@bootstrap.test"
+	t.Cleanup(func() {
+		_, _ = h.super.Exec(ctx, `DELETE FROM org WHERE slug = $1`, slug)
+		_, _ = h.super.Exec(ctx, `DELETE FROM app_user WHERE email = $1`, email)
+	})
+
+	for run := range 2 {
+		res, err := seed.Ensure(ctx, h.cluster, slug, "Bootstrapped")
+		if err != nil {
+			t.Fatalf("run %d: %v", run+1, err)
+		}
+		if res.OrgCreated != (run == 0) {
+			t.Errorf("run %d: organization created = %v", run+1, res.OrgCreated)
+		}
+		made, err := accounts.EnsureAdmin(ctx, slug, email, "Administrator", "first password 1")
+		if err != nil {
+			t.Fatalf("run %d: %v", run+1, err)
+		}
+		if made != (run == 0) {
+			t.Errorf("run %d: administrator created = %v", run+1, made)
+		}
+	}
+
+	var org, owners int
+	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org WHERE slug = $1`, slug).Scan(&org); err != nil || org != 1 {
+		t.Fatalf("organizations named %s: %d (%v), want 1", slug, org, err)
+	}
+	if err := h.super.QueryRow(ctx, `
+		SELECT count(*) FROM org_member m JOIN org o ON o.id = m.org_id JOIN app_user u ON u.id = m.user_id
+		WHERE o.slug = $1 AND u.email = $2 AND m.org_role = 'owner'`, slug, email).Scan(&owners); err != nil || owners != 1 {
+		t.Fatalf("owners named %s: %d (%v), want 1", email, owners, err)
+	}
+	if _, err := accounts.EnsureAdmin(ctx, slug, email, "Administrator", "second password 2"); err != nil {
+		t.Fatalf("a changed password: %v", err)
+	}
+}
+
+// Where the role that ran the migrations is an ordinary owner, as under
+// CloudNativePG, row level security applies to the trigger that lets everyone
+// use a new organization; the stack's owner is a superuser, which it does not.
+// So the trigger is run as an owner row level security binds, and an
+// organization made by the admin role must still get its grant.
+func TestANewOrganizationGetsItsGrantWhereTheOwnerIsBoundByRowLevelSecurity(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	tx, err := h.super.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	for _, q := range []string{
+		`CREATE ROLE rls_bound_owner NOLOGIN NOSUPERUSER NOBYPASSRLS`,
+		`GRANT USAGE ON SCHEMA public TO rls_bound_owner`,
+		`GRANT INSERT, SELECT ON global_grant TO rls_bound_owner`,
+		`ALTER FUNCTION org_default_grants() OWNER TO rls_bound_owner`,
+	} {
+		if _, err := tx.Exec(ctx, q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	slug := "rls-" + strings.ToLower(strconv.FormatInt(time.Now().UnixNano(), 36))
+	if _, err := tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ($1, 'Bound')`, slug); err != nil {
+		t.Fatalf("making an organization where the owner is bound by row level security: %v", err)
+	}
+	var grants int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*) FROM global_grant g JOIN org o ON o.id = g.org_id
+		WHERE o.slug = $1 AND g.permission = 'use' AND g.subject_type = 'everyone'`, slug).Scan(&grants); err != nil || grants != 1 {
+		t.Fatalf("grants of the new organization: %d (%v), want 1", grants, err)
+	}
+	var tenant *string
+	if err := tx.QueryRow(ctx, `SELECT NULLIF(current_setting('app.org_id', true), '')`).Scan(&tenant); err != nil || tenant != nil {
+		t.Fatalf("the trigger left the tenant set to %v (%v)", tenant, err)
 	}
 }
 
