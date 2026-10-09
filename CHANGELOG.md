@@ -1039,6 +1039,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
   it needs, instead of a few rows cut off by a scrolling dialog (#337). A press
   that begins inside any dialog and ends outside it, because the dialog shrank,
   no longer closes it.
+- The slash menu, the mention list and the emoji list no longer open past the
+  bottom of the window: near the bottom they open above the caret, and they
+  are never taller than the room on the side they take (#338).
 - A table of contents link on a page the editor never saved, such as the
   example space, now leads to its heading. The heading takes the anchor the
   list links to when it holds none of its own (#335).
