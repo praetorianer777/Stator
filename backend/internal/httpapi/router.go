@@ -234,6 +234,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/oidc-provider/group-roles", s.handleSetGroupRole)
 			r.Delete("/oidc-provider/group-roles/{groupRoleID}", s.handleRemoveGroupRole)
 			r.Get("/users", s.handleListMembers)
+			r.Post("/users", s.handleCreateMember)
 			r.Delete("/users/{userID}", s.handleRemoveMember)
 			r.Get("/users/requests", s.handleListJoinRequests)
 			r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)

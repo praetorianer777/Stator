@@ -9,6 +9,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Administrators add people with a password (#334). Under Members, Add person
+  takes an email address, a name and a role; a password left out is made and
+  shown once. The person signs in without an identity provider. An address
+  that already has an account joins with its own password, which is left
+  alone. The act is in the audit log as "Person added".
 - A production install can be entered (#330). `jobs.bootstrap.enabled` runs
   `seed bootstrap` after every install and upgrade: it makes the
   organization named in `bootstrap.org`, its first local administrator with
