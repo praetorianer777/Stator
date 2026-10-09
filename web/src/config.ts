@@ -3,6 +3,10 @@
 /** The product's name, as the title bar and the sidebar show it. */
 export const APP_NAME = "Stator";
 
+/** The logo's width on the sign-in page, and the mark's beside the name in the sidebar, in pixels. */
+export const LOGO_WIDTH_PX = 112;
+export const MARK_WIDTH_PX = 24;
+
 /** The release this client was built from, read from the root VERSION file at build time. */
 export const APP_VERSION: string = __APP_VERSION__;
 

@@ -9,6 +9,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Stator has a logo and a favicon (#342). The sign-in page shows the logo, the
+  sidebar shows the gopher's face beside the name, and the browser tab, touch
+  icon and web app manifest use the same face, which still reads at 16 pixels.
+  `make branding` makes them from `assets/branding/logo.jpg`.
 - A production install can be entered (#330). `jobs.bootstrap.enabled` runs
   `seed bootstrap` after every install and upgrade: it makes the
   organization named in `bootstrap.org`, its first local administrator with

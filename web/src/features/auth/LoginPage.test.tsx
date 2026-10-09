@@ -127,3 +127,16 @@ describe("where sign-in returns to", () => {
     }
   });
 });
+
+describe("the sign-in page's logo", () => {
+  it("is shown at its set size, as a picture the name beside it explains", async () => {
+    stubApi({ "GET /auth/me": unauthorized });
+    await renderAt("/login", { me: null });
+    await screen.findByRole("heading", { name: "Sign in" });
+    const logo = document.querySelector("[data-login] img[data-logo]");
+    expect(logo).not.toBeNull();
+    expect(logo).toHaveAttribute("width", "112");
+    expect(logo).toHaveAttribute("alt", "");
+    expect(logo?.getAttribute("srcset")).toContain("/logo-512.webp 512w");
+  });
+});

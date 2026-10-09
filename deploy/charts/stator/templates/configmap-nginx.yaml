@@ -56,6 +56,12 @@ data:
             proxy_pass {{ $api }};
         }
 
+        # nginx's type table has no entry for a web app manifest, which would be
+        # served as an anonymous download. No add_header here, so the server's
+        # own headers still apply.
+        location = /site.webmanifest {
+            default_type application/manifest+json;
+        }
         # The headers are repeated per location because an add_header inside
         # one drops every header inherited from the server.
         location /assets/ {
