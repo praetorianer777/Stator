@@ -1026,6 +1026,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A table of contents link on a page the editor never saved, such as the
+  example space, now leads to its heading. The heading takes the anchor the
+  list links to when it holds none of its own (#335).
 - The worker no longer takes two example spaces, or two space exports or
   imports, at once and leaves the second marked as running until its lease
   lapses: picking the next job ran once for every row it was joined to.
