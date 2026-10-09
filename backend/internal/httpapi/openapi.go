@@ -148,6 +148,8 @@ var operations = []operation{
 		responses: none()},
 	{method: "GET", path: "/users", handler: "handleListMembers", orgWide: true, tag: "access", summary: "The organization's members, with their roles and whether the identity provider decides them. For administrators.",
 		responses: ok(env{"members": []auth.Member{}})},
+	{method: "POST", path: "/users", handler: "handleCreateMember", orgWide: true, tag: "access", summary: "Add a person with a password, so they can sign in without an identity provider; a password left out is made and shown once. An address that already has an account joins with its own password. For administrators.",
+		request: createMemberRequest{}, responses: created(env{"member": auth.CreatedMember{}})},
 	{method: "DELETE", path: "/users/{userID}", handler: "handleRemoveMember", orgWide: true, tag: "access", summary: "Take somebody out of the organization. The owner stays. For administrators.",
 		responses: none()},
 	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", orgWide: true, tag: "access", summary: "Who signed in through the identity provider and is waiting to be let in. For administrators.",

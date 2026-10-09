@@ -155,6 +155,18 @@ export function useMembers() {
   });
 }
 
+export type CreatedMember = Wire["CreatedMember"];
+
+/** Adds a person with a password; a password left out is made and comes back once. */
+export function useCreateMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { email: string; name: string; role: "member" | "admin"; password: string }): Promise<CreatedMember> =>
+      (await api.POST("/users", { body })).data!.member,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: membersQueryKey }),
+  });
+}
+
 export function useRemoveMember() {
   const queryClient = useQueryClient();
   return useMutation({

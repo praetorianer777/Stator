@@ -1727,6 +1727,7 @@
               "type": "string",
               "enum": [
                 "member.admitted",
+                "member.created",
                 "member.declined",
                 "member.removed",
                 "member.joined",
@@ -1902,6 +1903,7 @@
               "type": "string",
               "enum": [
                 "member.admitted",
+                "member.created",
                 "member.declined",
                 "member.removed",
                 "member.joined",
@@ -14797,6 +14799,53 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "createMember",
+        "summary": "Add a person with a password, so they can sign in without an identity provider; a password left out is made and shown once. An address that already has an account joins with its own password. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "member": {
+                      "$ref": "#/components/schemas/CreatedMember"
+                    }
+                  },
+                  "required": [
+                    "member"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/users/requests": {
@@ -16175,6 +16224,7 @@
             "type": "string",
             "enum": [
               "member.admitted",
+              "member.created",
               "member.declined",
               "member.removed",
               "member.joined",
@@ -16288,6 +16338,7 @@
               "type": "string",
               "enum": [
                 "member.admitted",
+                "member.created",
                 "member.declined",
                 "member.removed",
                 "member.joined",
@@ -17415,6 +17466,35 @@
           "summary"
         ]
       },
+      "CreateMemberRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "guest"
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "role",
+          "password"
+        ]
+      },
       "CreateTokenRequest": {
         "type": "object",
         "properties": {
@@ -17443,6 +17523,43 @@
         },
         "required": [
           "name"
+        ]
+      },
+      "CreatedMember": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "newAccount": {
+            "type": "boolean"
+          },
+          "password": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "guest"
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "name",
+          "role",
+          "newAccount"
         ]
       },
       "CurrentOrg": {

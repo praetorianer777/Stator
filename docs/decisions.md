@@ -3,6 +3,29 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-09: An administrator adds people with a password; self-registration waits (#334)
+
+Nobody could make an account in Stator itself: the one password account was the
+bootstrap administrator's, and everyone else came through the organization's
+identity provider, so an organization without one could not let anybody in.
+
+- **Administrators add people, nobody registers themselves yet.** Adding needs
+  no mail, so it works where no SMTP is set, and it keeps the question of who
+  may join with the organization's administrators. Self-registration, mail
+  verification and approval stay in the issue for later.
+- **A password left out is made, and returned once.** The account's hash is all
+  that is stored, so the made password is in the one answer to the request and
+  nowhere else, and the page says so. A password the administrator chooses is
+  never echoed. Both obey the same 12-character rule as every other door.
+- **An address that already has an account joins with its own password.**
+  Accounts are shared by the organizations of one installation, so an
+  administrator here must not set the password of somebody else's account. The
+  answer says the account was not new, and nothing of the existing one changes.
+- **Member or admin, never owner.** The owner is the bootstrap account's; the
+  role of a person added later is changed in the people list, as before.
+- **Not for assistants.** The MCP table declines the route like the other
+  administrator-only user routes.
+
 ## 2026-10-08: A production install is entered through `seed bootstrap`, not the development seed (#330)
 
 Nothing but `cmd/seed` made an organization, and only it applied
