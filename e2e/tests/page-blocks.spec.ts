@@ -18,6 +18,7 @@ const FILLER_PARAGRAPHS = 40;
 
 const text = (value: string) => [{ type: "text", text: value }];
 const paragraph = (value?: string) => (value ? { type: "paragraph", content: text(value) } : { type: "paragraph" });
+const bare = (level: number, value: string) => ({ type: "heading", attrs: { level }, content: text(value) });
 const h = (level: number, value: string, id: string) => ({ type: "heading", attrs: { level, id }, content: text(value) });
 const filler = () => Array.from({ length: FILLER_PARAGRAPHS }, (_, i) => paragraph(`Line ${i + 1} of the notes that sit between the two sections.`));
 
@@ -98,6 +99,40 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
 
     await children(page.locator("[data-doc]")).getByRole("link", { name: "Linux" }).click();
     await expect(heading(page)).toHaveText("Linux");
+  });
+
+  // A page nobody saved in the editor, such as the example space's, holds no
+  // anchors; its contents list still has to lead to its headings (#335).
+  test("a contents link leads to a heading the page saved no anchor for", async ({ page, api }, testInfo) => {
+    const space = await freshSpace(api, testInfo, "Unanchored");
+    const guide = await createPage(api, space.homePageId, "Plain", {
+      type: "doc",
+      content: [
+        { type: "tableOfContents", attrs: { maxLevel: 3 } },
+        bare(1, "Install"),
+        ...filler(),
+        bare(1, "Troubleshooting"),
+        ...filler(),
+        bare(2, "Install"),
+        ...filler(),
+        paragraph("The end."),
+      ],
+    });
+
+    await openShowing(page, `/s/${space.key}/p/${guide.id}/plain`, toc(page.locator("[data-doc]")).getByRole("link", { name: "Troubleshooting" }));
+    const shown = toc(page.locator("[data-doc]"));
+    await expect(shown.getByRole("link")).toHaveText(["Install", "Troubleshooting", "Install"]);
+
+    const target = page.locator("[data-doc] h2#troubleshooting");
+    await expect(target).not.toBeInViewport();
+    await shown.getByRole("link", { name: "Troubleshooting" }).click();
+    await expect(target).toBeInViewport();
+    await expect(page).toHaveURL(new RegExp(`/p/${guide.id}/plain#troubleshooting$`));
+
+    const second = page.locator("[data-doc] h3#install-2");
+    await expect(second).not.toBeInViewport();
+    await shown.getByRole("link").nth(2).click();
+    await expect(second).toBeInViewport();
   });
 
   test("a child list leaves out a page restricted from its reader", async ({ page, api, apiAs, pageAs }, testInfo) => {

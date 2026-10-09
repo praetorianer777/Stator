@@ -188,7 +188,9 @@ describe("DocView", () => {
     expect(anchors[1]?.hasAttribute("target")).toBe(false);
     expect(container.textContent).toContain("unsafe");
     expect(container.querySelector("[onmouseover]")).toBeNull();
-    expect(screen.getByText("Bad anchor").hasAttribute("id")).toBe(false);
+    // What is stored is never used as an id; the one made from the words is.
+    expect(screen.getByText("Bad anchor").id).toBe("bad-anchor");
+    expect(container.innerHTML).not.toContain("onmouseover");
     const scripted: Doc = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "<img src=x onerror=alert(1)>" }] }] };
     const { container: other } = render(<DocView doc={scripted} />);
     expect(other.querySelector("img")).toBeNull();
@@ -198,9 +200,43 @@ describe("DocView", () => {
   it("copies the link to a heading", async () => {
     const user = userEvent.setup();
     render(<DocView doc={doc} />);
-    expect(screen.queryByRole("button", { name: "Copy link to Bad anchor" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Copy link to Plan" }));
     expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}${window.location.pathname}#plan`);
     expect(screen.getByRole("status")).toHaveTextContent("Link copied");
+  });
+});
+
+describe("the table of contents of a page whose headings hold no saved anchor", () => {
+  const word = (text: string) => [{ type: "text", text }];
+  const unsaved: Doc = {
+    type: "doc",
+    content: [
+      { type: "tableOfContents", attrs: { maxLevel: 3 } },
+      { type: "heading", attrs: { level: 1 }, content: word("Getting started") },
+      { type: "paragraph", content: word("text") },
+      { type: "heading", attrs: { level: 2 }, content: word("Install") },
+      { type: "heading", attrs: { level: 2, id: "install" }, content: word("Install") },
+      { type: "heading", attrs: { level: 2 }, content: word("Install") },
+    ],
+  };
+
+  it("links every entry to a heading that carries its id", () => {
+    render(<DocView doc={unsaved} />);
+    const links = screen.getAllByRole("link").filter((link) => link.hasAttribute("data-toc-link"));
+    expect(links.map((link) => link.getAttribute("data-toc-link"))).toEqual(["getting-started", "install-2", "install", "install-3"]);
+    for (const link of links) {
+      const anchor = link.getAttribute("data-toc-link")!;
+      expect(document.getElementById(anchor), `a heading with id ${anchor}`).not.toBeNull();
+    }
+  });
+
+  it("scrolls to the heading an entry names", async () => {
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id);
+    };
+    render(<DocView doc={unsaved} />);
+    await userEvent.click(screen.getByText("Getting started", { selector: "a" }));
+    expect(scrolled).toEqual(["getting-started"]);
   });
 });

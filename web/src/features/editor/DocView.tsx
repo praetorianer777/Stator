@@ -8,7 +8,7 @@ import { DocAttachment, DocGallery, DocImage } from "./AttachmentView";
 import { GALLERY_NODE } from "@/features/gallery/gallery";
 import { ChildPagesList, DocPageContext, TocList, childPagesSummary, tocSummary } from "./BlockViews";
 import { childPagesOptions } from "./childPages";
-import { buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
+import { anchorsByNode, buildToc, headingsOfDoc, tocMaxLevel, type FoundHeading } from "./toc";
 import { useCopyHeadingLink } from "./CopyHeadingLink";
 import { columnStyle } from "./columns";
 import { decisionState } from "./decision";
@@ -81,6 +81,7 @@ export function DocView({
   const pageId = useContext(DocPageContext)?.id;
   const { copy, status } = useCopyHeadingLink();
   const headings = useMemo(() => headingsOfDoc(doc), [doc]);
+  const anchorOf = useMemo(() => anchorsByNode(doc), [doc]);
   // Somebody who is not signed in has no Armature account to ask with.
   const reading = usePublicReading();
   const keys = useMemo(() => (reading ? [] : issueKeysOf(doc)), [doc, reading]);
@@ -99,9 +100,11 @@ export function DocView({
     <div ref={root} className={cx("doc-content", size === "sm" ? "text-sm" : "text-base", "text-ink", className)} data-doc>
       <IncludeChain value={pageId && chain.length === 0 ? [pageId] : chain}>
         <HeadingsContext value={headings}>
-          <WithIssues keys={keys}>
-            <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
-          </WithIssues>
+          <HeadingAnchorsContext value={anchorOf}>
+            <WithIssues keys={keys}>
+              <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
+            </WithIssues>
+          </HeadingAnchorsContext>
         </HeadingsContext>
       </IncludeChain>
       {status}
@@ -136,6 +139,9 @@ function anchorOfLocation(): string {
 }
 
 const HeadingsContext = createContext<FoundHeading[]>([]);
+// Where a heading holds no saved anchor, the contents list still links to the
+// one made from its words, so the heading takes that one as its id.
+const HeadingAnchorsContext = createContext<Map<DocNode, string>>(new Map());
 
 // The router is left out of it: the heading is on this page, so only the
 // address's fragment changes, and nothing needs loading again.
@@ -540,7 +546,9 @@ function TaskLine({ item, copy, path }: { item: DocNode; copy: Copy; path: Block
 
 function Heading({ node, copy, block }: { node: DocNode; copy: Copy; block?: string }) {
   const level = Math.min(Math.max(Number(node.attrs?.level ?? 1), 1), 3);
-  const anchor = copy && typeof node.attrs?.id === "string" && ANCHOR_PATTERN.test(node.attrs.id) ? node.attrs.id : undefined;
+  const derived = useContext(HeadingAnchorsContext).get(node);
+  const saved = typeof node.attrs?.id === "string" && ANCHOR_PATTERN.test(node.attrs.id) ? node.attrs.id : undefined;
+  const anchor = copy ? (saved ?? derived) : undefined;
   // The page's title is its h1, so a document's levels start one down.
   const tag = `h${level + 1}`;
   const text = textOf(node);

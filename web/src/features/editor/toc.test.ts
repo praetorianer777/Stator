@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { belowQuery, childPagesOptions, defaultChildPages, nestBelow } from "./childPages";
 import type { DocNode } from "./schema";
-import { buildToc, headingsOfDoc, tocMaxLevel, type TocEntry } from "./toc";
+import { anchorsByNode, buildToc, headingsOfDoc, tocMaxLevel, type TocEntry } from "./toc";
 
 const heading = (level: number, text: string, id: string | null = null): DocNode => ({
   type: "heading",
@@ -50,6 +50,16 @@ describe("a table of contents", () => {
   it("gives a heading saved without an anchor the one the API would, clear of the saved ones", () => {
     const page = doc(heading(1, "Plan", null), heading(1, "Plan", "plan"), heading(2, "Übersicht & Ziele", null));
     expect(outline(buildToc(headingsOfDoc(page), 3))).toEqual(["Plan #plan-2", "Plan #plan", "  Übersicht & Ziele #übersicht-ziele"]);
+  });
+
+  it("names each heading node by the anchor its entry links to", () => {
+    const first = heading(1, "Plan", null);
+    const second = heading(1, "Plan", "plan");
+    const third = heading(2, "Plan", null);
+    const page = doc(first, { type: "blockquote", content: [second, third] });
+    const named = anchorsByNode(page);
+    expect([first, second, third].map((node) => named.get(node))).toEqual(["plan-2", "plan", "plan-3"]);
+    expect(outline(buildToc(headingsOfDoc(page), 3)).map((line) => line.trim().split("#")[1])).toEqual(["plan-2", "plan", "plan-3"]);
   });
 
   it("reads headings inside panels, quotes and lists, and leaves out a heading with no words", () => {
