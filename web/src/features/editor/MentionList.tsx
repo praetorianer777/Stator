@@ -1,6 +1,6 @@
 import { cx } from "@/components/ui";
 import { CARET_MENU_MIN_WIDTH_PX } from "@/config";
-import { caretMenuPlaceNow } from "./caretMenu";
+import { CARET_MENU_HEIGHT_CLASS, caretMenuPlaceNow } from "./caretMenu";
 import { t } from "@/i18n";
 import type { Mentionable } from "./schema";
 import { useFollowActive } from "./useFollowActive";
@@ -33,7 +33,7 @@ export function MentionList({
       role="listbox"
       aria-label={t.editor.mentions}
       data-mention-list
-      className="fixed z-40 min-w-56 overflow-y-hidden rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
+      className={`fixed z-40 min-w-56 ${CARET_MENU_HEIGHT_CLASS} overflow-y-hidden rounded-overlay border border-border bg-surface-overlay p-1 shadow-2`}
       style={caretMenuPlaceNow(rect, CARET_MENU_MIN_WIDTH_PX)}
     >
       {items.map((person, i) => (
