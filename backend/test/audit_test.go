@@ -200,6 +200,10 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	once(audit.ActionMemberDeclined, me, dave)
 	want(t, owner.delete(t, "/api/v1/users/"+carol.String()), http.StatusNoContent, "take carol out again")
 	once(audit.ActionMemberRemoved, me, carol)
+	person := obj(t, want(t, owner.post(t, "/api/v1/users", map[string]any{"email": "audited-" + uuid.NewString()[:8] + "@stator.test", "role": "member"}), http.StatusCreated, "add a person"), "member")
+	if data := once(audit.ActionMemberCreated, me, person["userId"].(string)); strings.Contains(data, "assword") {
+		t.Errorf("the record of an added person holds a password: %s", data)
+	}
 
 	// Signing in is not this server's to do, so the provider's settings are
 	// changed through the service, as the request would.

@@ -17,6 +17,8 @@ import (
 // Actions recorded so far.
 const (
 	ActionMemberAdmitted = "member.admitted"
+	// ActionMemberCreated is a person an administrator added with a password.
+	ActionMemberCreated  = "member.created"
 	ActionMemberDeclined = "member.declined"
 	ActionMemberRemoved  = "member.removed"
 	// ActionMemberJoined is somebody let in by a mapped group on their first
@@ -105,7 +107,7 @@ const (
 // Actions is every action the log may hold, for a filter to offer and a
 // client to name.
 var Actions = []string{
-	ActionMemberAdmitted, ActionMemberDeclined, ActionMemberRemoved, ActionMemberJoined, ActionMemberRoleChanged, ActionGuestInvited,
+	ActionMemberAdmitted, ActionMemberCreated, ActionMemberDeclined, ActionMemberRemoved, ActionMemberJoined, ActionMemberRoleChanged, ActionGuestInvited,
 	ActionSSOProviderSaved, ActionGroupRoleSet, ActionGroupRoleRemoved,
 	ActionTokenCreated, ActionTokenRevoked,
 	ActionSpaceCreated, ActionSpaceUpdated, ActionSpaceDeleted, ActionPagePurged, ActionTrashEmptied,

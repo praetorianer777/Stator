@@ -87,6 +87,7 @@ var notTools = map[string]string{
 	"POST /oidc-provider/group-roles":                  whyAdmin,
 	"DELETE /oidc-provider/group-roles/{groupRoleID}":  whyAdmin,
 	"GET /users":                                       whyAdmin,
+	"POST /users":                                      whyAdmin,
 	"DELETE /users/{userID}":                           whyAdmin,
 	"GET /users/requests":                              whyAdmin,
 	"POST /users/requests/{userID}/admit":              whyAdmin,

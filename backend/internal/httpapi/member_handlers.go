@@ -22,6 +22,36 @@ func (s *Server) handleListMembers(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"members": members})
 }
 
+type createMemberRequest struct {
+	// Email is the address the person signs in with.
+	Email string `json:"email"`
+	// Name is what the person is called; blank takes the part of the address before the at sign.
+	Name string `json:"name"`
+	// Role is the standing the person gets: member, or admin.
+	Role auth.OrgRole `json:"role"`
+	// Password is the person's first password, at least 12 characters. Blank has one made, which the answer shows once.
+	Password string `json:"password"`
+}
+
+func (s *Server) handleCreateMember(w http.ResponseWriter, r *http.Request) {
+	if s.Accounts == nil {
+		respondError(w, r, errSignInOff)
+		return
+	}
+	var req createMemberRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	member, lsn, err := s.Accounts.CreateMember(r.Context(), auth.NewMember{Email: req.Email, Name: req.Name, Role: req.Role, Password: req.Password}, PrincipalFrom(r.Context()).UserID, clientIP(r))
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusCreated, map[string]any{"member": member})
+}
+
 func (s *Server) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 	if s.Accounts == nil {
 		respondError(w, r, errSignInOff)

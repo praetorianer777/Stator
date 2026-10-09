@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMe, useMembers, useRemoveMember, type Member } from "@/api/auth";
 import { Button, Card, ErrorBanner, Table, Tag, Td, Th } from "@/components/ui";
 import { t } from "@/i18n";
+import { AddMember } from "./AddMember";
 
 /**
  * The organization's people and their roles, marking the ones the identity
@@ -33,6 +34,7 @@ export function Members() {
     <Card className="mt-4 space-y-3 p-4" data-members="">
       <h2 className="text-sm font-semibold text-ink">{t.sso.membersTitle}</h2>
       <p className="text-sm text-ink-muted">{t.sso.membersIntro}</p>
+      <AddMember />
       <Table dense aria-label={t.sso.membersTitle}>
         <thead>
           <tr>

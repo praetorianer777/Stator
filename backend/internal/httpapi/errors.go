@@ -375,6 +375,14 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That group is not mapped to a role. Reload the list; somebody may have removed it already.")
 	case errors.Is(err, auth.ErrBadJoinRole):
 		return ErrValidation(map[string]string{"role": "Let the person in as member or admin."})
+	case errors.Is(err, auth.ErrBadMemberEmail):
+		return ErrValidation(map[string]string{"email": sentence(err.Error())})
+	case errors.Is(err, auth.ErrBadMemberName):
+		return ErrValidation(map[string]string{"name": sentence(err.Error())})
+	case errors.Is(err, auth.ErrPasswordTooShort):
+		return ErrValidation(map[string]string{"password": sentence(err.Error()) + " Leave it empty to have one made."})
+	case errors.Is(err, auth.ErrAlreadyMember):
+		return ErrConflict("That person is already a member of this organization. Reload the list to find them.")
 	case errors.Is(err, auth.ErrTokenName):
 		return ErrValidation(map[string]string{"name": sentence(err.Error())})
 	case errors.Is(err, auth.ErrTokenScope):
