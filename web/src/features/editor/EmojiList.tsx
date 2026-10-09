@@ -1,5 +1,6 @@
 import { cx } from "@/components/ui";
-import { MENU_GAP_PX } from "@/config";
+import { CARET_MENU_MIN_WIDTH_PX } from "@/config";
+import { CARET_MENU_HEIGHT_CLASS, caretMenuPlaceNow } from "./caretMenu";
 import { t } from "@/i18n";
 import type { Emoji } from "./emoji";
 import { useFollowActive } from "./useFollowActive";
@@ -26,8 +27,8 @@ export function EmojiList({
 }) {
   const follow = useFollowActive(active);
   if (!rect) return null;
-  const frame = "fixed z-40 max-h-80 min-w-56 overflow-y-hidden rounded-overlay border border-border bg-surface-overlay p-1 shadow-2";
-  const place = { left: rect.left, top: rect.bottom + MENU_GAP_PX };
+  const frame = `fixed z-40 min-w-56 ${CARET_MENU_HEIGHT_CLASS} overflow-y-hidden rounded-overlay border border-border bg-surface-overlay p-1 shadow-2`;
+  const place = caretMenuPlaceNow(rect, CARET_MENU_MIN_WIDTH_PX);
   // An empty listbox is no list at all to a screen reader, so the empty
   // state is a status message in its place.
   if (items.length === 0) {
