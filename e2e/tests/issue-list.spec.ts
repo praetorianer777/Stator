@@ -104,6 +104,9 @@ test.describe("the Armature issue list", { tag: ["@auth"] }, () => {
 
   for (const scheme of SCHEMES) {
     test(`an admin-only issue is not among bob's rows, and a bad query says where, in ${scheme}`, async ({ page, api, apiAs, pageAs, freshOrg }, testInfo) => {
+      // Two browsers, a fresh organization and three axe runs: a few seconds
+      // short of the global limit on a good day (#347).
+      test.slow();
       await startInScheme(page, scheme);
       const space = await freshSpace(api, testInfo);
       const both = await createPage(api, space.homePageId, uniqueName(testInfo, "Everything"), listed(BOTH));
