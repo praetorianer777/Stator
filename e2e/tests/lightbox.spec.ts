@@ -18,6 +18,10 @@ const RECORDING_MS = 600;
 const RECORDING_FPS = 25;
 // HTMLMediaElement.HAVE_CURRENT_DATA: the player has a frame to show.
 const HAVE_CURRENT_DATA = 2;
+// The first frame comes after the browser has asked for a stretch of the file
+// and decoded it, which on a loaded machine takes longer than the 5 seconds an
+// assertion has by default.
+const FIRST_FRAME_TIMEOUT_MS = 20_000;
 
 /** A short WebM the browser records from a canvas, since the suite carries no binary files. */
 async function webm(page: Page): Promise<Buffer> {
@@ -104,7 +108,9 @@ async function playsByRanges(page: Page, clip: string, opened: () => Promise<voi
 /** The lightbox's player has a frame of the video to show, and no sentence says it cannot. */
 async function expectPlaying(page: Page) {
   const player = lightbox(page).locator("video");
-  await expect.poll(() => player.evaluate((video: HTMLVideoElement) => video.readyState)).toBeGreaterThanOrEqual(HAVE_CURRENT_DATA);
+  await expect
+    .poll(() => player.evaluate((video: HTMLVideoElement) => video.readyState), { timeout: FIRST_FRAME_TIMEOUT_MS })
+    .toBeGreaterThanOrEqual(HAVE_CURRENT_DATA);
   await expect(lightbox(page).getByRole("alert")).toHaveCount(0);
 }
 
