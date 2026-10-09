@@ -1,5 +1,6 @@
 import { cx } from "@/components/ui";
-import { MENU_GAP_PX } from "@/config";
+import { SLASH_MENU_WIDTH_PX } from "@/config";
+import { caretMenuPlaceNow } from "./caretMenu";
 import { t } from "@/i18n";
 import type { SlashItem } from "./slashItems";
 import { useFollowActive } from "./useFollowActive";
@@ -25,8 +26,8 @@ export function SlashMenu({
 }) {
   const follow = useFollowActive(active);
   if (!rect) return null;
-  const frame = "fixed z-40 max-h-80 w-72 overflow-y-hidden rounded-overlay border border-border bg-surface-overlay p-1 shadow-2";
-  const place = { left: rect.left, top: rect.bottom + MENU_GAP_PX };
+  const frame = "fixed z-40 w-72 overflow-y-hidden rounded-overlay border border-border bg-surface-overlay p-1 shadow-2";
+  const place = caretMenuPlaceNow(rect, SLASH_MENU_WIDTH_PX);
   // An empty listbox is no list at all to a screen reader, so the empty
   // state is a status message in its place.
   if (items.length === 0) {

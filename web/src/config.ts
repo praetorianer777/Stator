@@ -32,6 +32,13 @@ export const ICON_STROKE = 1.5;
 
 /** The gap between a menu's trigger and its list, in pixels. */
 export const MENU_GAP_PX = 4;
+/** The tallest a menu under the caret grows, the room it keeps from the window's edge, and the room below the caret under which it opens above instead. */
+export const CARET_MENU_MAX_HEIGHT_PX = 320;
+export const CARET_MENU_EDGE_PX = 8;
+export const CARET_MENU_MIN_ROOM_PX = 160;
+/** The slash menu's width (w-72) and the narrowest the other caret menus are (min-w-56), in pixels, for keeping them inside the window's sides. */
+export const SLASH_MENU_WIDTH_PX = 288;
+export const CARET_MENU_MIN_WIDTH_PX = 224;
 
 /** How long a query's answer stays fresh before a refetch. */
 export const QUERY_STALE_MS = 10_000;
