@@ -9,6 +9,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Stator has a logo and a favicon (#342). The sign-in page shows the logo, the
+  sidebar shows the gopher's face beside the name, and the browser tab, touch
+  icon and web app manifest use the same face, which still reads at 16 pixels.
+  `make branding` makes them from `assets/branding/logo.jpg`.
 - Administrators add people with a password (#334). Under Members, Add person
   takes an email address, a name and a role; a password left out is made and
   shown once. The person signs in without an identity provider. An address
