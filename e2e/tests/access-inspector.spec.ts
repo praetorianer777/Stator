@@ -48,6 +48,25 @@ test.describe("checking access", { tag: ["@auth"] }, () => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
   });
 
+  // The dialog is as tall as what is in it, so a list floating out of it is
+  // cut off by the dialog's own scrolling (#337).
+  test("the list of people is shown whole, without scrolling the dialog", async ({ page, api }, testInfo) => {
+    const key = uniqueKey(testInfo);
+    made.push(key);
+    const { salaries } = await restrictedPage(api, key, uniqueName(testInfo, "Inspect list"));
+    await openSalaries(page, key, salaries);
+
+    const dialog = await openInspector(page);
+    await dialog.getByRole("combobox", { name: "Person to check" }).focus();
+    const options = dialog.locator("[data-subject-options] [role=option]");
+    await expect(options.first()).toBeVisible();
+    expect(await options.count()).toBeGreaterThanOrEqual(2);
+    const list = dialog.locator("[data-subject-options]");
+    expect(await list.evaluate((el) => el.scrollHeight <= el.clientHeight), "the list holds all its options").toBe(true);
+    expect(await dialog.evaluate((el) => el.scrollHeight <= el.clientHeight), "the dialog does not scroll").toBe(true);
+    for (const option of await options.all()) await expect(option).toBeInViewport({ ratio: 1 });
+  });
+
   test("an administrator sees which restriction keeps bob out of a page", async ({ page, api }, testInfo) => {
     const key = uniqueKey(testInfo);
     made.push(key);

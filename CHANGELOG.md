@@ -1035,6 +1035,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The list of people in a page's Check access dialog shows whole, as tall as
+  it needs, instead of a few rows cut off by a scrolling dialog (#337). A press
+  that begins inside any dialog and ends outside it, because the dialog shrank,
+  no longer closes it.
 - A table of contents link on a page the editor never saved, such as the
   example space, now leads to its heading. The heading takes the anchor the
   list links to when it holds none of its own (#335).
