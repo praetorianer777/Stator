@@ -974,6 +974,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
   reads a sketch's title and words (migration 00630); the Markdown export
   writes an `excalidraw` fence the import reads back, the HTML export the
   drawing as an SVG file, and the Word export a sentence.
+- Sketches are drawn together, live (#325). Everybody with the same sketch
+  open in a page edited together draws on one canvas: shapes, moves,
+  deletions and words reach the others within a moment, with each
+  person's pointer, selection, name and colour, and the page shows who is
+  drawing on a sketch. Two changes to different shapes both stay; two to
+  one shape settle on the copy Excalidraw keeps, on every screen. The
+  shapes live in the page's shared draft, so a late joiner and somebody
+  back from offline get the scene as it stands, and the api still stores
+  and relays without reading. Done puts the drawing in the page when it is
+  behind, and a publish draws any sketch still being drawn on first, so
+  readers keep seeing only the checked SVG. Drawn together there is no
+  Cancel, and undo takes back only one's own changes. A sketch gets a
+  `sketchId` the first time it is opened to draw together.
 
 ### Changed
 

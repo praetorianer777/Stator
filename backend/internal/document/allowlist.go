@@ -631,6 +631,9 @@ var Allowed = Allowlist{
 			"scene":   {Kind: KindString, MaxLength: MaxSketchSceneLength, Pattern: `\S`},
 			"drawing": {Kind: KindString, Nullable: true, MaxLength: MaxSketchDrawingLength},
 			"title":   {Kind: KindString, Nullable: true, MaxLength: MaxAltLength},
+			// sketchId names the sketch's shapes in the page's shared draft,
+			// where people draw on it together; a sketch never opened there has none.
+			"sketchId": {Kind: KindString, Nullable: true, Pattern: UUIDPattern},
 		}},
 		"attachment": {
 			Inline: true,

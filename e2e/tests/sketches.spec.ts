@@ -32,6 +32,71 @@ const LEDGER_SCENE = JSON.stringify({
 });
 const sketch = (title: string | null, drawing: string | null = LEDGER_DRAWING) => ({ type: "sketch", attrs: { scene: LEDGER_SCENE, drawing, title } });
 
+/** How many pixels of a canvas around a point, given from its middle in CSS pixels, are ink: dark ones, or any that are drawn at all. */
+async function inkAt(canvas: Locator, dx: number, dy: number, kind: "dark" | "drawn", half = 40): Promise<number> {
+  return canvas.evaluate(
+    (el, { dx, dy, kind, half }) => {
+      const c = el as HTMLCanvasElement;
+      const scale = c.width / c.clientWidth;
+      const x = Math.round((c.clientWidth / 2 + dx - half) * scale);
+      const y = Math.round((c.clientHeight / 2 + dy - half) * scale);
+      const size = Math.round(2 * half * scale);
+      const { data } = c.getContext("2d")!.getImageData(x, y, size, size);
+      let ink = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const [r, g, b, a] = [data[i]!, data[i + 1]!, data[i + 2]!, data[i + 3]!];
+        if (kind === "drawn" ? a > 0 : a > 0 && r + g + b < 300) ink++;
+      }
+      return ink;
+    },
+    { dx, dy, kind, half },
+  );
+}
+
+/** A sketch's canvas, and where on it a point from its middle is. */
+async function canvasOf(page: Page) {
+  const dialog = sketchDialog(page);
+  const interactive = dialog.locator("canvas.interactive");
+  await expect(interactive).toBeVisible();
+  const box = (await interactive.boundingBox())!;
+  return {
+    dialog,
+    interactive,
+    drawn: dialog.locator("canvas.excalidraw__canvas:not(.interactive)"),
+    at: (dx: number, dy: number) => ({ x: box.x + box.width / 2 + dx, y: box.y + box.height / 2 + dy }),
+  };
+}
+
+/** Writes words on a canvas where a point from its middle is. */
+async function writeAt(page: Page, at: { x: number; y: number }, words: string) {
+  await page.keyboard.press("t");
+  await page.mouse.click(at.x, at.y);
+  await page.keyboard.type(words);
+  await page.keyboard.press("Escape");
+}
+
+/** Whether the shared draft this browser keeps has words in it, as they reach it from another browser. */
+async function sharedDraftHolds(page: Page, words: string): Promise<boolean> {
+  return page.evaluate(async (words) => {
+    for (const { name } of await indexedDB.databases()) {
+      if (!name?.startsWith("stator.collab.")) continue;
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const opening = indexedDB.open(name);
+        opening.onsuccess = () => resolve(opening.result);
+        opening.onerror = () => reject(opening.error);
+      });
+      const updates = await new Promise<Uint8Array[]>((resolve, reject) => {
+        const reading = db.transaction("updates").objectStore("updates").getAll();
+        reading.onsuccess = () => resolve(reading.result as Uint8Array[]);
+        reading.onerror = () => reject(reading.error);
+      });
+      db.close();
+      if (updates.some((update) => new TextDecoder().decode(update).includes(words))) return true;
+    }
+    return false;
+  }, words);
+}
+
 /** Every request a page makes to a host other than Stator's own. */
 function requestsElsewhere(page: Page): string[] {
   const origin = new URL(WEB_URL).origin;
@@ -134,7 +199,108 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
     expect(elsewhere, "requests that left Stator's origin").toEqual([]);
   });
 
-  test("the canvas is reached and left by keyboard, and Cancel keeps the sketch as it was", async ({ page, api }, testInfo) => {
+  test(
+    "two people draw on one sketch at once, see each other's shapes and pointers, merge what was drawn offline, and publish it",
+    { tag: ["@desktop"] },
+    async ({ page, api, apiAs, pageAs }, testInfo) => {
+      test.slow();
+      const space = await freshSpace(api, testInfo, "Drawn together");
+      const notes = await createPage(api, space.homePageId, "Whiteboard", {
+        type: "doc",
+        content: [
+          paragraph("Our whiteboard."),
+          { type: "sketch", attrs: { scene: JSON.stringify({ elements: [], appState: { viewBackgroundColor: "#ffffff" } }), drawing: null, title: "Board" } },
+        ],
+      });
+      const aliceName = must(await api.GET("/auth/me")).user.name;
+      const bobName = must(await (await apiAs("bob")).GET("/auth/me")).user.name;
+      const path = `/s/${space.key}/p/${notes.id}/whiteboard`;
+      const elsewhere = requestsElsewhere(page);
+
+      await openEditor(page, path, "Our whiteboard.");
+      await expect(page.locator("[data-page-editor]")).toHaveAttribute("data-collab", "together");
+      const bob = await pageAs("bob");
+      await openUntil(bob, `${path}/edit`, () => expect(bob.locator("[data-page-editor]")).toHaveAttribute("data-collab", "together", ONE_LOOK));
+
+      // Alice opens the sketch first, which gives it its place in the shared draft.
+      await editorBox(page).getByRole("button", { name: "Edit sketch" }).click();
+      const alice = await canvasOf(page);
+      await expect(alice.dialog).toHaveAttribute("data-sketch-live", "");
+      await expect(alice.dialog.getByRole("button", { name: "Cancel" })).toHaveCount(0);
+      // Bob sees in the page that she is drawing on it, and joins her.
+      await expect(editorBox(bob).getByRole("list", { name: `Drawing on this sketch now: ${aliceName}` })).toBeVisible();
+      await editorBox(bob).getByRole("button", { name: "Edit sketch" }).click();
+      const bobs = await canvasOf(bob);
+      await expect(alice.dialog.getByRole("list", { name: `Drawing on this sketch now: ${bobName}` })).toBeVisible();
+      await expect(bobs.dialog.getByRole("list", { name: `Drawing on this sketch now: ${aliceName}` })).toBeVisible();
+
+      // Alice's box with words, drawn at the left, appears on Bob's canvas without anybody leaving it.
+      expect(await inkAt(bobs.drawn, -200, -80, "dark")).toBe(0);
+      await page.mouse.click(alice.at(0, 200).x, alice.at(0, 200).y);
+      await page.keyboard.press("r");
+      await page.mouse.move(alice.at(-260, -130).x, alice.at(-260, -130).y);
+      await page.mouse.down();
+      await page.mouse.move(alice.at(-200, -80).x, alice.at(-200, -80).y, { steps: 4 });
+      await page.mouse.move(alice.at(-140, -30).x, alice.at(-140, -30).y, { steps: 4 });
+      await page.mouse.up();
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("Alpha");
+      await page.keyboard.press("Escape");
+      await expect.poll(() => inkAt(bobs.drawn, -200, -80, "dark")).toBeGreaterThan(50);
+
+      // Bob's words at the right appear on Alice's, at the same time as she points somewhere else.
+      await bob.mouse.click(bobs.at(0, 200).x, bobs.at(0, 200).y);
+      await writeAt(bob, bobs.at(140, -80), "Bravo");
+      await expect.poll(() => inkAt(alice.drawn, 170, -70, "dark")).toBeGreaterThan(20);
+
+      // Each sees where the other's pointer is, in their colour.
+      await page.keyboard.press("v");
+      expect(await inkAt(bobs.interactive, 160, 160, "drawn", 30)).toBe(0);
+      await page.mouse.move(alice.at(150, 150).x, alice.at(150, 150).y, { steps: 3 });
+      await expect.poll(() => inkAt(bobs.interactive, 160, 160, "drawn", 30)).toBeGreaterThan(20);
+      await bob.mouse.move(bobs.at(-150, 150).x, bobs.at(-150, 150).y, { steps: 3 });
+      await expect.poll(() => inkAt(alice.interactive, -140, 160, "drawn", 30)).toBeGreaterThan(20);
+
+      // Bob loses the connection and keeps drawing; it reaches Alice once he is back.
+      await bob.context().setOffline(true);
+      await expect(alice.dialog.getByRole("list", { name: `Drawing on this sketch now: ${bobName}` })).toHaveCount(0);
+      await writeAt(bob, bobs.at(-40, 60), "Charlie");
+      await expect.poll(() => inkAt(bobs.drawn, -10, 70, "dark")).toBeGreaterThan(20);
+      expect(await inkAt(alice.drawn, -10, 70, "dark")).toBe(0);
+      await bob.context().setOffline(false);
+      await expect.poll(() => inkAt(alice.drawn, -10, 70, "dark"), { timeout: 15_000 }).toBeGreaterThan(20);
+
+      // Alice leaves the canvas, which puts the drawing in the page.
+      await alice.dialog.getByRole("button", { name: "Done" }).click();
+      await expect(alice.dialog).toHaveCount(0);
+      const preview = editorBox(page).getByRole("img", { name: "Sketch: Board" });
+      await expect.poll(async () => drawingOf(preview)).toContain(">Charlie</text>");
+      const left = await drawingOf(preview);
+      for (const words of ["Alpha", "Bravo", "Charlie"]) expect(left).toContain(`>${words}</text>`);
+
+      // Bob is still drawing when Alice publishes; what he drew is published too.
+      await bob.mouse.click(bobs.at(0, 200).x, bobs.at(0, 200).y);
+      await writeAt(bob, bobs.at(100, 60), "Delta");
+      await expect(editorBox(page).getByRole("list", { name: `Drawing on this sketch now: ${bobName}` })).toBeVisible();
+      await expect(page.locator("[data-draft-status]")).toHaveAttribute("data-draft-status", "saved");
+      await expect.poll(() => sharedDraftHolds(page, "Delta")).toBe(true);
+      await publishFromEditor(page);
+      const published = shown(page).getByRole("img", { name: "Sketch: Board" });
+      await expect(published).toBeVisible();
+      const drawn = await drawingOf(published);
+      for (const words of ["Alpha", "Bravo", "Charlie", "Delta"]) expect(drawn).toContain(`>${words}</text>`);
+
+      // Readers see the drawing, never the canvas.
+      const reader = await pageAs("bob");
+      const readerElsewhere = requestsElsewhere(reader);
+      await openUntil(reader, path, () => expect(shown(reader).getByRole("img", { name: "Sketch: Board" })).toBeVisible(ONE_LOOK));
+      expect(await drawingOf(shown(reader).getByRole("img", { name: "Sketch: Board" }))).toContain(">Delta</text>");
+      await expect(reader.locator("canvas")).toHaveCount(0);
+      expect([...elsewhere, ...readerElsewhere], "requests that left Stator's origin").toEqual([]);
+    },
+  );
+
+  test("the canvas is reached and left by keyboard, and leaving it unchanged keeps the sketch as it was", async ({ page, api }, testInfo) => {
     test.slow();
     const elsewhere = requestsElsewhere(page);
     const space = await freshSpace(api, testInfo, "Keyboard");
@@ -155,8 +321,9 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
     expect(frame.width).toBeLessThanOrEqual(viewport.width);
     await expect(dialog.getByRole("button", { name: "Done" })).toBeInViewport();
 
-    // Out of the canvas, Escape closes it unchanged, and the keyboard is back where it was.
-    await dialog.getByRole("button", { name: "Cancel" }).focus();
+    // Out of the canvas, Escape leaves it, and the keyboard is back where it was.
+    // Drawn together there is nothing to cancel; nothing was drawn, so nothing changed.
+    await dialog.getByRole("button", { name: "Done" }).focus();
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(edit).toBeFocused();
