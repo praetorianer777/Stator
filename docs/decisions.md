@@ -38,6 +38,30 @@ the Word file and the space's HTML copy.
 - **Every member reads it.** The sidebar shows the logo in place of the
   gopher's face, and an export made for a member or through a public link
   needs it without asking who may see it.
+## 2026-10-10: The push gate runs what a change can affect, and never passes unfinished (#350, #328)
+
+The whole gate took 25 to 28 minutes, flaked under load for reasons unrelated
+to the change, and was killed by the hook's own 30 minute limit, which lets
+the push through. CI runs every layer in parallel in about 13 minutes and
+blocks the merge.
+
+- **Layers follow the files.** `.claude/hooks/gate-layers.sh` is the one list
+  of which path can affect which layer: documentation runs the shell tests and
+  the format check; no backend or API file skips the Go layers; no web or API
+  file skips the web layer. A path it does not know runs everything, and an
+  unknown base runs everything, so a new directory is tested until listed.
+- **Quick by default.** The hook runs the shell tests, format, Go and web
+  layers (about 7 minutes) and leaves the stack, the integration suite and
+  the browser suite to CI. `STATOR_GATE=full` runs them too, for the files
+  that can affect them. This replaces "every push runs every layer" in
+  `CLAUDE.md`; a failing layer still blocks the push.
+- **Said aloud.** A passing hook tells the user which layers ran and which
+  were skipped, so nobody believes a shorter gate was the whole suite.
+- **A gate that does not finish is a failure.** A watchdog stops the gate
+  after 20 minutes (28 for a full gate; `STATOR_GATE_LIMIT` sets seconds),
+  before the hook's timeout, and denies the push with a sentence saying so.
+  The gate runs in a group of its own so the make and docker it started die
+  with it, and its stack is taken down, which a killed gate never did.
 
 ## 2026-10-10: The chart brings SeaweedFS as a subchart whose keys the secrets Job makes (#341)
 

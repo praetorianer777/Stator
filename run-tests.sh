@@ -57,6 +57,8 @@ finish() {
   if (( rc == 0 )); then cat "$REPORTS/summary.md"; else echo "Durations and slowest tests so far: $REPORTS/summary.md"; fi
   exit "$rc"
 }
+# A gate stopped from outside still takes its stack down (#328).
+trap 'exit 143' TERM INT HUP
 trap finish EXIT
 
 # A layer that fails still gets its line, so a red run shows where it stopped
