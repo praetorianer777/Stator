@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -178,6 +179,9 @@ func TestAnonymousReadersSeeTheBrandOfAnOpenOrganization(t *testing.T) {
 		resp, data := anon.download(t, base+"/links/"+token+"/logo")
 		if resp.StatusCode != http.StatusOK || !bytes.Equal(data, pngLogo) {
 			t.Errorf("the link's logo came as %d with %d bytes", resp.StatusCode, len(data))
+		}
+		if got := anon.get(t, base+"/links/"+strings.Repeat("x", len(token))+"/logo"); got.Status != http.StatusNotFound {
+			t.Errorf("a link nobody holds showed the logo: %d", got.Status)
 		}
 	})
 
