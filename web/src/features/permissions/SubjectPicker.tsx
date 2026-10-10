@@ -31,6 +31,7 @@ export function SubjectPicker({
   exclude = [],
   allowEveryone = false,
   peopleOnly = false,
+  inline = false,
   disabled,
   useSearch = useSubjectSearch,
 }: {
@@ -42,6 +43,8 @@ export function SubjectPicker({
   allowEveryone?: boolean;
   /** Offers people alone, for questions about one person such as what they may do. */
   peopleOnly?: boolean;
+  /** Draws the options in the flow of the page, so a dialog holding the picker grows to show them instead of cutting them off. */
+  inline?: boolean;
   disabled?: boolean;
   /** Where the options come from; a share's picker asks its page, which says who may view it. */
   useSearch?: SubjectSearch;
@@ -158,7 +161,11 @@ export function SubjectPicker({
           aria-label={peopleOnly ? t.access.pickerOptions : t.permissions.pickerOptions}
           hidden={!expanded || shown.length === 0}
           aria-busy={loading}
-          className="absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
+          className={
+            inline
+              ? "mt-1 max-h-[min(24rem,45vh)] overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1"
+              : "absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
+          }
           data-subject-options
         >
           {shown.map((option, i) => (

@@ -1035,6 +1035,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The list of people in a page's Check access dialog shows whole, as tall as
+  it needs, instead of a few rows cut off by a scrolling dialog (#337). A press
+  that begins inside any dialog and ends outside it, because the dialog shrank,
+  no longer closes it.
 - The slash menu, the mention list and the emoji list no longer open past the
   bottom of the window: near the bottom they open above the caret, and they
   are never taller than the room on the side they take (#338).

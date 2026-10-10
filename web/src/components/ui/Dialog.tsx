@@ -28,12 +28,21 @@ export function Dialog({
   [attr: `data-${string}`]: string | undefined;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // A press that began inside the dialog and ended on the scrim, because the
+  // dialog shrank under the pointer, is no click outside it.
+  const pressedOnScrim = useRef(false);
   const titleId = useId();
   useEscape(true, onClose);
   useFocusReturn(true, ref, true);
   return createPortal(
     // biome-ignore lint/a11y: the scrim is for the pointer; the keyboard closes the dialog with Escape or its close button
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/30 p-4 pt-[10vh]" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-ink/30 p-4 pt-[10vh]"
+      onMouseDown={(e) => {
+        pressedOnScrim.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => e.target === e.currentTarget && pressedOnScrim.current && onClose()}
+    >
       <div
         {...rest}
         ref={ref}

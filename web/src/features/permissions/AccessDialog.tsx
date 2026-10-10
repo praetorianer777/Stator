@@ -53,7 +53,7 @@ export function AccessDialog({ pageId, pageTitle, onClose }: { pageId: string; p
     <Dialog title={t.access.title(pageTitle)} wide onClose={onClose} data-access-dialog={pageId}>
       <div className="space-y-4">
         <p className="text-sm text-ink-muted">{t.access.intro}</p>
-        <SubjectPicker label={t.access.pickerLabel} peopleOnly onPick={setPerson} />
+        <SubjectPicker label={t.access.pickerLabel} peopleOnly inline onPick={setPerson} />
         {person?.id && <Report pageId={pageId} userId={person.id} />}
       </div>
     </Dialog>
