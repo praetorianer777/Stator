@@ -250,3 +250,63 @@ func TestAWordExportCarriesTheBrand(t *testing.T) {
 		}
 	})
 }
+
+func TestAnHTMLExportCarriesTheBrand(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "brand-html")
+	slug := h.slugOf(t, home.org)
+	owner := api.as(t, home.user, home.org, slug)
+	docs := newTree(t, owner, "BRH", "Branded handbook")
+	guide := docs.add(docs.homeID, "Branded guide")
+	publishBody(t, owner, guide, map[string]any{"type": "doc", "content": []any{plainPara("Read offline.")}})
+	h.settle(t)
+	var orgName string
+	if err := h.super.QueryRow(context.Background(), `SELECT name FROM org WHERE id = $1`, home.org).Scan(&orgName); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("an organization with no brand has its name over the pages and the built-in accent", func(t *testing.T) {
+		_, data := api.exportSpace(t, owner, "BRH", "html")
+		files := archiveFiles(t, data)
+		index := string(files["index.html"])
+		if !strings.Contains(index, `<span class="org">`+orgName+`</span>`) || strings.Contains(index, `class="logo"`) || strings.Contains(index, "brand-footer") {
+			t.Errorf("the plain index reads:\n%s", index)
+		}
+		if strings.Contains(string(files["style.css"]), "The organization's accent") {
+			t.Error("the plain style sheet carries an accent")
+		}
+	})
+
+	t.Run("the logo, the footer line and the default theme's accent are in the files", func(t *testing.T) {
+		theme := idOf(t, want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "House", "spec": map[string]any{"colors": map[string]any{
+			"light": map[string]string{"accent": "#336699"}, "dark": map[string]string{"accent": "#99ccff"}}}}), http.StatusCreated, "make a theme"), "theme")
+		want(t, owner.patch(t, "/api/v1/themes/"+theme, map[string]any{"shared": true}), http.StatusOK, "share it")
+		want(t, owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": theme}), http.StatusOK, "make it the default")
+		want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal use only", "de": "Nur intern"}), http.StatusOK, "set the footer")
+		want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngLogo), http.StatusOK, "set the logo")
+
+		_, data := api.exportSpace(t, owner, "BRH", "html")
+		files := archiveFiles(t, data)
+		for _, name := range []string{"index.html", "branded-guide.html"} {
+			page := string(files[name])
+			for _, wantText := range []string{`src="files/brand/logo.png"`, "Internal use only", `<span class="org">` + orgName + `</span>`} {
+				if !strings.Contains(page, wantText) {
+					t.Errorf("%s lacks %s:\n%s", name, wantText, page)
+				}
+			}
+		}
+		if !bytes.Equal(files["files/brand/logo.png"], pngLogo) {
+			t.Errorf("the logo in the export has %d bytes", len(files["files/brand/logo.png"]))
+		}
+		css := string(files["style.css"])
+		if !strings.Contains(css, "--accent: #336699;") || !strings.Contains(css, "--accent: #99ccff;") {
+			t.Errorf("the style sheet lacks the accents:\n%s", css[max(0, len(css)-300):])
+		}
+		for name, content := range files {
+			if strings.Contains(string(content), "<script") {
+				t.Errorf("%s holds a script", name)
+			}
+		}
+	})
+}
