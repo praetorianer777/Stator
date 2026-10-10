@@ -14,9 +14,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
   JPEG or WebP logo and write a footer line in English and German; the
   sidebar shows the logo in place of the gopher's face. A PDF prints the logo
   beside the organization's name in its running header and the footer line,
-  in the reader's language, in its footer; public pages and public links carry
-  them too, and the colours are the organization's default theme's. Word and
-  offline copies follow.
+  in the reader's language, in its footer; a Word document has them in its header and footer, with the
+  page number, and its headings and links take the colour of the
+  organization's default theme. Public pages and public links carry them too.
+  Offline copies of a space follow.
 - A task's link opens the page at that task (#322). From My tasks, a task
   report and the notification for an assignment or a due day, the page scrolls
   to the task, opens the expand block around it, marks it for a moment and

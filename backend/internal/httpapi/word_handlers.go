@@ -102,10 +102,11 @@ func (s *Server) handlePageWord(w http.ResponseWriter, r *http.Request) {
 		FileURL: func(file uuid.UUID) string { return s.appURL("/api/v1/attachments/" + file.String()) },
 	}
 	p := PrincipalFrom(r.Context())
+	lang := printLanguage(r, p)
 	data, err := docx.Bytes(r.Context(), docx.Page{
 		ID: got.ID, Title: got.Title, Space: sp.Name, Author: got.CreatedByName, Editor: got.UpdatedByName,
-		Created: got.CreatedAt, Modified: got.UpdatedAt, Version: got.Version, Language: printLanguage(r, p),
-		URL: s.appURL(appPagePath(sp.Key, got.ID, got.Title)), Body: root,
+		Created: got.CreatedAt, Modified: got.UpdatedAt, Version: got.Version, Language: lang,
+		URL: s.appURL(appPagePath(sp.Key, got.ID, got.Title)), Body: root, Brand: s.wordBrand(r, lang),
 	}, reader)
 	if err != nil {
 		respondError(w, r, err)
@@ -156,9 +157,10 @@ func (s *Server) handlePublicPageWord(w http.ResponseWriter, r *http.Request) {
 			return s.appURL("/api/v1/public/" + org + "/attachments/" + file.String())
 		},
 	}
+	lang := printLanguage(r, nil)
 	data, err := docx.Bytes(r.Context(), docx.Page{
 		ID: got.ID, Title: got.Title, Space: got.Space.Name, Modified: got.Updated, Version: got.Version,
-		Language: printLanguage(r, nil), URL: s.appURL(site + appPagePath(got.Space.Key, got.ID, got.Title)), Body: root,
+		Language: lang, URL: s.appURL(site + appPagePath(got.Space.Key, got.ID, got.Title)), Body: root, Brand: s.wordBrand(r, lang),
 	}, reader)
 	if err != nil {
 		respondError(w, r, err)
@@ -192,9 +194,10 @@ func (s *Server) handleLinkedPageWord(w http.ResponseWriter, r *http.Request) {
 			return s.Attachments.LocateLinked(ctx, file)
 		}),
 	}
+	lang := printLanguage(r, nil)
 	data, err := docx.Bytes(r.Context(), docx.Page{
 		ID: got.ID, Title: got.Title, Modified: got.Updated, Version: got.Version,
-		Language: printLanguage(r, nil), Body: root,
+		Language: lang, Body: root, Brand: s.wordBrand(r, lang),
 	}, reader)
 	if err != nil {
 		respondError(w, r, err)
@@ -241,4 +244,18 @@ func sendWord(w http.ResponseWriter, name string, data []byte) {
 	h.Set("Content-Length", strconv.Itoa(len(data)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
+}
+
+// wordBrand is the organization's brand for a document, or none where it
+// cannot be read: a document is not refused for want of a logo.
+func (s *Server) wordBrand(r *http.Request, lang string) *docx.Brand {
+	if s.Brand == nil {
+		return nil
+	}
+	got, err := s.Brand.Export(r.Context(), lang)
+	if err != nil {
+		loggerFrom(r.Context()).Warn("could not read the brand for a Word document", "error", err)
+		return nil
+	}
+	return &docx.Brand{Name: got.Name, Footer: got.Footer, Accent: got.Accent, Logo: got.Logo}
 }

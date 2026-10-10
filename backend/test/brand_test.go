@@ -190,3 +190,63 @@ func TestAnonymousReadersSeeTheBrandOfAnOpenOrganization(t *testing.T) {
 		t.Errorf("a closed organization's logo answered %d", got.Status)
 	}
 }
+
+func TestAWordExportCarriesTheBrand(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "brand-word")
+	slug := h.slugOf(t, home.org)
+	owner := api.as(t, home.user, home.org, slug)
+	anon := api.anonymous()
+
+	docs := newTree(t, owner, "BRW", "Branded handbook")
+	guide := docs.add(docs.homeID, "Branded guide")
+	publishBody(t, owner, guide, map[string]any{"type": "doc", "content": []any{plainPara("Printed with our brand.")}})
+	h.settle(t)
+
+	var orgName string
+	if err := h.super.QueryRow(context.Background(), `SELECT name FROM org WHERE id = $1`, home.org).Scan(&orgName); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("an organization with no brand gets its name in the header", func(t *testing.T) {
+		resp, data := owner.download(t, pagePath(guide, "/docx"))
+		parts := wordFile(t, resp, data, "the plain export")
+		if !strings.Contains(parts["word/header1.xml"], orgName) || strings.Contains(parts["word/header1.xml"], "<w:drawing>") {
+			t.Errorf("the plain header reads %s", parts["word/header1.xml"])
+		}
+	})
+
+	t.Run("the logo, the footer line in the reader's language and the accent are in the file", func(t *testing.T) {
+		accentTheme := idOf(t, want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "House", "spec": map[string]any{"colors": map[string]any{"light": map[string]string{"accent": "#336699"}}}}), http.StatusCreated, "make a theme"), "theme")
+		want(t, owner.patch(t, "/api/v1/themes/"+accentTheme, map[string]any{"shared": true}), http.StatusOK, "share it")
+		want(t, owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": accentTheme}), http.StatusOK, "make it the default")
+		want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal use only", "de": "Nur intern"}), http.StatusOK, "set the footer")
+		want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngOf(t, 80, 40)), http.StatusOK, "set the logo")
+
+		resp, data := owner.download(t, pagePath(guide, "/docx"))
+		parts := wordFile(t, resp, data, "the branded export")
+		if !strings.Contains(parts["word/header1.xml"], "<w:drawing>") || !strings.Contains(parts["word/header1.xml"], orgName) {
+			t.Errorf("the header reads %s", parts["word/header1.xml"])
+		}
+		if !strings.Contains(parts["word/footer1.xml"], "Internal use only") && !strings.Contains(parts["word/footer1.xml"], "Nur intern") {
+			t.Errorf("the footer reads %s", parts["word/footer1.xml"])
+		}
+		if !strings.Contains(parts["word/styles.xml"], `w:color w:val="336699"`) {
+			t.Error("the styles do not take the default theme's accent")
+		}
+		if parts["word/media/brandlogo.png"] == "" {
+			t.Error("the logo is not in the file")
+		}
+	})
+
+	t.Run("a public export carries it too", func(t *testing.T) {
+		want(t, owner.put(t, "/api/v1/spaces/BRW/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the space")
+		want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+		resp, data := anon.download(t, "/api/v1/public/"+slug+"/pages/"+guide+"/docx")
+		parts := wordFile(t, resp, data, "the public export")
+		if !strings.Contains(parts["word/header1.xml"], "<w:drawing>") || !strings.Contains(parts["word/footer1.xml"], "Internal use only") {
+			t.Errorf("the public export lacks the brand:\nheader %s\nfooter %s", parts["word/header1.xml"], parts["word/footer1.xml"])
+		}
+	})
+}

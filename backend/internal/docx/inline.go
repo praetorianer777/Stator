@@ -37,7 +37,7 @@ func init() {
 			if label == "" {
 				label = w.words.somebody
 			}
-			rp.color = accentText
+			rp.color = w.accent
 			w.text("@"+label, rp)
 		},
 		"attachment": func(w *writer, n document.Node, rp runProps) {

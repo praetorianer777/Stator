@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -304,4 +305,67 @@ func (s *Service) OpenLogo(ctx context.Context) (io.ReadCloser, *Logo, error) {
 		return nil, nil, ErrNoLogo
 	}
 	return body, logo, nil
+}
+
+// Export is what an export carries of the brand: the organization's name, its
+// footer line in the reader's language, its logo's bytes if it has one, and
+// the accent colour of its default theme.
+type Export struct {
+	Name   string
+	Footer string
+	Accent string
+	Logo   []byte
+}
+
+var accentColour = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
+
+// Export reads the brand for a document made in language, as whoever the
+// context is; an export is not stopped by a logo that cannot be read.
+func (s *Service) Export(ctx context.Context, language string) (*Export, error) {
+	var (
+		out    Export
+		footer Footer
+		logo   *Logo
+		accent *string
+	)
+	org, _ := tenant.FromContext(ctx)
+	// As the application's own read, not the reader's: an anonymous reader
+	// cannot read the organization's row, and the brand is public to every
+	// export of the organization whoever asks.
+	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var kind *string
+		var size *int
+		var version int
+		err := tx.QueryRow(ctx, `
+			SELECT o.name, t.spec->'colors'->'light'->>'accent',
+			       COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''), b.logo_type, b.logo_size, COALESCE(b.logo_version, 0)
+			FROM org o
+			LEFT JOIN theme t ON t.id = o.default_theme_id AND t.org_id = o.id
+			LEFT JOIN org_brand b ON b.org_id = o.id
+			WHERE o.id = $1`, org.ID).Scan(&out.Name, &accent, &footer.En, &footer.De, &kind, &size, &version)
+		if err != nil {
+			return err
+		}
+		if kind != nil && size != nil {
+			logo = &Logo{ContentType: *kind, Size: *size, Version: version}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("read the brand for an export: %w", err)
+	}
+	out.Footer = footer.In(language)
+	if accent != nil && accentColour.MatchString(*accent) {
+		out.Accent = *accent
+	}
+	if logo != nil && !objectstore.IsUnavailable(s.store) {
+		if body, err := s.store.Get(ctx, LogoKey(org.ID, logo.Version)); err == nil {
+			out.Logo, _ = io.ReadAll(io.LimitReader(body, MaxLogoBytes+1))
+			_ = body.Close()
+			if len(out.Logo) > MaxLogoBytes {
+				out.Logo = nil
+			}
+		}
+	}
+	return &out, nil
 }
