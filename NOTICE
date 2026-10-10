@@ -31,6 +31,14 @@ The web client bundles the emoji names and descriptions of gemoji
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+The logo and the icons (assets/branding and web/public) show the Go gopher,
+whose design is by Renee French (https://reneefrench.blogspot.com/) and is
+licensed under the Creative Commons Attribution 4.0 International license
+(https://creativecommons.org/licenses/by/4.0/; see https://go.dev/doc/gopher/README).
+The pictures here are changed from the original design: the gopher is drawn
+anew in a scene with books and tools, and cropped and resized for the icons.
+These pictures are under that license, not under the license of the code.
+
 The web client typesets formulas with KaTeX (https://github.com/KaTeX/KaTeX)
 and bundles its stylesheet and fonts, under the MIT License:
 
