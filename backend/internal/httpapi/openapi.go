@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
@@ -468,6 +469,11 @@ var operations = []operation{
 		responses: ok(env{"preview": unfurl.LinkPreview{}})},
 	{method: "GET", path: "/org/hub", handler: "handleGetHub", tool: "get_hub", toolHelp: "The organization's hub page, if there is one the caller may read, and whether everybody lands on it.", tag: "hub", summary: "The organization's hub page as the caller may see it, and whether everybody lands on it.", responses: ok(env{"hub": hub.Hub{}})},
 	{method: "PUT", path: "/org/hub", handler: "handleSetHub", orgWide: true, tag: "hub", summary: "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.", request: hub.HubInput{}, responses: ok(env{"hub": hub.Hub{}})},
+	{method: "GET", path: "/org/brand", handler: "handleGetBrand", tag: "brand", summary: "The logo and footer lines the organization's exports carry; the logo is null when there is none.", responses: ok(env{"brand": brand.Brand{}})},
+	{method: "PUT", path: "/org/brand/footer", handler: "handleSetBrandFooter", orgWide: true, tag: "brand", summary: "Replace the footer line of the organization's exports in English and German. For administrators.", request: brand.FooterInput{}, responses: ok(env{"brand": brand.Brand{}})},
+	{method: "PUT", path: "/org/brand/logo", handler: "handleSetBrandLogo", orgWide: true, tag: "brand", summary: "Replace the organization's logo with a PNG, JPEG or WebP picture of up to 2 MB, as a multipart part named file. For administrators.", multipart: true, responses: ok(env{"brand": brand.Brand{}})},
+	{method: "DELETE", path: "/org/brand/logo", handler: "handleDeleteBrandLogo", orgWide: true, tag: "brand", summary: "Take the organization's logo away; its exports then carry the name alone. For administrators.", responses: ok(env{"brand": brand.Brand{}})},
+	{method: "GET", path: "/org/brand/logo", handler: "handleBrandLogo", tag: "brand", summary: "The logo picture itself.", binary: true, responses: ok(nil)},
 	{method: "GET", path: "/org/anonymous-access", handler: "handleGetAnonymousAccess", orgWide: true, tag: "public", summary: "Whether anybody may read the spaces that allow it without signing in, and whether search engines are asked in. For administrators.",
 		responses: ok(env{"anonymousAccess": public.Settings{}})},
 	{method: "PUT", path: "/org/anonymous-access", handler: "handleSetAnonymousAccess", orgWide: true, tag: "public", summary: "Let anybody read the spaces that allow it without signing in, or stop it, and say whether search engines may list those pages. For administrators.",

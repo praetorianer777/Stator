@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
@@ -241,6 +242,20 @@ func toAPIError(err error) *APIError {
 	}
 	if errors.Is(err, page.ErrIncludeTooDeep) {
 		return &APIError{Status: http.StatusConflict, Code: "include_depth", Message: sentence(err.Error()) + "."}
+	}
+	var brandField *brand.FieldError
+	if errors.As(err, &brandField) {
+		return ErrValidation(map[string]string{brandField.Field: brandField.Message})
+	}
+	switch {
+	case errors.Is(err, brand.ErrNotAdmin):
+		return ErrForbidden("Only an administrator of the organization changes its brand. Ask one of them to change it.")
+	case errors.Is(err, brand.ErrBadLogoType):
+		return ErrBadRequest(sentence(err.Error()))
+	case errors.Is(err, brand.ErrLogoTooLarge):
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: sentence(brand.ErrLogoTooLarge.Error())}
+	case errors.Is(err, brand.ErrNoLogo):
+		return ErrNotFound("The organization has no logo.")
 	}
 	var hubField *hub.FieldError
 	if errors.As(err, &hubField) {

@@ -3,6 +3,33 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-10: The brand of the exports is a logo and a footer line; the colours are the default theme's (#321)
+
+Exports should look like they come from the organization. The work is cut in
+four pull requests under one issue: the brand and its settings, then the PDF,
+the Word file and the space's HTML copy.
+
+- **Colours are not a setting of their own.** The organization already names a
+  default theme; its accent and heading colours are what exports use,
+  so changing the theme changes the brand and there is no second place to
+  keep in step. An organization with no default theme gets the built-in look.
+- **A logo and one footer line per language.** The line is at most 200
+  characters, on one line, English and German; a language without a line takes
+  the English one. The logo is a PNG, JPEG or WebP picture of up to 2 MB, read
+  from its bytes, never from the name or type claimed. SVG is left out: a
+  header in a PDF or a Word file needs a raster, and an SVG would need
+  sanitising for nothing.
+- **A table of its own, one row per organization.** The picture is in the
+  object store under a key with a version, so each upload is a new object, a
+  browser may keep a logo for good, and the old one is deleted after the
+  change commits.
+- **Administrators only, in the database too.** A trigger refuses an insert,
+  update or delete by the application role for anybody who is not an
+  administrator, as for the hub. The change is audited as `org.brand_set`.
+- **Every member reads it.** The sidebar shows the logo in place of the
+  gopher's face, and an export made for a member or through a public link
+  needs it without asking who may see it.
+
 ## 2026-10-10: The chart brings SeaweedFS as a subchart whose keys the secrets Job makes (#341)
 
 Uploads need an S3 store, and a trial install had none: the operator set one up

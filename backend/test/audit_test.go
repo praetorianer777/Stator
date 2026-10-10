@@ -148,6 +148,11 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	}
 	want(t, owner.put(t, "/api/v1/org/hub", map[string]any{"pageId": nil, "landing": false}), http.StatusOK, "clear the hub")
 	once(audit.ActionOrgHubSet, me, nil)
+
+	want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal", "de": "Intern"}), http.StatusOK, "set the footer")
+	if data := once(audit.ActionOrgBrandSet, me, nil); !strings.Contains(data, "footer") {
+		t.Errorf("the brand's entry holds %s", data)
+	}
 	var ip *string
 	if err := h.super.QueryRow(context.Background(), `SELECT host(ip) FROM audit_log WHERE org_id = $1 AND action = $2 AND target_id = $3`, home.org, audit.ActionThemeDefaultSet, themeID).Scan(&ip); err != nil || ip == nil {
 		t.Errorf("the caller's address is not recorded: %v %v", ip, err)

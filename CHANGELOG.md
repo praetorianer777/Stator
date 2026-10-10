@@ -9,6 +9,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Administrators set the logo and the footer line of the organization's
+  exports (#321). Under Export brand in the account menu they upload a PNG,
+  JPEG or WebP logo and write a footer line in English and German; the
+  sidebar shows the logo in place of the gopher's face. Exports will carry it
+  in the next changes.
 - The chart can bring an S3 store along (#341). `seaweedfs.enabled` installs
   SeaweedFS from the project's own chart and points Stator at it: the
   endpoint, the keys and the TLS setting are filled in, and the access keys are
