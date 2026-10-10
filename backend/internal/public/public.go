@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/page"
 )
 
@@ -43,6 +44,10 @@ type Site struct {
 	Slug      string    `json:"slug"`
 	Name      string    `json:"name"`
 	Indexable bool      `json:"indexable"`
+	// Footer is the line the organization's exports print; LogoVersion is
+	// null when it has no logo, else the version the logo address serves.
+	Footer      brand.Footer `json:"footer"`
+	LogoVersion *int         `json:"logoVersion"`
 }
 
 // Space is a public space, as its readers see it.

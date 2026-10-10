@@ -210,6 +210,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/public/{orgSlug}/pages/{pageID}/pdf", s.handlePublicPagePDF)
 			r.Get("/public/{orgSlug}/pages/{pageID}/docx", s.handlePublicPageWord)
 			r.Get("/public/{orgSlug}/attachments/{attachmentID}", s.handlePublicAttachment)
+			r.Get("/public/{orgSlug}/logo", s.handlePublicLogo)
 			r.Get("/public/{orgSlug}/search", s.handlePublicSearch)
 		})
 		r.Group(func(r chi.Router) {
@@ -218,6 +219,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/public/{orgSlug}/links/{token}/pdf", s.handleLinkedPagePDF)
 			r.Get("/public/{orgSlug}/links/{token}/docx", s.handleLinkedPageWord)
 			r.Get("/public/{orgSlug}/links/{token}/attachments/{attachmentID}", s.handleLinkedAttachment)
+			r.Get("/public/{orgSlug}/links/{token}/logo", s.handleLinkedLogo)
 		})
 		mountPending(r, true)
 

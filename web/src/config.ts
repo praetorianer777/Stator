@@ -141,6 +141,9 @@ export const BRAND_STALE_MS = 60_000;
 
 /** The tallest the organization's logo is drawn in the sidebar header, and the most its footer line holds. */
 export const BRAND_LOGO_HEIGHT_PX = 24;
+
+/** The height the logo is scaled to for a printed header, in CSS pixels at twice the size it is drawn. */
+export const PRINT_LOGO_HEIGHT_PX = 64;
 export const BRAND_FOOTER_MAX_LENGTH = 200;
 export const BRAND_LOGO_MAX_BYTES = 2 * 1024 * 1024;
 /** The longest title an expand block takes, matching the API's MaxExpandTitleLength. */

@@ -496,6 +496,7 @@ var operations = []operation{
 		responses: map[int]any{200: nil, 404: errorEnvelope{}, 409: errorEnvelope{}, 422: errorEnvelope{}, 429: errorEnvelope{}}},
 	{method: "GET", path: "/public/{orgSlug}/attachments/{attachmentID}", handler: "handlePublicAttachment", tag: "public", public: true, summary: "The bytes of a file on a page anybody may read, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.", binary: true,
 		query: []param{{name: "inline", description: "1 to show images, videos, PDFs and text in place."}}, responses: map[int]any{200: nil, 206: nil, 404: errorEnvelope{}, 416: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}/logo", handler: "handlePublicLogo", tag: "public", public: true, binary: true, summary: "The organization's logo, which the site's logoVersion says is there.", responses: map[int]any{200: nil, 404: errorEnvelope{}}},
 	{method: "GET", path: "/public/{orgSlug}/search", handler: "handlePublicSearch", tag: "public", public: true, summary: "Published pages anybody may read whose words match, the best first.",
 		query: []param{
 			{name: "q", description: "Words, quoted phrases, or and -word."},
@@ -515,6 +516,7 @@ var operations = []operation{
 	{method: "GET", path: "/public/{orgSlug}/links/{token}/attachments/{attachmentID}", handler: "handleLinkedAttachment", tag: "public", public: true, binary: true,
 		summary: "The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.",
 		query:   []param{{name: "inline", description: "1 to show images, videos, PDFs and text in place."}}, responses: map[int]any{200: nil, 206: nil, 404: errorEnvelope{}, 416: errorEnvelope{}}},
+	{method: "GET", path: "/public/{orgSlug}/links/{token}/logo", handler: "handleLinkedLogo", tag: "public", public: true, binary: true, summary: "The organization's logo, for the page a public link opens.", responses: map[int]any{200: nil, 404: errorEnvelope{}}},
 	{method: "GET", path: "/org/public-links", handler: "handleGetPublicLinks", orgWide: true, tag: "public", summary: "Whether the editors of a page may open it to anybody through a public link. For administrators.",
 		responses: ok(env{"publicLinks": public.LinkSettings{}})},
 	{method: "PUT", path: "/org/public-links", handler: "handleSetPublicLinks", orgWide: true, tag: "public",

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -126,5 +127,66 @@ func TestTheBrandIsHeldByTheDatabase(t *testing.T) {
 	refused(t, conn, "another organization's brand", `INSERT INTO org_brand (org_id) VALUES ($1)`, away.org)
 	if _, err := conn.Exec(ctx, `UPDATE org_brand SET footer_de = 'Intern' WHERE org_id = current_org_id()`); err != nil {
 		t.Fatalf("an administrator could not change the footer: %v", err)
+	}
+}
+
+func TestAnonymousReadersSeeTheBrandOfAnOpenOrganization(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "brand-public")
+	slug := h.slugOf(t, home.org)
+	owner := api.as(t, home.user, home.org, slug)
+	anon := api.anonymous()
+	base := "/api/v1/public/" + slug
+
+	open := newTree(t, owner, "OPEN", "Open handbook")
+	open.add(open.homeID, "Guide")
+	want(t, owner.put(t, "/api/v1/spaces/OPEN/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the space")
+	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+
+	site := func() map[string]any {
+		return obj(t, want(t, anon.get(t, base), http.StatusOK, "the public site"), "site")
+	}
+	if got := site(); got["logoVersion"] != nil || got["footer"].(map[string]any)["en"] != "" {
+		t.Fatalf("a site with no brand reads %v", got)
+	}
+	if got := anon.get(t, base+"/logo"); got.Status != http.StatusNotFound {
+		t.Errorf("a logo that is not there answered %d", got.Status)
+	}
+
+	want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal", "de": "Intern"}), http.StatusOK, "set the footer")
+	want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngLogo), http.StatusOK, "set the logo")
+	got := site()
+	if got["logoVersion"] != float64(1) || got["footer"].(map[string]any)["de"] != "Intern" {
+		t.Fatalf("a site with a brand reads %v", got)
+	}
+	resp, data := anon.download(t, base+"/logo")
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "image/png" || !bytes.Equal(data, pngLogo) {
+		t.Errorf("anybody reads the logo as %d %s with %d bytes", resp.StatusCode, resp.Header.Get("Content-Type"), len(data))
+	}
+
+	t.Run("a public link shows the brand too", func(t *testing.T) {
+		page := open.add(open.homeID, "Linked")
+		made := want(t, owner.post(t, pagePath(page, "/public-links"), map[string]any{"label": "For the board"}), http.StatusCreated, "make a link")
+		token, _ := made.Body["token"].(string)
+		if token == "" {
+			t.Fatalf("the link carries no token: %v", made.Body)
+		}
+		linked := obj(t, want(t, anon.get(t, base+"/links/"+token), http.StatusOK, "open the link"), "site")
+		if linked["logoVersion"] != float64(1) || linked["footer"].(map[string]any)["en"] != "Internal" {
+			t.Errorf("a link's site reads %v", linked)
+		}
+		resp, data := anon.download(t, base+"/links/"+token+"/logo")
+		if resp.StatusCode != http.StatusOK || !bytes.Equal(data, pngLogo) {
+			t.Errorf("the link's logo came as %d with %d bytes", resp.StatusCode, len(data))
+		}
+		if got := anon.get(t, base+"/links/"+strings.Repeat("x", len(token))+"/logo"); got.Status != http.StatusNotFound {
+			t.Errorf("a link nobody holds showed the logo: %d", got.Status)
+		}
+	})
+
+	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": false}), http.StatusOK, "close the organization")
+	if got := anon.get(t, base+"/logo"); got.Status != http.StatusNotFound {
+		t.Errorf("a closed organization's logo answered %d", got.Status)
 	}
 }
