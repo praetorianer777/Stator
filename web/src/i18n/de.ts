@@ -3140,6 +3140,7 @@ export const de: Messages = {
     failed: "Die Seitenaufrufe konnten nicht geladen werden. Versuchen Sie es gleich noch einmal.",
   },
   tasks: {
+    gone: "Diese Aufgabe steht nicht mehr auf der Seite. Sie wurde vielleicht gelöscht oder steht nur in einem Entwurf.",
     title: "Meine Aufgaben",
     intro:
       "Checklisteneinträge, die Sie erwähnen, von allen Seiten, die Sie lesen dürfen. Eine Aufgabe gehört Ihnen, wenn ihre erste Erwähnung Sie nennt, und ist am ersten Datum darin fällig.",

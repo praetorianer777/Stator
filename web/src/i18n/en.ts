@@ -3055,6 +3055,7 @@ export const en = {
     failed: "The page views could not be loaded. Try again in a moment.",
   },
   tasks: {
+    gone: "That task is no longer on this page. It may have been deleted, or it may exist only in a draft.",
     title: "My tasks",
     intro: "Checklist items that mention you, from every page you may read. A task is yours when its first mention names you, and due on the first date in it.",
     open: "Open",

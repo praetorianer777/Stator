@@ -28,6 +28,8 @@ type Subject struct {
 	CommentID *uuid.UUID
 	Version   *int
 	Excerpt   string
+	// TaskID is the checklist item a task notification is about.
+	TaskID *uuid.UUID
 }
 
 // Tell is one person to tell, and why.
@@ -37,6 +39,8 @@ type Tell struct {
 	// Excerpt, when set, is shown to this person instead of the subject's,
 	// as the block that mentions them in a page.
 	Excerpt string
+	// TaskID, when set, is the task this person is told about.
+	TaskID *uuid.UUID
 }
 
 // Plan is who hears about one event.
@@ -220,7 +224,7 @@ func tellAssignedAndMentioned(ctx context.Context, tx db.DBTX, plan *Plan, pageI
 	// The rows say who this version assigned, so a later version that
 	// assigned the task to somebody else, or saw it done, tells nobody here.
 	rows, err := tx.Query(ctx, `
-		SELECT assignee_id, summary FROM page_task
+		SELECT assignee_id, task_id, summary FROM page_task
 		WHERE org_id = current_org_id() AND page_id = $1 AND assigned_version = $2 AND NOT done AND assignee_id IS NOT NULL
 		  AND ($3::timestamptz IS NULL OR assigned_at = $3)
 		ORDER BY position`, pageID, version, at)
@@ -229,10 +233,12 @@ func tellAssignedAndMentioned(ctx context.Context, tx db.DBTX, plan *Plan, pageI
 	}
 	var (
 		assignee uuid.UUID
+		taskID   uuid.UUID
 		summary  string
 	)
-	if _, err := pgx.ForEachRow(rows, []any{&assignee, &summary}, func() error {
-		plan.Tells = append(plan.Tells, Tell{UserID: assignee, Kind: KindAssigned, Excerpt: Excerpt(summary)})
+	if _, err := pgx.ForEachRow(rows, []any{&assignee, &taskID, &summary}, func() error {
+		id := taskID
+		plan.Tells = append(plan.Tells, Tell{UserID: assignee, Kind: KindAssigned, Excerpt: Excerpt(summary), TaskID: &id})
 		return nil
 	}); err != nil {
 		return err
@@ -304,7 +310,7 @@ func planTaskDue(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error)
 	}
 	return &Plan{
 		Subject: Subject{PageID: in.PageID, Version: &version, Excerpt: Excerpt(summary)},
-		Tells:   []Tell{{UserID: in.AssigneeID, Kind: KindDue}},
+		Tells:   []Tell{{UserID: in.AssigneeID, Kind: KindDue, TaskID: &in.TaskID}},
 	}, nil
 }
 
@@ -340,6 +346,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, plan *Plan, t T
 	if t.Excerpt != "" {
 		subject.Excerpt = t.Excerpt
 	}
+	subject.TaskID = t.TaskID
 	var out *mail.Mail
 	_, err := f.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var about mailed
@@ -362,12 +369,12 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, plan *Plan, t T
 		}
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO notification (org_id, user_id, event_id, kind, actor_id, page_id, thread_id, comment_id, version, excerpt)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
+			INSERT INTO notification (org_id, user_id, event_id, kind, actor_id, page_id, thread_id, comment_id, version, excerpt, task_id)
+			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			ON CONFLICT (event_id, user_id) DO NOTHING
 			RETURNING id`,
 			t.UserID, eventID, t.Kind, nullable(plan.Actor), subject.PageID, subject.ThreadID,
-			subject.CommentID, subject.Version, subject.Excerpt).Scan(&id)
+			subject.CommentID, subject.Version, subject.Excerpt, subject.TaskID).Scan(&id)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}

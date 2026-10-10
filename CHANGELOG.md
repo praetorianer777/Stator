@@ -9,6 +9,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A task's link opens the page at that task (#322). From My tasks, a task
+  report and the notification for an assignment or a due day, the page scrolls
+  to the task, opens the expand block around it, marks it for a moment and
+  puts the keyboard's focus on it. A task that is no longer on the page opens
+  the page at its top with a note saying so. The mail for these notifications
+  links to the task as well, and a task in the API has a `path`.
 - The chart can bring an S3 store along (#341). `seaweedfs.enabled` installs
   SeaweedFS from the project's own chart and points Stator at it: the
   endpoint, the keys and the TLS setting are filled in, and the access keys are

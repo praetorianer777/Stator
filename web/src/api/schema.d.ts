@@ -4307,6 +4307,8 @@ export interface components {
             /** Format: date-time */
             readAt: string | null;
             /** Format: uuid */
+            taskId: string | null;
+            /** Format: uuid */
             threadId: string | null;
             version: number | null;
         };
@@ -5202,6 +5204,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             page: components["schemas"]["TaskPage"];
+            path: string;
             text: string;
         };
         TaskPage: {

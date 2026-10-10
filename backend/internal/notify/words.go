@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/praetorianer777/stator/backend/internal/mail"
 )
 
@@ -63,11 +64,14 @@ func Sentence(kind Kind, actor, title string, inComment bool) string {
 }
 
 // PageURL is where a notification leads: the page, with its thread open when
-// there is one. The client puts the slug right.
+// there is one, or at its task. The client puts the slug right.
 func PageURL(appURL, spaceKey string, s Subject) string {
 	link := fmt.Sprintf("%s/s/%s/p/%s", appURL, spaceKey, s.PageID)
 	if s.ThreadID != nil {
 		link += "?thread=" + s.ThreadID.String()
+	}
+	if s.TaskID != nil {
+		link += TaskAnchor(*s.TaskID)
 	}
 	return link
 }
@@ -105,3 +109,6 @@ func bundle(to, appURL string, items []mailed) mail.Mail {
 	fmt.Fprintf(&b, "\nChoose what you are told about: %s%s\n", appURL, PreferencesPath)
 	return mail.Mail{To: to, Subject: fmt.Sprintf("%d %s in Stator", len(items), noun), Body: b.String()}
 }
+
+// TaskAnchor is the fragment that opens a page at one of its tasks.
+func TaskAnchor(id uuid.UUID) string { return "#task-" + id.String() }

@@ -19356,6 +19356,13 @@
             ],
             "format": "date-time"
           },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "threadId": {
             "type": [
               "string",
@@ -19379,6 +19386,7 @@
           "threadId",
           "commentId",
           "version",
+          "taskId",
           "excerpt",
           "createdAt",
           "readAt"
@@ -22852,6 +22860,9 @@
           "page": {
             "$ref": "#/components/schemas/TaskPage"
           },
+          "path": {
+            "type": "string"
+          },
           "text": {
             "type": "string"
           }
@@ -22859,6 +22870,7 @@
         "required": [
           "id",
           "page",
+          "path",
           "text",
           "done",
           "dueOn",

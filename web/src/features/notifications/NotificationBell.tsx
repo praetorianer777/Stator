@@ -8,6 +8,7 @@ import { Icon } from "@/components/icons";
 import { UNREAD_BADGE_MAX } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
+import { taskAnchor } from "@/features/tasks/taskAnchor";
 
 const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
@@ -92,6 +93,7 @@ function NotificationPanel({ titleId, onClose }: { titleId: string; onClose: () 
       to: "/s/$spaceKey/p/$pageId/$slug",
       params: { spaceKey: n.page.spaceKey, pageId: n.page.id, slug: pageSlug(n.page.title) },
       search: n.threadId ? { thread: n.threadId } : {},
+      hash: n.taskId ? taskAnchor(n.taskId) : undefined,
     });
   }
 
