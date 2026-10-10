@@ -35,6 +35,13 @@ the Word file and the space's HTML copy.
   they already return, and serve the picture from a route of their own, so an
   anonymous print needs nothing more; a logo that cannot be fetched is left
   out and the sheet prints with the name.
+- **A Word document gets a header and a footer part.** The logo and the name
+  go over a rule in the accent colour, the footer line goes left and the page
+  number right. The accent is the default theme's light accent where it is a
+  plain hex colour, else the built-in blue; headings and links take it only in
+  a document that has a brand, so an unbranded organization's documents keep
+  their look. Word shows no WebP or GIF in a header, so those logos are
+  written as PNG. An organization with no logo has its name alone.
 - **Every member reads it.** The sidebar shows the logo in place of the
   gopher's face, and an export made for a member or through a public link
   needs it without asking who may see it.

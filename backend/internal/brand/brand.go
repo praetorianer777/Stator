@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -284,4 +285,56 @@ func (s *Service) OpenLogo(ctx context.Context) (io.ReadCloser, *Logo, error) {
 		return nil, nil, ErrNoLogo
 	}
 	return body, brand.Logo, nil
+}
+
+// Export is what an export carries of the brand: the organization's name, its
+// footer line in the reader's language, its logo's bytes if it has one, and
+// the accent colour of its default theme.
+type Export struct {
+	Name   string
+	Footer string
+	Accent string
+	Logo   []byte
+}
+
+var accentColour = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
+
+// Export reads the brand for a document made in language, as whoever the
+// context is; an export is not stopped by a logo that cannot be read.
+func (s *Service) Export(ctx context.Context, language string) (*Export, error) {
+	var (
+		out    Export
+		footer Footer
+		logo   *Logo
+		accent *string
+	)
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		b, err := Read(ctx, tx)
+		if err != nil {
+			return err
+		}
+		footer, logo = b.Footer, b.Logo
+		return tx.QueryRow(ctx, `
+			SELECT o.name, t.spec->'colors'->'light'->>'accent'
+			FROM org o LEFT JOIN theme t ON t.id = o.default_theme_id AND t.org_id = o.id
+			WHERE o.id = current_org_id()`).Scan(&out.Name, &accent)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("read the brand for an export: %w", err)
+	}
+	out.Footer = footer.In(language)
+	if accent != nil && accentColour.MatchString(*accent) {
+		out.Accent = *accent
+	}
+	if logo != nil && !objectstore.IsUnavailable(s.store) {
+		org, _ := tenant.FromContext(ctx)
+		if body, err := s.store.Get(ctx, LogoKey(org.ID, logo.Version)); err == nil {
+			out.Logo, _ = io.ReadAll(io.LimitReader(body, MaxLogoBytes+1))
+			_ = body.Close()
+			if len(out.Logo) > MaxLogoBytes {
+				out.Logo = nil
+			}
+		}
+	}
+	return &out, nil
 }

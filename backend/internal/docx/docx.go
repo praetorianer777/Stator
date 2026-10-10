@@ -44,6 +44,8 @@ type Page struct {
 	// URL is where the page is read, or empty where the reader has no address to keep.
 	URL  string
 	Body document.Node
+	// Brand is the organization's name, logo, footer line and colour; nil adds nothing.
+	Brand *Brand
 }
 
 // Included is what an include shows its reader: a page's published body or one excerpt.
@@ -73,8 +75,12 @@ type Reader struct {
 func Write(ctx context.Context, out io.Writer, p Page, r Reader) error {
 	w := newWriter(ctx, p, r)
 	body, err := w.document(p)
+	branded := w.branded
 	if err != nil {
 		return err
+	}
+	if branded != nil && branded.logo != nil {
+		w.media = append(w.media, *branded.logo)
 	}
 	zw := zip.NewWriter(out)
 	modified := p.Modified
@@ -93,15 +99,32 @@ func Write(ctx context.Context, out io.Writer, p Page, r Reader) error {
 		name string
 		data []byte
 	}{
-		{"[Content_Types].xml", contentTypes(w.media)},
+		{"[Content_Types].xml", contentTypes(w.media, branded != nil)},
 		{"_rels/.rels", []byte(packageRels)},
 		{"docProps/core.xml", coreProperties(p)},
 		{"docProps/app.xml", []byte(appProperties)},
 		{"word/document.xml", body},
-		{"word/styles.xml", styles(p.Language)},
+		{"word/styles.xml", styles(p.Language, w.accent, p.Brand != nil)},
 		{"word/numbering.xml", w.numbering()},
 		{"word/settings.xml", []byte(settings)},
 		{"word/_rels/document.xml.rels", w.relationships()},
+	}
+	if branded != nil {
+		parts = append(parts,
+			struct {
+				name string
+				data []byte
+			}{"word/" + headerPart, branded.header},
+			struct {
+				name string
+				data []byte
+			}{"word/" + footerPart, branded.footer})
+		if branded.logo != nil {
+			parts = append(parts, struct {
+				name string
+				data []byte
+			}{"word/_rels/" + headerPart + ".rels", branded.headerRels})
+		}
 	}
 	for _, m := range w.media {
 		parts = append(parts, struct {

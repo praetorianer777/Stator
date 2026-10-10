@@ -74,10 +74,14 @@ type writer struct {
 	heading  int
 	bookmark int
 	via      []uuid.UUID
+	// branded is the header and footer of an organization's document, nil for none.
+	branded *brandParts
+	// accent is the colour of links and, in a branded document, headings.
+	accent string
 }
 
 func newWriter(ctx context.Context, p Page, r Reader) *writer {
-	w := &writer{ctx: ctx, read: r, words: wordsFor(p.Language), anchors: map[string]string{}, embedded: map[string]*picture{}}
+	w := &writer{ctx: ctx, read: r, words: wordsFor(p.Language), anchors: map[string]string{}, embedded: map[string]*picture{}, accent: accentOf(p.Brand)}
 	w.headings = document.Headings(p.Body)
 	for i, h := range w.headings {
 		if _, taken := w.anchors[h.Anchor]; !taken {
@@ -101,7 +105,13 @@ func (w *writer) document(p Page) ([]byte, error) {
 	w.meta(p)
 	root := frame{width: textWidth, top: true}
 	w.blocks(p.Body.Content, root, 0)
-	w.b.WriteString(`<w:sectPr><w:pgSz w:w="` + itoa(pageWidth) + `" w:h="` + itoa(pageHeight) + `"/>`)
+	w.b.WriteString(`<w:sectPr>`)
+	if w.branded = w.brandParts(p.Brand, w.accent); w.branded != nil {
+		header := w.rel(relHeader, headerPart, false)
+		footer := w.rel(relFooter, footerPart, false)
+		w.b.WriteString(`<w:headerReference w:type="default" r:id="` + header + `"/><w:footerReference w:type="default" r:id="` + footer + `"/>`)
+	}
+	w.b.WriteString(`<w:pgSz w:w="` + itoa(pageWidth) + `" w:h="` + itoa(pageHeight) + `"/>`)
 	w.b.WriteString(`<w:pgMar w:top="` + itoa(margin) + `" w:right="` + itoa(margin) + `" w:bottom="` + itoa(margin) + `" w:left="` + itoa(margin) + `" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>`)
 	w.b.WriteString(`</w:body></w:document>`)
 	if w.err != nil {
