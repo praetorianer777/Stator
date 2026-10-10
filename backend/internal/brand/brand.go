@@ -308,16 +308,28 @@ func (s *Service) Export(ctx context.Context, language string) (*Export, error) 
 		logo   *Logo
 		accent *string
 	)
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		b, err := Read(ctx, tx)
+	org, _ := tenant.FromContext(ctx)
+	// As the application's own read, not the reader's: an anonymous reader
+	// cannot read the organization's row, and the brand is public to every
+	// export of the organization whoever asks.
+	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var kind *string
+		var size *int
+		var version int
+		err := tx.QueryRow(ctx, `
+			SELECT o.name, t.spec->'colors'->'light'->>'accent',
+			       COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''), b.logo_type, b.logo_size, COALESCE(b.logo_version, 0)
+			FROM org o
+			LEFT JOIN theme t ON t.id = o.default_theme_id AND t.org_id = o.id
+			LEFT JOIN org_brand b ON b.org_id = o.id
+			WHERE o.id = $1`, org.ID).Scan(&out.Name, &accent, &footer.En, &footer.De, &kind, &size, &version)
 		if err != nil {
 			return err
 		}
-		footer, logo = b.Footer, b.Logo
-		return tx.QueryRow(ctx, `
-			SELECT o.name, t.spec->'colors'->'light'->>'accent'
-			FROM org o LEFT JOIN theme t ON t.id = o.default_theme_id AND t.org_id = o.id
-			WHERE o.id = current_org_id()`).Scan(&out.Name, &accent)
+		if kind != nil && size != nil {
+			logo = &Logo{ContentType: *kind, Size: *size, Version: version}
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("read the brand for an export: %w", err)
@@ -327,7 +339,6 @@ func (s *Service) Export(ctx context.Context, language string) (*Export, error) 
 		out.Accent = *accent
 	}
 	if logo != nil && !objectstore.IsUnavailable(s.store) {
-		org, _ := tenant.FromContext(ctx)
 		if body, err := s.store.Get(ctx, LogoKey(org.ID, logo.Version)); err == nil {
 			out.Logo, _ = io.ReadAll(io.LimitReader(body, MaxLogoBytes+1))
 			_ = body.Close()
