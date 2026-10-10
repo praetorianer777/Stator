@@ -27,6 +27,11 @@ CREATE POLICY org_brand_admin_bypass ON org_brand TO stator_admin USING (true) W
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON org_brand TO stator_app, stator_admin;
 
+-- Closed to an anonymous reader like every table a public page is not read
+-- from; a public export reads the brand as the application does.
+CREATE POLICY org_brand_not_anonymous ON org_brand AS RESTRICTIVE FOR ALL TO stator_app
+    USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
+
 -- +goose StatementBegin
 -- Only administrators change the brand, whatever the service above says.
 CREATE FUNCTION org_brand_guard() RETURNS trigger

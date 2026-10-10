@@ -271,20 +271,40 @@ func (s *Service) DeleteLogo(ctx context.Context, actor perm.Actor) (*Brand, db.
 }
 
 // OpenLogo reads the logo for a member, or an export. The caller closes it.
+// The row is read as the application: a public site shows the logo of an
+// organization to a reader who cannot read the organization's tables.
 func (s *Service) OpenLogo(ctx context.Context) (io.ReadCloser, *Logo, error) {
-	brand, err := s.Get(ctx)
+	org, _ := tenant.FromContext(ctx)
+	var logo *Logo
+	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var (
+			kind    *string
+			size    *int
+			version int
+		)
+		err := tx.QueryRow(ctx, `SELECT logo_type, logo_size, logo_version FROM org_brand WHERE org_id = $1`, org.ID).Scan(&kind, &size, &version)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("read the logo: %w", err)
+		}
+		if kind != nil && size != nil {
+			logo = &Logo{ContentType: *kind, Size: *size, Version: version}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-	if brand.Logo == nil {
+	if logo == nil {
 		return nil, nil, ErrNoLogo
 	}
-	org, _ := tenant.FromContext(ctx)
-	body, err := s.store.Get(ctx, LogoKey(org.ID, brand.Logo.Version))
+	body, err := s.store.Get(ctx, LogoKey(org.ID, logo.Version))
 	if err != nil {
 		return nil, nil, ErrNoLogo
 	}
-	return body, brand.Logo, nil
+	return body, logo, nil
 }
 
 // Export is what an export carries of the brand: the organization's name, its

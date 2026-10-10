@@ -180,6 +180,9 @@ func TestAnonymousReadersSeeTheBrandOfAnOpenOrganization(t *testing.T) {
 		if resp.StatusCode != http.StatusOK || !bytes.Equal(data, pngLogo) {
 			t.Errorf("the link's logo came as %d with %d bytes", resp.StatusCode, len(data))
 		}
+		if got := anon.get(t, base+"/links/"+strings.Repeat("x", len(token))+"/logo"); got.Status != http.StatusNotFound {
+			t.Errorf("a link nobody holds showed the logo: %d", got.Status)
+		}
 	})
 
 	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": false}), http.StatusOK, "close the organization")

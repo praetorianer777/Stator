@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # PreToolUse on Edit|Write|NotebookEdit|Bash: all work happens on an issue
 # branch named <type>/<issue>-<slug>, never on main, and nothing is pushed
-# unless ./run-tests.sh passes.
+# unless the layers of ./run-tests.sh its changes can affect pass (see
+# gate-layers.sh), and never when the gate did not finish.
 set -uo pipefail
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 BRANCH_RE='^(feat|fix|chore|docs|refactor|test|perf|ci|build|revert)/[0-9]+-[a-z0-9][a-z0-9._-]*$'
 HINT="Work only on issue branches named <type>/<issue>-<slug> (e.g. fix/42-audio-regression). Find or create the GitHub issue first (see the gh skill), then: gh issue develop <N> --name <type>/<N>-<slug> --base main --checkout"
@@ -27,7 +29,7 @@ project_git_dir="$(git_common_dir "$project")"
 # can carry secrets, so of its text only the git subcommands are recorded.
 LOG="${project_git_dir:-$(git_common_dir "$cwd")}"
 LOG="${LOG:+$LOG/branch-guard.log}"
-decision=allow reason="" subs=() gate_log="" gate_pid=""
+decision=allow reason="" subs=() gate_log="" gate_pid="" gate_repo="" gate_notes=()
 log_line() {
   [[ -n "$LOG" && -d "${LOG%/*}" ]] || return 0
   local IFS=,
@@ -40,7 +42,7 @@ log_line() {
 }
 trap log_line EXIT
 # A hook killed at its timeout must still leave its line.
-trap 'decision=killed; [[ -n "$gate_pid" ]] && kill "$gate_pid" 2>/dev/null; exit 143' TERM INT HUP
+trap 'decision=killed; stop_gate; exit 143' TERM INT HUP
 
 checkout_for() {
   local dir="$1" top common
@@ -159,10 +161,39 @@ strip_redirections() {
   done
 }
 
+# The gate runs in a group of its own, so stopping it stops the make and docker
+# it started too, and then takes its stack down: a gate killed from outside
+# writes no closing line and leaves its containers running.
+stop_gate() {
+  [[ -n "$gate_pid" ]] || return 0
+  kill -TERM -- "-$gate_pid" 2>/dev/null || kill -TERM "$gate_pid" 2>/dev/null
+  sleep 2
+  kill -KILL -- "-$gate_pid" 2>/dev/null
+  [[ -n "$gate_repo" ]] && (cd "$gate_repo" && make stack-down) >/dev/null 2>&1
+  return 0
+}
+
+# What a push changes, against where the branch left main; a base that cannot
+# be found gives no files, which runs every layer.
+changed_files() {
+  local repo="$1" base
+  base="$(git -C "$repo" merge-base origin/main HEAD 2>/dev/null)" || return 0
+  git -C "$repo" diff --name-only "$base"..HEAD 2>/dev/null
+}
+
 run_tests() {
-  local repo="$1" log start rc
+  local repo="$1" log start rc mode limit plan layers skipped flag watchdog
   log="$(mktemp)"
+  flag="$(mktemp -u)"
   start=$SECONDS
+  mode="${STATOR_GATE:-quick}"
+  [[ "$mode" == full ]] || mode=quick
+  plan="$(changed_files "$repo" | "$HOOK_DIR/gate-layers.sh" "$mode")"
+  layers="$(sed -n 's/^run: //p' <<< "$plan")"
+  skipped="$(sed -n 's/^skipped: //p' <<< "$plan")"
+  # Under the hook's own timeout, which kills it without a word and lets the
+  # push through (#328): a gate that has not finished by then did not pass.
+  limit="${STATOR_GATE_LIMIT:-$([[ "$mode" == full ]] && echo 1700 || echo 1200)}"
   # A gate killed at the hook's timeout writes no closing line, so its start
   # gets a line of its own.
   gate_log=$'\t'"gate=$repo"
@@ -171,20 +202,39 @@ run_tests() {
   # parallel worktrees do not collide (#95).
   # Waiting on a background job, unlike a foreground one, lets the TERM trap
   # fire while the gate is still running.
-  (cd "$repo" && exec ./run-tests.sh) > "$log" 2>&1 &
+  gate_repo="$repo"
+  # shellcheck disable=SC2086 # the layers are words
+  (cd "$repo" && exec setsid ./run-tests.sh $layers) > "$log" 2>&1 &
   gate_pid=$!
+  (
+    end=$((SECONDS + limit))
+    while kill -0 "$gate_pid" 2>/dev/null; do
+      if (( SECONDS >= end )); then : > "$flag"; stop_gate; break; fi
+      sleep 2
+    done
+  ) &
+  watchdog=$!
   wait "$gate_pid"
   rc=$?
+  kill "$watchdog" 2>/dev/null
+  wait "$watchdog" 2>/dev/null
   gate_pid=""
   gate_log+=$'\t'"gate_secs=$((SECONDS - start))"$'\t'"gate_rc=$rc"
+  if [[ -e "$flag" ]]; then
+    rm -f "$flag" "$log"
+    gate_log+=$'\t'"gate_timeout=$limit"
+    deny "Push blocked: the gate did not finish within $((limit / 60)) minutes, so nothing is known about this push. Run the layers yourself (./run-tests.sh $layers), or push with STATOR_GATE_LIMIT=<seconds> set higher; with the machine busy, ask the user to push with '! git push', which skips the gate, and let CI judge."
+  fi
   if (( rc != 0 )); then
     local tail_out
     tail_out="$(tail -n 60 "$log")"
     rm -f "$log"
-    deny "Push blocked: ./run-tests.sh failed. Fix the failures, commit, and push again.
+    deny "Push blocked: ./run-tests.sh $layers failed. Fix the failures, commit, and push again.
 $tail_out"
   fi
   rm -f "$log"
+  # Said aloud, so nobody believes a shorter gate was the whole suite.
+  gate_notes+=("Gate passed: $layers. Skipped: $skipped.")
 }
 
 case "$tool" in
@@ -330,6 +380,9 @@ case "$tool" in
     done <<< "$segments"
 
     for g in "${gates[@]}"; do run_tests "$g"; done
+    if (( ${#gate_notes[@]} )); then
+      jq -n --arg m "${gate_notes[*]}" '{systemMessage: $m}'
+    fi
     ;;
 esac
 exit 0
