@@ -318,15 +318,15 @@ git clone -q "$SRC" "$W3/r" && cd "$W3/r"
 fixture_main && copy_claude && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
 export CLAUDE_PROJECT_DIR="$W3/r"
 git switch -qc fix/7-gate-layers
-printf 'words\n' > NOTES.md && git add NOTES.md && git commit -qm "words"
+mkdir -p backend && printf 'words\n' > NOTES.md && printf 'package x\n' > backend/x.go && git add NOTES.md backend && git commit -qm "words and a backend file"
 printf '#!/bin/sh\necho "$@" > "$GATE_ARGS"\n' > run-tests.sh; chmod +x run-tests.sh
 export GATE_ARGS="$W3/args"
 push_json() { jq -nc --arg cwd "$W3/r" '{tool_name:"Bash",cwd:$cwd,tool_input:{command:"git push -u origin HEAD"}}'; }
 out="$(push_json | .claude/hooks/branch-guard.sh)"
-if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go check-web" ]]; then echo "ok    gate  ran the layers of the files the branch changed since main"; else echo "FAIL  gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
+if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go" ]]; then echo "ok    gate  ran the layers of the files the branch changed since main"; else echo "FAIL  gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
 if jq -e '.systemMessage | contains("Skipped:") and contains("test-e2e")' <<< "$out" > /dev/null; then echo "ok    gate  said what it skipped"; else echo "FAIL  the skipped layers were not said: $out"; fail=1; fi
 out="$(push_json | STATOR_GATE=full .claude/hooks/branch-guard.sh)"
-if [[ "$(cat "$GATE_ARGS")" == *"test-e2e"* ]]; then echo "ok    gate  STATOR_GATE=full runs the browser suite"; else echo "FAIL  full gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
+if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go test-integration test-e2e" ]]; then echo "ok    gate  STATOR_GATE=full runs the browser suite"; else echo "FAIL  full gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
 
 echo "== a gate that does not finish blocks the push (#328)"
 printf '#!/bin/sh\nexec sleep 37\n' > run-tests.sh
