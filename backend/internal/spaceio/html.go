@@ -129,14 +129,25 @@ type pageView struct {
 	Files              []link
 	Published          string
 	Exported, Exporter string
+	// Org, Logo and BrandFooter are the organization's brand, empty for none.
+	Org, Logo, BrandFooter string
 }
 
 type link struct{ Title, Href string }
 
 // write writes the pages, their files and the style sheet.
 func (w *site) write(ctx context.Context, store objectstore.Store, zw *zip.Writer, step func()) error {
-	if err := writeBytes(zw, styleFile, styleSheet); err != nil {
+	if err := writeBytes(zw, styleFile, w.s.brand.style(styleSheet)); err != nil {
 		return err
+	}
+	if path := w.s.brand.logoPath(); path != "" {
+		if logo := w.s.brand.readLogo(ctx, store); logo != nil {
+			if err := writeBytes(zw, path, logo); err != nil {
+				return err
+			}
+		} else {
+			w.s.brand.logoKey = ""
+		}
 	}
 	for _, p := range w.s.pages {
 		if err := w.writePage(zw, p); err != nil {
@@ -160,6 +171,9 @@ func (w *site) writePage(zw *zip.Writer, p *ArchivePage) error {
 	view := pageView{
 		Title: p.Title, Space: w.s.space.Name, Key: w.s.space.Key, Home: indexPage, IsHome: p.ID == w.s.space.HomePageID,
 		Labels: []string{}, Exported: w.s.exportedAt.UTC().Format(time.DateOnly), Exporter: w.s.people[w.s.exporter].Name,
+	}
+	if b := w.s.brand; b != nil {
+		view.Org, view.Logo, view.BrandFooter = b.name, b.logoPath(), b.footer
 	}
 	content, err := w.content(p)
 	if err != nil {

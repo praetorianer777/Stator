@@ -42,6 +42,14 @@ the Word file and the space's HTML copy.
   a document that has a brand, so an unbranded organization's documents keep
   their look. Word shows no WebP or GIF in a header, so those logos are
   written as PNG. An organization with no logo has its name alone.
+- **The HTML copy of a space carries it in its own files.** The logo is
+  written once under `files/brand/` and every page names it, the name goes
+  beside it, the footer line (English, as the pages are, or German where only
+  that is written) goes in the foot, and the style sheet gets the default
+  theme's accent, light and dark, appended to the built-in sheet. The colour
+  is written only when it is a plain hex colour, since it lands in a style
+  sheet. A logo that has gone from the store is left out and the export
+  goes on.
 - **Every member reads it.** The sidebar shows the logo in place of the
   gopher's face, and an export made for a member or through a public link
   needs it without asking who may see it.

@@ -326,6 +326,9 @@ func (w *Watch) export(ctx context.Context, c *claim) (string, int64, error) {
 			return err
 		}
 		if c.format == FormatHTML {
+			if snap.brand, err = readHTMLBrand(ctx, tx); err != nil {
+				return err
+			}
 			p.setTotal(ctx, len(snap.pages)+len(layout(snap).files))
 			return nil
 		}

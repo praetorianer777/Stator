@@ -10,6 +10,8 @@
 </head>
 <body>
 <header class="site">
+  {{if .Logo}}<img class="logo" src="{{.Logo}}" alt="" height="28">{{end}}
+  {{if .Org}}<span class="org">{{.Org}}</span>{{end}}
   <a class="space" href="{{.Home}}">{{.Space}}</a>
   <span class="key">{{.Key}}</span>
 </header>
@@ -27,6 +29,7 @@
   </main>
 </div>
 <footer class="site">
+  {{if .BrandFooter}}<p class="brand-footer">{{.BrandFooter}}</p>{{end}}
   {{if .Published}}<p>Last published on {{.Published}}.</p>{{end}}
   <p>Exported from Stator on {{.Exported}}{{if .Exporter}} by {{.Exporter}}{{end}}. {{if not .IsHome}}<a href="{{.Home}}#contents">All pages</a>{{end}}</p>
 </footer>

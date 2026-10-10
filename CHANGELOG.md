@@ -17,7 +17,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
   in the reader's language, in its footer; a Word document has them in its header and footer, with the
   page number, and its headings and links take the colour of the
   organization's default theme. Public pages and public links carry them too.
-  Offline copies of a space follow.
+  An offline HTML copy of a space shows the logo and the organization's name
+  over every page, the footer line under it, and the default theme's accent in
+  its style sheet, light and dark.
 - A task's link opens the page at that task (#322). From My tasks, a task
   report and the notification for an assignment or a due day, the page scrolls
   to the task, opens the expand block around it, marks it for a moment and

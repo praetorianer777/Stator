@@ -36,6 +36,8 @@ type snapshot struct {
 	files  int
 	// keys are the stored objects of the files, by file.
 	keys map[uuid.UUID]string
+	// brand is the organization's, read for the HTML export alone.
+	brand *htmlBrand
 }
 
 // ref is how the archive names a person: their id, when they are one of
