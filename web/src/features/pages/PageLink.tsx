@@ -8,6 +8,7 @@ export function PageLink({
   id,
   title,
   home = false,
+  hash,
   className,
   tabIndex,
   onClick,
@@ -17,6 +18,8 @@ export function PageLink({
   id: string;
   title: string;
   home?: boolean;
+  /** The fragment to open the page at, such as a task's anchor. */
+  hash?: string;
   className?: string;
   tabIndex?: number;
   /** Called when the link is followed, such as to close the drawer it sits in. */
@@ -34,6 +37,7 @@ export function PageLink({
     <Link
       to="/s/$spaceKey/p/$pageId/$slug"
       params={{ spaceKey, pageId: id, slug: pageSlug(title) }}
+      hash={hash}
       className={className}
       tabIndex={tabIndex}
       onClick={onClick}

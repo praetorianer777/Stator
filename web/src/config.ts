@@ -124,6 +124,9 @@ export const MENTION_SEARCH_DEBOUNCE_MS = 150;
 export const FIND_SHORTCUT = "Control+F";
 /** How long "Link copied" stays after copying a heading's link. */
 export const COPY_FEEDBACK_MS = 2000;
+
+/** How long a task keeps the mark that shows the eye where a link led. */
+export const TASK_FLASH_MS = 2500;
 /** The deepest heading a new table of contents lists: all of them. */
 export const TOC_DEFAULT_MAX_LEVEL = EDITOR_HEADING_LEVELS[EDITOR_HEADING_LEVELS.length - 1];
 /** The most levels a child pages block may name, matching the API's MaxChildPagesDepth. */
