@@ -1,9 +1,11 @@
 // biome-ignore-all lint/suspicious/noArrayIndexKey: a node has no identity but its place, and a read-only view never reorders them
-import { Fragment, createContext, createElement, useContext, useEffect, useMemo, useRef, type MouseEvent, type ReactNode } from "react";
+import { Fragment, createContext, createElement, useContext, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import type { Element as HastElement, ElementContent, Root } from "hast";
 import { IconButton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
+import { TASK_FLASH_MS } from "@/config";
+import { isTaskAnchor, taskAnchor } from "@/features/tasks/taskAnchor";
 import { DocAttachment, DocGallery, DocImage } from "./AttachmentView";
 import { GALLERY_NODE } from "@/features/gallery/gallery";
 import { ChildPagesList, DocPageContext, TocList, childPagesSummary, tocSummary } from "./BlockViews";
@@ -87,12 +89,19 @@ export function DocView({
   const keys = useMemo(() => (reading ? [] : issueKeysOf(doc)), [doc, reading]);
   const root = useRef<HTMLDivElement>(null);
   const shown = Boolean(doc);
+  const [taskGone, setTaskGone] = useState(false);
   // The browser scrolled to the address's heading before the page was drawn,
-  // and cannot reach one inside a closed expand block at all.
+  // and cannot reach one inside a closed expand block at all. A task is only
+  // drawn once the page has loaded, so it is always scrolled to here.
   useEffect(() => {
     if (!shown || !anchors) return;
     const anchor = anchorOfLocation();
-    const target = anchor ? root.current?.querySelector(`[id="${CSS.escape(anchor)}"]`) : null;
+    const target = anchor ? root.current?.querySelector<HTMLElement>(`[id="${CSS.escape(anchor)}"]`) : null;
+    if (anchor && isTaskAnchor(anchor)) {
+      setTaskGone(!target);
+      if (target) showTask(target);
+      return;
+    }
     if (target && revealInExpands(target)) target.scrollIntoView?.({ block: "start" });
   }, [shown, anchors]);
   if (!doc) return null;
@@ -108,6 +117,11 @@ export function DocView({
         </HeadingsContext>
       </IncludeChain>
       {status}
+      {taskGone && (
+        <p role="status" className="mt-3 text-sm text-ink-muted" data-task-gone>
+          {t.tasks.gone}
+        </p>
+      )}
     </div>
   );
 }
@@ -152,6 +166,22 @@ function followHeading(anchor: string, event: MouseEvent<HTMLAnchorElement>) {
   revealInExpands(target);
   target.scrollIntoView?.({ block: "start" });
   window.history.replaceState(window.history.state, "", `#${encodeURIComponent(anchor)}`);
+}
+
+// A link to a task leads to its line: opened if it sat in a closed expand,
+// scrolled to, marked for a moment and given the keyboard's focus.
+// The expand opens in a render of its own, so what is shown there cannot be
+// scrolled to or focused until the frame after it.
+function showTask(target: HTMLElement) {
+  revealInExpands(target);
+  target.setAttribute("data-task-flash", "");
+  window.setTimeout(() => target.removeAttribute("data-task-flash"), TASK_FLASH_MS);
+  const arrive = () => {
+    target.scrollIntoView?.({ block: "start" });
+    target.focus({ preventScroll: true });
+  };
+  arrive();
+  window.requestAnimationFrame(arrive);
 }
 
 function DocToc({ node }: { node: DocNode }) {
@@ -526,7 +556,12 @@ function TaskLine({ item, copy, path }: { item: DocNode; copy: Copy; path: Block
     .join(" ")
     .trim();
   return (
-    <li data-checked={task.done} data-task-id={task.id ?? undefined}>
+    <li
+      id={copy && task.id ? taskAnchor(task.id) : undefined}
+      tabIndex={copy && task.id ? -1 : undefined}
+      data-checked={task.done}
+      data-task-id={task.id ?? undefined}
+    >
       <input
         type="checkbox"
         checked={task.done}

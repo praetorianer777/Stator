@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTaskReport, type Task } from "@/api/tasks";
 import { PageLink } from "@/features/pages/PageLink";
+import { taskAnchor } from "@/features/tasks/taskAnchor";
 import { DueChip } from "@/features/tasks/DueChip";
 import { TaskCheck } from "@/features/tasks/MyTasks";
 import { t } from "@/i18n";
@@ -21,7 +22,7 @@ function ReportRow({ task, inEditor }: { task: Task; inEditor: boolean }) {
           {inEditor ? (
             <span>{task.page.title}</span>
           ) : (
-            <PageLink spaceKey={task.page.spaceKey} id={task.page.id} title={task.page.title} className="hover:underline" />
+            <PageLink spaceKey={task.page.spaceKey} id={task.page.id} title={task.page.title} hash={taskAnchor(task.id)} className="hover:underline" />
           )}
           <span>{task.page.spaceName}</span>
           <span>{task.assigneeName || r.nobody}</span>

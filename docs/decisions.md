@@ -36,6 +36,27 @@ store and once for the api, and a check that the two agree.
   repository, or synced by Argo CD behind a proxy, needs no access to the chart
   repository. `make helm-deps` refreshes both after a change to `Chart.yaml`.
 
+## 2026-10-10: A task's link is a fragment of its page's address (#322)
+
+A task's links led to the top of a long page. The read view already marked
+each task with its id.
+
+- **The address names the task.** `#task-<id>` on the page's own address, so a
+  link survives being copied and needs no new route. The page's own line takes
+  the id; an included copy takes no anchors, so it cannot be chosen over the
+  page's own, as for headings.
+- **Notifications carry the task.** A notification gets a `task_id` column,
+  set for an assignment and a reminder, and the mail ends in the same
+  fragment. The column has no key: the task is a node of a document that
+  changes. Tasks in the API carry a `path` for tools that cannot build one.
+- **Found only after the page has drawn.** The browser cannot scroll to a
+  line that is not there yet, so the view does it once the document is drawn:
+  it opens the expand blocks around the line, scrolls it below the header,
+  moves focus to it and marks it for a moment. The mark is a colour, not a
+  movement, so reduced motion needs nothing more.
+- **A task that is gone says so.** The page opens at its top with a note,
+  rather than silently ignoring the fragment.
+
 ## 2026-10-09: The logo is a resized picture and the icons are a crop of it (#342)
 
 Stator had neither a logo nor a favicon. The picture given is a detailed
