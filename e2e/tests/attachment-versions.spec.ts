@@ -95,6 +95,7 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
     const { key, page: wiki } = await aPage(api, testInfo);
     const path = `/s/${key}/p/${wiki.id}/budget`;
     await page.goto(path);
+    await expect(panel(page)).toContainText("Nothing attached yet.");
     const input = panel(page).locator("[data-attachment-input]");
     await input.setInputFiles(csv("one\n"));
     await expect(row(page, "budget.csv")).toHaveAttribute("data-version", "1");

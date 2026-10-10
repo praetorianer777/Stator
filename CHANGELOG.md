@@ -1057,6 +1057,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Saving an annotated picture shows at once that it is saving, and a second
+  click no longer starts a second save while the browser is still encoding the
+  picture (#359). The dialog closes when the version is saved, not when the
+  list of files has been read again.
 - The list of people in a page's Check access dialog shows whole, as tall as
   it needs, instead of a few rows cut off by a scrolling dialog (#337). A press
   that begins inside any dialog and ends outside it, because the dialog shrank,

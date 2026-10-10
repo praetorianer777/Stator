@@ -10,6 +10,8 @@ import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } fr
 
 const PICTURE_WIDTH = 800;
 const PICTURE_HEIGHT = 600;
+// The browser encodes the picture off the main thread, which takes seconds when a loaded host starves it (#359).
+const SAVED = { timeout: 20_000 } as const;
 const PICTURE_COLOUR: [number, number, number] = [30, 90, 160];
 
 const dialog = (page: Page) => page.getByRole("dialog", { name: "Annotate screen.png" });
@@ -120,7 +122,7 @@ test.describe("image annotation", { tag: ["@auth"] }, () => {
     await expectAccessible(page);
 
     await dialog(page).getByRole("button", { name: "Save as new version" }).click();
-    await expect(dialog(page)).toHaveCount(0);
+    await expect(dialog(page)).toHaveCount(0, SAVED);
 
     let edited = "";
     await expect(async () => {
@@ -164,7 +166,7 @@ test.describe("image annotation", { tag: ["@auth"] }, () => {
     await expect(canvas(page)).toHaveAttribute("data-shapes", "1");
     await expect(dialog(page).locator("[data-annotate-status]")).toHaveText("Box selected.");
     await dialog(page).getByRole("button", { name: "Save as new version" }).click();
-    await expect(dialog(page)).toHaveCount(0);
+    await expect(dialog(page)).toHaveCount(0, SAVED);
     await expect(page.locator("[data-attachment-notice]")).toHaveText("Saved the edited screen.png as version 2.");
     await expect(row).toHaveAttribute("data-version", "2");
     await expect(page.locator(`[data-doc] figure[data-image][data-attachment-id="${shot}"]`)).toBeVisible();
