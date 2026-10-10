@@ -13,6 +13,7 @@ import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
 import { notificationSettingsRoute, watchingRoute } from "./notifications";
 import { homeRoute, personalHomeRoute } from "./pages";
+import { brandSettingsRoute } from "./brand";
 import { hubSettingsRoute } from "./hub";
 import { pageEditRoute } from "./page-edit";
 import { orgPermissionsRoute } from "./permissions";
@@ -73,6 +74,7 @@ const routeTree = rootRoute.addChildren([
     ssoRoute,
     orgPermissionsRoute,
     hubSettingsRoute,
+    brandSettingsRoute,
     exampleSpaceRoute,
     armatureSettingsRoute,
     auditRoute,

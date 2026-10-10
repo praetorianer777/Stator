@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/collab"
 	"github.com/praetorianer777/stator/backend/internal/comment"
@@ -202,6 +203,7 @@ func run() error {
 		Guests:            guest.NewService(cluster),
 		Public:            public.NewService(cluster),
 		Hub:               hub.NewService(cluster),
+		Brand:             brand.NewService(cluster, store),
 		Unfurl:            unfurlService(cfg, valkey, log),
 		Home:              home.NewService(cluster),
 		Stale:             stale.NewService(cluster),

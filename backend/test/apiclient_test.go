@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
@@ -118,7 +119,7 @@ func newAPIServer(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *ap
 	server := &httpapi.Server{
 		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
-		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Tasks: task.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Calendars: calendar.NewService(h.cluster), Guests: guest.NewService(h.cluster), Public: public.NewService(h.cluster), Hub: hub.NewService(h.cluster), Templates: template.NewService(h.cluster), ExampleJobs: example.NewJobs(h.cluster), Word: wordio.NewService(h.cluster, pages, a.attachments, store), SpaceTransfers: spaceio.NewJobs(h.cluster, h.appStore(t)),
+		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Tasks: task.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Calendars: calendar.NewService(h.cluster), Guests: guest.NewService(h.cluster), Public: public.NewService(h.cluster), Hub: hub.NewService(h.cluster), Brand: brand.NewService(h.cluster, store), Templates: template.NewService(h.cluster), ExampleJobs: example.NewJobs(h.cluster), Word: wordio.NewService(h.cluster, pages, a.attachments, store), SpaceTransfers: spaceio.NewJobs(h.cluster, h.appStore(t)),
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),
 		Audit: audit.NewService(h.cluster), AuditRetention: config.DefaultRetainAudit, Webhooks: h.webhooks(t),
 		PageViews: pageview.NewService(h.cluster), PageViewRetention: config.DefaultRetainPageViews,
@@ -294,6 +295,11 @@ func (c *client) delete(t *testing.T, path string) response {
 // upload sends a file as a multipart part named file, the way the web does.
 func (c *client) upload(t *testing.T, path, name string, data []byte) response {
 	t.Helper()
+	return c.uploadWith(t, http.MethodPost, path, name, data)
+}
+
+func (c *client) uploadWith(t *testing.T, method, path, name string, data []byte) response {
+	t.Helper()
 	var body bytes.Buffer
 	form := multipart.NewWriter(&body)
 	part, err := form.CreateFormFile("file", name)
@@ -302,7 +308,7 @@ func (c *client) upload(t *testing.T, path, name string, data []byte) response {
 	}
 	_, _ = part.Write(data)
 	_ = form.Close()
-	return c.send(t, http.MethodPost, path, form.FormDataContentType(), &body)
+	return c.send(t, method, path, form.FormDataContentType(), &body)
 }
 
 // download fetches a file and keeps the headers, which say how it is served.

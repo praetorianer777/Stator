@@ -9,6 +9,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Administrators set the logo and the footer line of the organization's
+  exports (#321). Under Export brand in the account menu they upload a PNG,
+  JPEG or WebP logo and write a footer line in English and German; the
+  sidebar shows the logo in place of the gopher's face. Exports will carry it
+  in the next changes.
 - A task's link opens the page at that task (#322). From My tasks, a task
   report and the notification for an assignment or a due day, the page scrolls
   to the task, opens the expand block around it, marks it for a moment and
