@@ -414,6 +414,9 @@ func TestTheDatabaseKeepsTheExampleTheAdministrators(t *testing.T) {
 	refused(t, conn, "a second example", insert, uuid.New(), home.org, "SECOND", home.user)
 	refused(t, conn, "unmarking the example", `UPDATE space SET example = false WHERE org_id = $1 AND example`, home.org)
 
+	// The example was made through SQL, which pins no read to it, so the replica
+	// the API reads from must have it before the API is asked.
+	h.settle(t)
 	var found map[string]any
 	got := want(t, owner.get(t, "/api/v1/example-space"), http.StatusOK, "look for the example")
 	if err := json.Unmarshal(got.Raw, &found); err != nil {
