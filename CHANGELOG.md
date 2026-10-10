@@ -9,6 +9,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The chart can bring an S3 store along (#341). `seaweedfs.enabled` installs
+  SeaweedFS from the project's own chart and points Stator at it: the
+  endpoint, the keys and the TLS setting are filled in, and the access keys are
+  made once by the secrets Job and read from the same Secret by both
+  SeaweedFS and the api, so nothing is copied between two places. An S3 of
+  one's own is configured as before. `make helm-deps` refreshes the
+  subchart archive, which is committed.
 - Stator has a logo and a favicon (#342). The sign-in page shows the logo, the
   sidebar shows the gopher's face beside the name, and the browser tab, touch
   icon and web app manifest use the same face, which still reads at 16 pixels.

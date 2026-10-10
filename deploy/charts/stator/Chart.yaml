@@ -7,6 +7,17 @@ appVersion: "0.1.0"
 home: https://github.com/praetorianer777/Stator
 sources:
   - https://github.com/praetorianer777/Stator
-# No subcharts. Postgres and Valkey for a trial are two StatefulSets in
-# templates/, on the images the compose stack runs; a real deployment brings
+# Postgres and Valkey for a trial are two StatefulSets in templates/, on the
+# images the compose stack runs. An S3 store for a trial is SeaweedFS from the
+# project's own chart, off unless seaweedfs.enabled: a real deployment brings
 # its own database, Valkey and bucket.
+#
+# The archive in charts/ is committed, which Armature's chart does not do: the
+# chart tests then need no network, and a chart copied into another
+# repository (or synced by Argo CD from one) needs no access to the chart
+# repository either. `make helm-deps` refreshes it, and Chart.lock with it.
+dependencies:
+  - name: seaweedfs
+    version: 4.46.0
+    repository: https://seaweedfs.github.io/seaweedfs/helm
+    condition: seaweedfs.enabled
