@@ -3,6 +3,39 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-10: The chart brings SeaweedFS as a subchart whose keys the secrets Job makes (#341)
+
+Uploads need an S3 store, and a trial install had none: the operator set one up
+by hand and copied its keys into the chart. Armature's chart installs
+SeaweedFS as an optional subchart, with the keys written twice, once for the
+store and once for the api, and a check that the two agree.
+
+- **The same subchart, off by default.** `seaweedfs.enabled` installs the
+  project's own SeaweedFS chart at a pinned version, one master, one volume
+  server and one filer, which is a trial store and not a replicated one. An S3
+  of one's own is configured under `s3` as before, and the compose stack keeps
+  its own container.
+- **The keys are made, not copied.** The secrets Job makes two Secrets once,
+  as it does the database passwords: `stator-s3` for the admin identity and
+  `stator-s3-read` for the read identity SeaweedFS wants beside it. The
+  subchart reads its identities from them through environment variables
+  (its `existingSecret` option, which looks nothing up at render time, so a
+  dry run renders what an install applies), and the api and worker read the
+  same keys. Nothing is in a values file, and a render never invents a pair
+  that would change on every sync under Argo CD.
+- **Literal names, checked.** A subchart cannot template its values from the
+  parent, so its Secret names are literals in `values.yaml`, and the chart
+  refuses `secrets.names.s3` or `s3Read` that disagree with them, or keys read
+  from anywhere but `username` and `password`, in a sentence that says what
+  every upload would do otherwise.
+- **No bucket Job.** The api makes its bucket on start, as it does against any
+  S3, so the bundled store needs nothing more than its keys.
+- **The archive is committed.** Armature ignores `charts/` and builds it
+  before use; here the 72 KB archive and `Chart.lock` are in the repository.
+  The chart tests then need no network, and a chart copied into another
+  repository, or synced by Argo CD behind a proxy, needs no access to the chart
+  repository. `make helm-deps` refreshes both after a change to `Chart.yaml`.
+
 ## 2026-10-09: The logo is a resized picture and the icons are a crop of it (#342)
 
 Stator had neither a logo nor a favicon. The picture given is a detailed
