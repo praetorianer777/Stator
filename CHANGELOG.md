@@ -9,6 +9,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The Helm chart is installed and upgraded in a throwaway kind cluster (#331).
+  `make test-chart-install` checks the Jobs, the generated secrets, the first
+  administrator's sign-in and a rolling upgrade; a workflow runs it when the
+  chart or the migrations change.
 - Stator has a logo and a favicon (#342). The sign-in page shows the logo, the
   sidebar shows the gopher's face beside the name, and the browser tab, touch
   icon and web app manifest use the same face, which still reads at 16 pixels.

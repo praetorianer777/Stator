@@ -1,0 +1,44 @@
+# The values the chart install test installs with: a trial release that brings
+# its own Postgres, Valkey and S3 store, with the first organization and
+# administrator made by the bootstrap Job. The images are the ones the test
+# builds from this checkout and loads into the cluster.
+env: development
+
+ingress:
+  enabled: false
+
+# development is the one setting where this may be false, which a port-forward
+# over plain HTTP needs.
+auth:
+  secureCookies: false
+
+api:
+  replicas: 1
+web:
+  replicas: 1
+
+database:
+  sslmode: disable
+  ownerRole: postgres
+
+postgresql:
+  enabled: true
+valkey:
+  bundled: true
+seaweedfs:
+  enabled: true
+
+render:
+  enabled: false
+
+jobs:
+  bootstrap:
+    enabled: true
+bootstrap:
+  org: { slug: trial, name: Trial }
+  admin: { email: admin@chart-test.example }
+
+images:
+  pullPolicy: IfNotPresent
+  backend: { repository: stator-test/backend, tag: ci }
+  web: { repository: stator-test/web, tag: ci }

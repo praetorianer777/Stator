@@ -3,6 +3,26 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-10: The chart is installed in a real cluster by its own workflow (#331)
+
+A render proves that the templates produce valid YAML; it cannot show that the
+Jobs run in their order, that the secrets exist when a Pod wants them, or that
+an upgrade rolls the api without a failed health check.
+
+- **kind, driven by a container.** `make test-chart-install` builds the backend
+  and web images from the checkout, loads them into a one-node kind cluster,
+  installs the chart with bundled Postgres, Valkey and SeaweedFS, signs in as
+  the bootstrap administrator through the web Service, then upgrades with two
+  api replicas. kind, helm and kubectl are pinned in `scripts/kind`, so a
+  machine needs only Docker.
+- **Not in `./run-tests.sh`.** It takes several minutes and starts about a
+  dozen Pods, so it would slow every push for a change that rarely touches the
+  chart. A separate workflow runs it when `deploy/`, the migrations or the
+  seed command change.
+- **Needs a host kernel with netfilter modules.** kube-proxy fails on a kernel
+  whose `xt_mark` cannot load, as after an upgrade that has not been rebooted
+  into; the script says so before it starts.
+
 ## 2026-10-09: The logo is a resized picture and the icons are a crop of it (#342)
 
 Stator had neither a logo nor a favicon. The picture given is a detailed
