@@ -12,8 +12,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - Administrators set the logo and the footer line of the organization's
   exports (#321). Under Export brand in the account menu they upload a PNG,
   JPEG or WebP logo and write a footer line in English and German; the
-  sidebar shows the logo in place of the gopher's face. Exports will carry it
-  in the next changes.
+  sidebar shows the logo in place of the gopher's face. A PDF prints the logo
+  beside the organization's name in its running header and the footer line,
+  in the reader's language, in its footer; public pages and public links carry
+  them too, and the colours are the organization's default theme's. Word and
+  offline copies follow.
 - A task's link opens the page at that task (#322). From My tasks, a task
   report and the notification for an assignment or a due day, the page scrolls
   to the task, opens the expand block around it, marks it for a moment and

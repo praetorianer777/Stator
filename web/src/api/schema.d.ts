@@ -2155,6 +2155,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/public/{orgSlug}/links/{token}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's logo, for the page a public link opens. */
+        get: operations["linkedLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/public/{orgSlug}/links/{token}/pdf": {
         parameters: {
             query?: never;
@@ -2164,6 +2181,23 @@ export interface paths {
         };
         /** The page a public link opens as a PDF, for whoever holds the link, printed as the link shows it. Not found, as link_gone, when the link no longer opens the page; never cached; otherwise refused as GET /public/{orgSlug}/pages/{pageID}/pdf refuses. */
         get: operations["linkedPagePDF"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/{orgSlug}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's logo, which the site's logoVersion says is there. */
+        get: operations["publicLogo"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4753,7 +4787,9 @@ export interface components {
             title: string;
         };
         PublicSite: {
+            footer: components["schemas"]["Footer"];
             indexable: boolean;
+            logoVersion: number | null;
             name: string;
             slug: string;
         };
@@ -12144,6 +12180,47 @@ export interface operations {
             };
         };
     };
+    linkedLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     linkedPagePDF: {
         parameters: {
             query?: never;
@@ -12221,6 +12298,46 @@ export interface operations {
             };
             /** @description Gateway Timeout */
             504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publicLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

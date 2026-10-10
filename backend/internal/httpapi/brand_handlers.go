@@ -103,3 +103,9 @@ func (s *Server) handleBrandLogo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, body)
 }
+
+// The logo of an open site, and of the site a public link names, are the same
+// picture as a member reads; the site is already in the context.
+func (s *Server) handlePublicLogo(w http.ResponseWriter, r *http.Request) { s.handleBrandLogo(w, r) }
+
+func (s *Server) handleLinkedLogo(w http.ResponseWriter, r *http.Request) { s.handleBrandLogo(w, r) }

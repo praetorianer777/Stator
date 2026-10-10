@@ -26,6 +26,15 @@ the Word file and the space's HTML copy.
 - **Administrators only, in the database too.** A trigger refuses an insert,
   update or delete by the application role for anybody who is not an
   administrator, as for the hub. The change is audited as `org.brand_set`.
+- **The PDF draws the brand in the running header and footer.** The printed
+  view states the brand in the meta the render service reads, as the logo
+  scaled to a small PNG data address (a margin is drawn outside the page,
+  where the browser loads no address) and the footer line in the reader's
+  language. The service takes only a PNG data address for the logo. A public
+  site and a public link carry the footer and the logo's version in the site
+  they already return, and serve the picture from a route of their own, so an
+  anonymous print needs nothing more; a logo that cannot be fetched is left
+  out and the sheet prints with the name.
 - **Every member reads it.** The sidebar shows the logo in place of the
   gopher's face, and an export made for a member or through a public link
   needs it without asking who may see it.

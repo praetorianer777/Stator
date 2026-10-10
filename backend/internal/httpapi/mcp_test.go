@@ -117,6 +117,8 @@ var notTools = map[string]string{
 	"GET /public/{orgSlug}/pages/{pageID}/docx":        whyPublic,
 	"GET /public/{orgSlug}/links/{token}/docx":         whyPublic,
 	"GET /public/{orgSlug}/attachments/{attachmentID}": whyPublic,
+	"GET /public/{orgSlug}/logo":                       whyPublic,
+	"GET /public/{orgSlug}/links/{token}/logo":         whyPublic,
 	"GET /public/{orgSlug}/search":                     whyPublic,
 	"GET /public/{orgSlug}/links/{token}":              whyPublic,
 	"GET /public/{orgSlug}/links/{token}/attachments/{attachmentID}": whyPublic,
