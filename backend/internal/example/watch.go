@@ -37,12 +37,15 @@ var errLeaseLost = errors.New("another worker took over making the example space
 type claim struct {
 	id, org   uuid.UUID
 	slug      string
+	kind      Kind
 	requester Person
 	role      auth.OrgRole
 	language  string
 	attempts  int
 	// leftover is the space an attempt before this one made and left.
 	leftover *uuid.UUID
+	// target is the space a renewal renews, nil once it was deleted.
+	target *uuid.UUID
 }
 
 func (c *claim) actor() perm.Actor { return perm.Actor{UserID: c.requester.ID, Role: c.role} }
@@ -53,6 +56,8 @@ type outcome struct {
 	spaceID *uuid.UUID
 	failure Failure
 	written db.LSN
+	// report is a renewal's, which then records the version it renewed to.
+	report *Report
 }
 
 // jobStore is where jobs are claimed and finished, apart for the unit tests.
@@ -62,11 +67,16 @@ type jobStore interface {
 	finish(ctx context.Context, c *claim, o outcome) error
 	// discard deletes a half made example as the worker.
 	discard(ctx context.Context, spaceID uuid.UUID) error
+	// track keeps a page the example wrote, and edition reads what a
+	// renewal starts from.
+	track(ctx context.Context, c *claim, spaceID uuid.UUID, t Tracked) error
+	edition(ctx context.Context, spaceID uuid.UUID) (*Edition, []Tracked, error)
 }
 
 // making is the Maker as the watch drives it, apart for the unit tests.
 type making interface {
-	make(ctx context.Context, c *claim, started func(context.Context, *space.Space) error) (*space.Space, db.LSN, error)
+	make(ctx context.Context, c *claim, started func(context.Context, *space.Space) error, wrote func(context.Context, Tracked) error) (*space.Space, db.LSN, error)
+	renew(ctx context.Context, c *claim, in Renewal, wrote func(context.Context, Tracked) error) (*Report, db.LSN, error)
 	discard(ctx context.Context, actor perm.Actor, id uuid.UUID) error
 }
 
@@ -134,13 +144,18 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 	case c.attempts > MaxAttempts:
 		return w.store.finish(ctx, c, outcome{state: StateFailed, failure: FailureFailed})
 	}
-	began := time.Now()
 	run, cancel := context.WithTimeout(org, RunLimit)
 	defer cancel()
+	if c.kind == KindRenew {
+		return w.renew(ctx, run, c)
+	}
+	began := time.Now()
 	var begun uuid.UUID
 	made, written, err := w.maker.make(run, c, func(ctx context.Context, sp *space.Space) error {
 		begun = sp.ID
 		return w.store.started(ctx, c, sp.ID)
+	}, func(ctx context.Context, t Tracked) error {
+		return w.store.track(ctx, c, begun, t)
 	})
 	settle := context.WithoutCancel(ctx)
 	if errors.Is(err, ErrNotDiscarded) {
@@ -167,6 +182,38 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 	return w.store.finish(settle, c, outcome{state: StateFailed, failure: failure})
 }
 
+// renew renews the example space the job names. What it renewed before it
+// failed stays: each page is a person's publish, and the next renewal finds
+// the pages it wrote unchanged.
+func (w *Watch) renew(ctx, run context.Context, c *claim) error {
+	settle := context.WithoutCancel(ctx)
+	if c.target == nil {
+		return w.store.finish(settle, c, outcome{state: StateFailed, failure: FailureGone})
+	}
+	began := time.Now()
+	e, tracked, err := w.store.edition(run, *c.target)
+	var (
+		report  *Report
+		written db.LSN
+	)
+	if err == nil {
+		report, written, err = w.maker.renew(run, c, Renewal{Space: *c.target, From: e.Version, Was: e.Language, Lang: c.language, Pages: tracked},
+			func(ctx context.Context, t Tracked) error { return w.store.track(ctx, c, *c.target, t) })
+	}
+	switch {
+	case err == nil:
+		w.log.Info("example space renewed", "org", c.org, "job", c.id, "from", e.Version, "to", Current(), "took", time.Since(began).Round(time.Millisecond))
+		return w.store.finish(settle, c, outcome{state: StateDone, spaceID: c.target, written: written, report: report})
+	case errors.Is(err, errLeaseLost):
+		return err
+	case ctx.Err() != nil:
+		return w.store.finish(settle, c, outcome{state: StateQueued, spaceID: c.target})
+	}
+	failure := FailureOf(err)
+	w.log.Warn("the example space was not renewed", "org", c.org, "job", c.id, "failure", failure, "error", err)
+	return w.store.finish(settle, c, outcome{state: StateFailed, spaceID: c.target, failure: failure})
+}
+
 // discard deletes a half made space as the requester, else, when they may
 // no longer, as the worker, which made it on their behalf.
 func (w *Watch) discard(ctx context.Context, c *claim, id uuid.UUID) error {
@@ -184,11 +231,17 @@ func (w *Watch) discard(ctx context.Context, c *claim, id uuid.UUID) error {
 // makerOf drives a Maker for one claimed job.
 type makerOf struct{ m *Maker }
 
-func (m makerOf) make(ctx context.Context, c *claim, started func(context.Context, *space.Space) error) (*space.Space, db.LSN, error) {
+func (m makerOf) make(ctx context.Context, c *claim, started func(context.Context, *space.Space) error, wrote func(context.Context, Tracked) error) (*space.Space, db.LSN, error) {
 	one := *m.m
-	one.Started = started
+	one.Started, one.Wrote = started, wrote
 	made, _, written, err := one.Make(ctx, c.actor(), c.requester, c.language)
 	return made, written, err
+}
+
+func (m makerOf) renew(ctx context.Context, c *claim, in Renewal, wrote func(context.Context, Tracked) error) (*Report, db.LSN, error) {
+	one := *m.m
+	one.Wrote = wrote
+	return one.Renew(ctx, c.actor(), c.requester, in)
 }
 
 func (m makerOf) discard(ctx context.Context, actor perm.Actor, id uuid.UUID) error {
@@ -205,6 +258,8 @@ func (s *dbStore) claim(ctx context.Context) (*claim, error) {
 		var (
 			out  claim
 			role string
+			kind string
+			on   *uuid.UUID
 		)
 		// Materialized, so the pick runs once: joined as a subquery, it was
 		// scanned again for the update and, skipping the row it had just
@@ -222,15 +277,20 @@ func (s *dbStore) claim(ctx context.Context) (*claim, error) {
 			RETURNING j.id, j.org_id, (SELECT slug FROM org WHERE id = j.org_id), j.requested_by,
 			          (SELECT name FROM app_user WHERE id = j.requested_by),
 			          COALESCE((SELECT org_role FROM org_member m WHERE m.org_id = j.org_id AND m.user_id = j.requested_by), ''),
-			          j.language, j.attempts, j.space_id`, Lease.Seconds()).
-			Scan(&out.id, &out.org, &out.slug, &out.requester.ID, &out.requester.Name, &role, &out.language, &out.attempts, &out.leftover)
+			          j.language, j.attempts, j.space_id, j.kind`, Lease.Seconds()).
+			Scan(&out.id, &out.org, &out.slug, &out.requester.ID, &out.requester.Name, &role, &out.language, &out.attempts, &on, &kind)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		out.role = auth.OrgRole(role)
+		out.role, out.kind = auth.OrgRole(role), Kind(kind)
+		if out.kind == KindRenew {
+			out.target = on
+		} else {
+			out.leftover = on
+		}
 		c = &out
 		return nil
 	})
@@ -268,18 +328,68 @@ func (s *dbStore) finish(ctx context.Context, c *claim, o outcome) error {
 		written = &text
 	}
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `
+		tag, err := tx.Exec(ctx, `
 			UPDATE example_job
-			SET state = $3, space_id = $4, failure = $5, written_lsn = $6::pg_lsn, lease_until = NULL,
+			SET state = $3, space_id = $4, failure = $5, written_lsn = $6::pg_lsn, lease_until = NULL, report = $7,
 			    finished_at = CASE WHEN $3 IN ('done', 'failed') THEN now() END
 			WHERE id = $1 AND state = 'running' AND attempts = $2`,
-			c.id, c.attempts, string(o.state), o.spaceID, failure, written)
+			c.id, c.attempts, string(o.state), o.spaceID, failure, written, o.report)
 		if err != nil {
-			return fmt.Errorf("record how making the example space ended: %w", err)
+			return fmt.Errorf("record how the example space job ended: %w", err)
+		}
+		if tag.RowsAffected() == 0 || o.report == nil || o.spaceID == nil {
+			return nil
+		}
+		if _, err := tx.Exec(ctx, `
+			UPDATE space SET example_version = $2, example_language = $3 WHERE id = $1 AND example`,
+			*o.spaceID, Current(), c.language); err != nil {
+			return fmt.Errorf("record the version the example space was renewed to: %w", err)
 		}
 		return nil
 	})
 	return err
+}
+
+func (s *dbStore) track(ctx context.Context, c *claim, spaceID uuid.UUID, t Tracked) error {
+	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO example_page (space_id, name, org_id, page_id, version, title)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT (space_id, name) DO UPDATE
+			SET page_id = EXCLUDED.page_id, version = EXCLUDED.version, title = EXCLUDED.title`,
+			spaceID, t.Name, c.org, t.PageID, t.Version, t.Title)
+		return err
+	})
+	return err
+}
+
+func (s *dbStore) edition(ctx context.Context, spaceID uuid.UUID) (*Edition, []Tracked, error) {
+	var (
+		e       = Edition{SpaceID: spaceID}
+		tracked []Tracked
+	)
+	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		err := tx.QueryRow(ctx, `SELECT example_version, example_language FROM space WHERE id = $1 AND example`, spaceID).Scan(&e.Version, &e.Language)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrGone
+		}
+		if err != nil {
+			return err
+		}
+		rows, err := tx.Query(ctx, `SELECT name, page_id, version, title FROM example_page WHERE space_id = $1 AND page_id IS NOT NULL`, spaceID)
+		if err != nil {
+			return err
+		}
+		tracked, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Tracked, error) {
+			var t Tracked
+			return t, row.Scan(&t.Name, &t.PageID, &t.Version, &t.Title)
+		})
+		return err
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &e, tracked, nil
 }
 
 func (s *dbStore) discard(ctx context.Context, spaceID uuid.UUID) error {

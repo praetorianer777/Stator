@@ -11,6 +11,7 @@ import { attachmentUrl } from "@/api/attachments";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ArchiveBanner, ArchivedMark } from "@/features/archive/ArchiveBanner";
+import { ExampleRenewal } from "@/features/spaces/ExampleSpace";
 import { ArmatureLinks } from "@/features/armature/ArmatureLinks";
 import { useSetReadAsk } from "@/api/reviews";
 import { ReadAskBanner, ReadByButton, ReadersDialog } from "@/features/reviews/ReadAsk";
@@ -401,6 +402,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       {archive.error && <ErrorBanner>{archive.error.message}</ErrorBanner>}
       {readAsk.error && <ErrorBanner>{readAsk.error.message}</ErrorBanner>}
       <ArchiveBanner page={page} space={space} />
+      {page.home && <ExampleRenewal spaceId={space.id} />}
       <ReviewBanner key={page.id} page={page} space={space} />
       {!folder && <ReadAskBanner page={page} />}
       {watchFailed && <ErrorBanner>{t.watch.failed}</ErrorBanner>}

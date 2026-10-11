@@ -27,8 +27,10 @@ type ExampleInput struct {
 	Description string
 	Home        json.RawMessage
 	Everyone    []perm.SpacePermission
-	// Language is the one its pages are written in, for the audit log.
+	// Language is the one its pages are written in, and Version the version
+	// of the content they are made from.
 	Language string
+	Version  int
 }
 
 // Example is the organization's example space, nil when there is none; only
@@ -88,8 +90,8 @@ func (s *Service) CreateExample(ctx context.Context, actor perm.Actor, in Exampl
 		}
 		id, home := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
 		_, err := tx.Exec(ctx, `
-			INSERT INTO space (id, org_id, key, name, description, created_by, example)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, true)`, id, key, name, description, actor.UserID)
+			INSERT INTO space (id, org_id, key, name, description, created_by, example, example_version, example_language)
+			VALUES ($1, current_org_id(), $2, $3, $4, $5, true, $6, $7)`, id, key, name, description, actor.UserID, in.Version, in.Language)
 		if constraint(err) == "space_one_example" {
 			return ErrExampleExists
 		}
@@ -131,6 +133,21 @@ func (s *Service) ExampleMade(ctx context.Context, actor perm.Actor, id uuid.UUI
 			return err
 		}
 		return record(ctx, tx, actor, audit.ActionExampleSpaceCreated, id, map[string]any{"key": made.Key, "name": made.Name, "language": language})
+	})
+}
+
+// ExampleRenewed records in the audit log that the example space was renewed
+// from one version of its content to another, in the language now its pages'.
+func (s *Service) ExampleRenewed(ctx context.Context, actor perm.Actor, id uuid.UUID, language string, from, to int) (db.LSN, error) {
+	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		renewed, err := Load(ctx, tx, actor, ByID, id)
+		if err != nil {
+			return err
+		}
+		if err := perm.Check(ctx, tx, actor, perm.CreateExampleSpace, uuid.Nil); err != nil {
+			return err
+		}
+		return record(ctx, tx, actor, audit.ActionExampleSpaceRenewed, id, map[string]any{"key": renewed.Key, "language": language, "from": from, "to": to})
 	})
 }
 
