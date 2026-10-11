@@ -7,6 +7,9 @@ import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spa
 import type { StatorApi } from "../fixtures/api";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 
+// More arrow presses than the page menu has items.
+const MENU_WALK_LIMIT = 40;
+
 /** A space with Plans, narrowed to alice alone, and Salaries below it, which bob cannot open. */
 async function restrictedPage(api: StatorApi, key: string, name: string): Promise<{ salaries: string }> {
   const space = await createSpace(api, key, name);
@@ -121,10 +124,13 @@ test.describe("checking access", { tag: ["@auth"] }, () => {
     await page.keyboard.press("Enter");
     const item = page.locator('[role="menu"] [data-action="inspect-access"]');
     await expect(page.getByRole("menu")).toBeVisible();
-    await expect(async () => {
-      if (!(await item.evaluate((el) => el === document.activeElement))) await page.keyboard.press("ArrowDown");
-      await expect(item).toBeFocused({ timeout: 200 });
-    }).toPass();
+    // The menu focuses its first item once it is placed; from there the
+    // arrows walk it, however many items the page offers before this one.
+    await expect(page.getByRole("menu").locator(":focus")).toHaveCount(1);
+    for (let step = 0; step < MENU_WALK_LIMIT && !(await item.evaluate((el) => el === document.activeElement)); step++) {
+      await page.keyboard.press("ArrowDown");
+    }
+    await expect(item).toBeFocused();
     await page.keyboard.press("Enter");
 
     const dialog = page.locator("[data-access-dialog]");
