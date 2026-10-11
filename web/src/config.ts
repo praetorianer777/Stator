@@ -124,6 +124,9 @@ export const MENTION_SEARCH_DEBOUNCE_MS = 150;
 export const FIND_SHORTCUT = "Control+F";
 /** How long "Link copied" stays after copying a heading's link. */
 export const COPY_FEEDBACK_MS = 2000;
+
+/** How long a task keeps the mark that shows the eye where a link led. */
+export const TASK_FLASH_MS = 2500;
 /** The deepest heading a new table of contents lists: all of them. */
 export const TOC_DEFAULT_MAX_LEVEL = EDITOR_HEADING_LEVELS[EDITOR_HEADING_LEVELS.length - 1];
 /** The most levels a child pages block may name, matching the API's MaxChildPagesDepth. */
@@ -132,6 +135,17 @@ export const CHILD_PAGES_MAX_DEPTH = 10;
 export const CHILD_PAGES_LIMIT = 500;
 /** How long the organization's hub stays fresh before it is asked for again; administrators change it rarely. */
 export const HUB_STALE_MS = 60_000;
+
+/** How long the organization's brand is believed before it is asked for again. */
+export const BRAND_STALE_MS = 60_000;
+
+/** The tallest the organization's logo is drawn in the sidebar header, and the most its footer line holds. */
+export const BRAND_LOGO_HEIGHT_PX = 24;
+
+/** The height the logo is scaled to for a printed header, in CSS pixels at twice the size it is drawn. */
+export const PRINT_LOGO_HEIGHT_PX = 64;
+export const BRAND_FOOTER_MAX_LENGTH = 200;
+export const BRAND_LOGO_MAX_BYTES = 2 * 1024 * 1024;
 /** The longest title an expand block takes, matching the API's MaxExpandTitleLength. */
 export const EXPAND_TITLE_MAX_LENGTH = 200;
 /** The narrowest and widest share of its row a column takes, in percent, matching the API's MinColumnShare and MaxColumnShare. */

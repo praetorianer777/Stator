@@ -244,9 +244,11 @@ func (s *Service) LinkSite(ctx context.Context, slug string) (*Site, error) {
 	var out Site
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT id, slug::text, name, anonymous_indexable FROM org
-			WHERE slug = $1 AND public_links AND archived_at IS NULL`, strings.ToLower(strings.TrimSpace(slug))).
-			Scan(&out.ID, &out.Slug, &out.Name, &out.Indexable)
+			SELECT o.id, o.slug::text, o.name, o.anonymous_indexable, COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''),
+			       CASE WHEN b.logo_type IS NOT NULL THEN b.logo_version END
+			FROM org o LEFT JOIN org_brand b ON b.org_id = o.id
+			WHERE o.slug = $1 AND o.public_links AND o.archived_at IS NULL`, strings.ToLower(strings.TrimSpace(slug))).
+			Scan(&out.ID, &out.Slug, &out.Name, &out.Indexable, &out.Footer.En, &out.Footer.De, &out.LogoVersion)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrLinkGone

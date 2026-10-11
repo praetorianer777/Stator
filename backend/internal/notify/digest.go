@@ -161,7 +161,7 @@ func (d *Digester) send(ctx context.Context, userID uuid.UUID) (bool, error) {
 		words := make([]mailed, len(items))
 		for i, n := range items {
 			words[i] = mailed{kind: n.Kind, actor: n.ActorName, title: n.Page.Title, spaceKey: n.Page.SpaceKey,
-				subject: Subject{PageID: n.Page.ID, ThreadID: n.ThreadID, CommentID: n.CommentID, Version: n.Version, Excerpt: n.Excerpt}}
+				subject: Subject{PageID: n.Page.ID, ThreadID: n.ThreadID, CommentID: n.CommentID, Version: n.Version, Excerpt: n.Excerpt, TaskID: n.TaskID}}
 		}
 		if d.mailer != nil {
 			if err := d.mailer.Send(ctx, bundle(to, d.appURL, words)); err != nil {

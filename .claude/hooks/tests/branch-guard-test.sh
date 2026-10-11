@@ -285,6 +285,58 @@ check allow Bash  "$G $C -m x" "$OTHER"
 
 git -C "$W2/r" worktree remove --force "$WT" >/dev/null 2>&1
 
+# ── Which layers a push runs (#350) ──────────────────────
+echo "== the layers follow the files a push changes"
+LAYERS="$SRC/.claude/hooks/gate-layers.sh"
+layers_for() { # mode files...
+  local mode="$1"; shift
+  printf '%s\n' "$@" | "$LAYERS" "$mode" | sed -n 's/^run: //p'
+}
+expect_layers() { # label expected mode files...
+  local label="$1" exp="$2" mode="$3" got; shift 3
+  got="$(layers_for "$mode" "$@")"
+  if [[ "$got" == "$exp" ]]; then echo "ok    layers  $label"; else echo "FAIL  layers  $label: want '$exp' got '$got'"; fail=1; fi
+}
+expect_layers "documentation alone"       "shell check-format"                                    quick README.md docs/decisions.md CHANGELOG.md NOTICE
+expect_layers "documentation, full"       "shell check-format"                                    full  docs/decisions.md
+expect_layers "web only, quick"           "shell check-format check-web"                          quick web/src/App.tsx
+expect_layers "web only, full"            "shell check-format check-web test-e2e"                 full  web/src/App.tsx
+expect_layers "backend only, quick"       "shell check-format check-go"                           quick backend/internal/page/page.go
+expect_layers "backend only, full"        "shell check-format check-go test-integration test-e2e" full  backend/internal/page/page.go
+expect_layers "the API document"          "shell check-format check-go check-web"                 quick api/openapi.json
+expect_layers "browser tests alone, full" "shell check-format test-e2e"                           full  e2e/tests/tasks.spec.ts
+expect_layers "the chart"                 "shell check-format"                                    quick deploy/charts/stator/values.yaml
+expect_layers "a path nobody listed"      "shell check-format check-go check-web"                 quick something/new.txt
+expect_layers "a mix"                     "shell check-format check-go check-web"                 quick docs/a.md web/src/a.ts backend/a.go
+expect_layers "no files known, full"      "shell check-format check-go check-web test-integration test-e2e" full
+"$LAYERS" bogus < /dev/null > /dev/null 2>&1 && { echo "FAIL  an unknown mode was accepted"; fail=1; }
+
+echo "== the gate is given those layers, and says what it skipped"
+W3=$(mktemp -d)
+trap 'rm -rf "$W" "$W2" "$W3"' EXIT
+git clone -q "$SRC" "$W3/r" && cd "$W3/r"
+fixture_main && copy_claude && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
+export CLAUDE_PROJECT_DIR="$W3/r"
+git switch -qc fix/7-gate-layers
+mkdir -p backend && printf 'words\n' > NOTES.md && printf 'package x\n' > backend/x.go && git add NOTES.md backend && git commit -qm "words and a backend file"
+printf '#!/bin/sh\necho "$@" > "$GATE_ARGS"\n' > run-tests.sh; chmod +x run-tests.sh
+export GATE_ARGS="$W3/args"
+push_json() { jq -nc --arg cwd "$W3/r" '{tool_name:"Bash",cwd:$cwd,tool_input:{command:"git push -u origin HEAD"}}'; }
+out="$(push_json | .claude/hooks/branch-guard.sh)"
+if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go" ]]; then echo "ok    gate  ran the layers of the files the branch changed since main"; else echo "FAIL  gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
+if jq -e '.systemMessage | contains("Skipped:") and contains("test-e2e")' <<< "$out" > /dev/null; then echo "ok    gate  said what it skipped"; else echo "FAIL  the skipped layers were not said: $out"; fail=1; fi
+out="$(push_json | STATOR_GATE=full .claude/hooks/branch-guard.sh)"
+if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go test-integration test-e2e" ]]; then echo "ok    gate  STATOR_GATE=full runs the browser suite"; else echo "FAIL  full gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
+
+echo "== a gate that does not finish blocks the push (#328)"
+printf '#!/bin/sh\nexec sleep 37\n' > run-tests.sh
+got="$(push_json | STATOR_GATE_LIMIT=3 .claude/hooks/branch-guard.sh | jq -r '.hookSpecificOutput | .permissionDecision + " " + .permissionDecisionReason')"
+if [[ "$got" == deny\ *"did not finish within"* ]]; then echo "ok    timeout  denied the push"; else echo "FAIL  a gate that ran out of time gave: $got"; fail=1; fi
+sleep 1
+if pgrep -f '^sleep 37$' > /dev/null; then echo "FAIL  timeout  the gate was left running"; fail=1; pkill -f '^sleep 37$'; else echo "ok    timeout  nothing was left running"; fi
+grep -q $'\tgate_timeout=3' "$W3/r/.git/branch-guard.log" && echo "ok    timeout  logged" || { echo "FAIL  timeout  not logged"; fail=1; }
+cd "$W"
+
 if (( fail )); then
   echo "❌ branch-guard tests failed"
   exit 1

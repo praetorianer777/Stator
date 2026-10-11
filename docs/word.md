@@ -26,6 +26,14 @@ last (left out for anybody), the version as its revision, the language and
 the days it was made and changed. Words the export adds, and dates, are in
 the reader's language, English or German, and Word checks spelling in it.
 
+The organization's brand (Settings, Export brand) is in the header and the
+footer of every sheet: its logo and name over a rule in the accent colour,
+and its footer line, in the reader's language, with the page number. The
+accent is the organization's default theme's and also colours the headings
+and links; an organization with no logo has its name alone, and one with no
+default theme the built-in blue. A logo Word cannot show is left out. Public
+pages and public links carry the same brand.
+
 ## Blocks
 
 | Node | In Word |

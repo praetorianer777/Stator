@@ -187,6 +187,12 @@ func TestTasksOverTheAPI(t *testing.T) {
 		if len(told) != 1 || told[0]["page"].(map[string]any)["id"] != minutes || told[0]["excerpt"] != "Send the notes @Someone 2026-11-02" || told[0]["actorId"] != org.user.String() {
 			t.Errorf("ann was told %v", told)
 		}
+		if told[0]["taskId"] != ids["Send the notes"] {
+			t.Errorf("the notification names the task %v, not %v", told[0]["taskId"], ids["Send the notes"])
+		}
+		if want := "/s/TSK/p/" + minutes + "#task-" + ids["Send the notes"]; first["path"] != want {
+			t.Errorf("the task's path is %v, not %s", first["path"], want)
+		}
 		if got := kindOf(t, ann, notify.KindMentioned); len(got) != 0 {
 			t.Errorf("an assignment also told ann she was mentioned: %v", got)
 		}
@@ -407,6 +413,9 @@ func TestADueTaskRemindsItsAssignee(t *testing.T) {
 	due := kindOf(t, ann, notify.KindDue)
 	if len(due) != 1 || due[0]["excerpt"] != "Today @Someone "+today || due[0]["actorId"] != nil {
 		t.Fatalf("ann was reminded of %v", due)
+	}
+	if due[0]["taskId"] == nil {
+		t.Errorf("the reminder does not name its task: %v", due[0])
 	}
 	if n, err := watch.Once(ctx); err != nil || n != 0 {
 		t.Errorf("a second look noted %d, %v", n, err)

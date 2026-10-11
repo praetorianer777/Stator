@@ -47,8 +47,10 @@ type Task struct {
 	// ID is the item's taskId in the page's document.
 	ID   uuid.UUID `json:"id"`
 	Page PageRef   `json:"page"`
-	Text string    `json:"text"`
-	Done bool      `json:"done"`
+	// Path is where the task is on its page, for a link that opens the page at it.
+	Path string `json:"path"`
+	Text string `json:"text"`
+	Done bool   `json:"done"`
 	// DueOn is a day, YYYY-MM-DD, read in UTC as a date node is; null when
 	// the task has none.
 	DueOn *string `json:"dueOn"`

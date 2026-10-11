@@ -138,7 +138,7 @@ func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
 // recipient's own rows, about pages they may still view, out of the trash.
 const selectNotifications = `
 SELECT n.id, n.kind, n.actor_id, COALESCE(u.name, ''), p.id, p.title, s.key,
-       n.thread_id, n.comment_id, n.version, n.excerpt, n.created_at, n.read_at
+       n.thread_id, n.comment_id, n.version, n.task_id, n.excerpt, n.created_at, n.read_at
 FROM notification n
 JOIN page p ON p.id = n.page_id
 JOIN space s ON s.id = p.space_id
@@ -154,7 +154,7 @@ func scanNotifications(rows pgx.Rows) ([]Notification, error) {
 			kind string
 		)
 		if err := rows.Scan(&n.ID, &kind, &n.ActorID, &n.ActorName, &n.Page.ID, &n.Page.Title, &n.Page.SpaceKey,
-			&n.ThreadID, &n.CommentID, &n.Version, &n.Excerpt, &n.CreatedAt, &n.ReadAt); err != nil {
+			&n.ThreadID, &n.CommentID, &n.Version, &n.TaskID, &n.Excerpt, &n.CreatedAt, &n.ReadAt); err != nil {
 			return nil, err
 		}
 		n.Kind = Kind(kind)

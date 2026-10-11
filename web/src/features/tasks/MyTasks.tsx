@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { useMyTasks, useSetTaskDone, type Task, type TaskState } from "@/api/tasks";
 import { Button, ErrorBanner, PageHeader, Skeleton, TabPanel, Tabs } from "@/components/ui";
 import { PageLink } from "@/features/pages/PageLink";
+import { taskAnchor } from "./taskAnchor";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 import { DueChip } from "./DueChip";
@@ -54,6 +55,7 @@ function TaskRow({ task, onDone }: { task: Task; onDone: (task: Task, done: bool
             spaceKey={task.page.spaceKey}
             id={task.page.id}
             title={task.page.title}
+            hash={taskAnchor(task.id)}
             className="font-medium text-ink-muted hover:text-accent hover:underline"
           />
           <span>{task.page.spaceName}</span>

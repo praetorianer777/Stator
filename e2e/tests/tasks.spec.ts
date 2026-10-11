@@ -179,6 +179,70 @@ test.describe("tasks", { tag: ["@auth"] }, () => {
     await listed(bob, text);
   });
 
+  test(
+    "a task's link opens the page at that task, inside a closed expand, from My tasks and from the notification",
+    { tag: ["@desktop"] },
+    async ({ api, apiAs, pageAs }, testInfo) => {
+      test.slow();
+      const space = await freshSpace(api, testInfo, "Anchored");
+      const bobId = await bobsId(apiAs);
+      const filler = Array.from({ length: 60 }, (_, i) => ({ type: "paragraph", content: [{ type: "text", text: `Minute ${i + 1} of a long meeting.` }] }));
+      const text = `Send the notes @${BOB}`;
+      const minutes = await createPage(api, space.homePageId, uniqueName(testInfo, "Long minutes"), {
+        type: "doc",
+        content: [
+          ...filler,
+          {
+            type: "expand",
+            attrs: { title: "Follow ups" },
+            content: [
+              {
+                type: "taskList",
+                content: [
+                  { type: "taskItem", attrs: { checked: false }, content: [{ type: "paragraph", content: [words("Send the notes "), mention(bobId, BOB)] }] },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      const bob = await pageAs("bob");
+      const lands = async () => {
+        const line = bob.locator("[data-doc] li[data-task-id]");
+        await expect(bob.getByRole("button", { name: "Follow ups" })).toHaveAttribute("aria-expanded", "true");
+        await expect(line).toBeInViewport();
+        await expect(line).toBeFocused();
+        await expect(line).toHaveAttribute("id", /^task-/);
+      };
+
+      const row = await listed(bob, text);
+      await row.getByRole("link", { name: minutes.title }).click();
+      await expect(bob).toHaveURL(/#task-[0-9a-f-]{36}$/);
+      await lands();
+
+      await bob.goto("/spaces");
+      const told = panel(bob).locator('[data-notification="assigned"]', { hasText: minutes.title });
+      await expect(async () => {
+        await bob.reload();
+        await bell(bob).click();
+        await expect(told).toBeVisible(ONE_LOOK);
+      }).toPass({ timeout: DELIVERY_MS });
+      await told.click();
+      await expect(bob).toHaveURL(/#task-[0-9a-f-]{36}$/);
+      await lands();
+    },
+  );
+
+  test("a link to a task the page no longer holds opens the page at its top and says so", async ({ api, pageAs }, testInfo) => {
+    const space = await freshSpace(api, testInfo, "Gone");
+    const plans = await createPage(api, space.homePageId, uniqueName(testInfo, "Plans"), checklist("Plans.", [words("Nothing assigned")]));
+    const bob = await pageAs("bob");
+    await openUntil(bob, `/s/${space.key}/p/${plans.id}/page#task-0195f000-0000-7000-8000-00000000ffff`, async () => {
+      await expect(bob.locator("[data-task-gone]")).toContainText("no longer on this page", ONE_LOOK);
+    });
+  });
+
   test("the list of tasks fits a narrow screen and ticks off by touch", { tag: ["@mobile"] }, async ({ api, apiAs, pageAs }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Narrow");
     const bobId = await bobsId(apiAs);

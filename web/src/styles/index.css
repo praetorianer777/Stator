@@ -429,6 +429,16 @@
     font-weight: 600;
     scroll-margin-top: 4rem;
   }
+  .doc-content li[id^="task-"] {
+    scroll-margin-top: 4rem;
+    outline: none;
+  }
+  /* A mark with no movement in it, so reduced motion needs no other. */
+  .doc-content li[data-task-flash] {
+    background: var(--color-accent-subtle);
+    box-shadow: 0 0 0 0.25rem var(--color-accent-subtle);
+    border-radius: 0.25rem;
+  }
   .doc-content :is(h1, [data-level="1"]) {
     font-size: var(--text-xl);
     line-height: var(--text-xl--line-height);

@@ -27,6 +27,11 @@ env_value() { # rendered name
     grep -A1 -- "- name: $2\$" <<<"$1" | sed -n 's/^ *value: "\(.*\)"$/\1/p' | grep -vF 'DB_OWNER_PASSWORD' | sort -u | paste -sd ' '
 }
 
+# A setting the chart puts in the shared ConfigMap, as KEY: "value".
+config_value() { # rendered name
+    sed -n "s/^ *$2: \"\(.*\)\"\$/\1/p" <<<"$1" | sort -u | paste -sd ' '
+}
+
 migrate_url() { # rendered
     grep -A1 -- '- name: STATOR_DB_PRIMARY_URL$' <<<"$1" | grep -F DB_OWNER_PASSWORD | sed -n 's/^ *value: "\(.*\)"$/\1/p' | sort -u
 }
@@ -228,6 +233,27 @@ refused "a member with no such role" "use owner, admin or member" \
     "${BOOT[@]}" --set "bootstrap.members[0].email=a@acme.example" --set "bootstrap.members[0].role=root"
 refused "the seed and the bootstrap together" "turn one of them off" \
     "${BOOT[@]}" --set jobs.seed.enabled=true --set env=development
+
+echo "⎈ The bundled SeaweedFS"
+SWFS=(--set database.host=db.example "${VALKEY[@]}" --set seaweedfs.enabled=true)
+render "bundled SeaweedFS" "${SWFS[@]}"
+check "the api is pointed at the S3 service of the release" "$(config_value "${RENDERED}" STATOR_S3_ENDPOINT)" "${RELEASE}-seaweedfs-s3:8333"
+check "without TLS inside the release" "$(config_value "${RENDERED}" STATOR_S3_USE_SSL)" "false"
+check "the S3 service the endpoint names exists" "$(awk 'BEGIN{RS="\n---\n"} /\nkind: Service\n/ && /\n  name: '"${RELEASE}"'-seaweedfs-s3\n/ {n++} END{print n+0}' <<<"${RENDERED}")" "1"
+check "the api and worker read the keys from the generated Secret" "$(grep -A4 'name: STATOR_S3_ACCESS_KEY$' <<<"${RENDERED}" | grep -c 'name: "\?stator-s3"\?$')" "2"
+check "SeaweedFS reads its admin keys from that Secret too" "$(grep -A4 'name: SEAWEEDFS_S3_ADMIN_ACCESS_KEY_ID$' <<<"${RENDERED}" | grep -c 'name: "\?stator-s3"\?$')" "1"
+check "the secrets Job makes both Secrets" "$(grep -c 'if exists "stator-s3' <<<"${RENDERED}")" "2"
+check "no S3 keys are rendered into a Secret" "$(grep -c 's3-access-key' <<<"${RENDERED}")" "0"
+render "an S3 of one's own is unchanged" --set database.host=db.example "${VALKEY[@]}" --set s3.enabled=true --set s3.endpoint=s3.example --set secrets.s3AccessKey=key --set secrets.s3SecretKey=secret
+check "the endpoint is the one given" "$(config_value "${RENDERED}" STATOR_S3_ENDPOINT)" "s3.example"
+check "the keys are the ones given" "$(grep -c 's3-access-key' <<<"${RENDERED}")" "3"
+check "no SeaweedFS is rendered" "$(grep -c 'seaweedfs' <<<"${RENDERED}")" "0"
+refused "SeaweedFS reading keys the api does not have" "must be \"stator-s3\" and \"stator-s3-read\"" \
+    "${SWFS[@]}" --set seaweedfs.s3.credentials.admin.existingSecret=elsewhere
+refused "the api reading keys SeaweedFS does not have" "must be \"other\" and \"stator-s3-read\"" \
+    "${SWFS[@]}" --set secrets.names.s3=other
+refused "keys read from the wrong places" "must read the keys username and password" \
+    "${SWFS[@]}" --set seaweedfs.s3.credentials.admin.secretKeyKey=secret
 
 if [[ ${FAILED} -ne 0 ]]; then
     echo "❌ chart tests failed"

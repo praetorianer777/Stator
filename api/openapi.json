@@ -31,6 +31,9 @@
       "name": "auth"
     },
     {
+      "name": "brand"
+    },
+    {
       "name": "calendars"
     },
     {
@@ -1749,6 +1752,7 @@
                 "comment.deleted",
                 "theme.default_set",
                 "org.hub_set",
+                "org.brand_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -1925,6 +1929,7 @@
                 "comment.deleted",
                 "theme.default_set",
                 "org.hub_set",
+                "org.brand_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -4381,6 +4386,219 @@
                   },
                   "required": [
                     "anonymousAccess"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/brand": {
+      "get": {
+        "operationId": "getBrand",
+        "summary": "The logo and footer lines the organization's exports carry; the logo is null when there is none.",
+        "tags": [
+          "brand"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "$ref": "#/components/schemas/Brand"
+                    }
+                  },
+                  "required": [
+                    "brand"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/brand/footer": {
+      "put": {
+        "operationId": "setBrandFooter",
+        "summary": "Replace the footer line of the organization's exports in English and German. For administrators.",
+        "tags": [
+          "brand"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FooterInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "$ref": "#/components/schemas/Brand"
+                    }
+                  },
+                  "required": [
+                    "brand"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/brand/logo": {
+      "delete": {
+        "operationId": "deleteBrandLogo",
+        "summary": "Take the organization's logo away; its exports then carry the name alone. For administrators.",
+        "tags": [
+          "brand"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "$ref": "#/components/schemas/Brand"
+                    }
+                  },
+                  "required": [
+                    "brand"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "brandLogo",
+        "summary": "The logo picture itself.",
+        "tags": [
+          "brand"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setBrandLogo",
+        "summary": "Replace the organization's logo with a PNG, JPEG or WebP picture of up to 2 MB, as a multipart part named file. For administrators.",
+        "tags": [
+          "brand"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "$ref": "#/components/schemas/Brand"
+                    }
+                  },
+                  "required": [
+                    "brand"
                   ]
                 }
               }
@@ -9761,6 +9979,66 @@
         }
       }
     },
+    "/public/{orgSlug}/links/{token}/logo": {
+      "get": {
+        "operationId": "linkedLogo",
+        "summary": "The organization's logo, for the page a public link opens.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/public/{orgSlug}/links/{token}/pdf": {
       "get": {
         "operationId": "linkedPagePDF",
@@ -9860,6 +10138,58 @@
           },
           "504": {
             "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/{orgSlug}/logo": {
+      "get": {
+        "operationId": "publicLogo",
+        "summary": "The organization's logo, which the site's logoVersion says is there.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/json": {
                 "schema": {
@@ -16246,6 +16576,7 @@
               "comment.deleted",
               "theme.default_set",
               "org.hub_set",
+              "org.brand_set",
               "armature.connection_saved",
               "armature.connection_removed",
               "page.exported",
@@ -16360,6 +16691,7 @@
                 "comment.deleted",
                 "theme.default_set",
                 "org.hub_set",
+                "org.brand_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
                 "page.exported",
@@ -16539,6 +16871,28 @@
         },
         "required": [
           "body"
+        ]
+      },
+      "Brand": {
+        "type": "object",
+        "properties": {
+          "footer": {
+            "$ref": "#/components/schemas/Footer"
+          },
+          "logo": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Logo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "logo",
+          "footer"
         ]
       },
       "Calendar": {
@@ -18102,6 +18456,36 @@
           }
         }
       },
+      "Footer": {
+        "type": "object",
+        "properties": {
+          "de": {
+            "type": "string"
+          },
+          "en": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "en",
+          "de"
+        ]
+      },
+      "FooterInput": {
+        "type": "object",
+        "properties": {
+          "de": {
+            "type": "string"
+          },
+          "en": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "en",
+          "de"
+        ]
+      },
       "GlobalCan": {
         "type": "object",
         "properties": {
@@ -19051,6 +19435,25 @@
           "password"
         ]
       },
+      "Logo": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contentType",
+          "size",
+          "version"
+        ]
+      },
       "Mark": {
         "type": "object",
         "properties": {
@@ -19356,6 +19759,13 @@
             ],
             "format": "date-time"
           },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "threadId": {
             "type": [
               "string",
@@ -19379,6 +19789,7 @@
           "threadId",
           "commentId",
           "version",
+          "taskId",
           "excerpt",
           "createdAt",
           "readAt"
@@ -20785,8 +21196,17 @@
       "PublicSite": {
         "type": "object",
         "properties": {
+          "footer": {
+            "$ref": "#/components/schemas/Footer"
+          },
           "indexable": {
             "type": "boolean"
+          },
+          "logoVersion": {
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "name": {
             "type": "string"
@@ -20798,7 +21218,9 @@
         "required": [
           "slug",
           "name",
-          "indexable"
+          "indexable",
+          "footer",
+          "logoVersion"
         ]
       },
       "PublicSpace": {
@@ -22852,6 +23274,9 @@
           "page": {
             "$ref": "#/components/schemas/TaskPage"
           },
+          "path": {
+            "type": "string"
+          },
           "text": {
             "type": "string"
           }
@@ -22859,6 +23284,7 @@
         "required": [
           "id",
           "page",
+          "path",
           "text",
           "done",
           "dueOn",

@@ -83,6 +83,8 @@ type Notification struct {
 	ThreadID  *uuid.UUID `json:"threadId"`
 	CommentID *uuid.UUID `json:"commentId"`
 	Version   *int       `json:"version"`
+	// TaskID is set for an assigned or due task, so the link can open the page at it.
+	TaskID *uuid.UUID `json:"taskId"`
 	// Excerpt is plain text from the comment or the version's comment, or
 	// the note a share came with.
 	Excerpt   string     `json:"excerpt"`

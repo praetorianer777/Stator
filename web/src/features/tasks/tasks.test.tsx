@@ -27,6 +27,7 @@ function aTask(over: Partial<Task> = {}): Task {
   return {
     id: notes,
     page: { id: minutes, title: "Minutes", spaceKey: "TEAM", spaceName: "Team" },
+    path: `/s/TEAM/p/${minutes}#task-${notes}`,
     text: "Send the notes @Ada 2026-10-01",
     done: false,
     dueOn: "2026-10-01",
@@ -178,7 +179,7 @@ describe("my tasks", () => {
     });
     await renderAt("/tasks");
     const row = (await screen.findByText("Send the notes @Ada 2026-10-01")).closest("li")!;
-    expect(within(row).getByRole("link", { name: "Minutes" })).toHaveAttribute("href", `/s/TEAM/p/${minutes}/minutes`);
+    expect(within(row).getByRole("link", { name: "Minutes" })).toHaveAttribute("href", `/s/TEAM/p/${minutes}/minutes#task-${notes}`);
     expect(row.querySelector("[data-task-due]")).toHaveAttribute("data-task-due", "overdue");
     expect(within(row).getByText("Assigned by Grace Hopper")).toBeInTheDocument();
     const theirs = screen.getByRole("checkbox", { name: "Done: Book a room" });

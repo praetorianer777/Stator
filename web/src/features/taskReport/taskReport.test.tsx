@@ -43,6 +43,7 @@ function aTask(over: Partial<Task> = {}): Task {
   return {
     id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b01",
     page: { id: minutes, title: "Minutes", spaceKey: "TEAM", spaceName: "Team" },
+    path: "/s/TEAM/p/0195f000-0000-7000-8000-0000000000d1#task-0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4b01",
     text: "Send the notes",
     done: false,
     dueOn: "2020-01-02",

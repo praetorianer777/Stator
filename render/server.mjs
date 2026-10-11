@@ -23,6 +23,10 @@ const PAGE = { format: "A4", landscape: false, printBackground: true, margin: { 
 const VIEWPORT = { width: 1024, height: 1400, deviceScaleFactor: 1 };
 /** The running header and footer's type, in CSS pixels; Chromium's own default is too small to read. */
 const MARGIN_FONT_PX = 8;
+/** The logo's height in the running header, in CSS pixels. */
+const MARGIN_LOGO_PX = 20;
+/** Only a picture the page made itself is drawn in a margin; anything else is left out. */
+const LOGO_DATA_URL = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/;
 
 /** How long Chromium may take to start; a busy host has taken longer than puppeteer's thirty seconds. */
 const LAUNCH_TIMEOUT_MS = Number(process.env.RENDER_LAUNCH_TIMEOUT_MS ?? 120_000);
@@ -74,9 +78,11 @@ function margins(meta) {
   const pages = escapeHTML(meta.pages || "{page} / {pages}")
     .replace("{page}", '<span class="pageNumber"></span>')
     .replace("{pages}", '<span class="totalPages"></span>');
+  const logo = LOGO_DATA_URL.test(meta.logo || "") ? `<img src="${meta.logo}" style="height:${MARGIN_LOGO_PX}px;margin-right:2mm;vertical-align:middle">` : "";
+  const brand = meta.brandFooter ? `<span style="${cell}text-align:center;flex:1">${escapeHTML(meta.brandFooter)}</span>` : "";
   return {
-    headerTemplate: `<div style="${style}"><span style="${cell}">${escapeHTML(meta.header)}</span><span style="${cell}">${escapeHTML(meta.title)}</span></div>`,
-    footerTemplate: `<div style="${style}"><span style="${cell}">${escapeHTML(meta.footer)}</span><span style="white-space:nowrap">${pages}</span></div>`,
+    headerTemplate: `<div style="${style}align-items:center"><span style="${cell}">${logo}${escapeHTML(meta.header)}</span><span style="${cell}">${escapeHTML(meta.title)}</span></div>`,
+    footerTemplate: `<div style="${style}"><span style="${cell}">${escapeHTML(meta.footer)}</span>${brand}<span style="white-space:nowrap">${pages}</span></div>`,
   };
 }
 

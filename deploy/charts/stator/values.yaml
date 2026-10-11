@@ -143,7 +143,9 @@ valkey:
 
 s3:
   # Theme files and attachments in a bucket. Without it uploads are refused
-  # with a message naming the setting.
+  # with a message naming the setting. Bundled SeaweedFS (seaweedfs.enabled)
+  # turns it on and fills in the endpoint, the keys and useSSL; the bucket and
+  # region below still apply, and the api makes the bucket on start.
   enabled: false
   endpoint: ""
   bucket: stator-files
@@ -286,7 +288,16 @@ secrets:
     # provider's client secret or a webhook's: 32 random bytes in base64, in the
     # key password.
     secretKey: ""
-  # The S3 keys only you can supply. create: the chart renders them into a
+    # The bundled SeaweedFS's S3 keys, made by the secrets Job like the
+    # passwords above: the access key is in the key username and the secret key
+    # in password. Not blank, since the subchart below names them as literals
+    # (a subchart cannot template its values from here), and the chart refuses
+    # names that disagree. s3Read is the identity SeaweedFS wants besides the
+    # admin one; nothing here reads through it.
+    s3: stator-s3
+    s3Read: stator-s3-read
+  # The S3 keys only you can supply, for an S3 of your own. With
+  # seaweedfs.enabled the keys are made, and these are not used. create: the chart renders them into a
   # Secret. existingSecret: you made one with the keys s3-access-key and
   # s3-secret-key, and the chart only names it.
   create: true
@@ -403,3 +414,29 @@ postgresql:
   resources:
     requests: { cpu: 100m, memory: 256Mi }
     limits: { memory: 1Gi }
+
+# An S3 store for a trial: SeaweedFS from the project's own chart, installed
+# with this release. Off by default; a real deployment names its own S3 under
+# s3 above. One master, one volume server and one filer, which is not a
+# replicated store: keep the data somewhere that matters elsewhere.
+#
+# The access keys are made by the secrets Job (secrets.names.s3) and read by
+# both SeaweedFS and the api from the same Secret, so there is nothing to copy
+# between two places. Anything else under this key is the subchart's own
+# setting, passed on as written.
+seaweedfs:
+  enabled: false
+  s3:
+    enabled: true
+    enableAuth: true
+    port: 8333
+    credentials:
+      # Must name secrets.names.s3 and s3Read; the chart refuses a difference.
+      admin: { existingSecret: stator-s3, accessKeyKey: username, secretKeyKey: password }
+      read: { existingSecret: stator-s3-read, accessKeyKey: username, secretKeyKey: password }
+  master:
+    replicas: 1
+  volume:
+    replicas: 1
+  filer:
+    replicas: 1

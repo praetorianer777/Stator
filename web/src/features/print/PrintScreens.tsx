@@ -5,6 +5,7 @@ import { usePage } from "@/api/pages";
 import { linkedAttachmentUrl, publicAttachmentUrl, useLinkedPage, usePublicPage, usePublicSite } from "@/api/public";
 import { useDefaultTheme, type Theme } from "@/api/themes";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
+import { footerLine, publicLogoHref, useBrandPicture, useOrgPrintBrand } from "./brandMeta";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocView } from "@/features/editor/DocView";
@@ -29,6 +30,9 @@ interface PrintMeta {
   header: string;
   title: string;
   footer: string;
+  /** The organization's logo as a data address, and its footer line; either may be empty. */
+  logo?: string;
+  brandFooter?: string;
 }
 
 /** What a printed page shows above its words. */
@@ -83,7 +87,18 @@ function PrintFrame({ meta, failed, children }: { meta?: PrintMeta; failed?: str
   }
   return (
     <main className="print-view" data-print-view="">
-      {meta && <div hidden data-print-meta="" data-header={meta.header} data-title={meta.title} data-footer={meta.footer} data-pages={t.pdf.pages} />}
+      {meta && (
+        <div
+          hidden
+          data-print-meta=""
+          data-header={meta.header}
+          data-title={meta.title}
+          data-footer={meta.footer}
+          data-logo={meta.logo}
+          data-brand-footer={meta.brandFooter}
+          data-pages={t.pdf.pages}
+        />
+      )}
       {children}
     </main>
   );
@@ -116,13 +131,20 @@ export function PrintPageScreen({ pageId }: { pageId: string }) {
   const { data, error } = usePage(pageId);
   const me = useMe();
   const theme = useDefaultTheme();
+  const brand = useOrgPrintBrand();
   const attachmentIds = usePageAttachmentIds(pageId);
   useTheme(theme.isPending ? undefined : (theme.data ?? null));
   if (error) return <PrintFrame failed={error.message} />;
-  if (!data || !me.data) return <PrintFrame />;
+  if (!data || !me.data || !brand) return <PrintFrame />;
   const { page, space } = data;
   const org = me.data.organization?.name ?? "";
-  const meta = { header: t.pdf.header([org, space.name]), title: page.title, footer: footer(page.version, page.updatedAt) };
+  const meta = {
+    header: t.pdf.header([org, space.name]),
+    title: page.title,
+    footer: footer(page.version, page.updatedAt),
+    logo: brand.logo,
+    brandFooter: brand.footer,
+  };
   const cover = page.appearance.cover;
   return (
     <PrintFrame meta={meta}>
@@ -148,11 +170,22 @@ export function PrintPageScreen({ pageId }: { pageId: string }) {
 export function PrintPublicPageScreen({ org, pageId }: { org: string; pageId: string }) {
   const page = usePublicPage(org, pageId);
   const site = usePublicSite(org);
+  const brand = useBrandPicture(
+    publicLogoHref(org, site.data?.site.logoVersion ?? null),
+    footerLine(site.data?.site.footer ?? { en: "", de: "" }),
+    Boolean(site.data),
+  );
   const failed = page.error ?? site.error;
   if (failed) return <PrintFrame failed={failed.message} />;
-  if (!page.data || !site.data) return <PrintFrame />;
+  if (!page.data || !site.data || !brand) return <PrintFrame />;
   const p = page.data;
-  const meta = { header: t.pdf.header([site.data.site.name, p.space.name]), title: p.title, footer: footer(p.version, p.updatedAt) };
+  const meta = {
+    header: t.pdf.header([site.data.site.name, p.space.name]),
+    title: p.title,
+    footer: footer(p.version, p.updatedAt),
+    logo: brand.logo,
+    brandFooter: brand.footer,
+  };
   const cover = p.appearance.cover;
   return (
     <PrintFrame meta={meta}>
@@ -175,10 +208,12 @@ export function PrintPublicPageScreen({ org, pageId }: { org: string; pageId: st
 /** The page a public link opens, as the link shows it: nothing of its space. */
 export function PrintLinkedPageScreen({ org, token }: { org: string; token: string }) {
   const linked = useLinkedPage(org, token);
+  const site = linked.data?.site;
+  const brand = useBrandPicture(publicLogoHref(org, site?.logoVersion ?? null, token), footerLine(site?.footer ?? { en: "", de: "" }), Boolean(site));
   if (linked.error) return <PrintFrame failed={linked.error.message} />;
-  if (!linked.data) return <PrintFrame />;
-  const { site, page } = linked.data;
-  const meta = { header: site.name, title: page.title, footer: footer(page.version, page.updatedAt) };
+  if (!linked.data || !site || !brand) return <PrintFrame />;
+  const { page } = linked.data;
+  const meta = { header: site.name, title: page.title, footer: footer(page.version, page.updatedAt), logo: brand.logo, brandFooter: brand.footer };
   const cover = page.appearance.cover;
   return (
     <PrintFrame meta={meta}>

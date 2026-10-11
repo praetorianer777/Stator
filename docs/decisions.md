@@ -29,6 +29,135 @@ an upgrade rolls the api without a failed health check.
   whose `xt_mark` cannot load, as after an upgrade that has not been rebooted
   into; the script says so before it starts.
 
+## 2026-10-10: The brand of the exports is a logo and a footer line; the colours are the default theme's (#321)
+
+Exports should look like they come from the organization. The work is cut in
+four pull requests under one issue: the brand and its settings, then the PDF,
+the Word file and the space's HTML copy.
+
+- **Colours are not a setting of their own.** The organization already names a
+  default theme; its accent and heading colours are what exports use,
+  so changing the theme changes the brand and there is no second place to
+  keep in step. An organization with no default theme gets the built-in look.
+- **A logo and one footer line per language.** The line is at most 200
+  characters, on one line, English and German; a language without a line takes
+  the English one. The logo is a PNG, JPEG or WebP picture of up to 2 MB, read
+  from its bytes, never from the name or type claimed. SVG is left out: a
+  header in a PDF or a Word file needs a raster, and an SVG would need
+  sanitising for nothing.
+- **A table of its own, one row per organization.** The picture is in the
+  object store under a key with a version, so each upload is a new object, a
+  browser may keep a logo for good, and the old one is deleted after the
+  change commits.
+- **Administrators only, in the database too.** A trigger refuses an insert,
+  update or delete by the application role for anybody who is not an
+  administrator, as for the hub. The change is audited as `org.brand_set`.
+- **The PDF draws the brand in the running header and footer.** The printed
+  view states the brand in the meta the render service reads, as the logo
+  scaled to a small PNG data address (a margin is drawn outside the page,
+  where the browser loads no address) and the footer line in the reader's
+  language. The service takes only a PNG data address for the logo. A public
+  site and a public link carry the footer and the logo's version in the site
+  they already return, and serve the picture from a route of their own, so an
+  anonymous print needs nothing more; a logo that cannot be fetched is left
+  out and the sheet prints with the name.
+- **A Word document gets a header and a footer part.** The logo and the name
+  go over a rule in the accent colour, the footer line goes left and the page
+  number right. The accent is the default theme's light accent where it is a
+  plain hex colour, else the built-in blue; headings and links take it only in
+  a document that has a brand, so an unbranded organization's documents keep
+  their look. Word shows no WebP or GIF in a header, so those logos are
+  written as PNG. An organization with no logo has its name alone.
+- **The HTML copy of a space carries it in its own files.** The logo is
+  written once under `files/brand/` and every page names it, the name goes
+  beside it, the footer line (English, as the pages are, or German where only
+  that is written) goes in the foot, and the style sheet gets the default
+  theme's accent, light and dark, appended to the built-in sheet. The colour
+  is written only when it is a plain hex colour, since it lands in a style
+  sheet. A logo that has gone from the store is left out and the export
+  goes on.
+- **Every member reads it.** The sidebar shows the logo in place of the
+  gopher's face, and an export made for a member or through a public link
+  needs it without asking who may see it.
+## 2026-10-10: The push gate runs what a change can affect, and never passes unfinished (#350, #328)
+
+The whole gate took 25 to 28 minutes, flaked under load for reasons unrelated
+to the change, and was killed by the hook's own 30 minute limit, which lets
+the push through. CI runs every layer in parallel in about 13 minutes and
+blocks the merge.
+
+- **Layers follow the files.** `.claude/hooks/gate-layers.sh` is the one list
+  of which path can affect which layer: documentation runs the shell tests and
+  the format check; no backend or API file skips the Go layers; no web or API
+  file skips the web layer. A path it does not know runs everything, and an
+  unknown base runs everything, so a new directory is tested until listed.
+- **Quick by default.** The hook runs the shell tests, format, Go and web
+  layers (about 7 minutes) and leaves the stack, the integration suite and
+  the browser suite to CI. `STATOR_GATE=full` runs them too, for the files
+  that can affect them. This replaces "every push runs every layer" in
+  `CLAUDE.md`; a failing layer still blocks the push.
+- **Said aloud.** A passing hook tells the user which layers ran and which
+  were skipped, so nobody believes a shorter gate was the whole suite.
+- **A gate that does not finish is a failure.** A watchdog stops the gate
+  after 20 minutes (28 for a full gate; `STATOR_GATE_LIMIT` sets seconds),
+  before the hook's timeout, and denies the push with a sentence saying so.
+  The gate runs in a group of its own so the make and docker it started die
+  with it, and its stack is taken down, which a killed gate never did.
+
+## 2026-10-10: The chart brings SeaweedFS as a subchart whose keys the secrets Job makes (#341)
+
+Uploads need an S3 store, and a trial install had none: the operator set one up
+by hand and copied its keys into the chart. Armature's chart installs
+SeaweedFS as an optional subchart, with the keys written twice, once for the
+store and once for the api, and a check that the two agree.
+
+- **The same subchart, off by default.** `seaweedfs.enabled` installs the
+  project's own SeaweedFS chart at a pinned version, one master, one volume
+  server and one filer, which is a trial store and not a replicated one. An S3
+  of one's own is configured under `s3` as before, and the compose stack keeps
+  its own container.
+- **The keys are made, not copied.** The secrets Job makes two Secrets once,
+  as it does the database passwords: `stator-s3` for the admin identity and
+  `stator-s3-read` for the read identity SeaweedFS wants beside it. The
+  subchart reads its identities from them through environment variables
+  (its `existingSecret` option, which looks nothing up at render time, so a
+  dry run renders what an install applies), and the api and worker read the
+  same keys. Nothing is in a values file, and a render never invents a pair
+  that would change on every sync under Argo CD.
+- **Literal names, checked.** A subchart cannot template its values from the
+  parent, so its Secret names are literals in `values.yaml`, and the chart
+  refuses `secrets.names.s3` or `s3Read` that disagree with them, or keys read
+  from anywhere but `username` and `password`, in a sentence that says what
+  every upload would do otherwise.
+- **No bucket Job.** The api makes its bucket on start, as it does against any
+  S3, so the bundled store needs nothing more than its keys.
+- **The archive is committed.** Armature ignores `charts/` and builds it
+  before use; here the 72 KB archive and `Chart.lock` are in the repository.
+  The chart tests then need no network, and a chart copied into another
+  repository, or synced by Argo CD behind a proxy, needs no access to the chart
+  repository. `make helm-deps` refreshes both after a change to `Chart.yaml`.
+
+## 2026-10-10: A task's link is a fragment of its page's address (#322)
+
+A task's links led to the top of a long page. The read view already marked
+each task with its id.
+
+- **The address names the task.** `#task-<id>` on the page's own address, so a
+  link survives being copied and needs no new route. The page's own line takes
+  the id; an included copy takes no anchors, so it cannot be chosen over the
+  page's own, as for headings.
+- **Notifications carry the task.** A notification gets a `task_id` column,
+  set for an assignment and a reminder, and the mail ends in the same
+  fragment. The column has no key: the task is a node of a document that
+  changes. Tasks in the API carry a `path` for tools that cannot build one.
+- **Found only after the page has drawn.** The browser cannot scroll to a
+  line that is not there yet, so the view does it once the document is drawn:
+  it opens the expand blocks around the line, scrolls it below the header,
+  moves focus to it and marks it for a moment. The mark is a colour, not a
+  movement, so reduced motion needs nothing more.
+- **A task that is gone says so.** The page opens at its top with a note,
+  rather than silently ignoring the fragment.
+
 ## 2026-10-09: The logo is a resized picture and the icons are a crop of it (#342)
 
 Stator had neither a logo nor a favicon. The picture given is a detailed

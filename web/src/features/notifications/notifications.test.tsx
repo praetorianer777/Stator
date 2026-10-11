@@ -26,6 +26,7 @@ function aNotification(over: Partial<Notification> = {}): Notification {
     actorName: "Bob Builder",
     page: { id: runbookId, title: "Runbook", spaceKey: "DOCS" },
     threadId: null,
+    taskId: null,
     commentId: null,
     version: 3,
     excerpt: "Added the rollback steps.",
@@ -199,6 +200,23 @@ describe("the notification bell", () => {
     await userEvent.click(item);
     await waitFor(() => expect(router.state.location.search).toEqual({ thread: threadId }));
     await waitFor(() => expect(document.querySelector(`[data-thread="${threadId}"]`)).toHaveFocus());
+  });
+
+  it("leads an assigned task to its line on the page", async () => {
+    const taskId = "0195f000-0000-7000-8000-00000000d0a1";
+    stubShell({
+      "GET /notifications/unread-count": { status: 200, body: { unread: 1 } },
+      "GET /notifications": {
+        status: 200,
+        body: { notifications: [aNotification({ kind: "assigned", taskId, version: null, excerpt: "Send the notes" })], total: 1, limit: 20, offset: 0 },
+      },
+      "POST /notifications/read": { status: 204 },
+    });
+    const router = await renderAt("/spaces");
+    await userEvent.click(await screen.findByRole("button", { name: "Notifications, 1 unread" }));
+    const panel = await screen.findByRole("dialog", { name: "Notifications" });
+    await userEvent.click(within(panel).getByRole("button", { name: /Runbook/ }));
+    await waitFor(() => expect(router.state.location.hash).toBe(`task-${taskId}`));
   });
 
   it("marks everything read at once, and closes on Escape with focus back on the bell", async () => {

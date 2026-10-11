@@ -58,7 +58,9 @@ const (
 	ActionCommentDeleted  = "comment.deleted"
 	ActionThemeDefaultSet = "theme.default_set"
 	// ActionOrgHubSet is the organization's hub chosen, changed or cleared.
-	ActionOrgHubSet                 = "org.hub_set"
+	ActionOrgHubSet = "org.hub_set"
+	// ActionOrgBrandSet is the logo or the footer lines of the organization's exports changed.
+	ActionOrgBrandSet               = "org.brand_set"
 	ActionArmatureConnectionSaved   = "armature.connection_saved"
 	ActionArmatureConnectionRemoved = "armature.connection_removed"
 	// Exports: what left the wiki as a file, and the record itself.
@@ -112,7 +114,7 @@ var Actions = []string{
 	ActionTokenCreated, ActionTokenRevoked,
 	ActionSpaceCreated, ActionSpaceUpdated, ActionSpaceDeleted, ActionPagePurged, ActionTrashEmptied,
 	ActionOrgPermissionSet, ActionSpacePermissionsSet, ActionPageRestrictionsSet,
-	ActionCommentDeleted, ActionThemeDefaultSet, ActionOrgHubSet,
+	ActionCommentDeleted, ActionThemeDefaultSet, ActionOrgHubSet, ActionOrgBrandSet,
 	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved,
 	ActionPageExported, ActionAuditExported,
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,

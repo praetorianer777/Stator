@@ -57,12 +57,18 @@ export const pageRoute = createRoute({
   path: "/p/$pageId/$slug",
   validateSearch: pageAddress,
   loaderDeps: ({ search }) => search,
-  loader: async ({ context, params, deps }) => {
+  loader: async ({ context, params, deps, location }) => {
     const { page, space } = await context.queryClient.ensureQueryData(pageQuery(params.pageId));
     if (page.home) throw redirect({ to: "/s/$spaceKey", params: { spaceKey: space.key }, search: deps, replace: true });
     const slug = pageSlug(page.title);
     if (params.slug !== slug || params.spaceKey !== space.key) {
-      throw redirect({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: page.id, slug }, search: deps, replace: true });
+      throw redirect({
+        to: "/s/$spaceKey/p/$pageId/$slug",
+        params: { spaceKey: space.key, pageId: page.id, slug },
+        search: deps,
+        hash: location.hash,
+        replace: true,
+      });
     }
   },
   component: function PageRoute() {
@@ -78,13 +84,14 @@ export const pageBareRoute = createRoute({
   path: "/p/$pageId",
   validateSearch: pageAddress,
   loaderDeps: ({ search }) => search,
-  loader: async ({ context, params, deps }) => {
+  loader: async ({ context, params, deps, location }) => {
     const { page, space } = await context.queryClient.ensureQueryData(pageQuery(params.pageId));
     if (page.home) throw redirect({ to: "/s/$spaceKey", params: { spaceKey: space.key }, search: deps, replace: true });
     throw redirect({
       to: "/s/$spaceKey/p/$pageId/$slug",
       params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) },
       search: deps,
+      hash: location.hash,
       replace: true,
     });
   },

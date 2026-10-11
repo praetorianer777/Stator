@@ -92,6 +92,12 @@ export function TopBar({
       attrs: { "data-action": "org-hub" },
     });
     items.push({
+      label: t.account.brand,
+      icon: <Icon.Gallery />,
+      onSelect: () => navigate({ to: "/settings/brand" }),
+      attrs: { "data-action": "org-brand" },
+    });
+    items.push({
       label: t.account.exampleSpace,
       icon: <Icon.Seal />,
       onSelect: () => navigate({ to: "/settings/example-space" }),

@@ -5,6 +5,8 @@ import { IconButton } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
 import { LogoMark } from "@/components/Logo";
+import { brandLogoHref, useBrand } from "@/api/brand";
+import { BRAND_LOGO_HEIGHT_PX } from "@/config";
 import { APP_NAME, APP_VERSION, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { t } from "@/i18n";
 import { SpaceNav } from "@/features/spaces/SpaceNav";
@@ -43,7 +45,7 @@ export function Sidebar({ narrow, drawerOpen, onCloseDrawer }: { narrow: boolean
           aria-label={t.nav.whereYouAre}
         >
           <div className="flex h-12 items-center gap-2 border-b border-border px-3">
-            <LogoMark className="shrink-0 rounded-control" />
+            <OrgMark />
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{APP_NAME}</span>
           </div>
 
@@ -129,5 +131,22 @@ function SidebarDrawer({ onClose, children }: { onClose: () => void; children: R
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** The organization's own logo where it has one, else the mark. */
+function OrgMark() {
+  const { data: brand } = useBrand();
+  const href = brand ? brandLogoHref(brand) : null;
+  if (!href) return <LogoMark className="shrink-0 rounded-control" />;
+  return (
+    <img
+      src={href}
+      alt=""
+      height={BRAND_LOGO_HEIGHT_PX}
+      style={{ height: BRAND_LOGO_HEIGHT_PX }}
+      className="max-w-24 shrink-0 rounded-control object-contain"
+      data-org-logo
+    />
   );
 }

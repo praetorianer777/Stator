@@ -13,6 +13,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/collab"
 	"github.com/praetorianer777/stator/backend/internal/comment"
@@ -113,6 +114,8 @@ type Server struct {
 	// organization's switch for it; nil answers that nothing is public.
 	Public *public.Service
 	Hub    *hub.Service
+	// Brand keeps the logo and footer lines the organization's exports carry.
+	Brand  *brand.Service
 	Unfurl *unfurl.Service
 	// PageViews reads how often pages were read and by whom;
 	// PageViewRetention is how long the worker keeps named views, zero forever.
@@ -207,6 +210,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/public/{orgSlug}/pages/{pageID}/pdf", s.handlePublicPagePDF)
 			r.Get("/public/{orgSlug}/pages/{pageID}/docx", s.handlePublicPageWord)
 			r.Get("/public/{orgSlug}/attachments/{attachmentID}", s.handlePublicAttachment)
+			r.Get("/public/{orgSlug}/logo", s.handlePublicLogo)
 			r.Get("/public/{orgSlug}/search", s.handlePublicSearch)
 		})
 		r.Group(func(r chi.Router) {
@@ -215,6 +219,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/public/{orgSlug}/links/{token}/pdf", s.handleLinkedPagePDF)
 			r.Get("/public/{orgSlug}/links/{token}/docx", s.handleLinkedPageWord)
 			r.Get("/public/{orgSlug}/links/{token}/attachments/{attachmentID}", s.handleLinkedAttachment)
+			r.Get("/public/{orgSlug}/links/{token}/logo", s.handleLinkedLogo)
 		})
 		mountPending(r, true)
 
@@ -244,6 +249,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/org/permissions", s.handleListGlobalPermissions)
 			r.Put("/org/permissions/{permission}", s.handleSetGlobalPermission)
 			r.Put("/org/hub", s.handleSetHub)
+			r.Put("/org/brand/footer", s.handleSetBrandFooter)
+			r.Put("/org/brand/logo", s.handleSetBrandLogo)
+			r.Delete("/org/brand/logo", s.handleDeleteBrandLogo)
 			r.Get("/org/anonymous-access", s.handleGetAnonymousAccess)
 			r.Put("/org/anonymous-access", s.handleSetAnonymousAccess)
 			r.Get("/org/public-links", s.handleGetPublicLinks)
@@ -487,6 +495,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/stars", s.handleListStars)
 			r.Get("/home/updates", s.handleHomeUpdates)
 			r.Get("/org/hub", s.handleGetHub)
+			r.Get("/org/brand", s.handleGetBrand)
+			r.Get("/org/brand/logo", s.handleBrandLogo)
 			r.Get("/link-preview", s.handleLinkPreview)
 			r.Get("/home/edited", s.handleHomeEdited)
 			r.Get("/stale-pages", s.handleListStalePages)

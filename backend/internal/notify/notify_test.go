@@ -132,6 +132,10 @@ func TestAMailSaysWhatHappenedAndWhere(t *testing.T) {
 	if got := PageURL("https://wiki.example", "OPS", Subject{PageID: page, ThreadID: &thread}); !strings.HasSuffix(got, "?thread="+thread.String()) {
 		t.Errorf("a thread's link is %s", got)
 	}
+	task := uuid.New()
+	if got := PageURL("https://wiki.example", "OPS", Subject{PageID: page, TaskID: &task}); got != "https://wiki.example/s/OPS/p/"+page.String()+"#task-"+task.String() {
+		t.Errorf("a task's link is %s", got)
+	}
 	if got := Sentence(KindCreated, "", "Plans", false); got != `Somebody created "Plans"` {
 		t.Errorf("a gone actor reads %q", got)
 	}

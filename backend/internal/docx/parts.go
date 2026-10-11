@@ -75,7 +75,7 @@ const appProperties = xml.Header + `<Properties xmlns="http://schemas.openxmlfor
 const settings = xml.Header + `<w:settings xmlns:w="` + nsW + `"><w:defaultTabStop w:val="720"/><w:characterSpacingControl w:val="doNotCompress"/>` +
 	`<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>`
 
-func contentTypes(pictures []media) []byte {
+func contentTypes(pictures []media, branded bool) []byte {
 	var b strings.Builder
 	b.WriteString(xml.Header)
 	b.WriteString(`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`)
@@ -99,6 +99,10 @@ func contentTypes(pictures []media) []byte {
 		{"/docProps/app.xml", "application/vnd.openxmlformats-officedocument.extended-properties+xml"},
 	} {
 		b.WriteString(`<Override PartName="` + o[0] + `" ContentType="` + o[1] + `"/>`)
+	}
+	if branded {
+		b.WriteString(`<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>`)
+		b.WriteString(`<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>`)
 	}
 	b.WriteString(`</Types>`)
 	return []byte(b.String())
@@ -144,7 +148,7 @@ const (
 
 // styles is word/styles.xml. Headings are Word's own, by their built-in
 // names, so its navigation pane and its tables of contents find them.
-func styles(lang string) []byte {
+func styles(lang, accent string, branded bool) []byte {
 	var b strings.Builder
 	b.WriteString(xml.Header)
 	b.WriteString(`<w:styles xmlns:w="` + nsW + `">`)
@@ -168,6 +172,10 @@ func styles(lang string) []byte {
 	char := func(id, name, rPr string) {
 		b.WriteString(`<w:style w:type="character" w:styleId="` + id + `"><w:name w:val="` + name + `"/><w:rPr>` + rPr + `</w:rPr></w:style>`)
 	}
+	headingColour := "0F172A"
+	if branded {
+		headingColour = accent
+	}
 	mono := `<w:rFonts w:ascii="` + codeFont + `" w:hAnsi="` + codeFont + `" w:cs="` + codeFont + `"/>`
 	b.WriteString(`<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>`)
 	para("Title", "Title", "Normal", `<w:spacing w:after="80"/>`, `<w:b/><w:color w:val="0F172A"/><w:sz w:val="48"/><w:szCs w:val="48"/>`, `<w:uiPriority w:val="10"/><w:qFormat/>`)
@@ -176,7 +184,7 @@ func styles(lang string) []byte {
 		n := itoa(level + 1)
 		para("Heading"+n, "heading "+n, "Normal",
 			`<w:keepNext/><w:keepLines/><w:spacing w:before="`+[]string{"360", "280", "240"}[level]+`" w:after="120"/><w:outlineLvl w:val="`+itoa(level)+`"/>`,
-			`<w:b/><w:bCs/><w:color w:val="0F172A"/><w:sz w:val="`+size+`"/><w:szCs w:val="`+size+`"/>`,
+			`<w:b/><w:bCs/><w:color w:val="`+headingColour+`"/><w:sz w:val="`+size+`"/><w:szCs w:val="`+size+`"/>`,
 			`<w:uiPriority w:val="9"/><w:qFormat/>`)
 	}
 	para("Code", "Code", "Normal",
@@ -191,7 +199,7 @@ func styles(lang string) []byte {
 		n := itoa(level)
 		para("TOC"+n, "toc "+n, "Normal", `<w:spacing w:after="60"/><w:ind w:left="`+itoa((level-1)*240)+`"/>`, "", `<w:uiPriority w:val="39"/>`)
 	}
-	char("Hyperlink", "Hyperlink", `<w:color w:val="`+accentText+`"/><w:u w:val="single"/>`)
+	char("Hyperlink", "Hyperlink", `<w:color w:val="`+accent+`"/><w:u w:val="single"/>`)
 	char("InlineCode", "Inline Code", mono+`<w:noProof/><w:shd w:val="clear" w:color="auto" w:fill="F1F5F9"/>`)
 	char("FormulaChar", "Formula Char", mono+`<w:noProof/><w:color w:val="334155"/>`)
 	b.WriteString(`<w:style w:type="table" w:styleId="StatorTable"><w:name w:val="Stator Table"/><w:tblPr><w:tblBorders>`)

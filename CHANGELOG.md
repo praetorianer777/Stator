@@ -13,6 +13,30 @@ and the versioning [Semantic Versioning](https://semver.org/).
   `make test-chart-install` checks the Jobs, the generated secrets, the first
   administrator's sign-in and a rolling upgrade; a workflow runs it when the
   chart or the migrations change.
+- Administrators set the logo and the footer line of the organization's
+  exports (#321). Under Export brand in the account menu they upload a PNG,
+  JPEG or WebP logo and write a footer line in English and German; the
+  sidebar shows the logo in place of the gopher's face. A PDF prints the logo
+  beside the organization's name in its running header and the footer line,
+  in the reader's language, in its footer; a Word document has them in its header and footer, with the
+  page number, and its headings and links take the colour of the
+  organization's default theme. Public pages and public links carry them too.
+  An offline HTML copy of a space shows the logo and the organization's name
+  over every page, the footer line under it, and the default theme's accent in
+  its style sheet, light and dark.
+- A task's link opens the page at that task (#322). From My tasks, a task
+  report and the notification for an assignment or a due day, the page scrolls
+  to the task, opens the expand block around it, marks it for a moment and
+  puts the keyboard's focus on it. A task that is no longer on the page opens
+  the page at its top with a note saying so. The mail for these notifications
+  links to the task as well, and a task in the API has a `path`.
+- The chart can bring an S3 store along (#341). `seaweedfs.enabled` installs
+  SeaweedFS from the project's own chart and points Stator at it: the
+  endpoint, the keys and the TLS setting are filled in, and the access keys are
+  made once by the secrets Job and read from the same Secret by both
+  SeaweedFS and the api, so nothing is copied between two places. An S3 of
+  one's own is configured as before. `make helm-deps` refreshes the
+  subchart archive, which is committed.
 - Stator has a logo and a favicon (#342). The sign-in page shows the logo, the
   sidebar shows the gopher's face beside the name, and the browser tab, touch
   icon and web app manifest use the same face, which still reads at 16 pixels.
@@ -1043,6 +1067,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
   container's args as an escaped `$`, which cut the role script's `DO $$` to
   `DO $` and failed every install with the bundled database (#331). The test
   that found it installs the chart in a kind cluster.
+- Saving an annotated picture shows at once that it is saving, and a second
+  click no longer starts a second save while the browser is still encoding the
+  picture (#359). The dialog closes when the version is saved, not when the
+  list of files has been read again.
 - The list of people in a page's Check access dialog shows whole, as tall as
   it needs, instead of a few rows cut off by a scrolling dialog (#337). A press
   that begins inside any dialog and ends outside it, because the dialog shrank,

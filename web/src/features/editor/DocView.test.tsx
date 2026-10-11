@@ -240,3 +240,60 @@ describe("the table of contents of a page whose headings hold no saved anchor", 
     expect(scrolled).toEqual(["getting-started"]);
   });
 });
+
+describe("a link to a task", () => {
+  const taskId = "0195f000-0000-7000-8000-00000000c0a1";
+  const withTask: Doc = {
+    type: "doc",
+    content: [
+      { type: "paragraph", content: [{ type: "text", text: "Minutes" }] },
+      {
+        type: "expand",
+        attrs: { title: "Follow ups" },
+        content: [
+          {
+            type: "taskList",
+            content: [
+              { type: "taskItem", attrs: { checked: false, taskId }, content: [{ type: "paragraph", content: [{ type: "text", text: "Send the notes" }] }] },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  function at(hash: string, run: () => void) {
+    window.history.replaceState(null, "", hash);
+    try {
+      run();
+    } finally {
+      window.history.replaceState(null, "", "#");
+    }
+  }
+
+  it("opens the expand around the task, marks it and moves focus to it", () => {
+    at(`#task-${taskId}`, () => {
+      const { container } = render(<DocView doc={withTask} />);
+      expect(screen.getByRole("button", { name: "Follow ups" })).toHaveAttribute("aria-expanded", "true");
+      const line = container.querySelector(`[data-task-id="${taskId}"]`);
+      expect(line).toHaveAttribute("id", `task-${taskId}`);
+      expect(line).toHaveAttribute("data-task-flash");
+      expect(line).toHaveFocus();
+      expect(container.querySelector("[data-task-gone]")).toBeNull();
+    });
+  });
+
+  it("says so when the task is not on the page, and leaves the page where it is", () => {
+    at("#task-0195f000-0000-7000-8000-00000000ffff", () => {
+      const { container } = render(<DocView doc={withTask} />);
+      expect(container.querySelector("[data-task-gone]")).toHaveTextContent("no longer on this page");
+      expect(screen.getByRole("button", { name: "Follow ups" })).toHaveAttribute("aria-expanded", "false");
+    });
+  });
+
+  it("never leads to a task in an included copy, which takes no anchors", () => {
+    const { container } = render(<DocView doc={withTask} anchors={false} />);
+    expect(container.querySelector(`[data-task-id="${taskId}"]`)).not.toBeNull();
+    expect(container.querySelector(`[id="task-${taskId}"]`)).toBeNull();
+  });
+});

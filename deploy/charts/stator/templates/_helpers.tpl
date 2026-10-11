@@ -125,7 +125,7 @@ The basic-auth Secrets holding one password each. CNPG reads them in exactly
 this shape, and the bundled database and the Jobs read the same ones.
 */}}
 {{- define "stator.credentialSecret" -}}
-{{- $suffix := dict "dbOwner" "db-owner" "dbApp" "db-app" "dbAdmin" "db-admin" "valkey" "valkey" "secretKey" "secret-key" "bootstrapAdmin" "bootstrap-admin" -}}
+{{- $suffix := dict "dbOwner" "db-owner" "dbApp" "db-app" "dbAdmin" "db-admin" "valkey" "valkey" "secretKey" "secret-key" "bootstrapAdmin" "bootstrap-admin" "s3" "s3" "s3Read" "s3-read" -}}
 {{- default (printf "%s-%s" (include "stator.fullname" .root) (get $suffix .name)) (get .root.Values.secrets.names .name) -}}
 {{- end -}}
 
@@ -249,11 +249,11 @@ STATOR_SMTP_ADDR: {{ . | quote }}
 STATOR_MAIL_FROM: {{ $.Values.mail.from | quote }}
 {{- end }}
 
-{{- if .Values.s3.enabled }}
-STATOR_S3_ENDPOINT: {{ required "Set s3.endpoint, the host and port of the bucket's S3 API, or turn s3.enabled off." .Values.s3.endpoint | quote }}
+{{- if include "stator.s3Enabled" . }}
+STATOR_S3_ENDPOINT: {{ include "stator.s3Endpoint" . | quote }}
 STATOR_S3_BUCKET: {{ .Values.s3.bucket | quote }}
 STATOR_S3_REGION: {{ .Values.s3.region | quote }}
-STATOR_S3_USE_SSL: {{ .Values.s3.useSSL | quote }}
+STATOR_S3_USE_SSL: {{ ternary "false" (toString .Values.s3.useSSL) .Values.seaweedfs.enabled | quote }}
 {{- end }}
 {{- end -}}
 
@@ -280,7 +280,18 @@ STATOR_S3_USE_SSL: {{ .Values.s3.useSSL | quote }}
 {{- with include "stator.valkeyEnv" . }}
 {{ . }}
 {{- end }}
-{{- if .Values.s3.enabled }}
+{{- if .Values.seaweedfs.enabled }}
+- name: STATOR_S3_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "stator.credentialSecret" (dict "root" . "name" "s3") }}
+      key: username
+- name: STATOR_S3_SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "stator.credentialSecret" (dict "root" . "name" "s3") }}
+      key: password
+{{- else if .Values.s3.enabled }}
 - name: STATOR_S3_ACCESS_KEY
   valueFrom:
     secretKeyRef:
@@ -297,4 +308,35 @@ STATOR_S3_USE_SSL: {{ .Values.s3.useSSL | quote }}
 {{/* The administrator's address when none is set: a name at the chart's own host. */}}
 {{- define "stator.bootstrapEmail" -}}
 {{- default (printf "admin@%s" .Values.ingress.host) .Values.bootstrap.admin.email -}}
+{{- end -}}
+
+{{/* Uploads work with an S3 of one's own or with the bundled SeaweedFS. */}}
+{{- define "stator.s3Enabled" -}}
+{{- if or .Values.s3.enabled .Values.seaweedfs.enabled -}}true{{- end -}}
+{{- end -}}
+
+{{- define "stator.s3Endpoint" -}}
+{{- if .Values.seaweedfs.enabled -}}
+{{- include "stator.checkBundledS3" . -}}
+{{- printf "%s-seaweedfs-s3:%d" .Release.Name (int .Values.seaweedfs.s3.port) -}}
+{{- else -}}
+{{- required "Set s3.endpoint, the host and port of the bucket's S3 API, or turn s3.enabled off." .Values.s3.endpoint -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+The subchart reads its keys from Secrets it names as literals, and the api and
+the secrets Job use secrets.names. Nothing joins the two, so a change to one
+alone would leave the store signing with keys the api does not have.
+*/}}
+{{- define "stator.checkBundledS3" -}}
+{{- $creds := (((.Values.seaweedfs.s3).credentials) | default dict) -}}
+{{- $admin := $creds.admin | default dict -}}
+{{- $read := $creds.read | default dict -}}
+{{- if or (ne ($admin.existingSecret | default "") .Values.secrets.names.s3) (ne ($read.existingSecret | default "") .Values.secrets.names.s3Read) -}}
+{{- fail (printf "seaweedfs.s3.credentials.admin.existingSecret and .read.existingSecret must be %q and %q, the same as secrets.names.s3 and secrets.names.s3Read: the store reads its keys from the first pair of names and the api from the second, so every upload would be refused as unsigned." .Values.secrets.names.s3 .Values.secrets.names.s3Read) -}}
+{{- end -}}
+{{- if or (ne ($admin.accessKeyKey | default "") "username") (ne ($admin.secretKeyKey | default "") "password") (ne ($read.accessKeyKey | default "") "username") (ne ($read.secretKeyKey | default "") "password") -}}
+{{- fail "seaweedfs.s3.credentials.admin and .read must read the keys username and password, which is where the secrets Job puts the access key and the secret key." -}}
+{{- end -}}
 {{- end -}}
