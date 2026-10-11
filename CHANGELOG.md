@@ -20,6 +20,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   the draft at their time, and a rule never covers a live page. A page's
   editors can ask its readers to confirm the current version, again after a
   new one, and see who has and who has not.
+- Administrators renew the example space when Stator ships a newer one
+  (#320). The spaces overview, the example's home page and its settings page
+  say what the newer example brings; renewing publishes the guides nobody
+  changed again, adds the new ones, keeps the pages people changed and
+  everything they added, and lists what it kept. The example gains a guide
+  to moving pages in and out: PDF and Word, space export and import, and the
+  Word and Markdown imports.
 - The Helm chart is installed and upgraded in a throwaway kind cluster (#331).
   `make test-chart-install` checks the Jobs, the generated secrets, the first
   administrator's sign-in and a rolling upgrade; a workflow runs it when the

@@ -339,6 +339,10 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	if data := once(audit.ActionExampleSpaceCreated, me, exampleID); !strings.Contains(data, `"language": "en"`) {
 		t.Errorf("the example's record reads %s", data)
 	}
+	api.renewExample(t, owner, map[string]any{"language": "de"})
+	if data := once(audit.ActionExampleSpaceRenewed, me, exampleID); !strings.Contains(data, `"language": "de"`) {
+		t.Errorf("the renewal's record reads %s", data)
+	}
 
 	exportedID := idOf(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "AUDEX", "name": "Exported"}), http.StatusCreated, "make a space to export"), "space")
 	want(t, owner.post(t, "/api/v1/spaces/AUDEX/exports", map[string]any{"format": "html"}), http.StatusAccepted, "export the space")

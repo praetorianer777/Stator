@@ -826,6 +826,28 @@ export const en = {
       forbidden: "Only administrators of the organization create the example space. Ask one of them to create it.",
       failed:
         "Creating the example space failed, and what was made of it was deleted. Create it again; if it fails once more, ask whoever runs Stator to look at the worker's log.",
+      gone: "The example space was deleted while it was being made. Create it again.",
+    },
+    renewal: {
+      available: "A newer example space is available. It brings:",
+      intro: "Renewing it brings its guides up to date. Pages somebody changed are kept as they are, and the comments, stars and pages people added stay.",
+      language: "Language of the pages",
+      languages: { en: "English", de: "Deutsch" },
+      renew: "Renew the example space",
+      renewing: "Renewing the example space",
+      underWay: "The example space is being renewed. This takes a few seconds.",
+      done: "The example space is renewed.",
+      added: "New pages",
+      remade: "Made again, since they had been deleted",
+      kept: "Kept as people changed them",
+      retired: "No longer part of the example, left as they are",
+      failures: {
+        keys_taken: "Renewing the example space failed. Renew it again; if it fails once more, ask whoever runs Stator to look at the worker's log.",
+        forbidden: "Only administrators of the organization renew the example space. Ask one of them to renew it.",
+        failed:
+          "Renewing the example space failed part way. The pages it renewed stay renewed and the others as they were; renew it again, and if it fails once more, ask whoever runs Stator to look at the worker's log.",
+        gone: "The example space was deleted before it was renewed. Create the example space again to have the current one.",
+      },
     },
   },
   spaceTransfer: {
@@ -2866,6 +2888,7 @@ export const en = {
       "review.rule_set": "Review rule set",
       "review.rule_removed": "Review rule removed",
       "review.skipped": "Page published without its review",
+      "space.example_renewed": "Example space renewed",
       "space.exported": "Space exported",
       "space.imported": "Space imported",
       "template.created": "Template made",

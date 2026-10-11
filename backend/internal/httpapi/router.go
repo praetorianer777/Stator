@@ -338,6 +338,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 				r.Use(s.requireTestToken)
 				r.Post("/test/orgs", s.handleCreateTestOrg)
 				r.Delete("/test/orgs/{orgSlug}", s.handleDeleteTestOrg)
+				r.Post("/test/orgs/{orgSlug}/example-space/age", s.handleAgeTestExample)
 			})
 		}
 
@@ -350,6 +351,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.With(requireWholeOrg).Post("/spaces", s.handleCreateSpace)
 			r.With(requireWholeOrg).Get("/example-space", s.handleGetExampleSpace)
 			r.With(requireWholeOrg).Post("/example-space", s.handleCreateExampleSpace)
+			r.With(requireWholeOrg).Post("/example-space/renew", s.handleRenewExampleSpace)
 			// An import makes a new space, outside every space a limited token names.
 			r.With(requireWholeOrg).Post("/space-imports", s.handleCreateSpaceImport)
 			r.With(requireWholeOrg).Get("/space-imports", s.handleListSpaceImports)

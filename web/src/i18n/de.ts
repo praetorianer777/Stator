@@ -846,6 +846,30 @@ export const de: Messages = {
       forbidden: "Nur Administratoren der Organisation legen den Beispielbereich an. Bitten Sie eine dieser Personen, ihn anzulegen.",
       failed:
         "Der Beispielbereich konnte nicht angelegt werden, und was davon schon da war, wurde gelöscht. Legen Sie ihn noch einmal an; scheitert es wieder, bitten Sie die Person, die Stator betreibt, ins Protokoll des Workers zu sehen.",
+      gone: "Der Beispielbereich wurde gelöscht, während er angelegt wurde. Legen Sie ihn noch einmal an.",
+    },
+    renewal: {
+      available: "Ein neuerer Beispielbereich ist da. Er bringt:",
+      intro:
+        "Beim Erneuern werden seine Anleitungen auf den neuesten Stand gebracht. Seiten, die jemand geändert hat, bleiben, wie sie sind, und Kommentare, Sterne und Seiten, die andere angelegt haben, bleiben erhalten.",
+      language: "Sprache der Seiten",
+      languages: { en: "English", de: "Deutsch" },
+      renew: "Beispielbereich erneuern",
+      renewing: "Beispielbereich wird erneuert",
+      underWay: "Der Beispielbereich wird erneuert. Das dauert ein paar Sekunden.",
+      done: "Der Beispielbereich ist erneuert.",
+      added: "Neue Seiten",
+      remade: "Neu angelegt, weil sie gelöscht worden waren",
+      kept: "Belassen, wie andere sie geändert haben",
+      retired: "Nicht mehr Teil des Beispiels, unverändert gelassen",
+      failures: {
+        keys_taken:
+          "Der Beispielbereich konnte nicht erneuert werden. Erneuern Sie ihn noch einmal; scheitert es wieder, bitten Sie die Person, die Stator betreibt, ins Protokoll des Workers zu sehen.",
+        forbidden: "Nur Administratoren der Organisation erneuern den Beispielbereich. Bitten Sie eine dieser Personen, ihn zu erneuern.",
+        failed:
+          "Das Erneuern des Beispielbereichs ist unterwegs gescheitert. Die schon erneuerten Seiten bleiben erneuert und die anderen, wie sie waren; erneuern Sie ihn noch einmal, und scheitert es wieder, bitten Sie die Person, die Stator betreibt, ins Protokoll des Workers zu sehen.",
+        gone: "Der Beispielbereich wurde gelöscht, bevor er erneuert wurde. Legen Sie den Beispielbereich neu an, um den aktuellen zu bekommen.",
+      },
     },
   },
   spaceTransfer: {
@@ -2946,6 +2970,7 @@ export const de: Messages = {
       "review.rule_set": "Prüfregel festgelegt",
       "review.rule_removed": "Prüfregel entfernt",
       "review.skipped": "Seite ohne ihre Prüfung veröffentlicht",
+      "space.example_renewed": "Beispielbereich erneuert",
       "space.exported": "Bereich exportiert",
       "space.imported": "Bereich importiert",
       "template.created": "Vorlage angelegt",
