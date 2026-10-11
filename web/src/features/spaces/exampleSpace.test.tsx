@@ -24,6 +24,7 @@ const home = aPage({ spaceKey: "STATOR" });
 function aJob(over: Partial<ExampleSpaceJob> = {}): ExampleSpaceJob {
   return {
     id: "j-1",
+    kind: "make",
     state: "queued",
     language: "en",
     spaceKey: null,
@@ -32,9 +33,21 @@ function aJob(over: Partial<ExampleSpaceJob> = {}): ExampleSpaceJob {
     requestedAt: "2026-10-07T10:00:00Z",
     startedAt: null,
     finishedAt: null,
+    report: null,
     ...over,
   };
 }
+
+const older = { version: 0, current: 1, language: "en" as const, new: ["Moving pages in and out: a new guide."] };
+const current = { ...older, version: 1, new: [] };
+const made = aJob({ state: "done", spaceKey: "STATOR" });
+const renewal = (over: Partial<ExampleSpaceJob> = {}) => aJob({ id: "j-2", kind: "renew", ...over });
+const report = {
+  added: [{ id: "p-new", title: "Moving pages in and out" }],
+  remade: [],
+  kept: [{ id: "p-kept", title: "Our labels" }],
+  retired: [],
+};
 
 const opened = {
   "GET /spaces/STATOR": { status: 200, body: { space: example } },
@@ -162,5 +175,81 @@ describe("the example space in the organization's settings", () => {
     await userEvent.click(screen.getByRole("button", { name: "Your account" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Example space" }));
     await arrival(router, "/settings/example-space");
+  });
+});
+
+describe("renewing the example space", () => {
+  /** The example as GET answers it: older until it is asked to renew, then renewing, then renewed. */
+  function renewing(end: Partial<ExampleSpaceJob> = { state: "done", spaceKey: "STATOR", report }) {
+    let asked = false;
+    let looks = 0;
+    return {
+      "GET /example-space": () => {
+        if (!asked) return { status: 200, body: { space: example, job: made, edition: older } };
+        if (++looks < 3) return { status: 200, body: { space: example, job: renewal({ state: "running" }), edition: older } };
+        return { status: 200, body: { space: example, job: renewal(end), edition: end.state === "done" ? current : older } };
+      },
+      "POST /example-space/renew": () => {
+        asked = true;
+        return { status: 202, body: { space: null, job: renewal(), edition: null } };
+      },
+    };
+  }
+
+  it("is offered on the spaces overview with what is new, followed, and reported with links", async () => {
+    const sent = stubApi({ "GET /spaces": { status: 200, body: { spaces: [example] } }, ...renewing() });
+    const router = await renderAt("/spaces");
+    expect(await screen.findByText("A newer example space is available. It brings:")).toBeInTheDocument();
+    expect(screen.getByRole("listitem")).toHaveTextContent("Moving pages in and out: a new guide.");
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(screen.getByRole("button", { name: "Renew the example space" }));
+    expect(await screen.findByText("The example space is renewed.")).toHaveAttribute("role", "status");
+    expect(screen.getByRole("link", { name: "Moving pages in and out" })).toHaveAttribute("href", "/s/STATOR/p/p-new/moving-pages-in-and-out");
+    expect(screen.getByRole("link", { name: "Our labels" })).toHaveAttribute("href", "/s/STATOR/p/p-kept/our-labels");
+    expect(sent.filter((r) => r.path === "/example-space/renew").map((r) => r.body)).toEqual([{}]);
+    expect(router.state.location.pathname).toBe("/spaces");
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("takes another language in the settings", async () => {
+    const sent = stubApi(renewing());
+    await renderAt("/settings/example-space");
+    await userEvent.click(await screen.findByRole("button", { name: "Deutsch" }));
+    expect(screen.getByRole("button", { name: "Deutsch" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Renew the example space" }));
+    await screen.findByText("The example space is renewed.");
+    expect(sent.filter((r) => r.path === "/example-space/renew").map((r) => r.body)).toEqual([{ language: "de" }]);
+  });
+
+  it("says why a renewal failed and offers it again", async () => {
+    stubApi({ "GET /spaces": { status: 200, body: { spaces: [example] } }, ...renewing({ state: "failed", failure: "failed" }) });
+    await renderAt("/spaces");
+    await userEvent.click(await screen.findByRole("button", { name: "Renew the example space" }));
+    expect(await screen.findByText(/Renewing the example space failed part way/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Renew the example space" })).toBeEnabled();
+  });
+
+  it("is offered on the example's home page to administrators", async () => {
+    stubApi({ ...opened, "GET /example-space": { status: 200, body: { space: example, job: made, edition: older } } });
+    await renderAt("/s/STATOR");
+    expect(await screen.findByRole("button", { name: "Renew the example space" })).toBeEnabled();
+  });
+
+  it("is never asked about on the example's home page by a member", async () => {
+    const sent = stubApi(opened);
+    await renderAt("/s/STATOR", { me: member });
+    await screen.findAllByRole("heading", { level: 1 });
+    expect(screen.queryByRole("button", { name: "Renew the example space" })).toBeNull();
+    expect(sent.some((r) => r.path === "/example-space")).toBe(false);
+  });
+
+  it("is not offered once the example is current", async () => {
+    stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [example] } },
+      "GET /example-space": { status: 200, body: { space: example, job: made, edition: current } },
+    });
+    await renderAt("/spaces");
+    await screen.findByRole("link", { name: "Getting to know Stator" });
+    expect(screen.queryByRole("button", { name: "Renew the example space" })).toBeNull();
   });
 });

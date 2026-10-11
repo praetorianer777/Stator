@@ -64,6 +64,7 @@ var Tree = []Entry{
 		{Name: "editing-together"},
 		{Name: "templates"},
 		{Name: "attachments"},
+		{Name: "moving-pages"},
 	}},
 	{Name: "working-together", Kind: page.KindFolder, Children: []Entry{
 		{Name: Comments},

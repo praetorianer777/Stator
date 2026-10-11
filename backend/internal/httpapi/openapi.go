@@ -193,10 +193,13 @@ var operations = []operation{
 		query:     []param{{name: "archived", schema: &openapi.Schema{Type: "boolean"}, description: "true to list archived spaces too; false when absent."}},
 		responses: ok(env{"spaces": []space.Space{}})},
 	{method: "POST", path: "/spaces", handler: "handleCreateSpace", orgWide: true, tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
-	{method: "GET", path: "/example-space", handler: "handleGetExampleSpace", orgWide: true, tag: "spaces", summary: "The organization's example space, the one whose pages explain Stator, null while there is none or it is being made, and the latest making of it. For administrators.",
+	{method: "GET", path: "/example-space", handler: "handleGetExampleSpace", orgWide: true, tag: "spaces", summary: "The organization's example space, the one whose pages explain Stator, null while there is none or it is being made; the latest making or renewal of it; and which version of its content it has, with what the newer ones bring. For administrators.",
+		query:     []param{{name: "language", description: "en or de, the language of what the newer versions bring; the caller's own when absent."}},
 		responses: ok(exampleSpaceResponse{})},
 	{method: "POST", path: "/example-space", handler: "handleCreateExampleSpace", orgWide: true, tag: "spaces", summary: "Ask the worker to make the example space, whose pages explain Stator, in the language asked for, else the caller's own: 202 with the job, the same one while it is queued or running, or 200 with the space when the organization has it already. For administrators.",
 		request: exampleSpaceRequest{}, responses: map[int]any{200: exampleSpaceResponse{}, 202: exampleSpaceResponse{}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/example-space/renew", handler: "handleRenewExampleSpace", orgWide: true, tag: "spaces", summary: "Ask the worker to bring the example space's guides to the current version of its content, in the language asked for, else the one its pages are in: pages nobody changed are published again, changed ones are kept and reported. 202 with the job, or the one queued or running already; 409 when there is no example. For administrators.",
+		request: renewExampleSpaceRequest{}, responses: map[int]any{202: exampleSpaceResponse{}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
 	// Space export and import (#88), run by the worker.
 	{method: "POST", path: "/spaces/{spaceKey}/exports", handler: "handleCreateSpaceExport", tag: "spaces",
 		summary: "Ask the worker to export a whole space: as an archive with every published page, its versions, files, comments, labels and permissions, to import again; or as HTML pages to read offline. 202 with the job, which GET /spaces/{spaceKey}/exports follows. For the space's administrators.",
@@ -1044,6 +1047,9 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(review.ReaderEntry{})] = "ReadConfirmation"
 	b.Enums[reflect.TypeOf(review.State(""))] = enumStrings(review.States)
 	b.Enums[reflect.TypeOf(review.Decision(""))] = enumStrings(review.Decisions)
+	b.Names[reflect.TypeOf(example.Report{})] = "ExampleSpaceReport"
+	b.Names[reflect.TypeOf(example.ReportPage{})] = "ExampleSpaceReportPage"
+	b.Names[reflect.TypeOf(exampleEdition{})] = "ExampleSpaceEdition"
 	b.Names[reflect.TypeOf(spaceio.ExportJob{})] = "SpaceExport"
 	b.Names[reflect.TypeOf(spaceio.ImportJob{})] = "SpaceImport"
 	b.Names[reflect.TypeOf(spaceio.Report{})] = "SpaceImportReport"
@@ -1062,6 +1068,8 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(wordio.State(""))] = enumStrings(wordio.States)
 	b.FieldOverrides["WordImport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(wordio.Failures)}, {Type: "null"}}}
 	b.Enums[reflect.TypeOf(example.State(""))] = enumStrings(example.States)
+	b.Enums[reflect.TypeOf(example.Kind(""))] = enumStrings(example.Kinds)
+	b.FieldOverrides["ExampleSpaceEdition.language"] = &openapi.Schema{Type: "string", Enum: example.Languages}
 	b.FieldOverrides["ExampleSpaceJob.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(example.Failures)}, {Type: "null"}}}
 	b.FieldOverrides["ExampleSpaceJob.language"] = &openapi.Schema{Type: "string", Enum: example.Languages}
 	b.FieldOverrides["PageSchedule.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(page.ScheduleFailures)}, {Type: "null"}}}
