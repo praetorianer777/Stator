@@ -97,6 +97,9 @@ Without CNPG, set `database.host` and, for replicas of your own,
 of its own. `values.yaml` documents every setting; see also
 `docs/architecture.md`.
 
+Backups, under the chart and under Docker Compose alike, are in
+`docs/backup-and-restore.md`.
+
 ## Contributing
 
 Every change hangs off an issue and a branch named `<type>/<issue>-<slug>`,

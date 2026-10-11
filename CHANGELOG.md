@@ -9,6 +9,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Backup and restore (#108). `make backup` writes the database and every
+  stored file into one archive, `make restore` brings the site back from it,
+  and the Helm chart renders the same as two jobs started with `kubectl`.
+  A restore refuses an archive from a newer version, another secret key, or
+  a database still in use, and changes nothing when it does. CI restores a
+  backup on every change and compares it with the original. See
+  `docs/backup-and-restore.md`.
 - Pages can be reviewed before they publish, and readers asked to confirm
   they read them (#313). A space's administrators hold the space, or a branch
   of its pages, to a review by named people and groups and a number of

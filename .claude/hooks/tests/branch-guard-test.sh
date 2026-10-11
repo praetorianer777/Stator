@@ -302,13 +302,13 @@ expect_layers "documentation, full"       "shell check-format"                  
 expect_layers "web only, quick"           "shell check-format check-web"                          quick web/src/App.tsx
 expect_layers "web only, full"            "shell check-format check-web test-e2e"                 full  web/src/App.tsx
 expect_layers "backend only, quick"       "shell check-format check-go"                           quick backend/internal/page/page.go
-expect_layers "backend only, full"        "shell check-format check-go test-integration test-e2e" full  backend/internal/page/page.go
+expect_layers "backend only, full"        "shell check-format check-go test-integration test-backup test-e2e" full  backend/internal/page/page.go
 expect_layers "the API document"          "shell check-format check-go check-web"                 quick api/openapi.json
 expect_layers "browser tests alone, full" "shell check-format test-e2e"                           full  e2e/tests/tasks.spec.ts
 expect_layers "the chart"                 "shell check-format"                                    quick deploy/charts/stator/values.yaml
 expect_layers "a path nobody listed"      "shell check-format check-go check-web"                 quick something/new.txt
 expect_layers "a mix"                     "shell check-format check-go check-web"                 quick docs/a.md web/src/a.ts backend/a.go
-expect_layers "no files known, full"      "shell check-format check-go check-web test-integration test-e2e" full
+expect_layers "no files known, full"      "shell check-format check-go check-web test-integration test-backup test-e2e" full
 "$LAYERS" bogus < /dev/null > /dev/null 2>&1 && { echo "FAIL  an unknown mode was accepted"; fail=1; }
 
 echo "== the gate is given those layers, and says what it skipped"
@@ -326,7 +326,7 @@ out="$(push_json | .claude/hooks/branch-guard.sh)"
 if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go" ]]; then echo "ok    gate  ran the layers of the files the branch changed since main"; else echo "FAIL  gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
 if jq -e '.systemMessage | contains("Skipped:") and contains("test-e2e")' <<< "$out" > /dev/null; then echo "ok    gate  said what it skipped"; else echo "FAIL  the skipped layers were not said: $out"; fail=1; fi
 out="$(push_json | STATOR_GATE=full .claude/hooks/branch-guard.sh)"
-if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go test-integration test-e2e" ]]; then echo "ok    gate  STATOR_GATE=full runs the browser suite"; else echo "FAIL  full gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
+if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go test-integration test-backup test-e2e" ]]; then echo "ok    gate  STATOR_GATE=full runs the browser suite"; else echo "FAIL  full gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
 
 echo "== a gate that does not finish blocks the push (#328)"
 printf '#!/bin/sh\nexec sleep 37\n' > run-tests.sh

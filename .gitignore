@@ -32,3 +32,4 @@ release-notes-*.md
 
 # agent worktrees
 .claude/worktrees/
+/backups/

@@ -33,8 +33,17 @@ ARG GOOSE_TAGS="no_sqlite3 no_mysql no_clickhouse no_vertica no_ydb no_libsql no
 ARG COMMIT=""
 RUN PKG=github.com/praetorianer777/stator/backend/internal/version && \
     LDFLAGS="-s -w -X $PKG.Version=$(cat /VERSION) -X $PKG.Commit=$COMMIT -X $PKG.BuiltAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)" && \
-    go build -trimpath -ldflags="$LDFLAGS" -o /out/ ./cmd/api ./cmd/worker ./cmd/seed ./cmd/armature-stub && \
+    go build -trimpath -ldflags="$LDFLAGS" -o /out/ ./cmd/api ./cmd/worker ./cmd/seed ./cmd/armature-stub ./cmd/backup && \
     go build -trimpath -ldflags="$LDFLAGS" -tags "$GOOSE_TAGS" -o /out/migrate ./cmd/migrate
+
+# The backup command drives pg_dump and psql, which must be the server's major
+# version; Alpine packages one release behind, so this stage starts from the
+# server's own image. Build it with --target backup. It comes before the
+# default stage because docker builds the last one when no target is named.
+FROM postgres:18-alpine AS backup
+COPY --from=builder /out/backup /app/backup
+USER postgres
+ENTRYPOINT ["/app/backup"]
 
 # Alpine rather than scratch: the health checks want a shell and wget.
 FROM alpine:3.22
