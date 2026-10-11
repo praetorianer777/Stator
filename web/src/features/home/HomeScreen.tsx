@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { InfiniteData, UseInfiniteQueryResult } from "@tanstack/react-query";
 import { useRecentPages } from "@/api/search";
 import { useEdited, useStars, useUnstar, useUpdates, type Star, type UpdateScope } from "@/api/stars";
+import { useWaitingReviews } from "@/api/reviews";
 import { useHomeTasks, type Task } from "@/api/tasks";
 import { Button, EmptyState, ErrorBanner, IconButton, PageHeader, SectionTitle, Skeleton, TabPanel, Tabs, Tag, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -11,6 +12,7 @@ import { StarGlyph } from "@/features/stars/StarButton";
 import { VerifiedMark } from "@/features/stewardship/VerificationBadge";
 import { DueChip } from "@/features/tasks/DueChip";
 import { TaskCheck } from "@/features/tasks/MyTasks";
+import { WaitingReviewRow } from "@/features/reviews/WaitingReviews";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 
@@ -157,6 +159,25 @@ function Tasks({ onNotice }: { onNotice: (notice: string) => void }) {
   );
 }
 
+/** The reviews waiting on the reader; a reader nobody asks to review, or a list that cannot be read, shows nothing here. */
+function Waiting() {
+  const query = useWaitingReviews();
+  const reviews = query.data ?? [];
+  if (reviews.length === 0) return null;
+  return (
+    <SideList title={t.waitingReviews.title} list="reviews" query={query} count={reviews.length} empty={t.waitingReviews.empty}>
+      {reviews.map((waiting) => (
+        <WaitingReviewRow key={waiting.review.id} waiting={waiting} className={rowClass} />
+      ))}
+      <li className="px-2 pt-1">
+        <Link to="/reviews" className="text-sm text-accent hover:underline" data-home-all-reviews="">
+          {t.waitingReviews.all}
+        </Link>
+      </li>
+    </SideList>
+  );
+}
+
 function Recent() {
   const query = useRecentPages();
   const pages = query.data ?? [];
@@ -281,6 +302,7 @@ export function HomeScreen() {
           </TabPanel>
         </section>
         <div className="flex min-w-0 flex-col gap-8">
+          <Waiting />
           <Tasks onNotice={setNotice} />
           <Starred onNotice={setNotice} />
           <Recent />

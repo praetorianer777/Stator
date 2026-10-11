@@ -2120,6 +2120,15 @@ export const de: Messages = {
     branchesEmpty: "Kein Zweig hat eine eigene Regel.",
     removeBranch: (title: string) => `Regel von ${title} entfernen`,
   },
+  waitingReviews: {
+    title: "Prüfungen, die auf Sie warten",
+    intro:
+      "Entwürfe, die Ihnen zur Prüfung vorgelegt wurden, die ältesten zuerst. Öffnen Sie einen, um ihn mit der veröffentlichten Seite zu vergleichen und zu entscheiden.",
+    empty: "Keine Prüfung wartet auf Sie. Sobald jemand einen Entwurf einreicht, den Sie prüfen, erscheint er hier.",
+    button: (n: number) => (n === 1 ? "1 Prüfung wartet auf Sie" : `${n} Prüfungen warten auf Sie`),
+    submitted: (name: string, when: string) => `${name}, eingereicht am ${when}`,
+    all: "Alle Prüfungen, die auf Sie warten",
+  },
   readAsk: {
     ask: "Lesebestätigung erbitten",
     askAgain: "Erneut um Lesebestätigung bitten",

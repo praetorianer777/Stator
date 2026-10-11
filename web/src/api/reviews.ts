@@ -20,6 +20,8 @@ export type ReviewDecision = Wire["ReviewDecision"];
 export type ReviewSubmitOptions = Wire["ReviewSubmitInput"];
 /** How a version got past its review, as the history shows it. */
 export type VersionReview = Wire["VersionReview"];
+/** A pending review the caller may decide, with the page it is on. */
+export type WaitingReview = Omit<Wire["WaitingReview"], "review"> & { review: ReviewSummary };
 /** Whether a page asks its readers to confirm, and whether the caller did. */
 export type PageReadAsk = Wire["PageReadAsk"];
 export type ReadConfirmations = Wire["ReadConfirmations"];
@@ -38,6 +40,8 @@ export function reviewRulesQueryKey(spaceKey: string) {
 export function reviewsQueryKey(pageId: string) {
   return [...pageQueryKey(pageId), "reviews"] as const;
 }
+
+export const waitingReviewsQueryKey = ["reviews", "waiting"] as const;
 
 export function readConfirmationsQueryKey(pageId: string) {
   return [...pageQueryKey(pageId), "read-confirmations"] as const;
@@ -105,6 +109,7 @@ export function useReview(pageId: string, reviewId: string) {
 function reviewChanged(queryClient: QueryClient, pageId: string, spaceKey: string) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) }),
+    queryClient.invalidateQueries({ queryKey: waitingReviewsQueryKey }),
     queryClient.invalidateQueries({ queryKey: treeQueryKey }),
     queryClient.invalidateQueries({ queryKey: spaceQueryKey(spaceKey) }),
     queryClient.invalidateQueries({ queryKey: contributorsQueryKey }),
@@ -121,8 +126,20 @@ export function useSubmitReview(pageId: string) {
       queryClient.setQueryData<PageInSpace>(pageQueryKey(pageId), (current) =>
         current ? { ...current, page: { ...current.page, review: { ...current.page.review, pending: review } } } : current,
       );
-      return queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) }),
+        queryClient.invalidateQueries({ queryKey: waitingReviewsQueryKey }),
+      ]);
     },
+  });
+}
+
+/** The pending reviews the caller may decide, in every space, the oldest first. */
+export function useWaitingReviews(enabled = true) {
+  return useQuery({
+    queryKey: waitingReviewsQueryKey,
+    queryFn: async (): Promise<WaitingReview[]> => (await api.GET("/reviews/waiting")).data!.reviews,
+    enabled,
   });
 }
 

@@ -2063,6 +2063,14 @@ export const en = {
     branchesEmpty: "No branch has a rule of its own.",
     removeBranch: (title: string) => `Remove the rule of ${title}`,
   },
+  waitingReviews: {
+    title: "Reviews waiting for you",
+    intro: "Drafts submitted to you for review, the oldest first. Open one to read it against the published page and decide.",
+    empty: "No reviews are waiting for you. When somebody submits a draft you review, it shows here.",
+    button: (n: number) => (n === 1 ? "1 review waiting for you" : `${n} reviews waiting for you`),
+    submitted: (name: string, when: string) => `${name}, submitted ${when}`,
+    all: "All reviews waiting for you",
+  },
   readAsk: {
     ask: "Ask readers to confirm",
     askAgain: "Ask readers to confirm again",
