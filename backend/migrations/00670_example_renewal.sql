@@ -64,6 +64,8 @@ ALTER TABLE example_page FORCE  ROW LEVEL SECURITY;
 CREATE POLICY example_page_tenant_isolation ON example_page
     USING (org_id = current_org_id()) WITH CHECK (org_id = current_org_id());
 CREATE POLICY example_page_admin_bypass ON example_page TO stator_admin USING (true) WITH CHECK (true);
+CREATE POLICY example_page_not_anonymous ON example_page AS RESTRICTIVE FOR ALL TO stator_app
+    USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
 REVOKE ALL ON example_page FROM stator_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON example_page TO stator_admin;
 
