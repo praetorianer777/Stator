@@ -15,6 +15,12 @@ an upgrade rolls the api without a failed health check.
   the bootstrap administrator through the web Service, then upgrades with two
   api replicas. kind, helm and kubectl are pinned in `scripts/kind`, so a
   machine needs only Docker.
+- **First install without `--wait`.** The roles and migrate Jobs are
+  post-install hooks, which Helm runs after `--wait` has seen the workloads
+  ready, and the api and worker cannot be ready before those Jobs have run, so
+  `helm install --wait` deadlocks until its timeout. Without it Helm still
+  blocks on the hooks, and the test waits for the rollouts itself. An upgrade
+  runs its hooks first, so `helm upgrade --wait` is fine.
 - **Not in `./run-tests.sh`.** It takes several minutes and starts about a
   dozen Pods, so it would slow every push for a change that rarely touches the
   chart. A separate workflow runs it when `deploy/`, the migrations or the

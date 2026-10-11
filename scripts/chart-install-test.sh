@@ -72,8 +72,12 @@ ok "backend and web are on the node"
 
 say "Install"
 kubectl create namespace "$NS"
-helm install "$RELEASE" "$ROOT/deploy/charts/stator" -n "$NS" -f "$ROOT/scripts/chart-install-values.yaml" --wait --timeout 15m
-ok "helm waited for the hook Jobs and the workloads"
+# Not --wait: Helm then waits for the workloads before it runs post-install
+# hooks, and the api and worker cannot be ready until the roles and migrate
+# Jobs, which are those hooks, have run. Helm blocks on the hooks either way;
+# the workloads are waited for below.
+helm install "$RELEASE" "$ROOT/deploy/charts/stator" -n "$NS" -f "$ROOT/scripts/chart-install-values.yaml" --timeout 15m
+ok "helm ran the hook Jobs"
 
 for job in roles secrets-generator migrate bootstrap; do
   name="$(kubectl get jobs -n "$NS" -o name | grep -- "-$job" | head -1)"
@@ -82,8 +86,10 @@ for job in roles secrets-generator migrate bootstrap; do
 done
 ok "the roles, secrets, migrate and bootstrap Jobs all succeeded"
 
+# The api and worker start before the hooks have made the database and crash
+# until they have, so kubelet's back-off, up to five minutes, is in this wait.
 for workload in api worker web; do
-  kubectl rollout status "deploy/${FULL}-${workload}" -n "$NS" --timeout=120s >/dev/null || fail "$workload is not ready"
+  kubectl rollout status "deploy/${FULL}-${workload}" -n "$NS" --timeout=360s >/dev/null || fail "$workload is not ready"
 done
 ok "api, worker and web are ready"
 

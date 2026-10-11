@@ -1039,6 +1039,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The chart's roles Job runs on a cluster. Kubernetes reads `$$` in a
+  container's args as an escaped `$`, which cut the role script's `DO $$` to
+  `DO $` and failed every install with the bundled database (#331). The test
+  that found it installs the chart in a kind cluster.
 - The list of people in a page's Check access dialog shows whole, as tall as
   it needs, instead of a few rows cut off by a scrolling dialog (#337). A press
   that begins inside any dialog and ends outside it, because the dialog shrank,
