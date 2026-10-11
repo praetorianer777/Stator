@@ -560,6 +560,40 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, page.ErrRoomGone):
 		return &APIError{Status: http.StatusConflict, Code: "room_gone",
 			Message: "The page was changed from elsewhere, so the editor starts again from it. Wait for the editor to reload, then carry on."}
+	case errors.Is(err, page.ErrReviewRequired):
+		return &APIError{Status: http.StatusConflict, Code: "review_required",
+			Message: "This page is published through a review. Submit your draft for review instead; it goes out once its reviewers approve it."}
+	case errors.Is(err, page.ErrReviewPending):
+		return &APIError{Status: http.StatusConflict, Code: "review_pending",
+			Message: "A review of this page is waiting for its reviewers, and nothing is published around it. Wait until it is decided, or ask its author to withdraw it, then try again."}
+	case errors.Is(err, page.ErrNoReviewNeeded):
+		return &APIError{Status: http.StatusConflict, Code: "no_review_needed",
+			Message: "This page needs no review. Publish your draft instead."}
+	case errors.Is(err, page.ErrLivePages):
+		return &APIError{Status: http.StatusConflict, Code: "live_pages",
+			Message: "A page this rule would cover is live, and a live page is published as it is typed, which leaves nothing to review. Switch those pages back to drafts first."}
+	case errors.Is(err, page.ErrNotAsked):
+		return &APIError{Status: http.StatusConflict, Code: "not_asked",
+			Message: "This page does not ask its readers to confirm they read it. Ask one of its editors to ask for confirmations first."}
+	case errors.Is(err, page.ErrAskUnpublished):
+		return &APIError{Status: http.StatusConflict, Code: "unpublished",
+			Message: "This page has not been published yet, so nobody else can read it. Publish the page first, then ask its readers to confirm."}
+	case errors.Is(err, page.ErrReviewNotFound):
+		return ErrNotFound("That review is not on this page. Reload the page to see its reviews.")
+	case errors.Is(err, page.ErrReviewClosed):
+		return &APIError{Status: http.StatusConflict, Code: "not_pending",
+			Message: "This review was decided or withdrawn already. Reload the page to see where it stands."}
+	case errors.Is(err, page.ErrOwnReview):
+		return ErrForbidden("Nobody decides on their own draft. Ask one of the reviewers it names to decide on it.")
+	case errors.Is(err, page.ErrNotReviewer):
+		return ErrForbidden("Only the reviewers this review names decide on it. Ask one of them, or an administrator of the space.")
+	case errors.Is(err, page.ErrNotAuthor):
+		return ErrForbidden("Only the author of a review withdraws it. Ask them to withdraw it, or decide on it if you are one of its reviewers.")
+	case errors.Is(err, page.ErrNoRule):
+		return ErrNotFound("There is no review rule here. Reload the space's review rules to see which there are.")
+	case errors.Is(err, page.ErrAuthorCannotPublish):
+		return &APIError{Status: http.StatusConflict, Code: "author_cannot_publish",
+			Message: "The author of this draft may no longer edit the page, so it cannot go out in their name. Send it back with what to change, or ask the author to withdraw it."}
 	case errors.Is(err, page.ErrNoDraft):
 		return &APIError{Status: http.StatusConflict, Code: "no_draft",
 			Message: "You have no draft of this page to publish. Edit the page first; your changes are saved as a draft."}

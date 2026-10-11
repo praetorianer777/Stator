@@ -4,6 +4,7 @@ import { HISTORY_PAGE_SIZE } from "@/config";
 import { api } from "./client";
 import { contributorsQueryKey } from "./contributors";
 import { pageQueryKey, type Page, type PageInSpace } from "./pages";
+import type { ReviewSide } from "./reviews";
 import type { components } from "./schema";
 import { spaceQueryKey } from "./spaces";
 import { treeQueryKey } from "./tree";
@@ -212,7 +213,7 @@ export function useVersion(pageId: string, number: number | undefined) {
   });
 }
 
-export function useComparison(pageId: string, from: CompareRef | undefined, to: CompareRef | undefined, enabled = true) {
+export function useComparison(pageId: string, from: CompareRef | undefined, to: CompareRef | ReviewSide | undefined, enabled = true) {
   const query: { from?: string; to?: string } = {};
   if (from !== undefined) query.from = String(from);
   if (to !== undefined) query.to = String(to);

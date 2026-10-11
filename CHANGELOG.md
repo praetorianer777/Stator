@@ -9,6 +9,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Pages can be reviewed before they publish, and readers asked to confirm
+  they read them (#313). A space's administrators hold the space, or a branch
+  of its pages, to a review by named people and groups and a number of
+  approvals; a draft there is submitted instead of published, its reviewers
+  are told, and the approval that completes the count publishes it as its
+  author's version, which the history records. Reviewers can ask for changes
+  with a comment, authors withdraw, and an administrator can publish without
+  the approvals for a reason, which is audited. Scheduled publishes submit
+  the draft at their time, and a rule never covers a live page. A page's
+  editors can ask its readers to confirm the current version, again after a
+  new one, and see who has and who has not.
 - Administrators renew the example space when Stator ships a newer one
   (#320). The spaces overview, the example's home page and its settings page
   say what the newer example brings; renewing publishes the guides nobody

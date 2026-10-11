@@ -114,13 +114,15 @@ type DiffBlock struct {
 }
 
 // CompareSide is one side of a comparison: a version, or the caller's draft
-// with number 0.
+// or a review's with number 0.
 type CompareSide struct {
-	Number     int       `json:"number"`
-	Draft      bool      `json:"draft"`
-	Title      string    `json:"title"`
-	AuthorName string    `json:"authorName"`
-	CreatedAt  time.Time `json:"createdAt"`
+	Number int  `json:"number"`
+	Draft  bool `json:"draft"`
+	// ReviewID names the review whose draft this side is; absent otherwise.
+	ReviewID   *uuid.UUID `json:"reviewId,omitempty"`
+	Title      string     `json:"title"`
+	AuthorName string     `json:"authorName"`
+	CreatedAt  time.Time  `json:"createdAt"`
 }
 
 // Comparison is the difference between two sides of a page's history.

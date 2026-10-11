@@ -15,9 +15,10 @@ import { ShortcutsPanel } from "@/features/shortcuts/ShortcutsPanel";
 import { useCanAdministerOrg } from "@/features/permissions/access";
 import { SpaceExportPanel } from "./SpaceExport";
 import { SpaceGuests } from "./SpaceGuests";
+import { SpaceReviews } from "@/features/reviews/SpaceReviews";
 import { TrashPanel } from "./TrashPanel";
 
-export type SettingsTab = "details" | "shortcuts" | "permissions" | "templates" | "guests" | "trash" | "archive" | "export";
+export type SettingsTab = "details" | "shortcuts" | "permissions" | "reviews" | "templates" | "guests" | "trash" | "archive" | "export";
 
 const SETTINGS_PANEL_ID = "space-settings-panel";
 
@@ -29,7 +30,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
   if (!space) return <Skeleton />;
   // Guests are let into team spaces, by the organization's administrators.
   const guests = orgAdmin && !space.owner;
-  const shown = (tab === "guests" && !guests) || (tab === "export" && !space.can.administer) ? "details" : tab;
+  const shown = (tab === "guests" && !guests) || ((tab === "export" || tab === "reviews") && !space.can.administer) ? "details" : tab;
   return (
     <div className="mx-auto max-w-3xl" data-space-settings={space.key}>
       <PageHeader
@@ -68,6 +69,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
               { value: "details", label: t.spaceSettings.details, attrs: { "data-settings-tab": "details" } },
               { value: "shortcuts", label: t.spaceSettings.shortcuts, attrs: { "data-settings-tab": "shortcuts" } },
               { value: "permissions", label: t.spaceSettings.permissions, attrs: { "data-settings-tab": "permissions" } },
+              ...(space.can.administer ? [{ value: "reviews" as const, label: t.spaceSettings.reviews, attrs: { "data-settings-tab": "reviews" } }] : []),
               { value: "templates", label: t.spaceSettings.templates, attrs: { "data-settings-tab": "templates" } },
               ...(guests ? [{ value: "guests" as const, label: t.spaceSettings.guests, attrs: { "data-settings-tab": "guests" } }] : []),
               { value: "trash", label: t.spaceSettings.trash, attrs: { "data-settings-tab": "trash" } },
@@ -82,6 +84,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
         {shown === "shortcuts" && <ShortcutsPanel space={space} />}
         {shown === "permissions" && <SpacePermissions space={space} />}
         {shown === "permissions" && <SpaceAnonymousAccess space={space} />}
+        {shown === "reviews" && <SpaceReviews space={space} />}
         {shown === "templates" && <TemplateList spaceKey={space.key} canEdit={space.can.administer} />}
         {shown === "guests" && <SpaceGuests space={space} />}
         {shown === "trash" && <TrashPanel space={space} />}

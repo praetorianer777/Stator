@@ -298,6 +298,25 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusOK, "the same links switch again")
 	once(audit.ActionOrgPublicLinksSet, me, nil)
 
+	reviewRule := map[string]any{"reviewers": []any{user(annID)}, "required": 1}
+	want(t, owner.put(t, "/api/v1/spaces/AUD/review-rule", reviewRule), http.StatusOK, "hold the space to a review")
+	if data := once(audit.ActionReviewRuleSet, me, spaceID); !strings.Contains(data, "Ann Audit") {
+		t.Errorf("the space rule's record reads %s", data)
+	}
+	want(t, owner.delete(t, "/api/v1/spaces/AUD/review-rule"), http.StatusNoContent, "stop holding the space")
+	once(audit.ActionReviewRuleRemoved, me, spaceID)
+	reviewed := docs.add(homeID, "Reviewed")
+	want(t, owner.put(t, pagePath(reviewed, "/review-rule"), reviewRule), http.StatusOK, "hold a branch to a review")
+	once(audit.ActionReviewRuleSet, me, reviewed)
+	draftOn(t, owner, reviewed, "Reviewed", "Checked words")
+	reviewID := idOf(t, want(t, owner.post(t, pagePath(reviewed, "/reviews"), map[string]any{}), http.StatusCreated, "submit a draft"), "review")
+	want(t, owner.post(t, pagePath(reviewed, "/reviews/", reviewID, "/skip"), map[string]any{"reason": "An urgent fix"}), http.StatusOK, "publish it without its review")
+	if data := once(audit.ActionReviewSkipped, me, reviewed); !strings.Contains(data, "An urgent fix") {
+		t.Errorf("the skip's record reads %s", data)
+	}
+	want(t, owner.delete(t, pagePath(reviewed, "/review-rule")), http.StatusNoContent, "stop holding the branch")
+	once(audit.ActionReviewRuleRemoved, me, reviewed)
+
 	want(t, owner.put(t, pagePath(notes, "/mode"), map[string]any{"mode": "live", "discardDrafts": true}), http.StatusOK, "make Notes live")
 	if data := once(audit.ActionPageModeChanged, me, notes); !strings.Contains(data, `"mode": "live"`) || !strings.Contains(data, `"from": "draft"`) {
 		t.Errorf("the mode's record reads %s", data)

@@ -160,7 +160,7 @@ func failureOf(err error) Failure {
 	switch {
 	case errors.Is(err, page.ErrNotFound):
 		return FailureParentGone
-	case errors.As(err, &denied), errors.Is(err, perm.ErrDenied), errors.Is(err, page.ErrPostPlace):
+	case errors.As(err, &denied), errors.Is(err, perm.ErrDenied), errors.Is(err, page.ErrPostPlace), errors.Is(err, page.ErrReviewRequired):
 		return FailureForbidden
 	case errors.As(err, &pgErr) && pgErr.Code == "42501":
 		return FailureForbidden

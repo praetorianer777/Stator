@@ -75,6 +75,9 @@ export function useFocusReturn(open: boolean, into: RefObject<HTMLElement | null
 
 export type AnchoredSide = "top" | "bottom" | "right";
 
+// Hidden at the origin, so the first placing reads where the origin is.
+const hidden: CSSProperties = { visibility: "hidden", top: 0, left: 0 };
+
 /**
  * Where a panel goes beside the element it belongs to, as fixed viewport
  * coordinates, so it can be drawn at the end of the document where no
@@ -88,31 +91,45 @@ export function useAnchored(
   panelRef: RefObject<HTMLElement | null>,
   { align = "start", side = "bottom" }: { align?: "start" | "end"; side?: AnchoredSide } = {},
 ): CSSProperties {
-  const [style, setStyle] = useState<CSSProperties>({ visibility: "hidden" });
+  const [style, setStyle] = useState<CSSProperties>(hidden);
   const place = useCallback(() => {
     const anchor = anchorRef.current?.getBoundingClientRect();
     const panel = panelRef.current;
     if (!anchor || !panel) return;
     const gap = MENU_GAP_PX;
     const width = panel.offsetWidth;
-    const height = panel.offsetHeight;
+    // The whole list, not the part a height cap lets show, decides the side.
+    const height = panel.scrollHeight;
+    // A fixed panel is placed from its containing block, which an ancestor
+    // with a transform or a filter moves off the window's corner; its origin
+    // is where the panel is less where its style puts it.
+    const at = panel.getBoundingClientRect();
+    const computed = getComputedStyle(panel);
+    const originTop = at.top - (parseFloat(computed.top) || 0);
+    const originLeft = at.left - (parseFloat(computed.left) || 0);
+    let top: number;
+    let left: number;
     const next: CSSProperties = {};
     if (side === "right") {
-      next.left = Math.min(anchor.right + gap, window.innerWidth - width);
-      next.top = Math.max(0, Math.min(anchor.top + anchor.height / 2 - height / 2, window.innerHeight - height));
+      left = Math.min(anchor.right + gap, window.innerWidth - width);
+      top = Math.max(0, Math.min(anchor.top + anchor.height / 2 - height / 2, window.innerHeight - height));
     } else {
       const below = anchor.bottom + gap;
       const above = anchor.top - gap - height;
       const goesBelow = side === "bottom" ? below + height <= window.innerHeight || above < 0 : above < 0;
-      next.top = goesBelow ? below : Math.max(0, above);
-      if (align === "end") next.right = Math.max(0, window.innerWidth - anchor.right);
-      else next.left = Math.max(0, Math.min(anchor.left, window.innerWidth - width));
+      top = goesBelow ? below : Math.max(0, above);
+      // A list taller than the room on its side scrolls within it, or what
+      // is past the edge of a phone's screen could never be reached.
+      next.maxHeight = goesBelow ? window.innerHeight - below - gap : anchor.top - gap;
+      left = align === "end" ? Math.max(0, anchor.right - width) : Math.max(0, Math.min(anchor.left, window.innerWidth - width));
     }
+    next.top = top - originTop;
+    next.left = left - originLeft;
     setStyle(next);
   }, [anchorRef, panelRef, align, side]);
   useLayoutEffect(() => {
     if (!open) {
-      setStyle({ visibility: "hidden" });
+      setStyle(hidden);
       return;
     }
     place();

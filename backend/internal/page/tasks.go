@@ -176,6 +176,11 @@ func (s *Service) SetTaskDone(ctx context.Context, actor perm.Actor, pageID, tas
 			return err
 		}
 		if done, _ := item.Attrs["checked"].(bool); done != in.Done {
+			// A tick changes no words, so it needs no review, but no version
+			// goes out around one that waits.
+			if p.Review.Pending != nil {
+				return ErrReviewPending
+			}
 			item.Attrs["checked"] = in.Done
 			body, err := json.Marshal(root)
 			if err != nil {

@@ -301,6 +301,9 @@ func (s *Service) CreatePost(ctx context.Context, actor perm.Actor, spaceKey str
 			if err != nil {
 				return err
 			}
+			if err := made.ClearToPublish(); err != nil {
+				return err
+			}
 			if _, err := publish(ctx, tx, actor, made, release{title: made.Title, body: made.Body, notify: true}); err != nil {
 				return err
 			}

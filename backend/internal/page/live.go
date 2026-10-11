@@ -111,6 +111,11 @@ func (s *Service) SetMode(ctx context.Context, actor perm.Actor, id uuid.UUID, i
 			return nil
 		}
 		if in.Mode == ModeLive {
+			// A live page is published as it is typed, which leaves nothing
+			// to review.
+			if err := p.ClearToPublish(); err != nil {
+				return err
+			}
 			rows, err := tx.Query(ctx, `SELECT name FROM page_pending_drafts($1)`, id)
 			if err != nil {
 				return fmt.Errorf("read the page's drafts: %w", err)

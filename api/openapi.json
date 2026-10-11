@@ -1790,7 +1790,10 @@
                 "space.example_created",
                 "space.example_renewed",
                 "space.exported",
-                "space.imported"
+                "space.imported",
+                "review.rule_set",
+                "review.rule_removed",
+                "review.skipped"
               ]
             }
           },
@@ -1968,7 +1971,10 @@
                 "space.example_created",
                 "space.example_renewed",
                 "space.exported",
-                "space.imported"
+                "space.imported",
+                "review.rule_set",
+                "review.rule_removed",
+                "review.skipped"
               ]
             }
           },
@@ -8696,7 +8702,7 @@
     "/pages/{pageID}/reviews/{reviewID}/decisions": {
       "post": {
         "operationId": "decideReview",
-        "summary": "Approve a pending review or send it back with what to change. The approval that completes it publishes the draft as its author's next version, answered as version. For its named reviewers, never its author.",
+        "summary": "Approve a pending review or send it back with what to change. The approval that completes it publishes the draft as its author's next version, answered as version, which is null otherwise. For its named reviewers, never its author.",
         "tags": [
           "reviews"
         ],
@@ -8742,7 +8748,14 @@
                       "$ref": "#/components/schemas/PageReview"
                     },
                     "version": {
-                      "$ref": "#/components/schemas/VersionEntry"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/VersionEntry"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -11548,6 +11561,48 @@
                   },
                   "required": [
                     "pages"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reviews/waiting": {
+      "get": {
+        "operationId": "listWaitingReviews",
+        "summary": "The pending reviews the caller may decide, named directly or through a group, on pages they may view and never their own, across every space of the organization, the oldest first, without their drafts' bodies.",
+        "tags": [
+          "reviews"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reviews": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WaitingReview"
+                      }
+                    }
+                  },
+                  "required": [
+                    "reviews"
                   ]
                 }
               }
@@ -17566,7 +17621,10 @@
               "space.example_created",
               "space.example_renewed",
               "space.exported",
-              "space.imported"
+              "space.imported",
+              "review.rule_set",
+              "review.rule_removed",
+              "review.skipped"
             ]
           },
           "actorId": {
@@ -17682,7 +17740,10 @@
                 "space.example_created",
                 "space.example_renewed",
                 "space.exported",
-                "space.imported"
+                "space.imported",
+                "review.rule_set",
+                "review.rule_removed",
+                "review.skipped"
               ]
             }
           },
@@ -18300,6 +18361,10 @@
           },
           "number": {
             "type": "integer"
+          },
+          "reviewId": {
+            "type": "string",
+            "format": "uuid"
           },
           "title": {
             "type": "string"
@@ -25733,6 +25798,123 @@
           "recentReaders",
           "days",
           "canListReaders"
+        ]
+      },
+      "WaitingReview": {
+        "type": "object",
+        "properties": {
+          "approvals": {
+            "type": "integer"
+          },
+          "authorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "baseVersion": {
+            "type": "integer"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "can": {
+            "$ref": "#/components/schemas/PageReviewCan"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewDecision"
+            }
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "page": {
+            "$ref": "#/components/schemas/ReviewPageRef"
+          },
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "required": {
+            "type": "integer"
+          },
+          "reviewers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          },
+          "skipReason": {
+            "type": "string"
+          },
+          "skippedByName": {
+            "type": "string"
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "changes_requested",
+              "withdrawn",
+              "published",
+              "skipped"
+            ]
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "pageId",
+          "state",
+          "authorId",
+          "authorName",
+          "baseVersion",
+          "title",
+          "comment",
+          "reviewers",
+          "required",
+          "approvals",
+          "decisions",
+          "can",
+          "submittedAt",
+          "finishedAt",
+          "version",
+          "skipReason",
+          "skippedByName",
+          "page",
+          "spaceKey"
         ]
       },
       "Watch": {

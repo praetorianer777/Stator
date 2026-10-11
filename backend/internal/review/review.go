@@ -11,8 +11,17 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 )
 
-// MaxRequired bounds how many approvals a rule may ask for.
-const MaxRequired = 10
+const (
+	// MaxRequired bounds how many approvals a rule may ask for.
+	MaxRequired = 10
+	// MaxCommentLength bounds what a reviewer says with a decision.
+	MaxCommentLength = 500
+	// MaxReasonLength bounds why a review was skipped.
+	MaxReasonLength = 500
+	// MaxPendingReaders bounds the people a page's readers list names as
+	// not having confirmed; More counts the rest.
+	MaxPendingReaders = 200
+)
 
 // PageRef names a page a rule or a review is about.
 type PageRef struct {
@@ -112,6 +121,13 @@ type Review struct {
 	Body json.RawMessage `json:"body,omitempty"`
 }
 
+// Waiting is a pending review the caller may decide, with the page it is about.
+type Waiting struct {
+	Review
+	Page     PageRef `json:"page"`
+	SpaceKey string  `json:"spaceKey"`
+}
+
 // ReviewCan says what the caller may do with a review.
 type ReviewCan struct {
 	// Decide is approving or sending back: a named reviewer, not the
@@ -203,4 +219,34 @@ type ReaderEntry struct {
 	Person      perm.Person `json:"person"`
 	Version     int         `json:"version"`
 	ConfirmedAt time.Time   `json:"confirmedAt"`
+}
+
+// Nearest is the rule a page is held to: the rule of the nearest page on
+// its way up that has one, chain listing the page first, else the space's.
+func Nearest(chain []uuid.UUID, branches map[uuid.UUID]*Rule, space *Rule) *Rule {
+	for _, id := range chain {
+		if r := branches[id]; r != nil {
+			return r
+		}
+	}
+	return space
+}
+
+// Tally counts the approvals among reviewers' last words, and whether any
+// of them asked for changes.
+func Tally(decisions []DecisionEntry) (approvals int, changes bool) {
+	for _, d := range decisions {
+		switch d.Decision {
+		case DecisionApprove:
+			approvals++
+		case DecisionChanges:
+			changes = true
+		}
+	}
+	return approvals, changes
+}
+
+// Complete says whether approvals meet what a review requires.
+func Complete(approvals, required int) bool {
+	return required > 0 && approvals >= required
 }

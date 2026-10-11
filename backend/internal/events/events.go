@@ -36,10 +36,14 @@ const (
 	// TopicScheduleFailed is written by the worker when a scheduled publish
 	// was refused at its time.
 	TopicScheduleFailed = "page.schedule_failed"
+	// TopicReviewSubmitted is a draft put to its reviewers, and
+	// TopicReviewDecided a reviewer's word on one, or its going out without.
+	TopicReviewSubmitted = "review.submitted"
+	TopicReviewDecided   = "review.decided"
 )
 
 // Topics lists every topic the product emits.
-var Topics = []string{TopicPagePublished, TopicPageAmended, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared, TopicTaskDue, TopicScheduleFailed}
+var Topics = []string{TopicPagePublished, TopicPageAmended, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared, TopicTaskDue, TopicScheduleFailed, TopicReviewSubmitted, TopicReviewDecided}
 
 // Event is one committed domain event.
 type Event struct {
@@ -164,6 +168,25 @@ type ScheduleFailed struct {
 	AuthorID  uuid.UUID `json:"authorId"`
 	PublishAt time.Time `json:"publishAt"`
 	Failure   string    `json:"failure"`
+}
+
+// ReviewSubmitted is a draft of a page put to the reviewers its review names.
+type ReviewSubmitted struct {
+	ReviewID uuid.UUID `json:"reviewId"`
+	PageID   uuid.UUID `json:"pageId"`
+	ActorID  uuid.UUID `json:"actorId"`
+}
+
+// ReviewDecided is what became of a review: a reviewer's approval or ask for
+// changes, its going out, or an administrator publishing it without one.
+type ReviewDecided struct {
+	ReviewID uuid.UUID `json:"reviewId"`
+	PageID   uuid.UUID `json:"pageId"`
+	ActorID  uuid.UUID `json:"actorId"`
+	// Outcome is approve, changes, published or skipped.
+	Outcome string `json:"outcome"`
+	// Version is the version it went out as, when it did.
+	Version *int `json:"version,omitempty"`
 }
 
 // Emit writes an event in the caller's transaction, the one that makes the

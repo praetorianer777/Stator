@@ -4,6 +4,7 @@ import { administers, guestSpaceOf, useJoinRequests, useLogout, useMe } from "@/
 import { Avatar, Button, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { AUDIT_PATH, STALE_PATH, TEMPLATES_PATH, WEBHOOKS_PATH } from "@/config";
+import { WaitingReviewsButton } from "@/features/reviews/WaitingReviews";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { useCanAdministerOrg } from "@/features/permissions/access";
 import { t } from "@/i18n";
@@ -169,6 +170,7 @@ export function TopBar({
         <kbd className="hidden font-mono text-2xs shell:inline">{t.search.shortcut}</kbd>
       </button>
       <div className="ml-auto flex items-center gap-1">
+        {me?.organization && <WaitingReviewsButton />}
         {me?.organization && <NotificationBell />}
         <Menu
           label={t.account.menu}
