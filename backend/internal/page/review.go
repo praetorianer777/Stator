@@ -616,6 +616,57 @@ func (s *Service) SkipReview(ctx context.Context, actor perm.Actor, pageID, id u
 	return out, version, lsn, err
 }
 
+// WaitingReviews lists the pending reviews the caller may decide, across
+// every space of the organization, the oldest first.
+func (s *Service) WaitingReviews(ctx context.Context, actor perm.Actor) ([]review.Waiting, error) {
+	out := []review.Waiting{}
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		rows, err := tx.Query(ctx, `
+			SELECT r.id, p.id, p.title, s.key, COALESCE(perm_space_holds($1, p.space_id, 'administer'), false)
+			FROM page_review r JOIN page p ON p.id = r.page_id JOIN space s ON s.id = p.space_id
+			WHERE r.state = 'pending' AND p.trashed_at IS NULL AND page_review_decidable(r.id, $1)
+			ORDER BY r.submitted_at, r.id`, actor.UserID)
+		if err != nil {
+			return fmt.Errorf("read the reviews waiting: %w", err)
+		}
+		var (
+			ids   []uuid.UUID
+			admin = map[uuid.UUID]bool{}
+		)
+		for rows.Next() {
+			var (
+				w  review.Waiting
+				id uuid.UUID
+				ok bool
+			)
+			if err := rows.Scan(&id, &w.Page.ID, &w.Page.Title, &w.SpaceKey, &ok); err != nil {
+				rows.Close()
+				return err
+			}
+			ids, admin[id] = append(ids, id), ok
+			out = append(out, w)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil || len(ids) == 0 {
+			return err
+		}
+		found, err := reviewsOf(ctx, tx, actor, false, `r.id = ANY($2)`, ids)
+		if err != nil {
+			return err
+		}
+		byID := map[uuid.UUID]review.Review{}
+		for _, r := range found {
+			r.Can.Skip = admin[r.ID]
+			byID[r.ID] = r
+		}
+		for i, id := range ids {
+			out[i].Review = byID[id]
+		}
+		return nil
+	})
+	return out, err
+}
+
 // ReviewRules lists a space's rules: the whole space's first, then each
 // branch's, for whoever may view the space.
 func (s *Service) ReviewRules(ctx context.Context, actor perm.Actor, spaceKey string) ([]review.Rule, error) {

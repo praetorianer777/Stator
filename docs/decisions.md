@@ -67,7 +67,7 @@ itself, so the version, the watch and the events are the author's own and
 held to the author's rights, while the decision and the closing of the
 review stay the reviewer's; an author who may no longer edit the page is
 answered `author_cannot_publish`, and acting on a review decided or
-withdrawn `review_closed`. A copy is published, so copying a page below a
+withdrawn `not_pending`. A copy is published, so copying a page below a
 held branch is refused with `review_required` like the other ways in, and
 moving a live page under a rule with `live_pages`. A scheduled publish that
 finds a review pending is recorded as `conflict`, as one overtaken by

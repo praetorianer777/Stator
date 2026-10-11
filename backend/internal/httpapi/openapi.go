@@ -412,6 +412,8 @@ var operations = []operation{
 		responses: map[int]any{200: env{"review": review.Review{}}, 409: errorEnvelope{}}},
 	{method: "POST", path: "/pages/{pageID}/reviews/{reviewID}/skip", handler: "handleSkipReview", tag: "reviews", summary: "Publish a pending review without its approvals, as its author's next version, for the reason given, which is audited. For the space's administrators.",
 		request: review.SkipInput{}, responses: map[int]any{200: env{"review": review.Review{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/reviews/waiting", handler: "handleListWaitingReviews", tag: "reviews", summary: "The pending reviews the caller may decide, named directly or through a group, on pages they may view and never their own, across every space of the organization, the oldest first, without their drafts' bodies.",
+		responses: ok(env{"reviews": []review.Waiting{}})},
 	{method: "PUT", path: "/pages/{pageID}/read-ask", handler: "handleSetReadAsk", tag: "reviews", summary: "Ask the page's readers to confirm they read it, from its current version on, again when it asked before; or stop asking. For the page's editors.",
 		request: review.ReadAskInput{}, responses: ok(env{"readAsk": review.ReadAsk{}})},
 	{method: "POST", path: "/pages/{pageID}/read-confirmations", handler: "handleConfirmRead", tag: "reviews", summary: "Confirm the caller read the page as it is now; refused with not_asked when the page does not ask. For whoever may view the page.",
@@ -1035,6 +1037,7 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(review.PageRef{})] = "ReviewPageRef"
 	b.Names[reflect.TypeOf(review.Review{})] = "PageReview"
 	b.Names[reflect.TypeOf(review.ReviewCan{})] = "PageReviewCan"
+	b.Names[reflect.TypeOf(review.Waiting{})] = "WaitingReview"
 	b.Names[reflect.TypeOf(review.DecisionEntry{})] = "ReviewDecision"
 	b.Names[reflect.TypeOf(review.SubmitInput{})] = "ReviewSubmitInput"
 	b.Names[reflect.TypeOf(review.DecisionInput{})] = "ReviewDecisionInput"

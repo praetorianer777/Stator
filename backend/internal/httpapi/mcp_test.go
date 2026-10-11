@@ -250,6 +250,7 @@ var notTools = map[string]string{
 	"PUT /pages/{pageID}/review-rule":                              whyAdmin,
 	"DELETE /pages/{pageID}/review-rule":                           whyAdmin,
 	"GET /pages/{pageID}/reviews":                                  whyReview,
+	"GET /reviews/waiting":                                         whyReview,
 	"POST /pages/{pageID}/reviews":                                 whyReorganize,
 	"GET /pages/{pageID}/reviews/{reviewID}":                       whyReview,
 	"POST /pages/{pageID}/reviews/{reviewID}/decisions":            whyReview,

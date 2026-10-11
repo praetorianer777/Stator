@@ -581,7 +581,7 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, page.ErrReviewNotFound):
 		return ErrNotFound("That review is not on this page. Reload the page to see its reviews.")
 	case errors.Is(err, page.ErrReviewClosed):
-		return &APIError{Status: http.StatusConflict, Code: "review_closed",
+		return &APIError{Status: http.StatusConflict, Code: "not_pending",
 			Message: "This review was decided or withdrawn already. Reload the page to see where it stands."}
 	case errors.Is(err, page.ErrOwnReview):
 		return ErrForbidden("Nobody decides on their own draft. Ask one of the reviewers it names to decide on it.")

@@ -109,7 +109,7 @@ CREATE TABLE page_review_decision (
     FOREIGN KEY (org_id, review_id) REFERENCES page_review (org_id, id) ON DELETE CASCADE,
     CONSTRAINT page_review_decision_says_why CHECK (decision = 'approve' OR btrim(comment) <> ''),
     -- review.MaxCommentLength.
-    CONSTRAINT page_review_decision_comment_length CHECK (char_length(comment) <= 2000)
+    CONSTRAINT page_review_decision_comment_length CHECK (char_length(comment) <= 500)
 );
 
 -- The version a review went out as names it, for the history.

@@ -146,6 +146,20 @@ func TestReviewsOverTheAPI(t *testing.T) {
 		if _, p := reviewOf(t, owner, leave); p == nil || p["can"].(map[string]any)["skip"] != true {
 			t.Errorf("the administrator reads the pending review as %v", p)
 		}
+		waiting := list(t, want(t, carl.get(t, "/api/v1/reviews/waiting"), http.StatusOK, "carl's reviews waiting"), "reviews")
+		if len(waiting) != 1 {
+			t.Fatalf("carl has %d reviews waiting", len(waiting))
+		}
+		if w := waiting[0].(map[string]any); w["id"] != reviewID || w["spaceKey"] != "REV" || w["page"].(map[string]any)["id"] != leave ||
+			w["page"].(map[string]any)["title"] != "Leave" || w["can"].(map[string]any)["decide"] != true || w["body"] != nil {
+			t.Errorf("carl's waiting review reads %v", w)
+		}
+		for who, c := range map[string]*client{"the author": ann, "a reader": dave} {
+			if n := len(list(t, want(t, c.get(t, "/api/v1/reviews/waiting"), http.StatusOK, "reviews waiting"), "reviews")); n != 0 {
+				t.Errorf("%s has %d reviews waiting", who, n)
+			}
+		}
+		refusedWith(t, "nobody signed in asking what waits", api.anonymous().get(t, "/api/v1/reviews/waiting"), http.StatusUnauthorized, "unauthorized")
 		read := obj(t, want(t, bob.get(t, pagePath(leave, "/reviews/", reviewID)), http.StatusOK, "bob reads the review"), "review")
 		if !strings.Contains(mustJSON(t, read["body"]), "Twenty-five days") {
 			t.Errorf("the review holds %v", read["body"])
@@ -178,6 +192,7 @@ func TestReviewsOverTheAPI(t *testing.T) {
 		draftOn(t, ann, leave, "Leave", "Thirty days, still a draft")
 		refusedWith(t, "the author deciding", decide(t, ann, leave, reviewID, "approve", ""), http.StatusForbidden, "forbidden")
 		refusedWith(t, "somebody not named deciding", decide(t, dave, leave, reviewID, "approve", ""), http.StatusForbidden, "forbidden")
+		refusedWith(t, "a comment too long", decide(t, bob, leave, reviewID, "changes", strings.Repeat("x", 501)), http.StatusUnprocessableEntity, "validation_failed")
 		refusedWith(t, "changes without a word", decide(t, bob, leave, reviewID, "changes", " "), http.StatusUnprocessableEntity, "validation_failed")
 		for range 2 {
 			got := want(t, decide(t, bob, leave, reviewID, "approve", "Fine by me"), http.StatusOK, "bob approves")
@@ -207,7 +222,10 @@ func TestReviewsOverTheAPI(t *testing.T) {
 		if older := list(t, want(t, dave.get(t, pagePath(leave, "/versions")), http.StatusOK, "history"), "versions")[1].(map[string]any); older["review"] != nil {
 			t.Errorf("a version without a review says %v", older["review"])
 		}
-		refusedWith(t, "deciding on a review that went out", decide(t, bob, leave, reviewID, "approve", ""), http.StatusConflict, "review_closed")
+		if n := len(list(t, want(t, bob.get(t, "/api/v1/reviews/waiting"), http.StatusOK, "bob's reviews waiting"), "reviews")); n != 0 {
+			t.Errorf("a review that went out still waits for bob: %d", n)
+		}
+		refusedWith(t, "deciding on a review that went out", decide(t, bob, leave, reviewID, "approve", ""), http.StatusConflict, "not_pending")
 
 		h.drained(t, home.org)
 		if n := notificationsOfKind(t, ann, string(notify.KindReviewed)); n != 3 {
@@ -244,7 +262,7 @@ func TestReviewsOverTheAPI(t *testing.T) {
 		if got := obj(t, want(t, ann.post(t, pagePath(leave, "/reviews/", id, "/withdraw"), nil), http.StatusOK, "ann withdraws"), "review"); got["state"] != "withdrawn" {
 			t.Errorf("the withdrawn review reads %v", got)
 		}
-		refusedWith(t, "withdrawing again", ann.post(t, pagePath(leave, "/reviews/", id, "/withdraw"), nil), http.StatusConflict, "review_closed")
+		refusedWith(t, "withdrawing again", ann.post(t, pagePath(leave, "/reviews/", id, "/withdraw"), nil), http.StatusConflict, "not_pending")
 
 		id = idOf(t, want(t, submit(t, ann, leave, map[string]any{"comment": "Urgent"}), http.StatusCreated, "ann submits again"), "review")
 		refusedWith(t, "a member skipping", ann.post(t, pagePath(leave, "/reviews/", id, "/skip"), map[string]any{"reason": "Mine"}), http.StatusForbidden, "forbidden")

@@ -2481,6 +2481,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reviews/waiting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The pending reviews the caller may decide, named directly or through a group, on pages they may view and never their own, across every space of the organization, the oldest first, without their drafts' bodies. */
+        get: operations["listWaitingReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search": {
         parameters: {
             query?: never;
@@ -5882,6 +5899,36 @@ export interface components {
             recentReaders: number;
             recentViews: number;
             views: number;
+        };
+        WaitingReview: {
+            approvals: number;
+            /** Format: uuid */
+            authorId: string | null;
+            authorName: string;
+            baseVersion: number;
+            /** @description A JSON value. */
+            body?: unknown;
+            can: components["schemas"]["PageReviewCan"];
+            comment: string;
+            decisions: components["schemas"]["ReviewDecision"][];
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            page: components["schemas"]["ReviewPageRef"];
+            /** Format: uuid */
+            pageId: string;
+            required: number;
+            reviewers: components["schemas"]["Subject"][];
+            skipReason: string;
+            skippedByName: string;
+            spaceKey: string;
+            /** @enum {string} */
+            state: "pending" | "changes_requested" | "withdrawn" | "published" | "skipped";
+            /** Format: date-time */
+            submittedAt: string;
+            title: string;
+            version: number | null;
         };
         Watch: {
             /** Format: date-time */
@@ -13577,6 +13624,37 @@ export interface operations {
                 content: {
                     "application/json": {
                         pages: components["schemas"]["RecentPage"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWaitingReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reviews: components["schemas"]["WaitingReview"][];
                     };
                 };
             };

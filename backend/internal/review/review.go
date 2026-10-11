@@ -15,7 +15,7 @@ const (
 	// MaxRequired bounds how many approvals a rule may ask for.
 	MaxRequired = 10
 	// MaxCommentLength bounds what a reviewer says with a decision.
-	MaxCommentLength = 2000
+	MaxCommentLength = 500
 	// MaxReasonLength bounds why a review was skipped.
 	MaxReasonLength = 500
 	// MaxPendingReaders bounds the people a page's readers list names as
@@ -119,6 +119,13 @@ type Review struct {
 	// comparison with the published version is GET /pages/{id}/compare
 	// with review:{id} as a side.
 	Body json.RawMessage `json:"body,omitempty"`
+}
+
+// Waiting is a pending review the caller may decide, with the page it is about.
+type Waiting struct {
+	Review
+	Page     PageRef `json:"page"`
+	SpaceKey string  `json:"spaceKey"`
 }
 
 // ReviewCan says what the caller may do with a review.

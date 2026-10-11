@@ -198,6 +198,15 @@ func (s *Server) handleSkipReview(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, map[string]any{"review": skipped, "version": version})
 }
 
+func (s *Server) handleListWaitingReviews(w http.ResponseWriter, r *http.Request) {
+	waiting, err := s.Pages.WaitingReviews(r.Context(), actorFrom(r))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"reviews": waiting})
+}
+
 func (s *Server) handleSetReadAsk(w http.ResponseWriter, r *http.Request) {
 	id, apiErr := pathUUID(r, "pageID", "page")
 	if apiErr != nil {

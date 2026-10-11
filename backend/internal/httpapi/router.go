@@ -448,6 +448,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/pages/{pageID}/schedule", s.handleCancelSchedule)
 			r.Put("/pages/{pageID}/live", s.handleSaveLive)
 			r.Put("/pages/{pageID}/mode", s.handleSetPageMode)
+			r.Get("/reviews/waiting", s.handleListWaitingReviews)
 			r.Get("/spaces/{spaceKey}/review-rules", s.handleListReviewRules)
 			r.Put("/spaces/{spaceKey}/review-rule", s.handleSetSpaceReviewRule)
 			r.Delete("/spaces/{spaceKey}/review-rule", s.handleRemoveSpaceReviewRule)
