@@ -353,6 +353,10 @@ export const COLLAB_INK = "#ffffff";
 export const COLLAB_AVATARS_SHOWN = 5;
 /** The longest version comment, matching the API's page.MaxCommentLength. */
 export const VERSION_COMMENT_MAX_LENGTH = 500;
+/** The most approvals a review rule may ask for, matching the API's review.MaxRequired. */
+export const REVIEW_REQUIRED_MAX = 10;
+/** The longest reviewer's comment or reason for skipping a review; kept to a version comment's length. */
+export const REVIEW_COMMENT_MAX_LENGTH = VERSION_COMMENT_MAX_LENGTH;
 /** How many versions the history shows at a time. */
 export const HISTORY_PAGE_SIZE = 20;
 
