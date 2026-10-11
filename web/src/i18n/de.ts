@@ -1833,6 +1833,7 @@ export const de: Messages = {
     trash: "Papierkorb",
     archive: "Archiv",
     export: "Export",
+    reviews: "Prüfungen",
     shortcuts: "Verknüpfungen",
     stale: "Veraltete Seiten",
     save: "Angaben speichern",
@@ -2044,6 +2045,108 @@ export const de: Messages = {
     spaceUnarchived: "Der Bereich wurde aus dem Archiv geholt.",
     showArchived: "Archivierte Bereiche zeigen",
     searchFilter: "Archivierte Seiten einbeziehen",
+  },
+  review: {
+    names: (names: string[]) => (names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} und ${names[names.length - 1]}`),
+    submit: "Zur Prüfung geben",
+    submitTitle: (title: string) => `${title} zur Prüfung geben`,
+    submitIntro: (required: number) =>
+      required === 1
+        ? "Ihr gespeicherter Entwurf geht an die Prüfenden und wird als Ihre nächste Version veröffentlicht, sobald einer von ihnen ihn freigibt. Sie können den Entwurf währenddessen weiter bearbeiten."
+        : `Ihr gespeicherter Entwurf geht an die Prüfenden und wird als Ihre nächste Version veröffentlicht, sobald ${required} von ihnen ihn freigeben. Sie können den Entwurf währenddessen weiter bearbeiten.`,
+    submitLater: "Zum gewählten Zeitpunkt wird der Entwurf zur Prüfung gegeben, statt veröffentlicht zu werden.",
+    confirmSubmit: "Zur Prüfung geben",
+    keepAndSubmit: "Meinen Entwurf behalten und zur Prüfung geben",
+    bannerTitle: "Ein Entwurf dieser Seite wartet auf Prüfung.",
+    submittedBy: (name: string, when: string) => `Eingereicht von ${name} am ${when}.`,
+    approvals: (count: number, required: number) => `${count} von ${required} Freigaben`,
+    reviewers: (names: string) => `Prüfende: ${names}`,
+    authorComment: (comment: string) => `Die Autorin oder der Autor schreibt: ${comment}`,
+    decisionsLabel: "Bisherige Entscheidungen",
+    approved: (name: string) => `${name} hat freigegeben`,
+    changesRequested: (name: string) => `${name} bittet um Änderungen`,
+    open: "Prüfen",
+    withdraw: "Zurückziehen",
+    confirmWithdraw: "Diese Prüfung zurückziehen? Der Entwurf bleibt Ihrer, Sie können ihn weiter bearbeiten und erneut einreichen.",
+    skip: "Ohne Prüfung veröffentlichen",
+    draftSide: "Der Entwurf zur Prüfung",
+    reviewTitle: (title: string) => `Entwurf von ${title} prüfen`,
+    reviewIntro: "Was der Entwurf gegenüber der veröffentlichten Seite ändert. Geben Sie ihn frei, oder bitten Sie um Änderungen und sagen Sie, welche.",
+    decisionComment: "Kommentar",
+    decisionCommentHint: "Nötig, wenn Sie um Änderungen bitten; die Autorin oder der Autor liest ihn.",
+    approve: "Freigeben",
+    requestChanges: "Änderungen anfordern",
+    commentNeeded: "Schreiben Sie, was sich ändern soll, damit die Autorin oder der Autor weiß, was zu tun ist.",
+    decided: "Ihre Entscheidung ist festgehalten.",
+    skipTitle: (title: string) => `${title} ohne Prüfung veröffentlichen`,
+    skipIntro:
+      "Der Entwurf geht jetzt als nächste Version seiner Autorin oder seines Autors hinaus, ohne die Freigaben, auf die er wartet. Der Grund steht im Verlauf und wird im Audit-Log festgehalten.",
+    reason: "Grund",
+    reasonNeeded: "Geben Sie einen Grund an, damit andere sehen, warum die Prüfung übersprungen wurde.",
+    confirmSkip: "Ohne Prüfung veröffentlichen",
+    approvedBy: (names: string) => `Freigegeben von ${names}`,
+    skippedBy: (name: string, reason: string) => `Ohne Prüfung veröffentlicht von ${name}: ${reason}`,
+    ruleMenu: "Prüfregel",
+    ruleTitle: (title: string) => `Prüfregel für ${title}`,
+    ruleIntro:
+      "Eine Regel hier verlangt für diese Seite und alle Seiten darunter eine Prüfung durch die genannten Personen und Gruppen, anstelle der Regel des Bereichs. Eine geänderte Regel ändert keine Prüfung, die schon läuft.",
+    heldBySpace: "Für diese Seite gilt die Regel des Bereichs.",
+    heldByOwn: "Für diese Seite und die Seiten darunter gilt eine eigene Regel.",
+    heldByAbove: (title: string) => `Für diese Seite gilt die Regel von ${title} darüber.`,
+    notHeld: "Diese Seite kann ohne Prüfung veröffentlicht werden.",
+    ruleSummary: (names: string, required: number) =>
+      required === 1 ? `Geprüft von ${names}; 1 Freigabe nötig.` : `Geprüft von ${names}; ${required} Freigaben nötig.`,
+    ownRuleTitle: "Eigene Regel dieser Seite",
+    reviewersTitle: "Prüfende",
+    pickerLabel: "Person oder Gruppe hinzufügen",
+    reviewersEmpty: "Noch niemand. Fügen Sie die Personen oder Gruppen hinzu, die prüfen.",
+    required: "Nötige Freigaben",
+    requiredHint: (max: number) => `Von 1 bis ${max}; die Mitglieder einer Gruppe zählen jeweils einmal.`,
+    requiredRange: (max: number) => `Wählen Sie eine Zahl von 1 bis ${max}.`,
+    reviewersNeeded: "Fügen Sie mindestens eine Person oder Gruppe hinzu, die prüft.",
+    save: "Regel speichern",
+    saved: "Gespeichert.",
+    remove: "Regel entfernen",
+    removed: "Die Regel ist entfernt.",
+    confirmRemovePage: (title: string) => `Die Regel von ${title} entfernen? Dort gilt dann wieder die Regel des Bereichs.`,
+    confirmRemoveSpace: "Die Regel des Bereichs entfernen? Zweige mit eigener Regel behalten sie, und laufende Prüfungen bleiben zu entscheiden.",
+    updated: (name: string, when: string) => `Zuletzt geändert von ${name} am ${when}.`,
+    spaceTitle: "Der ganze Bereich",
+    spaceIntro:
+      "Jede Seite und jeder Beitrag des Bereichs wird vor dem Veröffentlichen von den hier genannten Personen und Gruppen geprüft, außer wo ein Zweig eine eigene Regel hat. Eine Regel kann keine Live-Seite erfassen.",
+    noSpaceRule: "Der Bereich hat keine Regel. Veröffentlichen braucht keine Prüfung, außer wo ein Zweig eine hat.",
+    branchesTitle: "Zweige mit eigener Regel",
+    branchesIntro: "Festgelegt über die Seitenaktionen einer Seite; die Regel gilt für diese Seite und alle Seiten darunter.",
+    branchesEmpty: "Kein Zweig hat eine eigene Regel.",
+    removeBranch: (title: string) => `Regel von ${title} entfernen`,
+  },
+  waitingReviews: {
+    title: "Prüfungen, die auf Sie warten",
+    intro:
+      "Entwürfe, die Ihnen zur Prüfung vorgelegt wurden, die ältesten zuerst. Öffnen Sie einen, um ihn mit der veröffentlichten Seite zu vergleichen und zu entscheiden.",
+    empty: "Keine Prüfung wartet auf Sie. Sobald jemand einen Entwurf einreicht, den Sie prüfen, erscheint er hier.",
+    button: (n: number) => (n === 1 ? "1 Prüfung wartet auf Sie" : `${n} Prüfungen warten auf Sie`),
+    submitted: (name: string, when: string) => `${name}, eingereicht am ${when}`,
+    all: "Alle Prüfungen, die auf Sie warten",
+  },
+  readAsk: {
+    ask: "Lesebestätigung erbitten",
+    askAgain: "Erneut um Lesebestätigung bitten",
+    stop: "Nicht mehr um Lesebestätigung bitten",
+    asked: (version: number) => `Lesende werden gebeten zu bestätigen, dass sie Version ${version} oder später gelesen haben.`,
+    stopped: "Lesende werden nicht mehr um Bestätigung gebeten.",
+    banner: "Bitte bestätigen Sie, dass Sie diese Seite gelesen haben.",
+    confirm: "Gelesen",
+    confirmed: (when: string) => `Sie haben am ${when} bestätigt, diese Seite gelesen zu haben.`,
+    readBy: (n: number) => `Gelesen von ${n}`,
+    title: (title: string) => `Wer ${title} gelesen hat`,
+    since: (version: number) => `Bestätigungen zählen ab Version ${version}.`,
+    confirmedTitle: "Bestätigt",
+    pendingTitle: "Noch nicht",
+    confirmedRow: (when: string, version: number) => `${when}, Version ${version}`,
+    noneConfirmed: "Noch hat niemand bestätigt.",
+    allConfirmed: "Alle, die sie lesen dürfen, haben bestätigt.",
+    more: (n: number) => `und ${n} weitere`,
   },
   notFound: {
     title: "Seite nicht gefunden",
@@ -2717,6 +2820,10 @@ export const de: Messages = {
           return `${who} hat Ihnen eine Aufgabe auf ${title} zugewiesen`;
         case "due":
           return `Eine Ihrer Aufgaben auf ${title} ist fällig`;
+        case "review":
+          return `${who} bittet Sie, einen Entwurf von ${title} zu prüfen`;
+        case "reviewed":
+          return `${who} hat über Ihren Entwurf von ${title} entschieden`;
         case "mentioned":
           return inComment ? `${who} hat Sie in einem Kommentar zu ${title} erwähnt` : `${who} hat Sie auf ${title} erwähnt`;
         case "shared":

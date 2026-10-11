@@ -28,6 +28,7 @@ import { personalSpaceNewRoute, spaceImportRoute, spaceNewRoute, spacesRoute } f
 import { RouteError, rootRoute } from "./root";
 import { searchRoute } from "./search";
 import { staleRoute } from "./stale";
+import { reviewsRoute } from "./reviews";
 import { tasksRoute } from "./tasks";
 import { ssoRoute } from "./sso";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
@@ -63,6 +64,7 @@ const routeTree = rootRoute.addChildren([
     ]),
     searchRoute,
     tasksRoute,
+    reviewsRoute,
     labelRoute,
     themesRoute,
     themeNewRoute,

@@ -147,6 +147,29 @@ describe("the notification bell", () => {
     await screen.findByRole("button", { name: "Notifications" });
   });
 
+  it("words a draft put to the reader for review, and a decision on the reader's draft", async () => {
+    stubShell({
+      "GET /notifications/unread-count": { status: 200, body: { unread: 2 } },
+      "GET /notifications": {
+        status: 200,
+        body: {
+          notifications: [
+            aNotification({ kind: "review", version: null, excerpt: "" }),
+            aNotification({ id: "0195f000-0000-7000-8000-0000000000e3", kind: "reviewed", actorName: "Ann Reviewer", version: null, excerpt: "" }),
+          ],
+          total: 2,
+          limit: 20,
+          offset: 0,
+        },
+      },
+    });
+    await renderAt("/spaces");
+    await userEvent.click(await screen.findByRole("button", { name: "Notifications, 2 unread" }));
+    const panel = await screen.findByRole("dialog", { name: "Notifications" });
+    expect(within(panel).getByText("Bob Builder asks you to review a draft of Runbook")).toBeInTheDocument();
+    expect(within(panel).getByText("Ann Reviewer decided on your draft of Runbook")).toBeInTheDocument();
+  });
+
   it("leads a reply to its thread, which the page brings into view", async () => {
     const threadId = "0195f000-0000-7000-8000-00000000c0a1";
     stubShell({
