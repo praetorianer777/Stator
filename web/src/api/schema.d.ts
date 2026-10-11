@@ -1708,6 +1708,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/read-ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Ask the page's readers to confirm they read it, from its current version on, again when it asked before; or stop asking. For the page's editors. */
+        put: operations["setReadAsk"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/read-confirmations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who confirmed reading the page since it asked, and who of those who may read it has not. For the page's editors. */
+        get: operations["listReadConfirmations"];
+        put?: never;
+        /** Confirm the caller read the page as it is now; refused with not_asked when the page does not ask. For whoever may view the page. */
+        post: operations["confirmRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/readers": {
         parameters: {
             query?: never;
@@ -1754,6 +1789,110 @@ export interface paths {
         put?: never;
         /** Which people and groups of an edit list, not yet saved, could not edit the page because the space does not let them add pages and no grant names them. Changes nothing; for whoever may edit the page. */
         post: operations["checkPageRestrictions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/review-rule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Hold the page and every page below it to a review by the people and groups named, in place of the space's rule; refused with live_pages while a page of the branch is live. For the space's administrators. */
+        put: operations["setPageReviewRule"];
+        post?: never;
+        /** Remove the branch's own rule, so the space's holds there again. For the space's administrators. */
+        delete: operations["removePageReviewRule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The page's reviews, the latest first, without their drafts' bodies. For whoever may view the page. */
+        get: operations["listReviews"];
+        put?: never;
+        /** Put the caller's draft of a page that needs a review to its reviewers, who are told; the page is not published around it until it is decided. Refused with no_draft, publish_conflict, review_pending or no_review_needed. For the page's editors. */
+        post: operations["submitReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/reviews/{reviewID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One review with its draft's body and the reviewers' decisions. For whoever may view the page. */
+        get: operations["getReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/reviews/{reviewID}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a pending review or send it back with what to change. The approval that completes it publishes the draft as its author's next version, answered as version. For its named reviewers, never its author. */
+        post: operations["decideReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/reviews/{reviewID}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish a pending review without its approvals, as its author's next version, for the reason given, which is audited. For the space's administrators. */
+        post: operations["skipReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/reviews/{reviewID}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take a pending review back; the draft stays the author's. For its author. */
+        post: operations["withdrawReview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2722,6 +2861,41 @@ export interface paths {
         put?: never;
         /** Write a blog post in a space, outside its page tree; it is unpublished and its writer's alone unless publish is set, and its date is when it is first published. A template in place of a body starts it from that template, as with POST /pages. For whoever may add pages to the space. */
         post: operations["createPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/review-rule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Hold every page and post of the space to a review before it is published, by the people and groups named; refused with live_pages while a page of the space is live. For the space's administrators. */
+        put: operations["setSpaceReviewRule"];
+        post?: never;
+        /** Stop holding the space to a review; branches with a rule of their own keep it. Pending reviews stay to be decided. For the space's administrators. */
+        delete: operations["removeSpaceReviewRule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/spaces/{spaceKey}/review-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The space's review rules: the one for the whole space and one per branch of pages that has its own. For whoever may view the space. */
+        get: operations["listReviewRules"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4406,7 +4580,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "posted" | "expired" | "failed";
+            kind: "assigned" | "due" | "review" | "reviewed" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "posted" | "expired" | "failed";
             page: components["schemas"]["PageLink"];
             /** Format: date-time */
             readAt: string | null;
@@ -4490,7 +4664,9 @@ export interface components {
             /** Format: date-time */
             postedAt: string | null;
             reactions: components["schemas"]["Reaction"][];
+            readAsk: components["schemas"]["PageReadAsk"];
             restricted: components["schemas"]["Restricted"];
+            review: components["schemas"]["PageReviewStatus"];
             schedule: components["schemas"]["PageSchedule"] | null;
             /** Format: uuid */
             spaceId: string;
@@ -4586,6 +4762,14 @@ export interface components {
             /** @enum {string|null} */
             refusal: "cannotManage" | "off" | "personal" | "folder" | "trashed" | "unpublished" | "restricted" | "full" | null;
         };
+        PageReadAsk: {
+            /** Format: date-time */
+            confirmedAt: string | null;
+            since: number | null;
+        };
+        PageReadAskInput: {
+            ask: boolean;
+        };
         PageRef: {
             /** Format: uuid */
             id: string;
@@ -4596,6 +4780,43 @@ export interface components {
         PageResponse: {
             page: components["schemas"]["Page"];
             space: components["schemas"]["Space"];
+        };
+        PageReview: {
+            approvals: number;
+            /** Format: uuid */
+            authorId: string | null;
+            authorName: string;
+            baseVersion: number;
+            /** @description A JSON value. */
+            body?: unknown;
+            can: components["schemas"]["PageReviewCan"];
+            comment: string;
+            decisions: components["schemas"]["ReviewDecision"][];
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            pageId: string;
+            required: number;
+            reviewers: components["schemas"]["Subject"][];
+            skipReason: string;
+            skippedByName: string;
+            /** @enum {string} */
+            state: "pending" | "changes_requested" | "withdrawn" | "published" | "skipped";
+            /** Format: date-time */
+            submittedAt: string;
+            title: string;
+            version: number | null;
+        };
+        PageReviewCan: {
+            decide: boolean;
+            skip: boolean;
+            withdraw: boolean;
+        };
+        PageReviewStatus: {
+            pending: components["schemas"]["PageReview"] | null;
+            rule: components["schemas"]["ReviewRule"] | null;
         };
         PageSchedule: {
             /** Format: uuid */
@@ -4829,6 +5050,18 @@ export interface components {
             id: string;
             name: string;
         };
+        ReadConfirmation: {
+            /** Format: date-time */
+            confirmedAt: string;
+            person: components["schemas"]["Person"];
+            version: number;
+        };
+        ReadConfirmations: {
+            confirmed: components["schemas"]["ReadConfirmation"][];
+            more: number;
+            pending: components["schemas"]["Person"][];
+            since: number;
+        };
         Reader: {
             avatarUrl?: string;
             days: number;
@@ -4928,6 +5161,48 @@ export interface components {
             edit: components["schemas"]["SubjectRef"][];
             editGrant?: components["schemas"]["SubjectRef"][];
             view: components["schemas"]["SubjectRef"][];
+        };
+        ReviewDecision: {
+            comment: string;
+            /** Format: date-time */
+            decidedAt: string;
+            /** @enum {string} */
+            decision: "approve" | "changes";
+            /** Format: uuid */
+            reviewerId: string | null;
+            reviewerName: string;
+        };
+        ReviewDecisionInput: {
+            comment?: string;
+            /** @enum {string} */
+            decision: "approve" | "changes";
+        };
+        ReviewPageRef: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        ReviewRule: {
+            /** Format: uuid */
+            id: string;
+            page: components["schemas"]["ReviewPageRef"] | null;
+            required: number;
+            reviewers: components["schemas"]["Subject"][];
+            spaceKey: string;
+            /** Format: date-time */
+            updatedAt: string;
+            updatedByName: string;
+        };
+        ReviewRuleInput: {
+            required: number;
+            reviewers: components["schemas"]["SubjectRef"][];
+        };
+        ReviewSkipInput: {
+            reason: string;
+        };
+        ReviewSubmitInput: {
+            comment?: string;
+            notifyWatchers?: boolean;
         };
         Roadmap: {
             from: string | null;
@@ -5289,6 +5564,8 @@ export interface components {
             published: boolean;
             replied: boolean;
             resolved: boolean;
+            review: boolean;
+            reviewed: boolean;
             shared: boolean;
         };
         Tag: {
@@ -5525,6 +5802,7 @@ export interface components {
             number: number;
             originalAuthor: string | null;
             restoredFrom: number | null;
+            review: components["schemas"]["VersionReview"] | null;
             title: string;
             /** Format: date-time */
             updatedAt: string;
@@ -5541,9 +5819,17 @@ export interface components {
             number: number;
             originalAuthor: string | null;
             restoredFrom: number | null;
+            review: components["schemas"]["VersionReview"] | null;
             title: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        VersionReview: {
+            approvedBy: string[];
+            /** Format: uuid */
+            reviewId: string;
+            skipReason: string;
+            skippedByName: string;
         };
         ViewCounts: {
             canListReaders: boolean;
@@ -9500,9 +9786,9 @@ export interface operations {
     compareVersions: {
         parameters: {
             query?: {
-                /** @description A version number, 0 for the empty page, or draft; when absent the version before to, or the draft's base version when to is draft. */
+                /** @description A version number, 0 for the empty page, draft, or review:{reviewID}; when absent the version before to, or the base version of the draft or review that to is. */
                 from?: string;
-                /** @description A version number, or draft; the latest version when absent. */
+                /** @description A version number, draft, or review:{reviewID} for the draft a review holds; the latest version when absent. */
                 to?: string;
             };
             header?: never;
@@ -10863,6 +11149,118 @@ export interface operations {
             };
         };
     };
+    setReadAsk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageReadAskInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        readAsk: components["schemas"]["PageReadAsk"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listReadConfirmations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        readers: components["schemas"]["ReadConfirmations"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    confirmRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        readAsk: components["schemas"]["PageReadAsk"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     pageReaders: {
         parameters: {
             query?: {
@@ -10993,6 +11391,360 @@ export interface operations {
                     "application/json": {
                         check: components["schemas"]["RestrictionsCheck"];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setPageReviewRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRuleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rule: components["schemas"]["ReviewRule"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removePageReviewRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reviews: components["schemas"]["PageReview"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    submitReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewSubmitInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        review: components["schemas"]["PageReview"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                reviewID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        review: components["schemas"]["PageReview"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    decideReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                reviewID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDecisionInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        review: components["schemas"]["PageReview"];
+                        version: components["schemas"]["VersionEntry"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    skipReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                reviewID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewSkipInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        review: components["schemas"]["PageReview"];
+                        version: components["schemas"]["VersionEntry"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    withdrawReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                reviewID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        review: components["schemas"]["PageReview"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -14078,6 +14830,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setSpaceReviewRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRuleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rule: components["schemas"]["ReviewRule"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeSpaceReviewRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listReviewRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rules: components["schemas"]["ReviewRule"][];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

@@ -46,10 +46,15 @@ const (
 	KindExpired Kind = "expired"
 	// KindFailed is a publish the person scheduled that was refused at its time.
 	KindFailed Kind = "failed"
+	// KindReview is a draft put to the person to review (#313).
+	KindReview Kind = "review"
+	// KindReviewed is a reviewer's word on the person's draft, or its going
+	// out without one.
+	KindReviewed Kind = "reviewed"
 )
 
 // Kinds lists every Kind, in the order the preferences show them.
-var Kinds = []Kind{KindAssigned, KindDue, KindMentioned, KindShared, KindReplied, KindCommented, KindResolved, KindPublished, KindCreated, KindPosted, KindExpired, KindFailed}
+var Kinds = []Kind{KindAssigned, KindDue, KindReview, KindReviewed, KindMentioned, KindShared, KindReplied, KindCommented, KindResolved, KindPublished, KindCreated, KindPosted, KindExpired, KindFailed}
 
 // Digest is when mail goes out: one per notification, or bundled.
 type Digest string
@@ -106,6 +111,8 @@ type Switches struct {
 	Posted    bool `json:"posted"`
 	Expired   bool `json:"expired"`
 	Failed    bool `json:"failed"`
+	Review    bool `json:"review"`
+	Reviewed  bool `json:"reviewed"`
 }
 
 // Preferences say how a person hears.

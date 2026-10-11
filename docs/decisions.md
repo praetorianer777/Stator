@@ -3,6 +3,64 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-11: A page is reviewed as a snapshot of its draft, and readers confirm a version (#313)
+
+Procedures and policies should go out checked, and their owners should know
+who has read them. Both hang off the page, as its drafts and its history do.
+
+- **Rules.** A space, or a branch of its pages (a page and every page below
+  it), may be held to a review by the people and groups a rule names, never
+  everyone, with how many approvals it takes (1 to 10; a group's members
+  each count once). The branch's rule takes the place of the space's below
+  it, as a page's own restriction does; the space's rule also holds its
+  blog, which is outside the tree. The space's administrators set and remove
+  rules, which is audited. A rule cannot cover a live page, and a page under
+  a rule cannot be made live: a live page is published as it is typed, which
+  leaves nothing to review (`live_pages`, `review_required`).
+- **Submitting.** On a page held by a rule, publishing a draft is refused
+  with `review_required`, and the editor offers to submit it for review
+  instead (`POST /pages/{id}/reviews`). The review is a snapshot: the
+  draft's title and body, the version it was made from, the author's
+  comment and whether to tell the watchers, and the rule's reviewers and
+  count as they stand then, so changing the rule does not move the goal
+  posts of a review under way. The draft stays the author's to go on
+  editing. A page has at most one pending review; submitting another is
+  refused with `review_pending` until the first is decided or withdrawn.
+  The named people, and the members of the named groups who may view the
+  page, are told, except the author.
+- **Every other way to publish.** Publishing at once through the API,
+  restoring a version, creating a published page or post, and importing
+  below a held branch are refused with `review_required`; a scheduled
+  publish of a held page submits its draft for review at its time, as its
+  author. Ticking a checklist item still publishes a version without a
+  review, since it changes no words, but not while a review is pending.
+- **Deciding.** A named reviewer who may view the page, never its author,
+  approves or asks for changes, the latter with a comment; their last word
+  counts. The approval that completes the count publishes the snapshot as
+  the author's next version, telling the watchers if the author asked to;
+  the author's draft goes if it is still what was submitted. Asking for
+  changes ends the review; the author edits the draft and submits again.
+  The author is told either way. An administrator of the space may publish
+  a pending review without its approvals for a reason, which is audited.
+- **What the page shows.** The page carries the rule it is held to and its
+  pending review with what the caller may do; a review is read with its
+  draft, and compared with the published version as the side
+  `review:{id}`. The history says who approved each version, or who
+  published it without a review and why.
+- **Reading confirmed.** A page's editors may ask its readers to confirm
+  they read it, from the current version on, and ask again after a new
+  version. A reader confirms the page as it is; the editors see who has, and
+  who of those who may read it has not.
+
+The database holds what the service promises: only a named reviewer, or a
+member of a named group, decides; nobody decides on their own draft; a
+review is published only with its approvals or skipped by an administrator
+with a reason; no version is written on a page with a pending review except
+that review's; rules are the space administrators'; and a reader confirms
+only for themselves, only on a page that asks. The routes were agreed
+first, answering 501, so the server and the browser client could be built
+from them side by side.
+
 ## 2026-10-10: The chart is installed in a real cluster by its own workflow (#331)
 
 A render proves that the templates produce valid YAML; it cannot show that the

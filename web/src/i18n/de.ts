@@ -2726,6 +2726,8 @@ export const de: Messages = {
     kinds: {
       assigned: "Jemand weist Ihnen eine Aufgabe zu",
       due: "Eine Ihnen zugewiesene Aufgabe wird fällig",
+      review: "Jemand bittet Sie, einen Entwurf zu prüfen",
+      reviewed: "Jemand entscheidet über Ihren Entwurf",
       mentioned: "Jemand erwähnt Sie",
       shared: "Jemand teilt eine Seite mit Ihnen",
       replied: "Jemand antwortet in einer Diskussion, in der Sie geschrieben haben",
@@ -2737,7 +2739,20 @@ export const de: Messages = {
       expired: "Die Bestätigung einer Seite, die Ihnen gehört, läuft ab",
       failed: "Eine von Ihnen geplante Veröffentlichung kann nicht hinausgehen",
     } as Record<
-      "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "posted" | "expired" | "failed",
+      | "assigned"
+      | "due"
+      | "review"
+      | "reviewed"
+      | "mentioned"
+      | "shared"
+      | "replied"
+      | "commented"
+      | "resolved"
+      | "published"
+      | "created"
+      | "posted"
+      | "expired"
+      | "failed",
       string
     >,
     inAppFor: (kind: string) => `In der App: ${kind}`,

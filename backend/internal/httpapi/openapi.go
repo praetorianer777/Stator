@@ -30,6 +30,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/review"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
 	"github.com/praetorianer777/stator/backend/internal/shortcut"
@@ -385,10 +386,39 @@ var operations = []operation{
 		responses: ok(env{"version": page.Version{}})},
 	{method: "POST", path: "/pages/{pageID}/versions/{versionNumber}/restore", handler: "handleRestoreVersion", tag: "history", summary: "Publish an older version's title and body again, as the next version.",
 		request: page.RestoreInput{}, responses: map[int]any{200: env{"page": page.Page{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}}},
+	// Reviews and read confirmations (#313).
+	{method: "GET", path: "/spaces/{spaceKey}/review-rules", handler: "handleListReviewRules", tag: "reviews", pending: true, summary: "The space's review rules: the one for the whole space and one per branch of pages that has its own. For whoever may view the space.",
+		responses: ok(env{"rules": []review.Rule{}})},
+	{method: "PUT", path: "/spaces/{spaceKey}/review-rule", handler: "handleSetSpaceReviewRule", tag: "reviews", pending: true, summary: "Hold every page and post of the space to a review before it is published, by the people and groups named; refused with live_pages while a page of the space is live. For the space's administrators.",
+		request: review.RuleInput{}, responses: map[int]any{200: env{"rule": review.Rule{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/spaces/{spaceKey}/review-rule", handler: "handleRemoveSpaceReviewRule", tag: "reviews", pending: true, summary: "Stop holding the space to a review; branches with a rule of their own keep it. Pending reviews stay to be decided. For the space's administrators.",
+		responses: none()},
+	{method: "PUT", path: "/pages/{pageID}/review-rule", handler: "handleSetPageReviewRule", tag: "reviews", pending: true, summary: "Hold the page and every page below it to a review by the people and groups named, in place of the space's rule; refused with live_pages while a page of the branch is live. For the space's administrators.",
+		request: review.RuleInput{}, responses: map[int]any{200: env{"rule": review.Rule{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/pages/{pageID}/review-rule", handler: "handleRemovePageReviewRule", tag: "reviews", pending: true, summary: "Remove the branch's own rule, so the space's holds there again. For the space's administrators.",
+		responses: none()},
+	{method: "GET", path: "/pages/{pageID}/reviews", handler: "handleListReviews", tag: "reviews", pending: true, summary: "The page's reviews, the latest first, without their drafts' bodies. For whoever may view the page.",
+		responses: ok(env{"reviews": []review.Review{}})},
+	{method: "POST", path: "/pages/{pageID}/reviews", handler: "handleSubmitReview", tag: "reviews", pending: true, summary: "Put the caller's draft of a page that needs a review to its reviewers, who are told; the page is not published around it until it is decided. Refused with no_draft, publish_conflict, review_pending or no_review_needed. For the page's editors.",
+		request: review.SubmitInput{}, responses: map[int]any{201: env{"review": review.Review{}}, 409: errorEnvelope{}}},
+	{method: "GET", path: "/pages/{pageID}/reviews/{reviewID}", handler: "handleGetReview", tag: "reviews", pending: true, summary: "One review with its draft's body and the reviewers' decisions. For whoever may view the page.",
+		responses: ok(env{"review": review.Review{}})},
+	{method: "POST", path: "/pages/{pageID}/reviews/{reviewID}/decisions", handler: "handleDecideReview", tag: "reviews", pending: true, summary: "Approve a pending review or send it back with what to change. The approval that completes it publishes the draft as its author's next version, answered as version. For its named reviewers, never its author.",
+		request: review.DecisionInput{}, responses: map[int]any{200: env{"review": review.Review{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/pages/{pageID}/reviews/{reviewID}/withdraw", handler: "handleWithdrawReview", tag: "reviews", pending: true, summary: "Take a pending review back; the draft stays the author's. For its author.",
+		responses: map[int]any{200: env{"review": review.Review{}}, 409: errorEnvelope{}}},
+	{method: "POST", path: "/pages/{pageID}/reviews/{reviewID}/skip", handler: "handleSkipReview", tag: "reviews", pending: true, summary: "Publish a pending review without its approvals, as its author's next version, for the reason given, which is audited. For the space's administrators.",
+		request: review.SkipInput{}, responses: map[int]any{200: env{"review": review.Review{}, "version": page.VersionEntry{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "PUT", path: "/pages/{pageID}/read-ask", handler: "handleSetReadAsk", tag: "reviews", pending: true, summary: "Ask the page's readers to confirm they read it, from its current version on, again when it asked before; or stop asking. For the page's editors.",
+		request: review.ReadAskInput{}, responses: ok(env{"readAsk": review.ReadAsk{}})},
+	{method: "POST", path: "/pages/{pageID}/read-confirmations", handler: "handleConfirmRead", tag: "reviews", pending: true, summary: "Confirm the caller read the page as it is now; refused with not_asked when the page does not ask. For whoever may view the page.",
+		responses: map[int]any{201: env{"readAsk": review.ReadAsk{}}, 409: errorEnvelope{}}},
+	{method: "GET", path: "/pages/{pageID}/read-confirmations", handler: "handleListReadConfirmations", tag: "reviews", pending: true, summary: "Who confirmed reading the page since it asked, and who of those who may read it has not. For the page's editors.",
+		responses: ok(env{"readers": review.Readers{}})},
 	{method: "GET", path: "/pages/{pageID}/compare", handler: "handleCompareVersions", tool: "compare_versions", toolHelp: "What changed between two versions of a page.", tag: "history", summary: "What changed between two versions of a page, or between a version and the caller's draft.",
 		query: []param{
-			{name: "from", description: "A version number, 0 for the empty page, or draft; when absent the version before to, or the draft's base version when to is draft."},
-			{name: "to", description: "A version number, or draft; the latest version when absent."},
+			{name: "from", description: "A version number, 0 for the empty page, draft, or review:{reviewID}; when absent the version before to, or the base version of the draft or review that to is."},
+			{name: "to", description: "A version number, draft, or review:{reviewID} for the draft a review holds; the latest version when absent."},
 		}, responses: ok(env{"comparison": page.Comparison{}})},
 
 	// Search (#18).
@@ -997,6 +1027,23 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(page.Schedule{})] = "PageSchedule"
 	b.Names[reflect.TypeOf(page.ScheduleInput{})] = "PageScheduleInput"
 	b.Names[reflect.TypeOf(example.Job{})] = "ExampleSpaceJob"
+	b.Names[reflect.TypeOf(review.Rule{})] = "ReviewRule"
+	b.Names[reflect.TypeOf(review.RuleInput{})] = "ReviewRuleInput"
+	b.Names[reflect.TypeOf(review.PageRef{})] = "ReviewPageRef"
+	b.Names[reflect.TypeOf(review.Review{})] = "PageReview"
+	b.Names[reflect.TypeOf(review.ReviewCan{})] = "PageReviewCan"
+	b.Names[reflect.TypeOf(review.DecisionEntry{})] = "ReviewDecision"
+	b.Names[reflect.TypeOf(review.SubmitInput{})] = "ReviewSubmitInput"
+	b.Names[reflect.TypeOf(review.DecisionInput{})] = "ReviewDecisionInput"
+	b.Names[reflect.TypeOf(review.SkipInput{})] = "ReviewSkipInput"
+	b.Names[reflect.TypeOf(review.Status{})] = "PageReviewStatus"
+	b.Names[reflect.TypeOf(review.Approval{})] = "VersionReview"
+	b.Names[reflect.TypeOf(review.ReadAsk{})] = "PageReadAsk"
+	b.Names[reflect.TypeOf(review.ReadAskInput{})] = "PageReadAskInput"
+	b.Names[reflect.TypeOf(review.Readers{})] = "ReadConfirmations"
+	b.Names[reflect.TypeOf(review.ReaderEntry{})] = "ReadConfirmation"
+	b.Enums[reflect.TypeOf(review.State(""))] = enumStrings(review.States)
+	b.Enums[reflect.TypeOf(review.Decision(""))] = enumStrings(review.Decisions)
 	b.Names[reflect.TypeOf(spaceio.ExportJob{})] = "SpaceExport"
 	b.Names[reflect.TypeOf(spaceio.ImportJob{})] = "SpaceImport"
 	b.Names[reflect.TypeOf(spaceio.Report{})] = "SpaceImportReport"
