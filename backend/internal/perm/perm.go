@@ -71,6 +71,11 @@ const (
 	// CopyPermissionsFrom reads a space's permissions to copy them onto
 	// another, which takes administering it, as reading them does.
 	CopyPermissionsFrom Action = "space.copyPermissionsFrom"
+	// KeepReviewRules sets and removes the rules that hold a space's pages
+	// to a review, which its administrators do.
+	KeepReviewRules Action = "space.reviewRules"
+	// SkipReview publishes a pending review without its approvals.
+	SkipReview Action = "page.skipReview"
 )
 
 // Actor is who asks: a person and their standing in the organization the
@@ -148,6 +153,10 @@ func (e *DeniedError) Error() string {
 		return "Only an administrator of this space can change who else may edit this page. Ask one of them to change it."
 	case CopyPermissionsFrom:
 		return "You may copy permissions only from a space you administer, since only its administrators read them. Ask one of them to copy them for you, or choose another space."
+	case KeepReviewRules:
+		return "Only an administrator of this space chooses who reviews its pages. Ask one of them to set or remove the rule."
+	case SkipReview:
+		return "Only an administrator of this space can publish a draft without its review. Ask the reviewers to decide, or ask an administrator."
 	}
 	return "You do not have permission to do that. Ask an administrator of the organization."
 }

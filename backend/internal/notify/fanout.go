@@ -104,6 +104,8 @@ func NewFanOut(cluster *db.Cluster, mailer mail.Mailer, appURL string, log *slog
 	f.planners[events.TopicPageShared] = planShared
 	f.planners[events.TopicTaskDue] = planTaskDue
 	f.planners[events.TopicScheduleFailed] = planScheduleFailed
+	f.planners[events.TopicReviewSubmitted] = planReviewSubmitted
+	f.planners[events.TopicReviewDecided] = planReviewDecided
 	return f
 }
 

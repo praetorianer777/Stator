@@ -141,7 +141,7 @@ func (w *ScheduleWatch) publish(ctx context.Context, d dueSchedule) (bool, error
 		if err != nil {
 			return err
 		}
-		_, _, err = publishDraft(ctx, tx, actor, d.pageID, comment, notify)
+		err = publishScheduled(ctx, tx, actor, d.pageID, comment, notify)
 		if failure, ok := FailureOf(err); ok {
 			refused = failure
 			return errScheduleRefused
@@ -159,6 +159,25 @@ func (w *ScheduleWatch) publish(ctx context.Context, d dueSchedule) (bool, error
 		return false, err
 	}
 	return published, nil
+}
+
+// publishScheduled does what the author's publish would do at its time: a
+// page held to a review has the draft submitted for review instead, and the
+// schedule, done with, goes while the draft stays the author's.
+func publishScheduled(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUID, comment string, notify bool) error {
+	p, _, err := load(ctx, tx, actor, id, false)
+	if err != nil {
+		return err
+	}
+	if p.Review.Rule == nil {
+		_, _, err := publishDraft(ctx, tx, actor, id, comment, notify)
+		return err
+	}
+	if _, err := submitReview(ctx, tx, actor, id, comment, notify); err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `DELETE FROM page_schedule WHERE page_id = $1 AND user_id = current_actor_id()`, id)
+	return err
 }
 
 // fail records why a schedule was refused and has its author told, once
@@ -192,7 +211,7 @@ func FailureOf(err error) (failure ScheduleFailure, ok bool) {
 	switch {
 	case err == nil:
 		return "", false
-	case errors.Is(err, ErrPublishConflict):
+	case errors.Is(err, ErrPublishConflict), errors.Is(err, ErrReviewPending):
 		return ScheduleConflict, true
 	// The draft a schedule hangs off is gone with a live page or a folder,
 	// so these are a page no longer what was scheduled.

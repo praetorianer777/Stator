@@ -26,6 +26,8 @@ const (
 	MaxVersionLimit     = 100
 	// DraftSide is how a comparison names the caller's draft.
 	DraftSide = "draft"
+	// ReviewSidePrefix and a review's id name the draft a review holds.
+	ReviewSidePrefix = "review:"
 )
 
 // release is what a publish writes: the content, and what the history says
@@ -38,6 +40,8 @@ type release struct {
 	restoredFrom *int
 	// live marks a version saved as its editors type, which later saves amend.
 	live bool
+	// reviewID names the review the version is the draft of.
+	reviewID *uuid.UUID
 }
 
 // publish writes the page's next version, copies it onto the page, makes the
@@ -49,9 +53,9 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_version (org_id, page_id, number, title, body, comment, notify_watchers, restored_from, created_by, live)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		p.ID, number, r.title, r.body, r.comment, r.notify, r.restoredFrom, actor.UserID, r.live); err != nil {
+		INSERT INTO page_version (org_id, page_id, number, title, body, comment, notify_watchers, restored_from, created_by, live, review_id)
+		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		p.ID, number, r.title, r.body, r.comment, r.notify, r.restoredFrom, actor.UserID, r.live, r.reviewID); err != nil {
 		return nil, fmt.Errorf("write version %d: %w", number, err)
 	}
 	if _, err := tx.Exec(ctx, `
@@ -104,7 +108,15 @@ SELECT v.number, v.title, v.comment, u.id, COALESCE(u.name, ''), v.created_at, v
        ARRAY(SELECT e.name FROM page_version_editor pe JOIN app_user e ON e.id = pe.user_id
              WHERE pe.page_id = v.page_id AND pe.number = v.number AND pe.user_id IS DISTINCT FROM v.created_by
              ORDER BY pe.created_at, e.id),
-       v.original_author, NULL::jsonb
+       v.original_author,
+       (SELECT jsonb_build_object(
+                 'reviewId', r.id,
+                 'approvedBy', COALESCE((SELECT jsonb_agg(COALESCE(du.name, '') ORDER BY d.decided_at, d.id)
+                                         FROM page_review_decision d LEFT JOIN app_user du ON du.id = d.reviewer_id
+                                         WHERE d.review_id = r.id AND d.decision = 'approve'), '[]'::jsonb),
+                 'skippedByName', COALESCE(su.name, ''), 'skipReason', COALESCE(r.skip_reason, ''))
+        FROM page_review r LEFT JOIN app_user su ON su.id = r.skipped_by
+        WHERE r.org_id = v.org_id AND r.id = v.review_id)
 FROM page_version v
 LEFT JOIN app_user u ON u.id = v.created_by`
 
@@ -250,6 +262,9 @@ func publishDraft(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUI
 	if p.Mode == ModeLive {
 		return nil, nil, ErrLivePage
 	}
+	if err := p.ClearToPublish(); err != nil {
+		return nil, nil, err
+	}
 	draft, err := draftOf(ctx, tx, actor, id, true)
 	if err != nil {
 		return nil, nil, err
@@ -347,6 +362,9 @@ func (s *Service) RestoreVersion(ctx context.Context, actor perm.Actor, id uuid.
 		if p.Kind == KindFolder {
 			return ErrFolder
 		}
+		if err := p.ClearToPublish(); err != nil {
+			return err
+		}
 		old, err := version(ctx, tx, id, number)
 		if err != nil {
 			return err
@@ -367,10 +385,11 @@ func (s *Service) RestoreVersion(ctx context.Context, actor perm.Actor, id uuid.
 }
 
 // SideRef names one side of a comparison: a version, 0 for the empty page,
-// or the caller's draft.
+// the caller's draft, or the draft a review holds.
 type SideRef struct {
 	Number int
 	Draft  bool
+	Review *uuid.UUID
 }
 
 // ParseSide reads a side as a query names it; empty is nil, left to default.
@@ -381,16 +400,23 @@ func ParseSide(raw string) (*SideRef, error) {
 	if raw == DraftSide {
 		return &SideRef{Draft: true}, nil
 	}
+	if rest, ok := strings.CutPrefix(raw, ReviewSidePrefix); ok {
+		id, err := uuid.Parse(rest)
+		if err != nil {
+			return nil, errors.New("name a review by its id, as review:{id}")
+		}
+		return &SideRef{Review: &id}, nil
+	}
 	n, err := strconv.Atoi(raw)
 	if err != nil || n < 0 {
-		return nil, errors.New("name a version number, 0 for the empty page, or draft")
+		return nil, errors.New("name a version number, 0 for the empty page, draft, or review:{id}")
 	}
 	return &SideRef{Number: n}, nil
 }
 
 // Compare shows what changed between two sides of a page's history. To is
 // the latest version unless named, and from the one before it, or the
-// version the draft began from when to is the draft.
+// version the draft or the review began from when to is one.
 func (s *Service) Compare(ctx context.Context, actor perm.Actor, id uuid.UUID, from, to *SideRef) (*Comparison, error) {
 	var out *Comparison
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -410,6 +436,16 @@ func (s *Service) Compare(ctx context.Context, actor perm.Actor, id uuid.UUID, f
 		}
 		if from == nil {
 			switch {
+			case to.Review != nil:
+				var base int
+				err := tx.QueryRow(ctx, `SELECT base_version FROM page_review WHERE page_id = $1 AND id = $2`, id, *to.Review).Scan(&base)
+				if errors.Is(err, pgx.ErrNoRows) {
+					return ErrReviewNotFound
+				}
+				if err != nil {
+					return err
+				}
+				from = &SideRef{Number: base}
 			case to.Draft && draft != nil:
 				from = &SideRef{Number: draft.BaseVersion}
 			case to.Draft:
@@ -445,6 +481,23 @@ func (s *Service) Compare(ctx context.Context, actor perm.Actor, id uuid.UUID, f
 
 func side(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, draft *Draft, ref SideRef) (*CompareSide, json.RawMessage, error) {
 	switch {
+	case ref.Review != nil:
+		var (
+			out  CompareSide
+			body json.RawMessage
+		)
+		err := tx.QueryRow(ctx, `
+			SELECT r.title, COALESCE(u.name, ''), r.submitted_at, r.body
+			FROM page_review r LEFT JOIN app_user u ON u.id = r.author_id
+			WHERE r.page_id = $1 AND r.id = $2`, p.ID, *ref.Review).Scan(&out.Title, &out.AuthorName, &out.CreatedAt, &body)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil, ErrReviewNotFound
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		out.ReviewID = ref.Review
+		return &out, body, nil
 	case ref.Draft && draft == nil:
 		return nil, nil, ErrDraftNotFound
 	case ref.Draft:

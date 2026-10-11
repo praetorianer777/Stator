@@ -267,6 +267,10 @@ func (s *Service) Import(ctx context.Context, actor perm.Actor, parentID uuid.UU
 	if parent.Kind == page.KindPost {
 		return nil, 0, page.ErrPostPlace
 	}
+	// A page made below a branch held to a review would go out around it.
+	if parent.Review.Rule != nil {
+		return nil, 0, page.ErrReviewRequired
+	}
 	if err := s.checkFiles(u, roots); err != nil {
 		return nil, 0, err
 	}
@@ -408,6 +412,9 @@ func (s *Service) Replace(ctx context.Context, actor perm.Actor, id uuid.UUID, v
 	}
 	if current.Version != version {
 		return nil, 0, page.ErrStale
+	}
+	if err := current.ClearToPublish(); err != nil {
+		return nil, 0, err
 	}
 	noPages := func(*entry) string { return "" }
 	needed := map[string]bool{}

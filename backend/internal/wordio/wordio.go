@@ -95,6 +95,10 @@ func (s *Service) checkParent(ctx context.Context, actor perm.Actor, parentID uu
 	if parent.Kind == page.KindPost {
 		return nil, page.ErrPostPlace
 	}
+	// A page made below a branch held to a review would go out around it.
+	if parent.Review.Rule != nil {
+		return nil, page.ErrReviewRequired
+	}
 	return parent, nil
 }
 

@@ -1789,7 +1789,10 @@
                 "page.mode_changed",
                 "space.example_created",
                 "space.exported",
-                "space.imported"
+                "space.imported",
+                "review.rule_set",
+                "review.rule_removed",
+                "review.skipped"
               ]
             }
           },
@@ -1966,7 +1969,10 @@
                 "page.mode_changed",
                 "space.example_created",
                 "space.exported",
-                "space.imported"
+                "space.imported",
+                "review.rule_set",
+                "review.rule_removed",
+                "review.skipped"
               ]
             }
           },
@@ -8623,7 +8629,7 @@
     "/pages/{pageID}/reviews/{reviewID}/decisions": {
       "post": {
         "operationId": "decideReview",
-        "summary": "Approve a pending review or send it back with what to change. The approval that completes it publishes the draft as its author's next version, answered as version. For its named reviewers, never its author.",
+        "summary": "Approve a pending review or send it back with what to change. The approval that completes it publishes the draft as its author's next version, answered as version, which is null otherwise. For its named reviewers, never its author.",
         "tags": [
           "reviews"
         ],
@@ -8669,7 +8675,14 @@
                       "$ref": "#/components/schemas/PageReview"
                     },
                     "version": {
-                      "$ref": "#/components/schemas/VersionEntry"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/VersionEntry"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -17492,7 +17505,10 @@
               "page.mode_changed",
               "space.example_created",
               "space.exported",
-              "space.imported"
+              "space.imported",
+              "review.rule_set",
+              "review.rule_removed",
+              "review.skipped"
             ]
           },
           "actorId": {
@@ -17607,7 +17623,10 @@
                 "page.mode_changed",
                 "space.example_created",
                 "space.exported",
-                "space.imported"
+                "space.imported",
+                "review.rule_set",
+                "review.rule_removed",
+                "review.skipped"
               ]
             }
           },
@@ -18225,6 +18244,10 @@
           },
           "number": {
             "type": "integer"
+          },
+          "reviewId": {
+            "type": "string",
+            "format": "uuid"
           },
           "title": {
             "type": "string"

@@ -377,6 +377,9 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 			if err != nil {
 				return err
 			}
+			if err := made.ClearToPublish(); err != nil {
+				return err
+			}
 			if _, err := publish(ctx, tx, actor, made, release{title: made.Title, body: made.Body}); err != nil {
 				return err
 			}
@@ -478,6 +481,9 @@ func (s *Service) Move(ctx context.Context, actor perm.Actor, id uuid.UUID, in M
 			}
 			return fmt.Errorf("move the page: %w", err)
 		}
+		if err := liveUnderRule(ctx, tx, &Page{ID: id, SpaceID: to.ID, Kind: KindPage}); err != nil {
+			return err
+		}
 		// The space is in every address Armature holds for the pages moved.
 		if to.ID != current.SpaceID {
 			if err := syncLinksBelow(ctx, tx, []uuid.UUID{id}, withChildren); err != nil {
@@ -561,6 +567,13 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 		_, to, err := parentFor(ctx, tx, actor, in.ParentID)
 		if err != nil {
 			return err
+		}
+		// A copy is published, so below a branch held to a review it would
+		// go out around it.
+		if rule, err := ruleOf(ctx, tx, &Page{ID: in.ParentID, SpaceID: to.ID, Kind: KindPage}); err != nil {
+			return err
+		} else if rule != nil {
+			return ErrReviewRequired
 		}
 		r, err := rankAt(ctx, tx, in.Placement, uuid.Nil)
 		if err != nil {
