@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { APIRequestContext, Page, TestInfo } from "@playwright/test";
 import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
@@ -18,9 +18,10 @@ const STUB_FROM_API = "http://armature-stub:8080";
 
 type Received = { headers: Record<string, string>; body: string };
 
-/** A bin of its own for a test: where the api posts, and where the browser's side reads it back. */
+/** A bin of its own for a test: where the api posts, and where the browser's side reads it back.
+ *  The stub keeps a bin until the stack restarts, so each run names a fresh one. */
 function binFor(testInfo: TestInfo): { address: string; read: (request: APIRequestContext) => Promise<Received[]> } {
-  const bin = `e2e-${testInfo.testId}-${testInfo.retry}-${testInfo.project.name}`.replace(/[^a-zA-Z0-9-]/g, "-");
+  const bin = `e2e-${testInfo.project.name}-${randomUUID().slice(0, 8)}`.replace(/[^a-zA-Z0-9-]/g, "-");
   return {
     address: `${STUB_FROM_API}/_hooks/${bin}`,
     read: async (request) => {
