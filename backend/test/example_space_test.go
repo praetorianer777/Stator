@@ -322,7 +322,7 @@ func TestAFailedExampleLeavesNothingBehind(t *testing.T) {
 	want(t, owner.post(t, "/api/v1/example-space", map[string]any{"language": "en"}), http.StatusAccepted, "ask for the example")
 	got := api.exampleJob(t, owner)
 	job := obj(t, got, "job")
-	if job["state"] != "failed" || job["failure"] != string(example.FailureFailed) || job["message"] != example.FailureFailed.Message() || got.Body["space"] != nil {
+	if job["state"] != "failed" || job["failure"] != string(example.FailureFailed) || job["message"] != example.FailureFailed.Message(example.KindMake) || got.Body["space"] != nil {
 		t.Fatalf("the failed making reads %s", got.Raw)
 	}
 	for what, sql := range map[string]string{
@@ -398,7 +398,7 @@ func TestTheDatabaseKeepsTheExampleTheAdministrators(t *testing.T) {
 	want(t, owner.put(t, "/api/v1/org/permissions/createSpace", map[string]any{"subjects": []any{user(memberID)}}), http.StatusOK, "let the member create spaces")
 	ordinary := obj(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "PLAIN", "name": "Plain"}), http.StatusCreated, "make a space"), "space")["id"]
 
-	insert := `INSERT INTO space (id, org_id, key, name, created_by, example) VALUES ($1, $2, $3, 'Mine', $4, true)`
+	insert := `INSERT INTO space (id, org_id, key, name, created_by, example, example_version, example_language) VALUES ($1, $2, $3, 'Mine', $4, true, 1, 'en')`
 	conn := appConn(t)
 	actAs(t, conn, home.org, memberID)
 	refused(t, conn, "a member who may create spaces making the example", insert, uuid.New(), home.org, "MINE", memberID)

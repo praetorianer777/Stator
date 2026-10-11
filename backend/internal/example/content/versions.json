@@ -1,0 +1,16 @@
+[
+  {
+    "version": 1,
+    "digest": "8ca1a14861cf11802fef7a2afca1486b68e4c93c01753523190d0f59bebe8f61",
+    "new": {
+      "en": [
+        "Moving pages in and out: a new guide to PDF and Word, exporting and importing a space, and importing Word and Markdown.",
+        "Every guide and the page of every block as Stator works now, with sketches, live pages and scheduled publishing."
+      ],
+      "de": [
+        "Seiten hinein und hinaus: eine neue Anleitung zu PDF und Word, zum Exportieren und Importieren eines Bereichs und zum Importieren von Word und Markdown.",
+        "Alle Anleitungen und die Seite aller Blöcke so, wie Stator heute arbeitet, mit Skizzen, Live-Seiten und geplantem Veröffentlichen."
+      ]
+    }
+  }
+]

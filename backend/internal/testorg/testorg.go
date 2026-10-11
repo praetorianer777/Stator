@@ -117,6 +117,36 @@ func (s *Service) Delete(ctx context.Context, slug string) error {
 	return nil
 }
 
+// AgeExample makes the organization's example space one made before its
+// content had versions (#320), and without the page of the file drop, so a
+// renewal has a page to add.
+func (s *Service) AgeExample(ctx context.Context, slug, drop string) error {
+	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var space, dropped uuid.UUID
+		err := tx.QueryRow(ctx, `
+			SELECT s.id, p.page_id FROM org o
+			JOIN space s ON s.org_id = o.id AND s.example
+			JOIN example_page p ON p.space_id = s.id AND p.name = $3 AND p.page_id IS NOT NULL
+			WHERE o.slug = $1 AND o.settings @> $2`,
+			strings.ToLower(strings.TrimSpace(slug)), mark, drop).Scan(&space, &dropped)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM example_page WHERE space_id = $1`, space); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM page WHERE id = $1`, dropped); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `UPDATE space SET example_version = 0 WHERE id = $1`, space)
+		return err
+	})
+	return err
+}
+
 // slugPart keeps what the org table accepts in a slug, so any label works.
 func slugPart(label string) string {
 	var b strings.Builder

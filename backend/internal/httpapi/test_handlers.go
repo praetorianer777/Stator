@@ -27,6 +27,8 @@ var testOperations = []operation{
 		request: createTestOrgRequest{}, responses: created(testorg.Org{})},
 	{method: "DELETE", path: "/test/orgs/{orgSlug}", handler: "handleDeleteTestOrg", tag: "test", summary: "Remove a throwaway organization with all of its rows and files.",
 		responses: none()},
+	{method: "POST", path: "/test/orgs/{orgSlug}/example-space/age", handler: "handleAgeTestExample", tag: "test", summary: "Make a throwaway organization's example space one made before its content had versions, without the page of the file named.",
+		request: ageTestExampleRequest{}, responses: none()},
 }
 
 // TestOrgs makes and removes throwaway organizations; *testorg.Service is the
@@ -34,6 +36,7 @@ var testOperations = []operation{
 type TestOrgs interface {
 	Create(ctx context.Context, label string) (*testorg.Org, error)
 	Delete(ctx context.Context, slug string) error
+	AgeExample(ctx context.Context, slug, drop string) error
 }
 
 // testPathPrefix is where every test endpoint lives.
@@ -81,6 +84,29 @@ func (s *Server) handleDeleteTestOrg(w http.ResponseWriter, r *http.Request) {
 	err := s.TestOrgs.Delete(r.Context(), chi.URLParam(r, "orgSlug"))
 	if errors.Is(err, testorg.ErrNotFound) {
 		respondError(w, r, ErrNotFound("No throwaway organization has that slug. It may be gone already, or it was not made by POST "+APIPrefix+"/test/orgs."))
+		return
+	}
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondNoContent(w)
+}
+
+type ageTestExampleRequest struct {
+	// Drop names the file of the content whose page the older example lacks.
+	Drop string `json:"drop"`
+}
+
+func (s *Server) handleAgeTestExample(w http.ResponseWriter, r *http.Request) {
+	var req ageTestExampleRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	err := s.TestOrgs.AgeExample(r.Context(), chi.URLParam(r, "orgSlug"), req.Drop)
+	if errors.Is(err, testorg.ErrNotFound) {
+		respondError(w, r, ErrNotFound("No throwaway organization has that slug and an example space with that page. Make the example space first."))
 		return
 	}
 	if err != nil {

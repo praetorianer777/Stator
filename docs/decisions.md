@@ -3,6 +3,60 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-11: The example space is renewed page by page, and what people changed is theirs (#320)
+
+An example space made once kept its pages when later releases taught Stator
+more, and the only way to a current one was to delete it with whatever
+people had added. Renewing brings it up to date in place:
+
+- **The content has a version.** `content/versions.json` lists every version
+  with a digest of the pages it shipped and a sentence per language on what
+  it brings. A unit test fails when the pages change and the latest digest
+  does not, and tells the author the digest and what to write. The space
+  records the version it was made or last renewed from, and the language of
+  its pages (`space.example_version`, `space.example_language`); an example
+  made before this is version 0. `GET /example-space` answers both, the
+  current version and what the newer ones bring, in the reader's language,
+  and the overview, the example's home page and its settings page offer the
+  renewal to administrators with that list.
+- **The example knows its pages.** `example_page` keeps each page the
+  example wrote by the name of its file, with the version it last wrote and
+  the title, for a folder, which has no versions to move on. An example made
+  before it kept them is known once by the titles of its pages' first
+  versions, which renaming leaves, and its folders' titles; it published each
+  once, so a page still at version 1 is one nobody changed.
+- **Changed pages are kept, and reported.** A page whose version moved on
+  since the example wrote it, or a folder renamed, is left as it is and
+  listed in the renewal's report, not overwritten or renamed: whoever changed
+  it decided what it says, and the report links it so they can compare with
+  the new guide. A page changed while the renewal runs is refused by the
+  version check every save goes through, and kept the same way.
+- **Unchanged pages are published again.** Through the same services the
+  making uses, as the administrator who asked, each a new version in the
+  page's history, so its comments, labels, stars, watches and the pages hung
+  under it stay with it. An excerpt keeps its id, so whatever includes it
+  still finds it. The showcase's files and calendar are found again and only
+  what is missing is uploaded or made. Pages new in the content are made
+  where they belong; a guide somebody deleted is made again, since renewing
+  is asking for the current example; a page the content no longer has is
+  left and reported. Renewing in another language renames the space when it
+  still has the example's name.
+- **A job of the worker's, like the making.** `POST /example-space/renew`
+  queues an `example_job` of the kind `renew` naming the example, under the
+  same one-open-job index, so a renewal and a making never run at once. A
+  renewal that fails part way keeps what it renewed, being a person's
+  publishes, and the next one finds those pages unchanged; one whose space
+  was deleted before it ran says so. It is audited once as
+  `space.example_renewed` with the versions it went between.
+
+The database holds the version to the worker: through the app role nobody
+changes `example_version` or `example_language` (a trigger), only an
+administrator queues a renewal and only of the organization's example (a
+policy), and only the worker reads or writes `example_page`. The browser
+suite makes an older example with a test endpoint,
+`POST /test/orgs/{orgSlug}/example-space/age`, which forgets what the
+example knows of its pages, drops one guide and sets version 0.
+
 ## 2026-10-10: The chart is installed in a real cluster by its own workflow (#331)
 
 A render proves that the templates produce valid YAML; it cannot show that the
