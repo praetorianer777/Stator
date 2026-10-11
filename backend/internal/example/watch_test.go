@@ -40,9 +40,11 @@ func TestOnlyQueuedAndRunningAreOpen(t *testing.T) {
 // the failure it is.
 func TestFailuresAreReadFromErrorsAndSaidInSentences(t *testing.T) {
 	for _, f := range Failures {
-		m := f.Message()
-		if !strings.HasSuffix(m, ".") || !strings.Contains(m, "example space") {
-			t.Errorf("%s says %q", f, m)
+		for _, k := range Kinds {
+			m := f.Message(k)
+			if !strings.HasSuffix(m, ".") || !strings.Contains(m, "example space") {
+				t.Errorf("%s of %s says %q", f, k, m)
+			}
 		}
 	}
 	for err, want := range map[error]Failure{
@@ -53,6 +55,7 @@ func TestFailuresAreReadFromErrorsAndSaidInSentences(t *testing.T) {
 		&pgconn.PgError{Code: pgerrInsufficientPrivilege}:               FailureForbidden,
 		context.DeadlineExceeded:                                        FailureFailed,
 		errors.Join(errors.New("lost the connection"), ErrNotDiscarded): FailureFailed,
+		fmt.Errorf("renew: %w", ErrGone):                                FailureGone,
 	} {
 		if got := FailureOf(err); got != want {
 			t.Errorf("%v is read as %s, want %s", err, got, want)
@@ -65,7 +68,21 @@ type fakeStore struct {
 	recorded  []uuid.UUID
 	finished  []outcome
 	discarded []uuid.UUID
+	tracked   []Tracked
 	lost      bool
+	gone      bool
+}
+
+func (s *fakeStore) track(_ context.Context, _ *claim, _ uuid.UUID, t Tracked) error {
+	s.tracked = append(s.tracked, t)
+	return nil
+}
+
+func (s *fakeStore) edition(_ context.Context, id uuid.UUID) (*Edition, []Tracked, error) {
+	if s.gone {
+		return nil, nil, ErrGone
+	}
+	return &Edition{SpaceID: id, Version: 0, Language: English}, s.tracked, nil
 }
 
 func (s *fakeStore) claim(context.Context) (*claim, error) {
@@ -104,14 +121,30 @@ type fakeMaker struct {
 	discardFails bool
 	made         []uuid.UUID
 	discarded    []uuid.UUID
+	renewals     []Renewal
 	ctxs         []context.Context
 }
 
-func (m *fakeMaker) make(ctx context.Context, c *claim, started func(context.Context, *space.Space) error) (*space.Space, db.LSN, error) {
+func (m *fakeMaker) renew(ctx context.Context, _ *claim, in Renewal, wrote func(context.Context, Tracked) error) (*Report, db.LSN, error) {
+	m.ctxs = append(m.ctxs, ctx)
+	m.renewals = append(m.renewals, in)
+	if err := wrote(ctx, Tracked{Name: Home, PageID: uuid.New(), Version: 2}); err != nil {
+		return nil, 0, err
+	}
+	if m.fail != nil {
+		return nil, 0, m.fail
+	}
+	return &Report{Added: []ReportPage{{ID: uuid.New(), Title: "New"}}}, 43, nil
+}
+
+func (m *fakeMaker) make(ctx context.Context, c *claim, started func(context.Context, *space.Space) error, wrote func(context.Context, Tracked) error) (*space.Space, db.LSN, error) {
 	m.ctxs = append(m.ctxs, ctx)
 	sp := &space.Space{ID: uuid.New(), Key: Key}
 	m.made = append(m.made, sp.ID)
 	err := started(ctx, sp)
+	if err == nil {
+		err = wrote(ctx, Tracked{Name: Home, PageID: sp.HomePageID, Version: 1})
+	}
 	if err == nil && m.beforeFail != nil {
 		m.beforeFail()
 	}
@@ -286,5 +319,70 @@ func TestTheMakingActsForTheRequester(t *testing.T) {
 	}
 	if _, ok := ctx.Deadline(); !ok {
 		t.Error("the making has no limit")
+	}
+}
+
+func renewClaim(target *uuid.UUID) *claim {
+	c := newClaim()
+	c.kind, c.target, c.language = KindRenew, target, German
+	return c
+}
+
+// A renewal runs on the space the job names, keeps the pages it wrote, and
+// ends with its report; it never makes or deletes a space.
+func TestARenewalIsDoneWithItsReport(t *testing.T) {
+	target := uuid.New()
+	store := &fakeStore{claims: []*claim{renewClaim(&target)}}
+	maker := &fakeMaker{store: store}
+	if _, err := watchOf(store, maker).Once(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(maker.renewals) != 1 || maker.renewals[0].Space != target || maker.renewals[0].From != 0 || maker.renewals[0].Was != English || maker.renewals[0].Lang != German {
+		t.Errorf("renewed %+v", maker.renewals)
+	}
+	if len(store.finished) != 1 || store.finished[0].state != StateDone || *store.finished[0].spaceID != target || store.finished[0].report == nil || store.finished[0].written != 43 {
+		t.Fatalf("finished %+v", store.finished)
+	}
+	if len(store.tracked) != 1 || len(maker.made) != 0 || len(maker.discarded) != 0 || len(store.discarded) != 0 {
+		t.Errorf("tracked %v, made %v, discarded %v and %v", store.tracked, maker.made, maker.discarded, store.discarded)
+	}
+}
+
+func TestARenewalOfADeletedExampleSaysItIsGone(t *testing.T) {
+	target := uuid.New()
+	for name, tc := range map[string]struct {
+		claim *claim
+		store *fakeStore
+	}{
+		"deleted before it was claimed": {renewClaim(nil), &fakeStore{}},
+		"deleted once it was claimed":   {renewClaim(&target), &fakeStore{gone: true}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tc.store.claims = []*claim{tc.claim}
+			maker := &fakeMaker{store: tc.store}
+			if _, err := watchOf(tc.store, maker).Once(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if len(maker.renewals) != 0 || len(tc.store.finished) != 1 || tc.store.finished[0].failure != FailureGone {
+				t.Errorf("renewed %v, finished %+v", maker.renewals, tc.store.finished)
+			}
+		})
+	}
+}
+
+// A renewal that fails keeps what it renewed: nothing is deleted, and the
+// job says why.
+func TestARenewalThatFailsDeletesNothing(t *testing.T) {
+	target := uuid.New()
+	store := &fakeStore{claims: []*claim{renewClaim(&target)}}
+	maker := &fakeMaker{store: store, fail: errors.New("the database went away")}
+	if _, err := watchOf(store, maker).Once(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(maker.discarded) != 0 || len(store.discarded) != 0 {
+		t.Errorf("discarded %v and %v", maker.discarded, store.discarded)
+	}
+	if len(store.finished) != 1 || store.finished[0].state != StateFailed || store.finished[0].failure != FailureFailed || store.finished[0].report != nil {
+		t.Errorf("finished %+v", store.finished)
 	}
 }

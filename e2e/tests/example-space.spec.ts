@@ -1,6 +1,6 @@
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { ageExample, orgTest as test } from "../fixtures/org";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { expectAccessible } from "../fixtures/shell";
 import { deleteSpace } from "../fixtures/spaces";
@@ -71,5 +71,27 @@ test.describe("the example space", { tag: ["@auth"] }, () => {
     await expect(page.locator("[data-example-exists]")).toContainText("The example space exists already");
     await page.locator("[data-example-exists]").getByRole("link", { name: "Getting to know Stator" }).click();
     await expect(page).toHaveURL(new RegExp(`/s/${KEY}$`));
+  });
+
+  test("an administrator sees that a newer one is available, renews it, and reads the new guide", async ({ page, api, freshOrg }) => {
+    test.slow();
+    must(await api.POST("/example-space", { body: { language: "en" } }));
+    await expect.poll(async () => must(await api.GET("/example-space")).space?.key ?? null, MAKING).toBe(KEY);
+    await ageExample(freshOrg.slug, "moving-pages");
+
+    await page.goto("/spaces");
+    const renewal = page.locator("[data-example-renewal]");
+    await expect(renewal).toContainText("A newer example space is available");
+    await expect(renewal.locator("[data-example-new] li").first()).toContainText("Moving pages in and out");
+    await expectAccessible(page);
+    await renewal.locator('[data-action="renew-example-space"]').click();
+    await expect(page.locator("[data-example-renewed]")).toBeVisible(MAKING);
+    await page.locator("[data-renewal-added]").getByRole("link", { name: "Moving pages in and out" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Moving pages in and out" })).toBeVisible();
+    await expect(page.locator("[data-doc]").first()).toContainText("Import space");
+
+    await page.goto(`/s/${KEY}`);
+    await expect(page.getByRole("heading", { level: 1, name: "Getting to know Stator" })).toBeVisible();
+    await expect(page.locator("[data-example-renewal]")).toHaveCount(0);
   });
 });

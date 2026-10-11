@@ -16,7 +16,7 @@ import (
 const unitTestToken = "a token for the unit tests"
 
 // fakeTestOrgs answers without a database, so a test sees what reached it.
-type fakeTestOrgs struct{ created, deleted int }
+type fakeTestOrgs struct{ created, deleted, aged int }
 
 func (f *fakeTestOrgs) Create(_ context.Context, label string) (*testorg.Org, error) {
 	f.created++
@@ -25,6 +25,11 @@ func (f *fakeTestOrgs) Create(_ context.Context, label string) (*testorg.Org, er
 
 func (f *fakeTestOrgs) Delete(context.Context, string) error {
 	f.deleted++
+	return nil
+}
+
+func (f *fakeTestOrgs) AgeExample(context.Context, string, string) error {
+	f.aged++
 	return nil
 }
 

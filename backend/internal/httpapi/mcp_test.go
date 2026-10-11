@@ -150,6 +150,7 @@ var notTools = map[string]string{
 	"PUT /templates/{templateKey}":                                 whyAdmin,
 	"DELETE /templates/{templateKey}":                              whyAdmin,
 	"POST /example-space":                                          whyAdmin,
+	"POST /example-space/renew":                                    whyAdmin,
 	"POST /spaces/{spaceKey}/exports":                              whyTransfer,
 	"GET /spaces/{spaceKey}/exports":                               whyTransfer,
 	"GET /space-exports/{exportID}/file":                           whyTransfer,

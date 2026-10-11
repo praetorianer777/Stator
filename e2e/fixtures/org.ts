@@ -42,6 +42,18 @@ async function deleteOrg(slug: string): Promise<void> {
   }
 }
 
+/** Makes the organisation's example space one made before its content had versions, without the page of the file named. */
+export async function ageExample(slug: string, drop: string): Promise<void> {
+  const context = await testEndpoints();
+  try {
+    const path = `${TEST_ORGS_PATH}/${encodeURIComponent(slug)}/example-space/age`;
+    const res = await context.post(path, { data: { drop } });
+    if (res.status() !== 204) throw new Error(`POST ${path} answered ${res.status()}: ${await res.text()}`);
+  } finally {
+    await context.dispose();
+  }
+}
+
 async function makeFreshOrg(browser: Browser, label: string): Promise<FreshOrg> {
   const org = await createOrg(label);
   const users = Object.keys(USERS) as User[];

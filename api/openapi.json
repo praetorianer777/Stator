@@ -1785,6 +1785,7 @@
                 "space.permissions_copied",
                 "page.mode_changed",
                 "space.example_created",
+                "space.example_renewed",
                 "space.exported",
                 "space.imported"
               ]
@@ -1962,6 +1963,7 @@
                 "space.permissions_copied",
                 "page.mode_changed",
                 "space.example_created",
+                "space.example_renewed",
                 "space.exported",
                 "space.imported"
               ]
@@ -3177,9 +3179,19 @@
     "/example-space": {
       "get": {
         "operationId": "getExampleSpace",
-        "summary": "The organization's example space, the one whose pages explain Stator, null while there is none or it is being made, and the latest making of it. For administrators.",
+        "summary": "The organization's example space, the one whose pages explain Stator, null while there is none or it is being made; the latest making or renewal of it; and which version of its content it has, with what the newer ones bring. For administrators.",
         "tags": [
           "spaces"
+        ],
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "description": "en or de, the language of what the newer versions bring; the caller's own when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -3237,6 +3249,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ExampleSpaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/example-space/renew": {
+      "post": {
+        "operationId": "renewExampleSpace",
+        "summary": "Ask the worker to bring the example space's guides to the current version of its content, in the language asked for, else the one its pages are in: pages nobody changed are published again, changed ones are kept and reported. 202 with the job, or the one queued or running already; 409 when there is no example. For administrators.",
+        "tags": [
+          "spaces"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewExampleSpaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleSpaceResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -16609,6 +16682,7 @@
               "space.permissions_copied",
               "page.mode_changed",
               "space.example_created",
+              "space.example_renewed",
               "space.exported",
               "space.imported"
             ]
@@ -16724,6 +16798,7 @@
                 "space.permissions_copied",
                 "page.mode_changed",
                 "space.example_created",
+                "space.example_renewed",
                 "space.exported",
                 "space.imported"
               ]
@@ -18278,6 +18353,36 @@
           "spec"
         ]
       },
+      "ExampleSpaceEdition": {
+        "type": "object",
+        "properties": {
+          "current": {
+            "type": "integer"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "de"
+            ]
+          },
+          "new": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "current",
+          "language",
+          "new"
+        ]
+      },
       "ExampleSpaceJob": {
         "type": "object",
         "properties": {
@@ -18288,7 +18393,8 @@
                 "enum": [
                   "keys_taken",
                   "forbidden",
-                  "failed"
+                  "failed",
+                  "gone"
                 ]
               },
               {
@@ -18307,6 +18413,13 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "make",
+              "renew"
+            ]
+          },
           "language": {
             "type": "string",
             "enum": [
@@ -18318,6 +18431,16 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "report": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ExampleSpaceReport"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "requestedAt": {
@@ -18349,14 +18472,67 @@
         },
         "required": [
           "id",
+          "kind",
           "state",
           "language",
           "spaceKey",
+          "report",
           "failure",
           "message",
           "requestedAt",
           "startedAt",
           "finishedAt"
+        ]
+      },
+      "ExampleSpaceReport": {
+        "type": "object",
+        "properties": {
+          "added": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExampleSpaceReportPage"
+            }
+          },
+          "kept": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExampleSpaceReportPage"
+            }
+          },
+          "remade": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExampleSpaceReportPage"
+            }
+          },
+          "retired": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExampleSpaceReportPage"
+            }
+          }
+        },
+        "required": [
+          "added",
+          "remade",
+          "kept",
+          "retired"
+        ]
+      },
+      "ExampleSpaceReportPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
         ]
       },
       "ExampleSpaceRequest": {
@@ -18370,6 +18546,16 @@
       "ExampleSpaceResponse": {
         "type": "object",
         "properties": {
+          "edition": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ExampleSpaceEdition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "job": {
             "oneOf": [
               {
@@ -18393,7 +18579,8 @@
         },
         "required": [
           "space",
-          "job"
+          "job",
+          "edition"
         ]
       },
       "Excerpt": {
@@ -21534,6 +21721,14 @@
           "title",
           "home"
         ]
+      },
+      "RenewExampleSpaceRequest": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          }
+        }
       },
       "ReplicaStatus": {
         "type": "object",

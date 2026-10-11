@@ -11,6 +11,7 @@ import { attachmentUrl } from "@/api/attachments";
 import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ArchiveBanner, ArchivedMark } from "@/features/archive/ArchiveBanner";
+import { ExampleRenewal } from "@/features/spaces/ExampleSpace";
 import { ArmatureLinks } from "@/features/armature/ArmatureLinks";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSection";
@@ -378,6 +379,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       {trash.error && <ErrorBanner>{trash.error.message}</ErrorBanner>}
       {archive.error && <ErrorBanner>{archive.error.message}</ErrorBanner>}
       <ArchiveBanner page={page} space={space} />
+      {page.home && <ExampleRenewal spaceId={space.id} />}
       {watchFailed && <ErrorBanner>{t.watch.failed}</ErrorBanner>}
       {starFailed && <ErrorBanner>{t.star.failed}</ErrorBanner>}
       {taskFailed && <ErrorBanner>{t.tasks.tickFailed}</ErrorBanner>}

@@ -61,6 +61,18 @@ type Maker struct {
 	// Started hears of the space as soon as it exists, before its pages; an
 	// error from it fails the making, which deletes the space again.
 	Started func(context.Context, *space.Space) error
+	// Wrote hears of every page the example writes, or keeps for people when
+	// it is renewed, so a renewal knows them again; an error fails it.
+	Wrote func(context.Context, Tracked) error
+}
+
+// Tracked is a page of the example by the name of its file, with the version
+// and title the example last gave it.
+type Tracked struct {
+	Name    string
+	PageID  uuid.UUID
+	Version int
+	Title   string
 }
 
 // ErrNotDiscarded says a failed making left its half made space behind.
@@ -115,6 +127,9 @@ func (m *Maker) Make(ctx context.Context, actor perm.Actor, me Person, lang stri
 	w := &writes{lsn: lsn}
 	err = m.started(ctx, sp)
 	if err == nil {
+		err = m.wrote(ctx, Tracked{Name: Home, PageID: sp.HomePageID, Version: 1, Title: sp.Name})
+	}
+	if err == nil {
 		err = m.fill(ctx, actor, sp, &f, w)
 	}
 	if err == nil {
@@ -129,6 +144,13 @@ func (m *Maker) Make(ctx context.Context, actor perm.Actor, me Person, lang stri
 	}
 	made, err := m.Spaces.Get(ctx, actor, sp.Key)
 	return made, true, w.lsn, err
+}
+
+func (m *Maker) wrote(ctx context.Context, t Tracked) error {
+	if m.Wrote == nil {
+		return nil
+	}
+	return m.Wrote(ctx, t)
 }
 
 func (m *Maker) started(ctx context.Context, sp *space.Space) error {
@@ -201,7 +223,7 @@ func (m *Maker) makeSpace(ctx context.Context, actor perm.Actor, f *Facts) (*spa
 			return nil, 0, err
 		}
 		sp, lsn, err := m.Spaces.CreateExample(ctx, actor, space.ExampleInput{
-			Key: f.Key, Name: name, Description: description(f.Lang), Home: home.Body, Everyone: Everyone, Language: f.Lang,
+			Key: f.Key, Name: name, Description: description(f.Lang), Home: home.Body, Everyone: Everyone, Language: f.Lang, Version: Current(),
 		})
 		var taken *space.FieldError
 		if errors.As(err, &taken) && taken.Field == "key" {
@@ -237,6 +259,11 @@ func (m *Maker) fill(ctx context.Context, actor perm.Actor, sp *space.Space, f *
 			}
 			f.Pages[e.Name] = made.ID
 			f.Excerpts[e.Name] = uuid.Must(uuid.NewV7())
+			if e.Kind == page.KindFolder {
+				if err := m.wrote(ctx, Tracked{Name: e.Name, PageID: made.ID, Version: made.Version, Title: made.Title}); err != nil {
+					return err
+				}
+			}
 			order = append(order, e)
 			if err := place(made.ID, e.Children); err != nil {
 				return err
@@ -254,16 +281,7 @@ func (m *Maker) fill(ctx context.Context, actor perm.Actor, sp *space.Space, f *
 		return err
 	}
 	for _, name := range Posts {
-		doc, _, err := Render(name, *f)
-		if err != nil {
-			return err
-		}
-		post, lsn, err := m.Pages.CreatePost(ctx, actor, sp.Key, page.PostInput{Title: doc.Title, Body: doc.Body, Publish: true})
-		w.note(lsn)
-		if err != nil {
-			return fmt.Errorf("post %s: %w", name, err)
-		}
-		if err := m.label(ctx, actor, post.ID, doc.Labels, w); err != nil {
+		if err := m.post(ctx, actor, sp.Key, name, *f, w); err != nil {
 			return err
 		}
 	}
@@ -278,16 +296,35 @@ func (m *Maker) fill(ctx context.Context, actor perm.Actor, sp *space.Space, f *
 	return nil
 }
 
+func (m *Maker) post(ctx context.Context, actor perm.Actor, key, name string, f Facts, w *writes) error {
+	doc, _, err := Render(name, f)
+	if err != nil {
+		return err
+	}
+	post, lsn, err := m.Pages.CreatePost(ctx, actor, key, page.PostInput{Title: doc.Title, Body: doc.Body, Publish: true})
+	w.note(lsn)
+	if err != nil {
+		return fmt.Errorf("post %s: %w", name, err)
+	}
+	if err := m.wrote(ctx, Tracked{Name: name, PageID: post.ID, Version: post.Version, Title: post.Title}); err != nil {
+		return err
+	}
+	return m.label(ctx, actor, post.ID, doc.Labels, w)
+}
+
 func (m *Maker) publish(ctx context.Context, actor perm.Actor, name string, f Facts, w *writes) error {
 	doc, _, err := Render(name, f)
 	if err != nil {
 		return err
 	}
 	id := f.Pages[name]
-	_, lsn, err := m.Pages.Update(ctx, actor, id, page.UpdateInput{Title: &doc.Title, Body: doc.Body})
+	published, lsn, err := m.Pages.Update(ctx, actor, id, page.UpdateInput{Title: &doc.Title, Body: doc.Body})
 	w.note(lsn)
 	if err != nil {
 		return fmt.Errorf("publish %s: %w", name, err)
+	}
+	if err := m.wrote(ctx, Tracked{Name: name, PageID: id, Version: published.Version, Title: published.Title}); err != nil {
+		return err
 	}
 	if err := m.label(ctx, actor, id, doc.Labels, w); err != nil {
 		return err
@@ -332,34 +369,17 @@ func (m *Maker) upload(ctx context.Context, actor perm.Actor, f *Facts, w *write
 	if m.Attachments == nil {
 		return nil
 	}
-	cover, err := Cover()
+	files, err := showcaseFiles(f.Lang)
 	if err != nil {
 		return err
 	}
-	picture, err := Picture()
-	if err != nil {
-		return err
-	}
-	board, err := Board()
-	if err != nil {
-		return err
-	}
-	for _, file := range []struct {
-		name, contentType string
-		data              []byte
-	}{
-		{CoverFile, "image/png", cover},
-		{ImageFile, "image/png", picture},
-		{BoardFile, "image/png", board},
-		{DataFile, "text/csv", numbers(f.Lang, false)},
-		{DataFile, "text/csv", numbers(f.Lang, true)},
-	} {
-		made, lsn, err := m.Attachments.Upload(ctx, actor, f.Pages[Showcase], attachment.UploadInput{FileName: file.name, ContentType: file.contentType, Body: bytes.NewReader(file.data)})
-		w.note(lsn)
-		if err != nil {
-			return fmt.Errorf("upload %s: %w", file.name, err)
+	// The table goes up twice, so the showcase lists a file with versions.
+	last := len(files) - 1
+	files = append(files[:last:last], showcaseFile{DataFile, "text/csv", numbers(f.Lang, false)}, files[last])
+	for _, file := range files {
+		if err := m.uploadOne(ctx, actor, f, file, w); err != nil {
+			return err
 		}
-		f.Files[file.name] = made.ID
 	}
 	_, lsn, err := m.Pages.SetAppearance(ctx, actor, f.Pages[Showcase], page.AppearanceInput{
 		Width: page.WidthFixed,
@@ -369,6 +389,44 @@ func (m *Maker) upload(ctx context.Context, actor perm.Actor, f *Facts, w *write
 	if err != nil {
 		return fmt.Errorf("give the showcase its cover: %w", err)
 	}
+	return nil
+}
+
+type showcaseFile struct {
+	name, contentType string
+	data              []byte
+}
+
+// showcaseFiles are the showcase's uploads as they are now, the table of
+// numbers in its later version.
+func showcaseFiles(lang string) ([]showcaseFile, error) {
+	cover, err := Cover()
+	if err != nil {
+		return nil, err
+	}
+	picture, err := Picture()
+	if err != nil {
+		return nil, err
+	}
+	board, err := Board()
+	if err != nil {
+		return nil, err
+	}
+	return []showcaseFile{
+		{CoverFile, "image/png", cover},
+		{ImageFile, "image/png", picture},
+		{BoardFile, "image/png", board},
+		{DataFile, "text/csv", numbers(lang, true)},
+	}, nil
+}
+
+func (m *Maker) uploadOne(ctx context.Context, actor perm.Actor, f *Facts, file showcaseFile, w *writes) error {
+	made, lsn, err := m.Attachments.Upload(ctx, actor, f.Pages[Showcase], attachment.UploadInput{FileName: file.name, ContentType: file.contentType, Body: bytes.NewReader(file.data)})
+	w.note(lsn)
+	if err != nil {
+		return fmt.Errorf("upload %s: %w", file.name, err)
+	}
+	f.Files[file.name] = made.ID
 	return nil
 }
 
