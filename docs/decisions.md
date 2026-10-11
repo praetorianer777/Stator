@@ -61,6 +61,19 @@ only for themselves, only on a page that asks. The routes were agreed
 first, answering 501, so the server and the browser client could be built
 from them side by side.
 
+Building it settled what the routes left open. The approval that completes
+a review switches the transaction to act for the author for the publish
+itself, so the version, the watch and the events are the author's own and
+held to the author's rights, while the decision and the closing of the
+review stay the reviewer's; an author who may no longer edit the page is
+answered `author_cannot_publish`, and acting on a review decided or
+withdrawn `review_closed`. A copy is published, so copying a page below a
+held branch is refused with `review_required` like the other ways in, and
+moving a live page under a rule with `live_pages`. A scheduled publish that
+finds a review pending is recorded as `conflict`, as one overtaken by
+another publish is. A rule asks for at most as many approvals as the people
+it names, counting each group's members, or it could never be met.
+
 ## 2026-10-10: The chart is installed in a real cluster by its own workflow (#331)
 
 A render proves that the templates produce valid YAML; it cannot show that the
