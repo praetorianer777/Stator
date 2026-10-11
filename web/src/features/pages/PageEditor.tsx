@@ -17,6 +17,7 @@ import {
   type PublishOptions,
   type ScheduleOptions,
 } from "@/api/versions";
+import { useSubmitReview } from "@/api/reviews";
 import { Button, ErrorBanner, Field, PageHeader, Skeleton, Tag, cx } from "@/components/ui";
 import { useEditorAttachments } from "@/features/attachments/hooks";
 import { ArmatureIssuesProvider } from "@/features/armature/IssueChip";
@@ -115,6 +116,9 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   const liveMode = page.mode === "live";
   const discard = useDiscardDraft(page.id);
   const publish = usePublish(page.id);
+  const submitReview = useSubmitReview(page.id);
+  // A page held to a review has its drafts submitted to the reviewers rather than published.
+  const rule = page.mode === "live" ? null : page.review.rule;
   const scheduling = useSchedulePublish(page.id);
   const doc = together?.snapshot.doc ?? null;
   const live = together?.snapshot.status === "live";
@@ -277,20 +281,36 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
     if (canPublish) setDialog(true);
   }
 
+  async function refused(error: Error, options: PublishOptions) {
+    setDialog(false);
+    if (!(error instanceof ApiError)) return;
+    if (error.code === "publish_conflict") {
+      const fresh = await queryClient.fetchQuery({ ...pageQuery(page.id), staleTime: 0 });
+      setConflict({ latest: fresh.page.version, options });
+    } else if (error.code === "review_required" || error.code === "no_review_needed") {
+      // The rule changed since the page was read; read again, the button offers what it holds to now.
+      await queryClient.fetchQuery({ ...pageQuery(page.id), staleTime: 0 });
+    }
+  }
+
   function publishWith(options: PublishOptions) {
+    if (rule) {
+      submitReview.mutate(options, {
+        onSuccess: () => {
+          setDialog(false);
+          void view(page);
+        },
+        onError: (error) => void refused(error, options),
+      });
+      return;
+    }
     publish.mutate(options, {
       onSuccess: (saved) => {
         setDialog(false);
         together?.session.published(saved.version);
         void view(saved);
       },
-      onError: async (error) => {
-        setDialog(false);
-        if (error instanceof ApiError && error.code === "publish_conflict") {
-          const fresh = await queryClient.fetchQuery({ ...pageQuery(page.id), staleTime: 0 });
-          setConflict({ latest: fresh.page.version, options });
-        }
-      },
+      onError: (error) => void refused(error, options),
     });
   }
 
@@ -367,10 +387,8 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   const status = statuses[state];
   const statusMessages = [...new Set([liveMode ? "" : t.draft.nothingToPublish, ...Object.values(statuses)])].filter(Boolean);
 
-  const error =
-    (publish.error && !(publish.error instanceof ApiError && publish.error.code === "publish_conflict") ? publish.error : null) ??
-    scheduling.error ??
-    discard.error;
+  const conflicted = (error: Error | null) => (error && !(error instanceof ApiError && error.code === "publish_conflict") ? error : null);
+  const error = conflicted(publish.error) ?? conflicted(submitReview.error) ?? scheduling.error ?? discard.error;
   const mySchedule = page.schedule?.mine ? page.schedule : null;
 
   return (
@@ -425,10 +443,10 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
                 type="submit"
                 form={PAGE_FORM_ID}
                 disabled={!canPublish || stopped !== null}
-                loading={publish.isPending || scheduling.isPending}
-                data-action="publish"
+                loading={publish.isPending || submitReview.isPending || scheduling.isPending}
+                data-action={rule ? "submit-review" : "publish"}
               >
-                {t.draft.publish}
+                {rule ? t.review.submit : t.draft.publish}
               </Button>
             </>
           )
@@ -457,8 +475,14 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
             >
               {t.draft.compareConflict(conflict.latest)}
             </Button>
-            <Button type="button" size="sm" onClick={() => void keepAndPublish()} loading={publish.isPending} data-action="keep-and-publish">
-              {t.draft.keepAndPublish}
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void keepAndPublish()}
+              loading={publish.isPending || submitReview.isPending}
+              data-action="keep-and-publish"
+            >
+              {rule ? t.review.keepAndSubmit : t.draft.keepAndPublish}
             </Button>
             <Button type="button" variant="danger" size="sm" onClick={() => void discardDraft()} data-action="discard-conflict">
               {t.draft.discard}
@@ -511,8 +535,9 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
       {dialog && (
         <PublishDialog
           title={title}
-          busy={publish.isPending || scheduling.isPending}
+          busy={publish.isPending || submitReview.isPending || scheduling.isPending}
           schedule={mySchedule}
+          review={rule ? { required: rule.required } : undefined}
           onClose={() => setDialog(false)}
           onPublish={(options) => void onPublish(options)}
           onSchedule={(options) => void onSchedule(options)}

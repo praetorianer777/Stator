@@ -12,6 +12,10 @@ import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Toolt
 import { Icon } from "@/components/icons";
 import { ArchiveBanner, ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { ArmatureLinks } from "@/features/armature/ArmatureLinks";
+import { useSetReadAsk } from "@/api/reviews";
+import { ReadAskBanner, ReadByButton, ReadersDialog } from "@/features/reviews/ReadAsk";
+import { ReviewBanner } from "@/features/reviews/ReviewBanner";
+import { ReviewRuleDialog } from "@/features/reviews/ReviewRuleDialog";
 import { AttachmentPanel } from "@/features/attachments/AttachmentPanel";
 import { COMMENTS_ID, CommentsSection } from "@/features/comments/CommentsSection";
 import { InlineComments } from "@/features/comments/InlineComments";
@@ -103,7 +107,9 @@ type Dialog =
   | "wordImport"
   | "stewardship"
   | "share"
-  | "views";
+  | "views"
+  | "reviewRule"
+  | "readers";
 
 /** Says a page is narrowed to some people, and opens who and why. */
 function RestrictedBadge({ page, onOpen }: { page: Page; onOpen: () => void }) {
@@ -167,6 +173,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   useVisit(reviewing || data?.page.kind === "folder" ? undefined : data?.page.id);
   const trash = useTrashPage(data?.space.key ?? "");
   const archive = useArchivePage();
+  const readAsk = useSetReadAsk(pageId);
   const attachmentIds = usePageAttachmentIds(pageId);
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (isLoading || !data) return <Skeleton />;
@@ -218,6 +225,20 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
   }
   if (page.can.edit && !page.unpublished && !folder) {
     actions.push({ label: t.stewardship.menu, icon: <Icon.Seal />, onSelect: () => setDialog("stewardship"), attrs: { "data-action": "page-stewardship" } });
+  }
+  // A rule holds a page and the pages below it; a post has none below it and is held by its space's rule.
+  if (space.can.administer && !post) {
+    actions.push({ label: t.review.ruleMenu, icon: <Icon.Seal />, onSelect: () => setDialog("reviewRule"), attrs: { "data-action": "review-rule" } });
+  }
+  if (page.can.edit && !page.unpublished && !folder) {
+    if (page.readAsk.since === null) {
+      actions.push({ label: t.readAsk.ask, icon: <Icon.Eye />, onSelect: () => readAsk.mutate(true), attrs: { "data-action": "ask-read" } });
+    } else {
+      actions.push(
+        { label: t.readAsk.askAgain, icon: <Icon.Eye />, onSelect: () => readAsk.mutate(true), attrs: { "data-action": "ask-read-again" } },
+        { label: t.readAsk.stop, onSelect: () => readAsk.mutate(false), attrs: { "data-action": "stop-read-ask" } },
+      );
+    }
   }
   if (space.can.administer) {
     actions.push({ label: t.access.menu, icon: <Icon.Key />, onSelect: () => setDialog("access"), attrs: { "data-action": "inspect-access" } });
@@ -317,6 +338,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
             {(page.restricted.view || page.restricted.edit) && <RestrictedBadge page={page} onOpen={() => setDialog("restrictions")} />}
             {page.comments.page > 0 && <CommentCount count={page.comments.page} />}
             {!page.unpublished && !folder && <PageViewsButton pageId={page.id} onOpen={() => setDialog("views")} />}
+            {!folder && <ReadByButton page={page} onOpen={() => setDialog("readers")} />}
           </span>
         }
         actions={
@@ -377,7 +399,10 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       />
       {trash.error && <ErrorBanner>{trash.error.message}</ErrorBanner>}
       {archive.error && <ErrorBanner>{archive.error.message}</ErrorBanner>}
+      {readAsk.error && <ErrorBanner>{readAsk.error.message}</ErrorBanner>}
       <ArchiveBanner page={page} space={space} />
+      <ReviewBanner key={page.id} page={page} space={space} />
+      {!folder && <ReadAskBanner page={page} />}
       {watchFailed && <ErrorBanner>{t.watch.failed}</ErrorBanner>}
       {starFailed && <ErrorBanner>{t.star.failed}</ErrorBanner>}
       {taskFailed && <ErrorBanner>{t.tasks.tickFailed}</ErrorBanner>}
@@ -436,6 +461,8 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       {dialog === "restrictions" && <RestrictionsDialog page={page} spaceKey={space.key} onClose={() => setDialog(undefined)} />}
       {dialog === "stewardship" && <StewardshipDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "share" && <ShareDialog page={page} onClose={() => setDialog(undefined)} />}
+      {dialog === "reviewRule" && <ReviewRuleDialog page={page} onClose={() => setDialog(undefined)} />}
+      {dialog === "readers" && <ReadersDialog page={page} onClose={() => setDialog(undefined)} />}
       {dialog === "views" && <PageViewsDialog pageId={page.id} onClose={() => setDialog(undefined)} />}
       {dialog === "access" && <AccessDialog pageId={page.id} pageTitle={page.title} onClose={() => setDialog(undefined)} />}
       {dialog === "export" && <ExportDialog page={page} onClose={() => setDialog(undefined)} />}

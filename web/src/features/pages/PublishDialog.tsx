@@ -10,11 +10,13 @@ type When = "now" | "later";
 /**
  * Asks what changed, whether watchers hear of it and when it goes out, then
  * publishes now or schedules the draft. A schedule of the caller's opens it as set.
+ * A page held to a review submits the draft to its reviewers instead of publishing it.
  */
 export function PublishDialog({
   title,
   busy,
   schedule,
+  review,
   onClose,
   onPublish,
   onSchedule,
@@ -23,6 +25,8 @@ export function PublishDialog({
   busy: boolean;
   /** The caller's own schedule of the page, to change. */
   schedule?: PageSchedule | null;
+  /** The approvals the page's rule asks for, when publishing it needs a review. */
+  review?: { required: number };
   onClose: () => void;
   onPublish: (options: PublishOptions) => void;
   onSchedule: (options: ScheduleOptions) => void;
@@ -61,8 +65,13 @@ export function PublishDialog({
   ];
 
   return (
-    <Dialog title={t.draft.publishTitle(title)} onClose={onClose} data-publish-dialog="">
+    <Dialog title={review ? t.review.submitTitle(title) : t.draft.publishTitle(title)} onClose={onClose} data-publish-dialog={review ? "review" : ""}>
       <form onSubmit={submit} className="space-y-3" noValidate>
+        {review && (
+          <p className="text-sm text-ink-muted" data-review-submit-note="">
+            {when === "now" ? t.review.submitIntro(review.required) : t.review.submitLater}
+          </p>
+        )}
         <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
           <legend className="mb-1 text-sm font-medium text-ink">{t.schedule.when}</legend>
           {choices.map((choice) => (
@@ -114,8 +123,8 @@ export function PublishDialog({
             {t.draft.cancel}
           </Button>
           {when === "now" ? (
-            <Button type="submit" loading={busy} data-action="confirm-publish">
-              {t.draft.confirmPublish}
+            <Button type="submit" loading={busy} data-action={review ? "confirm-submit-review" : "confirm-publish"}>
+              {review ? t.review.confirmSubmit : t.draft.confirmPublish}
             </Button>
           ) : (
             <Button type="submit" loading={busy} data-action="confirm-schedule">

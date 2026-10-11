@@ -4,8 +4,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { pageQueryKey, usePage, type Page } from "@/api/pages";
+import type { VersionReview } from "@/api/reviews";
 import type { Space } from "@/api/spaces";
-import { useComparison, useRestoreVersion, useVersion, useVersions, type CompareRef, type CompareSide, type VersionEntry } from "@/api/versions";
+import {
+  useComparison,
+  useRestoreVersion,
+  useVersion,
+  useVersions,
+  type CompareRef,
+  type CompareSide,
+  type Comparison,
+  type VersionEntry,
+} from "@/api/versions";
 import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Tag, Td, Th, cx, type Crumb } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { DocPageContext } from "@/features/editor/BlockViews";
@@ -197,6 +207,7 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
                           {t.history.originalAuthor(entry.originalAuthor)}
                         </span>
                       )}
+                      {entry?.review && <ReviewNote review={entry.review} />}
                       {entry?.live && (
                         <span className="block text-xs" data-live-version="">
                           {t.live.versionSaved(when(entry.updatedAt), entry.coEditors.join(", "))}
@@ -291,6 +302,7 @@ function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number
             <>
               {t.history.published(version.authorName, when(version.createdAt))}
               {version.originalAuthor && <span className="block">{t.history.originalAuthor(version.originalAuthor)}</span>}
+              {version.review && <ReviewNote review={version.review} />}
               {version.comment && <span className="block text-ink">{version.comment}</span>}
               {version.restoredFrom != null && <span className="block">{t.history.restoredFrom(version.restoredFrom)}</span>}
             </>
@@ -322,8 +334,17 @@ function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number
   );
 }
 
-function SideFacts({ label, side }: { label: string; side: CompareSide }) {
-  const name = sideLabel(side);
+/** How a version got past its review: who approved it, or who published it without one and why. */
+function ReviewNote({ review }: { review: VersionReview }) {
+  const skipped = review.skippedByName !== "" || review.skipReason !== "";
+  return (
+    <span className="block text-xs" data-version-review={skipped ? "skipped" : "approved"}>
+      {skipped ? t.review.skippedBy(review.skippedByName, review.skipReason) : t.review.approvedBy(t.review.names(review.approvedBy))}
+    </span>
+  );
+}
+
+function SideFacts({ label, side, name = sideLabel(side) }: { label: string; side: CompareSide; name?: string }) {
   const described = side.number === 0 && !side.draft ? name : t.history.side(name, side.authorName, when(side.createdAt));
   return (
     <div className="min-w-0">
@@ -337,7 +358,6 @@ function CompareScreen({ page, space, from, to }: ScreenProps & { from?: Compare
   const sheet = pageSheet(page.appearance.width);
   const { data: comparison, isLoading, error, refetch } = useComparison(page.id, from, to);
   const navigate = useNavigate();
-  const same = comparison && comparison.from.title === comparison.to.title && comparison.blocks.every((block) => block.change === "equal");
   return (
     <article className={cx(sheet.className, "space-y-4")} style={sheet.style} data-page-compare="">
       <PageHeader
@@ -362,27 +382,33 @@ function CompareScreen({ page, space, from, to }: ScreenProps & { from?: Compare
       />
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
-      {comparison && (
+      {comparison && <ComparisonView comparison={comparison} />}
+    </article>
+  );
+}
+
+/** Two sides compared: what each is, a changed title, and the document's blocks marked as added, removed or changed. */
+export function ComparisonView({ comparison, toLabel }: { comparison: Comparison; toLabel?: string }) {
+  const same = comparison.from.title === comparison.to.title && comparison.blocks.every((block) => block.change === "equal");
+  return (
+    <>
+      <dl className="grid gap-3 rounded-control border border-border bg-surface px-3 py-2 sm:grid-cols-2" data-compare-sides="">
+        <SideFacts label={t.history.from} side={comparison.from} />
+        <SideFacts label={t.history.to} side={comparison.to} name={toLabel} />
+      </dl>
+      {comparison.from.title !== comparison.to.title && (
+        <p className="text-sm text-ink" data-title-change="">
+          {t.history.titleChanged(comparison.from.title, comparison.to.title)}
+        </p>
+      )}
+      {same ? (
+        <p className="text-sm text-ink-muted">{t.history.noDifferences}</p>
+      ) : (
         <>
-          <dl className="grid gap-3 rounded-control border border-border bg-surface px-3 py-2 sm:grid-cols-2" data-compare-sides="">
-            <SideFacts label={t.history.from} side={comparison.from} />
-            <SideFacts label={t.history.to} side={comparison.to} />
-          </dl>
-          {comparison.from.title !== comparison.to.title && (
-            <p className="text-sm text-ink" data-title-change="">
-              {t.history.titleChanged(comparison.from.title, comparison.to.title)}
-            </p>
-          )}
-          {same ? (
-            <p className="text-sm text-ink-muted">{t.history.noDifferences}</p>
-          ) : (
-            <>
-              <p className="text-sm text-ink-muted">{t.history.legend}</p>
-              <DocDiffView blocks={comparison.blocks} />
-            </>
-          )}
+          <p className="text-sm text-ink-muted">{t.history.legend}</p>
+          <DocDiffView blocks={comparison.blocks} />
         </>
       )}
-    </article>
+    </>
   );
 }
