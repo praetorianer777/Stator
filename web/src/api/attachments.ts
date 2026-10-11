@@ -229,7 +229,8 @@ export function useRestoreAttachment(pageId: string) {
       (await api.POST("/attachments/{attachmentID}/restore", { params: { path: { attachmentID: id } } })).data!.attachment,
     onSuccess: (made) => {
       queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => (list ? [made, ...list.filter((a) => a.id !== made.id)] : list));
-      return queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
+      // Not returned: the editor closes when the version is saved, not when the list has been read again.
+      void queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
     },
   });
 }
@@ -241,7 +242,8 @@ export function useEditAttachment(pageId: string) {
     mutationFn: ({ id, file }: { id: string; file: File }): Promise<Attachment> => editAttachment(id, file),
     onSuccess: (made) => {
       queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => (list ? [made, ...list.filter((a) => a.id !== made.id)] : list));
-      return queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
+      // Not returned: the editor closes when the version is saved, not when the list has been read again.
+      void queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
     },
   });
 }

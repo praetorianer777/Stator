@@ -116,6 +116,7 @@ export function AnnotateDialog({
   const [entry, setEntry] = useState<TextEntry | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [showInPage, setShowInPage] = useState(true);
+  const [encoding, setEncoding] = useState(false);
   const edit = useEditAttachment(file.pageId);
 
   const size = useMemo<Size | null>(() => (picture ? { width: picture.naturalWidth, height: picture.naturalHeight } : null), [picture]);
@@ -313,7 +314,7 @@ export function AnnotateDialog({
   }
 
   async function save() {
-    if (!picture || !size) return;
+    if (!picture || !size || encoding || edit.isPending) return;
     if (!isChanged(present, size)) {
       setProblem(a.unchanged);
       return;
@@ -329,7 +330,10 @@ export function AnnotateDialog({
       return;
     }
     drawSaved(context, picture, size, present);
+    // The browser encodes off the main thread and may take seconds when it is starved; until then nothing else says the save began.
+    setEncoding(true);
     const blob = await new Promise<Blob | null>((resolve) => out.toBlob(resolve, type, ANNOTATION_QUALITY));
+    setEncoding(false);
     // A browser that cannot write the type hands back a PNG instead.
     if (!blob || blob.type !== type) {
       setProblem(a.cannotSave(typeName));
@@ -505,7 +509,7 @@ export function AnnotateDialog({
           <Button variant="ghost" size="sm" onClick={requestClose} data-action="annotate-cancel">
             {a.cancel}
           </Button>
-          <Button size="sm" icon={<Icon.Check />} loading={edit.isPending} disabled={!size} onClick={() => void save()} data-action="annotate-save">
+          <Button size="sm" icon={<Icon.Check />} loading={encoding || edit.isPending} disabled={!size} onClick={() => void save()} data-action="annotate-save">
             {a.save}
           </Button>
         </div>
