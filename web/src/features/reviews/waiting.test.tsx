@@ -48,7 +48,7 @@ function stubShell(reviews: WaitingReview[], more: Record<string, Answer> = {}) 
     "GET /spaces/DOCS": { status: 200, body: { space } },
     "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
     "GET /notifications/unread-count": { status: 200, body: { unread: 0 } },
-    "GET /reviews/waiting": { status: 200, body: { reviews } },
+    "GET /reviews/waiting": { status: 200, body: { reviews: reviews.map(({ review, page, spaceKey }) => ({ ...review, page, spaceKey })) } },
     ...more,
   });
 }

@@ -21,7 +21,11 @@ export type ReviewSubmitOptions = Wire["ReviewSubmitInput"];
 /** How a version got past its review, as the history shows it. */
 export type VersionReview = Wire["VersionReview"];
 /** A pending review the caller may decide, with the page it is on. */
-export type WaitingReview = Omit<Wire["WaitingReview"], "review"> & { review: ReviewSummary };
+export interface WaitingReview {
+  review: ReviewSummary;
+  page: Wire["WaitingReview"]["page"];
+  spaceKey: string;
+}
 /** Whether a page asks its readers to confirm, and whether the caller did. */
 export type PageReadAsk = Wire["PageReadAsk"];
 export type ReadConfirmations = Wire["ReadConfirmations"];
@@ -138,7 +142,9 @@ export function useSubmitReview(pageId: string) {
 export function useWaitingReviews(enabled = true) {
   return useQuery({
     queryKey: waitingReviewsQueryKey,
-    queryFn: async (): Promise<WaitingReview[]> => (await api.GET("/reviews/waiting")).data!.reviews,
+    queryFn: async (): Promise<WaitingReview[]> =>
+      // The server sends each review with its page beside its own fields; the screens read them apart.
+      (await api.GET("/reviews/waiting")).data!.reviews.map(({ page, spaceKey, ...review }) => ({ review: review as ReviewSummary, page, spaceKey })),
     enabled,
   });
 }
