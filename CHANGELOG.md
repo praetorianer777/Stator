@@ -9,6 +9,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The Helm chart is installed and upgraded in a throwaway kind cluster (#331).
+  `make test-chart-install` checks the Jobs, the generated secrets, the first
+  administrator's sign-in and a rolling upgrade; a workflow runs it when the
+  chart or the migrations change.
 - Administrators set the logo and the footer line of the organization's
   exports (#321). Under Export brand in the account menu they upload a PNG,
   JPEG or WebP logo and write a footer line in English and German; the
@@ -1059,6 +1063,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The chart's roles Job runs on a cluster. Kubernetes reads `$$` in a
+  container's args as an escaped `$`, which cut the role script's `DO $$` to
+  `DO $` and failed every install with the bundled database (#331). The test
+  that found it installs the chart in a kind cluster.
 - Saving an annotated picture shows at once that it is saving, and a second
   click no longer starts a second save while the browser is still encoding the
   picture (#359). The dialog closes when the version is saved, not when the

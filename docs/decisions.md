@@ -3,6 +3,32 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-10: The chart is installed in a real cluster by its own workflow (#331)
+
+A render proves that the templates produce valid YAML; it cannot show that the
+Jobs run in their order, that the secrets exist when a Pod wants them, or that
+an upgrade rolls the api without a failed health check.
+
+- **kind, driven by a container.** `make test-chart-install` builds the backend
+  and web images from the checkout, loads them into a one-node kind cluster,
+  installs the chart with bundled Postgres, Valkey and SeaweedFS, signs in as
+  the bootstrap administrator through the web Service, then upgrades with two
+  api replicas. kind, helm and kubectl are pinned in `scripts/kind`, so a
+  machine needs only Docker.
+- **First install without `--wait`.** The roles and migrate Jobs are
+  post-install hooks, which Helm runs after `--wait` has seen the workloads
+  ready, and the api and worker cannot be ready before those Jobs have run, so
+  `helm install --wait` deadlocks until its timeout. Without it Helm still
+  blocks on the hooks, and the test waits for the rollouts itself. An upgrade
+  runs its hooks first, so `helm upgrade --wait` is fine.
+- **Not in `./run-tests.sh`.** It takes several minutes and starts about a
+  dozen Pods, so it would slow every push for a change that rarely touches the
+  chart. A separate workflow runs it when `deploy/`, the migrations or the
+  seed command change.
+- **Needs a host kernel with netfilter modules.** kube-proxy fails on a kernel
+  whose `xt_mark` cannot load, as after an upgrade that has not been rebooted
+  into; the script says so before it starts.
+
 ## 2026-10-10: The brand of the exports is a logo and a footer line; the colours are the default theme's (#321)
 
 Exports should look like they come from the organization. The work is cut in

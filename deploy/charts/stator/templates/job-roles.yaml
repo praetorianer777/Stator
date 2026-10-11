@@ -76,7 +76,8 @@ spec:
               done
               {{- else }}
               psql -v ON_ERROR_STOP=1 "$PGURL" <<'SQL'
-              DO $$
+              -- A named tag, not $$: Kubernetes reads $$ in args as an escaped $.
+              DO $roles$
               BEGIN
                   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {{ $v.appRole | squote }}) THEN
                       CREATE ROLE {{ $v.appRole }} LOGIN NOSUPERUSER NOBYPASSRLS;
@@ -85,7 +86,7 @@ spec:
                       CREATE ROLE {{ $v.adminRole }} LOGIN NOSUPERUSER NOBYPASSRLS;
                   END IF;
               END;
-              $$;
+              $roles$;
               SQL
               # Outside the DO block: the passwords change between installs,
               # and ALTER is the idempotent way to say so.
