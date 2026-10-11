@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/review"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
@@ -143,11 +144,16 @@ type Page struct {
 	Verification *Verification `json:"verification"`
 	// Archived says how the page is archived, null when it is not; an
 	// archived page is read only until it is unarchived.
-	Archived      *Archive  `json:"archived"`
-	CreatedByName string    `json:"createdByName"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedByName string    `json:"updatedByName"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	Archived *Archive `json:"archived"`
+	// Review is the rule the page is held to and the review waiting on it.
+	Review review.Status `json:"review"`
+	// ReadAsk says whether the page asks its readers to confirm they read
+	// it, and whether the caller did.
+	ReadAsk       review.ReadAsk `json:"readAsk"`
+	CreatedByName string         `json:"createdByName"`
+	CreatedAt     time.Time      `json:"createdAt"`
+	UpdatedByName string         `json:"updatedByName"`
+	UpdatedAt     time.Time      `json:"updatedAt"`
 
 	access perm.PageAccess
 }

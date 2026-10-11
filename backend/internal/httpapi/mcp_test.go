@@ -36,6 +36,7 @@ const (
 	whyTransfer   = "moves a whole space as a file, an administrator's act the worker runs; get_space_outline and get_page_markdown carry a space's words"
 	whyWord       = "a Word document is a file for a person to edit offline or hand on; get_page and get_page_markdown carry the same words to a model"
 	whyWordImport = "a Word document is a file a person uploads, and several are imported by the worker; import_markdown carries a model's words into a new page"
+	whyReview     = "a review is a person's judgement of a draft, and confirming a page was read is a person's own word; both are given in the page, beside what they are about"
 	whyLinks      = "opens a page to anybody outside the organization, a decision its editors make in the share dialog; the token is shown once, to a person"
 )
 
@@ -243,6 +244,20 @@ var notTools = map[string]string{
 	"POST /pages/{pageID}/move":                                    whyReorganize,
 	"POST /pages/{pageID}/copy":                                    whyReorganize,
 	"POST /pages/{pageID}/publish":                                 whyReorganize,
+	"GET /spaces/{spaceKey}/review-rules":                          whyAdmin,
+	"PUT /spaces/{spaceKey}/review-rule":                           whyAdmin,
+	"DELETE /spaces/{spaceKey}/review-rule":                        whyAdmin,
+	"PUT /pages/{pageID}/review-rule":                              whyAdmin,
+	"DELETE /pages/{pageID}/review-rule":                           whyAdmin,
+	"GET /pages/{pageID}/reviews":                                  whyReview,
+	"POST /pages/{pageID}/reviews":                                 whyReorganize,
+	"GET /pages/{pageID}/reviews/{reviewID}":                       whyReview,
+	"POST /pages/{pageID}/reviews/{reviewID}/decisions":            whyReview,
+	"POST /pages/{pageID}/reviews/{reviewID}/withdraw":             whyReorganize,
+	"POST /pages/{pageID}/reviews/{reviewID}/skip":                 whyReorganize,
+	"PUT /pages/{pageID}/read-ask":                                 whyAttention,
+	"POST /pages/{pageID}/read-confirmations":                      whyReview,
+	"GET /pages/{pageID}/read-confirmations":                       whyReaders,
 	"PUT /pages/{pageID}/schedule":                                 whyReorganize,
 	"DELETE /pages/{pageID}/schedule":                              whyRemoves,
 	"POST /pages/{pageID}/versions/{versionNumber}/restore":        whyReorganize,

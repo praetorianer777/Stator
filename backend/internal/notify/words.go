@@ -59,6 +59,10 @@ func Sentence(kind Kind, actor, title string, inComment bool) string {
 		return fmt.Sprintf("The verification of %s has run out; check the page and verify it again", quoted)
 	case KindFailed:
 		return fmt.Sprintf("Your scheduled publish of %s did not go out; open the page to see why and schedule it again", quoted)
+	case KindReview:
+		return fmt.Sprintf("%s asks you to review a draft of %s", actor, quoted)
+	case KindReviewed:
+		return fmt.Sprintf("%s decided on your draft of %s", actor, quoted)
 	}
 	return fmt.Sprintf("%s changed %s", actor, quoted)
 }

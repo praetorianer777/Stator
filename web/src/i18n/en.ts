@@ -2668,6 +2668,8 @@ export const en = {
     kinds: {
       assigned: "Somebody assigns you a task",
       due: "A task assigned to you is due",
+      review: "Somebody asks you to review a draft",
+      reviewed: "A reviewer decides on your draft",
       mentioned: "Somebody mentions you",
       shared: "Somebody shares a page with you",
       replied: "Somebody replies in a thread you wrote in",
@@ -2679,7 +2681,20 @@ export const en = {
       expired: "The verification of a page you own runs out",
       failed: "A publish you scheduled cannot go out",
     } as Record<
-      "assigned" | "due" | "mentioned" | "shared" | "replied" | "commented" | "resolved" | "published" | "created" | "posted" | "expired" | "failed",
+      | "assigned"
+      | "due"
+      | "review"
+      | "reviewed"
+      | "mentioned"
+      | "shared"
+      | "replied"
+      | "commented"
+      | "resolved"
+      | "published"
+      | "created"
+      | "posted"
+      | "expired"
+      | "failed",
       string
     >,
     inAppFor: (kind: string) => `In the app: ${kind}`,

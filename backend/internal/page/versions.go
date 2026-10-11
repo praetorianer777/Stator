@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/praetorianer777/stator/backend/internal/review"
 )
 
 // MaxCommentLength bounds a version comment, matching the web client's.
@@ -69,6 +71,8 @@ type VersionEntry struct {
 	// OriginalAuthor is who wrote an imported version, by the archive's name
 	// for them, when nobody of theirs is here; null otherwise.
 	OriginalAuthor *string `json:"originalAuthor"`
+	// Review is how the version got past its review; null when it needed none.
+	Review *review.Approval `json:"review"`
 }
 
 // Version is one published version with its body, for reading it.

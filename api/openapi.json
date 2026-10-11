@@ -91,6 +91,9 @@
       "name": "reactions"
     },
     {
+      "name": "reviews"
+    },
+    {
       "name": "search"
     },
     {
@@ -5954,7 +5957,7 @@
           {
             "name": "from",
             "in": "query",
-            "description": "A version number, 0 for the empty page, or draft; when absent the version before to, or the draft's base version when to is draft.",
+            "description": "A version number, 0 for the empty page, draft, or review:{reviewID}; when absent the version before to, or the base version of the draft or review that to is.",
             "schema": {
               "type": "string"
             }
@@ -5962,7 +5965,7 @@
           {
             "name": "to",
             "in": "query",
-            "description": "A version number, or draft; the latest version when absent.",
+            "description": "A version number, draft, or review:{reviewID} for the draft a review holds; the latest version when absent.",
             "schema": {
               "type": "string"
             }
@@ -8003,6 +8006,174 @@
         }
       }
     },
+    "/pages/{pageID}/read-ask": {
+      "put": {
+        "operationId": "setReadAsk",
+        "summary": "Ask the page's readers to confirm they read it, from its current version on, again when it asked before; or stop asking. For the page's editors.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageReadAskInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "readAsk": {
+                      "$ref": "#/components/schemas/PageReadAsk"
+                    }
+                  },
+                  "required": [
+                    "readAsk"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/read-confirmations": {
+      "get": {
+        "operationId": "listReadConfirmations",
+        "summary": "Who confirmed reading the page since it asked, and who of those who may read it has not. For the page's editors.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "readers": {
+                      "$ref": "#/components/schemas/ReadConfirmations"
+                    }
+                  },
+                  "required": [
+                    "readers"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "confirmRead",
+        "summary": "Confirm the caller read the page as it is now; refused with not_asked when the page does not ask. For whoever may view the page.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "readAsk": {
+                      "$ref": "#/components/schemas/PageReadAsk"
+                    }
+                  },
+                  "required": [
+                    "readAsk"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pages/{pageID}/readers": {
       "get": {
         "operationId": "pageReaders",
@@ -8212,6 +8383,554 @@
                   "required": [
                     "check"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/review-rule": {
+      "delete": {
+        "operationId": "removePageReviewRule",
+        "summary": "Remove the branch's own rule, so the space's holds there again. For the space's administrators.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setPageReviewRule",
+        "summary": "Hold the page and every page below it to a review by the people and groups named, in place of the space's rule; refused with live_pages while a page of the branch is live. For the space's administrators.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRuleInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rule": {
+                      "$ref": "#/components/schemas/ReviewRule"
+                    }
+                  },
+                  "required": [
+                    "rule"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/reviews": {
+      "get": {
+        "operationId": "listReviews",
+        "summary": "The page's reviews, the latest first, without their drafts' bodies. For whoever may view the page.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reviews": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PageReview"
+                      }
+                    }
+                  },
+                  "required": [
+                    "reviews"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "submitReview",
+        "summary": "Put the caller's draft of a page that needs a review to its reviewers, who are told; the page is not published around it until it is decided. Refused with no_draft, publish_conflict, review_pending or no_review_needed. For the page's editors.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewSubmitInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "review": {
+                      "$ref": "#/components/schemas/PageReview"
+                    }
+                  },
+                  "required": [
+                    "review"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/reviews/{reviewID}": {
+      "get": {
+        "operationId": "getReview",
+        "summary": "One review with its draft's body and the reviewers' decisions. For whoever may view the page.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reviewID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "review": {
+                      "$ref": "#/components/schemas/PageReview"
+                    }
+                  },
+                  "required": [
+                    "review"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/reviews/{reviewID}/decisions": {
+      "post": {
+        "operationId": "decideReview",
+        "summary": "Approve a pending review or send it back with what to change. The approval that completes it publishes the draft as its author's next version, answered as version. For its named reviewers, never its author.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reviewID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "review": {
+                      "$ref": "#/components/schemas/PageReview"
+                    },
+                    "version": {
+                      "$ref": "#/components/schemas/VersionEntry"
+                    }
+                  },
+                  "required": [
+                    "review",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/reviews/{reviewID}/skip": {
+      "post": {
+        "operationId": "skipReview",
+        "summary": "Publish a pending review without its approvals, as its author's next version, for the reason given, which is audited. For the space's administrators.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reviewID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewSkipInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "review": {
+                      "$ref": "#/components/schemas/PageReview"
+                    },
+                    "version": {
+                      "$ref": "#/components/schemas/VersionEntry"
+                    }
+                  },
+                  "required": [
+                    "review",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/reviews/{reviewID}/withdraw": {
+      "post": {
+        "operationId": "withdrawReview",
+        "summary": "Take a pending review back; the draft stays the author's. For its author.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reviewID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "review": {
+                      "$ref": "#/components/schemas/PageReview"
+                    }
+                  },
+                  "required": [
+                    "review"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -12904,6 +13623,169 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/review-rule": {
+      "delete": {
+        "operationId": "removeSpaceReviewRule",
+        "summary": "Stop holding the space to a review; branches with a rule of their own keep it. Pending reviews stay to be decided. For the space's administrators.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setSpaceReviewRule",
+        "summary": "Hold every page and post of the space to a review before it is published, by the people and groups named; refused with live_pages while a page of the space is live. For the space's administrators.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRuleInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rule": {
+                      "$ref": "#/components/schemas/ReviewRule"
+                    }
+                  },
+                  "required": [
+                    "rule"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spaces/{spaceKey}/review-rules": {
+      "get": {
+        "operationId": "listReviewRules",
+        "summary": "The space's review rules: the one for the whole space and one per branch of pages that has its own. For whoever may view the space.",
+        "tags": [
+          "reviews"
+        ],
+        "parameters": [
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rules": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReviewRule"
+                      }
+                    }
+                  },
+                  "required": [
+                    "rules"
+                  ]
                 }
               }
             }
@@ -19924,6 +20806,8 @@
             "enum": [
               "assigned",
               "due",
+              "review",
+              "reviewed",
               "mentioned",
               "shared",
               "replied",
@@ -20271,8 +21155,14 @@
               "$ref": "#/components/schemas/Reaction"
             }
           },
+          "readAsk": {
+            "$ref": "#/components/schemas/PageReadAsk"
+          },
           "restricted": {
             "$ref": "#/components/schemas/Restricted"
+          },
+          "review": {
+            "$ref": "#/components/schemas/PageReviewStatus"
           },
           "schedule": {
             "oneOf": [
@@ -20351,6 +21241,8 @@
           "owner",
           "verification",
           "archived",
+          "review",
+          "readAsk",
           "createdByName",
           "createdAt",
           "updatedByName",
@@ -20638,6 +21530,39 @@
           "refusal"
         ]
       },
+      "PageReadAsk": {
+        "type": "object",
+        "properties": {
+          "confirmedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "since": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "since",
+          "confirmedAt"
+        ]
+      },
+      "PageReadAskInput": {
+        "type": "object",
+        "properties": {
+          "ask": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ask"
+        ]
+      },
       "PageRef": {
         "type": "object",
         "properties": {
@@ -20675,6 +21600,163 @@
         "required": [
           "page",
           "space"
+        ]
+      },
+      "PageReview": {
+        "type": "object",
+        "properties": {
+          "approvals": {
+            "type": "integer"
+          },
+          "authorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "baseVersion": {
+            "type": "integer"
+          },
+          "body": {
+            "description": "A JSON value."
+          },
+          "can": {
+            "$ref": "#/components/schemas/PageReviewCan"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewDecision"
+            }
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "required": {
+            "type": "integer"
+          },
+          "reviewers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          },
+          "skipReason": {
+            "type": "string"
+          },
+          "skippedByName": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "changes_requested",
+              "withdrawn",
+              "published",
+              "skipped"
+            ]
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "pageId",
+          "state",
+          "authorId",
+          "authorName",
+          "baseVersion",
+          "title",
+          "comment",
+          "reviewers",
+          "required",
+          "approvals",
+          "decisions",
+          "can",
+          "submittedAt",
+          "finishedAt",
+          "version",
+          "skipReason",
+          "skippedByName"
+        ]
+      },
+      "PageReviewCan": {
+        "type": "object",
+        "properties": {
+          "decide": {
+            "type": "boolean"
+          },
+          "skip": {
+            "type": "boolean"
+          },
+          "withdraw": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decide",
+          "withdraw",
+          "skip"
+        ]
+      },
+      "PageReviewStatus": {
+        "type": "object",
+        "properties": {
+          "pending": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PageReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rule": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReviewRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rule",
+          "pending"
         ]
       },
       "PageSchedule": {
@@ -21542,6 +22624,55 @@
           "name"
         ]
       },
+      "ReadConfirmation": {
+        "type": "object",
+        "properties": {
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "person": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "person",
+          "version",
+          "confirmedAt"
+        ]
+      },
+      "ReadConfirmations": {
+        "type": "object",
+        "properties": {
+          "confirmed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadConfirmation"
+            }
+          },
+          "more": {
+            "type": "integer"
+          },
+          "pending": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            }
+          },
+          "since": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "since",
+          "confirmed",
+          "pending",
+          "more"
+        ]
+      },
       "Reader": {
         "type": "object",
         "properties": {
@@ -21931,6 +23062,163 @@
           "view",
           "edit"
         ]
+      },
+      "ReviewDecision": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "changes"
+            ]
+          },
+          "reviewerId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "reviewerName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reviewerId",
+          "reviewerName",
+          "decision",
+          "comment",
+          "decidedAt"
+        ]
+      },
+      "ReviewDecisionInput": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "changes"
+            ]
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "ReviewPageRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "ReviewRule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReviewPageRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "required": {
+            "type": "integer"
+          },
+          "reviewers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            }
+          },
+          "spaceKey": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedByName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "spaceKey",
+          "page",
+          "reviewers",
+          "required",
+          "updatedByName",
+          "updatedAt"
+        ]
+      },
+      "ReviewRuleInput": {
+        "type": "object",
+        "properties": {
+          "required": {
+            "type": "integer"
+          },
+          "reviewers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            }
+          }
+        },
+        "required": [
+          "reviewers",
+          "required"
+        ]
+      },
+      "ReviewSkipInput": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ReviewSubmitInput": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string"
+          },
+          "notifyWatchers": {
+            "type": "boolean"
+          }
+        }
       },
       "Roadmap": {
         "type": "object",
@@ -23387,6 +24675,12 @@
           "resolved": {
             "type": "boolean"
           },
+          "review": {
+            "type": "boolean"
+          },
+          "reviewed": {
+            "type": "boolean"
+          },
           "shared": {
             "type": "boolean"
           }
@@ -23403,7 +24697,9 @@
           "created",
           "posted",
           "expired",
-          "failed"
+          "failed",
+          "review",
+          "reviewed"
         ]
       },
       "Tag": {
@@ -24270,6 +25566,16 @@
               "null"
             ]
           },
+          "review": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VersionReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "title": {
             "type": "string"
           },
@@ -24290,6 +25596,7 @@
           "updatedAt",
           "coEditors",
           "originalAuthor",
+          "review",
           "body"
         ]
       },
@@ -24337,6 +25644,16 @@
               "null"
             ]
           },
+          "review": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VersionReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "title": {
             "type": "string"
           },
@@ -24356,7 +25673,35 @@
           "live",
           "updatedAt",
           "coEditors",
-          "originalAuthor"
+          "originalAuthor",
+          "review"
+        ]
+      },
+      "VersionReview": {
+        "type": "object",
+        "properties": {
+          "approvedBy": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "skipReason": {
+            "type": "string"
+          },
+          "skippedByName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reviewId",
+          "approvedBy",
+          "skippedByName",
+          "skipReason"
         ]
       },
       "ViewCounts": {

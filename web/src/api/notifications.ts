@@ -17,6 +17,8 @@ export type Digest = Wire["Preferences"]["digest"];
 export const NOTIFICATION_KINDS: NotificationKind[] = [
   "assigned",
   "due",
+  "review",
+  "reviewed",
   "mentioned",
   "shared",
   "replied",

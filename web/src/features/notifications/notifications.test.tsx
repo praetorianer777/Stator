@@ -49,6 +49,8 @@ const allOn = {
   posted: true,
   expired: true,
   failed: true,
+  review: true,
+  reviewed: true,
 };
 const defaults: Preferences = { inApp: { ...allOn }, email: { ...allOn }, digest: "off", autoWatch: true };
 
