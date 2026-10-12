@@ -1100,6 +1100,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
   nginx does, and logged at info as cancelled by the client, instead of
   counting as a 500 and logging an error (#373). A deadline the server itself
   ran into still fails as before.
+- nginx keeps its connections to the api open and reuses them, in compose
+  and in the chart (#372). It opened one per request, ran out of local ports
+  at about 250 requests a second and answered 502. Compose still follows the
+  api container when it is recreated.
 - A file uploaded while a page's list of files was still loading now shows
   at once; it could stay missing until the page was reloaded (#327).
 - A request that gets no answer at all, such as when the network changes, is

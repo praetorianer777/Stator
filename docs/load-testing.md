@@ -100,11 +100,17 @@ at p95, and the tree 3.4 s at p95, with the machine busy searching.
 when live update delivery passed 300 ms at p95. Search and the tree had taken
 the machine: search ran at p95 4.7 s.
 
-**Ceiling profile without search and the tree** (`LOAD_SKIP=search,tree`):
-**418 people at 246 requests/s**. Reads were at p95 17 ms, writes at 73 ms and
-live delivery at 5 ms when nginx began answering 502: it opens a new
-connection to the api for every request and ran out of local ports (#372).
-Neither the api nor the database had reached a limit.
+**Ceiling profile without search and the tree** (`LOAD_SKIP=search,tree`),
+since nginx keeps its connections to the api (#372): stopped after eight
+minutes at **455 people**, 260 requests/s on average over the whole run and
+124,341 requests without one failing, when live update delivery passed 300 ms
+at p95. Reads were then at p95 93 ms and writes at 255 ms. Another stack was
+busy on the same machine, so these are a floor rather than the ceiling.
+
+Before #372 the same run reached 418 people at 246 requests/s, with reads at
+p95 17 ms, writes at 73 ms and live delivery at 5 ms, when nginx began
+answering 502: it opened a new connection to the api for every request and
+ran out of local ports. Neither the api nor the database had reached a limit.
 
 ## When a threshold breaks
 

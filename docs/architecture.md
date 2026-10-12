@@ -226,7 +226,8 @@ Two images are built. `Dockerfile.backend` holds every Go binary, stamped with
 `VERSION`, and each service picks one by its command. `Dockerfile.web` builds
 the SPA with Node and serves it from nginx (`deploy/nginx.conf`), which proxies
 `/api/`, `/healthz` and `/readyz` to the api so the browser sees one origin,
-and passes the shared draft's WebSocket (`/api/v1/pages/{id}/collab`) on
+over connections it keeps and reuses (in compose it looks the api's address
+up again while it runs, so it follows a recreated api container), and passes the shared draft's WebSocket (`/api/v1/pages/{id}/collab`) on
 with its upgrade.
 
 `mk/stack.mk` drives the stack. The compose project is `stator-<cksum of the

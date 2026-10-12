@@ -206,7 +206,11 @@ export function live(data) {
   ws.binaryType = "arraybuffer";
   const timers = [];
   let clock = 0;
+  // A frame can still arrive after the close is sent, and answering it would
+  // fail the session as though it had never opened.
+  let closing = false;
   const stop = () => {
+    closing = true;
     for (const t of timers) clearInterval(t);
   };
   ws.onopen = () => {
@@ -233,7 +237,7 @@ export function live(data) {
     const f = readFrame(e.data);
     if (f.roomStart) loaded = false;
     if (f.loaded) loaded = true;
-    if (f.compact) ws.send(compactedFrame(f.compact));
+    if (f.compact && !closing) ws.send(compactedFrame(f.compact));
     if (loaded && f.sentAt) delivery.add(Date.now() - f.sentAt);
   };
   ws.onerror = (e) => {
