@@ -2,13 +2,14 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
 
-const BOB = "Bob Builder";
+// The spec's own bob, named after it (fixtures/team.ts).
+let BOB = "";
 // A due day is read in UTC, as the server reads it.
 const TODAY = new Date().toISOString().slice(0, 10);
 const LONG_AGO = "2020-01-06";
@@ -37,6 +38,9 @@ function checklist(lead: string, ...items: Inline[][]) {
 }
 
 test.describe("task report", { tag: ["@auth"] }, () => {
+  test.beforeEach(({ team }) => {
+    BOB = team.people.bob.name;
+  });
   const made: string[] = [];
   test.afterEach(async ({ api }) => {
     for (const key of made.splice(0)) await deleteSpace(api, key);

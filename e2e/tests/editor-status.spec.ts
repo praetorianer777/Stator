@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openEditor } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";

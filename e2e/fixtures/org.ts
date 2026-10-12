@@ -1,23 +1,20 @@
-import { basename } from "node:path";
-import { request, type Browser } from "@playwright/test";
+import type { Browser } from "@playwright/test";
 import type { Session } from "./api";
-import { authTest, signInToOrg, USERS, type User } from "./auth";
-import { testEndpointsToken, WEB_URL } from "./stack";
+import { signInToOrg, USERS, type User } from "./auth";
+import { TEST_API_PATH, testEndpoints } from "./testapi";
 
-/** An organisation made for one spec file alone, with alice (admin) and bob (member) signed in to it. */
+// Every spec shares the instance's one organization (fixtures/team.ts). This
+// is for the one spec that needs a second, empty one: an organization's archive
+// is imported only where there are no spaces yet.
+
+/** An organisation of its own, with alice (admin) and bob (member) signed in to it. */
 export interface FreshOrg {
   slug: string;
   id: string;
   sessions: Record<User, Exclude<Session, string>>;
 }
 
-/** The api's test endpoints, which the compose stack switches on and no deployment does. */
-const TEST_ORGS_PATH = "/api/v1/test/orgs";
-const TEST_TOKEN_HEADER = "X-Stator-Test-Token";
-
-async function testEndpoints() {
-  return request.newContext({ baseURL: WEB_URL, extraHTTPHeaders: { [TEST_TOKEN_HEADER]: testEndpointsToken() } });
-}
+const TEST_ORGS_PATH = `${TEST_API_PATH}/orgs`;
 
 async function createOrg(label: string): Promise<{ slug: string; id: string }> {
   const context = await testEndpoints();
@@ -37,18 +34,6 @@ async function deleteOrg(slug: string): Promise<void> {
   try {
     const res = await context.delete(`${TEST_ORGS_PATH}/${encodeURIComponent(slug)}`);
     if (res.status() !== 204) throw new Error(`DELETE ${TEST_ORGS_PATH}/${slug} answered ${res.status()}: ${await res.text()}`);
-  } finally {
-    await context.dispose();
-  }
-}
-
-/** Makes the organisation's example space one made before its content had versions, without the page of the file named. */
-export async function ageExample(slug: string, drop: string): Promise<void> {
-  const context = await testEndpoints();
-  try {
-    const path = `${TEST_ORGS_PATH}/${encodeURIComponent(slug)}/example-space/age`;
-    const res = await context.post(path, { data: { drop } });
-    if (res.status() !== 204) throw new Error(`POST ${path} answered ${res.status()}: ${await res.text()}`);
   } finally {
     await context.dispose();
   }
@@ -76,50 +61,3 @@ export async function withAnotherOrg<T>(browser: Browser, label: string, fn: (or
     await deleteOrg(org.slug);
   }
 }
-
-/** "themes.spec.ts" becomes "themes", so a leftover organisation names the spec that made it. */
-function labelOf(file: string): string {
-  return basename(file).replace(/\.spec\.ts$/, "");
-}
-
-interface OrgPool {
-  /** The organisation of one spec file in this worker, made on first use. */
-  forFile: (file: string) => Promise<FreshOrg>;
-}
-
-/**
- * The test for a spec that owns its organisation. Its pages and API clients act
- * as alice and bob in an organisation made for the spec file, which the worker
- * removes, with all its data, when it stops. Tests of one file that land in the
- * same worker share it, one after another; other workers have their own.
- */
-export const orgTest = authTest.extend<{ freshOrg: FreshOrg }, { orgPool: OrgPool }>({
-  orgPool: [
-    async ({ browser }, use) => {
-      const made = new Map<string, Promise<FreshOrg>>();
-      await use({
-        forFile: (file) => {
-          let org = made.get(file);
-          if (!org) {
-            org = makeFreshOrg(browser, labelOf(file));
-            made.set(file, org);
-          }
-          return org;
-        },
-      });
-      const failures: unknown[] = [];
-      for (const pending of made.values()) {
-        const org = await pending.catch(() => undefined);
-        if (org) await deleteOrg(org.slug).catch((error: unknown) => failures.push(error));
-      }
-      if (failures.length > 0) throw new AggregateError(failures, "Some throwaway organisations could not be removed.");
-    },
-    { scope: "worker" },
-  ],
-  freshOrg: async ({ orgPool }, use, testInfo) => {
-    await use(await orgPool.forFile(testInfo.file));
-  },
-  sessionOf: async ({ freshOrg }, use) => {
-    await use((user) => freshOrg.sessions[user]);
-  },
-});

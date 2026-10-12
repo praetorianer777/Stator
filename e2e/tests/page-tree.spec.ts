@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
 import { childTitles, createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";

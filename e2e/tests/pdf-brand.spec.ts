@@ -1,6 +1,6 @@
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 // A 1 by 1 PNG, which is all a logo needs to be.

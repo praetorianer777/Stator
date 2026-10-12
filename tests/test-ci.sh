@@ -2,7 +2,9 @@
 # Tests that CI's jobs between them run the whole gate: every layer
 # run-tests.sh knows, and every part of the browser suite once. CI splits the
 # gate across parallel jobs, so a layer left out of the matrix would otherwise
-# stop gating pull requests without anything turning red.
+# stop gating pull requests without anything turning red. Also that the
+# browser specs keep apart by people and spaces of their own rather than by
+# an organization each, since an instance serves one organization (#380).
 set -u
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
@@ -45,6 +47,30 @@ else
   [[ -z "$missing" ]] && pass "the $totals browser jobs run each part once" \
     || fail "no browser job runs part$missing"
 fi
+
+echo "🧪 the browser specs share the one organization"
+
+E2E="$SRC/e2e"
+old=$(grep -rlw orgTest "$E2E/tests" "$E2E/fixtures" 2>/dev/null)
+[[ -z "$old" ]] && pass "no spec or fixture uses orgTest" \
+  || fail "these still use orgTest, the throwaway organization per spec; use teamTest from fixtures/team.ts: $(paste -sd' ' <<< "$old")"
+
+# A second organization only where nothing else can stand in for it: an
+# archive is imported only into an organization without spaces, and a
+# provider that cannot be reached is tested in one of its own.
+SECOND_ORG_SPECS="login.spec.ts org-transfer.spec.ts"
+for spec in $(grep -rlwE 'withAnotherOrg|orgWithDeadProvider' "$E2E/tests" 2>/dev/null); do
+  name=$(basename "$spec")
+  grep -qw "$name" <<< "$SECOND_ORG_SPECS" && pass "$name makes a second organization, as allowed" \
+    || fail "$name makes a second organization; give it people and spaces of its own (fixtures/team.ts) instead"
+done
+
+instance_specs=$(sed -n '/^export const INSTANCE_SPECS = \[/,/^\];/p' "$E2E/fixtures/projects.ts" | sed -n 's/^ *"\([a-z0-9-]*\)",$/\1/p')
+[[ -n "$instance_specs" ]] || fail "fixtures/projects.ts lists no INSTANCE_SPECS this test can read"
+for name in $instance_specs; do
+  [[ -f "$E2E/tests/$name.spec.ts" ]] || fail "INSTANCE_SPECS names $name, but there is no e2e/tests/$name.spec.ts"
+done
+[[ -n "$instance_specs" && $FAILED -eq 0 ]] && pass "every spec INSTANCE_SPECS names exists"
 
 if [[ $FAILED -eq 0 ]]; then echo "✅ ci.yml tests passed"; else echo "❌ ci.yml tests failed"; fi
 exit $FAILED

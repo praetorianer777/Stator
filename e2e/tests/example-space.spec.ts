@@ -1,6 +1,7 @@
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { ageExample, orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
+import { ageExample } from "../fixtures/testapi";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { expectAccessible } from "../fixtures/shell";
 import { deleteSpace } from "../fixtures/spaces";
@@ -73,11 +74,11 @@ test.describe("the example space", { tag: ["@auth"] }, () => {
     await expect(page).toHaveURL(new RegExp(`/s/${KEY}$`));
   });
 
-  test("an administrator sees that a newer one is available, renews it, and reads the new guide", async ({ page, api, freshOrg }) => {
+  test("an administrator sees that a newer one is available, renews it, and reads the new guide", async ({ page, api }) => {
     test.slow();
     must(await api.POST("/example-space", { body: { language: "en" } }));
     await expect.poll(async () => must(await api.GET("/example-space")).space?.key ?? null, MAKING).toBe(KEY);
-    await ageExample(freshOrg.slug, "moving-pages");
+    await ageExample(KEY, "moving-pages");
 
     await page.goto("/spaces");
     const renewal = page.locator("[data-example-renewal]");

@@ -1,9 +1,9 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing } from "../fixtures/replica";
-import { uniqueName } from "../fixtures/seed";
+import { uniqueName, uniqueWord } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../fixtures/spaces";
 
@@ -90,11 +90,12 @@ test.describe("labels", { tag: ["@auth"] }, () => {
   test("search narrows its hits to a label picked in the filter", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Filter");
     const word = `gannet-${testInfo.workerIndex}${Date.now().toString(36)}`;
-    const labeled = await createPage(api, space.homePageId, "Gannet census labeled");
-    await createPage(api, space.homePageId, "Gannet census plain");
+    const gannet = uniqueWord(testInfo, "gannet");
+    const labeled = await createPage(api, space.homePageId, `${gannet} census labeled`);
+    await createPage(api, space.homePageId, `${gannet} census plain`);
     await addLabel(api, labeled.id, word);
 
-    await openShowing(page, "/search?q=gannet", page.locator('[data-search-hit="Gannet census plain"]'));
+    await openShowing(page, `/search?q=${gannet}`, page.locator(`[data-search-hit="${gannet} census plain"]`));
     const box = page.locator('[data-filter="label"]').getByRole("combobox", { name: "Labels" });
     await expect(async () => {
       await box.fill("");
@@ -103,13 +104,15 @@ test.describe("labels", { tag: ["@auth"] }, () => {
     }).toPass();
     await box.press("Enter");
     await expect(page).toHaveURL(new RegExp(`label=${word}`));
-    await expect(page.locator('[data-search-hit="Gannet census labeled"]')).toBeVisible();
-    await expect(page.locator('[data-search-hit="Gannet census plain"]')).toHaveCount(0);
-    await expect(page.locator('[data-search-hit="Gannet census labeled"]').locator(`[data-label="${word}"]`)).toBeVisible();
+    await expect(page.locator(`[data-search-hit="${gannet} census labeled"]`)).toBeVisible();
+    await expect(page.locator(`[data-search-hit="${gannet} census plain"]`)).toHaveCount(0);
+    await expect(page.locator(`[data-search-hit="${gannet} census labeled"]`).locator(`[data-label="${word}"]`)).toBeVisible();
+    // The suggestions stay open on every label of the organization, over the filter's chips.
+    await box.press("Escape");
 
     await page.locator(`[data-label-filters] [data-label="${word}"]`).getByRole("button").click();
     await expect(page).not.toHaveURL(/label=/);
-    await expect(page.locator('[data-search-hit="Gannet census plain"]')).toBeVisible();
+    await expect(page.locator(`[data-search-hit="${gannet} census plain"]`)).toBeVisible();
   });
 
   test("a member who may not edit reads the labels and is offered no way to change them", async ({ api, apiAs, pageAs }, testInfo) => {

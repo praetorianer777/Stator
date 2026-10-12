@@ -6,9 +6,20 @@ import { authAvailable, stateFile } from "./auth";
 export type Theme = components["schemas"]["Theme"];
 export type ThemeSpec = components["schemas"]["Spec"];
 
-/** A name no other test, worker or earlier run has used, so tests can share an organisation. */
+/** A name no other test, worker or earlier run has used, since every test shares the organisation. */
 export function uniqueName(testInfo: TestInfo, label: string): string {
   return `e2e ${testInfo.workerIndex}-${Date.now().toString(36)} ${label}`;
+}
+
+const DIGIT_AS_LETTER = "abcdefghij";
+
+/**
+ * A word no other test, worker or earlier run has used, of letters alone so
+ * search keeps it whole: what a spec searches for finds its own pages only.
+ */
+export function uniqueWord(testInfo: TestInfo, stem: string): string {
+  const stamp = `${testInfo.workerIndex}q${Date.now().toString(36)}q${testInfo.repeatEachIndex}`;
+  return stem + stamp.replace(/[0-9]/g, (digit) => DIGIT_AS_LETTER[Number(digit)]!);
 }
 
 /** A theme that overrides nothing; pass what the test needs on top. */
@@ -44,7 +55,7 @@ export async function uploadThemeAsset(api: StatorApi, themeId: string, name: st
 /**
  * Leaves demo with no default theme and nothing chosen by alice or bob, and
  * checks it: specs there judge the built-in look, contrast included, so a theme
- * any run left behind must never reach them. Theme specs use their own organisation.
+ * any run left behind must never reach them. The theme specs run after all the others.
  */
 export async function clearDemoThemes(): Promise<void> {
   if (!(await authAvailable())) return;

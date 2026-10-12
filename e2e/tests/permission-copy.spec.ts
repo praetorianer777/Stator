@@ -1,6 +1,6 @@
 import { expect } from "../fixtures/auth";
 import { must } from "../fixtures/api";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
@@ -12,7 +12,7 @@ test.describe("copying space permissions", { tag: ["@auth"] }, () => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
   });
 
-  test("an administrator previews another space's permissions and copies them", async ({ page, api, apiAs }, testInfo) => {
+  test("an administrator previews another space's permissions and copies them", async ({ page, api, apiAs, team }, testInfo) => {
     const target = uniqueKey(testInfo);
     const source = `${target.slice(0, -1)}${target.endsWith("S") ? "T" : "S"}`;
     made.push(target, source);
@@ -43,14 +43,14 @@ test.describe("copying space permissions", { tag: ["@auth"] }, () => {
 
     const diff = dialog.getByRole("table", { name: "Changes to this space's permissions" });
     await expect(diff.locator('[data-copy-change="Everyone"]')).toHaveAttribute("data-copy-kind", "removed");
-    await expect(diff.locator('[data-copy-change="Bob Builder"]')).toHaveAttribute("data-copy-kind", "added");
+    await expect(diff.locator(`[data-copy-change="${team.people.bob.name}"]`)).toHaveAttribute("data-copy-kind", "added");
     await expect(diff.locator("[data-copy-change]")).toHaveCount(2);
     await expectAccessible(page);
 
     await dialog.locator('[data-action="apply-permission-copy"]').click();
     await expect(page.getByText(`Copied the permissions of ${sourceName}.`, { exact: true })).toBeVisible();
     await expect(dialog).toHaveCount(0);
-    await expect(grid.locator('[data-grant="Bob Builder"] [data-permission-cell="view"]')).toBeChecked();
+    await expect(grid.locator(`[data-grant="${team.people.bob.name}"] [data-permission-cell="view"]`)).toBeChecked();
     await expect(grid.locator('[data-grant-type="everyone"]')).toHaveCount(0);
 
     // Bob could add pages as one of everyone, and may now only read.

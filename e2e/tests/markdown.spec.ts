@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import type { Download, Page, TestInfo } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import type { StatorApi } from "../fixtures/api";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { childTitles, createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../fixtures/spaces";

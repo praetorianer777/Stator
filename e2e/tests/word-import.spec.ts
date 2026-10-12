@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { bullet, DOCX_TYPE, para, picture, table, wordDocument } from "../fixtures/docx";
 import { png } from "../fixtures/files";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { childTitles, createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";

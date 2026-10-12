@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { deleteSpace, uniqueKey } from "../fixtures/spaces";

@@ -9,6 +9,6 @@
     }
   },
   "files": {
-    "includes": ["**", "!node_modules", "!playwright-report", "!test-results", "!.auth"]
+    "includes": ["**", "!node_modules", "!playwright-report", "!playwright-report-instance", "!test-results", "!test-results-instance", "!.auth"]
   }
 }

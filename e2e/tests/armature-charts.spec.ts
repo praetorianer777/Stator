@@ -2,7 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -20,10 +20,10 @@ const paragraph = (value: string) => ({ type: "paragraph", content: [{ type: "te
 test.describe("Armature charts", { tag: ["@auth"] }, () => {
   const made: string[] = [];
 
-  test.beforeEach(async ({ api, freshOrg }) => {
+  test.beforeEach(async ({ api, team }) => {
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug } }));
-    must(await api.PUT("/armature/account/token", { body: { token: patFor(freshOrg.slug, "alice") } }));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } }));
+    must(await api.PUT("/armature/account/token", { body: { token: patFor(team.label, "alice") } }));
   });
 
   test.afterEach(async ({ api }) => {
@@ -72,9 +72,9 @@ test.describe("Armature charts", { tag: ["@auth"] }, () => {
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
-    test(`charts pass axe in ${scheme}, a pie and created against resolved`, async ({ page, api, request, freshOrg }, testInfo) => {
+    test(`charts pass axe in ${scheme}, a pie and created against resolved`, async ({ page, api, request, team }, testInfo) => {
       // An issue done today, so created against resolved has a day to draw.
-      const done = await request.fetch(`${armatureURL()}/_stub/${freshOrg.slug}/issues/CP-3`, { method: "PATCH", data: { statusCategory: "done" } });
+      const done = await request.fetch(`${armatureURL()}/_stub/${team.label}/issues/CP-3`, { method: "PATCH", data: { statusCategory: "done" } });
       expect(done.status()).toBe(200);
       const space = await freshSpace(api, testInfo, "Axe");
       const report = await createPage(api, space.homePageId, "Charts", {

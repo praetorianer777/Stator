@@ -3,13 +3,14 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { mailsTo, mailText } from "../fixtures/mail";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
-const BOB_EMAIL = "bob@stator.test";
+// The spec's own bob, named after it (fixtures/team.ts).
+let BOB_EMAIL = "";
 // Delivery goes through the outbox and the worker, and mail through Mailpit.
 const DELIVERY_MS = 30_000;
 // How long a mail that should not come is given to come anyway.
@@ -40,6 +41,9 @@ async function expectBadge(page: Page, count: number) {
 }
 
 test.describe("watching and notifications", { tag: ["@auth"] }, () => {
+  test.beforeEach(({ team }) => {
+    BOB_EMAIL = team.people.bob.email;
+  });
   const made: string[] = [];
   test.afterEach(async ({ api }) => {
     for (const key of made.splice(0)) await deleteSpace(api, key);

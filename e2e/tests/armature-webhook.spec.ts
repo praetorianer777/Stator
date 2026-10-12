@@ -1,7 +1,7 @@
 import type { APIRequestContext } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
@@ -21,11 +21,11 @@ async function stub(request: APIRequestContext, method: "POST" | "PATCH" | "DELE
 test.describe("Armature webhooks", { tag: ["@auth"] }, () => {
   let spaceKey = "";
 
-  test.beforeEach(async ({ api, freshOrg, request }) => {
-    await stub(request, "DELETE", freshOrg.slug);
+  test.beforeEach(async ({ api, team, request }) => {
+    await stub(request, "DELETE", team.label);
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug, webhookSecret: SECRET } }));
-    must(await api.PUT("/armature/account/token", { body: { token: patFor(freshOrg.slug, "alice") } }));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label, webhookSecret: SECRET } }));
+    must(await api.PUT("/armature/account/token", { body: { token: patFor(team.label, "alice") } }));
   });
 
   test.afterEach(async ({ api }) => {
@@ -33,7 +33,7 @@ test.describe("Armature webhooks", { tag: ["@auth"] }, () => {
     await api.DELETE("/armature/connection");
   });
 
-  test("alice sees an issue's new status as soon as Armature announces it", async ({ page, api, freshOrg, request }, testInfo) => {
+  test("alice sees an issue's new status as soon as Armature announces it", async ({ page, api, team, request }, testInfo) => {
     spaceKey = uniqueKey(testInfo);
     const space = await createSpace(api, spaceKey, uniqueName(testInfo, "Hooks"));
     const target = await createPage(api, space.homePageId, uniqueName(testInfo, "Status"), {
@@ -53,13 +53,13 @@ test.describe("Armature webhooks", { tag: ["@auth"] }, () => {
     const status = page.locator('[data-doc] [data-armature-issue="CP-3"] [data-status-category]');
     await expect(status).toHaveAttribute("data-status-category", "todo");
 
-    await stub(request, "PATCH", `${freshOrg.slug}/issues/CP-3`, { statusCategory: "done" });
+    await stub(request, "PATCH", `${team.label}/issues/CP-3`, { statusCategory: "done" });
     // Within the cache's minute the page still shows what was cached.
     await page.reload();
     await expect(status).toHaveAttribute("data-status-category", "todo");
 
-    const sent = await stub(request, "POST", `${freshOrg.slug}/webhooks`, {
-      url: `${apiFromStubURL()}/api/v1/armature/webhook/${freshOrg.slug}`,
+    const sent = await stub(request, "POST", `${team.label}/webhooks`, {
+      url: `${apiFromStubURL()}/api/v1/armature/webhook/${team.org.slug}`,
       secret: SECRET,
       topic: "issue.transitioned",
       payload: { key: "CP-3" },
@@ -70,8 +70,8 @@ test.describe("Armature webhooks", { tag: ["@auth"] }, () => {
     await expect(status).toHaveAttribute("data-status-category", "done");
 
     // A delivery signed with another secret is refused by the receiver.
-    const forged = await stub(request, "POST", `${freshOrg.slug}/webhooks`, {
-      url: `${apiFromStubURL()}/api/v1/armature/webhook/${freshOrg.slug}`,
+    const forged = await stub(request, "POST", `${team.label}/webhooks`, {
+      url: `${apiFromStubURL()}/api/v1/armature/webhook/${team.org.slug}`,
       secret: `${SECRET.slice(0, -1)}H`,
       topic: "issue.transitioned",
       payload: { key: "CP-3" },

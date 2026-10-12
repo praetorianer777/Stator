@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
@@ -30,9 +30,9 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
   });
 
   for (const scheme of SCHEMES) {
-    test(`an administrator connects, alice connects her account and disconnects, in ${scheme}`, async ({ page, freshOrg }) => {
+    test(`an administrator connects, alice connects her account and disconnects, in ${scheme}`, async ({ page, team }) => {
       await startInScheme(page, scheme);
-      const tenant = freshOrg.slug;
+      const tenant = team.label;
 
       await page.goto("/");
       await page.locator('[data-action="account"]').click();
@@ -45,7 +45,7 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
       await page.getByLabel("Webhook secret", { exact: true }).fill(WEBHOOK_SECRET);
       await page.locator('[data-action="save-armature"]').click();
       await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
-      await expect(page.getByLabel("Webhook address", { exact: true })).toHaveValue(new RegExp(`/api/v1/armature/webhook/${tenant}$`));
+      await expect(page.getByLabel("Webhook address", { exact: true })).toHaveValue(new RegExp(`/api/v1/armature/webhook/${team.org.slug}$`));
       await expect(page.getByLabel("Webhook secret", { exact: true })).toHaveValue("");
       await expect(page.locator("body")).not.toContainText(WEBHOOK_SECRET);
       // The disconnect button is the danger variant, so axe judges its colours too.
@@ -83,13 +83,13 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
     });
   }
 
-  test("a member is told to ask an administrator until Armature is connected", async ({ pageAs, freshOrg, api }) => {
+  test("a member is told to ask an administrator until Armature is connected", async ({ pageAs, team, api }) => {
     const bob = await pageAs("bob");
     // The beforeEach took away a connection an earlier test may have left.
     await openShowing(bob, PROFILE_PATH, bob.locator('[data-armature-status="not_configured"]'));
     await expect(bob.locator('[data-armature-status="not_configured"]')).toContainText("Ask an administrator to connect it under Settings, Armature.");
 
-    expect((await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug } })).response.status).toBe(200);
+    expect((await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } })).response.status).toBe(200);
     await openShowing(bob, PROFILE_PATH, bob.getByLabel("Armature token", { exact: true }));
     await bob.goto(SETTINGS_PATH);
     await expect(bob.getByText("Only an administrator of this organization can connect Armature.")).toBeVisible();

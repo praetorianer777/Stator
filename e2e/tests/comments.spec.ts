@@ -2,7 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -41,7 +41,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     return createSpace(api, key, uniqueName(testInfo, label));
   }
 
-  test("alice comments, bob replies, and alice follows her notification to the thread", async ({ page, api, pageAs }, testInfo) => {
+  test("alice comments, bob replies, and alice follows her notification to the thread", async ({ page, api, pageAs, team }, testInfo) => {
     test.slow();
     const space = await freshSpace(api, testInfo, "Talk");
     const plan = await createPage(api, space.homePageId, uniqueName(testInfo, "Plan"), doc("The plan."));
@@ -60,7 +60,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await thread.locator('[data-action="reply"]').click();
     await post(bob, `reply-${threadId}`, "Monday is safer.");
     await expect(thread.locator("[data-comment]")).toHaveCount(2);
-    await expect(thread.locator("[data-comment]").last()).toContainText("Bob Builder");
+    await expect(thread.locator("[data-comment]").last()).toContainText(team.people.bob.name);
 
     await page.goto("/spaces");
     const told = panel(page).locator('[data-notification="replied"]', { hasText: plan.title });

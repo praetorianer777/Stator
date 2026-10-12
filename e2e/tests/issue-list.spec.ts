@@ -2,7 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -38,10 +38,10 @@ async function connect(api: StatorApi, token: string) {
 test.describe("the Armature issue list", { tag: ["@auth"] }, () => {
   const made: string[] = [];
 
-  test.beforeEach(async ({ api, freshOrg }) => {
+  test.beforeEach(async ({ api, team }) => {
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug } }));
-    await connect(api, patFor(freshOrg.slug, "admin"));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } }));
+    await connect(api, patFor(team.label, "admin"));
   });
 
   test.afterEach(async ({ api }) => {
@@ -103,7 +103,7 @@ test.describe("the Armature issue list", { tag: ["@auth"] }, () => {
   });
 
   for (const scheme of SCHEMES) {
-    test(`an admin-only issue is not among bob's rows, and a bad query says where, in ${scheme}`, async ({ page, api, apiAs, pageAs, freshOrg }, testInfo) => {
+    test(`an admin-only issue is not among bob's rows, and a bad query says where, in ${scheme}`, async ({ page, api, apiAs, pageAs, team }, testInfo) => {
       // Two browsers, a fresh organization and three axe runs: a few seconds
       // short of the global limit on a good day (#347).
       test.slow();
@@ -118,7 +118,7 @@ test.describe("the Armature issue list", { tag: ["@auth"] }, () => {
       await expectAccessible(page);
 
       const bobApi = await apiAs("bob");
-      await connect(bobApi, patFor(freshOrg.slug, "bob"));
+      await connect(bobApi, patFor(team.label, "bob"));
       const bob = await pageAs("bob");
       await startInScheme(bob, scheme);
       await openPage(bob, space.key, both);

@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil, openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -9,6 +9,9 @@ import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spa
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const NOT_FOUND = /not found/i;
+// The spec's own people, named after it (fixtures/team.ts).
+let ALICE = "";
+let BOB = "";
 
 /** Picks somebody from a people and groups picker by what their name starts with. */
 async function pick(scope: Locator, typed: string, name: string): Promise<void> {
@@ -39,6 +42,10 @@ async function openRestrictions(page: Page): Promise<Locator> {
 }
 
 test.describe("permissions", { tag: ["@auth"] }, () => {
+  test.beforeEach(({ team }) => {
+    ALICE = team.people.alice.name;
+    BOB = team.people.bob.name;
+  });
   const made: string[] = [];
   test.afterEach(async ({ api }) => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
@@ -63,8 +70,8 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     const bob = await pageAs("bob");
     await openWithout(bob, "/spaces", bob.locator(`[data-space-row="${key}"]`), bob.locator("[data-space-directory]"));
 
-    await pick(page.locator("[data-space-permissions] [data-subject-picker]"), "bob", "Bob Builder");
-    await expect(grid.locator('[data-grant="Bob Builder"] [data-permission-cell="view"]')).toBeChecked();
+    await pick(page.locator("[data-space-permissions] [data-subject-picker]"), BOB, BOB);
+    await expect(grid.locator(`[data-grant="${BOB}"] [data-permission-cell="view"]`)).toBeChecked();
     await page.locator('[data-action="save-space-permissions"]').click();
     await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
     await expect.poll(() => statusOf(bobApi, space.homePageId)).toBe(200);
@@ -85,7 +92,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     let dialog = await openRestrictions(page);
     const view = dialog.locator('[data-restriction-list="view"]');
     await expect(view).toContainText("Everyone who can view the space.");
-    await pick(view, "alice", "Alice Admin");
+    await pick(view, ALICE, ALICE);
     await dialog.locator('[data-action="save-restrictions"]').click();
     await expect(dialog).toHaveCount(0);
     await expect(page.locator('[data-page-restricted="view"]')).toBeVisible();
@@ -100,7 +107,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     });
 
     dialog = await openRestrictions(page);
-    await pick(dialog.locator('[data-restriction-list="view"]'), "bob", "Bob Builder");
+    await pick(dialog.locator('[data-restriction-list="view"]'), BOB, BOB);
     await dialog.locator('[data-action="save-restrictions"]').click();
     await expect(dialog).toHaveCount(0);
     await expect.poll(() => statusOf(bobApi, secret.id)).toBe(200);
@@ -143,7 +150,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     const bob = await pageAs("bob");
     await openUntil(bob, `/s/${key}/p/${notes.id}/notes`, () => expect(heading(bob)).toHaveText("Notes", ONE_LOOK));
     const dialog = await openRestrictions(bob);
-    await pick(dialog.locator('[data-restriction-list="edit"]'), "alice", "Alice Admin");
+    await pick(dialog.locator('[data-restriction-list="edit"]'), ALICE, ALICE);
     await dialog.locator('[data-action="save-restrictions"]').click();
     await expect(dialog.getByText(/Saving this would shut you out of the page\. Add yourself, or a group you are in, to both lists/)).toBeVisible();
     await expect(dialog).toBeVisible();
@@ -162,7 +169,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
       await expect(use.locator('[data-subject-type="everyone"]')).toBeVisible();
       await expectAccessible(page);
       await use.locator('[data-subject-type="everyone"] [data-action="remove-subject"]').click();
-      await pick(use, "alice", "Alice Admin");
+      await pick(use, ALICE, ALICE);
       await use.locator('[data-action="save-global"]').click();
       await expect(use.getByText("Saved.", { exact: true })).toBeVisible();
 

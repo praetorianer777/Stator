@@ -2,7 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -35,10 +35,10 @@ async function connect(api: StatorApi, token: string) {
 test.describe("the Armature issue block", { tag: ["@auth"] }, () => {
   const made: string[] = [];
 
-  test.beforeEach(async ({ api, freshOrg }) => {
+  test.beforeEach(async ({ api, team }) => {
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug } }));
-    await connect(api, patFor(freshOrg.slug, "admin"));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } }));
+    await connect(api, patFor(team.label, "admin"));
   });
 
   test.afterEach(async ({ api }) => {
@@ -106,7 +106,7 @@ test.describe("the Armature issue block", { tag: ["@auth"] }, () => {
       api,
       apiAs,
       pageAs,
-      freshOrg,
+      team,
     }, testInfo) => {
       await startInScheme(page, scheme);
       const space = await freshSpace(api, testInfo);
@@ -118,7 +118,7 @@ test.describe("the Armature issue block", { tag: ["@auth"] }, () => {
       await expectAccessible(page);
 
       const bobApi = await apiAs("bob");
-      await connect(bobApi, patFor(freshOrg.slug, "bob"));
+      await connect(bobApi, patFor(team.label, "bob"));
       const bob = await pageAs("bob");
       await startInScheme(bob, scheme);
       await openPage(bob, space.key, target);

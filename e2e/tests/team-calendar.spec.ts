@@ -2,7 +2,7 @@ import type { APIRequestContext, Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -33,11 +33,11 @@ async function dueToday(request: APIRequestContext, tenant: string): Promise<voi
 test.describe("team calendars", { tag: ["@auth"] }, () => {
   const made: string[] = [];
 
-  test.beforeEach(async ({ api, request, freshOrg }) => {
-    await dueToday(request, freshOrg.slug);
+  test.beforeEach(async ({ api, request, team }) => {
+    await dueToday(request, team.label);
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug } }));
-    must(await api.PUT("/armature/account/token", { body: { token: patFor(freshOrg.slug, "alice") } }));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } }));
+    must(await api.PUT("/armature/account/token", { body: { token: patFor(team.label, "alice") } }));
   });
 
   test.afterEach(async ({ api }) => {
