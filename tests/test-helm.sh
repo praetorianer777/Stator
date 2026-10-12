@@ -153,6 +153,11 @@ check "the web's nginx passes a shared draft's WebSocket on" \
     "$(grep -A4 -F 'location ~ ^/api/v1/pages/[^/]+/collab$' <<<"${RENDERED}" | grep -cE 'proxy_http_version 1.1|proxy_set_header Upgrade \$http_upgrade|proxy_set_header Connection "upgrade"')" \
     "3"
 
+# One connection per request ran out of local ports at a few hundred a second (#372).
+check "the web's nginx keeps its connections to the api" \
+    "$(grep -A2 -F 'upstream stator_api {' <<<"${RENDERED}" | grep -cE "server ${FULL}-api:[0-9]+;|keepalive [0-9]+;") $(grep -cE '^ {8}(proxy_http_version 1.1|proxy_set_header Connection "");$' <<<"${RENDERED}") $(grep -c 'proxy_pass http://stator_api;' <<<"${RENDERED}")" \
+    "2 2 5"
+
 echo "⎈ One api pod without Valkey"
 render "one api pod, no Valkey" --set database.host=db.example --set api.replicas=1
 check "no Valkey URL" "$(env_value "${RENDERED}" STATOR_VALKEY_URL)" ""
