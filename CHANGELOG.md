@@ -1096,6 +1096,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A client that hangs up before its answer is ready is recorded as 499, as
+  nginx does, and logged at info as cancelled by the client, instead of
+  counting as a 500 and logging an error (#373). A deadline the server itself
+  ran into still fails as before.
 - nginx keeps its connections to the api open and reuses them, in compose
   and in the chart (#372). It opened one per request, ran out of local ports
   at about 250 requests a second and answered 502. Compose still follows the

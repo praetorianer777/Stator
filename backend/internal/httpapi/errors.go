@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -126,6 +127,13 @@ func ErrInternal(cause error) *APIError {
 		cause:   cause,
 	}
 }
+
+// statusClientClosed is nginx's 499: the client hung up before its answer was
+// ready, which is neither a success nor the server failing.
+const statusClientClosed = 499
+
+var errClientClosed = &APIError{Status: statusClientClosed, Code: "client_closed_request",
+	Message: "The request was cancelled before its answer was ready. Send it again if you still need the answer."}
 
 var (
 	errReadOnlyToken = &APIError{Status: http.StatusForbidden, Code: "read_only_token",
@@ -640,13 +648,19 @@ func toAPIError(err error) *APIError {
 // worth seeing.
 func respondError(w http.ResponseWriter, r *http.Request, err error) {
 	apiErr := toAPIError(err)
+	if clientWentAway(r, err) {
+		apiErr = errClientClosed
+	}
 	body := *apiErr
 	body.RequestID = RequestIDFrom(r.Context())
 
 	log := loggerFrom(r.Context())
-	if body.Status >= http.StatusInternalServerError {
+	switch {
+	case body.Status == statusClientClosed:
+		log.Info("request cancelled by the client", "error", err)
+	case body.Status >= http.StatusInternalServerError:
 		log.Error("request failed", "code", body.Code, "error", err)
-	} else {
+	default:
 		log.Debug("request rejected", "code", body.Code, "status", body.Status, "message", body.Message)
 	}
 
@@ -655,6 +669,12 @@ func respondError(w http.ResponseWriter, r *http.Request, err error) {
 	if encErr := json.NewEncoder(w).Encode(errorEnvelope{Error: body}); encErr != nil {
 		log.Error("failed to write error response", "error", encErr)
 	}
+}
+
+// clientWentAway tells a hang-up from a cancellation of the server's own, which
+// leaves the request's context alive and stays an internal error.
+func clientWentAway(r *http.Request, err error) bool {
+	return errors.Is(err, context.Canceled) && errors.Is(r.Context().Err(), context.Canceled)
 }
 
 // respondJSON writes a successful response.
