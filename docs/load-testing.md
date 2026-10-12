@@ -117,6 +117,71 @@ p95 17 ms, writes at 73 ms and live delivery at 5 ms, when nginx began
 answering 502: it opened a new connection to the api for every request and
 ran out of local ports. Neither the api nor the database had reached a limit.
 
+## Comparing with the baseline
+
+The thresholds say whether a deployment is fast enough, not whether a change
+made it slower: search going from 30 ms to 400 ms still passes. For that,
+`tests/load/baseline.json` holds the standard profile's numbers from the
+machine above, and each run can be held against them.
+
+```sh
+make stack-up
+make load-compare                      # run the standard profile and compare
+make load-compare LOAD_COMPARE_ONLY=1  # compare the last run again, without a new one
+make load-baseline                     # run it and write a new baseline
+```
+
+Both run the standard profile with every scenario and nothing skipped,
+whatever `LOAD_PROFILE`, `LOAD_SCENARIOS` or `LOAD_SKIP` say, and read the
+run's summary in a Node container (`tests/load/compare.mjs`).
+
+**When to run it.** Before a release, and by hand on a pull request that
+touches queries, row level security, permissions or live editing. It belongs
+in neither the push gate nor CI: a shared runner is no reference machine, and
+three minutes of load on a busy one says nothing. Run it with the machine
+otherwise quiet (`uptime` below about 3 on the reference machine); other
+stacks running tests beside it make it slower without the change being at
+fault.
+
+**Reading the table.** One line per number, with the baseline, this run and
+the change:
+
+```
+what                   baseline       now  change
+read p95                13.9 ms   39.8 ms  +186 %  regression
+search p50              30.4 ms   25.8 ms   -15 %
+requests per second        54.5      55.6    +2 %
+failed requests             0 %       0 %       0
+```
+
+- **regression** fails the comparison: a p95 that grew by more than 25 %
+  (`TOLERANCE`) and by more than 10 ms (`NOISE_MS`), or any rise in the share
+  of failed requests. The floor is there because a 3 ms or 14 ms p95 moves by
+  more than a quarter from one run to the next.
+- **slower** is a median or p99 past the same margin, or a quarter fewer
+  requests per second. It does not fail: those move with the machine more than
+  p95 does, but several of them together are worth a second run.
+- A run whose thresholds broke is still compared and then fails, so the table
+  says how far off it is.
+
+A failure means finding the cause as in the next section, and running it again
+once to rule out a busy machine.
+
+**Updating the baseline.** Only on purpose: in the pull request that means to
+change how fast Stator is, or after a change to the scripts or the profile that
+moves the numbers, never to make a failing comparison pass. Run
+`make load-baseline` on the reference machine with it otherwise quiet, commit
+`tests/load/baseline.json` with that change, and say in the pull request why
+the numbers moved and what the machine's load was. `./tests/test-load.sh`,
+part of the shell layer, checks that the committed file holds every number the
+comparison reads.
+
+The baseline of 2026-10-12 was taken with a 1-minute load of 2.5 before the
+run and 1.8 after it. A second run on the quiet machine right after it passed
+with every p95 within 16 % of it. Search is the number closest to its
+threshold there: p95 609 ms in the baseline and 704 ms in the second run,
+against 800 ms, while its median stays near 30 ms.
+
 ## When a threshold breaks
 
 - Look at the `{ name: ... }` lines of the summary first: they say which

@@ -40,7 +40,7 @@ has_target() { [[ -f Makefile ]] && make -n "$1" >/dev/null 2>&1; }
 
 # Chained rather than relying on set -e, which a call from run_layer turns off.
 shell_tests() {
-  ./tests/test-release.sh && ./tests/test-helm.sh && ./tests/test-ci.sh \
+  ./tests/test-release.sh && ./tests/test-helm.sh && ./tests/test-ci.sh && ./tests/test-load.sh \
     && ./.claude/hooks/tests/branch-guard-test.sh
 }
 
