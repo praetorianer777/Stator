@@ -1,0 +1,37 @@
+# The k6 load test, run by hand: the stack comes up on the runner and takes
+# the profile chosen, smoke by default. A shared runner is no reference
+# machine, so a run here says the scripts and the stack agree, not how much a
+# deployment carries; docs/load-testing.md has the measured numbers.
+name: Load
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: smoke, standard or ceiling
+        type: choice
+        options: [smoke, standard, ceiling]
+        default: smoke
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the stack
+        run: make stack-up
+      - name: Run k6
+        run: make test-load LOAD_PROFILE=${{ inputs.profile }}
+      - name: Keep the summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-${{ inputs.profile }}
+          path: reports/load-*.json
+      - name: Stop the stack
+        if: always()
+        run: make stack-down
