@@ -699,7 +699,7 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   that everybody may write, `SEC` that only `admin` may see), issue types and
   issues. The person `reader` has a token of the read scope, refused every
   write with `read_only_token`, and `armature_pat_revoked` is always 401. Each
-  Playwright spec uses a tenant named after its throwaway organization, so
+  Playwright spec uses a tenant named after itself, its team's label, so
   specs never share issues or links.
 - **Steering it** under `/_stub/`, which is not Armature's and is left out of
   the contract test: change an issue's fields, move it, set a person's active

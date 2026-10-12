@@ -295,11 +295,29 @@ What no endpoint makes yet, such as an organization whose provider is down,
 a spec arranges straight in the database through `e2e/fixtures/db.ts`, with
 the superuser URL `.cache/stack.env` names, and removes again.
 
-A spec that changes what an organization shows uses `orgTest` from
-`e2e/fixtures/org.ts` instead of `demo`: each spec file gets an organization
-of its own per worker, made through the api's test endpoints (on in compose
-through `STATOR_TEST_ENDPOINTS`, never in the chart), with alice and bob
-signed in to it, and removed with all its rows and files when the worker
-stops. See `docs/decisions.md`.
+Every spec shares the one organization (#380), and keeps its data apart by
+people and spaces of its own. A spec on `teamTest` from `e2e/fixtures/team.ts`
+gets, per spec file and worker, an administrator alice and a member bob named
+after the spec, made and signed in through the api's test endpoints (on in
+compose through `STATOR_TEST_ENDPOINTS`, never in the chart) without the
+identity provider, and removed with the spaces they made when the worker
+stops. Its spaces have keys no other spec uses, and what it reads from lists
+that span the organization, such as search, the home page or the people
+pickers, it narrows to its own spaces and people. The team's label,
+`team.label`, is also its tenant in the Armature stub.
+
+What belongs to the organization as a whole (its permissions, hub, brand,
+anonymous access and public links, themes, templates, sign-in provider,
+members, Armature connection, webhooks, audit log and example space) is
+changed only by the specs `e2e/fixtures/projects.ts` lists. They run in the
+projects `instance` and `instance-mobile`, after all the others and with
+one worker, and `POST /api/v1/test/reset` puts the organization's settings
+back as the bootstrap left them before each of their files starts, and in the
+setup and teardown. `make test-e2e` runs the two phases one after the other,
+since a project depending on another would run all of the other in every CI
+shard; each phase shards the same way. Only two specs make a second
+organization: the import of an organization's archive, which takes one
+without spaces, and the sign-in through a provider that cannot be reached.
+`tests/test-ci.sh` keeps it to them. See `docs/decisions.md`.
 
 A Helm chart follows later.

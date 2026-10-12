@@ -1066,6 +1066,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The browser specs share the one organization (#380). Each spec file gets
+  an administrator and a member of its own, made and signed in by
+  `POST /api/v1/test/people` without the identity provider and removed with
+  their spaces by `DELETE /api/v1/test/people/{id}`, and spaces with keys
+  nobody else uses. The specs that change what belongs to the organization
+  as a whole run after the others with one worker, each file from the
+  bootstrap's settings, which `POST /api/v1/test/reset` puts back;
+  `make test-e2e` runs the two phases one after the other, and
+  `make e2e-report PHASE=instance` shows the second one's report.
 - Stator is licensed under the Apache License 2.0 instead of the GNU AGPL
   v3.0 (#376), the license Armature is under.
 - A space keeps at least one administrator of its own: taking administer

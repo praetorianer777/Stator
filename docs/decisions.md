@@ -3,6 +3,47 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-12: The browser specs share the one organization (#380)
+
+An instance serves one organization (#380), so a spec can no longer stay out
+of the others' way by making an organization of its own. Each spec file gets
+people of its own instead: `POST /api/v1/test/people` makes a person in the
+organization with a role and a label, opens a session for them as a password
+sign-in would and sets its cookie, and `DELETE /api/v1/test/people/{id}`
+removes them with the spaces they made. `e2e/fixtures/team.ts` makes an
+administrator and a member per spec file and worker, named after the spec,
+and the spec's spaces have keys nobody else uses. Making them takes no
+provider and no Keycloak, which is faster than a sign-in per organization and
+keeps the realm's alice and bob to the specs about signing in. Only a person
+whose address is at `people.stator.test` can be removed, so a mistyped id
+cannot take a real one.
+
+People and spaces do not cover what belongs to the organization as a whole,
+and two specs changing its permissions or brand at once would see each
+other's. Those specs, listed in `e2e/fixtures/projects.ts`, run after all the
+others with one worker, and `POST /api/v1/test/reset` puts the settings back
+as the bootstrap left them before each of their files starts: the switches,
+hub and default theme, the permissions, brand, group roles, Armature
+connection, webhooks, organization templates, example space and join
+requests, the bootstrap members' roles and the provider. People, spaces and
+the audit log stay. Running them one at a time is what the throwaway
+organizations avoided, but they are a third of the suite, not all of it.
+
+Playwright runs a project another depends on whole in every shard, so the
+instance projects cannot wait for the parallel ones by a dependency. `make
+test-e2e` runs two phases instead, the parallel projects and then the
+instance ones with `--workers=1`, each sharded the same way, and each writes
+its own report. Specs that read lists spanning the organization, such as
+search, the home page or the people pickers, narrow what they assert to their
+own spaces and people, since the other specs' are there too.
+
+The old endpoints stay until the upgrade refuses a second organization, for
+the two specs that still need one: the import of an organization's archive,
+which takes only an organization without spaces, and the sign-in through a
+provider that cannot be reached. `tests/test-ci.sh` fails a spec that uses
+`orgTest` or makes a second organization outside those two. The example
+space is aged by its key, `POST /api/v1/test/spaces/{key}/example-space/age`.
+
 ## 2026-10-12: An organization travels as one archive of its spaces' archives, into an organization without spaces (#383)
 
 One organization per instance (#380) refuses to upgrade an instance holding
@@ -4415,6 +4456,12 @@ checked past row level security, which is why every one of them names the
 organization too.
 
 ## 2026-09-29: Each browser spec file gets a throwaway organization
+
+**Amended on 2026-10-12** by "The browser specs share the one organization
+(#380)": specs keep apart by people and spaces of their own, and the
+throwaway organizations are left only to the two specs that need a second
+one. What follows about the endpoints' token, their absence from the API
+document and the object keys still holds.
 
 Specs that change what an organization shows, such as its default theme or
 who uses which theme, cannot share `demo` with specs that judge the built-in
