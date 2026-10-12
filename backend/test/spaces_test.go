@@ -219,7 +219,7 @@ func appConn(t *testing.T) *pgx.Conn {
 // transaction would.
 func actAs(t *testing.T, conn *pgx.Conn, org, user uuid.UUID) {
 	t.Helper()
-	if _, err := conn.Exec(context.Background(), `SELECT set_config($1, $2, false), set_config($3, $4, false)`,
+	if _, err := conn.Exec(context.Background(), `SELECT set_config($1, $2, false), set_config($3, $4, false), set_config('app.anonymous', '', false)`,
 		tenant.PostgresVar, org.String(), db.UserVar, user.String()); err != nil {
 		t.Fatal(err)
 	}

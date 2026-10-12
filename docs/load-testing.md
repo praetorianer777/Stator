@@ -71,9 +71,9 @@ scripts and the stack agree, not how much a deployment carries.
 | failed requests | < 1 % per scenario |
 
 In the ceiling profile, a breaking threshold stops the run after 30 seconds of
-grace, and `load_vus` says how many people were active by then. Search and the
-tree are measured but do not stop the ramp: until #370 and #371 they are slow
-at any load, and would end the ramp before it measured anything else.
+grace, and `load_vus` says how many people were active by then. The tree is
+measured but does not stop the ramp: until #371 it is slow at any load, and
+would end the ramp before it measured anything else.
 
 ## Measured
 
@@ -81,22 +81,24 @@ Measured on 2026-10-12 with the compose stack and k6 on one machine: AMD Ryzen 5
 3600 (6 cores, 12 threads), 32 GB, Docker 29. One api process, one worker, a
 primary and one streaming replica.
 
-**Standard profile** (72 people, 38 requests/s, 0 failed):
+**Standard profile** (72 people, 53 requests/s, 0 failed), since search
+checks rights only for what matches (#370):
 
 | what | median | p95 | p99 |
 |---|---|---|---|
-| reads | 19 ms | 61 ms | 112 ms |
-| writes | 70 ms | 178 ms | 255 ms |
-| live update delivery | 5 ms | 31 ms | 192 ms |
-| opening a shared draft | 107 ms | 332 ms | 428 ms |
-| the whole tree (2,000 pages) | 2.4 s | **3.4 s** | 3.7 s |
-| search | 3.1 s | **8.1 s** | 9.7 s |
+| reads | 4 ms | 12 ms | 45 ms |
+| writes | 16 ms | 37 ms | 233 ms |
+| live update delivery | 2 ms | 3 ms | 7 ms |
+| opening a shared draft | 35 ms | 107 ms | 114 ms |
+| the whole tree (2,000 pages) | 687 ms | 889 ms | 1.26 s |
+| search | 28 ms | 458 ms | 555 ms |
 
-Every threshold holds but search (#370) and the tree (#371).
+Every threshold holds. Before #370 search took 3.1 s at the median and 8.1 s
+at p95, and the tree 3.4 s at p95, with the machine busy searching.
 
-**Ceiling profile**, as it is: stopped after a minute at **75 people**, when
-live update delivery passed 300 ms at p95. Search and the tree had taken the
-machine: search ran at p95 4.7 s. The rest is waiting for #370 and #371.
+**Ceiling profile**, before #370: stopped after a minute at **75 people**,
+when live update delivery passed 300 ms at p95. Search and the tree had taken
+the machine: search ran at p95 4.7 s.
 
 **Ceiling profile without search and the tree** (`LOAD_SKIP=search,tree`):
 **418 people at 246 requests/s**. Reads were at p95 17 ms, writes at 73 ms and

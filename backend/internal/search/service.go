@@ -25,15 +25,6 @@ func NewService(cluster *db.Cluster) *Service {
 	return &Service{db: cluster}
 }
 
-// found is what every search reads: published pages out of the trash that the
-// actor, parameter $1, may view, with the version they are at.
-const found = `
-FROM page p
-JOIN space s ON s.id = p.space_id
-JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = p.version
-LEFT JOIN app_user vu ON vu.id = v.created_by
-WHERE p.trashed_at IS NULL AND p.version > 0`
-
 // config is the text search configuration of migration 00100.
 const config = `'stator_search'::regconfig`
 
@@ -67,15 +58,19 @@ const (
 // pageHits, attachmentHits and commentHits are the kinds of hit a search
 // reads, each a row of the same shape, among published pages out of the trash
 // that the actor, parameter $1, may view. A comment is titled by its page.
+// pageHits reads its pages from pagesWithWords or, without words, from
+// pagesAtVersion.
 const (
 	pageHits = `
 SELECT 'page' AS kind, NULL::uuid AS attachment_id, NULL::uuid AS comment_id, p.id AS page_id, p.title AS page_title,
-       p.title AS title, p.body, s.key, s.name, v.created_at AS changed_at, COALESCE(vu.name, '') AS by_name, ` + archivedOf + `, %s
-FROM page p
+       p.title AS title, p.body, s.key, s.name, p.changed_at, COALESCE(vu.name, '') AS by_name, ` + archivedOf + `, %s
+FROM %s p
 JOIN space s ON s.id = p.space_id
-JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = p.version
-LEFT JOIN app_user vu ON vu.id = v.created_by
+LEFT JOIN app_user vu ON vu.id = p.changed_by
 WHERE p.trashed_at IS NULL AND p.version > 0`
+	pagesAtVersion = `(SELECT p.id, p.org_id, p.space_id, p.title, p.body, p.version, p.archived_at, p.trashed_at,
+	        v.created_at AS changed_at, v.created_by AS changed_by
+	 FROM page p JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = p.version)`
 	attachmentHits = `
 SELECT 'attachment', a.id, NULL::uuid, p.id, p.title, a.file_name, NULL::jsonb, s.key, s.name, a.created_at, COALESCE(au.name, ''), ` + archivedOf + `, %s
 FROM attachment a
@@ -102,14 +97,19 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 	pages := []string{perm.ViewablePage("p", 1)}
 	files := []string{perm.ViewablePage("p", 1)}
 	comments := []string{perm.ViewablePage("p", 1)}
+	pageSource := pagesAtVersion
 	var tsq string
 	pageScore, fileScore, commentScore := `FALSE, 0::real`, `FALSE, 0::real`, `FALSE, 0::real`
 	if q.Text != "" {
 		tsq = `websearch_to_tsquery(` + config + `, ` + bind(q.Text) + `)`
-		pages = append(pages, `p.search_vector @@ `+tsq)
-		files = append(files, `a.search_vector @@ `+tsq)
-		comments = append(comments, `c.search_vector @@ `+tsq)
-		pageScore = `to_tsvector(` + config + `, p.title) @@ ` + tsq + `, ts_rank(p.search_vector, ` + tsq + `)`
+		// The words are matched through the indexes before anybody's rights are
+		// checked, which row level security alone would do the other way round,
+		// and page_search_rows has checked them (00700_search_hits.sql).
+		pageSource = `page_search_rows(` + tsq + `)`
+		pages = []string{`TRUE`}
+		files = append(files, `a.id IN (SELECT attachment_search_hits(`+tsq+`))`)
+		comments = append(comments, `c.id IN (SELECT comment_search_hits(`+tsq+`))`)
+		pageScore = `to_tsvector(` + config + `, p.title) @@ ` + tsq + `, p.rank`
 		fileScore = `TRUE, ts_rank(a.search_vector, ` + tsq + `)`
 		commentScore = `FALSE, ts_rank(c.search_vector, ` + tsq + `)`
 	}
@@ -145,18 +145,18 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 	}
 	if q.After != nil {
 		after := bind(*q.After)
-		pages = append(pages, `v.created_at >= `+after)
+		pages = append(pages, `p.changed_at >= `+after)
 		files = append(files, `a.created_at >= `+after)
 		comments = append(comments, `COALESCE(c.edited_at, c.created_at) >= `+after)
 	}
 	if q.Before != nil {
 		before := bind(*q.Before)
-		pages = append(pages, `v.created_at < `+before)
+		pages = append(pages, `p.changed_at < `+before)
 		files = append(files, `a.created_at < `+before)
 		comments = append(comments, `COALESCE(c.edited_at, c.created_at) < `+before)
 	}
 	hits := `WITH hit (kind, attachment_id, comment_id, page_id, page_title, title, body, key, name, changed_at, by_name, archived, title_match, rank) AS (` +
-		fmt.Sprintf(pageHits, pageScore) + ` AND ` + strings.Join(pages, ` AND `) + `
+		fmt.Sprintf(pageHits, pageScore, pageSource) + ` AND ` + strings.Join(pages, ` AND `) + `
 		UNION ALL` +
 		fmt.Sprintf(attachmentHits, fileScore) + ` AND ` + strings.Join(files, ` AND `) + `
 		UNION ALL` +
@@ -237,20 +237,23 @@ func (s *Service) Quick(ctx context.Context, actor perm.Actor, typed, spaceKey s
 	if tsq == "" {
 		return out, nil
 	}
-	args := []any{actor.UserID, tsq, strings.TrimSpace(typed), limit}
+	// page_search_rows checks the actor's rights, which the transaction names.
+	args := []any{tsq, strings.TrimSpace(typed), limit}
 	within := ``
 	if spaceKey = strings.TrimSpace(spaceKey); spaceKey != "" {
 		args = append(args, spaceKey)
-		within = ` AND s.key = upper($5)`
+		within = ` AND s.key = upper($4)`
 	}
-	query := `to_tsquery(` + config + `, $2)`
+	query := `to_tsquery(` + config + `, $1)`
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.title, s.key, s.name, `+pathOf+`
-			`+found+` AND `+unarchived+` AND `+perm.ViewablePage("p", 1)+` AND p.search_vector @@ `+query+within+`
-			ORDER BY starts_with(lower(p.title), lower($3)) DESC, ts_rank(p.search_vector, `+query+`) DESC,
-			         char_length(p.title), v.created_at DESC, p.id
-			LIMIT $4`, args...)
+			FROM page_search_rows(`+query+`) p
+			JOIN space s ON s.id = p.space_id
+			WHERE p.trashed_at IS NULL AND p.version > 0 AND `+unarchived+within+`
+			ORDER BY starts_with(lower(p.title), lower($2)) DESC, p.rank DESC,
+			         char_length(p.title), p.changed_at DESC, p.id
+			LIMIT $3`, args...)
 		if err != nil {
 			return fmt.Errorf("quick search: %w", err)
 		}

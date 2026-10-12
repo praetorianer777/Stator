@@ -1096,6 +1096,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Search answers in tens of milliseconds instead of seconds in a large space
+  (#370): it checks who may see a hit only for what matches the words, and a
+  space at a time where no page in it is restricted.
 - The chart's roles Job runs on a cluster. Kubernetes reads `$$` in a
   container's args as an escaped `$`, which cut the role script's `DO $$` to
   `DO $` and failed every install with the bundled database (#331). The test

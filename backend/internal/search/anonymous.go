@@ -43,11 +43,10 @@ func (s *Service) Anonymous(ctx context.Context, text, spaceKey string, limit, o
 	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		tsq := `websearch_to_tsquery(` + config + `, $1)`
 		rows, err := tx.Query(ctx, `
-			SELECT p.id, p.title, s.key, s.name, p.body FROM page p JOIN space s ON s.id = p.space_id
-			WHERE p.trashed_at IS NULL AND p.version > 0 AND p.kind = 'page' AND p.search_vector @@ `+tsq+`
-			  AND perm_page_viewable(p.id, NULL::uuid) AND perm_space_holds(NULL::uuid, s.id, 'view')
+			SELECT p.id, p.title, s.key, s.name, p.body FROM page_search_rows(`+tsq+`) p JOIN space s ON s.id = p.space_id
+			WHERE p.trashed_at IS NULL AND p.version > 0 AND p.kind = 'page' AND perm_space_holds(NULL::uuid, s.id, 'view')
 			  AND ($2 = '' OR s.key = upper(btrim($2)))
-			ORDER BY to_tsvector(`+config+`, p.title) @@ `+tsq+` DESC, ts_rank(p.search_vector, `+tsq+`) DESC, p.id
+			ORDER BY to_tsvector(`+config+`, p.title) @@ `+tsq+` DESC, p.rank DESC, p.id
 			LIMIT $3 OFFSET $4`, text, spaceKey, limit+1, offset)
 		if err != nil {
 			return fmt.Errorf("search the public pages: %w", err)
