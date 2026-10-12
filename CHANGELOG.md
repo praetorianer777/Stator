@@ -1096,6 +1096,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A client that hangs up before its answer is ready is recorded as 499, as
+  nginx does, and logged at info as cancelled by the client, instead of
+  counting as a 500 and logging an error (#373). A deadline the server itself
+  ran into still fails as before.
 - A file uploaded while a page's list of files was still loading now shows
   at once; it could stay missing until the page was reloaded (#327).
 - A request that gets no answer at all, such as when the network changes, is
