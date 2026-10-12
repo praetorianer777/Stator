@@ -6,10 +6,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/testinstance"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 )
 
@@ -33,6 +35,41 @@ func (f *fakeTestOrgs) AgeExample(context.Context, string, string) error {
 	return nil
 }
 
+// fakeTestInstance answers without a database; err, when set, is what every
+// call returns.
+type fakeTestInstance struct {
+	made, deleted, reset, aged int
+	asked                      testinstance.NewPerson
+	err                        error
+}
+
+func (f *fakeTestInstance) CreatePerson(_ context.Context, in testinstance.NewPerson) (*testinstance.Session, error) {
+	f.made++
+	f.asked = in
+	if f.err != nil {
+		return nil, f.err
+	}
+	return &testinstance.Session{
+		Person:    testinstance.Person{ID: uuid.New(), Email: in.Label + "-0123abcd@" + testinstance.PeopleDomain, Name: in.Name, Role: in.Role},
+		SessionID: uuid.New(), Secret: "a session secret", ExpiresAt: time.Now().Add(time.Hour),
+	}, nil
+}
+
+func (f *fakeTestInstance) DeletePerson(context.Context, uuid.UUID) error {
+	f.deleted++
+	return f.err
+}
+
+func (f *fakeTestInstance) Reset(context.Context) error {
+	f.reset++
+	return f.err
+}
+
+func (f *fakeTestInstance) AgeExample(context.Context, string, string) error {
+	f.aged++
+	return f.err
+}
+
 // Sessions and access tokens neither open the test endpoints nor refuse them:
 // a read-only token, a deactivated account or a session on a foreign origin
 // still comes down to the test token alone.
@@ -45,6 +82,8 @@ func TestTestEndpointsIgnoreSessionsAndAccessTokens(t *testing.T) {
 	}
 	orgs := &fakeTestOrgs{}
 	s.TestOrgs = orgs
+	instance := &fakeTestInstance{}
+	s.TestInstance = instance
 	s.TestToken = unitTestToken
 	h := s.Routes(nil)
 
@@ -69,7 +108,7 @@ func TestTestEndpointsIgnoreSessionsAndAccessTokens(t *testing.T) {
 		for i, req := range testRequests() {
 			req.Header.Set(TestTokenHeader, unitTestToken)
 			req.Header.Set("Content-Type", "application/json")
-			want := []int{http.StatusCreated, http.StatusNoContent}[i]
+			want := testRequestStatuses[i]
 			if resp, body := serve(t, h, withCredential(req, credential)); resp.StatusCode != want {
 				t.Errorf("%s %s with %q and the test token = %d %v, want %d", req.Method, req.URL.Path, credential, resp.StatusCode, body, want)
 			}
@@ -78,12 +117,77 @@ func TestTestEndpointsIgnoreSessionsAndAccessTokens(t *testing.T) {
 	if orgs.created != 4 || orgs.deleted != 4 {
 		t.Fatalf("reached the service %d and %d times, want 4 each", orgs.created, orgs.deleted)
 	}
+	if instance.made != 4 || instance.deleted != 4 || instance.reset != 4 || instance.aged != 4 {
+		t.Fatalf("reached the instance %d, %d, %d and %d times, want 4 each", instance.made, instance.deleted, instance.reset, instance.aged)
+	}
 }
+
+// testRequestStatuses is what each of testRequests answers with the token.
+var testRequestStatuses = []int{http.StatusCreated, http.StatusNoContent, http.StatusCreated, http.StatusNoContent, http.StatusNoContent, http.StatusNoContent}
 
 func testRequests() []*http.Request {
 	return []*http.Request{
 		httptest.NewRequest(http.MethodPost, APIPrefix+"/test/orgs", strings.NewReader(`{"label":"x"}`)),
 		httptest.NewRequest(http.MethodDelete, APIPrefix+"/test/orgs/x-1234", nil),
+		httptest.NewRequest(http.MethodPost, APIPrefix+"/test/people", strings.NewReader(`{"label":"x","role":"member"}`)),
+		httptest.NewRequest(http.MethodDelete, APIPrefix+"/test/people/"+uuid.NewString(), nil),
+		httptest.NewRequest(http.MethodPost, APIPrefix+"/test/reset", nil),
+		httptest.NewRequest(http.MethodPost, APIPrefix+"/test/spaces/EX/example-space/age", strings.NewReader(`{"drop":"x"}`)),
+	}
+}
+
+// A test person comes back with a session cookie as a sign-in sets it, so the
+// suite holds a real session without walking through a provider.
+func TestATestPersonComesSignedIn(t *testing.T) {
+	s := newServer(t)
+	instance := &fakeTestInstance{}
+	s.TestInstance = instance
+	s.TestToken = unitTestToken
+	req := httptest.NewRequest(http.MethodPost, APIPrefix+"/test/people", strings.NewReader(`{"label":"bob-themes","name":"Bob themes","role":"member"}`))
+	req.Header.Set(TestTokenHeader, unitTestToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp, body := serve(t, s.Routes(nil), req)
+	if resp.StatusCode != http.StatusCreated || body["name"] != "Bob themes" || body["role"] != "member" {
+		t.Fatalf("POST /test/people = %d %v", resp.StatusCode, body)
+	}
+	if instance.asked.Label != "bob-themes" || instance.asked.Role != auth.RoleMember {
+		t.Errorf("the service was asked for %+v", instance.asked)
+	}
+	var session *http.Cookie
+	for _, c := range resp.Cookies() {
+		if c.Name == s.CookieName {
+			session = c
+		}
+	}
+	if session == nil || session.Value != "a session secret" || !session.HttpOnly || session.Path != "/" {
+		t.Fatalf("the session cookie is %+v", session)
+	}
+}
+
+// Each refusal of the service reaches the caller as a sentence naming what to
+// change, with the status a client would expect.
+func TestTheTestInstanceEndpointsSayWhatWentWrong(t *testing.T) {
+	for _, tc := range []struct {
+		err    error
+		req    *http.Request
+		status int
+		code   string
+	}{
+		{testinstance.ErrBadRole, httptest.NewRequest(http.MethodPost, APIPrefix+"/test/people", strings.NewReader(`{"role":"owner"}`)), http.StatusUnprocessableEntity, "validation_failed"},
+		{testinstance.ErrGuestSpace, httptest.NewRequest(http.MethodPost, APIPrefix+"/test/people", strings.NewReader(`{"role":"guest"}`)), http.StatusUnprocessableEntity, "validation_failed"},
+		{testinstance.ErrNotFound, httptest.NewRequest(http.MethodDelete, APIPrefix+"/test/people/"+uuid.NewString(), nil), http.StatusNotFound, "not_found"},
+		{nil, httptest.NewRequest(http.MethodDelete, APIPrefix+"/test/people/not-an-id", nil), http.StatusBadRequest, "bad_request"},
+		{testinstance.ErrNoExample, httptest.NewRequest(http.MethodPost, APIPrefix+"/test/spaces/EX/example-space/age", strings.NewReader(`{"drop":"x"}`)), http.StatusNotFound, "not_found"},
+	} {
+		s := newServer(t)
+		s.TestInstance = &fakeTestInstance{err: tc.err}
+		s.TestToken = unitTestToken
+		tc.req.Header.Set(TestTokenHeader, unitTestToken)
+		tc.req.Header.Set("Content-Type", "application/json")
+		resp, body := serve(t, s.Routes(nil), tc.req)
+		if resp.StatusCode != tc.status || errorOf(t, body)["code"] != tc.code {
+			t.Errorf("%s %s refused with %v = %d %v, want %d %s", tc.req.Method, tc.req.URL.Path, tc.err, resp.StatusCode, body, tc.status, tc.code)
+		}
 	}
 }
 
@@ -105,6 +209,7 @@ func TestTestEndpointsAreNotFoundWhenOff(t *testing.T) {
 func TestTestEndpointsRefuseAWrongOrMissingToken(t *testing.T) {
 	s := newServer(t)
 	s.TestOrgs = &fakeTestOrgs{}
+	s.TestInstance = &fakeTestInstance{}
 	s.TestToken = unitTestToken
 	h := s.Routes(nil)
 	for _, token := range []string{"", "wrong", unitTestToken + "x"} {
@@ -133,6 +238,7 @@ func TestTestEndpointsRefuseAWrongOrMissingToken(t *testing.T) {
 func TestTestRoutesAreServedWhenOnAndNeverDocumented(t *testing.T) {
 	s := newServer(t)
 	s.TestOrgs = &fakeTestOrgs{}
+	s.TestInstance = &fakeTestInstance{}
 	served := routedBy(t, s)
 	want := map[string]bool{}
 	for _, op := range append(append([]operation{}, operations...), testOperations...) {

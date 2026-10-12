@@ -56,6 +56,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
+	"github.com/praetorianer777/stator/backend/internal/testinstance"
 	"github.com/praetorianer777/stator/backend/internal/testorg"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
@@ -226,8 +227,9 @@ func run() error {
 		RequestTimeout: cfg.RequestTimeout,
 	}
 	if cfg.TestEndpoints.Enabled {
-		log.Warn("STATOR_TEST_ENDPOINTS is on: " + httpapi.APIPrefix + "/test makes and deletes organizations for anybody with its token")
+		log.Warn("STATOR_TEST_ENDPOINTS is on: " + httpapi.APIPrefix + "/test makes people, resets the organization and makes and deletes organizations for anybody with its token")
 		server.TestOrgs = testorg.NewService(cluster, accounts, sso, store, seed.Bootstrapped(cfg.Bootstrap))
+		server.TestInstance = testinstance.NewService(cluster, sso, cfg.Bootstrap.OrgSlug, seed.Bootstrapped(cfg.Bootstrap), accounts.SessionTTL())
 		server.TestToken = cfg.TestEndpoints.Token
 	}
 	origins := cfg.CORSOrigins
