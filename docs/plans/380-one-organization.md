@@ -417,8 +417,7 @@ all four layers green.
   - The worker stops entering a tenant per job; retention runs once, not per
     organization.
   - The webhook envelope's `orgId`: removed, and the change named in the
-    changelog, since receivers see it. (Keeping it as an instance id is the
-    alternative; it is a decision for review.)
+    changelog, since receivers see it.
 - Tests: `TestAuthenticationScopesTheTenant` and
   `TestSpaceAndPageRoutesNeedAnOrganization` go; every access guard keeps its
   raw SQL proof, now without `set_config('app.org_id', ...)` in the tests that
@@ -504,11 +503,21 @@ green, `make load-compare` once more.
 `app.org_id` and `orgSlug` appear nowhere outside migrations and the
 changelog; the shell layer green.
 
-## Open questions for review
+## Answers to the review questions
 
-- The integration suite's isolation: a database per test or people and
-  spaces per test (PR 1 decides on a measurement).
-- The webhook envelope's `orgId`: drop it or keep it as an instance id.
-- Whether `org` keeps its name as a table or becomes `instance_settings`;
-  renaming touches every settings query once more.
-- Whether PRs 4 and 5 ship as one.
+Decided on 2026-10-12, in the spirit of the decision itself: remove what is
+about organizations rather than keep it under another name.
+
+- **The integration suite's isolation** is decided by the measurement in PR
+  1's first commit, as planned: a database per test if a clone stays well
+  under a second, people and spaces per test otherwise.
+- **The webhook envelope's `orgId` is dropped** in PR 4. The changelog names
+  it as a change receivers see.
+- **Tables are renamed in PR 5**, which rebuilds them anyway: `org` becomes
+  `site`, `org_member` becomes `member`, and the tables named after the
+  organization (`org_brand`, `org_join_request`, ...) lose the prefix or take
+  `site_`. The `/org/*` settings routes become `/site/*` in PR 3, without
+  aliases, since only signed-in clients call them; the changelog names it.
+  Public links and the Armature webhook keep their redirects and alias.
+- **PRs 4 and 5 stay separate**, so each schema change is reviewed and
+  measured on its own.
