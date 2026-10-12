@@ -232,6 +232,10 @@ type Report struct {
 	DroppedReactions int `json:"droppedReactions"`
 	// MentionsAsText counts the mentions of somebody not found, kept as words.
 	MentionsAsText int `json:"mentionsAsText"`
+	// Drafts counts the drafts given back to their people, DroppedDrafts
+	// those of somebody not found; only an organization's archive holds any.
+	Drafts        int `json:"drafts"`
+	DroppedDrafts int `json:"droppedDrafts"`
 	// Lost is what an export of another wiki held that did not come across
 	// as it was, page by page; LostCount counts all of it.
 	Lost      []wikiread.Loss `json:"lost"`
@@ -277,12 +281,14 @@ func (e *TooLargeError) Error() string {
 type Jobs struct {
 	db    *db.Cluster
 	store objectstore.Store
-	// MaxImportBytes is what an uploaded archive may weigh.
-	MaxImportBytes int64
+	// MaxImportBytes is what an uploaded archive may weigh, and
+	// MaxOrgImportBytes an organization's.
+	MaxImportBytes    int64
+	MaxOrgImportBytes int64
 }
 
 func NewJobs(cluster *db.Cluster, store objectstore.Store) *Jobs {
-	return &Jobs{db: cluster, store: store, MaxImportBytes: DefaultMaxImportBytes}
+	return &Jobs{db: cluster, store: store, MaxImportBytes: DefaultMaxImportBytes, MaxOrgImportBytes: DefaultMaxOrgImportBytes}
 }
 
 // QueueExport asks the worker to export a space the caller administers, and

@@ -223,6 +223,25 @@ var operations = []operation{
 	{method: "GET", path: "/space-imports/{importID}", handler: "handleGetSpaceImport", orgWide: true, tag: "spaces",
 		summary:   "One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, page by page for another wiki's export, or why it failed.",
 		responses: ok(env{"import": spaceio.ImportJob{}})},
+	// Organization export and import (#383), run by the worker.
+	{method: "POST", path: "/org/exports", handler: "handleCreateOrgExport", orgWide: true, tag: "organization",
+		summary:   "Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /org/exports follows. For administrators.",
+		responses: map[int]any{202: env{"export": spaceio.OrgExportJob{}}}},
+	{method: "GET", path: "/org/exports", handler: "handleListOrgExports", orgWide: true, tag: "organization",
+		summary:   "The organization's latest exports, newest first. For administrators.",
+		responses: ok(env{"exports": []spaceio.OrgExportJob{}})},
+	{method: "GET", path: "/org/exports/{exportID}/file", handler: "handleDownloadOrgExport", orgWide: true, tag: "organization", binary: true,
+		summary:   "The archive an export of the organization made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after. For administrators.",
+		responses: map[int]any{200: nil, 409: errorEnvelope{}, 410: errorEnvelope{}}},
+	{method: "POST", path: "/org/imports", handler: "handleCreateOrgImport", orgWide: true, tag: "organization", multipart: true,
+		summary:   "Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /org/imports/{importID} follows to its report. For administrators.",
+		responses: map[int]any{202: env{"import": spaceio.OrgImportJob{}}, 409: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/org/imports", handler: "handleListOrgImports", orgWide: true, tag: "organization",
+		summary:   "The organization's latest imports, newest first. For administrators.",
+		responses: ok(env{"imports": []spaceio.OrgImportJob{}})},
+	{method: "GET", path: "/org/imports/{importID}", handler: "handleGetOrgImport", orgWide: true, tag: "organization",
+		summary:   "One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators.",
+		responses: ok(env{"import": spaceio.OrgImportJob{}})},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For the space's administrators.", responses: none()},
@@ -1065,6 +1084,14 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["SpaceImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}
 	b.FieldOverrides["SpaceExport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ExportFailures)}, {Type: "null"}}}
 	b.FieldOverrides["SpaceImport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ImportFailures)}, {Type: "null"}}}
+	b.Names[reflect.TypeOf(spaceio.OrgExportJob{})] = "OrgExport"
+	b.Names[reflect.TypeOf(spaceio.OrgImportJob{})] = "OrgImport"
+	b.Names[reflect.TypeOf(spaceio.OrgReport{})] = "OrgImportReport"
+	b.Names[reflect.TypeOf(spaceio.Omission{})] = "OrgOmission"
+	b.FieldOverrides["OrgExport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ExportStates)}
+	b.FieldOverrides["OrgImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}
+	b.FieldOverrides["OrgExport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.OrgExportFailures)}, {Type: "null"}}}
+	b.FieldOverrides["OrgImport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.OrgImportFailures)}, {Type: "null"}}}
 	b.Names[reflect.TypeOf(wordio.Job{})] = "WordImport"
 	b.Names[reflect.TypeOf(wordio.FileReport{})] = "WordImportFile"
 	b.Names[reflect.TypeOf(wordio.Made{})] = "WordImportPage"

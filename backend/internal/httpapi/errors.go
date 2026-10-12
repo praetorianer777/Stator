@@ -353,6 +353,13 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &bigArchive) {
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: bigArchive.Error()}
 	}
+	var bigOrgArchive *spaceio.OrgTooLargeError
+	if errors.As(err, &bigOrgArchive) {
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: bigOrgArchive.Error()}
+	}
+	if errors.Is(err, spaceio.ErrOrgNotEmpty) {
+		return &APIError{Status: http.StatusConflict, Code: "org_not_empty", Message: spaceio.ErrOrgNotEmpty.Error()}
+	}
 	var badDoc *document.InvalidError
 	if errors.As(err, &badDoc) {
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "validation_failed", Message: sentence(badDoc.Message)}

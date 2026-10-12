@@ -51,6 +51,9 @@ type kind string
 const (
 	kindExport kind = "space_export"
 	kindImport kind = "space_import"
+	// kindOrgExport and kindOrgImport are a whole organization's.
+	kindOrgExport kind = "org_export"
+	kindOrgImport kind = "org_import"
 )
 
 // claim is a job a worker took, with whom it acts for.
@@ -139,6 +142,19 @@ func (w *Watch) Once(ctx context.Context) (bool, error) {
 		}
 		return true, w.runImport(ctx, c)
 	}
+	for _, k := range []kind{kindOrgExport, kindOrgImport} {
+		c, err := w.claimOrg(ctx, k)
+		if err != nil {
+			return false, err
+		}
+		if c == nil {
+			continue
+		}
+		if k == kindOrgExport {
+			return true, w.runOrgExport(ctx, c)
+		}
+		return true, w.runOrgImport(ctx, c)
+	}
 	return false, nil
 }
 
@@ -149,8 +165,12 @@ func (w *Watch) expire(ctx context.Context) error {
 		_, err := tx.Exec(ctx, `
 			WITH gone AS (
 				UPDATE space_export SET state = 'expired' WHERE state = 'done' AND expires_at < now()
+				RETURNING org_id, object_key),
+			gone_orgs AS (
+				UPDATE org_export SET state = 'expired' WHERE state = 'done' AND expires_at < now()
 				RETURNING org_id, object_key)
-			INSERT INTO attachment_tombstone (object_key, org_id) SELECT object_key, org_id FROM gone
+			INSERT INTO attachment_tombstone (object_key, org_id)
+			SELECT object_key, org_id FROM gone UNION ALL SELECT object_key, org_id FROM gone_orgs
 			ON CONFLICT (object_key) DO NOTHING`)
 		return err
 	})
@@ -202,12 +222,18 @@ func (w *Watch) claim(ctx context.Context, k kind) (*claim, error) {
 
 // progress writes how far a run has come, at most once a second.
 type progress struct {
-	w     *Watch
-	c     *claim
-	mu    sync.Mutex
-	done  int
-	total int
-	last  time.Time
+	w        *Watch
+	table    kind
+	id       uuid.UUID
+	attempts int
+	mu       sync.Mutex
+	done     int
+	total    int
+	last     time.Time
+}
+
+func newProgress(w *Watch, table kind, id uuid.UUID, attempts int) *progress {
+	return &progress{w: w, table: table, id: id, attempts: attempts}
 }
 
 func (p *progress) setTotal(ctx context.Context, total int) {
@@ -237,11 +263,11 @@ func (p *progress) flush(ctx context.Context, force bool) {
 	_, err := p.w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, fmt.Sprintf(`
 			UPDATE %s SET done_steps = LEAST($3::int, $4::int), total_steps = $4::int
-			WHERE id = $1 AND attempts = $2 AND state = 'running'`, p.c.kind), p.c.id, p.c.attempts, done, total)
+			WHERE id = $1 AND attempts = $2 AND state = 'running'`, p.table), p.id, p.attempts, done, total)
 		return err
 	})
 	if err != nil && force {
-		p.w.log.Warn("the progress of a space export or import was not written", "job", p.c.id, "error", err)
+		p.w.log.Warn("the progress of an export or import was not written", "job", p.id, "error", err)
 	}
 }
 
@@ -311,7 +337,7 @@ func (w *Watch) export(ctx context.Context, c *claim) (string, int64, error) {
 	}
 	defer done()
 	zw := zip.NewWriter(f)
-	p := &progress{w: w, c: c}
+	p := newProgress(w, c.kind, c.id, c.attempts)
 	step := p.step(ctx)
 	var (
 		snap   *snapshot
@@ -505,7 +531,7 @@ func (w *Watch) importArchive(ctx context.Context, c *claim) (*importer, db.LSN,
 	if err := im.scan(); err != nil {
 		return nil, 0, err
 	}
-	p := &progress{w: w, c: c}
+	p := newProgress(w, c.kind, c.id, c.attempts)
 	p.setTotal(ctx, len(m.Pages)+len(im.r.files))
 	im.step = p.step(ctx)
 	written, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {

@@ -3080,6 +3080,8 @@ export const de: Messages = {
       "space.example_renewed": "Beispielbereich erneuert",
       "space.exported": "Bereich exportiert",
       "space.imported": "Bereich importiert",
+      "org.exported": "Organisation exportiert",
+      "org.imported": "Organisation importiert",
       "template.created": "Vorlage angelegt",
       "template.updated": "Vorlage geändert",
       "template.deleted": "Vorlage gelöscht",

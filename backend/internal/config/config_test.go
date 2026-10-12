@@ -30,7 +30,7 @@ func clean(t *testing.T) {
 		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
 		"STATOR_VERIFICATION_CHECK_INTERVAL", "STATOR_TASK_DUE_CHECK_INTERVAL", "STATOR_SCHEDULE_CHECK_INTERVAL",
 		"STATOR_EXAMPLE_CHECK_INTERVAL", "STATOR_WORD_IMPORT_CHECK_INTERVAL",
-		"STATOR_SPACE_TRANSFER_CHECK_INTERVAL", "STATOR_SPACE_EXPORT_TTL", "STATOR_SPACE_IMPORT_LIMIT",
+		"STATOR_SPACE_TRANSFER_CHECK_INTERVAL", "STATOR_SPACE_EXPORT_TTL", "STATOR_SPACE_IMPORT_LIMIT", "STATOR_ORG_IMPORT_LIMIT",
 	} {
 		t.Setenv(key, "")
 	}
@@ -646,17 +646,20 @@ func TestSpaceTransfersHaveSaneBounds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.SpaceTransferCheck != DefaultSpaceTransferCheck || c.SpaceExportTTL != DefaultSpaceExportTTL || c.SpaceImportLimit != DefaultSpaceImportLimit {
-		t.Errorf("the defaults read as %s, %s, %d", c.SpaceTransferCheck, c.SpaceExportTTL, c.SpaceImportLimit)
+	if c.SpaceTransferCheck != DefaultSpaceTransferCheck || c.SpaceExportTTL != DefaultSpaceExportTTL || c.SpaceImportLimit != DefaultSpaceImportLimit ||
+		c.OrgImportLimit != DefaultOrgImportLimit {
+		t.Errorf("the defaults read as %s, %s, %d, %d", c.SpaceTransferCheck, c.SpaceExportTTL, c.SpaceImportLimit, c.OrgImportLimit)
 	}
 	t.Setenv("STATOR_SPACE_IMPORT_LIMIT", "1GB")
 	t.Setenv("STATOR_SPACE_EXPORT_TTL", "72h")
-	if c, err = Load(); err != nil || c.SpaceImportLimit != 1<<30 || c.SpaceExportTTL != 72*time.Hour {
-		t.Errorf("1GB and 72h read as %d and %s, %v", c.SpaceImportLimit, c.SpaceExportTTL, err)
+	t.Setenv("STATOR_ORG_IMPORT_LIMIT", "10GB")
+	if c, err = Load(); err != nil || c.SpaceImportLimit != 1<<30 || c.SpaceExportTTL != 72*time.Hour || c.OrgImportLimit != 10<<30 {
+		t.Errorf("1GB, 72h and 10GB read as %d, %s and %d, %v", c.SpaceImportLimit, c.SpaceExportTTL, c.OrgImportLimit, err)
 	}
 	for key, bad := range map[string]string{
 		"STATOR_SPACE_TRANSFER_CHECK_INTERVAL": "10ms",
 		"STATOR_SPACE_EXPORT_TTL":              "5s",
+		"STATOR_ORG_IMPORT_LIMIT":              "0",
 	} {
 		clean(t)
 		t.Setenv(key, bad)

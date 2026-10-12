@@ -2997,6 +2997,8 @@ export const en = {
       "space.example_renewed": "Example space renewed",
       "space.exported": "Space exported",
       "space.imported": "Space imported",
+      "org.exported": "Organization exported",
+      "org.imported": "Organization imported",
       "template.created": "Template made",
       "template.updated": "Template changed",
       "template.deleted": "Template deleted",
