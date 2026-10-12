@@ -3,6 +3,35 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-12: Each integration test gets a database of its own, cloned from a migrated template (#380)
+
+The integration suite kept its tests apart by giving every person a new
+organization, which one organization per instance (#380) takes away. The plan
+named two candidates and left the choice to a measurement:
+
+- **A database per test**, cloned from a template the suite migrates once
+  (`CREATE DATABASE ... TEMPLATE`), with the streaming replica following.
+- **People and spaces per test in one database**, as the browser suite does,
+  with the tests that change what belongs to the organization as a whole
+  marked serial and restoring it.
+
+Measured with `BenchmarkIsolation` (`backend/test/isolation_bench_test.go`),
+20 iterations each on the compose stack (Postgres 18, Ryzen 5 3600, the race
+detector on, as the suite runs), per test:
+
+| Candidate | Cost |
+| --- | ---: |
+| Migrating the template, once per run | 1.8 s |
+| Clone (`STRATEGY WAL_LOG`), replica caught up, pools opened, owner made | 245 ms |
+| The same with `STRATEGY FILE_COPY` (two checkpoints) | 9.3 s |
+| Dropping a clone (`WAL_LOG`), done in the background | 93 ms |
+| One database: pools opened, two people made | 88 ms |
+
+A clone costs about 160 ms more than making people in one database, well
+under the second the plan set as the bar, so every test gets a database of
+its own. The template is named after a digest of the migrations and reused
+until they change; a run drops what an earlier one left.
+
 ## 2026-10-12: An organization travels as one archive of its spaces' archives, into an organization without spaces (#383)
 
 One organization per instance (#380) refuses to upgrade an instance holding
