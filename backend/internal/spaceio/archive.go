@@ -11,10 +11,14 @@ import (
 )
 
 // Format names an archive of a space, and Version its shape; an import reads
-// every version up to its own and refuses a newer one.
+// every version up to its own and refuses a newer one. Version 2 adds drafts
+// and pages never published, which only an organization's archive holds, so
+// a space export without them still writes version 1.
 const (
 	Format  = "stator.space"
-	Version = 1
+	Version = 2
+	// versionPublished is the shape of an archive of what readers read.
+	versionPublished = 1
 )
 
 // Paths inside an archive.
@@ -62,13 +66,19 @@ type Manifest struct {
 	Counts    Counts      `json:"counts"`
 }
 
-// ArchiveSpace is the space itself.
+// ArchiveSpace is the space itself. Who made it, whose personal space it is
+// and when it was archived come into an organization's import alone.
 type ArchiveSpace struct {
-	Key         string    `json:"key"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	HomePage    uuid.UUID `json:"homePage"`
+	ID          uuid.UUID  `json:"id"`
+	Key         string     `json:"key"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	HomePage    uuid.UUID  `json:"homePage"`
+	CreatedBy   string     `json:"createdBy,omitempty"`
+	Owner       string     `json:"owner,omitempty"`
+	ArchivedAt  *time.Time `json:"archivedAt,omitempty"`
+	ArchivedBy  string     `json:"archivedBy,omitempty"`
 }
 
 // Person is somebody the archive names; Ref is how the rest of it names them.
@@ -129,6 +139,8 @@ type Counts struct {
 	Versions int `json:"versions"`
 	Files    int `json:"files"`
 	Comments int `json:"comments"`
+	// Drafts counts the drafts of an organization's archive.
+	Drafts int `json:"drafts,omitempty"`
 }
 
 // ArchivePage is one page, post or folder with everything that hangs off it,
@@ -159,6 +171,17 @@ type ArchivePage struct {
 	Files        []File          `json:"files"`
 	Threads      []Thread        `json:"threads"`
 	Reactions    []Reaction      `json:"reactions"`
+	// Drafts are each person's own unpublished changes, from version 2 on.
+	Drafts []Draft `json:"drafts,omitempty"`
+}
+
+// Draft is one person's draft of the page, from the version it started at.
+type Draft struct {
+	Person      string          `json:"person"`
+	Title       string          `json:"title"`
+	Body        json.RawMessage `json:"body"`
+	BaseVersion int             `json:"baseVersion"`
+	UpdatedAt   time.Time       `json:"updatedAt"`
 }
 
 // Cover is the picture above a page, one of its files.

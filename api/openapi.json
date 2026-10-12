@@ -73,6 +73,9 @@
       "name": "notifications"
     },
     {
+      "name": "organization"
+    },
+    {
       "name": "pages"
     },
     {
@@ -1791,6 +1794,8 @@
                 "space.example_renewed",
                 "space.exported",
                 "space.imported",
+                "org.exported",
+                "org.imported",
                 "review.rule_set",
                 "review.rule_removed",
                 "review.skipped"
@@ -1972,6 +1977,8 @@
                 "space.example_renewed",
                 "space.exported",
                 "space.imported",
+                "org.exported",
+                "org.imported",
                 "review.rule_set",
                 "review.rule_removed",
                 "review.skipped"
@@ -4699,6 +4706,148 @@
         }
       }
     },
+    "/org/exports": {
+      "get": {
+        "operationId": "listOrgExports",
+        "summary": "The organization's latest exports, newest first. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrgExport"
+                      }
+                    }
+                  },
+                  "required": [
+                    "exports"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrgExport",
+        "summary": "Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /org/exports follows. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "export": {
+                      "$ref": "#/components/schemas/OrgExport"
+                    }
+                  },
+                  "required": [
+                    "export"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/exports/{exportID}/file": {
+      "get": {
+        "operationId": "downloadOrgExport",
+        "summary": "The archive an export of the organization made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "exportID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/org/hub": {
       "get": {
         "operationId": "getHub",
@@ -4767,6 +4916,184 @@
                   },
                   "required": [
                     "hub"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/imports": {
+      "get": {
+        "operationId": "listOrgImports",
+        "summary": "The organization's latest imports, newest first. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrgImport"
+                      }
+                    }
+                  },
+                  "required": [
+                    "imports"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrgImport",
+        "summary": "Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /org/imports/{importID} follows to its report. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "import": {
+                      "$ref": "#/components/schemas/OrgImport"
+                    }
+                  },
+                  "required": [
+                    "import"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/imports/{importID}": {
+      "get": {
+        "operationId": "getOrgImport",
+        "summary": "One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "importID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "import": {
+                      "$ref": "#/components/schemas/OrgImport"
+                    }
+                  },
+                  "required": [
+                    "import"
                   ]
                 }
               }
@@ -17622,6 +17949,8 @@
               "space.example_renewed",
               "space.exported",
               "space.imported",
+              "org.exported",
+              "org.imported",
               "review.rule_set",
               "review.rule_removed",
               "review.skipped"
@@ -17741,6 +18070,8 @@
                 "space.example_renewed",
                 "space.exported",
                 "space.imported",
+                "org.exported",
+                "org.imported",
                 "review.rule_set",
                 "review.rule_removed",
                 "review.skipped"
@@ -21054,6 +21385,304 @@
           "owner"
         ]
       },
+      "OrgExport": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "too_large",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fileName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/SpaceTransferProgress"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedBy": {
+            "type": "string"
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "expired"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "progress",
+          "requestedBy",
+          "mine",
+          "requestedAt",
+          "startedAt",
+          "finishedAt",
+          "fileName",
+          "size",
+          "expiresAt",
+          "failure",
+          "message"
+        ]
+      },
+      "OrgImport": {
+        "type": "object",
+        "properties": {
+          "failure": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "not_empty",
+                  "invalid",
+                  "too_large",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "progress": {
+            "$ref": "#/components/schemas/SpaceTransferProgress"
+          },
+          "report": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OrgImportReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedBy": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "progress",
+          "requestedBy",
+          "report",
+          "failure",
+          "message",
+          "requestedAt",
+          "startedAt",
+          "finishedAt"
+        ]
+      },
+      "OrgImportReport": {
+        "type": "object",
+        "properties": {
+          "auditEntries": {
+            "type": "integer"
+          },
+          "comments": {
+            "type": "integer"
+          },
+          "drafts": {
+            "type": "integer"
+          },
+          "dropped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DroppedEntry"
+            }
+          },
+          "droppedReactions": {
+            "type": "integer"
+          },
+          "files": {
+            "type": "integer"
+          },
+          "groups": {
+            "type": "integer"
+          },
+          "kept": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "matched": {
+            "type": "integer"
+          },
+          "notCarried": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrgOmission"
+            }
+          },
+          "pages": {
+            "type": "integer"
+          },
+          "people": {
+            "type": "integer"
+          },
+          "reattributed": {
+            "type": "integer"
+          },
+          "spaces": {
+            "type": "integer"
+          },
+          "templates": {
+            "type": "integer"
+          },
+          "themes": {
+            "type": "integer"
+          },
+          "versions": {
+            "type": "integer"
+          },
+          "webhooks": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spaces",
+          "pages",
+          "versions",
+          "files",
+          "comments",
+          "drafts",
+          "templates",
+          "themes",
+          "webhooks",
+          "people",
+          "matched",
+          "groups",
+          "auditEntries",
+          "kept",
+          "dropped",
+          "reattributed",
+          "droppedReactions",
+          "notCarried"
+        ]
+      },
+      "OrgOmission": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "what": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "what",
+          "why"
+        ]
+      },
       "OutlineEntry": {
         "type": "object",
         "properties": {
@@ -24224,11 +24853,17 @@
           "comments": {
             "type": "integer"
           },
+          "drafts": {
+            "type": "integer"
+          },
           "dropped": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DroppedEntry"
             }
+          },
+          "droppedDrafts": {
+            "type": "integer"
           },
           "droppedReactions": {
             "type": "integer"
@@ -24286,6 +24921,8 @@
           "reattributed",
           "droppedReactions",
           "mentionsAsText",
+          "drafts",
+          "droppedDrafts",
           "lost",
           "lostCount"
         ]

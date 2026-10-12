@@ -76,6 +76,9 @@ const (
 	KeepReviewRules Action = "space.reviewRules"
 	// SkipReview publishes a pending review without its approvals.
 	SkipReview Action = "page.skipReview"
+	// MoveOrg exports the whole organization as one archive and imports one,
+	// which only its administrators do.
+	MoveOrg Action = "org.move"
 )
 
 // Actor is who asks: a person and their standing in the organization the
@@ -157,6 +160,8 @@ func (e *DeniedError) Error() string {
 		return "Only an administrator of this space chooses who reviews its pages. Ask one of them to set or remove the rule."
 	case SkipReview:
 		return "Only an administrator of this space can publish a draft without its review. Ask the reviewers to decide, or ask an administrator."
+	case MoveOrg:
+		return "Only an administrator of the organization exports or imports all of it. Ask one of them to do it."
 	}
 	return "You do not have permission to do that. Ask an administrator of the organization."
 }

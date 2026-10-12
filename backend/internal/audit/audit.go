@@ -46,8 +46,12 @@ const (
 	// ActionSpaceImported a space made from one, in place of space.created.
 	ActionSpaceExported = "space.exported"
 	ActionSpaceImported = "space.imported"
-	ActionPagePurged    = "page.purged"
-	ActionTrashEmptied  = "trash.emptied"
+	// ActionOrgExported is the whole organization asked for as one archive,
+	// and ActionOrgImported an organization filled from one.
+	ActionOrgExported  = "org.exported"
+	ActionOrgImported  = "org.imported"
+	ActionPagePurged   = "page.purged"
+	ActionTrashEmptied = "trash.emptied"
 	// Permissions: whom a global permission is granted to, a space's table,
 	// and a page's own restrictions.
 	ActionOrgPermissionSet    = "org.permission_set"
@@ -139,7 +143,7 @@ var Actions = []string{
 	ActionSpacePermissionsCopied,
 	ActionPageModeChanged,
 	ActionExampleSpaceCreated, ActionExampleSpaceRenewed,
-	ActionSpaceExported, ActionSpaceImported,
+	ActionSpaceExported, ActionSpaceImported, ActionOrgExported, ActionOrgImported,
 	ActionReviewRuleSet, ActionReviewRuleRemoved, ActionReviewSkipped,
 }
 

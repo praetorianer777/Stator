@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/objectstore"
 )
 
 // PackageFormat names the shape of an exported theme, so a file from a later
@@ -124,6 +125,20 @@ func (s *Service) importPackage(ctx context.Context, owner uuid.UUID, pkg *Packa
 	}
 
 	spec := pkg.Spec
+	if err := RenameFiles(&spec, made.ID, renamed); err != nil {
+		return undo(err)
+	}
+
+	saved, updated, err := s.Update(ctx, made.ID, owner, false, Input{Spec: &spec})
+	if err != nil {
+		return undo(err)
+	}
+	return saved, updated, nil
+}
+
+// RenameFiles points a spec and its CSS at its files' new ids, under the
+// theme they now belong to; a file the renames lack refuses the spec.
+func RenameFiles(spec *Spec, themeID uuid.UUID, renamed map[uuid.UUID]uuid.UUID) error {
 	spec.normalise()
 	swap := func(id *uuid.UUID) error {
 		if id == nil {
@@ -139,25 +154,25 @@ func (s *Service) importPackage(ctx context.Context, owner uuid.UUID, pkg *Packa
 	for _, font := range []*Font{spec.Fonts.Sans, spec.Fonts.Mono} {
 		if font != nil {
 			if err := swap(font.AssetID); err != nil {
-				return undo(err)
+				return err
 			}
 		}
 	}
 	for kind, cursor := range spec.Cursors {
 		if err := swap(&cursor.AssetID); err != nil {
-			return undo(err)
+			return err
 		}
 		spec.Cursors[kind] = cursor
 	}
 	for iconName, icon := range spec.Icons {
 		if err := swap(icon.AssetID); err != nil {
-			return undo(err)
+			return err
 		}
 		spec.Icons[iconName] = icon
 	}
 	if spec.Backdrop != nil {
 		if err := swap(&spec.Backdrop.AssetID); err != nil {
-			return undo(err)
+			return err
 		}
 	}
 	spec.CSS = ownAssetURL.ReplaceAllStringFunc(spec.CSS, func(match string) string {
@@ -170,12 +185,20 @@ func (s *Service) importPackage(ctx context.Context, owner uuid.UUID, pkg *Packa
 		if !ok {
 			return match
 		}
-		return "/api/v1/themes/" + made.ID.String() + "/assets/" + next.String()
+		return "/api/v1/themes/" + themeID.String() + "/assets/" + next.String()
 	})
+	return nil
+}
 
-	saved, updated, err := s.Update(ctx, made.ID, owner, false, Input{Spec: &spec})
-	if err != nil {
-		return undo(err)
+// CheckFile holds a theme's file brought in from elsewhere to what an
+// upload is held to, answering its cleaned name and the type its bytes say.
+func CheckFile(name string, data []byte) (string, string, error) {
+	if len(data) > MaxAssetBytes {
+		return "", "", fmt.Errorf("%w: %s is over %d MB", ErrNotAThemeFile, name, MaxAssetBytes>>20)
 	}
-	return saved, updated, nil
+	contentType, err := sniff(name, data)
+	if err != nil {
+		return "", "", err
+	}
+	return objectstore.CleanName(name), contentType, nil
 }

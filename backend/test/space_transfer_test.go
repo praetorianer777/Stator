@@ -8,9 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"maps"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -40,7 +42,9 @@ func transferAPI(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *api
 // finished, and answers it.
 func (a *apiServer) followTransfer(t *testing.T, read func() map[string]any) map[string]any {
 	t.Helper()
-	watch := spaceio.NewWatch(a.h.cluster, a.h.appStore(t), discard(), time.Hour, time.Hour)
+	// Warnings go to the suite's output: they say why a job failed.
+	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	watch := spaceio.NewWatch(a.h.cluster, a.h.appStore(t), log, time.Hour, time.Hour)
 	deadline := time.Now().Add(transferWait)
 	for {
 		if _, err := watch.Once(context.Background()); err != nil {
@@ -257,7 +261,7 @@ func TestASpaceTravelsToAnotherOrganizationWhole(t *testing.T) {
 		if err := json.Unmarshal(files["manifest.json"], &m); err != nil {
 			t.Fatalf("the manifest: %v", err)
 		}
-		if m.Format != spaceio.Format || m.Version != spaceio.Version || m.Space.Key != "TRIP" || len(m.Pages) != 6 || m.Counts.Files != 2 {
+		if m.Format != spaceio.Format || m.Version != 1 || m.Space.Key != "TRIP" || len(m.Pages) != 6 || m.Counts.Files != 2 {
 			t.Errorf("the manifest reads %+v", m)
 		}
 		var p spaceio.ArchivePage

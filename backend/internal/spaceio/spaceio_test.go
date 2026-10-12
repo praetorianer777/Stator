@@ -18,7 +18,8 @@ import (
 )
 
 func TestTheDefaultsAreTheConfigurations(t *testing.T) {
-	if DefaultWatchInterval != config.DefaultSpaceTransferCheck || DefaultExportTTL != config.DefaultSpaceExportTTL || DefaultMaxImportBytes != config.DefaultSpaceImportLimit {
+	if DefaultWatchInterval != config.DefaultSpaceTransferCheck || DefaultExportTTL != config.DefaultSpaceExportTTL || DefaultMaxImportBytes != config.DefaultSpaceImportLimit ||
+		DefaultMaxOrgImportBytes != config.DefaultOrgImportLimit {
 		t.Fatalf("spaceio's defaults %s, %s, %d and config's %s, %s, %d disagree", DefaultWatchInterval, DefaultExportTTL, DefaultMaxImportBytes,
 			config.DefaultSpaceTransferCheck, config.DefaultSpaceExportTTL, config.DefaultSpaceImportLimit)
 	}
@@ -117,6 +118,50 @@ func TestAManifestIsOursAndNotNewer(t *testing.T) {
 		if err := CheckManifest(m); !errors.As(err, &inv) || !strings.HasSuffix(inv.Message, ".") {
 			t.Errorf("%s: answered %v, want a sentence", name, err)
 		}
+	}
+}
+
+// An organization's archive is ours, not newer, and holds a bounded number
+// of spaces; a space's archive given in its place is told apart.
+func TestAnOrganizationManifestIsOursAndNotNewer(t *testing.T) {
+	ok := func() *OrgManifest { return &OrgManifest{Format: OrgFormat, Version: OrgVersion} }
+	if err := CheckOrgManifest(ok()); err != nil {
+		t.Fatalf("a manifest of ours is refused: %v", err)
+	}
+	for name, change := range map[string]func(*OrgManifest){
+		"a space's archive": func(m *OrgManifest) { m.Format = Format },
+		"a newer one":       func(m *OrgManifest) { m.Version = OrgVersion + 1 },
+		"too many spaces":   func(m *OrgManifest) { m.Spaces = make([]OrgSpace, MaxOrgSpaces+1) },
+	} {
+		m := ok()
+		change(m)
+		var inv *InvalidError
+		if err := CheckOrgManifest(m); !errors.As(err, &inv) || !strings.HasSuffix(inv.Message, ".") {
+			t.Errorf("%s: answered %v, want a sentence", name, err)
+		}
+	}
+	data, _ := json.Marshal(manifest())
+	_, err := readOrgManifest(zipOf(t, map[string]string{manifestPath: string(data)}))
+	var inv *InvalidError
+	if !errors.As(err, &inv) || !strings.Contains(inv.Message, "organization") {
+		t.Errorf("a space's archive is refused as %v", err)
+	}
+}
+
+// What an organization's archive leaves out is listed whole, each with why.
+func TestEverythingLeftOutSaysWhy(t *testing.T) {
+	if len(notCarried) == 0 {
+		t.Fatal("nothing is listed as left out")
+	}
+	keys := map[string]bool{}
+	for _, o := range notCarried {
+		if o.What == "" || !strings.HasSuffix(o.Why, ".") {
+			t.Errorf("%q is left out without a sentence why: %q", o.What, o.Why)
+		}
+		if o.Key == "" || keys[o.Key] {
+			t.Errorf("%q has the key %q, which is empty or taken", o.What, o.Key)
+		}
+		keys[o.Key] = true
 	}
 }
 

@@ -259,6 +259,12 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/spaces/{spaceKey}/guests", s.handleListGuests)
 			r.Post("/spaces/{spaceKey}/guests", s.handleInviteGuest)
 			r.Delete("/spaces/{spaceKey}/guests/{userID}", s.handleRemoveGuest)
+			r.Post("/org/exports", s.handleCreateOrgExport)
+			r.Get("/org/exports", s.handleListOrgExports)
+			r.Get("/org/exports/{exportID}/file", s.handleDownloadOrgExport)
+			r.Post("/org/imports", s.handleCreateOrgImport)
+			r.Get("/org/imports", s.handleListOrgImports)
+			r.Get("/org/imports/{importID}", s.handleGetOrgImport)
 		})
 
 		// What the caller may do is theirs to read even without use, so the

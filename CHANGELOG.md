@@ -9,6 +9,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- An administrator exports the whole organization as one archive and imports
+  it into a fresh Stator (#383), under Settings, Export and import. The
+  archive holds every space in the space archive format with its drafts and
+  pages never published, and the people, groups, permissions, settings,
+  brand, themes, templates, webhooks and audit log; it lists what it leaves
+  out, such as passwords, tokens and every secret. An import fills an
+  organization without spaces in one go. `STATOR_ORG_IMPORT_LIMIT` (2 GB)
+  bounds the upload. See `docs/organization-transfer.md`.
 - A k6 load test (#368). `make test-load` puts readers, editors and people
   editing a page together on the running stack at a smoke, standard or
   ceiling level and fails when a threshold breaks; the Load workflow runs it

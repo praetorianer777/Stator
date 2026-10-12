@@ -38,6 +38,10 @@ type snapshot struct {
 	keys map[uuid.UUID]string
 	// brand is the organization's, read for the HTML export alone.
 	brand *htmlBrand
+	// whole is a space read for its organization's archive: drafts and
+	// pages never published too, and who made, owns and archived the space.
+	whole                        bool
+	createdBy, owner, archivedBy *uuid.UUID
 }
 
 // ref is how the archive names a person: their id, when they are one of
@@ -77,19 +81,52 @@ func read(ctx context.Context, tx db.DBTX, actor perm.Actor, spaceID uuid.UUID) 
 	if err := perm.Check(ctx, tx, actor, perm.AdministerSpace, sp.ID); err != nil {
 		return nil, err
 	}
-	s := &snapshot{exporter: actor.UserID, space: sp, byID: map[uuid.UUID]*ArchivePage{}, people: map[uuid.UUID]Person{}, groups: map[uuid.UUID]Group{}, keys: map[uuid.UUID]string{}}
-	if err := tx.QueryRow(ctx, `SELECT now()`).Scan(&s.exportedAt); err != nil {
+	s := newSnapshot(actor.UserID, sp)
+	return s, s.fill(ctx, tx)
+}
+
+func newSnapshot(exporter uuid.UUID, sp *space.Space) *snapshot {
+	return &snapshot{exporter: exporter, space: sp, byID: map[uuid.UUID]*ArchivePage{}, people: map[uuid.UUID]Person{}, groups: map[uuid.UUID]Group{}, keys: map[uuid.UUID]string{}}
+}
+
+// readWhole takes the snapshot of a space for its organization's archive, as
+// the worker's role: every page out of the trash, drafts included, whoever
+// may read them.
+func readWhole(ctx context.Context, tx db.DBTX, exporter, spaceID uuid.UUID) (*snapshot, error) {
+	sp := &space.Space{ID: spaceID}
+	s := newSnapshot(exporter, sp)
+	s.whole = true
+	var home *uuid.UUID
+	if err := tx.QueryRow(ctx, `
+		SELECT key, name, description, home_page_id, created_at, archived_at, created_by, owner_id, archived_by
+		FROM space WHERE id = $1`, spaceID).Scan(&sp.Key, &sp.Name, &sp.Description, &home, &sp.CreatedAt, &sp.ArchivedAt,
+		&s.createdBy, &s.owner, &s.archivedBy); err != nil {
 		return nil, err
 	}
-	users := map[uuid.UUID]bool{actor.UserID: true}
+	if home == nil {
+		return nil, fmt.Errorf("the space %s has no home page", sp.Key)
+	}
+	sp.HomePageID = *home
+	return s, s.fill(ctx, tx)
+}
+
+// fill reads everything of the snapshot's space.
+func (s *snapshot) fill(ctx context.Context, tx db.DBTX) error {
+	if err := tx.QueryRow(ctx, `SELECT now()`).Scan(&s.exportedAt); err != nil {
+		return err
+	}
+	users := map[uuid.UUID]bool{s.exporter: true}
 	note := func(id *uuid.UUID) {
 		if id != nil {
 			users[*id] = true
 		}
 	}
 	if err := s.readPages(ctx, tx, note); err != nil {
-		return nil, err
+		return err
 	}
+	note(s.createdBy)
+	note(s.owner)
+	note(s.archivedBy)
 	ids := make([]uuid.UUID, len(s.pages))
 	for i, p := range s.pages {
 		ids[i] = p.ID
@@ -105,9 +142,12 @@ func read(ctx context.Context, tx db.DBTX, actor perm.Actor, spaceID uuid.UUID) 
 		func() error { return s.readTemplates(ctx, tx) },
 		func() error { return s.readCalendars(ctx, tx) },
 	}
+	if s.whole {
+		steps = append(steps, func() error { return s.readDrafts(ctx, tx, ids, note) })
+	}
 	for _, step := range steps {
 		if err := step(); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	for _, p := range s.pages {
@@ -119,23 +159,23 @@ func read(ctx context.Context, tx db.DBTX, actor perm.Actor, spaceID uuid.UUID) 
 	// ahead of the versions themselves.
 	authors, err := tx.Query(ctx, `SELECT DISTINCT created_by FROM page_version WHERE page_id = ANY($1) AND created_by IS NOT NULL`, ids)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	byAuthor, err := pgx.CollectRows(authors, pgx.RowTo[uuid.UUID])
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, id := range byAuthor {
 		users[id] = true
 	}
 	if err := s.readPeople(ctx, tx, users); err != nil {
-		return nil, err
+		return err
 	}
 	if err := s.readGroups(ctx, tx, groupIDs); err != nil {
-		return nil, err
+		return err
 	}
 	s.settleRefs()
-	return s, nil
+	return nil
 }
 
 // pageRow is a page as read, before it is placed.
@@ -153,9 +193,10 @@ type pageRow struct {
 }
 
 // readPages reads the pages readers read: the home page, folders, and every
-// page or post published at least once, out of the trash. A page whose
-// parent is not among them, a draft somebody published a page below, hangs
-// from the nearest page above it that is.
+// page or post published at least once, out of the trash, and for a whole
+// snapshot the pages never published too. A page whose parent is not among
+// them, a draft somebody published a page below, hangs from the nearest
+// page above it that is.
 func (s *snapshot) readPages(ctx context.Context, tx db.DBTX, note func(*uuid.UUID)) error {
 	rows, err := tx.Query(ctx, `
 		SELECT id, parent_id, kind, rank, title, mode, icon, width, cover_attachment_id, cover_focus_x, cover_focus_y,
@@ -183,7 +224,7 @@ func (s *snapshot) readPages(ctx context.Context, tx db.DBTX, note func(*uuid.UU
 	for _, r := range all {
 		parentOf[r.ID] = r.parent
 		home := r.parent == nil && r.Kind != "post"
-		if home || r.Kind == "folder" || r.version > 0 {
+		if home || r.Kind == "folder" || r.version > 0 || s.whole {
 			kept[r.ID] = r
 		}
 	}
@@ -526,6 +567,31 @@ func (s *snapshot) readCalendars(ctx context.Context, tx db.DBTX) error {
 	return nil
 }
 
+// readDrafts reads each person's draft of the pages, which only a whole
+// snapshot holds: in another organization they would be nobody's.
+func (s *snapshot) readDrafts(ctx context.Context, tx db.DBTX, ids []uuid.UUID, note func(*uuid.UUID)) error {
+	rows, err := tx.Query(ctx, `
+		SELECT page_id, user_id, title, body, base_version, updated_at FROM page_draft WHERE page_id = ANY($1)
+		ORDER BY page_id, user_id`, ids)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			pageID, user uuid.UUID
+			d            Draft
+		)
+		if err := rows.Scan(&pageID, &user, &d.Title, &d.Body, &d.BaseVersion, &d.UpdatedAt); err != nil {
+			return err
+		}
+		note(&user)
+		d.Person = user.String()
+		s.byID[pageID].Drafts = append(s.byID[pageID].Drafts, d)
+	}
+	return rows.Err()
+}
+
 // readPeople reads the address of everybody named who is still a member
 // here; anybody else is left out, and their work reads as nobody's.
 func (s *snapshot) readPeople(ctx context.Context, tx db.DBTX, users map[uuid.UUID]bool) error {
@@ -640,6 +706,13 @@ func (s *snapshot) settleRefs() {
 			}
 		}
 		p.Reactions = reactions
+		drafts := p.Drafts[:0]
+		for _, d := range p.Drafts {
+			if d.Person = person(d.Person); d.Person != "" {
+				drafts = append(drafts, d)
+			}
+		}
+		p.Drafts = drafts
 	}
 }
 
@@ -711,9 +784,13 @@ func mentioned(body json.RawMessage) []uuid.UUID {
 // are written.
 func (s *snapshot) manifest(counts Counts) *Manifest {
 	m := &Manifest{
-		Format: Format, Version: Version, ExportedAt: s.exportedAt, ExportedBy: s.ref(&s.exporter),
-		Space:  ArchiveSpace{Key: s.space.Key, Name: s.space.Name, Description: s.space.Description, CreatedAt: s.space.CreatedAt, HomePage: s.space.HomePageID},
+		Format: Format, Version: versionPublished, ExportedAt: s.exportedAt, ExportedBy: s.ref(&s.exporter),
+		Space: ArchiveSpace{ID: s.space.ID, Key: s.space.Key, Name: s.space.Name, Description: s.space.Description, CreatedAt: s.space.CreatedAt,
+			HomePage: s.space.HomePageID, CreatedBy: s.ref(s.createdBy), Owner: s.ref(s.owner), ArchivedAt: s.space.ArchivedAt, ArchivedBy: s.ref(s.archivedBy)},
 		People: []Person{}, Groups: []Group{}, Grants: s.grants, Templates: s.templates, Calendars: s.calendars, Counts: counts,
+	}
+	if s.whole {
+		m.Version = Version
 	}
 	for _, p := range s.people {
 		m.People = append(m.People, p)

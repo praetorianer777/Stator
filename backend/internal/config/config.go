@@ -71,6 +71,8 @@ const (
 	DefaultSpaceTransferCheck       = 2 * time.Second
 	DefaultSpaceExportTTL           = 24 * time.Hour
 	DefaultSpaceImportLimit   int64 = 200 << 20
+	// DefaultOrgImportLimit is spaceio.DefaultMaxOrgImportBytes.
+	DefaultOrgImportLimit int64 = 2 << 30
 	// DefaultWordImportCheck is wordio.DefaultWatchInterval, which a test
 	// holds the two to.
 	DefaultWordImportCheck = 2 * time.Second
@@ -143,8 +145,10 @@ type Config struct {
 	// imports to run; SpaceExportTTL how long it keeps an export's file.
 	SpaceTransferCheck time.Duration
 	SpaceExportTTL     time.Duration
-	// SpaceImportLimit is the largest archive a space import takes, in bytes.
+	// SpaceImportLimit is the largest archive a space import takes, in bytes,
+	// and OrgImportLimit the largest an organization's import takes.
 	SpaceImportLimit int64
+	OrgImportLimit   int64
 	// WordImportCheck is how often the worker looks for Word documents to
 	// import, while their importer waits for them.
 	WordImportCheck time.Duration
@@ -382,6 +386,7 @@ func Load() (Config, error) {
 		SpaceTransferCheck: l.duration("STATOR_SPACE_TRANSFER_CHECK_INTERVAL", DefaultSpaceTransferCheck),
 		SpaceExportTTL:     l.duration("STATOR_SPACE_EXPORT_TTL", DefaultSpaceExportTTL),
 		SpaceImportLimit:   l.size("STATOR_SPACE_IMPORT_LIMIT", DefaultSpaceImportLimit),
+		OrgImportLimit:     l.size("STATOR_ORG_IMPORT_LIMIT", DefaultOrgImportLimit),
 		WordImportCheck:    l.duration("STATOR_WORD_IMPORT_CHECK_INTERVAL", DefaultWordImportCheck),
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
@@ -483,6 +488,9 @@ func Load() (Config, error) {
 	}
 	if c.SpaceImportLimit <= 0 {
 		l.problem("STATOR_SPACE_IMPORT_LIMIT must be a size above zero, such as 200MB.")
+	}
+	if c.OrgImportLimit <= 0 {
+		l.problem("STATOR_ORG_IMPORT_LIMIT must be a size above zero, such as 2GB.")
 	}
 	if c.WordImportCheck < time.Second {
 		l.problem(fmt.Sprintf("STATOR_WORD_IMPORT_CHECK_INTERVAL is %s; set it to a second or more, such as 2s.", c.WordImportCheck))

@@ -24,6 +24,11 @@ type renames struct {
 	asText int
 }
 
+func newRenames() renames {
+	return renames{pages: map[uuid.UUID]uuid.UUID{}, files: map[uuid.UUID]uuid.UUID{}, threads: map[uuid.UUID]uuid.UUID{},
+		calendars: map[uuid.UUID]uuid.UUID{}, people: map[uuid.UUID]uuid.UUID{}}
+}
+
 var (
 	pageLink = regexp.MustCompile(`^/s/([^/?#]+)/p/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(.*)$`)
 	fileLink = regexp.MustCompile(`^/api/v1/attachments/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(.*)$`)

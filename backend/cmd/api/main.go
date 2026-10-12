@@ -416,5 +416,6 @@ func renderer(cfg config.Render, log *slog.Logger) render.Renderer {
 func spaceTransfers(cluster *db.Cluster, store objectstore.Store, cfg config.Config) *spaceio.Jobs {
 	jobs := spaceio.NewJobs(cluster, store)
 	jobs.MaxImportBytes = cfg.SpaceImportLimit
+	jobs.MaxOrgImportBytes = cfg.OrgImportLimit
 	return jobs
 }

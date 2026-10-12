@@ -1028,6 +1028,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/org/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's latest exports, newest first. For administrators. */
+        get: operations["listOrgExports"];
+        put?: never;
+        /** Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /org/exports follows. For administrators. */
+        post: operations["createOrgExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/exports/{exportID}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The archive an export of the organization made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after. For administrators. */
+        get: operations["downloadOrgExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/org/hub": {
         parameters: {
             query?: never;
@@ -1039,6 +1074,41 @@ export interface paths {
         get: operations["getHub"];
         /** Choose the organization's hub page, or none, and whether everybody lands on it. For administrators. */
         put: operations["setHub"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's latest imports, newest first. For administrators. */
+        get: operations["listOrgImports"];
+        put?: never;
+        /** Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /org/imports/{importID} follows to its report. For administrators. */
+        post: operations["createOrgImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/org/imports/{importID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators. */
+        get: operations["getOrgImport"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -3811,7 +3881,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
+            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -3827,7 +3897,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped")[];
+            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -4678,6 +4748,70 @@ export interface components {
             secret?: string;
             spaces: string[];
         };
+        OrgExport: {
+            /** Format: date-time */
+            expiresAt: string | null;
+            failure: ("forbidden" | "too_large" | "failed") | null;
+            fileName: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            message: string | null;
+            mine: boolean;
+            progress: components["schemas"]["SpaceTransferProgress"];
+            /** Format: date-time */
+            requestedAt: string;
+            requestedBy: string;
+            size: number | null;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** @enum {string} */
+            state: "queued" | "running" | "done" | "failed" | "expired";
+        };
+        OrgImport: {
+            failure: ("forbidden" | "not_empty" | "invalid" | "too_large" | "failed") | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            message: string | null;
+            progress: components["schemas"]["SpaceTransferProgress"];
+            report: components["schemas"]["OrgImportReport"] | null;
+            /** Format: date-time */
+            requestedAt: string;
+            requestedBy: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** @enum {string} */
+            state: "queued" | "running" | "done" | "failed";
+        };
+        OrgImportReport: {
+            auditEntries: number;
+            comments: number;
+            drafts: number;
+            dropped: components["schemas"]["DroppedEntry"][];
+            droppedReactions: number;
+            files: number;
+            groups: number;
+            kept: string[];
+            matched: number;
+            notCarried: components["schemas"]["OrgOmission"][];
+            pages: number;
+            people: number;
+            reattributed: number;
+            spaces: number;
+            templates: number;
+            themes: number;
+            versions: number;
+            webhooks: number;
+        };
+        OrgOmission: {
+            count?: number;
+            key: string;
+            what: string;
+            why: string;
+        };
         OutlineEntry: {
             depth: number;
             /** Format: uuid */
@@ -5491,7 +5625,9 @@ export interface components {
         SpaceImportReport: {
             calendars: number;
             comments: number;
+            drafts: number;
             dropped: components["schemas"]["DroppedEntry"][];
+            droppedDrafts: number;
             droppedReactions: number;
             files: number;
             groups: string[];
@@ -7136,7 +7272,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -7185,7 +7321,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -9093,6 +9229,117 @@ export interface operations {
             };
         };
     };
+    listOrgExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        exports: components["schemas"]["OrgExport"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createOrgExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        export: components["schemas"]["OrgExport"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    downloadOrgExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exportID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getHub: {
         parameters: {
             query?: never;
@@ -9145,6 +9392,135 @@ export interface operations {
                 content: {
                     "application/json": {
                         hub: components["schemas"]["Hub"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOrgImports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        imports: components["schemas"]["OrgImport"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createOrgImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        import: components["schemas"]["OrgImport"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getOrgImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        import: components["schemas"]["OrgImport"];
                     };
                 };
             };

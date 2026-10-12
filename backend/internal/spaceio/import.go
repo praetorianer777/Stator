@@ -159,13 +159,25 @@ type importer struct {
 	// from is what the space was made of; an export of another wiki brings
 	// no permissions, so the space keeps those every new space starts with.
 	from ImportSource
+	// whole is a space of an organization's archive, coming in with that
+	// organization's people: drafts, the space's maker, owner and archive
+	// come along, and the archive's grants replace every other.
+	whole bool
+	// presetPeople and presetGroups are the archive's refs already made
+	// here by the organization's import, found before any address is asked.
+	presetPeople, presetGroups map[string]uuid.UUID
+	// made runs once the space exists, before anything names people in it:
+	// an organization's import lets the space's guests in there.
+	made func(ctx context.Context, tx db.DBTX) error
 }
 
 // scan reads every page once, before anything is written, and refuses an
 // archive whose pages do not fit together, naming what is wrong.
 func (im *importer) scan() error {
-	im.r = renames{pages: map[uuid.UUID]uuid.UUID{}, files: map[uuid.UUID]uuid.UUID{}, threads: map[uuid.UUID]uuid.UUID{},
-		calendars: map[uuid.UUID]uuid.UUID{}, people: map[uuid.UUID]uuid.UUID{}, oldKey: im.m.Space.Key, newKey: im.key}
+	if im.r.pages == nil {
+		im.r = newRenames()
+	}
+	im.r.oldKey, im.r.newKey = im.m.Space.Key, im.key
 	if len(im.m.Pages) == 0 || im.m.Pages[0] != im.m.Space.HomePage {
 		return invalid("The archive's first page is not the space's home page. Export the space again and import the new file.")
 	}
@@ -279,6 +291,13 @@ func (im *importer) mapPeople(ctx context.Context, tx db.DBTX) error {
 	emails := []string{}
 	for _, p := range im.m.People {
 		im.known[p.Ref] = p
+		if id, ok := im.presetPeople[p.Ref]; ok {
+			im.people[p.Ref] = id
+			if old, err := uuid.Parse(p.Ref); err == nil {
+				im.r.people[old] = id
+			}
+			continue
+		}
 		if p.Email != "" {
 			emails = append(emails, strings.ToLower(p.Email))
 		}
@@ -307,6 +326,9 @@ func (im *importer) mapPeople(ctx context.Context, tx db.DBTX) error {
 		return err
 	}
 	for _, p := range im.m.People {
+		if _, ok := im.people[p.Ref]; ok {
+			continue
+		}
 		if id, ok := here[strings.ToLower(p.Email)]; ok && p.Email != "" {
 			im.people[p.Ref] = id
 			if old, err := uuid.Parse(p.Ref); err == nil {
@@ -321,6 +343,10 @@ func (im *importer) mapPeople(ctx context.Context, tx db.DBTX) error {
 	names := []string{}
 	for _, g := range im.m.Groups {
 		im.gnames[g.Ref] = g.Name
+		if id, ok := im.presetGroups[g.Ref]; ok {
+			im.groups[g.Ref] = id
+			continue
+		}
 		names = append(names, strings.ToLower(g.Name))
 	}
 	rows, err = tx.Query(ctx, `
@@ -346,6 +372,9 @@ func (im *importer) mapPeople(ctx context.Context, tx db.DBTX) error {
 		return err
 	}
 	for _, g := range im.m.Groups {
+		if _, ok := im.groups[g.Ref]; ok {
+			continue
+		}
 		if id, ok := groups[strings.ToLower(g.Name)]; ok {
 			im.groups[g.Ref] = id
 			continue
@@ -426,10 +455,13 @@ func (im *importer) write(ctx context.Context, tx db.DBTX) error {
 	if utf8.RuneCountInString(description) > space.MaxDescriptionLength {
 		description = string([]rune(description)[:space.MaxDescriptionLength])
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO space (id, org_id, key, name, description, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6)`, im.spaceID, im.org, im.key, im.name, description, im.importer); err != nil {
+	if err := im.writeSpace(ctx, tx, description); err != nil {
 		return err
+	}
+	if im.made != nil {
+		if err := im.made(ctx, tx); err != nil {
+			return err
+		}
 	}
 	if err := im.writeGrants(ctx, tx); err != nil {
 		return err
@@ -463,6 +495,9 @@ func (im *importer) write(ctx context.Context, tx db.DBTX) error {
 	}
 	im.report.Pages, im.report.Templates, im.report.Calendars = len(im.m.Pages), len(im.m.Templates), len(im.m.Calendars)
 	im.report.MentionsAsText = im.r.asText
+	if im.whole {
+		return nil
+	}
 	data := map[string]any{
 		"key": im.key, "name": im.name, "source": string(im.from), "pages": im.report.Pages, "versions": im.report.Versions,
 		"files": im.report.Files, "peopleNotFound": len(im.report.People), "groupsNotFound": len(im.report.Groups),
@@ -478,15 +513,43 @@ func (im *importer) write(ctx context.Context, tx db.DBTX) error {
 	})
 }
 
+// writeSpace makes the space: as the importer's new space, or, from an
+// organization's archive, as it was, with its maker, owner and archive.
+func (im *importer) writeSpace(ctx context.Context, tx db.DBTX, description string) error {
+	if !im.whole {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO space (id, org_id, key, name, description, created_by)
+			VALUES ($1, $2, $3, $4, $5, $6)`, im.spaceID, im.org, im.key, im.name, description, im.importer)
+		return err
+	}
+	sp := im.m.Space
+	maker := im.person(sp.CreatedBy)
+	var archivedAt *time.Time
+	var archivedBy *uuid.UUID
+	if sp.ArchivedAt != nil {
+		archivedAt, archivedBy = sp.ArchivedAt, im.person(sp.ArchivedBy)
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO space (id, org_id, key, name, description, created_by, created_at, owner_id, archived_at, archived_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		im.spaceID, im.org, im.key, im.name, description, maker, sp.CreatedAt, im.person(sp.Owner), archivedAt, archivedBy)
+	return err
+}
+
 // writeGrants replaces the permissions every new space starts with by the
-// archive's, keeping the importer an administrator so the space is theirs.
+// archive's, keeping the importer an administrator so the space is theirs;
+// an organization's archive brings its administrators along instead.
 func (im *importer) writeGrants(ctx context.Context, tx db.DBTX) error {
 	if im.from != SourceArchive {
 		return nil
 	}
+	keep := im.importer
+	if im.whole {
+		keep = uuid.Nil
+	}
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM space_grant WHERE space_id = $1
-		AND NOT (permission = 'administer' AND subject_type = 'user' AND user_id = $2)`, im.spaceID, im.importer); err != nil {
+		AND NOT (permission = 'administer' AND subject_type = 'user' AND user_id = $2)`, im.spaceID, keep); err != nil {
 		return err
 	}
 	for _, g := range im.m.Grants {
@@ -662,8 +725,42 @@ func (im *importer) writePage(ctx context.Context, tx db.DBTX, p *ArchivePage) e
 	if err := im.writeReactions(ctx, tx, p, id); err != nil {
 		return err
 	}
+	if err := im.writeDrafts(ctx, tx, p, id); err != nil {
+		return err
+	}
 	if len(p.Versions) > 0 {
 		return page.SyncTasks(ctx, tx, id)
+	}
+	return nil
+}
+
+// writeDrafts gives each person found here their draft of the page back; a
+// draft of somebody not found is theirs alone and is left out.
+func (im *importer) writeDrafts(ctx context.Context, tx db.DBTX, p *ArchivePage, id uuid.UUID) error {
+	if p.Mode == "live" {
+		return nil
+	}
+	for _, d := range p.Drafts {
+		who := im.person(d.Person)
+		if who == nil {
+			im.report.DroppedDrafts++
+			continue
+		}
+		body, err := im.checked(p, d.Body, "a draft")
+		if err != nil {
+			return err
+		}
+		title := strings.TrimSpace(d.Title)
+		if title == "" {
+			title = strings.TrimSpace(p.Title)
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
+			im.org, id, *who, clip(title, page.MaxTitleLength), body, max(d.BaseVersion, 0), d.UpdatedAt); err != nil {
+			return err
+		}
+		im.report.Drafts++
 	}
 	return nil
 }

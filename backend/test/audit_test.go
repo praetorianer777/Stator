@@ -355,6 +355,11 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 		t.Errorf("the import's record reads %s, after %v", data, imported)
 	}
 
+	orgExport := obj(t, want(t, owner.post(t, "/api/v1/org/exports", nil), http.StatusAccepted, "export the organization"), "export")
+	if data := once(audit.ActionOrgExported, me, nil); !strings.Contains(data, orgExport["id"].(string)) {
+		t.Errorf("the organization's export reads %s", data)
+	}
+
 	_, hookAddress := hookBin(t)
 	hookID := idOf(t, want(t, owner.post(t, "/api/v1/webhooks", map[string]any{"name": "Audited", "url": hookAddress, "topics": []string{"*"}}), http.StatusCreated, "add a webhook"), "webhook")
 	if data := once(audit.ActionWebhookCreated, me, hookID); !strings.Contains(data, `"secret": "set"`) || strings.Contains(data, "/_hooks/") {
@@ -373,6 +378,9 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	covered[audit.ActionMemberJoined] = true
 	covered[audit.ActionMemberRoleChanged] = true
 	covered[audit.ActionWebhookDisabled] = true
+	// An import fills a fresh organization, which the organization transfer
+	// suite holds to one entry.
+	covered[audit.ActionOrgImported] = true
 	for _, action := range audit.Actions {
 		if !covered[action] {
 			t.Errorf("%s is never done here, so nothing holds it to one entry", action)
