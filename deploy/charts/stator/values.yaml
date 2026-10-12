@@ -14,6 +14,9 @@ images:
   # deploy/Dockerfile.render: the public Chrome image with the render
   # service's script baked in, for PDF export.
   render: { repository: stator/render, tag: "" }
+  # deploy/Dockerfile.backend built with --target backup: the backup command
+  # beside pg_dump and psql of the server's major version.
+  backup: { repository: stator/backup, tag: "" }
   # The client the roles Job runs, and the server the bundled Postgres runs.
   psql: { repository: postgres, tag: 18-alpine }
   valkey: { repository: valkey/valkey, tag: 8-alpine }
@@ -323,6 +326,31 @@ jobs:
     # except a bootstrap password that was changed in its Secret. Allowed in
     # production; the seed above is not.
     enabled: false
+
+# Backup and restore of the database and every stored file, into archives on
+# a volume (docs/backup-and-restore.md). Two CronJobs are rendered, and neither
+# runs until you start it:
+#   kubectl create job --from=cronjob/<release>-stator-backup backup-now
+#   kubectl create job --from=cronjob/<release>-stator-restore restore-now
+# The restore refuses while the api or the worker is connected; scale both to
+# zero first. Copy the archives off the cluster yourself: a volume beside the
+# database is no backup against losing the cluster.
+backup:
+  enabled: false
+  # The volume the archives are written to. existingClaim names one of yours;
+  # otherwise the chart makes one of this size.
+  existingClaim: ""
+  size: 20Gi
+  storageClass: ""
+  # The backup CronJob's schedule, which only applies with suspend off. Old
+  # archives are never removed by Stator.
+  schedule: "0 3 * * *"
+  suspend: true
+  # The archive the restore job reads, by file name; empty means the newest.
+  restoreFrom: ""
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 512Mi }
 
 # Read by the bootstrap Job. The password and the provider's client secret are
 # never values: each is a key in a Secret, so neither lands in a values file

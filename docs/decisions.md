@@ -3,6 +3,42 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-11: A backup is one archive of the database and the bucket, taken by one command (#108)
+
+Operators need to get a site back after losing a disk or a cluster, under
+Docker Compose and under the Helm chart alike. The first version is an
+operator's backup, not an export from the app: a site-wide export would need
+a stable format and identity mapping of its own, and space export already
+moves content between sites.
+
+- **One tool, both installs.** `cmd/backup` writes `manifest.json`, a
+  `pg_dump` and every object into one tar, and restores from one. It runs in
+  an image of its own built from the backend's Dockerfile on the official
+  Postgres image, because `pg_dump` must be the server's major version and
+  Alpine packages one behind. Compose runs it as a service under the `tools`
+  profile; the chart as two CronJobs that only run when started.
+- **Dump, then copy.** The database is dumped first and the bucket copied
+  after, so every object a dumped row names is in the archive; only objects
+  removed between the two can be missing, and they are named.
+- **A restore replaces, all or nothing for the database.** The dump is loaded
+  with the schema dropped and remade in one psql transaction, so a failure
+  leaves the site as it was. The bucket is made to match the archive, extra
+  objects removed. The restore then migrates, so an older archive comes up to
+  date.
+- **Refusals before anything changes.** A newer schema (a migration this
+  build does not carry), another `STATOR_SECRET_KEY` (checked by a
+  fingerprint, so the archive never carries the key), and anybody but a
+  superuser connected to the database, which is the api or the worker.
+  Superusers are let through because operators and their monitoring connect
+  as one.
+- **PL/pgSQL functions pin their search_path.** A dump restores with an empty
+  search_path, and the stored search vector of page called a function that
+  could not find itself. Migration 00690 pins every PL/pgSQL function, and an
+  integration test keeps new ones pinned. SQL functions are left alone: a SET
+  stops them being inlined into the policies that call them.
+- **Not yet.** Retention of old archives, copying them off the volume, and
+  a site-wide export from the UI.
+
 ## 2026-10-11: A page is reviewed as a snapshot of its draft, and readers confirm a version (#313)
 
 Procedures and policies should go out checked, and their owners should know

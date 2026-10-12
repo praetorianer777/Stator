@@ -289,6 +289,29 @@ services:
       STATOR_DB_PRIMARY_URL: postgres://stator:${POSTGRES_PASSWORD:-stator}@postgres-primary:5432/stator?sslmode=disable
     restart: "no"
 
+  # The backup command (docs/backup-and-restore.md), never started by up: run
+  # it with make backup and make restore. It connects as the owner, as migrate
+  # does, to dump and replace every table whatever its row level security.
+  backup:
+    image: ${COMPOSE_PROJECT_NAME:-stator}-backup
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+      target: backup
+    profiles: [tools]
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      <<: *s3-env
+      STATOR_DB_PRIMARY_URL: postgres://stator:${POSTGRES_PASSWORD:-stator}@postgres-primary:5432/stator?sslmode=disable
+      STATOR_SECRET_KEY: *secret-key
+    volumes:
+      - ${STATOR_BACKUP_DIR:-../backups}:/backups
+    restart: "no"
+
   seed:
     <<: *backend
     command: ["/app/seed"]

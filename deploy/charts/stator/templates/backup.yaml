@@ -1,0 +1,100 @@
+{{- if .Values.backup.enabled }}
+{{/*
+The backup and restore jobs, as CronJobs so that kubectl create job --from
+starts one with the chart's settings. They connect as the owner on the -rw
+service, as the migrate Job does: a dump must read every row whatever its
+row level security, and a restore replaces the schema.
+*/}}
+{{- $claim := default (printf "%s-backup" (include "stator.fullname" .)) .Values.backup.existingClaim }}
+{{- if not .Values.backup.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $claim }}
+  labels:
+    {{- include "stator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+  annotations:
+    # Uninstalling the release must not take the backups with it.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.backup.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.backup.size }}
+{{- end }}
+{{- range $job := list "backup" "restore" }}
+{{- $args := list "create" }}
+{{- if eq $job "restore" }}
+{{- $args = list "restore" "-yes" }}
+{{- with $.Values.backup.restoreFrom }}
+{{- $args = concat $args (list "-from" (printf "/backups/%s" (base .))) }}
+{{- end }}
+{{- end }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "stator.fullname" $ }}-{{ $job }}
+  labels:
+    {{- include "stator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $job }}
+spec:
+  {{- if eq $job "backup" }}
+  schedule: {{ $.Values.backup.schedule | quote }}
+  suspend: {{ $.Values.backup.suspend }}
+  {{- else }}
+  # The 31st of February: a restore only ever runs when started by hand.
+  schedule: "0 0 31 2 *"
+  suspend: true
+  {{- end }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            {{- include "stator.selectorLabels" $ | nindent 12 }}
+            app.kubernetes.io/component: {{ $job }}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ include "stator.serviceAccountName" $ }}
+          {{- with $.Values.images.pullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml $.Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: {{ $job }}
+              image: {{ include "stator.image" (dict "root" $ "name" "backup") }}
+              imagePullPolicy: {{ $.Values.images.pullPolicy }}
+              securityContext:
+                {{- toYaml $.Values.containerSecurityContext | nindent 16 }}
+              args: {{ toJson $args }}
+              envFrom:
+                - configMapRef:
+                    name: {{ include "stator.fullname" $ }}-env
+              env:
+                {{- include "stator.passwordEnv" (dict "root" $ "name" "dbOwner" "var" "DB_OWNER_PASSWORD") | nindent 16 }}
+                {{- include "stator.passwordEnv" (dict "root" $ "name" "secretKey" "var" "STATOR_SECRET_KEY") | nindent 16 }}
+                - name: STATOR_DB_PRIMARY_URL
+                  value: {{ include "stator.dbURL" (dict "root" $ "role" (include "stator.ownerRole" $) "var" "DB_OWNER_PASSWORD" "host" (include "stator.dbHost" $)) | quote }}
+                {{- with include "stator.s3KeyEnv" $ }}
+                {{- . | trim | nindent 16 }}
+                {{- end }}
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+              resources:
+                {{- toYaml $.Values.backup.resources | nindent 16 }}
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: {{ $claim }}
+{{- end }}
+{{- end }}

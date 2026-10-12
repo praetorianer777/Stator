@@ -143,3 +143,27 @@ stack-up: stack-env ## The gate's stack: build and start it, and wait until ever
 stack-down: ## Remove the gate's stack and its volumes
 	docker compose down -v --remove-orphans
 	@rm -f $(STACK_ENV_FILE)
+
+# Archives land here unless STATOR_BACKUP_DIR names another directory. It is
+# made before compose mounts it, which would otherwise make it as root.
+STATOR_BACKUP_DIR ?= $(ROOT)/backups
+export STATOR_BACKUP_DIR
+
+.PHONY: backup
+backup: ## Write the stack's database and files into one archive under backups/
+	@mkdir -p $(STATOR_BACKUP_DIR)
+	docker compose run --rm --build --quiet-pull -u $(UID_GID) backup create
+
+# The api and the worker are stopped for the restore and started again whether
+# it worked or not: a refused restore, or one whose database failed to load,
+# leaves the site as it was.
+.PHONY: restore
+restore: ## Replace the stack's database and files with the newest backup, or FROM=<archive>
+	@mkdir -p $(STATOR_BACKUP_DIR)
+	docker compose stop api worker
+	docker compose run --rm --build --quiet-pull -u $(UID_GID) backup restore -yes $(if $(FROM),-from /backups/$(notdir $(FROM))); \
+		status=$$?; docker compose start api worker; exit $$status
+
+.PHONY: test-backup
+test-backup: ## Back up the running stack, restore it beside the site and compare
+	$(ROOT)/tests/test-backup.sh

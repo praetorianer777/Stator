@@ -280,6 +280,13 @@ STATOR_S3_USE_SSL: {{ ternary "false" (toString .Values.s3.useSSL) .Values.seawe
 {{- with include "stator.valkeyEnv" . }}
 {{ . }}
 {{- end }}
+{{- with include "stator.s3KeyEnv" . }}
+{{ . }}
+{{- end }}
+{{- end -}}
+
+{{/* The bucket's keys, for every workload that reads or writes files. */}}
+{{- define "stator.s3KeyEnv" -}}
 {{- if .Values.seaweedfs.enabled }}
 - name: STATOR_S3_ACCESS_KEY
   valueFrom:
