@@ -236,7 +236,7 @@ func TestWordDocumentsAreImported(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/spaces/WORDREAD/permissions", map[string]any{"grants": []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		}}), http.StatusOK, "WORDREAD is read only")
-		h.settle(t)
+		h.closeSpace(t, reading.space, readerID)
 		doc := [2]string{"guide.docx", string(guide)}
 		if got := reader.importFiles(t, http.MethodPost, pagePath(readPage, "/import/docx"), doc); got.Status != http.StatusForbidden {
 			t.Errorf("an import where the caller may only read: %d %s", got.Status, got.Raw)
@@ -248,10 +248,10 @@ func TestWordDocumentsAreImported(t *testing.T) {
 		if got := nobody.importFiles(t, http.MethodPost, pagePath(readPage, "/import/docx"), doc); got.Status != http.StatusUnauthorized {
 			t.Errorf("an import by nobody: %d", got.Status)
 		}
-		away := h.makeMember(t, "word-away")
+		away := h.makeOutsider(t, "word-away")
 		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
 		if got := stranger.importFiles(t, http.MethodPost, pagePath(readPage, "/word-imports"), doc); got.Status != http.StatusNotFound {
-			t.Errorf("an import by somebody of another organization: %d", got.Status)
+			t.Errorf("an import by somebody the space is closed to: %d", got.Status)
 		}
 	})
 

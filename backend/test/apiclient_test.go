@@ -133,12 +133,11 @@ func newAPIServer(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *ap
 	return a
 }
 
-// appBucket is the running app's bucket, which the stack's worker reads and
-// writes: a space export or import the suite queues may be run by that
-// worker as well as by the suite's own watch, so both must find its files.
+// appBucket is the running app's bucket, where the suite's transfers keep
+// their files as the app's do.
 const appBucket = "stator-files"
 
-// appStore is the app's bucket, for what the stack's worker may touch.
+// appStore is the app's bucket, for the suite's transfers.
 func (h *harness) appStore(t *testing.T) objectstore.Store {
 	t.Helper()
 	store, err := objectstore.Open(objectstore.Config{

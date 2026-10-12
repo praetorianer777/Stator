@@ -16,8 +16,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/page"
 )
 
-// scheduleWait bounds how long a test waits for a due schedule to be taken,
-// by its own watch or by the stack's worker, whichever comes first.
+// scheduleWait bounds how long a test waits for its own watch to take a due
+// schedule.
 const scheduleWait = 30 * time.Second
 
 func inAnHour() string { return time.Now().Add(time.Hour).UTC().Format(time.RFC3339) }

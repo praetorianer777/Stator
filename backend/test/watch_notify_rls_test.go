@@ -19,13 +19,14 @@ func TestWatchesAndNotificationsAreWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runWorker(t, notify.NewFanOut(h.cluster, testMailer(t), testAppURL, discard()))
 	home := h.makeMember(t, "wn-rls")
-	other := h.makeMember(t, "wn-rls-other")
+	other := h.makeOutsider(t, "wn-rls-other")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
 	annID, benID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
 	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
 
 	docs := newTree(t, owner, "WNR", "Walls")
+	h.closeSpace(t, docs.space, annID, benID)
 	open := docs.add(docs.homeID, "Open")
 	closed := docs.add(docs.homeID, "Closed")
 	want(t, watchPage(t, ann, open, false), http.StatusOK, "ann watches Open")
@@ -126,17 +127,17 @@ func TestWatchesAndNotificationsAreWalledByTheDatabase(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reads and writes nothing of this one", func(t *testing.T) {
+	t.Run("a member the space is closed to reads and writes nothing of it", func(t *testing.T) {
 		actAs(t, conn, other.org, other.user)
 		for _, table := range []string{"watch", "watch_optout", "notification", "notification_preference", "notification_digest"} {
 			if n := count(`SELECT count(*) FROM ` + table); n != 0 {
-				t.Errorf("another organization reads %d rows of %s", n, table)
+				t.Errorf("a member the space is closed to reads %d rows of %s", n, table)
 			}
 		}
-		denied(t, conn, "a watch in the other organization", `INSERT INTO watch (org_id, user_id, kind, page_id) VALUES ($1, $2, 'page', $3)`, home.org, other.user, open)
-		denied(t, conn, "a notification in the other organization", `INSERT INTO notification (org_id, user_id, event_id, kind, page_id) VALUES ($1, $2, $3, 'published', $4)`, home.org, other.user, uuid.New(), open)
-		denied(t, conn, "an event in the other organization", `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'page.published', jsonb_build_object('actorId', $2::text))`, home.org, other.user)
-		untouched(t, conn, "marking the other organization's rows read", `UPDATE notification SET read_at = now() WHERE org_id = $1`, home.org)
+		denied(t, conn, "a watch on a page of the closed space", `INSERT INTO watch (org_id, user_id, kind, page_id) VALUES ($1, $2, 'page', $3)`, home.org, other.user, open)
+		denied(t, conn, "a notification about a page of the closed space", `INSERT INTO notification (org_id, user_id, event_id, kind, page_id) VALUES ($1, $2, $3, 'published', $4)`, home.org, other.user, uuid.New(), open)
+		denied(t, conn, "an event in ann's name", `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'page.published', jsonb_build_object('actorId', $2::text))`, home.org, annID)
+		untouched(t, conn, "marking other people's rows read", `UPDATE notification SET read_at = now() WHERE org_id = $1`, home.org)
 	})
 }
 

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"os"
 	"strings"
 	"testing"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
@@ -61,13 +63,39 @@ type harness struct {
 	// replica is the superuser on the standby, nil when none is configured;
 	// only a superuser may pause and resume its replay.
 	replica *pgxpool.Pool
+	// org is the test's organization, made by its first makeMember.
+	org *tenant.Org
+	// stack is set on the stack's own database, where makeMember adds people
+	// to the seed's organization and removes them when the test ends.
+	stack bool
 }
 
+// newHarness connects to a database of the test's own, cloned from the
+// migrated template, in which the test's organization is the only one.
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	if os.Getenv(envPrimary) == "" || os.Getenv(envSuperuser) == "" {
 		t.Skipf("%s and %s are not set; run the suite with make test-integration", envPrimary, envSuperuser)
 	}
+	cloneDatabase(t)
+	return connectHarness(t)
+}
+
+// newStackHarness connects to the database the stack's own api and worker
+// use, for tests of what migrate and seed left there and of the services
+// that read it through the stack, such as the render service.
+func newStackHarness(t *testing.T) *harness {
+	t.Helper()
+	if os.Getenv(envPrimary) == "" || os.Getenv(envSuperuser) == "" {
+		t.Skipf("%s and %s are not set; run the suite with make test-integration", envPrimary, envSuperuser)
+	}
+	h := connectHarness(t)
+	h.stack = true
+	return h
+}
+
+func connectHarness(t *testing.T) *harness {
+	t.Helper()
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("load config: %v", err)
@@ -330,7 +358,7 @@ func (h *harness) resumeReplay(t *testing.T) {
 	}
 }
 
-// member is one organization with one person in it, made behind the policies'
+// member is one person in the test's organization, made behind the policies'
 // back so that what a test observes is only the policies' doing.
 type member struct {
 	org  uuid.UUID
@@ -338,34 +366,122 @@ type member struct {
 	ctx  context.Context
 }
 
+// makeMember makes an owner of the test's organization; the first call makes
+// the organization, named after slug, or on the stack finds the seed's.
 func (h *harness) makeMember(t *testing.T, slug string) member {
 	t.Helper()
-	ctx := context.Background()
-	// Unique per run so repeated runs against a kept database do not collide.
-	suffix := uuid.NewString()[:8]
-	full := fmt.Sprintf("%s-%s", slug, suffix)
+	if h.org == nil && h.stack {
+		o := tenant.Org{Slug: seed.DemoOrgSlug}
+		if err := h.super.QueryRow(context.Background(), `SELECT id FROM org WHERE slug = $1`, o.Slug).Scan(&o.ID); err != nil {
+			t.Fatalf("find the seed's organization on the stack: %v", err)
+		}
+		h.org = &o
+	}
+	if h.org == nil {
+		o := h.makeOrganization(t, slug)
+		h.org = &o
+	}
+	return h.makePerson(t, *h.org, slug, "owner")
+}
 
-	var m member
-	if err := h.super.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, full, slug).Scan(&m.org); err != nil {
-		t.Fatalf("create org %s: %v", full, err)
+// makeOutsider makes a plain member of the test's organization who may make
+// spaces of their own: the outsider to a space closed with closeSpace.
+func (h *harness) makeOutsider(t *testing.T, slug string) member {
+	t.Helper()
+	if h.org == nil {
+		t.Fatal("make the organization's owner with makeMember before an outsider")
 	}
-	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, $2) RETURNING id`,
-		full+"@example.test", "Person of "+slug).Scan(&m.user); err != nil {
-		t.Fatalf("create user in %s: %v", full, err)
+	m := h.makePerson(t, *h.org, slug, "member")
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO global_grant (org_id, permission, subject_type, user_id) VALUES ($1, 'createSpace', 'user', $2)`, m.org, m.user); err != nil {
+		t.Fatalf("let the outsider make spaces: %v", err)
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, m.org, m.user); err != nil {
-		t.Fatalf("make the user a member of %s: %v", full, err)
-	}
-	t.Cleanup(func() {
-		// The hub first: its page goes with the organization, and clearing it
-		// then would touch the row being deleted.
-		h.cleanupExec(t, h.super, `UPDATE org SET hub_page_id = NULL WHERE id = $1`, m.org)
-		h.cleanupExec(t, h.super, `DELETE FROM org WHERE id = $1`, m.org)
-		h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, m.user)
-	})
-	m.ctx = db.WithUser(tenant.WithOrg(ctx, tenant.Org{ID: m.org, Slug: full}), m.user)
 	h.settle(t)
 	return m
+}
+
+// closeSpace gives what a space grants everyone to the people kept instead,
+// so that only they, those it names and the administrators reach it.
+func (h *harness) closeSpace(t *testing.T, space any, keep ...uuid.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := h.super.Exec(ctx, `
+		INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
+		SELECT g.org_id, g.space_id, g.permission, 'user', k.id
+		FROM space_grant g CROSS JOIN unnest($2::uuid[]) AS k (id)
+		WHERE g.space_id = $1 AND g.subject_type = 'everyone'`, space, keep); err != nil {
+		t.Fatalf("keep the space open to %v: %v", keep, err)
+	}
+	if _, err := h.super.Exec(ctx, `DELETE FROM space_grant WHERE space_id = $1 AND subject_type = 'everyone'`, space); err != nil {
+		t.Fatalf("close the space: %v", err)
+	}
+	h.settle(t)
+}
+
+// openSpaceTo gives people what a new space grants everyone, in a space closed
+// before they were made.
+func (h *harness) openSpaceTo(t *testing.T, space any, people ...uuid.UUID) {
+	t.Helper()
+	if _, err := h.super.Exec(context.Background(), `
+		INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
+		SELECT s.org_id, s.id, p, 'user', k.id
+		FROM space s CROSS JOIN unnest($2::uuid[]) AS k (id)
+		CROSS JOIN unnest(ARRAY['view', 'addPages', 'addComments', 'delete']) AS p
+		WHERE s.id = $1`, space, people); err != nil {
+		t.Fatalf("let %v into the space: %v", people, err)
+	}
+	h.settle(t)
+}
+
+// makeOtherOrganization makes a second organization with its owner, for the
+// tests of the wall between organizations, which go with them (#380).
+func (h *harness) makeOtherOrganization(t *testing.T, slug string) member {
+	t.Helper()
+	return h.makePerson(t, h.makeOrganization(t, slug), slug, "owner")
+}
+
+func (h *harness) makeOrganization(t *testing.T, slug string) tenant.Org {
+	t.Helper()
+	// Unique per run so repeated runs against a kept database do not collide.
+	o := tenant.Org{Slug: fmt.Sprintf("%s-%s", slug, uuid.NewString()[:8])}
+	if err := h.super.QueryRow(context.Background(), `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, o.Slug, slug).Scan(&o.ID); err != nil {
+		t.Fatalf("create org %s: %v", o.Slug, err)
+	}
+	return o
+}
+
+func (h *harness) makePerson(t *testing.T, o tenant.Org, slug, role string) member {
+	t.Helper()
+	ctx := context.Background()
+	m := member{org: o.ID}
+	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, $2) RETURNING id`,
+		fmt.Sprintf("%s-%s@example.test", slug, uuid.NewString()[:8]), "Person of "+slug).Scan(&m.user); err != nil {
+		t.Fatalf("create user in %s: %v", o.Slug, err)
+	}
+	if h.stack {
+		t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, m.user) })
+	}
+	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, o.ID, m.user, role); err != nil {
+		t.Fatalf("make the user a member of %s: %v", o.Slug, err)
+	}
+	m.ctx = db.WithUser(tenant.WithOrg(ctx, o), m.user)
+	h.settle(t)
+	return m
+}
+
+// spaceKeySuffix is how many random letters uniqueKey adds to a prefix.
+const (
+	spaceKeySuffix  = 4
+	spaceKeyLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
+
+// uniqueKey is a space key that starts with prefix and that no other run on
+// the same database takes, for tests on the stack's database.
+func uniqueKey(prefix string) string {
+	b := make([]byte, spaceKeySuffix)
+	for i := range b {
+		b[i] = spaceKeyLetters[rand.IntN(len(spaceKeyLetters))]
+	}
+	return prefix + string(b)
 }
 
 // count runs a count(*) query in ctx's tenant scope on the primary.

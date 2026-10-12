@@ -30,7 +30,36 @@ detector on, as the suite runs), per test:
 A clone costs about 160 ms more than making people in one database, well
 under the second the plan set as the bar, so every test gets a database of
 its own. The template is named after a digest of the migrations and reused
-until they change; a run drops what an earlier one left.
+until they change; a run drops what an earlier one left. The whole suite took
+404 s before, with the machine otherwise quiet (load average about 3), and
+646 s after while a browser suite ran beside it (load average 10 to 14); the
+tests under half a second, which do little but start, took a median 0.4 s
+longer each, about 100 s of that difference, the rest being the load.
+
+- **Stronger than the alternative, and a smaller change.** Organization-wide
+  settings, audit, search, home and retention see only the test's own rows
+  without any test being serial or restoring anything, and space keys and
+  names need not be unique across tests. Each test still has exactly one
+  organization, made by its first `makeMember`.
+- **The outsider is somebody without the right.** The tests that used a
+  second organization as the outsider now use a member of the same
+  organization to whom the space is closed (`makeOutsider`, `closeSpace`),
+  and each keeps its raw SQL half. Where the database has no access policy
+  within an organization (theme rows, token rows, attachment tombstones) the
+  tenant wall is still all that refuses, so those checks keep a second
+  organization and go with the tenant wall's own tests in #380's PR 2.
+- **What reaches the stack runs on the stack's database.** The tests of what
+  `migrate` and `seed` left, the throwaway organizations, and the PDF test,
+  whose render service prints through the stack's web and api, use
+  `newStackHarness`; the PDF test adds its people to the seed's organization,
+  takes space keys no other run takes, and puts back what it changed.
+- **Cloned while the test waits.** Making the next test's clone while the
+  current one ran hid the cost, but its WAL held that test's replica back by
+  seconds on a busy machine, past the suite's waits; clones are dropped in
+  the background, which writes almost nothing.
+- **The outbox has no stack worker any more.** Tests that relied on the
+  stack's worker delivering their webhooks or draining their outbox run its
+  handlers in process (`runStackWorker`).
 
 ## 2026-10-12: An organization travels as one archive of its spaces' archives, into an organization without spaces (#383)
 

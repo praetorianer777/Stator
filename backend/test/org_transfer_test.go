@@ -21,7 +21,7 @@ import (
 )
 
 // orgTransferAPI keeps themes in the app's bucket too, as transferAPI does
-// files on pages, so the stack's worker finds them as the suite's watch does.
+// files on pages.
 func orgTransferAPI(t *testing.T, h *harness) *apiServer {
 	t.Helper()
 	return transferAPI(t, h, func(s *httpapi.Server) { s.Themes = theme.NewService(h.cluster, h.appStore(t)) })
@@ -205,7 +205,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	if _, err := h.super.Exec(ctx, `DELETE FROM app_user WHERE id = $1`, doraID); err != nil {
 		t.Fatal(err)
 	}
-	to := h.makeMember(t, "org-to")
+	to := h.makeOtherOrganization(t, "org-to")
 	toSlug := h.slugOf(t, to.org)
 	t.Cleanup(func() {
 		h.cleanupExec(t, h.super, `UPDATE org SET default_theme_id = NULL, hub_page_id = NULL WHERE id = $1`, to.org)
@@ -421,7 +421,7 @@ func TestTheDatabaseKeepsOrgTransfersToAdministrators(t *testing.T) {
 		t.Fatalf("an administrator cannot queue an import through SQL: %v", err)
 	}
 	// The suite's rows would otherwise wait for a worker that has no file
-	// for them; the stack's worker may take one first, which ends it too.
+	// for them.
 	t.Cleanup(func() {
 		h.cleanupExec(t, h.super, `DELETE FROM org_export WHERE id = $1`, export)
 		h.cleanupExec(t, h.super, `DELETE FROM org_import WHERE id = $1`, imported)
@@ -446,10 +446,5 @@ func TestTheDatabaseKeepsOrgTransfersToAdministrators(t *testing.T) {
 	actAs(t, conn, home.org, memberID)
 	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM org_export) + (SELECT count(*) FROM org_import)`).Scan(&seen); err != nil || seen != 0 {
 		t.Errorf("a member reads %d jobs: %v", seen, err)
-	}
-	other := h.makeMember(t, "org-transfer-sql-other")
-	actAs(t, conn, other.org, other.user)
-	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM org_export WHERE id = $1) + (SELECT count(*) FROM org_import WHERE id = $2)`, export, imported).Scan(&seen); err != nil || seen != 0 {
-		t.Errorf("another organization's owner reads %d of the jobs: %v", seen, err)
 	}
 }

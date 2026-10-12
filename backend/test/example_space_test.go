@@ -32,8 +32,8 @@ import (
 // queues it for (#306), and refused to everybody else by the service and by
 // the database.
 
-// exampleWait bounds how long a test waits for the example to be made, by
-// its own watch or by the stack's worker, whichever takes the job first.
+// exampleWait bounds how long a test waits for its own watch to make the
+// example.
 const exampleWait = 2 * time.Minute
 
 func nodeKinds(n document.Node, into map[string]bool) {

@@ -170,7 +170,7 @@ func quoteIdent(name string) string { return `"` + strings.ReplaceAll(name, `"`,
 // An organization made by the endpoint is signed in to, used and removed, and
 // nothing of it is left in any table or in the bucket.
 func TestThrowawayOrganizations(t *testing.T) {
-	h := newHarness(t)
+	h := newStackHarness(t)
 	kc := newKeycloak(t)
 	kc.reachable(t)
 	a, store := h.startTestOrgAPI(t, kc, true)

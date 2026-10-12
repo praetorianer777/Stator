@@ -42,7 +42,7 @@ func TestATokenActsAsItsOwnerUntilRevoked(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	m := h.makeMember(t, "token-owner")
-	other := h.makeMember(t, "token-elsewhere")
+	other := h.makeOtherOrganization(t, "token-elsewhere")
 	if _, err := h.super.Exec(context.Background(), `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, other.org, m.user); err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +213,9 @@ func TestTokenRowsAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "token-wall-a")
-	b := h.makeMember(t, "token-wall-b")
+	// Token rows have no policy keeping them their owner's within an
+	// organization, so the tenant wall is all this proves until they get one.
+	b := h.makeOtherOrganization(t, "token-wall-b")
 	idA, _ := makeToken(t, api.as(t, a.user, a.org, h.slugOf(t, a.org)), map[string]any{"name": "a's"})
 	makeToken(t, api.as(t, b.user, b.org, h.slugOf(t, b.org)), map[string]any{"name": "b's"})
 

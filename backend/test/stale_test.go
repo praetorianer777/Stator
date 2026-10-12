@@ -242,7 +242,7 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stale-rls")
-	other := h.makeMember(t, "stale-rls-other")
+	other := h.makeOutsider(t, "stale-rls-other")
 	slug := h.slugOf(t, org.org)
 	owner := api.as(t, org.user, org.org, slug)
 	annID, benID := h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member")
@@ -253,6 +253,8 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
 	}}), http.StatusOK, "ann administers SRO")
 	docs := newTree(t, owner, "SRD", "Not reviewed")
+	h.closeSpace(t, ops.space, annID, benID)
+	h.closeSpace(t, docs.space, annID, benID)
 	gone := ops.add(ops.homeID, "Gone quiet")
 	elsewhere := docs.add(docs.homeID, "Quiet elsewhere")
 	h.backdate(t, org.org, `id IN ($3, $4)`, 400, gone, elsewhere)
@@ -335,13 +337,13 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reads nothing of this one", func(t *testing.T) {
+	t.Run("a member the spaces are closed to reads nothing of them", func(t *testing.T) {
 		actAs(t, conn, other.org, other.user)
 		if n := count(all, nil); n != 0 {
-			t.Errorf("another organization reads %d stale pages", n)
+			t.Errorf("a member the spaces are closed to reads %d stale pages", n)
 		}
 		if n := count(all, docsID); n != 0 {
-			t.Errorf("another organization reads %d stale pages naming this one's space", n)
+			t.Errorf("a member the spaces are closed to reads %d stale pages naming one", n)
 		}
 	})
 }

@@ -86,12 +86,14 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 	home := h.makeMember(t, "files")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
-	away := h.makeMember(t, "files-away")
-	stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+	memberID := h.addPerson(t, home.org, "member")
+	member := api.as(t, memberID, home.org, slug)
+	away := h.makeOutsider(t, "files-away")
+	stranger := api.as(t, away.user, away.org, slug)
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "FILES", "Files")
+	h.closeSpace(t, docs.space, memberID)
 	docs.c = member
 	pageID := docs.add(docs.homeID, "Plan")
 	files := "/api/v1/pages/" + pageID + "/attachments"
@@ -181,7 +183,7 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 			"delete":   stranger.delete(t, "/api/v1/attachments/"+pictureID),
 		} {
 			if got.Status != http.StatusNotFound {
-				t.Errorf("%s from another organization: %d %s", what, got.Status, got.Raw)
+				t.Errorf("%s by a member the space is closed to: %d %s", what, got.Status, got.Raw)
 			}
 		}
 		if got := member.get(t, "/api/v1/attachments/not-an-id"); got.Status != http.StatusBadRequest {
@@ -315,11 +317,12 @@ func TestAVideoPlaysInPlaceAndSeeksByRanges(t *testing.T) {
 	home := h.makeMember(t, "video")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
-	away := h.makeMember(t, "video-away")
-	stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+	away := h.makeOutsider(t, "video-away")
+	stranger := api.as(t, away.user, away.org, slug)
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "CLIPS", "Clips")
+	h.closeSpace(t, docs.space)
 	pageID := docs.add(docs.homeID, "Walkthrough")
 	made := obj(t, want(t, owner.uploadAs(t, "/api/v1/pages/"+pageID+"/attachments", "tour.mp4", "video/mp4", clipBytes), http.StatusCreated, "upload a video"), "attachment")
 	id := made["id"].(string)
@@ -379,7 +382,7 @@ func TestAVideoPlaysInPlaceAndSeeksByRanges(t *testing.T) {
 
 	t.Run("a range opens nothing the reader could not download", func(t *testing.T) {
 		if resp, data := stranger.downloadRange(t, path, "bytes=0-3", ""); resp.StatusCode != http.StatusNotFound || bytes.Contains(data, clipBytes[:4]) {
-			t.Errorf("from another organization: %d %q", resp.StatusCode, data)
+			t.Errorf("by a member the space is closed to: %d %q", resp.StatusCode, data)
 		}
 		if resp, _ := nobody.downloadRange(t, path, "bytes=0-3", ""); resp.StatusCode != http.StatusUnauthorized {
 			t.Errorf("without a session: %d", resp.StatusCode)
@@ -522,17 +525,20 @@ func TestTheReaperEmptiesADeletedOrganization(t *testing.T) {
 	}
 }
 
-// Straight through SQL as stator_app, a tenant can neither reach another's
-// files nor aim the reaper at them, and a file cannot be moved off its bytes.
+// Straight through SQL as stator_app, a member can neither reach files they
+// may not read nor aim the reaper at them, and a file cannot be moved off its bytes.
 func TestAttachmentRowsAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "files-wall-a")
-	b := h.makeMember(t, "files-wall-b")
-	ownerA := api.as(t, a.user, a.org, h.slugOf(t, a.org))
-	ownerB := api.as(t, b.user, b.org, h.slugOf(t, b.org))
-	homeA := newTree(t, ownerA, "WALL", "A").homeID
-	newTree(t, ownerB, "WALL", "B")
+	b := h.makeOutsider(t, "files-wall-b")
+	slug := h.slugOf(t, a.org)
+	ownerA := api.as(t, a.user, a.org, slug)
+	ownerB := api.as(t, b.user, b.org, slug)
+	treeA := newTree(t, ownerA, "WALL", "A")
+	homeA := treeA.homeID
+	homeB := newTree(t, ownerB, "THEIRS", "B").homeID
+	h.closeSpace(t, treeA.space)
 	fileA := obj(t, want(t, ownerA.upload(t, "/api/v1/pages/"+homeA+"/attachments", "a.txt", []byte("a")), http.StatusCreated, "upload in A"), "attachment")["id"].(string)
 	keyA := objectKey(a.org, homeA, fileA)
 
@@ -554,9 +560,16 @@ func TestAttachmentRowsAreWalledByTheDatabase(t *testing.T) {
 		t.Error("B sees A's file")
 	}
 	untouched(t, conn, "deleting A's file", `DELETE FROM attachment WHERE id = $1`, fileA)
-	refused(t, conn, "a file in A", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1)`, a.org, homeA)
-	refused(t, conn, "B's file on A's page", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1)`, b.org, homeA)
-	refused(t, conn, "a tombstone naming A's object", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyA, b.org)
+	refused(t, conn, "a file on A's page", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1)`, a.org, homeA)
+	if _, err := conn.Exec(context.Background(), `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1)`, b.org, homeB); err != nil {
+		t.Errorf("B cannot keep a file on their own page: %v", err)
+	}
+
+	// Tombstones have no access policy within an organization, so only the
+	// tenant wall keeps the reaper off A's object until they get one.
+	c := h.makeOtherOrganization(t, "files-wall-c")
+	actAs(t, conn, c.org, c.user)
+	refused(t, conn, "a tombstone naming A's object", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyA, c.org)
 	refused(t, conn, "a tombstone in A", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyA, a.org)
 
 	actAs(t, conn, a.org, a.user)

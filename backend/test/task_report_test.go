@@ -28,6 +28,7 @@ func reportOf(t *testing.T, c *client, query url.Values) ([]string, map[string]a
 func TestATaskReportPicksTasksByItsFilter(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
+	h.runStackWorker(t)
 	org := h.makeMember(t, "task-report")
 	slug := h.slugOf(t, org.org)
 	owner := api.as(t, org.user, org.org, slug)

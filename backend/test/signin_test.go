@@ -217,9 +217,10 @@ func TestSignInRefusals(t *testing.T) {
 	}
 
 	notConfigured := "http://" + appHost + "/login?sso=not_configured"
+	// One organization, its provider set again by each case in turn.
+	org := h.makeOrg(t, "refusals")
 	t.Run("an unknown organization and one without a provider answer alike", func(t *testing.T) {
-		bare := h.makeOrg(t, "bare")
-		for _, slug := range []string{"no-such-org", bare.Slug} {
+		for _, slug := range []string{"no-such-org", org.Slug} {
 			if resp := start(slug); resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != notConfigured {
 				t.Errorf("start for %s = %s to %q, want the sign-in page saying so", slug, resp.Status, resp.Header.Get("Location"))
 			}
@@ -227,7 +228,6 @@ func TestSignInRefusals(t *testing.T) {
 	})
 
 	t.Run("a provider that is turned off is not used", func(t *testing.T) {
-		org := h.makeOrg(t, "off")
 		configureProvider(t, a, org, kc.issuer(), false)
 		if _, _, err := a.sso.Save(tenant.WithOrg(context.Background(), org), oidc.Provider{Issuer: kc.issuer(), ClientID: statorClient, Enabled: false}); err != nil {
 			t.Fatal(err)
@@ -238,7 +238,6 @@ func TestSignInRefusals(t *testing.T) {
 	})
 
 	t.Run("a provider that cannot be reached is named as the reason", func(t *testing.T) {
-		org := h.makeOrg(t, "offline")
 		configureProvider(t, a, org, "http://nowhere.invalid/realms/none", false)
 		if resp := start(org.Slug); resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != "http://"+appHost+"/login?sso=unreachable" {
 			t.Errorf("start with an unreachable provider = %s to %q", resp.Status, resp.Header.Get("Location"))
@@ -246,7 +245,6 @@ func TestSignInRefusals(t *testing.T) {
 	})
 
 	t.Run("an expired sign-in is refused at the callback", func(t *testing.T) {
-		org := h.makeOrg(t, "slow")
 		configureProvider(t, a, org, kc.issuer(), false)
 		if resp := start(org.Slug); resp.StatusCode != http.StatusFound || !strings.HasPrefix(resp.Header.Get("Location"), kc.issuer()) {
 			t.Fatalf("start = %s to %q", resp.Status, resp.Header.Get("Location"))

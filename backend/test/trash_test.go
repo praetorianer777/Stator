@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -33,9 +34,11 @@ func TestTrashAndRestoreOverTheAPI(t *testing.T) {
 	home := h.makeMember(t, "trash")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	memberID := h.addPerson(t, home.org, "member")
+	member := api.as(t, memberID, home.org, slug)
 
 	docs := newTree(t, owner, "TRASH", "Bin")
+	h.closeSpace(t, docs.space, memberID)
 	docs.c = member
 	a := docs.add(docs.homeID, "A")
 	a1 := docs.add(a, "A1")
@@ -144,11 +147,11 @@ func TestTrashAndRestoreOverTheAPI(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reaches none of it", func(t *testing.T) {
+	t.Run("a member the space is closed to reaches none of it", func(t *testing.T) {
 		d := docs.add(docs.homeID, "D")
 		want(t, member.delete(t, "/api/v1/pages/"+d), http.StatusNoContent, "delete D")
-		away := h.makeMember(t, "trash-away")
-		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+		away := h.makeOutsider(t, "trash-away")
+		stranger := api.as(t, away.user, away.org, slug)
 		for what, got := range map[string]response{
 			"list":    stranger.get(t, "/api/v1/spaces/TRASH/trash"),
 			"restore": stranger.post(t, "/api/v1/spaces/TRASH/trash/"+d+"/restore", nil),
@@ -162,16 +165,19 @@ func TestTrashAndRestoreOverTheAPI(t *testing.T) {
 	})
 }
 
-// Straight through SQL as stator_app another tenant's trash is out of reach,
-// the home page cannot be trashed, and an item cannot name another tenant's page.
+// Straight through SQL as stator_app the trash of a space closed to somebody is
+// out of their reach, the home page cannot be trashed, and an item cannot name
+// a page that is not there.
 func TestTheTrashIsWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "trash-wall-a")
-	b := h.makeMember(t, "trash-wall-b")
-	ownerA := api.as(t, a.user, a.org, h.slugOf(t, a.org))
+	b := h.makeOutsider(t, "trash-wall-b")
+	slug := h.slugOf(t, a.org)
+	ownerA := api.as(t, a.user, a.org, slug)
 	docsA := newTree(t, ownerA, "WALL", "Walled")
-	docsB := newTree(t, api.as(t, b.user, b.org, h.slugOf(t, b.org)), "WALL", "Theirs")
+	docsB := newTree(t, api.as(t, b.user, b.org, slug), "THEIRS", "Theirs")
+	h.closeSpace(t, docsA.space)
 	gone := docsA.add(docsA.homeID, "Gone")
 	want(t, ownerA.delete(t, "/api/v1/pages/"+gone), http.StatusNoContent, "delete")
 	theirs := docsB.add(docsB.homeID, "Theirs")
@@ -180,7 +186,7 @@ func TestTheTrashIsWalledByTheDatabase(t *testing.T) {
 	actAs(t, conn, b.org, b.user)
 	untouched(t, conn, "restoring A's page from B", `UPDATE page SET trashed_at = NULL, trash_id = NULL WHERE id = $1`, gone)
 	untouched(t, conn, "purging A's page from B", `DELETE FROM page WHERE id = $1`, gone)
-	refused(t, conn, "an item named after A's page", `UPDATE page SET trashed_at = now(), trash_id = $2 WHERE id = $1`, theirs, gone)
+	refused(t, conn, "an item named after a page that is not there", `UPDATE page SET trashed_at = now(), trash_id = $2 WHERE id = $1`, theirs, uuid.New())
 
 	actAs(t, conn, a.org, a.user)
 	refused(t, conn, "trashing the home page", `UPDATE page SET trashed_at = now(), trash_id = id WHERE id = $1`, docsA.homeID)

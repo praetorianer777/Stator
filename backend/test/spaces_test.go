@@ -23,7 +23,7 @@ var helloDoc = map[string]any{"type": "doc", "content": []any{
 }}
 
 // A space is made by an administrator with its home page, seen and edited by
-// every member, and invisible from another organization.
+// every member, and invisible to a member it is closed to.
 func TestSpacesOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
@@ -32,8 +32,8 @@ func TestSpacesOverTheAPI(t *testing.T) {
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
 	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
-	away := h.makeMember(t, "spaces-away")
-	stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+	away := h.makeOutsider(t, "spaces-away")
+	stranger := api.as(t, away.user, away.org, slug)
 
 	made := want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": " docs ", "name": " Handbook ", "description": "How we work."}), http.StatusCreated, "make a space")
 	sp := obj(t, made, "space")
@@ -152,7 +152,8 @@ func TestSpacesOverTheAPI(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization sees nothing and may use the same key", func(t *testing.T) {
+	t.Run("a member the space is closed to sees nothing of it", func(t *testing.T) {
+		h.closeSpace(t, sp["id"])
 		if got := stranger.get(t, "/api/v1/spaces/DOCS"); got.Status != http.StatusNotFound {
 			t.Errorf("a stranger found the space: %d", got.Status)
 		}
@@ -168,7 +169,6 @@ func TestSpacesOverTheAPI(t *testing.T) {
 		if listed := list(t, want(t, stranger.get(t, "/api/v1/spaces"), http.StatusOK, "list away"), "spaces"); len(listed) != 0 {
 			t.Errorf("a stranger lists %v", listed)
 		}
-		want(t, stranger.post(t, "/api/v1/spaces", map[string]any{"key": "DOCS", "name": "Theirs"}), http.StatusCreated, "the same key elsewhere")
 	})
 
 	t.Run("deleting the space takes its pages with it", func(t *testing.T) {
@@ -245,22 +245,25 @@ func untouched(t *testing.T, conn *pgx.Conn, what, sql string, args ...any) {
 }
 
 // The service refusing is not proof: straight through SQL as stator_app, a
-// tenant cannot read, change or point into another tenant's spaces and pages,
+// member cannot read, change or point into spaces and pages closed to them,
 // and the tree keeps its shape within one.
 func TestSpaceRowsAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "space-wall-a")
-	b := h.makeMember(t, "space-wall-b")
-	ownerA := api.as(t, a.user, a.org, h.slugOf(t, a.org))
-	ownerB := api.as(t, b.user, b.org, h.slugOf(t, b.org))
+	b := h.makeOutsider(t, "space-wall-b")
+	slug := h.slugOf(t, a.org)
+	ownerA := api.as(t, a.user, a.org, slug)
+	ownerB := api.as(t, b.user, b.org, slug)
 
 	spA := obj(t, want(t, ownerA.post(t, "/api/v1/spaces", map[string]any{"key": "WALL", "name": "Walled"}), http.StatusCreated, "space in A"), "space")
 	spA2 := obj(t, want(t, ownerA.post(t, "/api/v1/spaces", map[string]any{"key": "OTHER", "name": "Other"}), http.StatusCreated, "second space in A"), "space")
-	spB := obj(t, want(t, ownerB.post(t, "/api/v1/spaces", map[string]any{"key": "WALL", "name": "Theirs"}), http.StatusCreated, "space in B"), "space")
+	spB := obj(t, want(t, ownerB.post(t, "/api/v1/spaces", map[string]any{"key": "THEIRS", "name": "Theirs"}), http.StatusCreated, "space in B"), "space")
 	spaceA, homeA := spA["id"].(string), spA["homePageId"].(string)
-	homeA2 := spA2["homePageId"].(string)
+	spaceA2, homeA2 := spA2["id"].(string), spA2["homePageId"].(string)
 	spaceB, homeB := spB["id"].(string), spB["homePageId"].(string)
+	h.closeSpace(t, spaceA)
+	h.closeSpace(t, spaceA2)
 
 	conn := appConn(t)
 	count := func(sql string, args ...any) int {
@@ -279,10 +282,11 @@ func TestSpaceRowsAreWalledByTheDatabase(t *testing.T) {
 	}
 
 	actAs(t, conn, b.org, b.user)
-	for _, table := range []string{"space", "page"} {
-		if got := count(`SELECT count(*) FROM `+table+` WHERE org_id = $1`, a.org); got != 0 {
-			t.Errorf("organization B sees %d of A's rows in %s", got, table)
-		}
+	if got := count(`SELECT count(*) FROM space WHERE id = ANY($1::uuid[])`, []string{spaceA, spaceA2}); got != 0 {
+		t.Errorf("B sees %d of A's closed spaces", got)
+	}
+	if got := count(`SELECT count(*) FROM page WHERE space_id = ANY($1::uuid[])`, []string{spaceA, spaceA2}); got != 0 {
+		t.Errorf("B sees %d pages of A's closed spaces", got)
 	}
 	untouched(t, conn, "renaming A's space", `UPDATE space SET name = 'Taken' WHERE id = $1`, spaceA)
 	untouched(t, conn, "retitling A's home page", `UPDATE page SET title = 'Taken' WHERE id = $1`, homeA)

@@ -16,13 +16,14 @@ type tree struct {
 	t      *testing.T
 	c      *client
 	key    string
+	space  string
 	homeID string
 }
 
 func newTree(t *testing.T, c *client, key, name string) *tree {
 	t.Helper()
 	sp := obj(t, want(t, c.post(t, "/api/v1/spaces", map[string]any{"key": key, "name": name}), http.StatusCreated, "make "+key), "space")
-	return &tree{t: t, c: c, key: key, homeID: sp["homePageId"].(string)}
+	return &tree{t: t, c: c, key: key, space: sp["id"].(string), homeID: sp["homePageId"].(string)}
 }
 
 // add publishes a page under a parent, with more fields such as afterId.
@@ -76,10 +77,13 @@ func TestThePageTreeOverTheAPI(t *testing.T) {
 	home := h.makeMember(t, "tree")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	memberID := h.addPerson(t, home.org, "member")
+	member := api.as(t, memberID, home.org, slug)
 
 	docs := newTree(t, owner, "DOCS", "Docs")
 	other := newTree(t, owner, "OTHER", "Other")
+	h.closeSpace(t, docs.space, memberID)
+	h.closeSpace(t, other.space, memberID)
 	docs.c = member
 
 	p1 := docs.add(docs.homeID, "One")
@@ -171,10 +175,10 @@ func TestThePageTreeOverTheAPI(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reaches none of it", func(t *testing.T) {
-		away := h.makeMember(t, "tree-away")
-		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
-		theirs := newTree(t, stranger, "DOCS", "Theirs")
+	t.Run("a member the spaces are closed to reaches none of it", func(t *testing.T) {
+		away := h.makeOutsider(t, "tree-away")
+		stranger := api.as(t, away.user, away.org, slug)
+		theirs := newTree(t, stranger, "THEIRS", "Theirs")
 		for what, got := range map[string]response{
 			"list":         stranger.get(t, "/api/v1/spaces/DOCS/pages?parent="+docs.homeID),
 			"move it":      stranger.post(t, "/api/v1/pages/"+p3+"/move", map[string]any{"parentId": theirs.homeID}),
@@ -227,15 +231,17 @@ func TestTwoCrossingMovesCannotCloseALoop(t *testing.T) {
 	}
 }
 
-// Straight through SQL as stator_app the tree still cannot loop, and a page
-// cannot be hung into another organization's tree.
+// Straight through SQL as stator_app the tree still cannot loop, a page cannot
+// be hung into another space's tree, nor moved by somebody the space is closed to.
 func TestTheTreeIsGuardedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "tree-wall-a")
-	b := h.makeMember(t, "tree-wall-b")
-	docsA := newTree(t, api.as(t, a.user, a.org, h.slugOf(t, a.org)), "WALL", "Walled")
-	docsB := newTree(t, api.as(t, b.user, b.org, h.slugOf(t, b.org)), "WALL", "Theirs")
+	b := h.makeOutsider(t, "tree-wall-b")
+	slug := h.slugOf(t, a.org)
+	docsA := newTree(t, api.as(t, a.user, a.org, slug), "WALL", "Walled")
+	docsB := newTree(t, api.as(t, b.user, b.org, slug), "THEIRS", "Theirs")
+	h.closeSpace(t, docsA.space)
 	top := docsA.add(docsA.homeID, "Top")
 	mid := docsA.add(top, "Mid")
 	low := docsA.add(mid, "Low")
@@ -246,7 +252,7 @@ func TestTheTreeIsGuardedByTheDatabase(t *testing.T) {
 	refused(t, conn, "a page under its own grandchild", `UPDATE page SET parent_id = $2 WHERE id = $1`, top, low)
 	refused(t, conn, "a page under itself", `UPDATE page SET parent_id = $1 WHERE id = $1`, top)
 	refused(t, conn, "a new page that is its own parent", `INSERT INTO page (id, org_id, space_id, parent_id, rank, title) VALUES ($1, $2, (SELECT space_id FROM page WHERE id = $3), $1, 'W', 'Loop')`, uuid.NewString(), a.org, top)
-	refused(t, conn, "a page under another organization's page", `UPDATE page SET parent_id = $2 WHERE id = $1`, mid, theirs)
+	refused(t, conn, "a page under a page of another space", `UPDATE page SET parent_id = $2 WHERE id = $1`, mid, theirs)
 
 	actAs(t, conn, b.org, b.user)
 	untouched(t, conn, "moving A's page from B", `UPDATE page SET parent_id = $2 WHERE id = $1`, mid, theirs)

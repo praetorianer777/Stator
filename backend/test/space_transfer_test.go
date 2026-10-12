@@ -28,8 +28,8 @@ import (
 // transferWait bounds one export or import in the suite.
 const transferWait = 2 * time.Minute
 
-// transferAPI keeps the files on pages in the app's bucket too, so a space
-// export the stack's worker runs finds them as the suite's own watch does.
+// transferAPI keeps the files on pages in the app's bucket too, where the
+// suite's own watch reads them as the app's worker does.
 func transferAPI(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *apiServer {
 	t.Helper()
 	store := h.appStore(t)
@@ -362,7 +362,7 @@ func TestASpaceTravelsToAnotherOrganizationWhole(t *testing.T) {
 		}
 	})
 
-	to := h.makeMember(t, "travel-to")
+	to := h.makeOtherOrganization(t, "travel-to")
 	toSlug := h.slugOf(t, to.org)
 	landedOwner := api.as(t, to.user, to.org, toSlug)
 	if _, err := h.super.Exec(context.Background(), `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, to.org, annID); err != nil {

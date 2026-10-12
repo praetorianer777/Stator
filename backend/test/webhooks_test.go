@@ -25,11 +25,11 @@ import (
 // Outbound webhooks (#110): administrators keep them, every event they take
 // reaches a receiver signed, read as their owner when it is sent, retried,
 // redelivered and turned off, and the database holds the app role to all of
-// it. The stack's worker sends what the outbox queues; the receiver is the
+// it. runStackWorker sends what the outbox queues; the receiver is the
 // armature-stub's hook bins.
 
 // webhooks is the service as cmd/api builds it, with the stack's key, so the
-// stack's worker opens what this process seals.
+// worker a test runs opens what this process seals.
 func (h *harness) webhooks(t *testing.T) *webhook.Service {
 	t.Helper()
 	box, err := secret.New(testSecretKey(t))
@@ -179,6 +179,7 @@ func makeHook(t *testing.T, c *client, name, address string, topics ...string) (
 func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
+	h.runStackWorker(t)
 	home := h.makeMember(t, "hooks-keep")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
@@ -314,6 +315,7 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 func TestContentEventsReachTheReceiverAsTheOwnerMayReadThem(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
+	h.runStackWorker(t)
 	home := h.makeMember(t, "hooks-events")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
@@ -371,6 +373,7 @@ func TestContentEventsReachTheReceiverAsTheOwnerMayReadThem(t *testing.T) {
 func TestAFailingReceiverIsRetriedThenTurnedOff(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
+	h.runStackWorker(t)
 	home := h.makeMember(t, "hooks-retry")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
@@ -446,6 +449,7 @@ func TestAFailingReceiverIsRetriedThenTurnedOff(t *testing.T) {
 func TestAPayloadIsWithheldWhatItsOwnerMayNotViewWhenItIsSent(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
+	h.runStackWorker(t)
 	home := h.makeMember(t, "hooks-perm")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
@@ -530,7 +534,6 @@ func TestWebhooksAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "hooks-rls")
-	other := h.makeMember(t, "hooks-rls-other")
 	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
 	memberID := h.addPerson(t, home.org, "member")
 	_, address := hookBin(t)
@@ -577,13 +580,5 @@ func TestWebhooksAreWalledByTheDatabase(t *testing.T) {
 		denied(t, conn, "a member adds a webhook", `INSERT INTO webhook_endpoint (org_id, name, url, secret_sealed, topics) VALUES ($1, 'Mine', 'https://x.example', '\x01', '{*}')`, home.org)
 		untouched(t, conn, "a member deletes it", `DELETE FROM webhook_endpoint WHERE id = $1`, id)
 		untouched(t, conn, "a member turns it off", `UPDATE webhook_endpoint SET enabled = false WHERE id = $1`, id)
-	})
-
-	t.Run("another organization's administrator never sees it", func(t *testing.T) {
-		actAs(t, conn, other.org, other.user)
-		if n := count(`SELECT count(*) FROM webhook_endpoint WHERE id = $1`, id) + count(`SELECT count(*) FROM webhook_delivery WHERE endpoint_id = $1`, id); n != 0 {
-			t.Errorf("another organization reads %d rows", n)
-		}
-		denied(t, conn, "point a webhook into another organization", `INSERT INTO webhook_endpoint (org_id, name, url, secret_sealed, topics) VALUES ($1, 'Theirs', 'https://x.example', '\x01', '{*}')`, home.org)
 	})
 }
