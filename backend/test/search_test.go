@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/praetorianer777/stator/backend/internal/document"
 )
 
@@ -514,6 +516,69 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 		actAs(t, conn, a.org, annID)
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_visit WHERE page_id = $1`, closed).Scan(&n); err != nil || n != 1 {
 			t.Errorf("ann reads %d of her visits to the page (%v)", n, err)
+		}
+	})
+
+	// The hit functions read past row level security to use the indexes, and
+	// check a space at a time where no page can answer otherwise; whoever asks,
+	// they must return exactly the rows row level security would.
+	t.Run("the search functions return what row level security returns", func(t *testing.T) {
+		slug := h.slugOf(t, a.org)
+		annID, benID := h.addPerson(t, a.org, "member"), h.addPerson(t, a.org, "member")
+		ann := api.as(t, annID, a.org, slug)
+		walled := docsA.add(docsA.homeID, "Walled hidden plan", map[string]any{"body": textDoc("hidden words")})
+		want(t, ownerA.upload(t, pagePath(walled, "/attachments"), "hidden-notes.txt", []byte("x")), http.StatusCreated, "a file on it")
+		want(t, ownerA.post(t, pagePath(walled, "/comments"), map[string]any{"body": commentDoc("hidden remark")}), http.StatusCreated, "a comment on it")
+		want(t, restrict(t, ownerA, walled, []any{user(annID)}, nil), http.StatusOK, "restrict the page to ann")
+		docsA.add(docsA.homeID, "Hidden draft", map[string]any{"publish": false, "body": textDoc("hidden words")})
+
+		open := newTree(t, ownerA, "OPENW", "Open")
+		openPage := open.add(open.homeID, "Open hidden notes", map[string]any{"body": textDoc("hidden words")})
+		want(t, ownerA.upload(t, pagePath(openPage, "/attachments"), "hidden-open.txt", []byte("x")), http.StatusCreated, "a file on the open page")
+		want(t, ann.post(t, pagePath(openPage, "/comments"), map[string]any{"body": commentDoc("hidden open remark")}), http.StatusCreated, "a comment on the open page")
+
+		const q = `websearch_to_tsquery('stator_search', 'hidden')`
+		pairs := []struct{ what, viaFunction, viaPolicies string }{
+			{"pages", `SELECT id::text FROM page_search_rows(` + q + `)`,
+				`SELECT id::text FROM page WHERE search_vector @@ ` + q + ` AND version > 0`},
+			{"files", `SELECT attachment_search_hits::text FROM attachment_search_hits(` + q + `)`,
+				`SELECT id::text FROM attachment WHERE search_vector @@ ` + q},
+			{"comments", `SELECT comment_search_hits::text FROM comment_search_hits(` + q + `)`,
+				`SELECT id::text FROM comment WHERE search_vector @@ ` + q},
+		}
+		ids := func(t *testing.T, sql string) []string {
+			t.Helper()
+			rows, err := conn.Query(ctx, sql)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := pgx.CollectRows(rows, pgx.RowTo[string])
+			if err != nil {
+				t.Fatal(err)
+			}
+			return got
+		}
+		for _, who := range []struct {
+			name string
+			act  func()
+			min  int
+		}{
+			{"the owner", func() { actAs(t, conn, a.org, a.user) }, 3},
+			{"ann, whom the restriction names", func() { actAs(t, conn, a.org, annID) }, 3},
+			{"ben, whom it does not", func() { actAs(t, conn, a.org, benID) }, 2},
+			{"somebody of another organization", func() { actAs(t, conn, b.org, b.user) }, 0},
+			{"an anonymous reader", func() { actAnonymously(t, conn, a.org) }, 0},
+		} {
+			who.act()
+			for _, p := range pairs {
+				got, want := ids(t, p.viaFunction), ids(t, p.viaPolicies)
+				if !sameSet(got, want) {
+					t.Errorf("%s: the function returns %d %s, row level security %d", who.name, len(got), p.what, len(want))
+				}
+				if p.what == "pages" && len(got) < who.min {
+					t.Errorf("%s finds %d pages, want at least %d: the check proves nothing", who.name, len(got), who.min)
+				}
+			}
 		}
 	})
 

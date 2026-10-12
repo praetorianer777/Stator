@@ -3,6 +3,29 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-12: Search checks rights only for what matches, a space at a time (#370)
+
+Row level security puts a table's policies before every condition that is not
+leakproof, and `@@` is not, so a search ran `perm_page_viewable` on every page
+of the organization before the GIN index could narrow anything: 8 s at p95 for
+a space of 2,000 pages under the standard load test.
+
+- **Hit functions.** `page_search_rows`, `attachment_search_hits` and
+  `comment_search_hits` read as their owner, which row level security does not
+  hold, match the words through the index, and then apply what their table's
+  tenant and viewers policies apply, to the matches only. `page_search_rows`
+  returns what a hit shows, so the search reads no other row of page and no
+  check runs twice. An integration test compares each function with row level
+  security for the owner, a person a restriction names, one it does not,
+  another organization and an anonymous reader.
+- **A space at a time.** Where no page of a space is restricted from viewing
+  and none is unpublished but by the actor, `perm_space_plain`, a page's
+  answer is the space's (ancestors share their page's space through
+  `page_parent_fkey`), so the space is checked once. Anonymous readers always
+  take the page by page way, which knows about links.
+- **Not yet.** A search without words, and the page tree (#371), still check
+  page by page.
+
 ## 2026-10-12: Apache-2.0 instead of the AGPL (#376)
 
 Stator is licensed under the Apache License 2.0, the license of Armature,
