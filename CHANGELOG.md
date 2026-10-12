@@ -9,6 +9,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A k6 load test (#368). `make test-load` puts readers, editors and people
+  editing a page together on the running stack at a smoke, standard or
+  ceiling level and fails when a threshold breaks; the Load workflow runs it
+  by hand. `docs/load-testing.md` records what one machine carries and the
+  limits it found: search and the page tree of a large space (#370, #371) and
+  nginx's connections to the api (#372).
 - Backup and restore (#108). `make backup` writes the database and every
   stored file into one archive, `make restore` brings the site back from it,
   and the Helm chart renders the same as two jobs started with `kubectl`.
