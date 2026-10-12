@@ -1,7 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
 import { accessQueryKey, isNoAccess, type GlobalCan } from "@/api/permissions";
-import { LOGIN_PATH, QUERY_STALE_MS } from "@/config";
+import { LOGIN_PATH, QUERY_NETWORK_RETRIES, QUERY_NETWORK_RETRY_MS, QUERY_STALE_MS } from "@/config";
 
 /** Marks a query or mutation that answers a 401 itself, such as asking who is signed in. */
 export const HANDLES_UNAUTHORIZED = { handlesUnauthorized: true } as const;
@@ -21,8 +21,11 @@ export function createQueryClient(onUnauthorized: (client: QueryClient) => void)
     defaultOptions: {
       queries: {
         // A failed request is usually a real answer (401, 404, validation), not
-        // a blip worth retrying three times while the user waits.
-        retry: false,
+        // a blip worth retrying while the user waits. One that got no answer at
+        // all, such as the connection dropping as the network changes, is asked
+        // again: left alone it would stand for a wrong answer until a reload.
+        retry: (failures, error) => !(error instanceof ApiError) && failures < QUERY_NETWORK_RETRIES,
+        retryDelay: QUERY_NETWORK_RETRY_MS,
         refetchOnWindowFocus: false,
         staleTime: QUERY_STALE_MS,
       },

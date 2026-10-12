@@ -240,6 +240,14 @@ describe("the issue list block in the read view", () => {
     expect(sent.some((request) => request.path === "/armature/search")).toBe(false);
   });
 
+  it("says the list failed, not that Armature is not connected, when the account cannot be read", async () => {
+    const sent = stubApi({ "GET /armature/account": { status: 500, body: { error: { code: "internal_error", message: "Something went wrong." } } } });
+    wrap(<DocView doc={listDoc(QUERY, ["key"], 20)} />);
+    await waitFor(() => expect(list()).toHaveAttribute("data-state", "failed"));
+    expect(list()).not.toHaveTextContent("has not connected");
+    expect(sent.some((request) => request.path === "/armature/search")).toBe(false);
+  });
+
   it("says when Armature does not answer", async () => {
     stubApi({
       "GET /armature/account": account(),

@@ -104,6 +104,9 @@ describe("search", () => {
 
 describe("a path that leads nowhere", () => {
   it("says so inside the shell and offers the way home", async () => {
+    // Answered as the API answers, so no request waits out the retries a
+    // request without any answer gets.
+    stubApi({});
     const router = await renderAt("/no/such/page");
     expect(await screen.findByText("Page not found")).toBeInTheDocument();
     expect(document.querySelector("[data-not-found]")).not.toBeNull();

@@ -46,6 +46,10 @@ export const CARET_MENU_MIN_WIDTH_PX = 224;
 /** How long a query's answer stays fresh before a refetch. */
 export const QUERY_STALE_MS = 10_000;
 
+/** How often a query that got no answer at all is asked again, and after how long. */
+export const QUERY_NETWORK_RETRIES = 2;
+export const QUERY_NETWORK_RETRY_MS = 300;
+
 /** Where a visitor without a session is sent, with where they were headed in `next`. */
 export const LOGIN_PATH = "/login";
 

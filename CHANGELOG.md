@@ -1096,6 +1096,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A file uploaded while a page's list of files was still loading now shows
+  at once; it could stay missing until the page was reloaded (#327).
+- A request that gets no answer at all, such as when the network changes, is
+  asked again twice before anything says it failed, and an Armature issue
+  list that cannot read the account says it failed rather than that Armature
+  is not connected (#327).
 - Search answers in tens of milliseconds instead of seconds in a large space
   (#370): it checks who may see a hit only for what matches the words, and a
   space at a time where no page in it is restricted.

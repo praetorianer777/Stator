@@ -178,6 +178,10 @@ export function useUploadAttachments(pageId: string) {
           onProgress?.(progress);
           setPending((list) => list.map((each) => (each.key === key ? { ...each, progress } : each)));
         });
+        // A load of the list still in flight may have been answered before this
+        // file was stored, and while the list has no data yet an invalidation
+        // joins that load instead of starting another: it is cancelled first.
+        await queryClient.cancelQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
         queryClient.setQueryData<Attachment[]>(pageAttachmentsQueryKey(pageId), (list) => (list ? [made, ...list.filter((a) => a.id !== made.id)] : list));
         void queryClient.invalidateQueries({ queryKey: pageAttachmentsQueryKey(pageId) });
         return made;
