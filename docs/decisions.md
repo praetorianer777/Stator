@@ -24,17 +24,17 @@ detector on, as the suite runs), per test:
 | Migrating the template, once per run | 1.8 s |
 | Clone (`STRATEGY WAL_LOG`), replica caught up, pools opened, owner made | 245 ms |
 | The same with `STRATEGY FILE_COPY` (two checkpoints) | 9.3 s |
-| Dropping a clone (`WAL_LOG`), done in the background | 93 ms |
+| Dropping a clone (`WAL_LOG`) | 93 ms |
 | One database: pools opened, two people made | 88 ms |
 
 A clone costs about 160 ms more than making people in one database, well
 under the second the plan set as the bar, so every test gets a database of
 its own. The template is named after a digest of the migrations and reused
-until they change; a run drops what an earlier one left. The whole suite took
-404 s before, with the machine otherwise quiet (load average about 3), and
-646 s after while a browser suite ran beside it (load average 10 to 14); the
-tests under half a second, which do little but start, took a median 0.4 s
-longer each, about 100 s of that difference, the rest being the load.
+until they change; a run drops what an earlier one left. On the same machine
+the whole suite took 404 s before (load average about 3) and 600 s after, in
+two runs in a row (load average 4 to 5); the tests under half a second, which
+do little but start, took a median 0.5 s longer each. The price is the
+standby: it replays every clone and every drop before the next test starts.
 
 - **Stronger than the alternative, and a smaller change.** Organization-wide
   settings, audit, search, home and retention see only the test's own rows
@@ -53,10 +53,13 @@ longer each, about 100 s of that difference, the rest being the load.
   whose render service prints through the stack's web and api, use
   `newStackHarness`; the PDF test adds its people to the seed's organization,
   takes space keys no other run takes, and puts back what it changed.
-- **Cloned while the test waits.** Making the next test's clone while the
-  current one ran hid the cost, but its WAL held that test's replica back by
-  seconds on a busy machine, past the suite's waits; clones are dropped in
-  the background, which writes almost nothing.
+- **Cloned and dropped while a test waits.** Making the next test's clone
+  while the current one ran hid the cost, but its WAL held that test's
+  replica back by seconds on a busy machine, past the suite's waits.
+  Dropping a clone in the background did worse: replaying a drop on the
+  standby waits for its checkpointer, which during a restartpoint took
+  twenty seconds. So the next clone drops the ended tests' clones first and
+  waits for the standby once for both, where a minute is allowed.
 - **The outbox has no stack worker any more.** Tests that relied on the
   stack's worker delivering their webhooks or draining their outbox run its
   handlers in process (`runStackWorker`).

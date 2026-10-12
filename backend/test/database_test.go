@@ -40,14 +40,13 @@ const (
 	templateHashLength = 12
 	// cloneSuffixBytes is the random part of a clone's name.
 	cloneSuffixBytes = 6
-	// dropDeadline bounds dropping one clone; a drop waits for nobody,
-	// since it is forced.
+	// dropDeadline bounds dropping the last clones when the run ends.
 	dropDeadline = time.Minute
-	// cloneReplayWait bounds waiting for the standby to replay a clone, a
-	// whole database's worth of WAL, longer than a test's own rows take.
+	// cloneReplayWait bounds waiting for the standby to replay a clone and
+	// the drops before it, which can wait out a restartpoint.
 	cloneReplayWait = time.Minute
-	// maintenanceDatabase is where the superuser connects to make and drop
-	// clones, which no connection may be inside of.
+	// maintenanceDatabase is where the replica's superuser waits for a clone
+	// that may not be there yet.
 	maintenanceDatabase = "postgres"
 )
 
@@ -58,12 +57,53 @@ var (
 	templateErr  error
 )
 
-// drops are the clones still being dropped, which TestMain waits for.
-var drops sync.WaitGroup
+// retired are the clones of tests that have ended. The next clone drops them
+// before it is made and waits for the standby, because replaying a drop
+// there waits for the standby's restartpoint, which on a busy machine took
+// twenty seconds, longer than a running test waits for its replica.
+// Dropping twenty at a time made the suite slower, not faster.
+var retired struct {
+	sync.Mutex
+	superURL string
+	names    []string
+}
+
+func retire(superURL, name string) {
+	retired.Lock()
+	defer retired.Unlock()
+	retired.superURL = superURL
+	retired.names = append(retired.names, name)
+}
+
+// dropRetired drops the clones of the tests that have ended.
+func dropRetired(ctx context.Context, super *pgxpool.Pool) error {
+	retired.Lock()
+	defer retired.Unlock()
+	for len(retired.names) > 0 {
+		name := retired.names[0]
+		if _, err := super.Exec(ctx, `DROP DATABASE IF EXISTS `+pgx.Identifier{name}.Sanitize()+` WITH (FORCE)`); err != nil {
+			return fmt.Errorf("drop %s: %w", name, err)
+		}
+		retired.names = retired.names[1:]
+	}
+	return nil
+}
 
 func TestMain(m *testing.M) {
 	code := m.Run()
-	drops.Wait()
+	retired.Lock()
+	superURL := retired.superURL
+	retired.Unlock()
+	if superURL != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), dropDeadline)
+		if super, err := pgxpool.New(ctx, superURL); err == nil {
+			if err := dropRetired(ctx, super); err != nil {
+				fmt.Fprintf(os.Stderr, "%v; the next run drops it\n", err)
+			}
+			super.Close()
+		}
+		cancel()
+	}
 	os.Exit(code)
 }
 
@@ -208,14 +248,17 @@ func makeClone(ctx context.Context, super *pgxpool.Pool, replicaURL string) clon
 	if err != nil {
 		return clone{err: fmt.Errorf("the template database: %w", err)}
 	}
+	if err := dropRetired(ctx, super); err != nil {
+		return clone{err: err}
+	}
 	suffix := make([]byte, cloneSuffixBytes)
 	_, _ = rand.Read(suffix)
 	name := testDatabasePrefix + hex.EncodeToString(suffix)
 	if _, err := super.Exec(ctx, `CREATE DATABASE `+pgx.Identifier{name}.Sanitize()+` TEMPLATE `+pgx.Identifier{template}.Sanitize()); err != nil {
 		return clone{err: fmt.Errorf("clone the template database: %w", err)}
 	}
-	// The clone must have reached the standby before anything connects to it
-	// there, or pauses replay in front of it.
+	// The clone, and the drops before it, must have reached the standby
+	// before anything connects to it there, or pauses replay in front of it.
 	if replicaURL != "" {
 		if err := waitForStandby(ctx, super, replicaURL); err != nil {
 			return clone{name: name, err: err}
@@ -243,7 +286,7 @@ func cloneDatabase(t *testing.T) {
 	super.Close()
 	if c.name != "" {
 		// Registered first, so it runs after every cleanup that still uses it.
-		t.Cleanup(func() { dropDatabase(superURL, c.name) })
+		t.Cleanup(func() { retire(superURL, c.name) })
 	}
 	if c.err != nil {
 		t.Fatal(c.err)
@@ -310,28 +353,4 @@ func waitForStandby(ctx context.Context, super *pgxpool.Pool, replicaURL string)
 		case <-time.After(replicaPollInterval):
 		}
 	}
-}
-
-// dropDatabase drops a clone in the background: nothing waits for it but the
-// end of the run, and a drop that fails leaves a clone the next run removes.
-func dropDatabase(superURL, name string) {
-	maintenance, err := databaseURL(superURL, maintenanceDatabase)
-	if err != nil {
-		return
-	}
-	drops.Add(1)
-	go func() {
-		defer drops.Done()
-		ctx, cancel := context.WithTimeout(context.Background(), dropDeadline)
-		defer cancel()
-		conn, err := pgx.Connect(ctx, maintenance)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "drop %s: connect: %v\n", name, err)
-			return
-		}
-		defer func() { _ = conn.Close(context.Background()) }()
-		if _, err := conn.Exec(ctx, `DROP DATABASE IF EXISTS `+pgx.Identifier{name}.Sanitize()+` WITH (FORCE)`); err != nil {
-			fmt.Fprintf(os.Stderr, "drop %s: %v\n", name, err)
-		}
-	}()
 }
