@@ -418,6 +418,7 @@ export const en = {
     footerDe: "Footer line in German",
     footerHint: "One line, such as a classification or a contact. Exports in a language without a line take the English one.",
     saveFooter: "Save footer",
+    footerSaved: "The footer line is saved.",
     notAdmin: "Only an administrator of the organization changes the brand of its exports. Ask one of them to change it.",
   },
   settings: {

@@ -427,6 +427,7 @@ export const de: Messages = {
     footerDe: "Fußzeile auf Deutsch",
     footerHint: "Eine Zeile, etwa eine Einstufung oder ein Kontakt. Exporte in einer Sprache ohne Zeile nehmen die englische.",
     saveFooter: "Fußzeile speichern",
+    footerSaved: "Die Fußzeile ist gespeichert.",
     notAdmin: "Nur Administratoren der Organisation ändern die Marke der Exporte. Bitten Sie eine von ihnen darum.",
   },
   settings: {

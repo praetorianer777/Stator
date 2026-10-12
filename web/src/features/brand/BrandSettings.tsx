@@ -16,6 +16,7 @@ export function BrandSettings() {
   const [tooBig, setTooBig] = useState(false);
   const [en, setEn] = useState<string>();
   const [de, setDe] = useState<string>();
+  const [footerSaved, setFooterSaved] = useState(false);
   const shownEn = en ?? brand?.footer.en ?? "";
   const shownDe = de ?? brand?.footer.de ?? "";
   const fields = saveFooter.error instanceof ApiError ? saveFooter.error.fields : {};
@@ -31,7 +32,8 @@ export function BrandSettings() {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    saveFooter.mutate({ en: shownEn, de: shownDe }, { onSuccess: () => (setEn(undefined), setDe(undefined)) });
+    setFooterSaved(false);
+    saveFooter.mutate({ en: shownEn, de: shownDe }, { onSuccess: () => (setEn(undefined), setDe(undefined), setFooterSaved(true)) });
   }
 
   return (
@@ -88,7 +90,7 @@ export function BrandSettings() {
               label={t.brand.footerEn}
               value={shownEn}
               maxLength={BRAND_FOOTER_MAX_LENGTH}
-              onChange={(event) => setEn(event.target.value)}
+              onChange={(event) => (setEn(event.target.value), setFooterSaved(false))}
               error={fields.en}
               data-brand-footer="en"
             />
@@ -96,14 +98,21 @@ export function BrandSettings() {
               label={t.brand.footerDe}
               value={shownDe}
               maxLength={BRAND_FOOTER_MAX_LENGTH}
-              onChange={(event) => setDe(event.target.value)}
+              onChange={(event) => (setDe(event.target.value), setFooterSaved(false))}
               error={fields.de}
               data-brand-footer="de"
             />
             <p className="text-sm text-ink-subtle">{t.brand.footerHint}</p>
-            <Button type="submit" loading={saveFooter.isPending} data-action="save-brand-footer">
-              {t.brand.saveFooter}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button type="submit" loading={saveFooter.isPending} data-action="save-brand-footer">
+                {t.brand.saveFooter}
+              </Button>
+              {footerSaved && (
+                <span role="status" className="text-sm text-ink-muted">
+                  {t.brand.footerSaved}
+                </span>
+              )}
+            </div>
           </form>
         </div>
       )}

@@ -16,7 +16,8 @@ test.describe("the brand of the exports", { tag: ["@auth", "@desktop"] }, () => 
     await page.getByLabel("Footer line in English").fill("Internal use only");
     await page.getByLabel("Footer line in German").fill("Nur für den internen Gebrauch");
     await page.getByRole("button", { name: "Save footer" }).click();
-    await expect(page.getByRole("button", { name: "Save footer" })).toBeEnabled();
+    // The button is still enabled for a moment after the click, so only the notice proves the save landed before the reload.
+    await expect(page.getByRole("status").filter({ hasText: "The footer line is saved." })).toBeVisible();
 
     await page.reload();
     await expect(page.getByLabel("Footer line in English")).toHaveValue("Internal use only");

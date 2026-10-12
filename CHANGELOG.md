@@ -1096,6 +1096,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Saving the footer line of the export brand now says when it is saved
+  (#388). Nothing showed it before, so a reload right after the click could
+  abort the save without anyone noticing.
 - A client that hangs up before its answer is ready is recorded as 499, as
   nginx does, and logged at info as cancelled by the client, instead of
   counting as a 500 and logging an error (#373). A deadline the server itself
