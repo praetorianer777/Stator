@@ -21,6 +21,7 @@ describe("the brand of the exports", () => {
     await userEvent.type(screen.getByLabelText("Footer line in German"), "Intern");
     await userEvent.click(screen.getByRole("button", { name: "Save footer" }));
     await waitFor(() => expect(sent.find((r) => r.method === "PUT")?.body).toEqual({ en: "Internal", de: "Intern" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("The footer line is saved.");
     expect(await axeViolations()).toEqual([]);
   });
 
