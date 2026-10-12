@@ -302,19 +302,12 @@ func (s *Service) Outline(ctx context.Context, actor perm.Actor, spaceKey string
 		if err != nil {
 			return err
 		}
-		// The path joins each page's rank and id to its parent's with
-		// separators below every rank digit, so it sorts parents first and
-		// siblings by rank.
+		// page_outline_rows judges each page by its parent's answer rather
+		// than its whole chain (#371). Its path joins each page's rank and id
+		// to its parent's with separators below every rank digit, so it sorts
+		// parents first and siblings by rank.
 		rows, err := tx.Query(ctx, `
-			WITH RECURSIVE tree (id, parent_id, title, depth, path) AS (
-				SELECT p.id, p.parent_id, p.title, 0, (p.rank || chr(2) || p.id::text || chr(1)) COLLATE "C"
-				FROM page p WHERE p.id = $1
-				UNION ALL
-				SELECT p.id, p.parent_id, p.title, t.depth + 1, (t.path || p.rank || chr(2) || p.id::text || chr(1)) COLLATE "C"
-				FROM page p JOIN tree t ON p.parent_id = t.id
-				WHERE`+live+` AND p.archived_at IS NULL AND `+perm.ViewablePage("p", 2)+`
-			)
-			SELECT id, parent_id, title, depth FROM tree ORDER BY path`, sp.HomePageID, actor.UserID)
+			SELECT id, parent_id, title, depth FROM page_outline_rows($1) ORDER BY path COLLATE "C"`, sp.HomePageID)
 		if err != nil {
 			return err
 		}

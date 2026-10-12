@@ -28,8 +28,7 @@ import {
 } from "./lib.js";
 
 const PROFILE = __ENV.LOAD_PROFILE || "standard";
-// Kinds of request to leave out, such as tree while it is slow enough to take
-// the machine from everything else (#371).
+// Kinds of request to leave out, to find the ceiling of the others alone.
 const SKIP = (__ENV.LOAD_SKIP || "").split(",").filter(Boolean);
 const SCENARIOS = (__ENV.LOAD_SCENARIOS || "readers,editors,live").split(",");
 
@@ -81,16 +80,14 @@ const PROFILES = {
 
 if (!PROFILES[PROFILE]) throw new Error(`LOAD_PROFILE is ${PROFILE}; use smoke, standard or ceiling.`);
 
-// In the ceiling profile a breaking threshold stops the run, except the
-// whole tree: it is slow at any load (#371) and would end the ramp before it
-// measured anything else.
-const limit = (threshold, stops = true) =>
-  PROFILE === "ceiling" && stops ? [{ threshold, abortOnFail: true, delayAbortEval: "30s" }] : [threshold];
+// In the ceiling profile a breaking threshold stops the run.
+const limit = (threshold) =>
+  PROFILE === "ceiling" ? [{ threshold, abortOnFail: true, delayAbortEval: "30s" }] : [threshold];
 
 const THRESHOLDS = {
   readers: {
     "http_req_duration{kind:read}": limit("p(95)<300"),
-    "http_req_duration{kind:tree}": limit("p(95)<1000", false),
+    "http_req_duration{kind:tree}": limit("p(95)<1000"),
     "http_req_duration{kind:search}": limit("p(95)<800"),
     "http_req_failed{scenario:readers}": limit("rate<0.01"),
   },
