@@ -64,6 +64,19 @@ async function makeFreshOrg(browser: Browser, label: string): Promise<FreshOrg> 
   return { ...org, sessions: Object.fromEntries(users.map((user, i) => [user, signedIn[i]!])) as FreshOrg["sessions"] };
 }
 
+/**
+ * Runs fn with an organisation of its own beside the spec's, alice and bob
+ * signed in to it, and removes it with all its data afterwards.
+ */
+export async function withAnotherOrg<T>(browser: Browser, label: string, fn: (org: FreshOrg) => Promise<T>): Promise<T> {
+  const org = await makeFreshOrg(browser, label);
+  try {
+    return await fn(org);
+  } finally {
+    await deleteOrg(org.slug);
+  }
+}
+
 /** "themes.spec.ts" becomes "themes", so a leftover organisation names the spec that made it. */
 function labelOf(file: string): string {
   return basename(file).replace(/\.spec\.ts$/, "");

@@ -4808,6 +4808,7 @@ export interface components {
         };
         OrgOmission: {
             count?: number;
+            key: string;
             what: string;
             why: string;
         };

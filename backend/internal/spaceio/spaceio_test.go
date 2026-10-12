@@ -153,10 +153,15 @@ func TestEverythingLeftOutSaysWhy(t *testing.T) {
 	if len(notCarried) == 0 {
 		t.Fatal("nothing is listed as left out")
 	}
+	keys := map[string]bool{}
 	for _, o := range notCarried {
 		if o.What == "" || !strings.HasSuffix(o.Why, ".") {
 			t.Errorf("%q is left out without a sentence why: %q", o.What, o.Why)
 		}
+		if o.Key == "" || keys[o.Key] {
+			t.Errorf("%q has the key %q, which is empty or taken", o.What, o.Key)
+		}
+		keys[o.Key] = true
 	}
 }
 

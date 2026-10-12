@@ -32,22 +32,22 @@ type orgSnapshot struct {
 // notCarried is what an organization's archive leaves out, and why, in the
 // order the manifest and the documentation list it.
 var notCarried = []Omission{
-	{What: "Passwords", Why: "Only a bootstrap administrator has one, and it comes from the settings of the Stator it lands in."},
-	{What: "Sessions", Why: "Everybody signs in again where the organization lands; their accounts are found by their address."},
-	{What: "Personal access tokens", Why: "Their secrets are not kept in a readable form. Their owners make new ones."},
-	{What: "Linked Armature accounts", Why: "Each person's Armature token is sealed with this server's key. Everybody connects their account again under their profile."},
-	{What: "The sign-in provider's client secret", Why: "It is sealed with this server's key. The provider comes across switched off unless the organization it lands in has one; enter the secret and switch it on."},
-	{What: "Webhook signing secrets", Why: "They are sealed with this server's key. Each webhook comes across switched off; rotate its secret, give the receiver the new one and switch it on."},
-	{What: "Armature's webhook secret", Why: "It is sealed with this server's key. Save the Armature connection again and enter the new secret in Armature."},
-	{What: "Requests to join", Why: "They wait for an administrator of this organization; whoever still wants in signs in again."},
-	{What: "Shares, public links and anonymous reads by link", Why: "A link opens the organization to people; give them again where it lands."},
-	{What: "Notifications, stars, watches, page views and visits", Why: "They are each person's own reading of the old place."},
-	{What: "Owners, verifications, scheduled publishes, shortcuts, reviews and read confirmations of pages", Why: "They are arrangements rather than content, as in a space's archive."},
-	{What: "A page's shared draft while people edit it together", Why: "Each person's own draft comes across, saved from it."},
-	{What: "The trash", Why: "What was deleted stays deleted."},
-	{What: "Jobs and their files: exports, imports, Word imports and the example space's", Why: "They belong to the old place's worker."},
-	{What: "Themes mirrored from Armature", Why: "They come back from Armature when their owner follows Armature's theme again."},
-	{What: "The organization's address (its slug)", Why: "The organization keeps the address of the Stator it lands in."},
+	{Key: "passwords", What: "Passwords", Why: "Only a bootstrap administrator has one, and it comes from the settings of the Stator it lands in."},
+	{Key: "sessions", What: "Sessions", Why: "Everybody signs in again where the organization lands; their accounts are found by their address."},
+	{Key: "tokens", What: "Personal access tokens", Why: "Their secrets are not kept in a readable form. Their owners make new ones."},
+	{Key: "armatureAccounts", What: "Linked Armature accounts", Why: "Each person's Armature token is sealed with this server's key. Everybody connects their account again under their profile."},
+	{Key: "signInSecret", What: "The sign-in provider's client secret", Why: "It is sealed with this server's key. The provider comes across switched off unless the organization it lands in has one; enter the secret and switch it on."},
+	{Key: "webhookSecrets", What: "Webhook signing secrets", Why: "They are sealed with this server's key. Each webhook comes across switched off; rotate its secret, give the receiver the new one and switch it on."},
+	{Key: "armatureWebhookSecret", What: "Armature's webhook secret", Why: "It is sealed with this server's key. Save the Armature connection again and enter the new secret in Armature."},
+	{Key: "joinRequests", What: "Requests to join", Why: "They wait for an administrator of this organization; whoever still wants in signs in again."},
+	{Key: "links", What: "Shares, public links and anonymous reads by link", Why: "A link opens the organization to people; give them again where it lands."},
+	{Key: "personal", What: "Notifications, stars, watches, page views and visits", Why: "They are each person's own reading of the old place."},
+	{Key: "arrangements", What: "Owners, verifications, scheduled publishes, shortcuts, reviews and read confirmations of pages", Why: "They are arrangements rather than content, as in a space's archive."},
+	{Key: "sharedDrafts", What: "A page's shared draft while people edit it together", Why: "Each person's own draft comes across, saved from it."},
+	{Key: "trash", What: "The trash", Why: "What was deleted stays deleted."},
+	{Key: "jobs", What: "Jobs and their files: exports, imports, Word imports and the example space's", Why: "They belong to the old place's worker."},
+	{Key: "armatureThemes", What: "Themes mirrored from Armature", Why: "They come back from Armature when their owner follows Armature's theme again."},
+	{Key: "address", What: "The organization's address (its slug)", Why: "The organization keeps the address of the Stator it lands in."},
 }
 
 // readOrg reads the organization's own data, as the worker's role, and every
@@ -375,15 +375,15 @@ func (s *orgSnapshot) readSpaces(ctx context.Context, tx db.DBTX) error {
 // administrator how much to give again.
 func (s *orgSnapshot) readNotCarried(ctx context.Context, tx db.DBTX) error {
 	counts := map[string]string{
-		"Personal access tokens":                           `SELECT count(*) FROM api_token WHERE org_id = $1 AND NOT for_render`,
-		"Linked Armature accounts":                         `SELECT count(*) FROM armature_token WHERE org_id = $1`,
-		"Webhook signing secrets":                          `SELECT count(*) FROM webhook_endpoint WHERE org_id = $1`,
-		"Requests to join":                                 `SELECT count(*) FROM org_join_request WHERE org_id = $1`,
-		"Shares, public links and anonymous reads by link": `SELECT (SELECT count(*) FROM page_share WHERE org_id = $1) + (SELECT count(*) FROM page_link WHERE org_id = $1)`,
+		"tokens":           `SELECT count(*) FROM api_token WHERE org_id = $1 AND NOT for_render`,
+		"armatureAccounts": `SELECT count(*) FROM armature_token WHERE org_id = $1`,
+		"webhookSecrets":   `SELECT count(*) FROM webhook_endpoint WHERE org_id = $1`,
+		"joinRequests":     `SELECT count(*) FROM org_join_request WHERE org_id = $1`,
+		"links":            `SELECT (SELECT count(*) FROM page_share WHERE org_id = $1) + (SELECT count(*) FROM page_link WHERE org_id = $1)`,
 	}
 	s.m.NotCarried = make([]Omission, 0, len(notCarried))
 	for _, o := range notCarried {
-		if sql, ok := counts[o.What]; ok {
+		if sql, ok := counts[o.Key]; ok {
 			var n int
 			if err := tx.QueryRow(ctx, sql, s.org).Scan(&n); err != nil {
 				return fmt.Errorf("count %s: %w", o.What, err)

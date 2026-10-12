@@ -195,6 +195,8 @@ type OrgSpace struct {
 
 // Omission is one kind of thing the archive leaves out.
 type Omission struct {
+	// Key names it for a reader in another language; What and Why are English.
+	Key  string `json:"key"`
 	What string `json:"what"`
 	// Count is how many of it the organization had, where they are counted.
 	Count *int   `json:"count,omitempty"`

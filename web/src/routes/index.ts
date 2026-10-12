@@ -14,6 +14,7 @@ import { loginRoute } from "./login";
 import { notificationSettingsRoute, watchingRoute } from "./notifications";
 import { homeRoute, personalHomeRoute } from "./pages";
 import { brandSettingsRoute } from "./brand";
+import { orgTransferRoute } from "./org-transfer";
 import { hubSettingsRoute } from "./hub";
 import { pageEditRoute } from "./page-edit";
 import { orgPermissionsRoute } from "./permissions";
@@ -77,6 +78,7 @@ const routeTree = rootRoute.addChildren([
     orgPermissionsRoute,
     hubSettingsRoute,
     brandSettingsRoute,
+    orgTransferRoute,
     exampleSpaceRoute,
     armatureSettingsRoute,
     auditRoute,

@@ -3,6 +3,69 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-12: An organization travels as one archive of its spaces' archives, into an organization without spaces (#383)
+
+One organization per instance (#380) refuses to upgrade an instance holding
+several until all but one are deleted, so each has to be able to leave whole
+first. Space export (2026-10-07) moved a space but nothing outside spaces, and
+a backup (#108) holds every organization and comes back only as the same
+site. `docs/organization-transfer.md` is the operator's guide, and the one
+#380's refusal names.
+
+- **Spaces in their own format.** The archive holds each space as a space
+  archive, stored uncompressed so the import opens it in place and so it can
+  be taken out and imported as one space anywhere, beside a manifest of what
+  is not a space: people with their roles, groups, global permissions,
+  sign-in provider and group roles, Armature connection, brand, themes,
+  organization templates, webhooks, notification settings, chosen themes and
+  the audit log. Everything the import reads is in the archive; nothing is
+  fetched from the old instance.
+- **Drafts come along.** A space's own export leaves drafts and pages never
+  published out, as their authors' work in progress; moving the whole
+  organization moves the authors too, so their work comes with them. A space
+  archive that holds them is version 2, which a Stator reading only version 1
+  refuses rather than silently dropping them; a space's own export still
+  writes version 1. A page's shared draft (Yjs updates) stays behind: each
+  editor's own draft is saved from it.
+- **Read as the worker's role, asked for by administrators only.** The
+  archive is everyone's drafts and every restricted page, more than any
+  person reads, so the worker reads it as the admin role. `org_export` and
+  `org_import` let `stator_app` queue, list and read jobs only for an
+  administrator of the organization acting for themselves; the worker asks
+  again, as the requester, before it begins. The integration suite tries each
+  through SQL.
+- **Into an organization without spaces.** The import fills the organization
+  it is asked in, which must have no space: after #380 that is a fresh
+  instance's one organization. Merging into a used organization would raise
+  questions about clashing keys, roles and settings that a move does not
+  need. The organization takes the archive's name and keeps its own address.
+- **People by address.** Accounts are global, so an archive's person is found
+  by email address or made; a member keeps their own role, everybody else
+  gets the archive's, and a guest joins their space as soon as it exists,
+  before its grants name them. Nobody brings a password or a session; the
+  first sign-in ties the provider's identity to the account by its address,
+  as for any account named ahead of time.
+- **One transaction, done with it.** The import writes everything and marks
+  its job done in one transaction, so a worker that dies leaves either
+  nothing or a finished import, never a half one to clean up; the files it
+  stored for a failed attempt get tombstones. Pages, files, threads and
+  calendars get new ids from one map for all spaces, so a link, an include
+  or a template button from one space to another, and the hub page, find
+  their page.
+- **Secrets stay behind.** Everything sealed with `STATOR_SECRET_KEY` (the
+  provider's client secret, webhook secrets, Armature's webhook secret,
+  people's Armature tokens) and everything stored only as a hash (tokens,
+  sessions, passwords) is left out. Webhooks and a provider come across
+  switched off until an administrator gives them a secret; an organization
+  that has its own provider or Armature connection keeps it. The archive's
+  `notCarried` lists all of it with a key per entry, which the settings page
+  shows in the reader's language before anybody exports.
+- **The audit log comes along.** It is the organization's record of what
+  was done, which a move must not reset; its actors and targets are pointed
+  at their new ids where the import made them.
+- **Limits.** `STATOR_ORG_IMPORT_LIMIT` (2 GB) bounds the upload, each space
+  the limits of a space's archive, the archive 2000 spaces, a run four hours.
+
 ## 2026-10-12: Search checks rights only for what matches, a space at a time (#370)
 
 Row level security puts a table's policies before every condition that is not

@@ -119,6 +119,9 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		}},
 	}})
 
+	want(t, ann.post(t, "/api/v1/spaces", map[string]any{"key": "ANNS", "name": "Ann's own", "personal": true}), http.StatusCreated, "ann's personal space")
+	newTree(t, owner, "OLD", "Old times")
+	want(t, owner.put(t, "/api/v1/spaces/OLD/archive", nil), http.StatusOK, "archive OLD")
 	want(t, owner.put(t, "/api/v1/org/hub", map[string]any{"pageId": nested, "landing": true}), http.StatusOK, "choose the hub")
 	want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal use only", "de": "Nur intern"}), http.StatusOK, "set the footer")
 	want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngOf(t, 8, 4)), http.StatusOK, "set the logo")
@@ -145,7 +148,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		if err := json.Unmarshal(files["manifest.json"], &m); err != nil {
 			t.Fatalf("the manifest: %v", err)
 		}
-		if m.Format != spaceio.OrgFormat || m.Counts.Spaces != 2 || len(m.Spaces) != 2 || m.Brand.Logo == nil || len(m.Themes) != 1 ||
+		if m.Format != spaceio.OrgFormat || m.Counts.Spaces != 4 || len(m.Spaces) != 4 || m.Brand.Logo == nil || len(m.Themes) != 1 ||
 			len(m.Themes[0].Files) != 1 || len(m.Webhooks) != 1 || len(m.Templates) != 1 || m.AuditEntries == 0 {
 			t.Errorf("the manifest reads %+v", m)
 		}
@@ -224,7 +227,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 			t.Fatalf("the import ended as %v", job)
 		}
 		report := job["report"].(map[string]any)
-		if number(report["spaces"]) != 2 || number(report["drafts"]) < 2 || number(report["files"]) != 1 || number(report["comments"]) != 1 ||
+		if number(report["spaces"]) != 4 || number(report["drafts"]) < 2 || number(report["files"]) != 1 || number(report["comments"]) != 1 ||
 			number(report["themes"]) != 1 || number(report["webhooks"]) != 1 || number(report["auditEntries"]) == 0 {
 			t.Errorf("the report counts %v", report)
 		}
@@ -233,6 +236,9 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		}
 		if len(report["notCarried"].([]any)) == 0 {
 			t.Errorf("the report lists nothing left out: %v", report)
+		}
+		if imports := list(t, want(t, landed.get(t, "/api/v1/org/imports"), http.StatusOK, "the imports"), "imports"); len(imports) != 1 || imports[0].(map[string]any)["id"] != job["id"] {
+			t.Errorf("the organization's imports are %v", imports)
 		}
 	})
 
@@ -258,6 +264,13 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		if err := h.super.QueryRow(ctx, `
 			SELECT s.key FROM org_member m JOIN space s ON s.id = m.guest_space_id WHERE m.org_id = $1 AND m.user_id = $2`, to.org, guestID).Scan(&guestSpace); err != nil || guestSpace != "TRIP" {
 			t.Errorf("the guest's space is %q: %v", guestSpace, err)
+		}
+		var personalOwner, archived string
+		if err := h.super.QueryRow(ctx, `
+			SELECT COALESCE((SELECT owner_id::text FROM space WHERE org_id = $1 AND key = 'ANNS'), ''),
+			       COALESCE((SELECT archived_at::text FROM space WHERE org_id = $1 AND key = 'OLD'), '')`, to.org).Scan(&personalOwner, &archived); err != nil ||
+			personalOwner != annID.String() || archived == "" {
+			t.Errorf("ann's personal space is %q's and OLD archived at %q: %v", personalOwner, archived, err)
 		}
 		groups := string(want(t, landed.get(t, "/api/v1/groups"), http.StatusOK, "the groups").Raw)
 		if !strings.Contains(groups, "Writers") {
@@ -361,7 +374,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 			t.Errorf("Writers may create spaces %d times: %v", canCreate, err)
 		}
 		var created int
-		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'space.created'`, to.org).Scan(&created); err != nil || created != 2 {
+		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'space.created'`, to.org).Scan(&created); err != nil || created != 4 {
 			t.Errorf("the audit log holds %d of the spaces made in the old record: %v", created, err)
 		}
 		if data := h.recordedOnce(t, to.org, audit.ActionOrgImported, &to.user, nil); !strings.Contains(data, fromSlug) {

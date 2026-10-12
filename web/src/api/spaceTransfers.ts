@@ -74,16 +74,13 @@ function refusal(xhr: XMLHttpRequest): ApiError {
 }
 
 /**
- * Uploads an archive and asks the worker to make a space of it. XMLHttpRequest
+ * Uploads a zip in a part named file and answers the API's 202 body. XMLHttpRequest
  * rather than fetch, because only it reports how much of a large file has gone.
  */
-export function importSpace(request: ImportRequest, onProgress?: Progress): Promise<SpaceImport> {
+export function uploadArchive<T>(url: string, file: File, onProgress?: Progress): Promise<T> {
   return new Promise((resolve, reject) => {
-    const query = new URLSearchParams();
-    if (request.key.trim()) query.set("key", request.key.trim());
-    if (request.name.trim()) query.set("name", request.name.trim());
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE}/space-imports${query.size ? `?${query}` : ""}`);
+    xhr.open("POST", url);
     xhr.withCredentials = true;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total);
@@ -94,16 +91,25 @@ export function importSpace(request: ImportRequest, onProgress?: Progress): Prom
         return;
       }
       try {
-        resolve((JSON.parse(xhr.responseText) as { import: SpaceImport }).import);
+        resolve(JSON.parse(xhr.responseText) as T);
       } catch {
         reject(new ApiError(xhr.status, { code: "unexpected_response", message: t.api.unexpected(xhr.status) }));
       }
     };
     xhr.onerror = () => reject(new ApiError(0, { code: "network", message: t.spaceTransfer.uploadBroke }));
     const form = new FormData();
-    form.append("file", request.file, request.file.name);
+    form.append("file", file, file.name);
     xhr.send(form);
   });
+}
+
+/** Uploads an archive and asks the worker to make a space of it. */
+export async function importSpace(request: ImportRequest, onProgress?: Progress): Promise<SpaceImport> {
+  const query = new URLSearchParams();
+  if (request.key.trim()) query.set("key", request.key.trim());
+  if (request.name.trim()) query.set("name", request.name.trim());
+  const url = `${API_BASE}/space-imports${query.size ? `?${query}` : ""}`;
+  return (await uploadArchive<{ import: SpaceImport }>(url, request.file, onProgress)).import;
 }
 
 /** Sends an archive to import, keeping how much of it has gone. */

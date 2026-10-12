@@ -21667,6 +21667,9 @@
           "count": {
             "type": "integer"
           },
+          "key": {
+            "type": "string"
+          },
           "what": {
             "type": "string"
           },
@@ -21675,6 +21678,7 @@
           }
         },
         "required": [
+          "key",
           "what",
           "why"
         ]
