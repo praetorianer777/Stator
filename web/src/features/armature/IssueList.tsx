@@ -66,6 +66,10 @@ export function IssueList({ settings, inEditor = false }: { settings: IssueListS
   if (account.isPending) {
     state = "loading";
     body = <Note status>{l.loading}</Note>;
+  } else if (account.isError) {
+    // Not knowing whether Armature is connected is not the same as it not being.
+    state = "failed";
+    body = <Note>{l.failed}</Note>;
   } else if (!configured || first?.status === "not_configured") {
     state = "plain";
     body = <Note>{l.notConfigured}</Note>;

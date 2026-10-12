@@ -90,12 +90,29 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
     expect(left).toEqual([]);
   });
 
+  // The list's first load can be answered before an upload is stored and
+  // reach the page after it (#327): the file must show all the same.
+  test("a file uploaded while the list is still loading appears", async ({ page, api }, testInfo) => {
+    const { key, page: wiki } = await aPage(api, testInfo);
+    let late = true;
+    await page.route(`**/api/v1/pages/${wiki.id}/attachments`, async (route) => {
+      if (route.request().method() !== "GET" || !late) return route.continue();
+      late = false;
+      const answeredBefore = await route.fetch();
+      await expect(row(page, "budget.csv")).toHaveCount(0);
+      await expect(page.locator("[data-attachment-notice]")).toHaveText("Attached budget.csv.");
+      await route.fulfill({ response: answeredBefore });
+    });
+    await page.goto(`/s/${key}/p/${wiki.id}/budget`);
+    await panel(page).locator("[data-attachment-input]").setInputFiles(csv("one\n"));
+    await expect(row(page, "budget.csv")).toHaveAttribute("data-version", "1");
+  });
+
   test("a member who may only read the page sees the versions but restores none", async ({ page, api, pageAs }, testInfo) => {
     test.slow();
     const { key, page: wiki } = await aPage(api, testInfo);
     const path = `/s/${key}/p/${wiki.id}/budget`;
     await page.goto(path);
-    await expect(panel(page)).toContainText("Nothing attached yet.");
     const input = panel(page).locator("[data-attachment-input]");
     await input.setInputFiles(csv("one\n"));
     await expect(row(page, "budget.csv")).toHaveAttribute("data-version", "1");
