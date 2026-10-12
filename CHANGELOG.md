@@ -1109,6 +1109,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - Search answers in tens of milliseconds instead of seconds in a large space
   (#370): it checks who may see a hit only for what matches the words, and a
   space at a time where no page in it is restricted.
+- The whole page tree of a large space answers in tens of milliseconds
+  instead of seconds (#371): each page is judged by its parent's answer and
+  its own restrictions, rather than by walking its ancestors again.
 - The chart's roles Job runs on a cluster. Kubernetes reads `$$` in a
   container's args as an escaped `$`, which cut the role script's `DO $$` to
   `DO $` and failed every install with the bundled database (#331). The test

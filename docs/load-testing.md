@@ -71,9 +71,7 @@ scripts and the stack agree, not how much a deployment carries.
 | failed requests | < 1 % per scenario |
 
 In the ceiling profile, a breaking threshold stops the run after 30 seconds of
-grace, and `load_vus` says how many people were active by then. The tree is
-measured but does not stop the ramp: until #371 it is slow at any load, and
-would end the ramp before it measured anything else.
+grace, and `load_vus` says how many people were active by then.
 
 ## Measured
 
@@ -95,6 +93,13 @@ checks rights only for what matches (#370):
 
 Every threshold holds. Before #370 search took 3.1 s at the median and 8.1 s
 at p95, and the tree 3.4 s at p95, with the machine busy searching.
+
+**The whole tree since #371**, which judges each page by its parent's answer
+instead of walking every page's ancestors again: 25 ms at the median, 43 ms at
+p95 and 101 ms at p99 in the standard profile, against 2.7 s, 4.4 s and 5.0 s
+in a run just before it on the same machine, which other work kept busy in
+both. Alone, its statement takes 13 ms for the administrator and 16 ms for a
+member, where it took 1.2 s and 2.2 s.
 
 **Ceiling profile**, before #370: stopped after a minute at **75 people**,
 when live update delivery passed 300 ms at p95. Search and the tree had taken
