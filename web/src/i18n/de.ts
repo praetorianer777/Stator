@@ -892,7 +892,10 @@ export const de: Messages = {
     notCarriedTitle: "Was nicht mitkommt",
     notCarriedHint: "Das Archiv führt dies ebenfalls auf. Vergeben Sie es dort neu, wo die Organisation ankommt.",
     notCarried: {
-      passwords: { what: "Passwörter", why: "Nur eine Bootstrap-Administratorin hat eines, aus den Einstellungen des Stator, in dem die Organisation ankommt." },
+      passwords: {
+        what: "Passwörter",
+        why: "Nur eine Bootstrap-Administratorin hat eines, aus den Einstellungen des Stator, in dem die Organisation ankommt.",
+      },
       sessions: { what: "Sitzungen", why: "Alle melden sich dort neu an, wo die Organisation ankommt; Konten werden an ihrer Adresse erkannt." },
       tokens: { what: "Persönliche Zugriffstokens", why: "Ihre Geheimnisse werden nicht lesbar aufbewahrt. Ihre Inhaber erstellen neue." },
       armatureAccounts: { what: "Verbundene Armature-Konten", why: "Alle verbinden ihr Armature-Konto in ihrem Profil neu." },
@@ -904,7 +907,10 @@ export const de: Messages = {
         what: "Signaturgeheimnisse der Webhooks",
         why: "Jeder Webhook kommt ausgeschaltet an; erneuern Sie sein Geheimnis, geben Sie es dem Empfänger und schalten Sie ihn ein.",
       },
-      armatureWebhookSecret: { what: "Das Webhook-Geheimnis von Armature", why: "Speichern Sie die Armature-Verbindung neu und tragen Sie das neue Geheimnis in Armature ein." },
+      armatureWebhookSecret: {
+        what: "Das Webhook-Geheimnis von Armature",
+        why: "Speichern Sie die Armature-Verbindung neu und tragen Sie das neue Geheimnis in Armature ein.",
+      },
       joinRequests: { what: "Beitrittsanfragen", why: "Wer weiterhin hinein möchte, meldet sich neu an und fragt erneut." },
       links: {
         what: "Freigaben, öffentliche Links und anonymes Lesen über Links",
@@ -915,10 +921,19 @@ export const de: Messages = {
         what: "Verantwortliche, Bestätigungen, geplante Veröffentlichungen, Verknüpfungen, Prüfungen und Lesebestätigungen von Seiten",
         why: "Sie sind Absprachen statt Inhalt, wie im Archiv eines Bereichs.",
       },
-      sharedDrafts: { what: "Der gemeinsame Entwurf einer Seite, während mehrere sie bearbeiten", why: "Der eigene Entwurf jeder Person kommt mit, aus ihm gespeichert." },
+      sharedDrafts: {
+        what: "Der gemeinsame Entwurf einer Seite, während mehrere sie bearbeiten",
+        why: "Der eigene Entwurf jeder Person kommt mit, aus ihm gespeichert.",
+      },
       trash: { what: "Der Papierkorb", why: "Was gelöscht wurde, bleibt gelöscht." },
-      jobs: { what: "Aufträge und ihre Dateien", why: "Exporte, Importe, Word-Importe und die Aufträge des Beispielbereichs gehören zum Worker des alten Ortes." },
-      armatureThemes: { what: "Aus Armature gespiegelte Designs", why: "Sie kommen aus Armature zurück, wenn ihre Inhaber wieder dem Design von Armature folgen." },
+      jobs: {
+        what: "Aufträge und ihre Dateien",
+        why: "Exporte, Importe, Word-Importe und die Aufträge des Beispielbereichs gehören zum Worker des alten Ortes.",
+      },
+      armatureThemes: {
+        what: "Aus Armature gespiegelte Designs",
+        why: "Sie kommen aus Armature zurück, wenn ihre Inhaber wieder dem Design von Armature folgen.",
+      },
       address: { what: "Die Adresse der Organisation", why: "Die Organisation behält die Adresse des Stator, in dem sie ankommt." },
     } as Record<string, { what: string; why: string }>,
     report: {
@@ -940,8 +955,7 @@ export const de: Messages = {
         signIn: "Diese Organisation hat ihren eigenen Anmeldeanbieter behalten.",
         armature: "Diese Organisation hat ihre eigene Armature-Verbindung behalten.",
       } as Record<string, string>,
-      webhooksOff:
-        "Webhooks kamen ausgeschaltet an. Erneuern Sie das Geheimnis jedes Webhooks, geben Sie es dem Empfänger und schalten Sie ihn ein.",
+      webhooksOff: "Webhooks kamen ausgeschaltet an. Erneuern Sie das Geheimnis jedes Webhooks, geben Sie es dem Empfänger und schalten Sie ihn ein.",
     },
   },
   spaceTransfer: {

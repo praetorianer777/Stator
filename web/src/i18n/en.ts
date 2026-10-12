@@ -878,7 +878,10 @@ export const en = {
         what: "The sign-in provider's client secret",
         why: "The provider comes across switched off unless the organization it lands in has one; enter the secret and switch it on.",
       },
-      webhookSecrets: { what: "Webhook signing secrets", why: "Each webhook comes across switched off; rotate its secret, give the receiver the new one and switch it on." },
+      webhookSecrets: {
+        what: "Webhook signing secrets",
+        why: "Each webhook comes across switched off; rotate its secret, give the receiver the new one and switch it on.",
+      },
       armatureWebhookSecret: { what: "Armature's webhook secret", why: "Save the Armature connection again and enter the new secret in Armature." },
       joinRequests: { what: "Requests to join", why: "Whoever still wants in signs in again and asks anew." },
       links: { what: "Shares, public links and anonymous reads by link", why: "A link opens the organization to people; give them again where it lands." },
