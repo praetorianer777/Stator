@@ -108,5 +108,5 @@ suite runs with `./run-tests.sh`.
 
 ## License
 
-[GNU AGPL v3.0](LICENSE). Contains code adapted from Armature under the Apache
-License 2.0; see [NOTICE](NOTICE).
+[Apache License 2.0](LICENSE). Contains code adapted from Armature, under the
+same license; see [NOTICE](NOTICE).

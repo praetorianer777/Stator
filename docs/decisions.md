@@ -3,6 +3,15 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-12: Apache-2.0 instead of the AGPL (#376)
+
+Stator is licensed under the Apache License 2.0, the license of Armature,
+whose code and patterns it shares. Anyone may run, change and offer it as a
+service without publishing their changes, and code moves between the two
+products under one license. Every commit so far is the maintainer's or was
+made in the maintainer's sessions, and no dependency is copyleft, so nothing
+stands in the way. The gopher artwork stays under CC BY 4.0, as `NOTICE` says.
+
 ## 2026-10-11: A backup is one archive of the database and the bucket, taken by one command (#108)
 
 Operators need to get a site back after losing a disk or a cluster, under
@@ -4507,7 +4516,7 @@ Go with chi, pgx and goose; PostgreSQL; React with TanStack and Tailwind v4;
 OIDC for sign-in. Reusing Armature's patterns and design tokens makes the two
 products look and behave as one, and lets code move between them.
 
-## 2026-09-29: AGPL-3.0
+## 2026-09-29: AGPL-3.0 (replaced on 2026-10-12 by Apache-2.0, #376)
 
 Anyone may run and modify Stator, but whoever offers a modified version as a
 service must publish their changes. Code adapted from Armature stays under its

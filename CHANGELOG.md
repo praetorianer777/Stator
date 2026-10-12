@@ -1052,6 +1052,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Stator is licensed under the Apache License 2.0 instead of the GNU AGPL
+  v3.0 (#376), the license Armature is under.
 - A space keeps at least one administrator of its own: taking administer
   from the last person or group that holds it is refused, by the api and by
   the database, unless an administrator of the organization does it.
