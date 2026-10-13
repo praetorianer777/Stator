@@ -286,10 +286,6 @@ func TestANewOrganizationGetsItsGrantWhereTheOwnerIsBoundByRowLevelSecurity(t *t
 		WHERE o.slug = $1 AND g.permission = 'use' AND g.subject_type = 'everyone'`, slug).Scan(&grants); err != nil || grants != 1 {
 		t.Fatalf("grants of the new organization: %d (%v), want 1", grants, err)
 	}
-	var tenant *string
-	if err := tx.QueryRow(ctx, `SELECT NULLIF(current_setting('app.org_id', true), '')`).Scan(&tenant); err != nil || tenant != nil {
-		t.Fatalf("the trigger left the tenant set to %v (%v)", tenant, err)
-	}
 }
 
 // The realm the stack imports is the one sign-in is built against: both

@@ -14,7 +14,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/rank"
 	"github.com/praetorianer777/stator/backend/internal/space"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // Service keeps the shortcuts of spaces.
@@ -147,8 +146,8 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, key string, in S
 			url = &link
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO space_shortcut (id, org_id, space_id, page_id, url, label, rank)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6)`, id, sp.ID, in.PageID, url, label, r); err != nil {
+			INSERT INTO space_shortcut (id, space_id, page_id, url, label, rank)
+			VALUES ($1, $2, $3, $4, $5, $6)`, id, sp.ID, in.PageID, url, label, r); err != nil {
 			if isLimit(err) {
 				return &FullError{}
 			}
@@ -284,12 +283,8 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, key string, id u
 // record notes an administrator's change of a space's shortcuts in the
 // organization's audit log, in the transaction that made it.
 func record(ctx context.Context, tx db.DBTX, actor perm.Actor, action string, sp *space.Space, data map[string]any) error {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return err
-	}
 	data["key"] = sp.Key
-	return audit.Write(ctx, tx, org.ID, audit.Entry{Action: action, TargetType: "space", TargetID: &sp.ID, Actor: actor.UserID, Data: data})
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "space", TargetID: &sp.ID, Actor: actor.UserID, Data: data})
 }
 
 func isLimit(err error) bool {

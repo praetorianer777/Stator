@@ -21,7 +21,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/pageview"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/search"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // viewedOn says a person opened a page days ago, as the superuser, since the
@@ -364,7 +363,7 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 	const insert = `INSERT INTO page_view (org_id, page_id, user_id, day) VALUES ($1, $2, $3, page_view_today() - $4::integer)`
 
 	t.Run("a view is one's own, today, of a page one may view", func(t *testing.T) {
-		actAs(t, conn, org.org, benID)
+		actAs(t, conn, benID)
 		refused(t, conn, "a view counted for ann", insert, org.org, guide, annID, 1)
 		refused(t, conn, "a view counted for ann today", insert, org.org, guide, annID, 0)
 		refused(t, conn, "a view counted yesterday", insert, org.org, guide, benID, 1)
@@ -376,7 +375,7 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("nobody rewrites, removes or reads another's views, nor touches the tally", func(t *testing.T) {
-		actAs(t, conn, org.org, benID)
+		actAs(t, conn, benID)
 		for what, sql := range map[string]string{
 			"moving a view to another day":    `UPDATE page_view SET day = day - 1`,
 			"handing a view to somebody else": `UPDATE page_view SET user_id = NULL`,
@@ -400,7 +399,7 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("the functions answer what the person may know and nothing more", func(t *testing.T) {
-		actAs(t, conn, org.org, benID)
+		actAs(t, conn, benID)
 		var views, readers int
 		var canList bool
 		if err := conn.QueryRow(ctx, `SELECT views, readers, can_list FROM page_view_stats($1, 30)`, guide).Scan(&views, &readers, &canList); err != nil ||
@@ -418,7 +417,7 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 			t.Errorf("ben reads how many chose not to be named: %v, %v", unnamed, err)
 		}
 
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		if n := count(`SELECT count(*) FROM page_readers($1, NULL, NULL, 100)`, guide); n != 1 {
 			t.Errorf("ann, who edits Guide, reads %d of its readers, want herself", n)
 		}
@@ -426,7 +425,7 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 			t.Errorf("ann reads the readers of a page she may not view")
 		}
 
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		if n := count(`SELECT count(*) FROM page_view_stats($1, 30)`, guide); n != 0 {
 			t.Errorf("a member the space is closed to reads Guide's counts")
 		}
@@ -495,11 +494,8 @@ func TestRetentionMovesOldViewsIntoTheTally(t *testing.T) {
 		return err
 	}
 	var pgErr *pgconn.PgError
-	if err := prune(tenant.WithOrg(context.Background(), tenant.Org{ID: org.org}), `page_view_today() - 29`); !errors.As(err, &pgErr) || pgErr.Code != "22023" {
+	if err := prune(context.Background(), `page_view_today() - 29`); !errors.As(err, &pgErr) || pgErr.Code != "22023" {
 		t.Errorf("pruning the last 29 days = %v, want refused", err)
-	}
-	if err := prune(context.Background(), `page_view_today() - 400`); !errors.As(err, &pgErr) || pgErr.Code != "42501" {
-		t.Errorf("pruning outside an organization = %v, want refused", err)
 	}
 	if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE org_id = $1`, org.org); n != 1 {
 		t.Errorf("a refused prune took views: %d left", n)
@@ -564,7 +560,6 @@ func TestPageViewCountsReadAnIndexNotTheTable(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	for _, stmt := range []string{
-		`SELECT set_config('` + tenant.PostgresVar + `', '` + org.org.String() + `', true)`,
 		`SELECT set_config('` + db.UserVar + `', '` + org.user.String() + `', true)`,
 		`SET LOCAL track_functions = 'all'`,
 		`LOAD 'auto_explain'`,

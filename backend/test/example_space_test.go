@@ -400,13 +400,13 @@ func TestTheDatabaseKeepsTheExampleTheAdministrators(t *testing.T) {
 
 	insert := `INSERT INTO space (id, org_id, key, name, created_by, example, example_version, example_language) VALUES ($1, $2, $3, 'Mine', $4, true, 1, 'en')`
 	conn := appConn(t)
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	refused(t, conn, "a member who may create spaces making the example", insert, uuid.New(), home.org, "MINE", memberID)
 	if _, err := conn.Exec(context.Background(), `INSERT INTO space (id, org_id, key, name, created_by) VALUES ($1, $2, 'MINE', 'Mine', $3)`, uuid.New(), home.org, memberID); err != nil {
 		t.Fatalf("the same member cannot make an ordinary space: %v", err)
 	}
 
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	refused(t, conn, "an administrator marking a space the example", `UPDATE space SET example = true WHERE id = $1`, ordinary)
 	if _, err := conn.Exec(context.Background(), insert, uuid.New(), home.org, "FIRST", home.user); err != nil {
 		t.Fatalf("an administrator cannot make the example through SQL: %v", err)
@@ -438,10 +438,10 @@ func TestTheDatabaseKeepsTheExampleJobsTheAdministrators(t *testing.T) {
 	insert := `INSERT INTO example_job (id, org_id, requested_by, language) VALUES ($1, $2, $3, 'en')`
 
 	conn := appConn(t)
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	refused(t, conn, "a member queuing the example", insert, uuid.New(), home.org, memberID)
 
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	refused(t, conn, "an administrator queuing it for somebody else", insert, uuid.New(), home.org, memberID)
 	refused(t, conn, "an administrator queuing a job already done",
 		`INSERT INTO example_job (id, org_id, requested_by, language, state) VALUES ($1, $2, $3, 'en', 'done')`, uuid.New(), home.org, home.user)
@@ -461,7 +461,7 @@ func TestTheDatabaseKeepsTheExampleJobsTheAdministrators(t *testing.T) {
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM example_job WHERE id = $1`, job).Scan(&seen); err != nil || seen != 1 {
 		t.Errorf("the administrator reads %d of their job: %v", seen, err)
 	}
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM example_job WHERE org_id = $1`, home.org).Scan(&seen); err != nil || seen != 0 {
 		t.Errorf("a member reads %d jobs: %v", seen, err)
 	}

@@ -8,19 +8,23 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // ErrInvalidToken is an unknown, expired or revoked credential. The caller is
 // then anonymous, which is not an error in itself.
 var ErrInvalidToken = errors.New("invalid or expired credential")
 
+// ErrNotMember is a person signed in who is no member yet, for whom the
+// database acts as nobody.
+var ErrNotMember = errors.New("not a member of this instance")
+
 // Principal is the caller a credential resolved to.
 type Principal struct {
 	UserID uuid.UUID
 	// Org is the organization the caller is acting in; nil for a person who is
 	// no member.
-	Org *tenant.Org
+	Org *instance.Org
 
 	Email     string
 	Name      string

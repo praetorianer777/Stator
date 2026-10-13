@@ -105,7 +105,7 @@ func TestAFileUploadedAgainIsItsNextVersion(t *testing.T) {
 
 	t.Run("straight through SQL the number is the database's", func(t *testing.T) {
 		conn := appConn(t)
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		var version int
 		if err := conn.QueryRow(context.Background(),
 			`INSERT INTO attachment (org_id, page_id, file_name, size_bytes, version) VALUES ($1, $2, 'BUDGET.xlsx', 1, 99) RETURNING version`,
@@ -195,9 +195,9 @@ func TestAnEarlierVersionIsRestoredAsTheNextOne(t *testing.T) {
 	t.Run("straight through SQL a restore names an earlier version of the same file, by an editor", func(t *testing.T) {
 		upload("notes.txt", "notes")
 		conn := appConn(t)
-		actAs(t, conn, home.org, readerID)
+		actAs(t, conn, readerID)
 		denied(t, conn, "a reader restoring", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, restored_from) VALUES ($1, $2, 'budget.csv', 2, 1)`, home.org, pageID)
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		for what, sql := range map[string]string{
 			"restoring the latest version":   `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, restored_from) VALUES ($1, $2, 'BUDGET.csv', 2, 3)`,
 			"restoring a version never made": `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, restored_from) VALUES ($1, $2, 'budget.csv', 2, 9)`,

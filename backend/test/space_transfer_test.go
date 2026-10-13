@@ -602,11 +602,11 @@ func TestTheDatabaseKeepsSpaceTransfersToTheirPeople(t *testing.T) {
 	importSQL := `INSERT INTO space_import (id, org_id, requested_by, key, size_bytes) VALUES ($1, $2, $3, 'NEWX', 10)`
 
 	conn := appConn(t)
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	refused(t, conn, "a member exporting a space they do not administer", exportSQL, uuid.New(), home.org, spaceID, memberID)
 	refused(t, conn, "a member importing a space", importSQL, uuid.New(), home.org, memberID)
 
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	refused(t, conn, "an administrator exporting for somebody else", exportSQL, uuid.New(), home.org, spaceID, memberID)
 	refused(t, conn, "an administrator importing for somebody else", importSQL, uuid.New(), home.org, memberID)
 	refused(t, conn, "an export queued as done",
@@ -637,7 +637,7 @@ func TestTheDatabaseKeepsSpaceTransfersToTheirPeople(t *testing.T) {
 	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM space_export WHERE id = $1) + (SELECT count(*) FROM space_import WHERE id = $2)`, export, imported).Scan(&seen); err != nil || seen != 2 {
 		t.Errorf("the administrator reads %d of their jobs: %v", seen, err)
 	}
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM space_export) + (SELECT count(*) FROM space_import)`).Scan(&seen); err != nil || seen != 0 {
 		t.Errorf("a member reads %d jobs: %v", seen, err)
 	}

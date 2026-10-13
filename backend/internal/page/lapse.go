@@ -11,7 +11,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -88,14 +87,14 @@ func (w *LapseWatch) Once(ctx context.Context) (int, error) {
 	}
 	noted := 0
 	for _, d := range found {
-		org := tenant.WithOrg(db.PinPrimary(ctx), tenant.Org{ID: d.orgID})
+		pinned := db.PinPrimary(ctx)
 		happened := false
-		_, err := w.db.WriteAdmin(org, func(ctx context.Context, tx db.DBTX) error {
+		_, err := w.db.WriteAdmin(pinned, func(ctx context.Context, tx db.DBTX) error {
 			var expires time.Time
 			// A second worker, or a verification renewed meanwhile, finds no row.
 			err := tx.QueryRow(ctx, `
 				UPDATE page_verification SET lapse_noticed_at = now()
-				WHERE org_id = current_org_id() AND page_id = $1 AND lapse_noticed_at IS NULL AND expires_at <= now()
+				WHERE page_id = $1 AND lapse_noticed_at IS NULL AND expires_at <= now()
 				RETURNING expires_at`, d.pageID).Scan(&expires)
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil

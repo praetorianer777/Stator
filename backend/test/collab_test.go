@@ -559,7 +559,7 @@ func TestTheSharedDraftIsWalledByTheDatabase(t *testing.T) {
 	insert := `INSERT INTO page_collab_update (org_id, page_id, room_id, body, created_by) VALUES ($1, $2, $3, $4, $5)`
 
 	t.Run("a reader neither reads nor writes it", func(t *testing.T) {
-		actAs(t, conn, home.org, bobID)
+		actAs(t, conn, bobID)
 		for _, table := range []string{"page_collab", "page_collab_update"} {
 			if n := count(`SELECT count(*) FROM `+table+` WHERE page_id = $1`, page); n != 0 {
 				t.Errorf("bob reads %d rows of %s", n, table)
@@ -572,7 +572,7 @@ func TestTheSharedDraftIsWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a member the space is closed to sees nothing", func(t *testing.T) {
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		if n := count(`SELECT count(*) FROM page_collab_update`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d updates", n)
 		}
@@ -580,7 +580,7 @@ func TestTheSharedDraftIsWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("an editor's update names her, and stays within the limit", func(t *testing.T) {
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		if _, err := conn.Exec(ctx, insert, home.org, page, room.room, []byte{3}, bobID); err != nil {
 			t.Fatalf("ann adds an update: %v", err)
 		}

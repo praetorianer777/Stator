@@ -191,7 +191,7 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 	t.Run("straight through SQL the database refuses it too", func(t *testing.T) {
 		conn := appConn(t)
 		ctx := context.Background()
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		count := func(sql string, args ...any) int {
 			t.Helper()
 			var n int

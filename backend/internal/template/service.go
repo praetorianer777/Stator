@@ -17,7 +17,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/perm"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -254,8 +253,8 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		}
 		id := uuid.Must(uuid.NewV7())
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_template (id, org_id, space_id, name, description, title, body, variables)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6, $7)`,
+			INSERT INTO page_template (id, space_id, name, description, title, body, variables)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 			id, space, clean.Name, clean.Description, clean.Title, string(clean.Body), string(vars)); err != nil {
 			return nameTaken(err)
 		}
@@ -354,16 +353,12 @@ func nameTaken(err error) error {
 }
 
 func record(ctx context.Context, tx db.DBTX, actor perm.Actor, action string, t Template) error {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return err
-	}
 	id, _ := uuid.Parse(t.Key)
 	data := map[string]any{"name": t.Name, "variables": len(t.Variables)}
 	if t.SpaceKey != "" {
 		data["space"] = t.SpaceKey
 	}
-	return audit.Write(ctx, tx, org.ID, audit.Entry{Action: action, TargetType: "template", TargetID: &id, Actor: actor.UserID, Data: data})
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "template", TargetID: &id, Actor: actor.UserID, Data: data})
 }
 
 // Instantiate fills a template in for a page made in space, in its transaction:

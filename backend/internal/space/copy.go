@@ -280,8 +280,8 @@ func writeGrants(ctx context.Context, tx db.DBTX, space uuid.UUID, table []perm.
 		}
 		for _, p := range g.Permissions {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id, group_id)
-				VALUES (current_org_id(), $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
+				INSERT INTO space_grant (space_id, permission, subject_type, user_id, group_id)
+				VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
 				space, string(p), string(g.Subject.Type), user, group); err != nil {
 				return fmt.Errorf("grant %s: %w", p, err)
 			}

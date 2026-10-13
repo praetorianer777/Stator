@@ -117,7 +117,7 @@ func (s *Service) OpenCollab(ctx context.Context, actor perm.Actor, id uuid.UUID
 		}
 		if fresh {
 			if err := tx.QueryRow(ctx, `
-				INSERT INTO page_collab (org_id, page_id, base_version) VALUES (current_org_id(), $1, $2)
+				INSERT INTO page_collab (page_id, base_version) VALUES ($1, $2)
 				RETURNING id, now()`, id, p.Version).Scan(&room.ID, &now); err != nil {
 				return fmt.Errorf("begin the shared draft: %w", err)
 			}
@@ -204,7 +204,7 @@ func (s *Service) AppendCollab(ctx context.Context, actor perm.Actor, id, room u
 	var seq int64
 	_, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO page_collab_update (org_id, page_id, room_id, body) VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO page_collab_update (page_id, room_id, body) VALUES ($1, $2, $3)
 			RETURNING seq`, id, room, body).Scan(&seq); err != nil {
 			return err
 		}
@@ -255,7 +255,7 @@ func (s *Service) SeedCollab(ctx context.Context, actor perm.Actor, id, room uui
 			return ErrBadBase
 		}
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO page_collab_update (org_id, page_id, room_id, body) VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO page_collab_update (page_id, room_id, body) VALUES ($1, $2, $3)
 			RETURNING seq`, id, room, body).Scan(&seq); err != nil {
 			return err
 		}
@@ -320,7 +320,7 @@ func (s *Service) CompactCollab(ctx context.Context, actor perm.Actor, id, room 
 			return ErrCompactStale
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO page_collab_update (org_id, page_id, room_id, seq, body) VALUES (current_org_id(), $1, $2, $3, $4)`,
+			INSERT INTO page_collab_update (page_id, room_id, seq, body) VALUES ($1, $2, $3, $4)`,
 			id, room, to, merged)
 		return err
 	})

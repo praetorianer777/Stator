@@ -291,7 +291,7 @@ func TestPreviewsAreGuardedByTheDatabase(t *testing.T) {
 	insert := `INSERT INTO attachment_preview (attachment_id, org_id, state) VALUES ($1, $2, 'failed')`
 
 	t.Run("somebody who cannot see the file can neither see nor make its preview", func(t *testing.T) {
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		denied(t, conn, "a preview of a hidden file", insert, hiddenFile, home.org)
 		var n int
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM attachment_preview WHERE attachment_id = $1`, openFile).Scan(&n); err != nil || n != 1 {
@@ -300,7 +300,7 @@ func TestPreviewsAreGuardedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a preview cannot be changed, removed or pointed elsewhere", func(t *testing.T) {
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		denied(t, conn, "marking it failed", `UPDATE attachment_preview SET state = 'failed', size_bytes = NULL WHERE attachment_id = $1`, openFile)
 		denied(t, conn, "removing it", `DELETE FROM attachment_preview WHERE attachment_id = $1`, openFile)
 		refused(t, conn, "a second preview of the file", insert, openFile, home.org)
@@ -310,7 +310,7 @@ func TestPreviewsAreGuardedByTheDatabase(t *testing.T) {
 
 	t.Run("a member the space is closed to reaches none of it", func(t *testing.T) {
 		other := h.makeOutsider(t, "previews-rls-other")
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		denied(t, conn, "a preview of a file they may not see", insert, hiddenFile, home.org)
 		var n int
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM attachment_preview`).Scan(&n); err != nil || n != 0 {

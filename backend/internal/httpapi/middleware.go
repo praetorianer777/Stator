@@ -14,7 +14,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/observability"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // maxRequestIDLength bounds a client-supplied request id, which is echoed back
@@ -146,8 +145,9 @@ type Authenticator interface {
 	Authenticate(ctx context.Context, credential string) (*auth.Principal, error)
 }
 
-// authenticate puts the caller and their tenant scope on the context. It never
-// rejects an anonymous request: requireAuth does, where it matters.
+// authenticate puts the caller on the context, and a member as the person the
+// database acts for. It never rejects an anonymous request: requireAuth does,
+// where it matters.
 func (s *Server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		secret := credentialFrom(r, s.CookieName)
@@ -163,7 +163,6 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		case err == nil:
 			ctx := context.WithValue(r.Context(), ctxPrincipal, principal)
 			if principal.InOrg() {
-				ctx = tenant.WithOrg(ctx, *principal.Org)
 				if principal.InSpacesOnly() {
 					ctx = db.WithUserInSpaces(ctx, principal.UserID, principal.TokenSpaces)
 				} else {
@@ -242,8 +241,8 @@ func requireAuth(next http.Handler) http.Handler {
 	})
 }
 
-// requireOrg rejects a caller who has not chosen an organization, whose queries
-// would otherwise reach the database with no tenant scope.
+// requireOrg rejects a caller who is no member, for whom the database would
+// act as nobody.
 func requireOrg(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := PrincipalFrom(r.Context())
@@ -252,7 +251,7 @@ func requireOrg(next http.Handler) http.Handler {
 			return
 		}
 		if !p.InOrg() {
-			respondError(w, r, tenant.ErrNoTenant)
+			respondError(w, r, auth.ErrNotMember)
 			return
 		}
 		next.ServeHTTP(w, r)

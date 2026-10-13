@@ -343,20 +343,20 @@ func TestInlineCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	newThread := `INSERT INTO comment_thread (org_id, id, page_id, kind, created_by, quote) VALUES ($1, $2, $3, 'inline', $4, 'ship')`
 
 	t.Run("a commenter adds only the mark of a thread of their own", func(t *testing.T) {
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		carls := uuid.NewString()
 		denied(t, conn, "a thread without addComments", newThread, home.org, carls, plan, carlID)
 		denied(t, conn, "a mark without addComments", setBody, plan, asJSON(marked(t, body, 0, "ship", anns)))
 
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		invented := uuid.NewString()
 		denied(t, conn, "a mark naming no thread", setBody, plan, asJSON(marked(t, body, 0, "ship", invented)))
 		bens := uuid.NewString()
-		actAs(t, conn, home.org, benID)
+		actAs(t, conn, benID)
 		if _, err := conn.Exec(ctx, newThread, home.org, bens, plan, benID); err != nil {
 			t.Fatalf("ben may not start a thread: %v", err)
 		}
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "marking ben's thread", setBody, plan, asJSON(marked(t, body, 0, "ship", bens)))
 		denied(t, conn, "a thread as somebody else", newThread, home.org, uuid.NewString(), plan, benID)
 		denied(t, conn, "a thread resolved from the start",
@@ -378,9 +378,9 @@ func TestInlineCommentsAreEnforcedByTheDatabase(t *testing.T) {
 
 	t.Run("a thread is resolved in one's own name and let go by publishing alone", func(t *testing.T) {
 		resolve := `UPDATE comment_thread SET resolved_at = now(), resolved_by = $2 WHERE id = $1`
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		denied(t, conn, "resolving without addComments", resolve, anns, carlID)
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "resolving in ben's name", resolve, anns, benID)
 		denied(t, conn, "detaching without edit", `UPDATE comment_thread SET detached_at = now() WHERE id = $1`, anns)
 		denied(t, conn, "rewriting the quote", `UPDATE comment_thread SET quote = 'x' WHERE id = $1`, anns)
@@ -390,7 +390,7 @@ func TestInlineCommentsAreEnforcedByTheDatabase(t *testing.T) {
 		if _, err := conn.Exec(ctx, `UPDATE comment_thread SET resolved_at = NULL, resolved_by = NULL WHERE id = $1`, anns); err != nil {
 			t.Errorf("ann may not reopen: %v", err)
 		}
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		if _, err := conn.Exec(ctx, `UPDATE comment_thread SET detached_at = now() WHERE id = $1`, anns); err != nil {
 			t.Errorf("the owner may not let a passage go: %v", err)
 		}
@@ -399,7 +399,7 @@ func TestInlineCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("no version holds a mark, however it is written", func(t *testing.T) {
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		if _, err := conn.Exec(ctx, `
 			INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
 			SELECT org_id, id, version + 1, title, body, $2 FROM page WHERE id = $1`, plan, home.user); err != nil {

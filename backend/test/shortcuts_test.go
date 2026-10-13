@@ -295,7 +295,7 @@ func TestShortcutsAreEnforcedByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("a member reads what they may view and changes nothing", func(t *testing.T) {
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		if n := count(`SELECT count(*) FROM space_shortcut WHERE space_id = $1`, spaceID); n != 2 {
 			t.Errorf("ann reads %d shortcuts, want the two that do not name Secret", n)
 		}
@@ -310,7 +310,7 @@ func TestShortcutsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("an administrator keeps to the web, to pages they may view, and to the row's space and target", func(t *testing.T) {
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		for _, bad := range []string{
 			"javascript:alert(1)", "JAVASCRIPT:alert(1)", "data:text/html,x", "ftp://example.com", "//example.com",
 			"https://user:pw@example.com", "https://exa mple.com", "https://example.com/\nx", "",
@@ -332,7 +332,7 @@ func TestShortcutsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("the limit holds whatever path adds them", func(t *testing.T) {
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		refused(t, conn, "a space filled past its limit", `
 			INSERT INTO space_shortcut (org_id, space_id, url, label, rank)
 			SELECT $1, $2, 'https://example.com/' || n, 'Link ' || n, 'y' || lpad(n::text, 3, '0')

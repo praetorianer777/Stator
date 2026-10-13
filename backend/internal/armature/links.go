@@ -17,7 +17,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -156,9 +155,9 @@ func (l *LinkSync) Handle(ctx context.Context, e events.Event) error {
 	if err := json.Unmarshal(e.Payload, &in); err != nil || in.PageID == uuid.Nil || e.OrgID == uuid.Nil {
 		return nil
 	}
-	org := tenant.WithOrg(db.PinPrimary(ctx), tenant.Org{ID: e.OrgID})
+	pinned := db.PinPrimary(ctx)
 	var retry error
-	_, err := l.svc.db.WriteAdmin(org, func(ctx context.Context, tx db.DBTX) error {
+	_, err := l.svc.db.WriteAdmin(pinned, func(ctx context.Context, tx db.DBTX) error {
 		// Two workers syncing one page at once would each put the links the
 		// other is about to record.
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('armature-links:' || $1::text, 0))`, in.PageID); err != nil {
@@ -179,7 +178,7 @@ func (l *LinkSync) Handle(ctx context.Context, e events.Event) error {
 		if len(steps) == 0 {
 			return nil
 		}
-		run := &linkRun{sync: l, tx: tx, pageID: in.PageID, as: db.WithUser(org, in.ActorID)}
+		run := &linkRun{sync: l, tx: tx, pageID: in.PageID, as: db.WithUser(pinned, in.ActorID)}
 		if run.viewer, run.status, err = l.svc.Viewer(run.as); err != nil {
 			return err
 		}
@@ -205,13 +204,13 @@ func (l *LinkSync) Handle(ctx context.Context, e events.Event) error {
 func (l *LinkSync) read(ctx context.Context, tx db.DBTX, pageID uuid.UUID) (bool, pageState, []LinkRecord, error) {
 	var page pageState
 	var connected bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM armature_connection WHERE org_id = current_org_id())`).Scan(&connected); err != nil || !connected {
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM armature_connection)`).Scan(&connected); err != nil || !connected {
 		return false, page, nil, err
 	}
 	err := tx.QueryRow(ctx, `
 		SELECT p.title, s.key, p.body, p.version > 0, p.trashed_at IS NOT NULL, page_open_to_members(p.id)
 		FROM page p JOIN space s ON s.id = p.space_id
-		WHERE p.id = $1 AND p.org_id = current_org_id()`, pageID).
+		WHERE p.id = $1`, pageID).
 		Scan(&page.Title, &page.SpaceKey, &page.Body, &page.Published, &page.Trashed, &page.Open)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -222,7 +221,7 @@ func (l *LinkSync) read(ctx context.Context, tx db.DBTX, pageID uuid.UUID) (bool
 	}
 	rows, err := tx.Query(ctx, `
 		SELECT issue_key, remote_link_id, COALESCE(url, ''), COALESCE(title, ''), state
-		FROM armature_remote_link WHERE org_id = current_org_id() AND page_id = $1`, pageID)
+		FROM armature_remote_link WHERE page_id = $1`, pageID)
 	if err != nil {
 		return false, page, nil, err
 	}
@@ -270,7 +269,7 @@ func (r *linkRun) apply(ctx context.Context, step LinkStep) (retry error, err er
 		}
 		if _, err := r.tx.Exec(ctx, `
 			UPDATE armature_remote_link SET remote_link_id = NULL, updated_at = now()
-			WHERE org_id = current_org_id() AND page_id = $1 AND issue_key = $2`, r.pageID, step.Key); err != nil {
+			WHERE page_id = $1 AND issue_key = $2`, r.pageID, step.Key); err != nil {
 			return nil, err
 		}
 	}
@@ -288,8 +287,8 @@ func (r *linkRun) apply(ctx context.Context, step LinkStep) (retry error, err er
 		return nil, r.fail(ctx, step, why)
 	}
 	_, err = r.tx.Exec(ctx, `
-		INSERT INTO armature_remote_link (org_id, page_id, issue_key, remote_link_id, url, title, state, error, synced_at, updated_at)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, 'synced', NULL, now(), now())
+		INSERT INTO armature_remote_link (page_id, issue_key, remote_link_id, url, title, state, error, synced_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'synced', NULL, now(), now())
 		ON CONFLICT (org_id, page_id, issue_key) DO UPDATE SET
 		    remote_link_id = EXCLUDED.remote_link_id, url = EXCLUDED.url, title = EXCLUDED.title,
 		    state = 'synced', error = NULL, synced_at = now(), updated_at = now()`,
@@ -365,8 +364,8 @@ func (r *linkRun) pending(ctx context.Context, steps []LinkStep) error {
 		}
 	}
 	_, err := r.tx.Exec(ctx, `
-		INSERT INTO armature_remote_link (org_id, page_id, issue_key, state, updated_at)
-		SELECT current_org_id(), $1, k, 'pending', now() FROM unnest($2::text[]) AS k
+		INSERT INTO armature_remote_link (page_id, issue_key, state, updated_at)
+		SELECT $1, k, 'pending', now() FROM unnest($2::text[]) AS k
 		ON CONFLICT (org_id, page_id, issue_key) DO UPDATE SET state = 'pending', error = NULL, updated_at = now()`,
 		r.pageID, keys)
 	return err
@@ -376,15 +375,15 @@ func (r *linkRun) pending(ctx context.Context, steps []LinkStep) error {
 // a later sync can still take it off.
 func (r *linkRun) fail(ctx context.Context, step LinkStep, why string) error {
 	_, err := r.tx.Exec(ctx, `
-		INSERT INTO armature_remote_link (org_id, page_id, issue_key, state, error, updated_at)
-		VALUES (current_org_id(), $1, $2, 'failed', $3, now())
+		INSERT INTO armature_remote_link (page_id, issue_key, state, error, updated_at)
+		VALUES ($1, $2, 'failed', $3, now())
 		ON CONFLICT (org_id, page_id, issue_key) DO UPDATE SET state = 'failed', error = EXCLUDED.error, updated_at = now()`,
 		r.pageID, step.Key, why)
 	return err
 }
 
 func (r *linkRun) forget(ctx context.Context, key string) error {
-	_, err := r.tx.Exec(ctx, `DELETE FROM armature_remote_link WHERE org_id = current_org_id() AND page_id = $1 AND issue_key = $2`, r.pageID, key)
+	_, err := r.tx.Exec(ctx, `DELETE FROM armature_remote_link WHERE page_id = $1 AND issue_key = $2`, r.pageID, key)
 	return err
 }
 
@@ -408,7 +407,7 @@ func (s *Service) PageLinks(ctx context.Context, pageID uuid.UUID, body json.Raw
 		}
 		rows, err := tx.Query(ctx, `
 			SELECT issue_key, state, error, synced_at FROM armature_remote_link
-			WHERE org_id = current_org_id() AND page_id = $1`, pageID)
+			WHERE page_id = $1`, pageID)
 		if err != nil {
 			return err
 		}

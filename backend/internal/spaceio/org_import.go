@@ -283,7 +283,7 @@ func (oi *orgImporter) write(ctx context.Context, tx db.DBTX) error {
 			return err
 		}
 	}
-	return audit.Write(ctx, tx, oi.org, audit.Entry{Action: audit.ActionOrgImported, TargetType: "org", Actor: oi.importer, Data: map[string]any{
+	return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionOrgImported, TargetType: "org", Actor: oi.importer, Data: map[string]any{
 		"from": oi.m.Organization.Slug, "name": oi.m.Organization.Name, "spaces": oi.report.Spaces, "pages": oi.report.Pages,
 		"people": oi.report.People, "groups": oi.report.Groups,
 	}})

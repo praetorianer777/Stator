@@ -50,7 +50,7 @@ func (s *Service) Example(ctx context.Context, actor perm.Actor) (*Space, error)
 
 func exampleOf(ctx context.Context, tx db.DBTX, actor perm.Actor) (*Space, error) {
 	var id uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT id FROM space WHERE org_id = current_org_id() AND example`).Scan(&id)
+	err := tx.QueryRow(ctx, `SELECT id FROM space WHERE example`).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -90,8 +90,8 @@ func (s *Service) CreateExample(ctx context.Context, actor perm.Actor, in Exampl
 		}
 		id, home := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
 		_, err := tx.Exec(ctx, `
-			INSERT INTO space (id, org_id, key, name, description, created_by, example, example_version, example_language)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, true, $6, $7)`, id, key, name, description, actor.UserID, in.Version, in.Language)
+			INSERT INTO space (id, key, name, description, created_by, example, example_version, example_language)
+			VALUES ($1, $2, $3, $4, $5, true, $6, $7)`, id, key, name, description, actor.UserID, in.Version, in.Language)
 		if constraint(err) == "space_one_example" {
 			return ErrExampleExists
 		}
@@ -102,8 +102,8 @@ func (s *Service) CreateExample(ctx context.Context, actor perm.Actor, in Exampl
 			return fmt.Errorf("save the example space: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page (id, org_id, space_id, rank, title, body, created_by, updated_by)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6, $6)`, home, id, rank.Initial(), name, in.Home, actor.UserID); err != nil {
+			INSERT INTO page (id, space_id, rank, title, body, created_by, updated_by)
+			VALUES ($1, $2, $3, $4, $5, $6, $6)`, home, id, rank.Initial(), name, in.Home, actor.UserID); err != nil {
 			return fmt.Errorf("make the home page: %w", err)
 		}
 		if err := publishFirst(ctx, tx, home); err != nil {

@@ -20,8 +20,8 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/secret"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // Service runs the sign-in flow and keeps each organization's provider, with
@@ -48,19 +48,15 @@ func NewService(cluster *db.Cluster, box *secret.Box, redirectURL string) *Servi
 	}
 }
 
-// Provider reads the configuration of the organization on ctx, through row
-// level security like any other tenant data.
+// Provider reads the organization's configuration, through row level
+// security like any other data.
 func (s *Service) Provider(ctx context.Context) (*Provider, error) {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
 	var p Provider
-	err = s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
+	err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
 			SELECT org_id, issuer, client_id, client_secret IS NOT NULL, groups_claim, scopes,
 			       create_groups, enabled, updated_at
-			FROM oidc_provider WHERE org_id = $1`, org.ID,
+			FROM oidc_provider`,
 		).Scan(&p.OrgID, &p.Issuer, &p.ClientID, &p.HasSecret, &p.GroupsClaim, &p.Scopes,
 			&p.CreateGroups, &p.Enabled, &p.UpdatedAt)
 	})
@@ -73,14 +69,19 @@ func (s *Service) Provider(ctx context.Context) (*Provider, error) {
 	return &p, nil
 }
 
-// Save writes the configuration of the organization on ctx. An empty secret
-// keeps the stored one, so a form that never shows it cannot erase it.
+// Save writes the organization's configuration. An empty secret keeps the
+// stored one, so a form that never shows it cannot erase it.
 func (s *Service) Save(ctx context.Context, in Provider) (*Provider, db.LSN, error) {
-	org, err := tenant.MustFromContext(ctx)
+	var orgID uuid.UUID
+	err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		orgID, err = instance.ID(ctx, tx)
+		return err
+	})
 	if err != nil {
 		return nil, 0, err
 	}
-	_, lsn, err := s.store(ctx, s.db.Write, org.ID, in, false)
+	_, lsn, err := s.store(ctx, s.db.Write, orgID, in, false)
 	if err != nil {
 		return nil, lsn, err
 	}
@@ -153,7 +154,7 @@ func (s *Service) store(
 			secretChange = "set"
 		}
 		actor, _ := db.UserFrom(ctx)
-		return audit.Write(ctx, tx, orgID, audit.Entry{
+		return audit.Write(ctx, tx, audit.Entry{
 			Action: audit.ActionSSOProviderSaved, TargetType: "oidc_provider", Actor: actor,
 			Data: map[string]any{
 				"issuer": in.Issuer, "clientId": in.ClientID, "clientSecret": secretChange, "groupsClaim": in.GroupsClaim,

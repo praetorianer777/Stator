@@ -55,7 +55,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
@@ -219,8 +218,7 @@ func (a *apiServer) as(t *testing.T, user, org uuid.UUID, slug string) *client {
 	if err != nil {
 		t.Fatalf("open a session: %v", err)
 	}
-	o := tenant.Org{ID: org, Slug: slug}
-	c := &client{api: a, token: token, user: user, ctx: db.WithUser(tenant.WithOrg(context.Background(), o), user), http: cookieJarClient()}
+	c := &client{api: a, token: token, user: user, ctx: db.WithUser(context.Background(), user), http: cookieJarClient()}
 	base, _ := url.Parse(a.srv.URL)
 	c.http.Jar.SetCookies(base, []*http.Cookie{{Name: a.h.cfg.Auth.SessionCookie, Value: token, Path: "/"}})
 	return c

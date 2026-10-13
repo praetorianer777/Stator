@@ -253,7 +253,7 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 
 	t.Run("the database holds every print token to read only and a few minutes", func(t *testing.T) {
 		conn := appConn(t)
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		for what, sql := range map[string]string{
 			"an hour":     `INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, $2, 'x', $3, ARRAY['read'], now() + interval '1 hour', true)`,
 			"forever":     `INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, $2, 'x', $3, ARRAY['read'], NULL, true)`,

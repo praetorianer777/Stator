@@ -298,13 +298,13 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 			"the requests to join":        `SELECT count(*) FROM org_join_request`,
 			"OTHR in the home feed":       `SELECT count(*) FROM home_edited(NULL, NULL, 100) WHERE page_id = '` + otherPage + `'`,
 		}
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		for what, sql := range rows {
 			if count(sql) == 0 {
 				t.Fatalf("the owner reads no rows of %s, so the guest's zero would prove nothing", what)
 			}
 		}
-		actAs(t, conn, home.org, guestID)
+		actAs(t, conn, guestID)
 		for what, sql := range rows {
 			if n := count(sql); n != 0 {
 				t.Errorf("the guest reads %d rows of %s", n, what)
@@ -342,7 +342,7 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 		_ = tx.Rollback(ctx)
 
 		// The owner administers everything, and still cannot widen a guest.
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		denied(t, conn, "granting OTHR to the guest", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
 			SELECT $1, id, 'view', 'user', $2 FROM space WHERE key = 'OTHR'`, home.org, guestID)
 		denied(t, conn, "the guest administering JOIN", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
@@ -353,7 +353,7 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 		denied(t, conn, "a guest without a space", `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'guest')`, home.org, uuid.New())
 
 		// A member is not an administrator, and makes or removes no guest.
-		actAs(t, conn, home.org, oscarID)
+		actAs(t, conn, oscarID)
 		denied(t, conn, "a member making a guest", `INSERT INTO org_member (org_id, user_id, org_role, guest_space_id)
 			SELECT $1, $2, 'guest', id FROM space WHERE key = 'OTHR'`, home.org, inaID)
 		untouched(t, conn, "a member removing the guest", `DELETE FROM org_member WHERE user_id = $1`, guestID)

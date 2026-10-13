@@ -34,8 +34,8 @@ func (s *Service) MintRenderToken(ctx context.Context, p *Principal) (string, uu
 			return fmt.Errorf("forget spent print tokens: %w", err)
 		}
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, for_render)
-			VALUES (current_org_id(), $1, $2, $3, ARRAY['read'], now() + make_interval(secs => $4), true)
+			INSERT INTO api_token (user_id, name, token_hash, scopes, expires_at, for_render)
+			VALUES ($1, $2, $3, ARRAY['read'], now() + make_interval(secs => $4), true)
 			RETURNING id`,
 			p.UserID, renderTokenName, digest, RenderTokenTTL.Seconds(),
 		).Scan(&id); err != nil {

@@ -97,8 +97,8 @@ func syncTasks(ctx context.Context, tx db.DBTX, pageID uuid.UUID, strict bool) e
 		return fmt.Errorf("drop the tasks the page no longer holds: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_task (org_id, page_id, task_id, position, summary, done, assignee_id, due_on)
-		SELECT current_org_id(), $1, t.task_id, t.position, t.summary, t.done, t.assignee_id, t.due_on::date
+		INSERT INTO page_task (page_id, task_id, position, summary, done, assignee_id, due_on)
+		SELECT $1, t.task_id, t.position, t.summary, t.done, t.assignee_id, t.due_on::date
 		FROM unnest($2::uuid[], $3::int[], $4::text[], $5::bool[], $6::uuid[], $7::text[])
 		     AS t (task_id, position, summary, done, assignee_id, due_on)
 		ON CONFLICT (org_id, page_id, task_id) DO UPDATE

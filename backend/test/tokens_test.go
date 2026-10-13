@@ -222,7 +222,7 @@ func TestTokenRowsAreWalledByTheDatabase(t *testing.T) {
 		t.Errorf("an unscoped connection sees %d tokens", got)
 	}
 
-	actAs(t, conn, c.org, c.user)
+	actAs(t, conn, c.user)
 	if got := count(`SELECT count(*) FROM api_token`); got != 1 {
 		t.Errorf("a member sees %d tokens, want their own one", got)
 	}
@@ -249,7 +249,7 @@ func TestTokenRowsAreWalledByTheDatabase(t *testing.T) {
 		t.Error("B's token is not as B left it")
 	}
 
-	actAs(t, conn, a.org, a.user)
+	actAs(t, conn, a.user)
 	if got := count(`SELECT count(*) FROM api_token_space WHERE token_id = $1`, idB); got != 1 {
 		t.Error("an administrator does not see the spaces of a member's token")
 	}

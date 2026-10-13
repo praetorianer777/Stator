@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 func TestGenerateTokenIsUniqueAndHashed(t *testing.T) {
@@ -162,7 +162,7 @@ func TestATokenNamesItsSpacesOnceEach(t *testing.T) {
 }
 
 func TestATokenLimitedToSpacesAdministersNoOrganization(t *testing.T) {
-	org := &tenant.Org{ID: uuid.New(), Slug: "acme"}
+	org := &instance.Org{ID: uuid.New(), Slug: "acme"}
 	id := uuid.New()
 	limited := &Principal{Org: org, Role: RoleOwner, TokenID: &id, SpacesOnly: true}
 	if !limited.InSpacesOnly() || limited.CanAdminister() {
@@ -177,7 +177,7 @@ func TestATokenLimitedToSpacesAdministersNoOrganization(t *testing.T) {
 }
 
 func TestOnlyOwnersAndAdminsAdminister(t *testing.T) {
-	org := &tenant.Org{ID: uuid.New(), Slug: "acme"}
+	org := &instance.Org{ID: uuid.New(), Slug: "acme"}
 	for role, want := range map[OrgRole]bool{RoleOwner: true, RoleAdmin: true, RoleMember: false, "": false} {
 		if got := (&Principal{Org: org, Role: role}).CanAdminister(); got != want {
 			t.Errorf("%q administers = %v, want %v", role, got, want)

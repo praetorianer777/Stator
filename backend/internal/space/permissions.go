@@ -122,8 +122,8 @@ func (s *Service) SetPermissions(ctx context.Context, actor perm.Actor, key stri
 		for _, r := range table {
 			for _, p := range r.permissions {
 				if _, err := tx.Exec(ctx, `
-					INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id, group_id)
-					VALUES (current_org_id(), $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
+					INSERT INTO space_grant (space_id, permission, subject_type, user_id, group_id)
+					VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
 					sp.ID, string(p), string(r.subject.Type), r.subject.UserID(), r.subject.GroupID()); err != nil {
 					return fmt.Errorf("grant %s: %w", p, err)
 				}

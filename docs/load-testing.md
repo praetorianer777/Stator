@@ -192,7 +192,7 @@ against 800 ms, while its median stays near 30 ms.
 - A slow statement: `ALTER SYSTEM SET log_min_duration_statement = 400` on the
   primary and on the replica, `SELECT pg_reload_conf()`, run the profile
   again, and `EXPLAIN ANALYZE` the logged statement as `stator_app` with
-  `app.org_id` and `app.user_id` set, because row level security decides the
+  `app.user_id` set, because row level security decides the
   plan. That is how #370 and #371 were found.
 - Requests waiting on each other: the api's pools (`STATOR_DB_PRIMARY_MAX_CONNS`,
   `STATOR_DB_REPLICA_MAX_CONNS`) against `pg_stat_activity`.

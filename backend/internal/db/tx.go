@@ -6,13 +6,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
-// setOrgSQL binds a row level security variable for the current transaction.
+// setVarSQL binds a row level security variable for the current transaction.
 // SET LOCAL takes no bind parameter; set_config does, and its true makes it local.
-const setOrgSQL = `SELECT set_config($1, $2, true)`
+const setVarSQL = `SELECT set_config($1, $2, true)`
 
 // currentLSNSQL reads the primary's current write ahead log insert position.
 const currentLSNSQL = `SELECT pg_current_wal_insert_lsn()::text`
@@ -78,21 +76,14 @@ func (c *Cluster) ReadPrimary(ctx context.Context, fn func(context.Context, DBTX
 	return c.Read(PinPrimary(ctx), fn)
 }
 
-// inTx opens a transaction, applies the tenant scope, runs fn and commits.
+// inTx opens a transaction, names the caller for row level security, runs fn
+// and commits.
 func (c *Cluster) inTx(
 	ctx context.Context,
 	on beginner,
 	opts pgx.TxOptions,
 	fn func(context.Context, pgx.Tx) error,
 ) error {
-	// Without an organization, and without an explicit system mark, the
-	// transaction is refused: a query that forgets its tenant is then a failed
-	// request rather than a cross-tenant disclosure.
-	org, hasOrg := tenant.FromContext(ctx)
-	if !hasOrg && !isSystem(ctx) {
-		return tenant.ErrNoTenant
-	}
-
 	tx, err := on.BeginTx(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
@@ -101,27 +92,22 @@ func (c *Cluster) inTx(
 	// on every path including panics.
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 
-	if hasOrg {
-		if _, err := tx.Exec(ctx, setOrgSQL, tenant.PostgresVar, org.ID.String()); err != nil {
-			return fmt.Errorf("apply tenant scope: %w", err)
+	if user, ok := UserFrom(ctx); ok {
+		if _, err := tx.Exec(ctx, setVarSQL, UserVar, user.String()); err != nil {
+			return fmt.Errorf("apply the acting person: %w", err)
 		}
-		if user, ok := UserFrom(ctx); ok {
-			if _, err := tx.Exec(ctx, setOrgSQL, UserVar, user.String()); err != nil {
-				return fmt.Errorf("apply the acting person: %w", err)
+		if spaces, only := SpacesFrom(ctx); only {
+			if _, err := tx.Exec(ctx, setVarSQL, TokenSpacesVar, spacesSetting(spaces)); err != nil {
+				return fmt.Errorf("apply the token's spaces: %w", err)
 			}
-			if spaces, only := SpacesFrom(ctx); only {
-				if _, err := tx.Exec(ctx, setOrgSQL, TokenSpacesVar, spacesSetting(spaces)); err != nil {
-					return fmt.Errorf("apply the token's spaces: %w", err)
-				}
-			}
-		} else if AnonymousFrom(ctx) {
-			if _, err := tx.Exec(ctx, setOrgSQL, AnonymousVar, "on"); err != nil {
-				return fmt.Errorf("apply the anonymous reader: %w", err)
-			}
-			if a, _ := ctx.Value(userKey{}).(acting); a.link != "" {
-				if _, err := tx.Exec(ctx, setOrgSQL, LinkVar, a.link); err != nil {
-					return fmt.Errorf("apply the public link: %w", err)
-				}
+		}
+	} else if AnonymousFrom(ctx) {
+		if _, err := tx.Exec(ctx, setVarSQL, AnonymousVar, "on"); err != nil {
+			return fmt.Errorf("apply the anonymous reader: %w", err)
+		}
+		if a, _ := ctx.Value(userKey{}).(acting); a.link != "" {
+			if _, err := tx.Exec(ctx, setVarSQL, LinkVar, a.link); err != nil {
+				return fmt.Errorf("apply the public link: %w", err)
 			}
 		}
 	}
@@ -135,9 +121,9 @@ func (c *Cluster) inTx(
 }
 
 // WriteAdmin runs fn on the primary as the role exempt from row level security,
-// for work that runs before a tenant is known, such as signup and login.
+// for work that runs before anybody is known, such as signup and login.
 func (c *Cluster) WriteAdmin(ctx context.Context, fn func(context.Context, DBTX) error) (LSN, error) {
-	err := c.inTx(WithSystem(ctx), c.admin, pgx.TxOptions{AccessMode: pgx.ReadWrite}, func(ctx context.Context, tx pgx.Tx) error {
+	err := c.inTx(ctx, c.admin, pgx.TxOptions{AccessMode: pgx.ReadWrite}, func(ctx context.Context, tx pgx.Tx) error {
 		return fn(ctx, tx)
 	})
 	if err != nil {
@@ -149,7 +135,7 @@ func (c *Cluster) WriteAdmin(ctx context.Context, fn func(context.Context, DBTX)
 // ReadAdmin is WriteAdmin read-only. It reads the primary: its callers are
 // authentication paths, where a stale answer is worse than a dearer one.
 func (c *Cluster) ReadAdmin(ctx context.Context, fn func(context.Context, DBTX) error) error {
-	return c.inTx(WithSystem(ctx), c.admin, readOnly, func(ctx context.Context, tx pgx.Tx) error {
+	return c.inTx(ctx, c.admin, readOnly, func(ctx context.Context, tx pgx.Tx) error {
 		return fn(ctx, tx)
 	})
 }

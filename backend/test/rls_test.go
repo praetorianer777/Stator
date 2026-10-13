@@ -15,24 +15,29 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 )
 
-// The belt as well as the braces: a query with no organization at all is
-// refused before it reaches the database.
-func TestUnscopedAccessIsRefused(t *testing.T) {
+// A transaction the Go code opens for nobody reaches nothing: no space or page
+// to read, and no organization to make. Nothing in Go refuses it first: the
+// database does.
+func TestATransactionForNobodyReachesNothing(t *testing.T) {
 	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "nobody")
+	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	newTree(t, owner, uniqueKey("NOB"), "Nobody's")
+	h.settle(t)
 
-	err := h.cluster.Read(context.Background(), func(ctx context.Context, tx db.DBTX) error {
-		var n int
-		return tx.QueryRow(ctx, `SELECT count(*) FROM org`).Scan(&n)
-	})
-	if !isNoTenant(err) {
-		t.Fatalf("a read with no organization = %v, want tenant.ErrNoTenant", err)
+	for _, table := range []string{"space", "page", "page_version", "space_grant"} {
+		if n := h.count(t, context.Background(), `SELECT count(*) FROM `+table); n != 0 {
+			t.Errorf("a transaction for nobody sees %d rows of %s", n, table)
+		}
 	}
-	_, err = h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
+	_, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ('nobody', 'Nobody')`)
 		return err
 	})
-	if !isNoTenant(err) {
-		t.Fatalf("a write with no organization = %v, want tenant.ErrNoTenant", err)
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || (pgErr.Code != "42501" && pgErr.Code != "23514") {
+		t.Fatalf("an organization made for nobody = %v, want refused", err)
 	}
 }
 
@@ -41,7 +46,11 @@ func TestUnscopedAccessIsRefused(t *testing.T) {
 // level security cannot be switched off, dropped or stepped around.
 func TestRawSQLAsTheAppRoleCannotLiftRowSecurity(t *testing.T) {
 	h := newHarness(t)
-	h.makeMember(t, "gamma")
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "gamma")
+	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	newTree(t, owner, uniqueKey("GAM"), "Gamma")
+	h.settle(t)
 
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, os.Getenv(envPrimary))
@@ -60,7 +69,7 @@ func TestRawSQLAsTheAppRoleCannotLiftRowSecurity(t *testing.T) {
 	}
 
 	t.Run("with nobody set nothing is visible", func(t *testing.T) {
-		for _, table := range []string{"org", "app_user", "org_member"} {
+		for _, table := range []string{"space", "page", "page_version", "space_grant"} {
 			var n int
 			if err := conn.QueryRow(ctx, `SELECT count(*) FROM `+table).Scan(&n); err != nil {
 				t.Fatal(err)
@@ -74,9 +83,8 @@ func TestRawSQLAsTheAppRoleCannotLiftRowSecurity(t *testing.T) {
 	for _, attempt := range []struct{ name, sql string }{
 		{"turning row security off", `SET row_security = off; SELECT count(*) FROM org`},
 		{"disabling the policies", `ALTER TABLE org DISABLE ROW LEVEL SECURITY`},
-		{"dropping a policy", `DROP POLICY org_tenant_isolation ON org`},
+		{"dropping a policy", `DROP POLICY org_app ON org`},
 		{"becoming the exempt role", `SET ROLE stator_admin`},
-		{"making an organization", `INSERT INTO org (slug, name) VALUES ('sneaky', 'Sneaky')`},
 	} {
 		t.Run(attempt.name+" is refused", func(t *testing.T) {
 			if _, err := conn.Exec(ctx, `RESET ALL`); err != nil {
@@ -92,6 +100,23 @@ func TestRawSQLAsTheAppRoleCannotLiftRowSecurity(t *testing.T) {
 			}
 		})
 	}
+
+	// The trigger that keeps one organization speaks first, so either refusal
+	// will do; removing it is filtered by the policies, which admit no delete.
+	t.Run("making or removing the organization is refused", func(t *testing.T) {
+		if _, err := conn.Exec(ctx, `RESET ALL`); err != nil {
+			t.Fatal(err)
+		}
+		_, err := conn.Exec(ctx, `INSERT INTO org (slug, name) VALUES ('sneaky', 'Sneaky')`)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || (pgErr.Code != "42501" && pgErr.Code != "23514") {
+			t.Errorf("making an organization = %v, want refused", err)
+		}
+		tag, err := conn.Exec(ctx, `DELETE FROM org`)
+		if err != nil || tag.RowsAffected() != 0 {
+			t.Errorf("the app role removed %d organizations (%v)", tag.RowsAffected(), err)
+		}
+	})
 }
 
 // Signup and login run before anybody is known; the admin role is exempt by
@@ -138,14 +163,23 @@ func TestPrivilegedRolesAreRefused(t *testing.T) {
 	}
 }
 
-// A table a migration adds without forcing row level security, or without the
-// admin's bypass, is caught here rather than in production.
+// adminOnlyTables are read and written by the admin role alone, so the app
+// role has no permissive policy on them and reaches no row.
+var adminOnlyTables = map[string]bool{"user_identity": true, "user_session": true}
+
+// A table a migration adds without forcing row level security, without the
+// admin's bypass, or without the permissive policy every restrictive access
+// policy of the app role needs to admit anything, is caught here rather than
+// in production.
 func TestEveryTableForcesRowSecurity(t *testing.T) {
 	h := newHarness(t)
 	rows, err := h.super.Query(context.Background(), `
 		SELECT c.relname, c.relrowsecurity AND c.relforcerowsecurity,
 		       EXISTS (SELECT 1 FROM pg_policies p
-		               WHERE p.schemaname = 'public' AND p.tablename = c.relname AND 'stator_admin' = ANY (p.roles))
+		               WHERE p.schemaname = 'public' AND p.tablename = c.relname AND 'stator_admin' = ANY (p.roles)),
+		       EXISTS (SELECT 1 FROM pg_policies p
+		               WHERE p.schemaname = 'public' AND p.tablename = c.relname AND p.permissive = 'PERMISSIVE'
+		                 AND p.cmd IN ('ALL', 'SELECT') AND (p.roles && ARRAY['stator_app', 'public']::name[]))
 		FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 		WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname <> 'goose_db_version'
 		ORDER BY c.relname`)
@@ -156,8 +190,8 @@ func TestEveryTableForcesRowSecurity(t *testing.T) {
 	seen := 0
 	for rows.Next() {
 		var name string
-		var forced, bypass bool
-		if err := rows.Scan(&name, &forced, &bypass); err != nil {
+		var forced, bypass, admits bool
+		if err := rows.Scan(&name, &forced, &bypass, &admits); err != nil {
 			t.Fatal(err)
 		}
 		seen++
@@ -167,6 +201,9 @@ func TestEveryTableForcesRowSecurity(t *testing.T) {
 		if !bypass {
 			t.Errorf("%s has no policy letting stator_admin through", name)
 		}
+		if !admits && !adminOnlyTables[name] {
+			t.Errorf("%s has no permissive policy for stator_app, so its access policies admit nothing", name)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatal(err)
@@ -174,6 +211,43 @@ func TestEveryTableForcesRowSecurity(t *testing.T) {
 	// A run that found no tables would pass for the wrong reason.
 	if seen < 3 {
 		t.Fatalf("only %d tables found; the schema is not migrated", seen)
+	}
+}
+
+// An instance serves one organization, so no policy and no function reads
+// the tenant: neither current_org_id(), kept only until org_id goes, nor the
+// app.org_id setting it read. A migration that brings either back fails here.
+func TestNothingReadsTheTenant(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	const tenant = `(current_org_id\s*\(|app\.org_id)`
+	found := func(sql string) []string {
+		t.Helper()
+		rows, err := h.super.Query(ctx, sql, tenant)
+		if err != nil {
+			t.Fatal(err)
+		}
+		names, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			t.Fatal(err)
+		}
+		return names
+	}
+	for _, name := range found(`
+		SELECT tablename || '.' || policyname FROM pg_policies
+		WHERE schemaname = 'public' AND (qual ~ $1 OR with_check ~ $1)
+		ORDER BY 1`) {
+		t.Errorf("policy %s reads the tenant", name)
+	}
+	for _, name := range found(`
+		SELECT p.oid::regprocedure::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+		WHERE n.nspname = 'public' AND p.proname <> 'current_org_id' AND p.prosrc ~ $1
+		ORDER BY 1`) {
+		t.Errorf("function %s reads the tenant", name)
+	}
+	// A pattern that matched nothing at all would pass for the wrong reason.
+	if len(found(`SELECT 'x' WHERE 'org_id = current_org_id ()' ~ $1 AND 'current_setting(''app.org_id'')' ~ $1`)) != 1 {
+		t.Fatal("the pattern no longer recognises a read of the tenant")
 	}
 }
 

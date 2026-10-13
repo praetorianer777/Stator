@@ -18,14 +18,14 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const adminPassword = "a long bootstrap password"
 
 // bootstrapAdmin makes a local administrator of org the way cmd/seed does.
-func bootstrapAdmin(t *testing.T, h *harness, a *api, org tenant.Org) string {
+func bootstrapAdmin(t *testing.T, h *harness, a *api, org instance.Org) string {
 	t.Helper()
 	email := "admin-" + uuid.NewString()[:8] + "@stator.test"
 	h.forgetPerson(t, email)

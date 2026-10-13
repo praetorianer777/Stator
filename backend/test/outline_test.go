@@ -84,12 +84,12 @@ func TestTheOutlineWalkAnswersAsRowLevelSecurity(t *testing.T) {
 			act  func()
 			min  int
 		}{
-			{"the owner", func() { actAs(t, conn, a.org, a.user) }, 18},
-			{"ann, whom both walls name", func() { actAs(t, conn, a.org, annID) }, 21},
-			{"ben, whom only the outer wall names", func() { actAs(t, conn, a.org, benID) }, 14},
-			{"a member both spaces are closed to", func() { actAs(t, conn, b.org, b.user) }, 0},
-			{"an anonymous reader", func() { actAnonymously(t, conn, a.org) }, 5},
-			{"an anonymous reader holding a link", func() { readThrough(t, conn, a.org, token) }, 6},
+			{"the owner", func() { actAs(t, conn, a.user) }, 18},
+			{"ann, whom both walls name", func() { actAs(t, conn, annID) }, 21},
+			{"ben, whom only the outer wall names", func() { actAs(t, conn, benID) }, 14},
+			{"a member both spaces are closed to", func() { actAs(t, conn, b.user) }, 0},
+			{"an anonymous reader", func() { actAnonymously(t, conn) }, 5},
+			{"an anonymous reader holding a link", func() { readThrough(t, conn, token) }, 6},
 		} {
 			who.act()
 			total := 0
@@ -116,18 +116,18 @@ func TestTheOutlineWalkAnswersAsRowLevelSecurity(t *testing.T) {
 			return n
 		}
 		const hidden = `SELECT count(*) FROM page_outline_rows($1) WHERE title IN ('Inner wall', 'Deep inside', 'Ann''s draft', 'Below ann''s draft')`
-		actAs(t, conn, a.org, annID)
+		actAs(t, conn, annID)
 		if n := count(hidden, docs.homeID); n != 4 {
 			t.Fatalf("ann's walk holds %d of the pages ben's must not, want 4: the check proves nothing", n)
 		}
-		actAs(t, conn, a.org, benID)
+		actAs(t, conn, benID)
 		if n := count(hidden, docs.homeID); n != 0 {
 			t.Errorf("ben's walk holds %d pages walled off from him or drafted by ann", n)
 		}
 		if n := count(`SELECT count(*) FROM page_outline_rows($1)`, inner); n != 0 {
 			t.Errorf("ben walks %d pages starting inside a wall that leaves him out", n)
 		}
-		actAs(t, conn, b.org, b.user)
+		actAs(t, conn, b.user)
 		if n := count(`SELECT count(*) FROM page_outline_rows($1)`, docs.homeID); n != 0 {
 			t.Errorf("a member the space is closed to walks %d of WALK's pages", n)
 		}

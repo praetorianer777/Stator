@@ -263,15 +263,15 @@ func TestSharesAreWalledByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("a share is made only as oneself, of a page one may share", func(t *testing.T) {
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "sharing as ben", `INSERT INTO page_share (org_id, page_id, sharer_id) VALUES ($1, $2, $3)`, home.org, open, benID)
 		denied(t, conn, "sharing a page nobody else can read yet", `INSERT INTO page_share (org_id, page_id, sharer_id) VALUES ($1, $2, $3)`, home.org, draft, annID)
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		denied(t, conn, "sharing a page one may not view", `INSERT INTO page_share (org_id, page_id, sharer_id) VALUES ($1, $2, $3)`, home.org, secret, carlID)
 	})
 
 	t.Run("a share names only people who may view its page", func(t *testing.T) {
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		tx, err := conn.Begin(ctx)
 		if err != nil {
 			t.Fatal(err)
@@ -305,7 +305,7 @@ func TestSharesAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a share is read only by its sharer and never changed", func(t *testing.T) {
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		if n := count(`SELECT count(*) FROM page_share WHERE sharer_id <> $1`, annID); n != 0 {
 			t.Errorf("ann reads %d of other people's shares", n)
 		}
@@ -323,7 +323,7 @@ func TestSharesAreWalledByTheDatabase(t *testing.T) {
 			home.org, open, carlID, share.MaxPerHour); err != nil {
 			t.Fatal(err)
 		}
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		denied(t, conn, "sharing past the hourly limit", `INSERT INTO page_share (org_id, page_id, sharer_id) VALUES ($1, $2, $3)`, home.org, open, carlID)
 	})
 

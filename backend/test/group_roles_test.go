@@ -16,13 +16,13 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 const carolPassword = "carol password"
 
 // adminOf signs a fresh bootstrap owner of org in with a password.
-func adminOf(t *testing.T, h *harness, a *api, org tenant.Org) (*browser, uuid.UUID) {
+func adminOf(t *testing.T, h *harness, a *api, org instance.Org) (*browser, uuid.UUID) {
 	t.Helper()
 	email := bootstrapAdmin(t, h, a, org)
 	b := newBrowser(t)
@@ -42,7 +42,7 @@ func (h *harness) userID(t *testing.T, email string) uuid.UUID {
 }
 
 // standing is somebody's role in org and who decided it, straight from the table.
-func (h *harness) standing(t *testing.T, org tenant.Org, email string) (string, string) {
+func (h *harness) standing(t *testing.T, org instance.Org, email string) (string, string) {
 	t.Helper()
 	var role, source string
 	err := h.super.QueryRow(context.Background(), `
@@ -58,7 +58,7 @@ func (h *harness) standing(t *testing.T, org tenant.Org, email string) (string, 
 }
 
 // auditRows lists what the record holds about one person, oldest first.
-func (h *harness) auditRows(t *testing.T, org tenant.Org, action string, target uuid.UUID) []map[string]any {
+func (h *harness) auditRows(t *testing.T, org instance.Org, action string, target uuid.UUID) []map[string]any {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
 		SELECT data, actor_user_id IS NULL FROM audit_log
@@ -243,7 +243,7 @@ func TestAMappedGroupGrantsItsRoleAndTakesItBack(t *testing.T) {
 
 // signedIn signs somebody into org through Keycloak in a browser of their own,
 // which a previous sign-in's provider session would otherwise skip the form of.
-func signedIn(t *testing.T, a *api, org tenant.Org, username, password string) *browser {
+func signedIn(t *testing.T, a *api, org instance.Org, username, password string) *browser {
 	t.Helper()
 	b := newBrowser(t)
 	if landing := b.signIn(t, a, username, password, "/"); landing != "http://"+appHost+"/" {
@@ -340,7 +340,7 @@ func TestTheOwnerIsNeverDemotedByAMapping(t *testing.T) {
 	}
 
 	t.Run("straight through SQL the database refuses to hand an owner to the provider", func(t *testing.T) {
-		conn := h.appConn(t, org.ID)
+		conn := h.appConn(t)
 		aliceID := h.userID(t, "alice@stator.test")
 		for _, sql := range []string{
 			`UPDATE org_member SET org_role = 'member', role_source = 'oidc' WHERE user_id = $1`,
@@ -354,8 +354,8 @@ func TestTheOwnerIsNeverDemotedByAMapping(t *testing.T) {
 	})
 }
 
-// appConn is a connection as stator_app scoped to one organization.
-func (h *harness) appConn(t *testing.T, org uuid.UUID) *pgx.Conn {
+// appConn is a connection as stator_app.
+func (h *harness) appConn(t *testing.T) *pgx.Conn {
 	t.Helper()
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, os.Getenv(envPrimary))
@@ -363,9 +363,6 @@ func (h *harness) appConn(t *testing.T, org uuid.UUID) *pgx.Conn {
 		t.Fatalf("connect as the app role: %v", err)
 	}
 	t.Cleanup(func() { _ = conn.Close(context.Background()) })
-	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, org.String()); err != nil {
-		t.Fatal(err)
-	}
 	return conn
 }
 
@@ -402,8 +399,8 @@ func TestRawSQLKeepsGroupRolesToWhatTheyMayGrant(t *testing.T) {
 	}
 
 	// Acting for the owner, since only an administrator reaches the mapping.
-	conn := h.appConn(t, a.org)
-	actAs(t, conn, a.org, a.user)
+	conn := h.appConn(t)
+	actAs(t, conn, a.user)
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM oidc_group_role`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("the owner sees %d mappings, want its one (%v)", n, err)
 	}

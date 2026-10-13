@@ -51,7 +51,7 @@ func (h *harness) openCluster(t *testing.T, maxLag, health time.Duration) *db.Cl
 func addTheme(t *testing.T, c *db.Cluster, m member, name string) db.LSN {
 	t.Helper()
 	lsn, err := c.Write(m.ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `INSERT INTO theme (org_id, owner_id, name) VALUES (current_org_id(), $1, $2)`, m.user, name)
+		_, err := tx.Exec(ctx, `INSERT INTO theme (owner_id, name) VALUES ($1, $2)`, m.user, name)
 		return err
 	})
 	if err != nil {
@@ -99,7 +99,7 @@ func TestWriteReportsThePositionPastItsCommit(t *testing.T) {
 
 	var inside db.LSN
 	after, err := h.cluster.Write(m.ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, err := tx.Exec(ctx, `INSERT INTO theme (org_id, owner_id, name) VALUES (current_org_id(), $1, 'commit')`, m.user); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO theme (owner_id, name) VALUES ($1, 'commit')`, m.user); err != nil {
 			return err
 		}
 		var text string

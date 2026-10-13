@@ -8,8 +8,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // Seeded names. The slug is the organization's key until it goes from the
@@ -25,7 +25,7 @@ type Result struct {
 }
 
 // Run seeds the cluster through the admin role, since making an organization
-// precedes any tenant.
+// precedes any member.
 func Run(ctx context.Context, cluster *db.Cluster) (Result, error) {
 	return Ensure(ctx, cluster, DemoOrgName)
 }
@@ -83,7 +83,7 @@ type Populated struct {
 
 // Populate lets the people into the organization and points it at the
 // provider, once: a provider already there is an administrator's to change.
-func Populate(ctx context.Context, accounts *auth.Service, sso *oidc.Service, org tenant.Org, people People) (Populated, error) {
+func Populate(ctx context.Context, accounts *auth.Service, sso *oidc.Service, org instance.Org, people People) (Populated, error) {
 	var out Populated
 	for _, m := range people.Members {
 		added, err := accounts.EnsureMember(ctx, m.Email, m.Role)

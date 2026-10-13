@@ -19,7 +19,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -73,14 +72,14 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 	if len(payload) == 0 {
 		payload = json.RawMessage(`{}`)
 	}
-	ctx = tenant.WithOrg(db.WithUser(ctx, uuid.Nil), tenant.Org{ID: e.OrgID})
+	ctx = db.WithUser(ctx, uuid.Nil)
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, event, occurred_at, next_attempt_at)
-			SELECT org_id, id, $2, $3, $4, $5, now() FROM webhook_endpoint
-			WHERE org_id = $1 AND enabled AND ($3 = ANY (topics) OR $6 = ANY (topics))
+			SELECT org_id, id, $1, $2, $3, $4, now() FROM webhook_endpoint
+			WHERE enabled AND ($2 = ANY (topics) OR $5 = ANY (topics))
 			ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`,
-			e.OrgID, e.ID, e.Topic, payload, occurred, TopicAny)
+			e.ID, e.Topic, payload, occurred, TopicAny)
 		return err
 	})
 	return err
@@ -90,10 +89,9 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 // and says how many were tried. Each is leased first, so senders in several
 // workers never post one twice.
 func (s *Service) SendDue(ctx context.Context) (int, error) {
-	type due struct{ orgID, id uuid.UUID }
 	tried := 0
 	for {
-		var found []due
+		var found []uuid.UUID
 		_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 			rows, err := tx.Query(ctx, `
 				UPDATE webhook_delivery d SET next_attempt_at = now() + make_interval(secs => $2)
@@ -105,29 +103,29 @@ func (s *Service) SendDue(ctx context.Context) (int, error) {
 				    FOR UPDATE SKIP LOCKED
 				) claimed
 				WHERE d.id = claimed.id
-				RETURNING d.org_id, d.id`, sendBatch, ClaimLease.Seconds())
+				RETURNING d.id`, sendBatch, ClaimLease.Seconds())
 			if err != nil {
 				return err
 			}
 			defer rows.Close()
 			for rows.Next() {
-				var d due
-				if err := rows.Scan(&d.orgID, &d.id); err != nil {
+				var id uuid.UUID
+				if err := rows.Scan(&id); err != nil {
 					return err
 				}
-				found = append(found, d)
+				found = append(found, id)
 			}
 			return rows.Err()
 		})
 		if err != nil {
 			return tried, err
 		}
-		for _, d := range found {
+		for _, id := range found {
 			if ctx.Err() != nil {
 				return tried, nil
 			}
-			if _, _, err := s.attempt(tenant.WithOrg(ctx, tenant.Org{ID: d.orgID}), d.id); err != nil {
-				s.opts.Log.Warn("a webhook attempt could not be recorded", "delivery", d.id, "error", err)
+			if _, _, err := s.attempt(ctx, id); err != nil {
+				s.opts.Log.Warn("a webhook attempt could not be recorded", "delivery", id, "error", err)
 			}
 		}
 		tried += len(found)
@@ -155,17 +153,13 @@ func (s *Service) Test(ctx context.Context, id uuid.UUID) (*WebhookDelivery, db.
 	if err := s.visible(ctx, id); err != nil {
 		return nil, 0, err
 	}
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
 	var made uuid.UUID
-	system := asSystem(ctx, org.ID)
+	system := asSystem(ctx)
 	lsn, err := s.db.WriteAdmin(system, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, event, occurred_at, manual, next_attempt_at)
-			VALUES ($1, $2, $3, $4, '{}', now(), true, now() + make_interval(secs => $5))
-			RETURNING id`, org.ID, id, uuid.New(), TopicPing, ClaimLease.Seconds()).Scan(&made)
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, manual, next_attempt_at)
+			VALUES ($1, $2, $3, '{}', now(), true, now() + make_interval(secs => $4))
+			RETURNING id`, id, uuid.New(), TopicPing, ClaimLease.Seconds()).Scan(&made)
 	})
 	if err != nil {
 		return nil, 0, err
@@ -177,11 +171,7 @@ func (s *Service) Test(ctx context.Context, id uuid.UUID) (*WebhookDelivery, db.
 // Redeliver tries a logged delivery's event again, now, as the next attempt.
 // The payload is read afresh, as the owner may view it now.
 func (s *Service) Redeliver(ctx context.Context, webhookID, deliveryID uuid.UUID) (*WebhookDelivery, db.LSN, error) {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var found bool
 		err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM webhook_delivery WHERE id = $1 AND endpoint_id = $2)`, deliveryID, webhookID).Scan(&found)
 		if err == nil && !found {
@@ -193,15 +183,15 @@ func (s *Service) Redeliver(ctx context.Context, webhookID, deliveryID uuid.UUID
 		return nil, 0, err
 	}
 	var made uuid.UUID
-	system := asSystem(ctx, org.ID)
+	system := asSystem(ctx)
 	lsn, err := s.db.WriteAdmin(system, func(ctx context.Context, tx db.DBTX) error {
 		err := tx.QueryRow(ctx, `
 			INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, event, occurred_at, attempt, manual, next_attempt_at)
 			SELECT d.org_id, d.endpoint_id, d.event_id, d.topic, d.event, d.occurred_at,
 			       (SELECT max(attempt) FROM webhook_delivery x WHERE x.endpoint_id = d.endpoint_id AND x.event_id = d.event_id) + 1,
-			       true, now() + make_interval(secs => $3)
-			FROM webhook_delivery d WHERE d.id = $1 AND d.org_id = $2
-			RETURNING id`, deliveryID, org.ID, ClaimLease.Seconds()).Scan(&made)
+			       true, now() + make_interval(secs => $2)
+			FROM webhook_delivery d WHERE d.id = $1
+			RETURNING id`, deliveryID, ClaimLease.Seconds()).Scan(&made)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -226,11 +216,11 @@ func (s *Service) visible(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-// asSystem is ctx in the organization acting for nobody: the log and the
-// counts are the worker's, and a request's caller must not become the
-// endpoint's owner by sending a test.
-func asSystem(ctx context.Context, orgID uuid.UUID) context.Context {
-	return db.PinPrimary(tenant.WithOrg(db.WithUser(ctx, uuid.Nil), tenant.Org{ID: orgID}))
+// asSystem is ctx acting for nobody: the log and the counts are the
+// worker's, and a request's caller must not become the endpoint's owner by
+// sending a test.
+func asSystem(ctx context.Context) context.Context {
+	return db.PinPrimary(db.WithUser(ctx, uuid.Nil))
 }
 
 // claimed is a delivery about to be attempted, with its endpoint.
@@ -258,18 +248,14 @@ type outcome struct {
 // attempt posts one logged delivery and records how it went: delivered,
 // withheld, cancelled, or failed with the next attempt due later.
 func (s *Service) attempt(ctx context.Context, id uuid.UUID) (*WebhookDelivery, db.LSN, error) {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-	ctx = asSystem(ctx, org.ID)
+	ctx = asSystem(ctx)
 	var c claimed
-	err = s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
 			SELECT d.org_id, d.endpoint_id, d.event_id, e.url, d.topic, e.secret_sealed, e.enabled, d.manual, e.owner_id,
 			       d.event, d.occurred_at, d.attempt, d.state
 			FROM webhook_delivery d JOIN webhook_endpoint e ON e.org_id = d.org_id AND e.id = d.endpoint_id
-			WHERE d.id = $1 AND d.org_id = $2`, id, org.ID).
+			WHERE d.id = $1`, id).
 			Scan(&c.orgID, &c.endpointID, &c.eventID, &c.url, &c.topic, &c.sealed, &c.enabled, &c.manual, &c.owner,
 				&c.event, &c.occurred, &c.attempt, &c.state)
 	})
@@ -416,7 +402,7 @@ func (s *Service) countFailure(ctx context.Context, tx db.DBTX, c claimed) (bool
 		return false, err
 	}
 	id := c.endpointID
-	return true, audit.Write(ctx, tx, c.orgID, audit.Entry{Action: audit.ActionWebhookDisabled, TargetType: "webhook", TargetID: &id,
+	return true, audit.Write(ctx, tx, audit.Entry{Action: audit.ActionWebhookDisabled, TargetType: "webhook", TargetID: &id,
 		Data: map[string]any{"name": name, "reason": ReasonFailing, "failures": failures}})
 }
 

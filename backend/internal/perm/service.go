@@ -12,7 +12,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // Limits of the people and group pickers.
@@ -94,7 +93,7 @@ func globalGrant(ctx context.Context, tx db.DBTX, p GlobalPermission) (GlobalGra
 	if p == AdministerOrg {
 		rows, err := tx.Query(ctx, `
 			SELECT 'user', u.id, u.name FROM org_member m JOIN app_user u ON u.id = m.user_id
-			WHERE m.org_id = current_org_id() AND m.org_role IN ('owner', 'admin')
+			WHERE m.org_role IN ('owner', 'admin')
 			ORDER BY lower(u.name), u.id`)
 		if err != nil {
 			return GlobalGrant{}, err
@@ -152,8 +151,8 @@ func (s *Service) SetGlobalGrant(ctx context.Context, actor Actor, permission Gl
 		}
 		for _, sub := range subjects {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO global_grant (org_id, permission, subject_type, user_id, group_id)
-				VALUES (current_org_id(), $1, $2, $3, $4)`, string(permission), string(sub.Type), sub.UserID(), sub.GroupID()); err != nil {
+				INSERT INTO global_grant (permission, subject_type, user_id, group_id)
+				VALUES ($1, $2, $3, $4)`, string(permission), string(sub.Type), sub.UserID(), sub.GroupID()); err != nil {
 				return fmt.Errorf("grant %s: %w", permission, err)
 			}
 		}
@@ -227,7 +226,7 @@ func resolve(ctx context.Context, tx db.DBTX, field string, ref SubjectRef, ever
 	if ref.Type == SubjectUser {
 		err = tx.QueryRow(ctx, `
 			SELECT u.name FROM org_member m JOIN app_user u ON u.id = m.user_id
-			WHERE m.org_id = current_org_id() AND m.user_id = $1`, *ref.ID).Scan(&name)
+			WHERE m.user_id = $1`, *ref.ID).Scan(&name)
 	} else {
 		err = tx.QueryRow(ctx, `SELECT name FROM groups WHERE id = $1`, *ref.ID).Scan(&name)
 	}
@@ -253,11 +252,7 @@ func SubjectLog(subjects []Subject) []map[string]any {
 
 // Record notes a change of permissions in the organization's audit log.
 func Record(ctx context.Context, tx db.DBTX, actor Actor, action, targetType string, target *uuid.UUID, data map[string]any) error {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return err
-	}
-	return audit.Write(ctx, tx, org.ID, audit.Entry{Action: action, TargetType: targetType, TargetID: target, Actor: actor.UserID, Data: data})
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: targetType, TargetID: target, Actor: actor.UserID, Data: data})
 }
 
 // PickerLimit clamps a picker's limit, 0 standing for the default.
@@ -283,8 +278,7 @@ func (s *Service) People(ctx context.Context, actor Actor, q string, limit int) 
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.name, u.email::text FROM org_member m JOIN app_user u ON u.id = m.user_id
-			WHERE m.org_id = current_org_id()
-			  AND (u.name ILIKE $1 OR u.name ILIKE '% ' || $1 OR u.email::text ILIKE $1)
+			WHERE (u.name ILIKE $1 OR u.name ILIKE '% ' || $1 OR u.email::text ILIKE $1)
 			ORDER BY lower(u.name), u.email LIMIT $2`, LikePrefix(q), PickerLimit(limit))
 		if err != nil {
 			return err

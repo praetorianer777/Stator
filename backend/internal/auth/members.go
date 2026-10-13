@@ -9,24 +9,18 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
-// Members lists the people of the organization on ctx, owners first, then by
-// name. It reads through row level security like any other tenant data.
+// Members lists the people of the organization, owners first, then by name.
+// It reads through row level security like any other data.
 func (s *Service) Members(ctx context.Context) ([]Member, error) {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
 	out := []Member{}
-	err = s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.email::text, u.name, m.org_role, m.role_source, m.created_at, gs.id, gs.key, gs.name
 			FROM org_member m JOIN app_user u ON u.id = m.user_id
 			LEFT JOIN space gs ON gs.org_id = m.org_id AND gs.id = m.guest_space_id
-			WHERE m.org_id = $1
-			ORDER BY CASE m.org_role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'member' THEN 2 ELSE 3 END, lower(u.name), u.email`, org.ID)
+			ORDER BY CASE m.org_role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'member' THEN 2 ELSE 3 END, lower(u.name), u.email`)
 		if err != nil {
 			return err
 		}
@@ -47,13 +41,9 @@ func (s *Service) Members(ctx context.Context) ([]Member, error) {
 	return out, err
 }
 
-// RemoveMember takes somebody and their groups out of the organization on ctx;
-// their open sessions stop reaching it at once, as every request checks.
+// RemoveMember takes somebody and their groups out of the organization; their
+// open sessions stop reaching it at once, as every request checks.
 func (s *Service) RemoveMember(ctx context.Context, userID, actor uuid.UUID, ip string) (db.LSN, error) {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return 0, err
-	}
 	if userID == actor {
 		return 0, ErrRemoveSelf
 	}
@@ -62,7 +52,7 @@ func (s *Service) RemoveMember(ctx context.Context, userID, actor uuid.UUID, ip 
 			role       OrgRole
 			guestSpace *uuid.UUID
 		)
-		err := tx.QueryRow(ctx, `SELECT org_role, guest_space_id FROM org_member WHERE org_id = $1 AND user_id = $2 FOR UPDATE`, org.ID, userID).Scan(&role, &guestSpace)
+		err := tx.QueryRow(ctx, `SELECT org_role, guest_space_id FROM org_member WHERE user_id = $1 FOR UPDATE`, userID).Scan(&role, &guestSpace)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNoSuchMember
 		}
@@ -74,13 +64,13 @@ func (s *Service) RemoveMember(ctx context.Context, userID, actor uuid.UUID, ip 
 		}
 		// The group rows would outlive the membership otherwise: their guard
 		// checks membership only when a row is written.
-		if _, err := tx.Exec(ctx, `DELETE FROM group_member WHERE org_id = $1 AND user_id = $2`, org.ID, userID); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM group_member WHERE user_id = $1`, userID); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `DELETE FROM org_member WHERE org_id = $1 AND user_id = $2`, org.ID, userID); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM org_member WHERE user_id = $1`, userID); err != nil {
 			return err
 		}
-		return audit.Write(ctx, tx, org.ID, audit.Entry{Action: audit.ActionMemberRemoved, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip,
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionMemberRemoved, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip,
 			Data: removedData(role, guestSpace)})
 	})
 }

@@ -171,7 +171,7 @@ func (j *Jobs) Latest(ctx context.Context, actor perm.Actor) (*Job, error) {
 			return err
 		}
 		var err error
-		out, err = scanJob(tx.QueryRow(ctx, selectJob+` WHERE j.org_id = current_org_id() ORDER BY j.requested_at DESC, j.id DESC LIMIT 1`))
+		out, err = scanJob(tx.QueryRow(ctx, selectJob+` ORDER BY j.requested_at DESC, j.id DESC LIMIT 1`))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -193,15 +193,15 @@ func (j *Jobs) Queue(ctx context.Context, actor perm.Actor, lang string) (*Job, 
 			return err
 		}
 		var exists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM space WHERE org_id = current_org_id() AND example)`).Scan(&exists); err != nil || exists {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM space WHERE example)`).Scan(&exists); err != nil || exists {
 			return err
 		}
 		// Two clicks at once both get here; the index lets one in, and the
 		// other, having waited for it, reads the job it queued.
 		out, err = scanJob(tx.QueryRow(ctx, `
 			WITH queued AS (
-				INSERT INTO example_job (id, org_id, requested_by, language)
-				VALUES ($1, current_org_id(), $2, $3)
+				INSERT INTO example_job (id, requested_by, language)
+				VALUES ($1, $2, $3)
 				ON CONFLICT (org_id) WHERE state IN ('queued', 'running') DO NOTHING
 				RETURNING *)
 			SELECT j.id, j.kind, j.state, j.language, NULL::text, NULL::jsonb, j.failure, j.requested_at, j.started_at, j.finished_at, ''
@@ -216,7 +216,7 @@ func (j *Jobs) Queue(ctx context.Context, actor perm.Actor, lang string) (*Job, 
 
 // openJob is the organization's job queued or running, nil when none is.
 func openJob(ctx context.Context, tx db.DBTX) (*Job, error) {
-	out, err := scanJob(tx.QueryRow(ctx, selectJob+` WHERE j.org_id = current_org_id() AND j.state IN ('queued', 'running')`))
+	out, err := scanJob(tx.QueryRow(ctx, selectJob+` WHERE j.state IN ('queued', 'running')`))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -253,7 +253,7 @@ func editionOf(ctx context.Context, tx db.DBTX) (*Edition, error) {
 	var e Edition
 	err := tx.QueryRow(ctx, `
 		SELECT id, example_version, example_language FROM space
-		WHERE org_id = current_org_id() AND example`).Scan(&e.SpaceID, &e.Version, &e.Language)
+		WHERE example`).Scan(&e.SpaceID, &e.Version, &e.Language)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -284,8 +284,8 @@ func (j *Jobs) Renew(ctx context.Context, actor perm.Actor, lang string) (*Job, 
 		}
 		out, err = scanJob(tx.QueryRow(ctx, `
 			WITH queued AS (
-				INSERT INTO example_job (id, org_id, requested_by, language, kind, space_id)
-				VALUES ($1, current_org_id(), $2, $3, 'renew', $4)
+				INSERT INTO example_job (id, requested_by, language, kind, space_id)
+				VALUES ($1, $2, $3, 'renew', $4)
 				ON CONFLICT (org_id) WHERE state IN ('queued', 'running') DO NOTHING
 				RETURNING *)
 			SELECT j.id, j.kind, j.state, j.language, NULL::text, NULL::jsonb, j.failure, j.requested_at, j.started_at, j.finished_at, ''

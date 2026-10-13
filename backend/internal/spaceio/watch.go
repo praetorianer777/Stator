@@ -21,7 +21,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/wikiread"
 )
 
@@ -274,7 +273,7 @@ func (p *progress) flush(ctx context.Context, force bool) {
 // acting is the context a run reads and writes in: the requester in their
 // organization, on the primary, which has every write the run made.
 func (c *claim) acting(ctx context.Context) context.Context {
-	return tenant.WithOrg(db.WithUser(db.PinPrimary(ctx), c.user), tenant.Org{ID: c.org, Slug: c.slug})
+	return db.WithUser(db.PinPrimary(ctx), c.user)
 }
 
 func (w *Watch) tempFile() (*os.File, func(), error) {

@@ -16,10 +16,10 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/wikiread"
 )
 
@@ -285,10 +285,12 @@ type Jobs struct {
 	// MaxOrgImportBytes an organization's.
 	MaxImportBytes    int64
 	MaxOrgImportBytes int64
+	// site names the organization whose prefix an upload waits under.
+	site *instance.Resolver
 }
 
 func NewJobs(cluster *db.Cluster, store objectstore.Store) *Jobs {
-	return &Jobs{db: cluster, store: store, MaxImportBytes: DefaultMaxImportBytes, MaxOrgImportBytes: DefaultMaxOrgImportBytes}
+	return &Jobs{db: cluster, store: store, site: instance.NewResolver(cluster), MaxImportBytes: DefaultMaxImportBytes, MaxOrgImportBytes: DefaultMaxOrgImportBytes}
 }
 
 // QueueExport asks the worker to export a space the caller administers, and
@@ -308,8 +310,8 @@ func (j *Jobs) QueueExport(ctx context.Context, actor perm.Actor, key string, fo
 		}
 		id := uuid.Must(uuid.NewV7())
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO space_export (id, org_id, space_id, space_key, requested_by, format)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5)`, id, sp.ID, sp.Key, actor.UserID, string(format)); err != nil {
+			INSERT INTO space_export (id, space_id, space_key, requested_by, format)
+			VALUES ($1, $2, $3, $4, $5)`, id, sp.ID, sp.Key, actor.UserID, string(format)); err != nil {
 			return fmt.Errorf("queue the export: %w", err)
 		}
 		if err := perm.Record(ctx, tx, actor, audit.ActionSpaceExported, "space", &sp.ID,
@@ -439,9 +441,9 @@ func (j *Jobs) QueueImport(ctx context.Context, actor perm.Actor, in ImportInput
 		return nil, 0, err
 	}
 	id := uuid.Must(uuid.NewV7())
-	org, ok := tenant.FromContext(ctx)
-	if !ok {
-		return nil, 0, tenant.ErrNoTenant
+	org, err := j.site.Org(ctx)
+	if err != nil {
+		return nil, 0, err
 	}
 	objectKey := importObjectKey(org.ID, id)
 	if _, err := archive.Seek(0, io.SeekStart); err != nil {
@@ -453,8 +455,8 @@ func (j *Jobs) QueueImport(ctx context.Context, actor perm.Actor, in ImportInput
 	var out *ImportJob
 	lsn, err := j.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO space_import (id, org_id, requested_by, key, name, size_bytes, source)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6)`, id, actor.UserID, key, name, size, string(from)); err != nil {
+			INSERT INTO space_import (id, requested_by, key, name, size_bytes, source)
+			VALUES ($1, $2, $3, $4, $5, $6)`, id, actor.UserID, key, name, size, string(from)); err != nil {
 			return fmt.Errorf("queue the import: %w", err)
 		}
 		var err error

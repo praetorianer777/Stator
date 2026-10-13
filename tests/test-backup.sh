@@ -108,11 +108,11 @@ migrations() { tar -xOf "$1" manifest.json | sed -n '/"migrations"/,/]/p'; }
 
 accounts=$(psql -d "$RESTORE_DB" -c "SELECT count(*) FROM app_user WHERE email = '${MARK}@backup.test'")
 app_accounts=$(docker compose exec -T -e PGPASSWORD="${APP_DB_PASSWORD:-stator_app}" postgres-primary \
-  psql -h 127.0.0.1 -U stator_app -d "$RESTORE_DB" -qAt -c "SELECT count(*) FROM app_user" 2>&1)
+  psql -h 127.0.0.1 -U stator_app -d "$RESTORE_DB" -qAt -c "SELECT count(*) FROM app_user WHERE email = '${MARK}@backup.test'" 2>&1)
 if [[ "$accounts" == 1 && "$app_accounts" == 0 ]]; then
-  pass "row level security holds on the restored rows: the app role sees no account without a tenant"
+  pass "row level security holds on the restored rows: the app role does not see the account, which is no member"
 else
-  fail "restored $accounts of the test's account, and the app role saw [$app_accounts] accounts without a tenant"
+  fail "restored $accounts of the test's account, and the app role saw [$app_accounts] of it, though it is no member"
 fi
 
 # A refusal must change nothing; the marker shows the database was not replaced.

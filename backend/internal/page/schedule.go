@@ -141,8 +141,8 @@ func (s *Service) SchedulePublish(ctx context.Context, actor perm.Actor, id uuid
 			// The schedule hangs off a draft, so the first publish of a page
 			// nobody edited yet publishes a draft of it as it stands.
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version)
-				VALUES (current_org_id(), $1, $2, $3, $4, 0)`, id, actor.UserID, p.Title, p.Body); err != nil {
+				INSERT INTO page_draft (page_id, user_id, title, body, base_version)
+				VALUES ($1, $2, $3, $4, 0)`, id, actor.UserID, p.Title, p.Body); err != nil {
 				return fmt.Errorf("draft the page to schedule it: %w", err)
 			}
 		}
@@ -159,8 +159,8 @@ func (s *Service) SchedulePublish(ctx context.Context, actor perm.Actor, id uuid
 			}
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_schedule (org_id, page_id, user_id, publish_at, comment, notify_watchers)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO page_schedule (page_id, user_id, publish_at, comment, notify_watchers)
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (org_id, page_id) DO UPDATE
 			SET publish_at = EXCLUDED.publish_at, comment = EXCLUDED.comment, notify_watchers = EXCLUDED.notify_watchers,
 			    failed_at = NULL, failure = NULL`,

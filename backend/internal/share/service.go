@@ -54,7 +54,7 @@ func (s *Service) Recipients(ctx context.Context, actor perm.Actor, pageID uuid.
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.name, u.email::text, perm_page_viewable($1, u.id)
 			FROM org_member m JOIN app_user u ON u.id = m.user_id
-			WHERE m.org_id = current_org_id() AND perm_global_holds(u.id, 'use')
+			WHERE perm_global_holds(u.id, 'use')
 			  AND (u.name ILIKE $2 OR u.name ILIKE '% ' || $2 OR u.email::text ILIKE $2)
 			ORDER BY lower(u.name), u.email LIMIT $3`, pageID, perm.LikePrefix(q), perm.PickerLimit(limit))
 		if err != nil {
@@ -105,14 +105,14 @@ func (s *Service) Viewers(ctx context.Context, actor perm.Actor, pageID uuid.UUI
 		if err := tx.QueryRow(ctx, `
 			SELECT count(*) FILTER (WHERE perm_page_viewable($1, m.user_id))::int,
 			       count(*) FILTER (WHERE perm_global_holds(m.user_id, 'use'))::int
-			FROM org_member m WHERE m.org_id = current_org_id()`, pageID).Scan(&out.Total, &members); err != nil {
+			FROM org_member m`, pageID).Scan(&out.Total, &members); err != nil {
 			return err
 		}
 		out.Everyone = out.Total >= members
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.name, u.email::text
 			FROM org_member m JOIN app_user u ON u.id = m.user_id
-			WHERE m.org_id = current_org_id() AND perm_page_viewable($1, u.id)
+			WHERE perm_page_viewable($1, u.id)
 			ORDER BY lower(u.name), u.email, u.id LIMIT $2 OFFSET $3`, pageID, limit, offset)
 		if err != nil {
 			return err
@@ -162,15 +162,15 @@ func (s *Service) Share(ctx context.Context, actor perm.Actor, pageID uuid.UUID,
 		}
 		out = Share{PageID: pageID, Recipients: subjects, People: len(people), Message: message}
 		err = tx.QueryRow(ctx, `
-			INSERT INTO page_share (org_id, page_id, sharer_id, message)
-			VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO page_share (page_id, sharer_id, message)
+			VALUES ($1, $2, $3)
 			RETURNING id, created_at`, pageID, actor.UserID, message).Scan(&out.ID, &out.CreatedAt)
 		if err != nil {
 			return braked(err)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_share_recipient (org_id, share_id, user_id)
-			SELECT current_org_id(), $1, unnest($2::uuid[])`, out.ID, people); err != nil {
+			INSERT INTO page_share_recipient (share_id, user_id)
+			SELECT $1, unnest($2::uuid[])`, out.ID, people); err != nil {
 			return fmt.Errorf("name the people told: %w", err)
 		}
 		if err := events.Emit(ctx, tx, events.TopicPageShared, events.PageShared{ShareID: out.ID, PageID: pageID, ActorID: actor.UserID}); err != nil {

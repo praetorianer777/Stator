@@ -18,7 +18,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/review"
 	"github.com/praetorianer777/stator/backend/internal/space"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 var (
@@ -321,7 +320,7 @@ func goOut(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r *review
 	)
 	if err := tx.QueryRow(ctx, `
 		SELECT perm_page_editable(r.page_id, r.author_id),
-		       COALESCE((SELECT m.org_role FROM org_member m WHERE m.org_id = current_org_id() AND m.user_id = r.author_id), ''),
+		       COALESCE((SELECT m.org_role FROM org_member m WHERE m.user_id = r.author_id), ''),
 		       r.body, r.notify_watchers
 		FROM page_review r WHERE r.id = $1`, r.ID).Scan(&editable, &role, &body, &notify); err != nil {
 		return nil, err
@@ -417,14 +416,14 @@ func submitReview(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid.UUI
 	}
 	reviewID := uuid.Must(uuid.NewV7())
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_review (org_id, id, page_id, author_id, base_version, title, body, comment, notify_watchers, required)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		INSERT INTO page_review (id, page_id, author_id, base_version, title, body, comment, notify_watchers, required)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		reviewID, id, actor.UserID, p.Version, title, body, comment, notify, rule.Required); err != nil {
 		return nil, fmt.Errorf("submit the draft: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_review_subject (org_id, review_id, subject_type, user_id, group_id)
-		SELECT current_org_id(), $1, subject_type, user_id, group_id FROM review_rule_subject WHERE rule_id = $2`,
+		INSERT INTO page_review_subject (review_id, subject_type, user_id, group_id)
+		SELECT $1, subject_type, user_id, group_id FROM review_rule_subject WHERE rule_id = $2`,
 		reviewID, rule.ID); err != nil {
 		return nil, fmt.Errorf("name the reviewers: %w", err)
 	}
@@ -512,8 +511,8 @@ func (s *Service) DecideReview(ctx context.Context, actor perm.Actor, pageID, id
 			return ErrNotReviewer
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_review_decision (org_id, review_id, reviewer_id, decision, comment)
-			VALUES (current_org_id(), $1, $2, $3, $4)
+			INSERT INTO page_review_decision (review_id, reviewer_id, decision, comment)
+			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (org_id, review_id, reviewer_id) DO UPDATE
 			SET decision = EXCLUDED.decision, comment = EXCLUDED.comment, decided_at = now()`,
 			id, actor.UserID, in.Decision, comment); err != nil {
@@ -706,7 +705,7 @@ func cleanRule(ctx context.Context, tx db.DBTX, in review.RuleInput) ([]perm.Sub
 		SELECT count(*) FROM (
 			SELECT unnest($1::uuid[])
 			UNION
-			SELECT gm.user_id FROM group_member gm WHERE gm.org_id = current_org_id() AND gm.group_id = ANY($2)
+			SELECT gm.user_id FROM group_member gm WHERE gm.group_id = ANY($2)
 		) named`, users, groups).Scan(&people); err != nil {
 		return nil, fmt.Errorf("count the reviewers: %w", err)
 	}
@@ -727,8 +726,8 @@ func setRule(ctx context.Context, tx db.DBTX, actor perm.Actor, spaceID, pageID 
 	case errors.Is(err, pgx.ErrNoRows):
 		ruleID = uuid.Must(uuid.NewV7())
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO review_rule (org_id, id, space_id, page_id, required, updated_by)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)`, ruleID, spaceID, pageID, required, actor.UserID); err != nil {
+			INSERT INTO review_rule (id, space_id, page_id, required, updated_by)
+			VALUES ($1, $2, $3, $4, $5)`, ruleID, spaceID, pageID, required, actor.UserID); err != nil {
 			return nil, fmt.Errorf("save the review rule: %w", err)
 		}
 	case err != nil:
@@ -749,8 +748,8 @@ func setRule(ctx context.Context, tx db.DBTX, actor perm.Actor, spaceID, pageID 
 		groups = append(groups, idText(sub.GroupID()))
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO review_rule_subject (org_id, rule_id, subject_type, user_id, group_id)
-		SELECT current_org_id(), $1, t, NULLIF(u, '')::uuid, NULLIF(g, '')::uuid
+		INSERT INTO review_rule_subject (rule_id, subject_type, user_id, group_id)
+		SELECT $1, t, NULLIF(u, '')::uuid, NULLIF(g, '')::uuid
 		FROM unnest($2::text[], $3::text[], $4::text[]) AS s (t, u, g)`, ruleID, types, users, groups); err != nil {
 		return nil, fmt.Errorf("save the reviewers: %w", err)
 	}
@@ -768,15 +767,11 @@ func setRule(ctx context.Context, tx db.DBTX, actor perm.Actor, spaceID, pageID 
 // recordRule notes a rule set or removed against the space, or the branch's
 // top page.
 func recordRule(ctx context.Context, tx db.DBTX, actor perm.Actor, action string, branch bool, target uuid.UUID, data map[string]any) error {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return err
-	}
 	targetType := "space"
 	if branch {
 		targetType = "page"
 	}
-	return audit.Write(ctx, tx, org.ID, audit.Entry{Action: action, TargetType: targetType, TargetID: &target, Actor: actor.UserID, Data: data})
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: targetType, TargetID: &target, Actor: actor.UserID, Data: data})
 }
 
 // SetSpaceReviewRule holds every page and post of a space to a review, for
@@ -936,7 +931,7 @@ func (s *Service) SetReadAsk(ctx context.Context, actor perm.Actor, id uuid.UUID
 			}
 			if tag.RowsAffected() == 0 {
 				if _, err := tx.Exec(ctx, `
-					INSERT INTO page_read_ask (org_id, page_id, since, asked_by) VALUES (current_org_id(), $1, $2, $3)`,
+					INSERT INTO page_read_ask (page_id, since, asked_by) VALUES ($1, $2, $3)`,
 					id, p.Version, actor.UserID); err != nil {
 					return fmt.Errorf("ask the readers: %w", err)
 				}
@@ -960,8 +955,8 @@ func (s *Service) ConfirmRead(ctx context.Context, actor perm.Actor, id uuid.UUI
 			return ErrNotAsked
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_read_confirmation (org_id, page_id, user_id, version)
-			VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO page_read_confirmation (page_id, user_id, version)
+			VALUES ($1, $2, $3)
 			ON CONFLICT (org_id, page_id, user_id) DO UPDATE SET version = EXCLUDED.version, confirmed_at = now()`,
 			id, actor.UserID, p.Version); err != nil {
 			return fmt.Errorf("confirm reading the page: %w", err)
@@ -1016,7 +1011,7 @@ func (s *Service) ReadConfirmations(ctx context.Context, actor perm.Actor, id uu
 		rows, err = tx.Query(ctx, `
 			SELECT m.user_id, COALESCE(u.name, ''), COALESCE(u.email, ''), count(*) OVER ()
 			FROM org_member m JOIN app_user u ON u.id = m.user_id
-			WHERE m.org_id = current_org_id() AND u.is_active AND perm_page_viewable($1, m.user_id)
+			WHERE u.is_active AND perm_page_viewable($1, m.user_id)
 			  AND NOT EXISTS (SELECT 1 FROM page_read_confirmation c WHERE c.page_id = $1 AND c.user_id = m.user_id AND c.version >= $2)
 			ORDER BY lower(COALESCE(u.name, '')), m.user_id
 			LIMIT $3`, id, since, review.MaxPendingReaders)

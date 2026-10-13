@@ -46,11 +46,10 @@ func readHTMLBrand(ctx context.Context, tx db.DBTX) (*htmlBrand, error) {
 		light, dark *string
 		orgID       uuid.UUID
 	)
-	// The id comes from the row: a worker's context need not carry the tenant.
+	// The id comes from the row, for the logo's key.
 	if err := tx.QueryRow(ctx, `
 		SELECT o.id, o.name, t.spec->'colors'->'light'->>'accent', t.spec->'colors'->'dark'->>'accent'
-		FROM org o LEFT JOIN theme t ON t.id = o.default_theme_id AND t.org_id = o.id
-		WHERE o.id = current_org_id()`).Scan(&orgID, &out.name, &light, &dark); err != nil {
+		FROM org o LEFT JOIN theme t ON t.id = o.default_theme_id AND t.org_id = o.id`).Scan(&orgID, &out.name, &light, &dark); err != nil {
 		return nil, fmt.Errorf("read the organization for the export: %w", err)
 	}
 	if light != nil && accentHex.MatchString(*light) {

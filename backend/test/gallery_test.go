@@ -113,7 +113,7 @@ func TestAGalleryShowsEachReaderThePicturesTheyMayDownload(t *testing.T) {
 		want(t, ina.get(t, "/api/v1/attachments/"+hidden+"?inline=1"), http.StatusNotFound, "ina's hidden picture")
 
 		conn := appConn(t)
-		actAs(t, conn, home.org, inaID)
+		actAs(t, conn, inaID)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM attachment WHERE id = ANY($1::uuid[])`, []string{first, second, hidden}).Scan(&n); err != nil || n != 2 {
 			t.Errorf("ina reads %d of the gallery's three files through SQL (%v), want the two of the album", n, err)
@@ -136,7 +136,7 @@ func TestAGalleryShowsEachReaderThePicturesTheyMayDownload(t *testing.T) {
 		want(t, anon.get(t, publicPath("/attachments/", hidden)), http.StatusNotFound, "the hidden picture, read by anybody")
 
 		conn := appConn(t)
-		actAnonymously(t, conn, home.org)
+		actAnonymously(t, conn)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM attachment WHERE id = ANY($1::uuid[])`, []string{first, second, hidden}).Scan(&n); err != nil || n != 2 {
 			t.Errorf("an anonymous reader reads %d of the gallery's three files through SQL (%v), want the two of the album", n, err)

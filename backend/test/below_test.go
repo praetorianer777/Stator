@@ -97,7 +97,7 @@ func TestPagesBelowFollowWhatTheReaderMayView(t *testing.T) {
 
 	t.Run("the database hides the same pages from a raw read", func(t *testing.T) {
 		conn := appConn(t)
-		actAs(t, conn, home.org, benID)
+		actAs(t, conn, benID)
 		var n int
 		if err := conn.QueryRow(context.Background(), `
 			WITH RECURSIVE below (id) AS (

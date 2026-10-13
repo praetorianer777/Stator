@@ -324,7 +324,7 @@ func TestArchivingIsEnforcedByTheDatabase(t *testing.T) {
 	ctx := context.Background()
 	for name, person := range map[string]uuid.UUID{"ann": annID, "the owner": org.user} {
 		t.Run(name+" changes nothing archived", func(t *testing.T) {
-			actAs(t, conn, org.org, person)
+			actAs(t, conn, person)
 			var seen int
 			if err := conn.QueryRow(ctx, `SELECT count(*) FROM page WHERE id = ANY($1::uuid[])`, []string{plans, old}).Scan(&seen); err != nil || seen != 2 {
 				t.Errorf("%s reads %d archived pages (%v)", name, seen, err)
@@ -353,10 +353,10 @@ func TestArchivingIsEnforcedByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("only an administrator of the space archives, through the functions", func(t *testing.T) {
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "ann archives", `SELECT page_archive($1)`, live)
 		denied(t, conn, "ann unarchives", `SELECT page_unarchive($1)`, plans)
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		denied(t, conn, "the home page", `SELECT page_archive($1)`, docs.homeID)
 		var marked int
 		if err := conn.QueryRow(ctx, `SELECT page_archive($1)`, live).Scan(&marked); err != nil || marked != 1 {
@@ -368,9 +368,9 @@ func TestArchivingIsEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("an archived space holds every page in it, and stamps who archived it", func(t *testing.T) {
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "ann archives the space", `UPDATE space SET archived_at = now() WHERE key = 'AWL'`)
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		if _, err := conn.Exec(ctx, `UPDATE space SET archived_at = now() - interval '9 days', archived_by = $1 WHERE key = 'AWL'`, annID); err != nil {
 			t.Fatalf("the owner archives the space: %v", err)
 		}
@@ -382,13 +382,13 @@ func TestArchivingIsEnforcedByTheDatabase(t *testing.T) {
 			t.Errorf("the space was archived now %v, by %s (%v)", fresh, byWhom, err)
 		}
 		for name, person := range map[string]uuid.UUID{"ann": annID, "the owner": org.user} {
-			actAs(t, conn, org.org, person)
+			actAs(t, conn, person)
 			denied(t, conn, name+" edits Live", `UPDATE page SET title = 'Changed' WHERE id = $1`, live)
 			denied(t, conn, name+" adds a page", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by, updated_by)
 				SELECT org_id, space_id, id, 'm', 'Newer', $2, $2 FROM page WHERE id = $1`, live, person)
 			denied(t, conn, name+" archives Live", `SELECT page_archive($1)`, live)
 		}
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		if _, err := conn.Exec(ctx, `UPDATE space SET archived_at = NULL WHERE key = 'AWL'`); err != nil {
 			t.Fatalf("the owner unarchives the space: %v", err)
 		}

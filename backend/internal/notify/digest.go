@@ -10,7 +10,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/mail"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // DigestInterval is how often the queue is looked at; well inside an hour so
@@ -111,7 +110,7 @@ func (d *Digester) Once(ctx context.Context) (int, error) {
 		if !Due(w.digest, w.oldest, now) {
 			continue
 		}
-		as := db.WithUser(tenant.WithOrg(db.PinPrimary(ctx), tenant.Org{ID: w.org}), w.user)
+		as := db.WithUser(db.PinPrimary(ctx), w.user)
 		ok, err := d.send(as, w.user)
 		if err != nil {
 			d.log.Warn("a digest could not be sent", "user", w.user, "error", err)

@@ -114,15 +114,15 @@ func TestTheBrandIsHeldByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	actAs(t, conn, home.org, memberID)
-	refused(t, conn, "a member changing the footer", `UPDATE org_brand SET footer_en = 'Mine' WHERE org_id = current_org_id()`)
-	refused(t, conn, "a member removing the brand", `DELETE FROM org_brand WHERE org_id = current_org_id()`)
+	actAs(t, conn, memberID)
+	refused(t, conn, "a member changing the footer", `UPDATE org_brand SET footer_en = 'Mine'`)
+	refused(t, conn, "a member removing the brand", `DELETE FROM org_brand`)
 
-	actAs(t, conn, home.org, home.user)
-	refused(t, conn, "a footer over 200 characters", `UPDATE org_brand SET footer_en = repeat('x', 201) WHERE org_id = current_org_id()`)
-	refused(t, conn, "a logo that is no picture", `UPDATE org_brand SET logo_type = 'image/svg+xml', logo_size = 10 WHERE org_id = current_org_id()`)
-	refused(t, conn, "a logo with no size", `UPDATE org_brand SET logo_type = 'image/png' WHERE org_id = current_org_id()`)
-	if _, err := conn.Exec(ctx, `UPDATE org_brand SET footer_de = 'Intern' WHERE org_id = current_org_id()`); err != nil {
+	actAs(t, conn, home.user)
+	refused(t, conn, "a footer over 200 characters", `UPDATE org_brand SET footer_en = repeat('x', 201)`)
+	refused(t, conn, "a logo that is no picture", `UPDATE org_brand SET logo_type = 'image/svg+xml', logo_size = 10`)
+	refused(t, conn, "a logo with no size", `UPDATE org_brand SET logo_type = 'image/png'`)
+	if _, err := conn.Exec(ctx, `UPDATE org_brand SET footer_de = 'Intern'`); err != nil {
 		t.Fatalf("an administrator could not change the footer: %v", err)
 	}
 }

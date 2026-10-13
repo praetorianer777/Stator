@@ -21,8 +21,8 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/seed"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // Environment the harness needs, set by make test-integration.
@@ -64,7 +64,7 @@ type harness struct {
 	// only a superuser may pause and resume its replay.
 	replica *pgxpool.Pool
 	// org is the test's organization, made by its first makeMember.
-	org *tenant.Org
+	org *instance.Org
 	// stack is set on the stack's own database, where makeMember adds people
 	// to the seed's organization and removes them when the test ends.
 	stack bool
@@ -371,7 +371,7 @@ type member struct {
 func (h *harness) makeMember(t *testing.T, slug string) member {
 	t.Helper()
 	if h.org == nil && h.stack {
-		o := tenant.Org{Slug: seed.DemoOrgSlug}
+		o := instance.Org{Slug: seed.DemoOrgSlug}
 		if err := h.super.QueryRow(context.Background(), `SELECT id FROM org WHERE slug = $1`, o.Slug).Scan(&o.ID); err != nil {
 			t.Fatalf("find the seed's organization on the stack: %v", err)
 		}
@@ -432,17 +432,17 @@ func (h *harness) openSpaceTo(t *testing.T, space any, people ...uuid.UUID) {
 	h.settle(t)
 }
 
-func (h *harness) makeOrganization(t *testing.T, slug string) tenant.Org {
+func (h *harness) makeOrganization(t *testing.T, slug string) instance.Org {
 	t.Helper()
 	// Unique per run so repeated runs against a kept database do not collide.
-	o := tenant.Org{Slug: fmt.Sprintf("%s-%s", slug, uuid.NewString()[:8])}
+	o := instance.Org{Slug: fmt.Sprintf("%s-%s", slug, uuid.NewString()[:8])}
 	if err := h.super.QueryRow(context.Background(), `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, o.Slug, slug).Scan(&o.ID); err != nil {
 		t.Fatalf("create org %s: %v", o.Slug, err)
 	}
 	return o
 }
 
-func (h *harness) makePerson(t *testing.T, o tenant.Org, slug, role string) member {
+func (h *harness) makePerson(t *testing.T, o instance.Org, slug, role string) member {
 	t.Helper()
 	ctx := context.Background()
 	m := member{org: o.ID}
@@ -456,7 +456,7 @@ func (h *harness) makePerson(t *testing.T, o tenant.Org, slug, role string) memb
 	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, o.ID, m.user, role); err != nil {
 		t.Fatalf("make the user a member of %s: %v", o.Slug, err)
 	}
-	m.ctx = db.WithUser(tenant.WithOrg(ctx, o), m.user)
+	m.ctx = db.WithUser(ctx, m.user)
 	h.settle(t)
 	return m
 }
@@ -477,7 +477,7 @@ func uniqueKey(prefix string) string {
 	return prefix + string(b)
 }
 
-// count runs a count(*) query in ctx's tenant scope on the primary.
+// count runs a count(*) query as ctx's caller on the primary.
 func (h *harness) count(t *testing.T, ctx context.Context, sql string, args ...any) int {
 	t.Helper()
 	var n int
@@ -489,5 +489,3 @@ func (h *harness) count(t *testing.T, ctx context.Context, sql string, args ...a
 	}
 	return n
 }
-
-func isNoTenant(err error) bool { return errors.Is(err, tenant.ErrNoTenant) }

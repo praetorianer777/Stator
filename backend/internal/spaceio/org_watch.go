@@ -12,7 +12,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/perm"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -37,7 +36,7 @@ type orgClaim struct {
 func (c *orgClaim) actor() perm.Actor { return perm.Actor{UserID: c.user, Role: c.role} }
 
 func (c *orgClaim) acting(ctx context.Context) context.Context {
-	return tenant.WithOrg(db.WithUser(db.PinPrimary(ctx), c.user), tenant.Org{ID: c.org, Slug: c.slug})
+	return db.WithUser(db.PinPrimary(ctx), c.user)
 }
 
 func (w *Watch) claimOrg(ctx context.Context, k kind) (*orgClaim, error) {

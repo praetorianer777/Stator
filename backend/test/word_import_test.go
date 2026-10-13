@@ -376,9 +376,9 @@ func TestTheDatabaseKeepsWordImportsTheirImporters(t *testing.T) {
 	insert := `INSERT INTO word_import (id, org_id, requested_by, parent_id, file_count, size_bytes) VALUES ($1, $2, $3, $4, 1, 10)`
 
 	conn := appConn(t)
-	actAs(t, conn, home.org, readerID)
+	actAs(t, conn, readerID)
 	refused(t, conn, "a member queuing an import where they may only read", insert, uuid.New(), home.org, readerID, reading.homeID)
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	refused(t, conn, "a member queuing an import for somebody else", insert, uuid.New(), home.org, readerID, open.homeID)
 	refused(t, conn, "a member queuing an import already done",
 		`INSERT INTO word_import (id, org_id, requested_by, parent_id, file_count, size_bytes, state) VALUES ($1, $2, $3, $4, 1, 10, 'done')`, uuid.New(), home.org, memberID, open.homeID)
@@ -401,7 +401,7 @@ func TestTheDatabaseKeepsWordImportsTheirImporters(t *testing.T) {
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM word_import WHERE id = $1`, job).Scan(&seen); err != nil || seen != 1 {
 		t.Errorf("the requester reads %d of their import: %v", seen, err)
 	}
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM word_import WHERE id = $1`, job).Scan(&seen); err != nil || seen != 0 {
 		t.Errorf("an administrator reads %d of another's import: %v", seen, err)
 	}

@@ -340,7 +340,7 @@ func TestArmatureRowsAreWalledByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("a member reads their own token and where Armature is, nothing more", func(t *testing.T) {
-		actAs(t, conn, home.org, bobID)
+		actAs(t, conn, bobID)
 		if n := count(`SELECT count(*) FROM armature_token`); n != 1 {
 			t.Errorf("bob reads %d tokens, want his own", n)
 		}
@@ -365,7 +365,7 @@ func TestArmatureRowsAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("an administrator keeps the connection and still reads only their own token", func(t *testing.T) {
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		if n := count(`SELECT count(*) FROM armature_token`); n != 1 {
 			t.Errorf("the owner reads %d tokens, want their own", n)
 		}
@@ -385,7 +385,7 @@ func TestArmatureRowsAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a member without the right reaches none of the connection", func(t *testing.T) {
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		if n := count(`SELECT count(*) FROM armature_connection`); n != 0 {
 			t.Error("a member reads the connection")
 		}

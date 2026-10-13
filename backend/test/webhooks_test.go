@@ -229,7 +229,7 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 		if d.Headers["X-Stator-Event"] != webhook.TopicPing || d.Headers["X-Stator-Delivery"] != sent["id"] || d.Headers["Content-Type"] != "application/json" {
 			t.Errorf("the headers read %v", d.Headers)
 		}
-		if d.env["topic"] != webhook.TopicPing || d.env["orgId"] != home.org.String() || d.payload()["message"] == "" {
+		if d.env["topic"] != webhook.TopicPing || d.env["orgId"] != nil || d.payload()["message"] == "" {
 			t.Errorf("the envelope reads %s", d.Body)
 		}
 		log := list(t, want(t, owner.get(t, path+"/deliveries"), http.StatusOK, "read the log"), "deliveries")
@@ -552,7 +552,7 @@ func TestWebhooksAreWalledByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("an administrator never reads a secret, names an owner or writes the log", func(t *testing.T) {
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		if count(`SELECT count(*) FROM webhook_endpoint`) != 1 || count(`SELECT count(*) FROM webhook_delivery`) != 1 {
 			t.Fatal("the owner does not read their webhook and its log")
 		}
@@ -573,7 +573,7 @@ func TestWebhooksAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a member reads and writes none of it", func(t *testing.T) {
-		actAs(t, conn, home.org, memberID)
+		actAs(t, conn, memberID)
 		if n := count(`SELECT count(*) FROM webhook_endpoint`) + count(`SELECT count(*) FROM webhook_delivery`); n != 0 {
 			t.Errorf("a member reads %d rows", n)
 		}

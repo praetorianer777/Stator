@@ -107,11 +107,11 @@ func TestAPagesAppearanceIsHeldByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	refused(t, conn, "a reader setting the emoji", `UPDATE page SET icon = '🚀' WHERE id = $1`, plans)
 	refused(t, conn, "a reader setting the cover", `UPDATE page SET cover_attachment_id = $2 WHERE id = $1`, plans, picture)
 
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	refused(t, conn, "another page's file as the cover", `UPDATE page SET cover_attachment_id = $2 WHERE id = $1`, plans, elsewhere)
 	refused(t, conn, "words as the emoji", `UPDATE page SET icon = 'two words' WHERE id = $1`, plans)
 	refused(t, conn, "an odd width", `UPDATE page SET width = 'huge' WHERE id = $1`, plans)

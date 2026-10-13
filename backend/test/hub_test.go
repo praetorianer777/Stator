@@ -103,13 +103,13 @@ func TestTheHubIsHeldByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	actAs(t, conn, home.org, memberID)
-	refused(t, conn, "a member choosing the hub", `UPDATE org SET hub_page_id = $1 WHERE id = current_org_id()`, front)
+	actAs(t, conn, memberID)
+	refused(t, conn, "a member choosing the hub", `UPDATE org SET hub_page_id = $1`, front)
 
-	actAs(t, conn, home.org, home.user)
-	refused(t, conn, "a page that is not there as the hub", `UPDATE org SET hub_page_id = $1 WHERE id = current_org_id()`, uuid.New())
-	refused(t, conn, "landing on no hub", `UPDATE org SET hub_landing = true WHERE id = current_org_id()`)
-	if _, err := conn.Exec(ctx, `UPDATE org SET hub_page_id = $1, hub_landing = true WHERE id = current_org_id()`, front); err != nil {
+	actAs(t, conn, home.user)
+	refused(t, conn, "a page that is not there as the hub", `UPDATE org SET hub_page_id = $1`, uuid.New())
+	refused(t, conn, "landing on no hub", `UPDATE org SET hub_landing = true`)
+	if _, err := conn.Exec(ctx, `UPDATE org SET hub_page_id = $1, hub_landing = true`, front); err != nil {
 		t.Fatalf("an administrator could not choose the hub: %v", err)
 	}
 

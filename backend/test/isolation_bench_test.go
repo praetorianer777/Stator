@@ -156,7 +156,7 @@ func benchOpen(b *testing.B, name string) *db.Cluster {
 // another person in org otherwise, the way the harness arranges a test.
 func benchPerson(b *testing.B, cluster *db.Cluster, org uuid.UUID) uuid.UUID {
 	b.Helper()
-	ctx := db.WithSystem(context.Background())
+	ctx := context.Background()
 	_, err := cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if org == uuid.Nil {
 			if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, 'Bench') RETURNING id`, "bench-"+uuid.NewString()[:8]).Scan(&org); err != nil {

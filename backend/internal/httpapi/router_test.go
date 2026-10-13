@@ -16,8 +16,8 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/observability"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 type fakeDB struct{ err error }
@@ -206,17 +206,19 @@ func authenticated(s *Server, guards ...func(http.Handler) http.Handler) http.Ha
 	r := chi.NewRouter()
 	r.Use(requestID, s.authenticate)
 	r.With(guards...).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		org, _ := tenant.FromContext(r.Context())
-		respondJSON(w, r, http.StatusOK, map[string]any{"org": org.Slug, "signedIn": PrincipalFrom(r.Context()) != nil})
+		_, acting := db.UserFrom(r.Context())
+		respondJSON(w, r, http.StatusOK, map[string]any{"acting": acting, "signedIn": PrincipalFrom(r.Context()) != nil})
 	})
 	return r
 }
 
-func TestAuthenticationScopesTheTenant(t *testing.T) {
+// Only a member is someone the database acts for; anybody else signed in is
+// nobody to it.
+func TestAuthenticationNamesAMemberToTheDatabase(t *testing.T) {
 	s := newServer(t)
 	orgID := uuid.New()
 	s.Auth = fakeAuth{
-		"in-org": {UserID: uuid.New(), Org: &tenant.Org{ID: orgID, Slug: "acme"}},
+		"in-org": {UserID: uuid.New(), Org: &instance.Org{ID: orgID, Slug: "acme"}},
 		"no-org": {UserID: uuid.New()},
 	}
 
@@ -229,8 +231,13 @@ func TestAuthenticationScopesTheTenant(t *testing.T) {
 	}
 
 	_, body := serve(t, authenticated(s), get("in-org"))
-	if body["org"] != "acme" || body["signedIn"] != true {
-		t.Errorf("a member's request = %v, want scoped to acme", body)
+	if body["acting"] != true || body["signedIn"] != true {
+		t.Errorf("a member's request = %v, want them acting", body)
+	}
+
+	_, body = serve(t, authenticated(s), get("no-org"))
+	if body["acting"] != false || body["signedIn"] != true {
+		t.Errorf("a signed in non-member's request = %v, want nobody acting", body)
 	}
 
 	_, body = serve(t, authenticated(s), get("expired"))

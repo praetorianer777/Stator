@@ -18,7 +18,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/perm"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // FailureNotEmpty is an organization import into an organization that has
@@ -226,7 +225,7 @@ func (j *Jobs) QueueOrgExport(ctx context.Context, actor perm.Actor) (*OrgExport
 			return err
 		}
 		id := uuid.Must(uuid.NewV7())
-		if _, err := tx.Exec(ctx, `INSERT INTO org_export (id, org_id, requested_by) VALUES ($1, current_org_id(), $2)`, id, actor.UserID); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO org_export (id, requested_by) VALUES ($1, $2)`, id, actor.UserID); err != nil {
 			return fmt.Errorf("queue the export: %w", err)
 		}
 		if err := perm.Record(ctx, tx, actor, audit.ActionOrgExported, "org", nil, map[string]any{"export": id.String()}); err != nil {
@@ -320,9 +319,9 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 	if _, err := readOrgManifest(zr); err != nil {
 		return nil, 0, err
 	}
-	org, ok := tenant.FromContext(ctx)
-	if !ok {
-		return nil, 0, tenant.ErrNoTenant
+	org, err := j.site.Org(ctx)
+	if err != nil {
+		return nil, 0, err
 	}
 	id := uuid.Must(uuid.NewV7())
 	objectKey := orgImportObjectKey(org.ID, id)
@@ -335,7 +334,7 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 	var out *OrgImportJob
 	lsn, err := j.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_import (id, org_id, requested_by, size_bytes) VALUES ($1, current_org_id(), $2, $3)`, id, actor.UserID, size); err != nil {
+			INSERT INTO org_import (id, requested_by, size_bytes) VALUES ($1, $2, $3)`, id, actor.UserID, size); err != nil {
 			return fmt.Errorf("queue the import: %w", err)
 		}
 		var err error

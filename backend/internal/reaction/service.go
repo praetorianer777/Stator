@@ -104,8 +104,8 @@ func (s *Service) add(ctx context.Context, actor perm.Actor, emoji string, locat
 			return &FieldError{Field: "emoji", Message: ErrTooMany.Error(), err: ErrTooMany}
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO reaction (org_id, page_id, comment_id, user_id, emoji)
-			VALUES (current_org_id(), $1, $2, $3, $4)
+			INSERT INTO reaction (page_id, comment_id, user_id, emoji)
+			VALUES ($1, $2, $3, $4)
 			ON CONFLICT DO NOTHING`, on.page, on.comment, actor.UserID, emoji); err != nil {
 			return fmt.Errorf("add the reaction: %w", err)
 		}

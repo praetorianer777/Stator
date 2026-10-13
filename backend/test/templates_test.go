@@ -130,7 +130,7 @@ func TestTemplateHintsAreStrippedByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	if _, err := conn.Exec(ctx, `INSERT INTO page_version (org_id, page_id, number, title, body, created_by) VALUES ($1, $2, 2, 'Raw', $3, $4)`, home.org, published, body, home.user); err != nil {
 		t.Fatalf("insert a version: %v", err)
 	}

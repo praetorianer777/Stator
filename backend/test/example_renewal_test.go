@@ -214,7 +214,7 @@ func TestTheDatabaseKeepsTheRenewalTheWorkers(t *testing.T) {
 	memberID := h.addPerson(t, home.org, "member")
 	ctx := context.Background()
 	conn := appConn(t)
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	exampleID, plainID := uuid.New(), uuid.New()
 	if _, err := conn.Exec(ctx, `INSERT INTO space (id, org_id, key, name, created_by, example, example_version, example_language)
 		VALUES ($1, $2, 'EXAMPLE', 'Example', $3, true, 1, 'en')`, exampleID, home.org, home.user); err != nil {
@@ -231,9 +231,9 @@ func TestTheDatabaseKeepsTheRenewalTheWorkers(t *testing.T) {
 	refused(t, conn, "renewing an ordinary space", renew, uuid.New(), home.org, home.user, "renew", plainID)
 	refused(t, conn, "renewing nothing", renew, uuid.New(), home.org, home.user, "renew", nil)
 	refused(t, conn, "making the example on a space there is", renew, uuid.New(), home.org, home.user, "make", exampleID)
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	refused(t, conn, "a member renewing the example", renew, uuid.New(), home.org, memberID, "renew", exampleID)
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	if _, err := conn.Exec(ctx, renew, uuid.New(), home.org, home.user, "renew", exampleID); err != nil {
 		t.Fatalf("an administrator cannot queue a renewal through SQL: %v", err)
 	}

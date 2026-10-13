@@ -143,7 +143,7 @@ func TestAPageIsExportedToWordAsItsReaderReadsIt(t *testing.T) {
 		// The service leaving it out is not the proof: the database itself
 		// shows ina no such page.
 		conn := appConn(t)
-		actAs(t, conn, home.org, inaID)
+		actAs(t, conn, inaID)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page WHERE id = $1`, secret).Scan(&n); err != nil {
 			t.Fatal(err)

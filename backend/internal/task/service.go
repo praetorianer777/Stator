@@ -36,7 +36,7 @@ JOIN page p ON p.org_id = t.org_id AND p.id = t.page_id
 JOIN space s ON s.id = p.space_id
 LEFT JOIN app_user au ON au.id = t.assignee_id
 LEFT JOIN app_user ab ON ab.id = t.assigned_by
-WHERE t.org_id = current_org_id() AND p.trashed_at IS NULL AND p.archived_at IS NULL AND s.archived_at IS NULL
+WHERE p.trashed_at IS NULL AND p.archived_at IS NULL AND s.archived_at IS NULL
   AND perm_page_viewable(p.id, $1::uuid)`
 
 func scanTasks(rows pgx.Rows) ([]Task, error) {

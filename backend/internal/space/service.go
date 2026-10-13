@@ -14,7 +14,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/rank"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // Service keeps spaces and makes each one's home page with it.
@@ -167,7 +166,7 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		}
 		if in.Personal {
 			var mine string
-			err := tx.QueryRow(ctx, `SELECT key FROM space WHERE owner_id = $1 AND org_id = current_org_id()`, actor.UserID).Scan(&mine)
+			err := tx.QueryRow(ctx, `SELECT key FROM space WHERE owner_id = $1`, actor.UserID).Scan(&mine)
 			if err == nil {
 				return &PersonalTakenError{Key: mine}
 			}
@@ -179,8 +178,8 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		// writes is not yet one its own snapshot lets the policies see.
 		id, home := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
 		_, err := tx.Exec(ctx, `
-			INSERT INTO space (id, org_id, key, name, description, created_by, owner_id)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6)`, id, key, name, description, actor.UserID, owner)
+			INSERT INTO space (id, key, name, description, created_by, owner_id)
+			VALUES ($1, $2, $3, $4, $5, $6)`, id, key, name, description, actor.UserID, owner)
 		// Made a moment ago by another request, which the look above missed.
 		if constraint(err) == "space_one_personal" {
 			return &PersonalTakenError{}
@@ -192,8 +191,8 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 			return fmt.Errorf("save the space: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page (id, org_id, space_id, rank, title, created_by, updated_by)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $5)`, home, id, rank.Initial(), name, actor.UserID); err != nil {
+			INSERT INTO page (id, space_id, rank, title, created_by, updated_by)
+			VALUES ($1, $2, $3, $4, $5, $5)`, home, id, rank.Initial(), name, actor.UserID); err != nil {
 			return fmt.Errorf("make the home page: %w", err)
 		}
 		if tpl != nil {
@@ -323,11 +322,7 @@ func deleteSpace(ctx context.Context, tx db.DBTX, id uuid.UUID) error {
 // record notes an administrator's act on a space in the organization's audit
 // log, in the transaction that did it.
 func record(ctx context.Context, tx db.DBTX, actor perm.Actor, action string, id uuid.UUID, data map[string]any) error {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return err
-	}
-	return audit.Write(ctx, tx, org.ID, audit.Entry{Action: action, TargetType: "space", TargetID: &id, Actor: actor.UserID, Data: data})
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "space", TargetID: &id, Actor: actor.UserID, Data: data})
 }
 
 // constraint names the constraint a unique violation broke, or "".

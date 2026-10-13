@@ -201,7 +201,7 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 	ctx := context.Background()
 	lets := func(person uuid.UUID, sql string, args ...any) bool {
 		t.Helper()
-		actAs(t, conn, home.org, person)
+		actAs(t, conn, person)
 		tx, err := conn.Begin(ctx)
 		if err != nil {
 			t.Fatal(err)
@@ -238,7 +238,7 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 		if !lets(bobID, `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'sql.txt', 1)`, home.org, low) {
 			t.Error("bob may not attach to Low")
 		}
-		actAs(t, conn, home.org, bobID)
+		actAs(t, conn, bobID)
 		denied(t, conn, "bob adds a page under Top", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by) VALUES ($1, (SELECT space_id FROM page WHERE id = $2), $2, 'W', 'Planted', $3)`, home.org, top, bobID)
 		denied(t, conn, "bob moves Low with the database's own function", `SELECT page_place(ARRAY[$1::uuid], $2, ARRAY['W'])`, low, top)
 		denied(t, conn, "bob reorders Low", `UPDATE page SET rank = 'zz' WHERE id = $1`, low)
@@ -253,12 +253,12 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 
 	t.Run("only the space's administrators change who else may edit", func(t *testing.T) {
 		grantRow := `INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id) VALUES ($1, $2, 'editGrant', 'user', $3)`
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		denied(t, conn, "carl, a reader, puts himself on Sibling's list", grantRow, home.org, sibling, carlID)
-		actAs(t, conn, home.org, bobID)
+		actAs(t, conn, bobID)
 		denied(t, conn, "bob, who edits Top through it, puts carl on its list", grantRow, home.org, top, carlID)
 		untouched(t, conn, "bob takes gwen off Top's list", `DELETE FROM page_restriction WHERE page_id = $1 AND kind = 'editGrant' AND user_id = $2`, top, gwenID)
-		actAs(t, conn, home.org, daveID)
+		actAs(t, conn, daveID)
 		denied(t, conn, "dave, who adds pages, puts himself on Sibling's list", grantRow, home.org, sibling, carlID)
 		untouched(t, conn, "dave lifts Top's list", `DELETE FROM page_restriction WHERE page_id = $1 AND kind = 'editGrant'`, top)
 		if _, err := h.super.Exec(ctx, `INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id) VALUES ($1, $2, 'edit', 'user', $3)`, home.org, sibling, daveID); err != nil {
@@ -272,7 +272,7 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 		if !lets(annID, grantRow, home.org, sibling, carlID) {
 			t.Error("ann, who administers the space, may not let carl edit Sibling")
 		}
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "ann lets hal, a guest of another space, edit Sibling", grantRow, home.org, sibling, halID)
 	})
 
@@ -285,7 +285,7 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 				r := caller.get(t, "/api/v1/pages/"+page)
 				service := r.Status == http.StatusOK && obj(t, r, "page")["can"].(map[string]any)["edit"] == true
 				var database bool
-				actAs(t, conn, home.org, id)
+				actAs(t, conn, id)
 				if err := conn.QueryRow(ctx, `SELECT perm_page_editable($1, $2)`, page, id).Scan(&database); err != nil {
 					t.Fatal(err)
 				}

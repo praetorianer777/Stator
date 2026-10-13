@@ -446,7 +446,7 @@ func TestVersionsAndDraftsAreGuardedByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	actAs(t, conn, b.org, b.user)
+	actAs(t, conn, b.user)
 	for _, table := range []string{"page_version", "page_draft"} {
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM `+table+` WHERE page_id = $1`, pageA).Scan(&n); err != nil || n != 0 {

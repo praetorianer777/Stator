@@ -14,7 +14,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -118,13 +117,13 @@ func (w *ScheduleWatch) Once(ctx context.Context) (int, error) {
 // publish of theirs is held by. The row's lock, taken in the publish's own
 // transaction, is what lets any number of workers make it exactly once.
 func (w *ScheduleWatch) publish(ctx context.Context, d dueSchedule) (bool, error) {
-	org := tenant.WithOrg(db.PinPrimary(ctx), tenant.Org{ID: d.orgID})
+	pinned := db.PinPrimary(ctx)
 	actor := perm.Actor{UserID: d.userID, Role: auth.OrgRole(d.role)}
 	var (
 		refused   ScheduleFailure
 		published bool
 	)
-	_, err := w.db.Write(db.WithUser(org, d.userID), func(ctx context.Context, tx db.DBTX) error {
+	_, err := w.db.Write(db.WithUser(pinned, d.userID), func(ctx context.Context, tx db.DBTX) error {
 		var (
 			comment string
 			notify  bool
@@ -154,7 +153,7 @@ func (w *ScheduleWatch) publish(ctx context.Context, d dueSchedule) (bool, error
 	})
 	switch {
 	case errors.Is(err, errScheduleRefused):
-		return true, w.fail(org, d, refused)
+		return true, w.fail(pinned, d, refused)
 	case err != nil:
 		return false, err
 	}
@@ -182,12 +181,12 @@ func publishScheduled(ctx context.Context, tx db.DBTX, actor perm.Actor, id uuid
 
 // fail records why a schedule was refused and has its author told, once
 // however many workers were refused it.
-func (w *ScheduleWatch) fail(org context.Context, d dueSchedule, failure ScheduleFailure) error {
-	_, err := w.db.WriteAdmin(org, func(ctx context.Context, tx db.DBTX) error {
+func (w *ScheduleWatch) fail(pinned context.Context, d dueSchedule, failure ScheduleFailure) error {
+	_, err := w.db.WriteAdmin(pinned, func(ctx context.Context, tx db.DBTX) error {
 		var at time.Time
 		err := tx.QueryRow(ctx, `
 			UPDATE page_schedule SET failed_at = now(), failure = $3
-			WHERE org_id = current_org_id() AND page_id = $1 AND user_id = $2 AND failed_at IS NULL AND publish_at <= now()
+			WHERE page_id = $1 AND user_id = $2 AND failed_at IS NULL AND publish_at <= now()
 			RETURNING publish_at`, d.pageID, d.userID, string(failure)).Scan(&at)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil

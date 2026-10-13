@@ -12,8 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // publicPath is an address of the reads for anybody.
@@ -27,12 +25,11 @@ func oldPublicPath(slug string, rest ...string) string {
 	return "/api/v1/public/" + slug + strings.Join(rest, "")
 }
 
-// actAnonymously scopes a raw connection to an organization and nobody in it,
-// as the api's transactions for a reader who is not signed in are.
-func actAnonymously(t *testing.T, conn *pgx.Conn, org uuid.UUID) {
+// actAnonymously names nobody on a raw connection and marks it anonymous, as
+// the api's transactions for a reader who is not signed in are.
+func actAnonymously(t *testing.T, conn *pgx.Conn) {
 	t.Helper()
-	if _, err := conn.Exec(context.Background(), `SELECT set_config($1, $2, false), set_config('app.user_id', '', false), set_config('app.anonymous', 'on', false)`,
-		tenant.PostgresVar, org.String()); err != nil {
+	if _, err := conn.Exec(context.Background(), `SELECT set_config('app.user_id', '', false), set_config('app.anonymous', 'on', false)`); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -247,7 +244,7 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 		key := mine["key"].(string)
 		fieldError(t, want(t, owner.put(t, "/api/v1/spaces/"+key+"/anonymous-access", map[string]any{"view": true}), http.StatusUnprocessableEntity, "open a personal space"), "view")
 		conn := appConn(t)
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		denied(t, conn, "a personal space opened through SQL", `INSERT INTO space_grant (org_id, space_id, permission, subject_type) VALUES ($1, $2, 'view', 'anonymous')`,
 			home.org, mine["id"])
 		denied(t, conn, "an anonymous grant beyond view", `INSERT INTO space_grant (org_id, space_id, permission, subject_type)
@@ -284,7 +281,7 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 			"the sessions":              `SELECT count(*) FROM user_session`,
 			"the shut page in the feed": `SELECT count(*) FROM home_edited(NULL, NULL, 100)`,
 		}
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		for what, sql := range closed {
 			if what == "people" || what == "memberships" || what == "the sessions" || what == "the guide's views" {
 				continue
@@ -293,7 +290,7 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 				t.Fatalf("the owner reads no rows of %s, so the anonymous zero would prove nothing", what)
 			}
 		}
-		actAnonymously(t, conn, home.org)
+		actAnonymously(t, conn)
 		for what, sql := range closed {
 			if n := count(sql); n != 0 {
 				t.Errorf("an anonymous reader reads %d rows of %s", n, what)

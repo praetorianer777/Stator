@@ -15,7 +15,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/keyset"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -95,7 +94,8 @@ func (f Filter) Describe() map[string]any {
 
 // where is the filter as SQL over audit_log a, its arguments numbered from 1.
 func (f Filter) where() (string, []any) {
-	clauses := []string{"a.org_id = current_org_id()"}
+	// The callers write WHERE and may append to it, so it is never empty.
+	clauses := []string{"true"}
 	var args []any
 	add := func(clause string, v any) {
 		args = append(args, v)
@@ -203,15 +203,15 @@ func (s *Service) Facets(ctx context.Context) (*AuditFacets, error) {
 			}
 			return rows.Err()
 		}
-		if err := strs(`SELECT DISTINCT action FROM audit_log WHERE org_id = current_org_id() ORDER BY action`, &out.Actions); err != nil {
+		if err := strs(`SELECT DISTINCT action FROM audit_log ORDER BY action`, &out.Actions); err != nil {
 			return err
 		}
-		if err := strs(`SELECT DISTINCT target_type FROM audit_log WHERE org_id = current_org_id() ORDER BY target_type`, &out.TargetTypes); err != nil {
+		if err := strs(`SELECT DISTINCT target_type FROM audit_log ORDER BY target_type`, &out.TargetTypes); err != nil {
 			return err
 		}
 		rows, err := tx.Query(ctx, `
 			SELECT a.actor_user_id, COALESCE(u.name, '')
-			FROM (SELECT DISTINCT actor_user_id FROM audit_log WHERE org_id = current_org_id() AND actor_user_id IS NOT NULL) a
+			FROM (SELECT DISTINCT actor_user_id FROM audit_log WHERE actor_user_id IS NOT NULL) a
 			LEFT JOIN app_user u ON u.id = a.actor_user_id
 			ORDER BY lower(COALESCE(u.name, '')), a.actor_user_id`)
 		if err != nil {
@@ -298,14 +298,10 @@ func Cell(s string) string {
 // Note records an act that changes nothing, such as a file leaving, in a
 // transaction of its own; the caller hands the file over only once it succeeds.
 func (s *Service) Note(ctx context.Context, e Entry) (db.LSN, error) {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return 0, err
-	}
 	if e.Actor == uuid.Nil {
 		e.Actor, _ = db.UserFrom(ctx)
 	}
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return Write(ctx, tx, org.ID, e)
+		return Write(ctx, tx, e)
 	})
 }

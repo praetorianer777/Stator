@@ -3135,8 +3135,8 @@ whatever an assistant passes on.
 Outbound webhooks (#110) keep Armature's design: an endpoint is an address,
 the topics it takes (`*` for every one), a secret shown in the answer that
 made or rotated it and never again, and a log with one row per attempt.
-The body is Armature's envelope (`id`, `topic`, `orgId`, `occurredAt`,
-`payload`) and the signature its shape, `sha256=` and the hex HMAC of the
+The body is Armature's envelope (`id`, `topic`, `occurredAt`, `payload`;
+its `orgId` went with #380, as an instance serves one organization) and the signature its shape, `sha256=` and the hex HMAC of the
 raw body, in `X-Stator-Signature-256` beside `X-Stator-Event` and
 `X-Stator-Delivery`, so a receiver written for one product serves both. The
 envelope's id is the outbox event's, the same on every retry and

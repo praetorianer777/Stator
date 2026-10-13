@@ -26,9 +26,9 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/secret"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -194,6 +194,8 @@ type Service struct {
 	client *http.Client
 	opts   Options
 	now    func() time.Time
+	// site names the organization a secret is sealed for.
+	site *instance.Resolver
 }
 
 // NewService returns the service; a nil box refuses to make an endpoint and
@@ -203,7 +205,7 @@ func NewService(cluster *db.Cluster, box *secret.Box, opts Options) *Service {
 		opts.Log = slog.Default()
 	}
 	opts.AppURL = strings.TrimSuffix(opts.AppURL, "/")
-	return &Service{db: cluster, box: box, client: netguard.Client(sendTimeout, opts.Allow), opts: opts, now: time.Now}
+	return &Service{db: cluster, box: box, client: netguard.Client(sendTimeout, opts.Allow), opts: opts, now: time.Now, site: instance.NewResolver(cluster)}
 }
 
 // sealContext binds a sealed secret to its endpoint, so a copy onto another
@@ -352,7 +354,7 @@ func (s *Service) Create(ctx context.Context, in WebhookInput) (*Webhook, db.LSN
 	if s.box == nil {
 		return nil, 0, ErrNoKey
 	}
-	org, err := tenant.MustFromContext(ctx)
+	org, err := s.site.Org(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -372,8 +374,8 @@ func (s *Service) Create(ctx context.Context, in WebhookInput) (*Webhook, db.LSN
 	var out *Webhook
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO webhook_endpoint (id, org_id, name, url, secret_sealed, topics, enabled)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6)`, id, in.Name, in.URL, sealed, in.Topics, enabled)
+			INSERT INTO webhook_endpoint (id, name, url, secret_sealed, topics, enabled)
+			VALUES ($1, $2, $3, $4, $5, $6)`, id, in.Name, in.URL, sealed, in.Topics, enabled)
 		if isUniqueName(err) {
 			return errNameTaken
 		}
@@ -383,7 +385,7 @@ func (s *Service) Create(ctx context.Context, in WebhookInput) (*Webhook, db.LSN
 		if out, err = one(ctx, tx, id); err != nil {
 			return err
 		}
-		return audit.Write(ctx, tx, org.ID, audit.Entry{Action: audit.ActionWebhookCreated, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionWebhookCreated, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
 			Data: map[string]any{"name": in.Name, "host": hostOf(in.URL), "topics": in.Topics, "enabled": enabled, "secret": "set"}})
 	})
 	if err != nil {
@@ -397,10 +399,6 @@ func (s *Service) Create(ctx context.Context, in WebhookInput) (*Webhook, db.LSN
 // the caller its owner.
 func (s *Service) Update(ctx context.Context, id uuid.UUID, in WebhookInput) (*Webhook, db.LSN, error) {
 	in, err := s.clean(in)
-	if err != nil {
-		return nil, 0, err
-	}
-	org, err := tenant.MustFromContext(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -421,7 +419,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in WebhookInput) (*W
 		if out, err = one(ctx, tx, id); err != nil {
 			return err
 		}
-		return audit.Write(ctx, tx, org.ID, audit.Entry{Action: audit.ActionWebhookUpdated, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionWebhookUpdated, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
 			Data: map[string]any{"name": out.Name, "host": hostOf(out.URL), "topics": out.Topics, "enabled": out.Enabled}})
 	})
 	return out, lsn, err
@@ -432,7 +430,7 @@ func (s *Service) RotateSecret(ctx context.Context, id uuid.UUID) (*Webhook, db.
 	if s.box == nil {
 		return nil, 0, ErrNoKey
 	}
-	org, err := tenant.MustFromContext(ctx)
+	org, err := s.site.Org(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -456,7 +454,7 @@ func (s *Service) RotateSecret(ctx context.Context, id uuid.UUID) (*Webhook, db.
 		if out, err = one(ctx, tx, id); err != nil {
 			return err
 		}
-		return audit.Write(ctx, tx, org.ID, audit.Entry{Action: audit.ActionWebhookSecretRotated, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionWebhookSecretRotated, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
 			Data: map[string]any{"name": out.Name, "secret": "set"}})
 	})
 	if err != nil {
@@ -468,10 +466,6 @@ func (s *Service) RotateSecret(ctx context.Context, id uuid.UUID) (*Webhook, db.
 
 // Delete removes the endpoint and its log.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) (db.LSN, error) {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return 0, err
-	}
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var name, address string
 		err := tx.QueryRow(ctx, `DELETE FROM webhook_endpoint WHERE id = $1 RETURNING name, url`, id).Scan(&name, &address)
@@ -481,7 +475,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) (db.LSN, error) {
 		if err != nil {
 			return err
 		}
-		return audit.Write(ctx, tx, org.ID, audit.Entry{Action: audit.ActionWebhookDeleted, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionWebhookDeleted, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
 			Data: map[string]any{"name": name, "host": hostOf(address)}})
 	})
 }

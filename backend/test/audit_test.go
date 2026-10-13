@@ -21,7 +21,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // The audit log (#107): what is recorded, by whom and on what, who may read it,
@@ -423,7 +422,7 @@ func TestTheAuditLogIsTheAdministratorsAndOnlyEverAddedTo(t *testing.T) {
 
 	t.Run("straight through SQL the app role reads it only as an administrator", func(t *testing.T) {
 		as := func(who uuid.UUID) context.Context {
-			return db.WithUser(tenant.WithOrg(context.Background(), tenant.Org{ID: home.org}), who)
+			return db.WithUser(context.Background(), who)
 		}
 		if n := h.count(t, as(home.user), `SELECT count(*) FROM audit_log`); n == 0 {
 			t.Error("the owner reads nothing")
@@ -431,13 +430,13 @@ func TestTheAuditLogIsTheAdministratorsAndOnlyEverAddedTo(t *testing.T) {
 		if n := h.count(t, as(memberID), `SELECT count(*) FROM audit_log`); n != 0 {
 			t.Errorf("a member reads %d entries", n)
 		}
-		if n := h.count(t, tenant.WithOrg(context.Background(), tenant.Org{ID: home.org}), `SELECT count(*) FROM audit_log`); n != 0 {
+		if n := h.count(t, context.Background(), `SELECT count(*) FROM audit_log`); n != 0 {
 			t.Errorf("a transaction acting for nobody reads %d entries", n)
 		}
 	})
 
 	t.Run("nobody rewrites, deletes or forges an entry", func(t *testing.T) {
-		ctx := db.WithUser(tenant.WithOrg(context.Background(), tenant.Org{ID: home.org}), home.user)
+		ctx := db.WithUser(context.Background(), home.user)
 		denied := func(what string, err error) {
 			t.Helper()
 			var pgErr *pgconn.PgError
@@ -460,15 +459,10 @@ func TestTheAuditLogIsTheAdministratorsAndOnlyEverAddedTo(t *testing.T) {
 			}
 		}
 		_, err := h.cluster.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-			return audit.Write(ctx, tx, home.org, audit.Entry{Action: audit.ActionSpaceDeleted, TargetType: "space", Actor: memberID})
+			return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionSpaceDeleted, TargetType: "space", Actor: memberID})
 		})
 		denied("an entry naming somebody else", err)
 		_, err = h.cluster.WriteAdmin(context.Background(), func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `SELECT audit_log_prune(now() - interval '400 days')`)
-			return err
-		})
-		denied("pruning outside an organization", err)
-		_, err = h.cluster.WriteAdmin(tenant.WithOrg(context.Background(), tenant.Org{ID: home.org}), func(ctx context.Context, tx db.DBTX) error {
 			_, err := tx.Exec(ctx, `SELECT audit_log_prune(now() - interval '23 hours')`)
 			return err
 		})
@@ -492,7 +486,7 @@ func TestAnEntryCommitsAndRollsBackWithItsAct(t *testing.T) {
 	marker := uuid.New()
 	refused := errors.New("the act failed after its entry was written")
 	_, err := h.cluster.Write(home.ctx, func(ctx context.Context, tx db.DBTX) error {
-		if err := audit.Write(ctx, tx, home.org, audit.Entry{Action: audit.ActionSpaceCreated, TargetType: "space", TargetID: &marker, Actor: home.user}); err != nil {
+		if err := audit.Write(ctx, tx, audit.Entry{Action: audit.ActionSpaceCreated, TargetType: "space", TargetID: &marker, Actor: home.user}); err != nil {
 			return err
 		}
 		return refused
@@ -504,7 +498,7 @@ func TestAnEntryCommitsAndRollsBackWithItsAct(t *testing.T) {
 		t.Errorf("a rolled back act left %d entries", n)
 	}
 	if _, err := h.cluster.Write(home.ctx, func(ctx context.Context, tx db.DBTX) error {
-		return audit.Write(ctx, tx, home.org, audit.Entry{Action: audit.ActionSpaceCreated, TargetType: "space", TargetID: &marker, Actor: home.user})
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionSpaceCreated, TargetType: "space", TargetID: &marker, Actor: home.user})
 	}); err != nil {
 		t.Fatal(err)
 	}

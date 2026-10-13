@@ -74,8 +74,8 @@ func seedPages(ctx context.Context, tx db.DBTX, actor perm.Actor, sp, parent uui
 		}
 		id := uuid.Must(uuid.NewV7())
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6, $7, $7)`, id, sp, parent, ranks[i], p.Title, body, actor.UserID); err != nil {
+			INSERT INTO page (id, space_id, parent_id, rank, title, body, created_by, updated_by)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $7)`, id, sp, parent, ranks[i], p.Title, body, actor.UserID); err != nil {
 			return fmt.Errorf("make %q: %w", p.Title, err)
 		}
 		if err := publishFirst(ctx, tx, id); err != nil {
@@ -83,7 +83,7 @@ func seedPages(ctx context.Context, tx db.DBTX, actor perm.Actor, sp, parent uui
 		}
 		for _, name := range p.Labels {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO page_label (org_id, page_id, name, created_by) VALUES (current_org_id(), $1, $2, $3)`, id, name, actor.UserID); err != nil {
+				INSERT INTO page_label (page_id, name, created_by) VALUES ($1, $2, $3)`, id, name, actor.UserID); err != nil {
 				return fmt.Errorf("label %q: %w", p.Title, err)
 			}
 		}
@@ -114,8 +114,8 @@ func presetGrants(ctx context.Context, tx db.DBTX, sp uuid.UUID, preset []perm.S
 		everyone = append(everyone, string(p))
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO space_grant (org_id, space_id, permission, subject_type)
-		SELECT current_org_id(), $1, p, 'everyone' FROM unnest($2::text[]) AS p
+		INSERT INTO space_grant (space_id, permission, subject_type)
+		SELECT $1, p, 'everyone' FROM unnest($2::text[]) AS p
 		ON CONFLICT DO NOTHING`, sp, everyone); err != nil {
 		return fmt.Errorf("grant the template's permissions: %w", err)
 	}

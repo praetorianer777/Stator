@@ -17,7 +17,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -109,11 +108,11 @@ type progress struct {
 }
 
 func (w *Watch) run(ctx context.Context, c *claim) error {
-	org := tenant.WithOrg(db.WithUser(db.PinPrimary(ctx), c.requester), tenant.Org{ID: c.org, Slug: c.slug})
+	pinned := db.WithUser(db.PinPrimary(ctx), c.requester)
 	settle := context.WithoutCancel(ctx)
 	if len(c.made) > 0 {
 		// Left by a worker that died: gone before anything else is made.
-		w.trash(context.WithoutCancel(org), c, c.made)
+		w.trash(context.WithoutCancel(pinned), c, c.made)
 		if err := w.record(settle, c, &progress{}); err != nil {
 			return err
 		}
@@ -125,7 +124,7 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 		return w.finish(settle, c, &progress{}, StateFailed, FailureFailed)
 	}
 	began := time.Now()
-	run, cancel := context.WithTimeout(org, RunLimit)
+	run, cancel := context.WithTimeout(pinned, RunLimit)
 	defer cancel()
 	p := &progress{}
 	err := w.importAll(run, c, p)
@@ -143,7 +142,7 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 	}
 	failure := failureOf(err)
 	w.log.Warn("a Word import stopped", "org", c.org, "import", c.id, "failure", failure, "error", err)
-	cleanup, stop := context.WithTimeout(context.WithoutCancel(org), CleanupLimit)
+	cleanup, stop := context.WithTimeout(context.WithoutCancel(pinned), CleanupLimit)
 	defer stop()
 	w.trash(cleanup, c, p.made)
 	p.made = nil

@@ -5,14 +5,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // Retention moves views older than its window from page_view into each page's
-// tally, organization by organization, as stator_admin through page_view_prune.
+// tally, as stator_admin through page_view_prune.
 type Retention struct {
 	db       *db.Cluster
 	keep     time.Duration
@@ -55,45 +52,15 @@ func Cutoff(now time.Time, keep time.Duration) time.Time {
 	return now.UTC().Add(-keep).Truncate(24 * time.Hour)
 }
 
-// Once prunes every organization and says how many views went; one
-// organization failing does not stop the others.
+// Once prunes and says how many views went.
 func (r *Retention) Once(ctx context.Context) (int64, error) {
 	if r.keep <= 0 {
 		return 0, nil
 	}
 	cutoff := Cutoff(r.now(), r.keep)
-	var orgs []uuid.UUID
-	err := r.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `
-			SELECT o.id FROM org o
-			WHERE EXISTS (SELECT 1 FROM page_view v WHERE v.org_id = o.id AND v.day < $1::date)`, cutoff)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id uuid.UUID
-			if err := rows.Scan(&id); err != nil {
-				return err
-			}
-			orgs = append(orgs, id)
-		}
-		return rows.Err()
+	var n int64
+	_, err := r.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		return tx.QueryRow(ctx, `SELECT page_view_prune($1::date)`, cutoff).Scan(&n)
 	})
-	if err != nil {
-		return 0, err
-	}
-	var total int64
-	var firstErr error
-	for _, org := range orgs {
-		var n int64
-		_, err := r.db.WriteAdmin(tenant.WithOrg(ctx, tenant.Org{ID: org}), func(ctx context.Context, tx db.DBTX) error {
-			return tx.QueryRow(ctx, `SELECT page_view_prune($1::date)`, cutoff).Scan(&n)
-		})
-		if err != nil && firstErr == nil {
-			firstErr = err
-		}
-		total += n
-	}
-	return total, firstErr
+	return n, err
 }

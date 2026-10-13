@@ -249,11 +249,11 @@ func TestMarkdownImportAndExport(t *testing.T) {
 		}
 
 		conn := appConn(t)
-		actAs(t, conn, home.org, readerID)
+		actAs(t, conn, readerID)
 		denied(t, conn, "a page the import would make", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by) VALUES ($1, (SELECT space_id FROM page WHERE id = $2), $2, 'W', 'Imported', $3)`, home.org, readPage, readerID)
 		denied(t, conn, "a file the import would attach", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x.png', 1)`, home.org, readPage)
 		denied(t, conn, "a version the replace would publish", `INSERT INTO page_version (org_id, page_id, number, title, body, created_by) VALUES ($1, $2, 2, 'Replaced', '{}', $3)`, home.org, readPage, readerID)
-		actAs(t, conn, home.org, memberID)
+		actAs(t, conn, memberID)
 		var n int
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM page WHERE id = $1`, hidden).Scan(&n); err != nil || n != 0 {
 			t.Errorf("the member reads the page the export left out through SQL: %d %v", n, err)

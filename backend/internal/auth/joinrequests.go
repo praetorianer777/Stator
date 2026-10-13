@@ -76,7 +76,7 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID,
 			orgID, userID, string(role)); err != nil {
 			return fmt.Errorf("create membership: %w", err)
 		}
-		return audit.Write(ctx, tx, orgID, audit.Entry{Action: audit.ActionMemberAdmitted, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip,
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionMemberAdmitted, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip,
 			Data: map[string]any{"role": role}})
 	})
 	if err != nil {
@@ -96,7 +96,7 @@ func (s *Service) DeclineJoinRequest(ctx context.Context, orgID, userID, actor u
 		if tag.RowsAffected() == 0 {
 			return ErrNoSuchRequest
 		}
-		return audit.Write(ctx, tx, orgID, audit.Entry{Action: audit.ActionMemberDeclined, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip})
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionMemberDeclined, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip})
 	})
 }
 

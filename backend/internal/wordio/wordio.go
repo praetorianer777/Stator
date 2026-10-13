@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/docx"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -73,10 +74,12 @@ type Service struct {
 	// store keeps an upload of several documents until the worker reads it.
 	store objectstore.Store
 	db    *db.Cluster
+	// site names the organization whose prefix an upload waits under.
+	site *instance.Resolver
 }
 
 func NewService(cluster *db.Cluster, pages *page.Service, files *attachment.Service, store objectstore.Store) *Service {
-	return &Service{db: cluster, pages: pages, files: files, store: store}
+	return &Service{db: cluster, pages: pages, files: files, store: store, site: instance.NewResolver(cluster)}
 }
 
 // checkParent refuses a parent the actor may not add pages under, as a

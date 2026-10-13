@@ -252,8 +252,8 @@ func (s *Service) keepPreview(ctx context.Context, id uuid.UUID, pdf []byte) (db
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var key string
 		err := tx.QueryRow(ctx, `
-			INSERT INTO attachment_preview (attachment_id, org_id, state, size_bytes)
-			VALUES ($1, current_org_id(), $2, $3)
+			INSERT INTO attachment_preview (attachment_id, state, size_bytes)
+			VALUES ($1, $2, $3)
 			ON CONFLICT (attachment_id) DO NOTHING
 			RETURNING object_key`, id, state, size).Scan(&key)
 		var pgErr *pgconn.PgError

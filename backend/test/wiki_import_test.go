@@ -333,7 +333,7 @@ func TestTheDatabaseHoldsExportImportsToAKey(t *testing.T) {
 	ctx := context.Background()
 	conn := appConn(t)
 
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	refused(t, conn, "an export queued without a key",
 		`INSERT INTO space_import (id, org_id, requested_by, size_bytes, source) VALUES ($1, $2, $3, 10, 'html')`, uuid.New(), home.org, home.user)
 	refused(t, conn, "an import of a source nobody reads",
@@ -346,7 +346,7 @@ func TestTheDatabaseHoldsExportImportsToAKey(t *testing.T) {
 	h.cleanupExec(t, h.super, `DELETE FROM space_import WHERE id = $1`, queued)
 	refused(t, conn, "an administrator changing what an import is made of", `UPDATE space_import SET source = 'archive' WHERE id = $1`, queued)
 
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	refused(t, conn, "a member importing an export",
 		`INSERT INTO space_import (id, org_id, requested_by, key, size_bytes, source) VALUES ($1, $2, $3, 'SRCY', 10, 'html')`, uuid.New(), home.org, memberID)
 }

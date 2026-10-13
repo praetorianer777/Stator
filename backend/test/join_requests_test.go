@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // waitingFor lists the addresses an administrator's browser sees waiting.
@@ -86,9 +85,6 @@ func TestANewPersonWaitsUntilAnAdministratorLetsThemIn(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer conn.Close(ctx)
-		if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, org.ID.String()); err != nil {
-			t.Fatal(err)
-		}
 		var visible int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM app_user WHERE email = $1`, carol).Scan(&visible); err != nil || visible != 0 {
 			t.Fatalf("the organization sees carol among its people: %d (%v)", visible, err)
@@ -178,9 +174,6 @@ func TestANewPersonWaitsUntilAnAdministratorLetsThemIn(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer conn.Close(ctx)
-		if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, org.ID.String()); err != nil {
-			t.Fatal(err)
-		}
 		for _, sql := range []string{`UPDATE audit_log SET action = 'nothing'`, `DELETE FROM audit_log`} {
 			_, err := conn.Exec(ctx, sql)
 			var pgErr *pgconn.PgError

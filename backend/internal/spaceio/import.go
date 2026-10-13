@@ -508,7 +508,7 @@ func (im *importer) write(ctx context.Context, tx db.DBTX) error {
 	if im.from != SourceArchive {
 		data["lost"] = im.report.LostCount
 	}
-	return audit.Write(ctx, tx, im.org, audit.Entry{
+	return audit.Write(ctx, tx, audit.Entry{
 		Action: audit.ActionSpaceImported, TargetType: "space", TargetID: &im.spaceID, Actor: im.importer, Data: data,
 	})
 }

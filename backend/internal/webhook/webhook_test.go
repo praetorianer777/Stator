@@ -163,6 +163,8 @@ func TestASealedSecretOpensOnlyForItsEndpoint(t *testing.T) {
 	}
 }
 
+// The envelope is Armature's but for orgId, which an instance of one
+// organization has nothing to say with (#380).
 func TestAPingEnvelopeIsArmaturesShape(t *testing.T) {
 	s := &Service{}
 	id, org := uuid.New(), uuid.New()
@@ -175,7 +177,7 @@ func TestAPingEnvelopeIsArmaturesShape(t *testing.T) {
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got["id"] != id.String() || got["topic"] != TopicPing || got["orgId"] != org.String() || got["occurredAt"] != "2026-10-01T06:00:00Z" {
+	if got["id"] != id.String() || got["topic"] != TopicPing || got["orgId"] != nil || got["occurredAt"] != "2026-10-01T06:00:00Z" {
 		t.Fatalf("envelope %s", raw)
 	}
 	if got["payload"].(map[string]any)["message"] != pingMessage {

@@ -55,7 +55,7 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 	// whether the database let it through and touch one row.
 	does := func(person uuid.UUID, sql string, args ...any) bool {
 		t.Helper()
-		actAs(t, conn, home.org, person)
+		actAs(t, conn, person)
 		tx, err := conn.Begin(ctx)
 		if err != nil {
 			t.Fatal(err)
@@ -66,7 +66,7 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 	}
 	database := func(person uuid.UUID, page string) map[perm.Right]bool {
 		var seen int
-		actAs(t, conn, home.org, person)
+		actAs(t, conn, person)
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page WHERE id = $1`, page).Scan(&seen); err != nil {
 			t.Fatal(err)
 		}
@@ -174,7 +174,7 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 		sources := func(caller, person uuid.UUID) int {
 			t.Helper()
 			var n int
-			actAs(t, conn, home.org, caller)
+			actAs(t, conn, caller)
 			if err := conn.QueryRow(ctx, `SELECT count(*) FROM perm_global_grant_sources($1, 'use')`, person).Scan(&n); err != nil {
 				t.Fatal(err)
 			}
