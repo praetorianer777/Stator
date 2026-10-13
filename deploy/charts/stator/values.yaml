@@ -361,9 +361,8 @@ backup:
 # or a ConfigMap.
 bootstrap:
   org:
-    # Lowercase letters, digits and hyphens, 3 to 40 characters. Blank means
-    # stator and Stator.
-    slug: ""
+    # The organization's name when the bootstrap makes it; blank means Stator.
+    # An instance serves one organization, which no address names.
     name: ""
   admin:
     # Blank means admin@<ingress.host>.

@@ -1066,6 +1066,32 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Signing in no longer asks for the organization (#380): an instance serves
+  one, so the sign-in page offers SSO straight away and
+  `GET /api/v1/auth/oidc/start` replaces `/auth/oidc/{orgSlug}/start`. The
+  callback address registered with a provider is unchanged.
+- The API and the web client name no organization (#380). Breaking for API
+  clients:
+  - The organization's settings moved from `/api/v1/org/...` to
+    `/api/v1/site/...` (tokens, permissions, hub, brand, anonymous access,
+    public links, exports and imports), with no alias, since only
+    signed-in clients call them.
+  - The reads for anybody moved from `/api/v1/public/{orgSlug}/...` to
+    `/api/v1/public/...`, and a public link from `/public/{orgSlug}/link/...`
+    to `/public/link/...`, in the API and the web client alike. An old
+    address with the instance's slug is answered `308 Permanent Redirect`
+    to the new one, and any other slug is not found, so links already shared
+    keep working. The public site's answer no longer carries `slug`.
+  - Armature posts to `POST /api/v1/armature/webhook`; the old address with
+    the slug stays as an alias, and the Armature settings page shows the
+    new one.
+  - `POST /api/v1/auth/switch-org` is gone, and `GET /api/v1/auth/me` no
+    longer lists `organizations`: its `organization` is the organization's
+    name and the caller's role. Letting somebody in from the waiting list
+    answers `admitted` with their id and role instead of `membership`.
+  - `STATOR_BOOTSTRAP_ORG_SLUG` and the chart's `bootstrap.org.slug` are no
+    longer read; setting either is refused with a sentence saying so.
+    `STATOR_BOOTSTRAP_ORG_NAME` still names the organization.
 - The browser specs share the one organization (#380). Each spec file gets
   an administrator and a member of its own, made and signed in by
   `POST /api/v1/test/people` without the identity provider and removed with

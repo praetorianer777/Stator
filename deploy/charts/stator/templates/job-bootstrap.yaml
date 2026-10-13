@@ -3,7 +3,9 @@
 {{- if .Values.jobs.seed.enabled }}
 {{- fail "jobs.seed.enabled and jobs.bootstrap.enabled are both true. The seed is for a development stack and the bootstrap for a real install: turn one of them off." }}
 {{- end }}
-{{- $slug := default "stator" $b.org.slug }}
+{{- if $b.org.slug }}
+{{- fail "bootstrap.org.slug is no longer read: an instance serves one organization, and no address names it. Remove the value; bootstrap.org.name still names the organization." }}
+{{- end }}
 {{- $name := default "Stator" $b.org.name }}
 {{- $email := required "jobs.bootstrap.enabled is true, so set bootstrap.admin.email, or ingress.host so the administrator can be admin@ that host." (include "stator.bootstrapEmail" .) }}
 {{- if and (not $b.admin.passwordSecret.name) (not .Values.secrets.generate) }}
@@ -64,8 +66,6 @@ spec:
                 name: {{ include "stator.fullname" . }}-env
           env:
             {{- include "stator.secretEnv" . | nindent 12 }}
-            - name: STATOR_BOOTSTRAP_ORG_SLUG
-              value: {{ $slug | quote }}
             - name: STATOR_BOOTSTRAP_ORG_NAME
               value: {{ $name | quote }}
             - name: STATOR_BOOTSTRAP_ADMIN_EMAIL
