@@ -83,6 +83,15 @@ func TestAnAdministratorsSessionOverTheAPI(t *testing.T) {
 		t.Errorf("saving an empty provider = %d, want 422", status)
 	}
 
+	// The one organization is the only place a session switches to, until
+	// switching goes with the slugs (#380).
+	if status, body := sendJSON(t, b, http.MethodPost, base+"/auth/switch-org", map[string]any{"slug": home.Slug}); status != http.StatusOK {
+		t.Fatalf("switch to %s = %d %v", home.Slug, status, body)
+	}
+	if status, _ := sendJSON(t, b, http.MethodPost, base+"/auth/switch-org", map[string]any{"slug": "no-such-org"}); status != http.StatusForbidden {
+		t.Errorf("switching to no organization = %d, want 403", status)
+	}
+
 	// A member's session does not reach the provider settings.
 	memberEmail := "member-" + uuid.NewString()[:8] + "@stator.test"
 	h.forgetPerson(t, memberEmail)
