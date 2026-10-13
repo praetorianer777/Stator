@@ -17,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
-	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -189,83 +188,6 @@ func TestPasswordLoginSessionsExpireAndEnd(t *testing.T) {
 		resp, body := postJSON(t, newBrowser(t), login, map[string]string{"email": email, "password": adminPassword})
 		if e, _ := body["error"].(map[string]any); resp.StatusCode != http.StatusForbidden || e["code"] != "account_inactive" {
 			t.Fatalf("login when deactivated = %d %v", resp.StatusCode, body)
-		}
-	})
-}
-
-// A password reaches everywhere the person is a member, a provider's sign-in
-// only where that provider is trusted, even against a write that skips the service.
-func TestSwitchingOrganizationsFollowsTheProof(t *testing.T) {
-	h := newHarness(t)
-	a := h.startAPI(t, testSessionTTL)
-	home := h.makeOrg(t, "home")
-	away := h.makeOrg(t, "away")
-	email := bootstrapAdmin(t, h, a, home)
-	ctx := context.Background()
-
-	var userID uuid.UUID
-	if err := h.super.QueryRow(ctx, `SELECT id FROM app_user WHERE email = $1`, email).Scan(&userID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, away.ID, userID); err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("a password session switches and lists both", func(t *testing.T) {
-		creds, err := a.accounts.Login(ctx, email, adminPassword, "", "")
-		if err != nil {
-			t.Fatal(err)
-		}
-		orgs, err := a.accounts.Organizations(ctx, creds.Principal)
-		if err != nil || len(orgs) != 2 {
-			t.Fatalf("organizations = %v, %v", orgs, err)
-		}
-		switched, _, err := a.accounts.SwitchOrg(ctx, *creds.Principal.SessionID, userID, away.Slug)
-		if err != nil || switched.ID != away.ID || switched.Role != auth.RoleMember {
-			t.Fatalf("switch = %+v, %v", switched, err)
-		}
-		if _, _, err := a.accounts.SwitchOrg(ctx, *creds.Principal.SessionID, userID, "no-such-org"); !errors.Is(err, auth.ErrNotAMember) {
-			t.Fatalf("switching to an unknown organization = %v", err)
-		}
-	})
-
-	t.Run("a provider's session stays with the organizations that trust it", func(t *testing.T) {
-		var sessionID uuid.UUID
-		_, err := h.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-			// Made the way the provider's sign-in makes one, for home.
-			if _, err := tx.Exec(ctx, `UPDATE org_member SET org_role = 'member' WHERE org_id = $1 AND user_id = $2`, home.ID, userID); err != nil {
-				return err
-			}
-			id, _, err := auth.OpenSession(ctx, tx, userID, &home.ID, auth.ProofOIDC, time.Now().Add(time.Hour), "", "")
-			sessionID = id
-			return err
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		p := &auth.Principal{UserID: userID, SessionID: &sessionID}
-		if orgs, _ := a.accounts.Organizations(ctx, p); len(orgs) != 1 || orgs[0].OrgID != home.ID {
-			t.Errorf("a provider's session lists %v, want only home", orgs)
-		}
-		if _, _, err := a.accounts.SwitchOrg(ctx, sessionID, userID, away.Slug); !errors.Is(err, auth.ErrSessionStaysHome) {
-			t.Fatalf("switching away = %v, want ErrSessionStaysHome", err)
-		}
-		_, err = h.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `UPDATE user_session SET current_org_id = $2 WHERE id = $1`, sessionID, away.ID)
-			return err
-		})
-		if !isCheckViolation(err) {
-			t.Fatalf("a direct update moved the session away: %v", err)
-		}
-
-		// Once both organizations trust the same provider, the proof reaches.
-		for _, org := range []tenant.Org{home, away} {
-			if _, _, err := a.sso.Save(tenant.WithOrg(ctx, org), oidc.Provider{Issuer: "https://id.shared.test", ClientID: "stator", Enabled: true}); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if _, _, err := a.accounts.SwitchOrg(ctx, sessionID, userID, away.Slug); err != nil {
-			t.Fatalf("switching between organizations sharing a provider = %v", err)
 		}
 	})
 }

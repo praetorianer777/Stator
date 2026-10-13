@@ -99,15 +99,20 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 	return a
 }
 
-// makeOrg is an organization with nobody in it, made behind the policies' back.
+// makeOrg is the test's organization with nobody in it, made behind the
+// policies' back.
 func (h *harness) makeOrg(t *testing.T, slug string) tenant.Org {
 	t.Helper()
+	if h.org != nil {
+		t.Fatalf("the test already has its organization, %s; an instance holds one", h.org.Slug)
+	}
 	full := fmt.Sprintf("%s-%s", slug, uuid.NewString()[:8])
 	org := tenant.Org{Slug: full}
 	if err := h.super.QueryRow(context.Background(), `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, full, slug).Scan(&org.ID); err != nil {
 		t.Fatalf("create org %s: %v", full, err)
 	}
 	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM org WHERE id = $1`, org.ID) })
+	h.org = &org
 	return org
 }
 

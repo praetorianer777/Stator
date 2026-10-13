@@ -170,8 +170,6 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 		status("CP-1")
 		good := delivery{ID: uuid.New(), Topic: "issue.updated", OrgID: armatureOrg, Payload: map[string]any{"key": "CP-1"}}
 		body := good.body(t)
-		other := h.makeOtherOrganization(t, "arm-hooks-none")
-		otherSlug := h.slugOf(t, other.org)
 		var answers []string
 		for _, tc := range []struct {
 			name, slug, signature string
@@ -181,7 +179,6 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 			{"no signature", slug, "", body},
 			{"a body changed after signing", slug, armature.Sign(body, webhookSecret), append(bytes.Clone(body[:len(body)-1]), []byte(`,"x":1}`)...)},
 			{"another Armature organization", slug, "", nil},
-			{"an organization without Armature", otherSlug, armature.Sign(body, webhookSecret), body},
 			{"no such organization", "no-such-org-" + strings.ToLower(uuid.NewString()[:8]), armature.Sign(body, webhookSecret), body},
 		} {
 			if tc.body == nil {

@@ -12,12 +12,10 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/testinstance"
-	"github.com/praetorianer777/stator/backend/internal/testorg"
 )
 
-// What the browser suite arranges: people of a spec's own, the organization's
-// settings put back, and throwaway organizations for the tests of the wall
-// between them.
+// What the browser suite arranges: people of a spec's own and the
+// organization's settings put back.
 // They are served only when STATOR_TEST_ENDPOINTS is on and are left out of
 // the OpenAPI document: they are not part of the API a client may rely on.
 // See docs/decisions.md.
@@ -29,12 +27,6 @@ const TestTokenHeader = "X-Stator-Test-Token"
 // testOperations describes the test routes as operations does the public
 // ones; a test holds the router to it, and Spec never reads it.
 var testOperations = []operation{
-	{method: "POST", path: "/test/orgs", handler: "handleCreateTestOrg", tag: "test", summary: "Make a throwaway organization with the seed's people and provider in it.",
-		request: createTestOrgRequest{}, responses: created(testorg.Org{})},
-	{method: "DELETE", path: "/test/orgs/{orgSlug}", handler: "handleDeleteTestOrg", tag: "test", summary: "Remove a throwaway organization with all of its rows and files.",
-		responses: none()},
-	{method: "POST", path: "/test/orgs/{orgSlug}/example-space/age", handler: "handleAgeTestExample", tag: "test", summary: "Make a throwaway organization's example space one made before its content had versions, without the page of the file named.",
-		request: ageTestExampleRequest{}, responses: none()},
 	{method: "POST", path: "/test/people", handler: "handleCreateTestPerson", tag: "test", summary: "Make a person in the organization and sign them in, with no identity provider.",
 		request: createTestPersonRequest{}, responses: created(testinstance.Person{})},
 	{method: "DELETE", path: "/test/people/{userID}", handler: "handleDeleteTestPerson", tag: "test", summary: "Remove a test person with the spaces they made.",
@@ -43,14 +35,6 @@ var testOperations = []operation{
 		responses: none()},
 	{method: "POST", path: "/test/spaces/{spaceKey}/example-space/age", handler: "handleAgeTestExampleSpace", tag: "test", summary: "Make an example space one made before its content had versions, without the page of the file named.",
 		request: ageTestExampleRequest{}, responses: none()},
-}
-
-// TestOrgs makes and removes throwaway organizations; *testorg.Service is the
-// real one.
-type TestOrgs interface {
-	Create(ctx context.Context, label string) (*testorg.Org, error)
-	Delete(ctx context.Context, slug string) error
-	AgeExample(ctx context.Context, slug, drop string) error
 }
 
 // TestInstance arranges the instance's one organization;
@@ -69,11 +53,6 @@ func isTestPath(r *http.Request) bool {
 	return strings.HasPrefix(r.URL.Path, testPathPrefix)
 }
 
-type createTestOrgRequest struct {
-	// Label starts the slug, so a leftover organization names the spec that made it.
-	Label string `json:"label,omitempty"`
-}
-
 // requireTestToken refuses a caller without the configured token, and every
 // caller when none is configured.
 func (s *Server) requireTestToken(next http.Handler) http.Handler {
@@ -87,56 +66,9 @@ func (s *Server) requireTestToken(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) handleCreateTestOrg(w http.ResponseWriter, r *http.Request) {
-	var req createTestOrgRequest
-	if r.ContentLength != 0 {
-		if err := decodeJSON(w, r, &req); err != nil {
-			respondError(w, r, err)
-			return
-		}
-	}
-	org, err := s.TestOrgs.Create(r.Context(), req.Label)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondJSON(w, r, http.StatusCreated, org)
-}
-
-func (s *Server) handleDeleteTestOrg(w http.ResponseWriter, r *http.Request) {
-	err := s.TestOrgs.Delete(r.Context(), chi.URLParam(r, "orgSlug"))
-	if errors.Is(err, testorg.ErrNotFound) {
-		respondError(w, r, ErrNotFound("No throwaway organization has that slug. It may be gone already, or it was not made by POST "+APIPrefix+"/test/orgs."))
-		return
-	}
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondNoContent(w)
-}
-
 type ageTestExampleRequest struct {
 	// Drop names the file of the content whose page the older example lacks.
 	Drop string `json:"drop"`
-}
-
-func (s *Server) handleAgeTestExample(w http.ResponseWriter, r *http.Request) {
-	var req ageTestExampleRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		respondError(w, r, err)
-		return
-	}
-	err := s.TestOrgs.AgeExample(r.Context(), chi.URLParam(r, "orgSlug"), req.Drop)
-	if errors.Is(err, testorg.ErrNotFound) {
-		respondError(w, r, ErrNotFound("No throwaway organization has that slug and an example space with that page. Make the example space first."))
-		return
-	}
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondNoContent(w)
 }
 
 type createTestPersonRequest struct {

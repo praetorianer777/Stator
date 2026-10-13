@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 )
 
@@ -57,14 +59,12 @@ func sendJSON(t *testing.T, b *browser, method, target string, body any) (int, m
 
 // The session's own operations and the provider settings, the way the web
 // client calls them: a signed-in administrator reads and saves the provider,
-// and moves the session to another organization.
+// and a member may not.
 func TestAnAdministratorsSessionOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	a := h.startAPI(t, testSessionTTL)
 	home := h.makeOrg(t, "session-home")
-	away := h.makeOrg(t, "session-away")
 	email := bootstrapAdmin(t, h, a, home)
-	h.letIn(t, away, email, "member")
 
 	b := newBrowser(t)
 	base := a.URL + httpapi.APIPrefix
@@ -83,14 +83,18 @@ func TestAnAdministratorsSessionOverTheAPI(t *testing.T) {
 		t.Errorf("saving an empty provider = %d, want 422", status)
 	}
 
-	if status, body := sendJSON(t, b, http.MethodPost, base+"/auth/switch-org", map[string]any{"slug": away.Slug}); status != http.StatusOK {
-		t.Fatalf("switch to %s = %d %v", away.Slug, status, body)
+	// A member's session does not reach the provider settings.
+	memberEmail := "member-" + uuid.NewString()[:8] + "@stator.test"
+	h.forgetPerson(t, memberEmail)
+	const memberPassword = "a member's own password"
+	if status, body := sendJSON(t, b, http.MethodPost, base+"/users", map[string]any{"email": memberEmail, "role": "member", "password": memberPassword}); status != http.StatusCreated {
+		t.Fatalf("add a member = %d %v", status, body)
 	}
-	if status, _ := sendJSON(t, b, http.MethodPost, base+"/auth/switch-org", map[string]any{"slug": "no-such-org"}); status != http.StatusForbidden {
-		t.Errorf("switching to no organization = %d, want 403", status)
+	m := newBrowser(t)
+	if status, body := sendJSON(t, m, http.MethodPost, base+"/auth/login", map[string]any{"email": memberEmail, "password": memberPassword}); status != http.StatusOK {
+		t.Fatalf("the member signs in = %d %v", status, body)
 	}
-	// A member of away, the provider settings are no longer theirs to read.
-	if resp, _ := b.get(t, base+"/oidc-provider"); resp.StatusCode != http.StatusForbidden {
+	if resp, _ := m.get(t, base+"/oidc-provider"); resp.StatusCode != http.StatusForbidden {
 		t.Errorf("a member reading the provider = %s, want 403", resp.Status)
 	}
 }

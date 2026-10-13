@@ -432,13 +432,6 @@ func (h *harness) openSpaceTo(t *testing.T, space any, people ...uuid.UUID) {
 	h.settle(t)
 }
 
-// makeOtherOrganization makes a second organization with its owner, for the
-// tests of the wall between organizations, which go with them (#380).
-func (h *harness) makeOtherOrganization(t *testing.T, slug string) member {
-	t.Helper()
-	return h.makePerson(t, h.makeOrganization(t, slug), slug, "owner")
-}
-
 func (h *harness) makeOrganization(t *testing.T, slug string) tenant.Org {
 	t.Helper()
 	// Unique per run so repeated runs against a kept database do not collide.

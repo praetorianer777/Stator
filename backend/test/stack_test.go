@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/fs"
 	"net/http"
@@ -206,7 +207,8 @@ func TestTheSeedIsIdempotent(t *testing.T) {
 
 // A production install runs the bootstrap on every install and upgrade: it
 // makes the named organization and its administrator once, leaves them alone
-// after, and a changed password is the one thing it applies again.
+// after, and a changed password is the one thing it applies again. Another
+// organization is refused: an instance has one.
 func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 	h := newHarness(t)
 	ctx := context.Background()
@@ -246,6 +248,14 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 	}
 	if _, err := accounts.EnsureAdmin(ctx, slug, email, "Administrator", "second password 2"); err != nil {
 		t.Fatalf("a changed password: %v", err)
+	}
+
+	res, err := seed.Ensure(ctx, h.cluster, "another-"+slug, "Another")
+	if !errors.Is(err, seed.ErrAnotherOrganization) || res.OrgCreated || !strings.Contains(err.Error(), slug) {
+		t.Fatalf("bootstrapping another organization = %+v, %v; want a refusal naming %s", res, err, slug)
+	}
+	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org`).Scan(&org); err != nil || org != 1 {
+		t.Fatalf("organizations after bootstrapping another: %d (%v), want 1", org, err)
 	}
 }
 

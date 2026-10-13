@@ -13,70 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
-
-// Every tenant table must be invisible across organizations even when a query
-// deliberately omits the tenant filter, the mistake row level security survives.
-func TestTenantIsolation(t *testing.T) {
-	h := newHarness(t)
-	a := h.makeMember(t, "alpha")
-	b := h.makeOtherOrganization(t, "beta")
-
-	for _, table := range []string{"org", "app_user", "org_member"} {
-		t.Run(table+" shows a tenant only its own rows", func(t *testing.T) {
-			if got := h.count(t, a.ctx, `SELECT count(*) FROM `+table); got != 1 {
-				t.Errorf("org A sees %d rows in %s, want only its own 1", got, table)
-			}
-			if got := h.count(t, b.ctx, `SELECT count(*) FROM `+table); got != 1 {
-				t.Errorf("org B sees %d rows in %s, want only its own 1", got, table)
-			}
-		})
-	}
-
-	t.Run("another tenant's rows are not found by id", func(t *testing.T) {
-		if got := h.count(t, a.ctx, `SELECT count(*) FROM org WHERE id = $1`, b.org); got != 0 {
-			t.Errorf("org A finds org B by id: %d", got)
-		}
-		if got := h.count(t, a.ctx, `SELECT count(*) FROM app_user WHERE id = $1`, b.user); got != 0 {
-			t.Errorf("org A finds org B's person by id: %d", got)
-		}
-	})
-
-	t.Run("joining another tenant is refused", func(t *testing.T) {
-		_, err := h.cluster.Write(a.ctx, func(ctx context.Context, tx db.DBTX) error {
-			_, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'admin')`, b.org, a.user)
-			return err
-		})
-		if !isPolicyViolation(err) {
-			t.Fatalf("org A wrote a membership into org B: %v", err)
-		}
-	})
-
-	t.Run("updating or deleting another tenant affects nothing", func(t *testing.T) {
-		var updated, deleted int64
-		_, err := h.cluster.Write(a.ctx, func(ctx context.Context, tx db.DBTX) error {
-			tag, err := tx.Exec(ctx, `UPDATE org SET name = 'tampered' WHERE id = $1`, b.org)
-			if err != nil {
-				return err
-			}
-			updated = tag.RowsAffected()
-			tag, err = tx.Exec(ctx, `DELETE FROM app_user WHERE id = $1`, b.user)
-			deleted = tag.RowsAffected()
-			return err
-		})
-		if err != nil {
-			t.Fatalf("write: %v", err)
-		}
-		if updated != 0 || deleted != 0 {
-			t.Errorf("org A updated %d and deleted %d of org B's rows, want none", updated, deleted)
-		}
-		var name string
-		if err := h.super.QueryRow(context.Background(), `SELECT name FROM org WHERE id = $1`, b.org).Scan(&name); err != nil || name != "beta" {
-			t.Errorf("org B's name is %q (%v), want it untouched", name, err)
-		}
-	})
-}
 
 // The belt as well as the braces: a query with no organization at all is
 // refused before it reaches the database.
@@ -100,11 +37,11 @@ func TestUnscopedAccessIsRefused(t *testing.T) {
 }
 
 // The service refusing is not proof. Straight through SQL as stator_app, with
-// no help from the Go code, the database has to refuse on its own.
-func TestRawSQLAsTheAppRoleCannotCrossTenants(t *testing.T) {
+// no help from the Go code, nothing is visible without a caller, and row
+// level security cannot be switched off, dropped or stepped around.
+func TestRawSQLAsTheAppRoleCannotLiftRowSecurity(t *testing.T) {
 	h := newHarness(t)
-	a := h.makeMember(t, "gamma")
-	b := h.makeOtherOrganization(t, "delta")
+	h.makeMember(t, "gamma")
 
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, os.Getenv(envPrimary))
@@ -122,40 +59,15 @@ func TestRawSQLAsTheAppRoleCannotCrossTenants(t *testing.T) {
 		t.Fatalf("connected as %s (privileged %v), want the unprivileged stator_app", role, privileged)
 	}
 
-	countOf := func(sql string, args ...any) int {
-		t.Helper()
-		var n int
-		if err := conn.QueryRow(ctx, sql, args...).Scan(&n); err != nil {
-			t.Fatalf("%s: %v", sql, err)
-		}
-		return n
-	}
-
-	t.Run("with no tenant set nothing is visible", func(t *testing.T) {
+	t.Run("with nobody set nothing is visible", func(t *testing.T) {
 		for _, table := range []string{"org", "app_user", "org_member"} {
-			if got := countOf(`SELECT count(*) FROM ` + table); got != 0 {
-				t.Errorf("an unscoped connection sees %d rows in %s, want none", got, table)
+			var n int
+			if err := conn.QueryRow(ctx, `SELECT count(*) FROM `+table).Scan(&n); err != nil {
+				t.Fatal(err)
 			}
-		}
-	})
-
-	t.Run("scoped to one tenant the other stays invisible", func(t *testing.T) {
-		if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, a.org.String()); err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _, _ = conn.Exec(context.Background(), `RESET `+tenant.PostgresVar) })
-		if got := countOf(`SELECT count(*) FROM org WHERE id = $1`, b.org); got != 0 {
-			t.Errorf("org B is visible from org A's scope")
-		}
-		if got := countOf(`SELECT count(*) FROM app_user WHERE id = $1`, b.user); got != 0 {
-			t.Errorf("org B's person is visible from org A's scope")
-		}
-		if got := countOf(`SELECT count(*) FROM org WHERE id = $1`, a.org); got != 1 {
-			t.Errorf("org A does not see itself: %d", got)
-		}
-		_, err := conn.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, b.org, a.user)
-		if !isPolicyViolation(err) {
-			t.Errorf("a membership in org B was written from org A's scope: %v", err)
+			if n != 0 {
+				t.Errorf("an unscoped connection sees %d rows in %s, want none", n, table)
+			}
 		}
 	})
 
@@ -182,12 +94,11 @@ func TestRawSQLAsTheAppRoleCannotCrossTenants(t *testing.T) {
 	}
 }
 
-// Signup and login run before a tenant is known; the admin role is exempt by
+// Signup and login run before anybody is known; the admin role is exempt by
 // an explicit policy, and only the admin transactions use it.
-func TestTheAdminRoleSeesAcrossTenants(t *testing.T) {
+func TestTheAdminRoleIsExemptFromThePolicies(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "epsilon")
-	b := h.makeOtherOrganization(t, "zeta")
 
 	var role string
 	var n int
@@ -195,13 +106,13 @@ func TestTheAdminRoleSeesAcrossTenants(t *testing.T) {
 		if err := tx.QueryRow(ctx, `SELECT current_user`).Scan(&role); err != nil {
 			return err
 		}
-		return tx.QueryRow(ctx, `SELECT count(*) FROM org WHERE id IN ($1, $2)`, a.org, b.org).Scan(&n)
+		return tx.QueryRow(ctx, `SELECT count(*) FROM org_member WHERE org_id = $1`, a.org).Scan(&n)
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if role != "stator_admin" || n != 2 {
-		t.Fatalf("the admin pool is %s and sees %d of the two organizations", role, n)
+	if role != "stator_admin" || n != 1 {
+		t.Fatalf("the admin pool is %s and sees %d of the organization's one member", role, n)
 	}
 }
 
