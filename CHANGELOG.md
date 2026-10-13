@@ -1066,6 +1066,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **An instance serves one organization, and the upgrade refuses an instance
+  that holds several (#380).** Before upgrading such an instance, export
+  every organization under Settings, Export and import, delete all but one,
+  then upgrade, and import each other archive into a fresh instance of its
+  own; `docs/organization-transfer.md` says how. Until then the migrate step
+  fails with a message naming the organizations and changes nothing, and
+  the api does not start on the new release. A backup taken of such an
+  instance restores, but stops at the same refusal
+  (`docs/backup-and-restore.md`). The database refuses a second
+  organization from then on, and `seed bootstrap` with another slug than the
+  instance's organization fails with a sentence naming it. The test
+  endpoints `POST /api/v1/test/orgs` and `DELETE /api/v1/test/orgs/{slug}`
+  are gone.
 - The browser specs share the one organization (#380). Each spec file gets
   an administrator and a member of its own, made and signed in by
   `POST /api/v1/test/people` without the identity provider and removed with

@@ -287,7 +287,7 @@ imports `orgTest` any more.
 **Depends on #383** (its export is what the refusal tells the operator to
 use).
 
-- Migration `00720_one_organization.sql`:
+- Migration `00740_one_organization.sql` (00720 and 00730 went to #383 and #395):
   - Refuses when `org` has more than one row, with `RAISE EXCEPTION` whose
     message says: this instance holds N organizations and Stator now serves
     one per instance; export every organization (Settings, export, #383),
@@ -331,9 +331,9 @@ the operator reads it in the migrate Job's log.
 
 **Proven by.**
 - An integration test `TestTheUpgradeRefusesSeveralOrganizations`: a scratch
-  database migrated with goose to `00710`, two organizations inserted, `Up`
-  run; it fails, the message names the export and both slugs, and
-  `goose_db_version` still ends at `00710`. A second case with one
+  database migrated with goose to the migration before it, two
+  organizations inserted, `Up` run; it fails, the message names the export
+  and both slugs, and `goose_db_version` still ends there. A second case with one
   organization upgrades and keeps its spaces, pages and members. The harness
   can run goose against a scratch database the way `cmd/migrate` does
   (`goose.UpTo`).
@@ -393,7 +393,7 @@ all four layers green.
 
 ## PR 4: nothing sets or reads the tenant
 
-- Migration `00730_no_tenant_policies.sql`:
+- Migration `00750_no_tenant_policies.sql`:
   - Drops the 71 `<table>_tenant_isolation` policies and adds, per table, a
     permissive policy for `stator_app` that admits every row
     (`<table>_app ... TO stator_app USING (true) WITH CHECK (true)`). Without
@@ -440,7 +440,7 @@ expression (`pg_policies`) and no function body (`pg_proc.prosrc`) in
 
 ## PR 5: the schema has no organization
 
-- Migration `00740_drop_org_id.sql`, in an order Postgres accepts:
+- Migration `00760_drop_org_id.sql`, in an order Postgres accepts:
   - Object keys first: `attachment.object_key`, `attachment_preview`,
     `space_export`, `space_import` and `word_import` stop being generated
     (`ALTER COLUMN ... DROP EXPRESSION` keeps every stored value, so no file

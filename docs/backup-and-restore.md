@@ -12,8 +12,8 @@ Docker Compose and under the Helm chart: the `backup` image (built from
 
 - `manifest.json`: the Stator version and schema migrations it was taken with,
   when, and a fingerprint of `STATOR_SECRET_KEY` (not the key);
-- `database.sql.gz`: a `pg_dump` of the whole database, every organization in
-  it, with its grants and row level security policies;
+- `database.sql.gz`: a `pg_dump` of the whole database, with its grants and
+  row level security policies;
 - `objects/...`: every object in the bucket, under its key: attachments,
   previews, theme assets, space exports and imports.
 
@@ -103,6 +103,16 @@ The database is replaced in one transaction, so a restore that fails there
 leaves the site as it was. The bucket is restored after it; if that fails
 part way, run the restore again. Last, the database is migrated to this
 version's schema, so an archive from an older Stator comes back up to date.
+
+### An archive that holds several organizations
+
+An instance serves one organization (#380), and the migration that brings
+this in refuses a database holding several. An archive taken before it, of
+an instance that held several, restores, but its last step fails with the
+migration's message naming them: the database and the bucket are the
+archive's, at the schema it was taken with. Run the release the archive was
+taken with against it, split it as `docs/organization-transfer.md` says
+(export every organization, delete all but one), then upgrade.
 
 ## Checking a restore
 
