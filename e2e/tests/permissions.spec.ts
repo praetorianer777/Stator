@@ -176,7 +176,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
       const bob = await pageAs("bob");
       await openShowing(bob, "/spaces", bob.locator("[data-no-access]"));
       await expect(bob.getByRole("heading", { level: 1 })).toContainText("You do not have access to");
-      await expect(bob.getByText(/Ask one of its administrators to add you under Permissions/)).toBeVisible();
+      await expect(bob.getByText(/Ask an administrator to add you under Permissions/)).toBeVisible();
       await expectAccessible(bob);
     } finally {
       await api.PUT("/site/permissions/{permission}", { params: { path: { permission: "use" } }, body: { subjects: everyone } });

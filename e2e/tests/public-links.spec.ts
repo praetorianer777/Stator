@@ -52,7 +52,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
       await links(page).getByRole("combobox", { name: "Runs out" }).selectOption("7");
       await links(page).locator('[data-action="create-public-link"]').click();
       const address = await links(page).locator("[data-public-link-address]").inputValue();
-      expect(address).toMatch(/\/public\/[^/]+\/link\/[A-Za-z0-9_-]{43}$/);
+      expect(address).toMatch(/\/public\/link\/[A-Za-z0-9_-]{43}$/);
       const listed = links(page).locator('[data-public-link="For the auditors"]');
       await expect(listed).toContainText("Made by you on");
       await expect(listed).toContainText("Runs out on");
