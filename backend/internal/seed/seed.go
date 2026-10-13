@@ -4,7 +4,6 @@ package seed
 
 import (
 	"context"
-	"errors"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
@@ -98,17 +97,10 @@ func Populate(ctx context.Context, accounts *auth.Service, sso *oidc.Service, or
 	if people.Provider == nil {
 		return out, nil
 	}
-	ctx = tenant.WithOrg(ctx, org)
-	switch _, err := sso.Provider(ctx); {
-	case err == nil:
-		out.ProviderExisting = true
-		return out, nil
-	case !errors.Is(err, oidc.ErrNotConfigured):
+	created, err := sso.Bootstrap(ctx, org.ID, *people.Provider)
+	if err != nil {
 		return out, err
 	}
-	if _, _, err := sso.Save(ctx, *people.Provider); err != nil {
-		return out, err
-	}
-	out.ProviderCreated = true
+	out.ProviderCreated, out.ProviderExisting = created, !created
 	return out, nil
 }

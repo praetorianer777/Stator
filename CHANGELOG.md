@@ -1151,6 +1151,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The database now keeps the sign-in provider and the roles its groups map
+  to for the organization's administrators (#401). Before, only the wall
+  between organizations held them, so straight through SQL any member could
+  read the provider's settings, point sign-in at another provider or map a
+  group to admin. A token limited to spaces reaches them no more than it
+  does through the settings routes. The seed and the test reset now write
+  the bootstrap provider as the operator, since they act for no member.
 - The database now keeps themes, personal access tokens and file tombstones
   to whoever the services keep them to (#395). Before, only the wall between
   organizations held them, so straight through SQL any member could read or

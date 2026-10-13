@@ -212,7 +212,7 @@ func (s *Service) Reset(ctx context.Context) error {
 	if err != nil || s.people.Provider == nil {
 		return err
 	}
-	if _, _, err := s.sso.Save(tenant.WithOrg(ctx, org), *s.people.Provider); err != nil {
+	if err := s.sso.Configure(ctx, org.ID, *s.people.Provider); err != nil {
 		return fmt.Errorf("point the organization at the bootstrap provider again: %w", err)
 	}
 	return nil
