@@ -71,7 +71,7 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 			t.Errorf("nobody's access: %d", got.Status)
 		}
 
-		perms := list(t, want(t, owner.get(t, "/api/v1/org/permissions"), http.StatusOK, "global permissions"), "permissions")
+		perms := list(t, want(t, owner.get(t, "/api/v1/site/permissions"), http.StatusOK, "global permissions"), "permissions")
 		if len(perms) != 3 {
 			t.Fatalf("%d global permissions", len(perms))
 		}
@@ -82,20 +82,20 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 		if admin["permission"] != "administer" || admin["fixed"] != true || len(admin["subjects"].([]any)) != 1 {
 			t.Errorf("administer is %v", admin)
 		}
-		if got := ann.get(t, "/api/v1/org/permissions"); got.Status != http.StatusForbidden {
+		if got := ann.get(t, "/api/v1/site/permissions"); got.Status != http.StatusForbidden {
 			t.Errorf("a member reads the global permissions: %d", got.Status)
 		}
-		if got := owner.put(t, "/api/v1/org/permissions/administer", map[string]any{"subjects": []any{user(annID)}}); got.Status != http.StatusConflict {
+		if got := owner.put(t, "/api/v1/site/permissions/administer", map[string]any{"subjects": []any{user(annID)}}); got.Status != http.StatusConflict {
 			t.Errorf("administer was granted: %d", got.Status)
 		}
-		if got := ann.put(t, "/api/v1/org/permissions/createSpace", map[string]any{"subjects": []any{user(annID)}}); got.Status != http.StatusForbidden {
+		if got := ann.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{user(annID)}}); got.Status != http.StatusForbidden {
 			t.Errorf("a member granted themselves createSpace: %d", got.Status)
 		}
 
 		if got := ann.post(t, "/api/v1/spaces", map[string]any{"key": "ANNS", "name": "Ann's"}); got.Status != http.StatusForbidden {
 			t.Fatalf("a member made a space: %d", got.Status)
 		}
-		granted := obj(t, want(t, owner.put(t, "/api/v1/org/permissions/createSpace", map[string]any{"subjects": []any{user(annID), user(annID)}}), http.StatusOK, "grant createSpace"), "permission")
+		granted := obj(t, want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{user(annID), user(annID)}}), http.StatusOK, "grant createSpace"), "permission")
 		if subjects := granted["subjects"].([]any); len(subjects) != 1 || subjects[0].(map[string]any)["name"] != "A member" {
 			t.Errorf("createSpace is granted to %v", subjects)
 		}
@@ -107,7 +107,7 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 			t.Errorf("somebody else renamed ann's space: %d", got.Status)
 		}
 
-		want(t, owner.put(t, "/api/v1/org/permissions/use", map[string]any{"subjects": []any{group(writers)}}), http.StatusOK, "use for writers only")
+		want(t, owner.put(t, "/api/v1/site/permissions/use", map[string]any{"subjects": []any{group(writers)}}), http.StatusOK, "use for writers only")
 		got := ann.get(t, "/api/v1/spaces")
 		if got.Status != http.StatusForbidden || errorCode(t, got) != "no_access" {
 			t.Errorf("a member without use lists spaces: %d %s", got.Status, got.Raw)
@@ -117,7 +117,7 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 		}
 		want(t, bob.get(t, "/api/v1/spaces"), http.StatusOK, "a writer still uses Stator")
 		want(t, owner.get(t, "/api/v1/spaces"), http.StatusOK, "an owner always uses Stator")
-		want(t, owner.put(t, "/api/v1/org/permissions/use", map[string]any{"subjects": []any{everyone}}), http.StatusOK, "use for everyone again")
+		want(t, owner.put(t, "/api/v1/site/permissions/use", map[string]any{"subjects": []any{everyone}}), http.StatusOK, "use for everyone again")
 		want(t, ann.get(t, "/api/v1/spaces"), http.StatusOK, "use is back")
 	})
 

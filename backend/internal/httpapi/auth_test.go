@@ -175,7 +175,7 @@ func TestLoginAsksForBothFields(t *testing.T) {
 
 func TestDomainErrorsAreSentences(t *testing.T) {
 	for _, err := range []error{
-		auth.ErrInvalidCredentials, auth.ErrUserInactive, auth.ErrNotAMember, auth.ErrSessionStaysHome,
+		auth.ErrInvalidCredentials, auth.ErrUserInactive,
 		oidc.ErrNotConfigured, &oidc.ValidationError{Field: "issuer", Message: "Enter it."},
 		auth.ErrNoSuchRequest, auth.ErrBadJoinRole,
 	} {

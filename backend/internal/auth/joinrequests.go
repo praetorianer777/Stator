@@ -11,6 +11,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // JoinRequest is somebody the identity provider vouched for who is waiting
@@ -56,11 +57,11 @@ func (s *Service) JoinRequests(ctx context.Context, orgID uuid.UUID) ([]JoinRequ
 
 // AdmitJoinRequest lets a waiting person in with the standing given. Their
 // next sign-in through the provider then succeeds.
-func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID, role OrgRole, actor uuid.UUID, ip string) (*Membership, db.LSN, error) {
+func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID, role OrgRole, actor uuid.UUID, ip string) (*Admitted, db.LSN, error) {
 	if role != RoleAdmin && role != RoleMember {
 		return nil, 0, ErrBadJoinRole
 	}
-	var made Membership
+	made := Admitted{UserID: userID, Role: role}
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		tag, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE org_id = $1 AND user_id = $2`, orgID, userID)
 		if err != nil {
@@ -75,10 +76,6 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID,
 			orgID, userID, string(role)); err != nil {
 			return fmt.Errorf("create membership: %w", err)
 		}
-		if err := tx.QueryRow(ctx, `SELECT id, slug, name FROM org WHERE id = $1`, orgID).Scan(&made.OrgID, &made.OrgSlug, &made.OrgName); err != nil {
-			return err
-		}
-		made.Role = role
 		return audit.Write(ctx, tx, orgID, audit.Entry{Action: audit.ActionMemberAdmitted, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip,
 			Data: map[string]any{"role": role}})
 	})
@@ -105,7 +102,7 @@ func (s *Service) DeclineJoinRequest(ctx context.Context, orgID, userID, actor u
 
 // EnsureMember lets an address in ahead of its first sign-in, making the account
 // if need be; a membership already there is left alone.
-func (s *Service) EnsureMember(ctx context.Context, orgSlug, email string, role OrgRole) (bool, error) {
+func (s *Service) EnsureMember(ctx context.Context, email string, role OrgRole) (bool, error) {
 	email = NormalizeEmail(email)
 	if !strings.Contains(email, "@") {
 		return false, fmt.Errorf("%q is not an email address", email)
@@ -116,6 +113,10 @@ func (s *Service) EnsureMember(ctx context.Context, orgSlug, email string, role 
 	name, _, _ := strings.Cut(email, "@")
 	var added bool
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		org, err := instance.Find(ctx, tx)
+		if err != nil {
+			return err
+		}
 		var userID uuid.UUID
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO app_user (email, name) VALUES ($1, $2)
@@ -124,9 +125,8 @@ func (s *Service) EnsureMember(ctx context.Context, orgSlug, email string, role 
 			return fmt.Errorf("find or create %s: %w", email, err)
 		}
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role)
-			SELECT id, $2, $3 FROM org WHERE slug = $1
-			ON CONFLICT (org_id, user_id) DO NOTHING`, orgSlug, userID, string(role))
+			INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)
+			ON CONFLICT (org_id, user_id) DO NOTHING`, org.ID, userID, string(role))
 		added = tag.RowsAffected() == 1
 		return err
 	})

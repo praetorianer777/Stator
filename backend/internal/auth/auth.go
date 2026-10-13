@@ -18,7 +18,8 @@ var ErrInvalidToken = errors.New("invalid or expired credential")
 // Principal is the caller a credential resolved to.
 type Principal struct {
 	UserID uuid.UUID
-	// Org is the organization the caller is acting in; nil until one is chosen.
+	// Org is the organization the caller is acting in; nil for a person who is
+	// no member.
 	Org *tenant.Org
 
 	Email     string

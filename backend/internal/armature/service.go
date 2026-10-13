@@ -20,9 +20,9 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
-// WebhookPath is where Armature posts an organization's events, under the
-// app's origin; the organization's slug follows.
-const WebhookPath = "/api/v1/armature/webhook/"
+// WebhookPath is where Armature posts the organization's events, under the
+// app's origin.
+const WebhookPath = "/api/v1/armature/webhook"
 
 // Audit actions of the connection.
 const (
@@ -119,7 +119,7 @@ func (s *Service) Connection(ctx context.Context) (*Connection, error) {
 }
 
 func (s *Service) readConnection(ctx context.Context, tx db.DBTX, org tenant.Org) (*Connection, error) {
-	c := Connection{WebhookURL: s.opts.AppURL + WebhookPath + org.Slug, WebhookTopics: WebhookTopics}
+	c := Connection{WebhookURL: s.opts.AppURL + WebhookPath, WebhookTopics: WebhookTopics}
 	var connected *int
 	err := tx.QueryRow(ctx, `
 		SELECT base_url, org_slug, armature_org_id, webhook_secret IS NOT NULL, updated_at, armature_connected_count()

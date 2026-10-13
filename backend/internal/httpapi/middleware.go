@@ -214,9 +214,9 @@ func requireSession(next http.Handler) http.Handler {
 	})
 }
 
-// requireWholeOrg refuses a token limited to spaces, and a guest, what
-// concerns the whole organization, which is outside every space they reach.
-func requireWholeOrg(next http.Handler) http.Handler {
+// requireWholeInstance refuses a token limited to spaces, and a guest, what
+// concerns the whole instance, which is outside every space they reach.
+func requireWholeInstance(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := PrincipalFrom(r.Context())
 		if p.Guest() {
@@ -262,9 +262,9 @@ func requireOrg(next http.Handler) http.Handler {
 // requireAdmin lets through only an owner or administrator of the organization
 // the caller is acting in.
 func requireAdmin(next http.Handler) http.Handler {
-	return requireOrg(requireWholeOrg(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return requireOrg(requireWholeInstance(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !PrincipalFrom(r.Context()).CanAdminister() {
-			respondError(w, r, ErrForbidden("Only an administrator of this organization can do that. Ask one of them."))
+			respondError(w, r, ErrForbidden("Only an administrator can do that. Ask one of them."))
 			return
 		}
 		next.ServeHTTP(w, r)

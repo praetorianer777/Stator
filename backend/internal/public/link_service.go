@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -121,7 +120,6 @@ func (s *Service) CreateLink(ctx context.Context, actor perm.Actor, pageID uuid.
 		return nil, "", "", 0, err
 	}
 	out := Link{Label: label, ExpiresAt: in.ExpiresAt}
-	var slug string
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		p, err := linkable(ctx, tx, actor, pageID)
 		if err != nil {
@@ -144,8 +142,8 @@ func (s *Service) CreateLink(ctx context.Context, actor perm.Actor, pageID uuid.
 			return overFull(err)
 		}
 		maker := perm.Person{ID: actor.UserID}
-		if err := tx.QueryRow(ctx, `SELECT u.name, u.email::text, o.slug::text FROM app_user u, org o WHERE u.id = $1 AND o.id = current_org_id()`,
-			actor.UserID).Scan(&maker.Name, &maker.Email, &slug); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT name, email::text FROM app_user WHERE id = $1`,
+			actor.UserID).Scan(&maker.Name, &maker.Email); err != nil {
 			return fmt.Errorf("read who made the link: %w", err)
 		}
 		out.CreatedBy = &maker
@@ -158,7 +156,7 @@ func (s *Service) CreateLink(ctx context.Context, actor perm.Actor, pageID uuid.
 	if err != nil {
 		return nil, "", "", lsn, err
 	}
-	return &out, token, LinkPath(slug, token), lsn, nil
+	return &out, token, LinkPath(token), lsn, nil
 }
 
 // overFull words the database's own refusal of a link past MaxLinksPerPage, which
@@ -238,17 +236,17 @@ func (s *Service) SetLinkSettings(ctx context.Context, actor perm.Actor, in Link
 	return &in, lsn, nil
 }
 
-// LinkSite finds the organization a link's address names, while it allows
-// links; otherwise the link is gone, as one nobody holds.
-func (s *Service) LinkSite(ctx context.Context, slug string) (*Site, error) {
+// LinkSite is the organization while it allows links; otherwise every link
+// is gone, as one nobody holds.
+func (s *Service) LinkSite(ctx context.Context, org tenant.Org) (*Site, error) {
 	var out Site
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT o.id, o.slug::text, o.name, o.anonymous_indexable, COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''),
+			SELECT o.id, o.name, o.anonymous_indexable, COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''),
 			       CASE WHEN b.logo_type IS NOT NULL THEN b.logo_version END
 			FROM org o LEFT JOIN org_brand b ON b.org_id = o.id
-			WHERE o.slug = $1 AND o.public_links AND o.archived_at IS NULL`, strings.ToLower(strings.TrimSpace(slug))).
-			Scan(&out.ID, &out.Slug, &out.Name, &out.Indexable, &out.Footer.En, &out.Footer.De, &out.LogoVersion)
+			WHERE o.id = $1 AND o.public_links AND o.archived_at IS NULL`, org.ID).
+			Scan(&out.ID, &out.Name, &out.Indexable, &out.Footer.En, &out.Footer.De, &out.LogoVersion)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrLinkGone
@@ -259,10 +257,10 @@ func (s *Service) LinkSite(ctx context.Context, slug string) (*Site, error) {
 	return &out, nil
 }
 
-// ReadingLink binds ctx to the site as an anonymous reader holding the token,
-// whom the database lets read the one page a live link with it opens.
-func ReadingLink(ctx context.Context, site *Site, token string) context.Context {
-	return db.WithLink(tenant.WithOrg(ctx, tenant.Org{ID: site.ID, Slug: site.Slug}), auth.HashToken(token))
+// ReadingLink binds ctx to the organization as an anonymous reader holding
+// the token, whom the database lets read the one page a live link opens.
+func ReadingLink(ctx context.Context, org tenant.Org, token string) context.Context {
+	return db.WithLink(tenant.WithOrg(ctx, org), auth.HashToken(token))
 }
 
 // LinkedPage is the page the reader's link opens, with the people it names

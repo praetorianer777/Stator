@@ -13,7 +13,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
-// Seeded names, fixed so a second run finds what the first made.
+// Seeded names. The slug is the organization's key until it goes from the
+// schema; nobody types or reads it.
 const (
 	DemoOrgSlug = "demo"
 	DemoOrgName = "Demo"
@@ -27,15 +28,15 @@ type Result struct {
 // Run seeds the cluster through the admin role, since making an organization
 // precedes any tenant.
 func Run(ctx context.Context, cluster *db.Cluster) (Result, error) {
-	return Ensure(ctx, cluster, DemoOrgSlug, DemoOrgName)
+	return Ensure(ctx, cluster, DemoOrgName)
 }
 
-// Ensure makes the organization of that slug when there is none, and leaves an
+// Ensure makes the instance's organization when there is none, and leaves an
 // existing one, whatever it is now called, as it is.
-func Ensure(ctx context.Context, cluster *db.Cluster, slug, name string) (Result, error) {
+func Ensure(ctx context.Context, cluster *db.Cluster, name string) (Result, error) {
 	var res Result
 	_, err := cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2) ON CONFLICT (slug) DO NOTHING`, slug, name)
+		tag, err := tx.Exec(ctx, `INSERT INTO org (slug, name) SELECT $1, $2 WHERE NOT EXISTS (SELECT FROM org)`, DemoOrgSlug, name)
 		res.OrgCreated = tag.RowsAffected() == 1
 		return err
 	})
@@ -86,7 +87,7 @@ type Populated struct {
 func Populate(ctx context.Context, accounts *auth.Service, sso *oidc.Service, org tenant.Org, people People) (Populated, error) {
 	var out Populated
 	for _, m := range people.Members {
-		added, err := accounts.EnsureMember(ctx, org.Slug, m.Email, m.Role)
+		added, err := accounts.EnsureMember(ctx, m.Email, m.Role)
 		if err != nil {
 			return out, err
 		}

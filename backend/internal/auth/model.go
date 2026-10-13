@@ -88,23 +88,18 @@ type User struct {
 	ShowInReaders bool `json:"showInReaders"`
 }
 
-// CurrentOrg is the organization a session is acting in, with the caller's
-// standing there.
-type CurrentOrg struct {
-	ID   uuid.UUID `json:"id"`
-	Slug string    `json:"slug"`
-	Name string    `json:"name"`
-	Role OrgRole   `json:"role"`
+// Standing is the organization's name and the caller's place in it.
+type Standing struct {
+	Name string  `json:"name"`
+	Role OrgRole `json:"role"`
 	// GuestSpace is where a guest lands and all they reach; null for everybody else.
 	GuestSpace *SpaceRef `json:"guestSpace"`
 }
 
-// Membership is a user's place in one organization.
-type Membership struct {
-	OrgID   uuid.UUID `json:"orgId"`
-	OrgSlug string    `json:"orgSlug"`
-	OrgName string    `json:"orgName"`
-	Role    OrgRole   `json:"role"`
+// Admitted is somebody let in from the list of who waits, with their role.
+type Admitted struct {
+	UserID uuid.UUID `json:"userId"`
+	Role   OrgRole   `json:"role"`
 }
 
 // Proof is how a session was opened, which decides how far it reaches.
@@ -121,12 +116,6 @@ var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	// ErrUserInactive is returned when a deactivated account signs in.
 	ErrUserInactive = errors.New("account is deactivated")
-	// ErrNotAMember is returned when somebody tries to act in an organization
-	// they do not belong to, or names one that does not exist.
-	ErrNotAMember = errors.New("not a member of that organization")
-	// ErrSessionStaysHome is returned when a session proven for one
-	// organization tries to act where that proof does not vouch for it.
-	ErrSessionStaysHome = errors.New("this sign-in does not reach that organization")
 	// ErrBadLocale is returned for a language the interface does not speak.
 	ErrBadLocale = errors.New("choose a language from the list")
 	// ErrNoSuchMember is returned when the person named is not a member here.

@@ -231,8 +231,8 @@ func TestThrowawayOrganizations(t *testing.T) {
 	bob := newBrowser(t)
 	var themeID, assetID string
 	t.Run("alice and bob sign in and alice leaves a theme with a file", func(t *testing.T) {
-		alice.signIn(t, a, slug, "alice", alicePassword, "")
-		bob.signIn(t, a, slug, "bob", bobPassword, "")
+		alice.signIn(t, a, "alice", alicePassword, "")
+		bob.signIn(t, a, "bob", bobPassword, "")
 		for who, b := range map[string]*browser{"admin": alice, "member": bob} {
 			status, me := b.me(t, a)
 			current, _ := me["organization"].(map[string]any)

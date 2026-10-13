@@ -1308,10 +1308,64 @@
         }
       }
     },
-    "/armature/webhook/{orgSlug}": {
+    "/armature/webhook": {
       "post": {
         "operationId": "armatureWebhook",
         "summary": "Where Armature posts issue events, signed with the organization's webhook secret; clears the cached issues they name.",
+        "tags": [
+          "armature"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/armature/webhook/{orgSlug}": {
+      "post": {
+        "operationId": "armatureWebhookWithSlug",
+        "summary": "The address POST /armature/webhook had while it named the organization, kept for receivers set up with it; a slug that is not the organization's is refused as a bad signature.",
         "tags": [
           "armature"
         ],
@@ -1369,7 +1423,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/attachments/{attachmentID}": {
@@ -2170,7 +2225,7 @@
     "/auth/me": {
       "get": {
         "operationId": "me",
-        "summary": "Who is signed in, and the organizations they may act in.",
+        "summary": "Who is signed in, and their role.",
         "tags": [
           "auth"
         ],
@@ -2294,22 +2349,14 @@
         }
       }
     },
-    "/auth/oidc/{orgSlug}/start": {
+    "/auth/oidc/start": {
       "get": {
         "operationId": "oIDCStart",
-        "summary": "Begin signing in through the organization's identity provider.",
+        "summary": "Begin signing in through the identity provider.",
         "tags": [
           "auth"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "next",
             "in": "query",
@@ -2322,55 +2369,6 @@
         "responses": {
           "302": {
             "description": "Found: the browser is sent on."
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/switch-org": {
-      "post": {
-        "operationId": "switchOrg",
-        "summary": "Move the session to another organization.",
-        "tags": [
-          "auth"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SwitchOrgRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "organization": {
-                      "$ref": "#/components/schemas/CurrentOrg"
-                    }
-                  },
-                  "required": [
-                    "organization"
-                  ]
-                }
-              }
-            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -4393,980 +4391,6 @@
                 }
               }
             }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/anonymous-access": {
-      "get": {
-        "operationId": "getAnonymousAccess",
-        "summary": "Whether anybody may read the spaces that allow it without signing in, and whether search engines are asked in. For administrators.",
-        "tags": [
-          "public"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "anonymousAccess": {
-                      "$ref": "#/components/schemas/AnonymousAccessSettings"
-                    }
-                  },
-                  "required": [
-                    "anonymousAccess"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "setAnonymousAccess",
-        "summary": "Let anybody read the spaces that allow it without signing in, or stop it, and say whether search engines may list those pages. For administrators.",
-        "tags": [
-          "public"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AnonymousAccessSettings"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "anonymousAccess": {
-                      "$ref": "#/components/schemas/AnonymousAccessSettings"
-                    }
-                  },
-                  "required": [
-                    "anonymousAccess"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/brand": {
-      "get": {
-        "operationId": "getBrand",
-        "summary": "The logo and footer lines the organization's exports carry; the logo is null when there is none.",
-        "tags": [
-          "brand"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "brand": {
-                      "$ref": "#/components/schemas/Brand"
-                    }
-                  },
-                  "required": [
-                    "brand"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/brand/footer": {
-      "put": {
-        "operationId": "setBrandFooter",
-        "summary": "Replace the footer line of the organization's exports in English and German. For administrators.",
-        "tags": [
-          "brand"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FooterInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "brand": {
-                      "$ref": "#/components/schemas/Brand"
-                    }
-                  },
-                  "required": [
-                    "brand"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/brand/logo": {
-      "delete": {
-        "operationId": "deleteBrandLogo",
-        "summary": "Take the organization's logo away; its exports then carry the name alone. For administrators.",
-        "tags": [
-          "brand"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "brand": {
-                      "$ref": "#/components/schemas/Brand"
-                    }
-                  },
-                  "required": [
-                    "brand"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "operationId": "brandLogo",
-        "summary": "The logo picture itself.",
-        "tags": [
-          "brand"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "setBrandLogo",
-        "summary": "Replace the organization's logo with a PNG, JPEG or WebP picture of up to 2 MB, as a multipart part named file. For administrators.",
-        "tags": [
-          "brand"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                },
-                "required": [
-                  "file"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "brand": {
-                      "$ref": "#/components/schemas/Brand"
-                    }
-                  },
-                  "required": [
-                    "brand"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/exports": {
-      "get": {
-        "operationId": "listOrgExports",
-        "summary": "The organization's latest exports, newest first. For administrators.",
-        "tags": [
-          "organization"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "exports": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/OrgExport"
-                      }
-                    }
-                  },
-                  "required": [
-                    "exports"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "operationId": "createOrgExport",
-        "summary": "Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /org/exports follows. For administrators.",
-        "tags": [
-          "organization"
-        ],
-        "responses": {
-          "202": {
-            "description": "Accepted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "export": {
-                      "$ref": "#/components/schemas/OrgExport"
-                    }
-                  },
-                  "required": [
-                    "export"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/exports/{exportID}/file": {
-      "get": {
-        "operationId": "downloadOrgExport",
-        "summary": "The archive an export of the organization made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after. For administrators.",
-        "tags": [
-          "organization"
-        ],
-        "parameters": [
-          {
-            "name": "exportID",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Gone",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/hub": {
-      "get": {
-        "operationId": "getHub",
-        "summary": "The organization's hub page as the caller may see it, and whether everybody lands on it.",
-        "tags": [
-          "hub"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "hub": {
-                      "$ref": "#/components/schemas/Hub"
-                    }
-                  },
-                  "required": [
-                    "hub"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "setHub",
-        "summary": "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.",
-        "tags": [
-          "hub"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HubInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "hub": {
-                      "$ref": "#/components/schemas/Hub"
-                    }
-                  },
-                  "required": [
-                    "hub"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/imports": {
-      "get": {
-        "operationId": "listOrgImports",
-        "summary": "The organization's latest imports, newest first. For administrators.",
-        "tags": [
-          "organization"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "imports": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/OrgImport"
-                      }
-                    }
-                  },
-                  "required": [
-                    "imports"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "operationId": "createOrgImport",
-        "summary": "Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /org/imports/{importID} follows to its report. For administrators.",
-        "tags": [
-          "organization"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                },
-                "required": [
-                  "file"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Accepted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "import": {
-                      "$ref": "#/components/schemas/OrgImport"
-                    }
-                  },
-                  "required": [
-                    "import"
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Request Entity Too Large",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/imports/{importID}": {
-      "get": {
-        "operationId": "getOrgImport",
-        "summary": "One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators.",
-        "tags": [
-          "organization"
-        ],
-        "parameters": [
-          {
-            "name": "importID",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "import": {
-                      "$ref": "#/components/schemas/OrgImport"
-                    }
-                  },
-                  "required": [
-                    "import"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/permissions": {
-      "get": {
-        "operationId": "listGlobalPermissions",
-        "summary": "Each global permission and whom it is granted to. For administrators.",
-        "tags": [
-          "permissions"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "permissions": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/GlobalGrant"
-                      }
-                    }
-                  },
-                  "required": [
-                    "permissions"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/permissions/{permission}": {
-      "put": {
-        "operationId": "setGlobalPermission",
-        "summary": "Replace whom a global permission is granted to. For administrators.",
-        "tags": [
-          "permissions"
-        ],
-        "parameters": [
-          {
-            "name": "permission",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "use",
-                "createSpace",
-                "administer"
-              ]
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GlobalGrantInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "permission": {
-                      "$ref": "#/components/schemas/GlobalGrant"
-                    }
-                  },
-                  "required": [
-                    "permission"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/public-links": {
-      "get": {
-        "operationId": "getPublicLinks",
-        "summary": "Whether the editors of a page may open it to anybody through a public link. For administrators.",
-        "tags": [
-          "public"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "publicLinks": {
-                      "$ref": "#/components/schemas/PublicLinkSettings"
-                    }
-                  },
-                  "required": [
-                    "publicLinks"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "setPublicLinks",
-        "summary": "Allow public links, or stop every one of them and the making of more; stopped links work again once they are allowed again. For administrators.",
-        "tags": [
-          "public"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PublicLinkSettings"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "publicLinks": {
-                      "$ref": "#/components/schemas/PublicLinkSettings"
-                    }
-                  },
-                  "required": [
-                    "publicLinks"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/tokens": {
-      "get": {
-        "operationId": "listOrgAPITokens",
-        "summary": "Every personal access token in the organization, with whose it is. For administrators.",
-        "tags": [
-          "access"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "tokens": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/OrgAPIToken"
-                      }
-                    }
-                  },
-                  "required": [
-                    "tokens"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "An error, in the one shape every endpoint uses.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/org/tokens/{tokenID}": {
-      "delete": {
-        "operationId": "revokeOrgAPIToken",
-        "summary": "Revoke anybody's token in the organization. For administrators.",
-        "tags": [
-          "access"
-        ],
-        "parameters": [
-          {
-            "name": "tokenID",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -10696,22 +9720,12 @@
         }
       }
     },
-    "/public/{orgSlug}": {
+    "/public": {
       "get": {
         "operationId": "publicSite",
         "summary": "The organization and the spaces anybody may read in it without signing in. Not found, as not_public, when it lets nobody in.",
         "tags": [
           "public"
-        ],
-        "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -10762,7 +9776,7 @@
         }
       }
     },
-    "/public/{orgSlug}/attachments/{attachmentID}": {
+    "/public/attachments/{attachmentID}": {
       "get": {
         "operationId": "publicAttachment",
         "summary": "The bytes of a file on a page anybody may read, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.",
@@ -10770,14 +9784,6 @@
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "attachmentID",
             "in": "path",
@@ -10852,7 +9858,7 @@
         }
       }
     },
-    "/public/{orgSlug}/links/{token}": {
+    "/public/links/{token}": {
       "get": {
         "operationId": "linkedPage",
         "summary": "The one published page a public link opens, with the people it mentions unnamed and nothing of its space, tree or people. Not found, as link_gone, once the link is revoked or ran out, the page may no longer be opened, or the organization allows no links. Never cached.",
@@ -10860,14 +9866,6 @@
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "token",
             "in": "path",
@@ -10923,7 +9921,7 @@
         }
       }
     },
-    "/public/{orgSlug}/links/{token}/attachments/{attachmentID}": {
+    "/public/links/{token}/attachments/{attachmentID}": {
       "get": {
         "operationId": "linkedAttachment",
         "summary": "The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.",
@@ -10931,14 +9929,6 @@
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "token",
             "in": "path",
@@ -11021,22 +10011,14 @@
         }
       }
     },
-    "/public/{orgSlug}/links/{token}/docx": {
+    "/public/links/{token}/docx": {
       "get": {
         "operationId": "linkedPageWord",
-        "summary": "The page a public link opens as a Word document, for whoever holds the link, as the link shows it and without the link in it. Not found, as link_gone, when the link no longer opens the page; never cached; otherwise refused as GET /public/{orgSlug}/pages/{pageID}/docx refuses.",
+        "summary": "The page a public link opens as a Word document, for whoever holds the link, as the link shows it and without the link in it. Not found, as link_gone, when the link no longer opens the page; never cached; otherwise refused as GET /public/pages/{pageID}/docx refuses.",
         "tags": [
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "token",
             "in": "path",
@@ -11111,7 +10093,7 @@
         }
       }
     },
-    "/public/{orgSlug}/links/{token}/logo": {
+    "/public/links/{token}/logo": {
       "get": {
         "operationId": "linkedLogo",
         "summary": "The organization's logo, for the page a public link opens.",
@@ -11119,14 +10101,6 @@
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "token",
             "in": "path",
@@ -11171,22 +10145,14 @@
         }
       }
     },
-    "/public/{orgSlug}/links/{token}/pdf": {
+    "/public/links/{token}/pdf": {
       "get": {
         "operationId": "linkedPagePDF",
-        "summary": "The page a public link opens as a PDF, for whoever holds the link, printed as the link shows it. Not found, as link_gone, when the link no longer opens the page; never cached; otherwise refused as GET /public/{orgSlug}/pages/{pageID}/pdf refuses.",
+        "summary": "The page a public link opens as a PDF, for whoever holds the link, printed as the link shows it. Not found, as link_gone, when the link no longer opens the page; never cached; otherwise refused as GET /public/pages/{pageID}/pdf refuses.",
         "tags": [
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "token",
             "in": "path",
@@ -11291,22 +10257,12 @@
         }
       }
     },
-    "/public/{orgSlug}/logo": {
+    "/public/logo": {
       "get": {
         "operationId": "publicLogo",
         "summary": "The organization's logo, which the site's logoVersion says is there.",
         "tags": [
           "public"
-        ],
-        "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -11343,7 +10299,7 @@
         }
       }
     },
-    "/public/{orgSlug}/pages/{pageID}": {
+    "/public/pages/{pageID}": {
       "get": {
         "operationId": "publicPage",
         "summary": "A published page anybody may read, with the people it mentions unnamed and nothing about who wrote or read it.",
@@ -11351,14 +10307,6 @@
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "pageID",
             "in": "path",
@@ -11411,7 +10359,7 @@
         }
       }
     },
-    "/public/{orgSlug}/pages/{pageID}/docx": {
+    "/public/pages/{pageID}/docx": {
       "get": {
         "operationId": "publicPageWord",
         "summary": "A published page anybody may read as a Word document, as anybody reads it. At most six a minute of one page from one address, then too_many_requests; otherwise refused as GET /pages/{pageID}/docx refuses.",
@@ -11419,14 +10367,6 @@
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "pageID",
             "in": "path",
@@ -11502,7 +10442,7 @@
         }
       }
     },
-    "/public/{orgSlug}/pages/{pageID}/pdf": {
+    "/public/pages/{pageID}/pdf": {
       "get": {
         "operationId": "publicPagePDF",
         "summary": "A published page anybody may read as a PDF, printed as anybody reads it. At most six a minute of one page from one address, then too_many_requests; otherwise refused as GET /pages/{pageID}/pdf refuses.",
@@ -11510,14 +10450,6 @@
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "pageID",
             "in": "path",
@@ -11623,7 +10555,7 @@
         }
       }
     },
-    "/public/{orgSlug}/search": {
+    "/public/search": {
       "get": {
         "operationId": "publicSearch",
         "summary": "Published pages anybody may read whose words match, the best first.",
@@ -11631,14 +10563,6 @@
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "q",
             "in": "query",
@@ -11739,7 +10663,7 @@
         }
       }
     },
-    "/public/{orgSlug}/spaces/{spaceKey}": {
+    "/public/spaces/{spaceKey}": {
       "get": {
         "operationId": "publicSpace",
         "summary": "A space anybody may read, with its published pages in reading order.",
@@ -11747,14 +10671,6 @@
           "public"
         ],
         "parameters": [
-          {
-            "name": "orgSlug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "spaceKey",
             "in": "path",
@@ -11811,6 +10727,684 @@
             }
           }
         }
+      }
+    },
+    "/public/{orgSlug}": {
+      "get": {
+        "operationId": "publicSiteWithSlug",
+        "summary": "The address GET /public had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/attachments/{attachmentID}": {
+      "get": {
+        "operationId": "publicAttachmentWithSlug",
+        "summary": "The address GET /public/attachments/{attachmentID} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/links/{token}": {
+      "get": {
+        "operationId": "linkedPageWithSlug",
+        "summary": "The address GET /public/links/{token} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/links/{token}/attachments/{attachmentID}": {
+      "get": {
+        "operationId": "linkedAttachmentWithSlug",
+        "summary": "The address GET /public/links/{token}/attachments/{attachmentID} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/links/{token}/docx": {
+      "get": {
+        "operationId": "linkedPageWordWithSlug",
+        "summary": "The address GET /public/links/{token}/docx had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/links/{token}/logo": {
+      "get": {
+        "operationId": "linkedLogoWithSlug",
+        "summary": "The address GET /public/links/{token}/logo had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/links/{token}/pdf": {
+      "get": {
+        "operationId": "linkedPagePDFWithSlug",
+        "summary": "The address GET /public/links/{token}/pdf had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/logo": {
+      "get": {
+        "operationId": "publicLogoWithSlug",
+        "summary": "The address GET /public/logo had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/pages/{pageID}": {
+      "get": {
+        "operationId": "publicPageWithSlug",
+        "summary": "The address GET /public/pages/{pageID} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/pages/{pageID}/docx": {
+      "get": {
+        "operationId": "publicPageWordWithSlug",
+        "summary": "The address GET /public/pages/{pageID}/docx had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/pages/{pageID}/pdf": {
+      "get": {
+        "operationId": "publicPagePDFWithSlug",
+        "summary": "The address GET /public/pages/{pageID}/pdf had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/search": {
+      "get": {
+        "operationId": "publicSearchWithSlug",
+        "summary": "The address GET /public/search had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/public/{orgSlug}/spaces/{spaceKey}": {
+      "get": {
+        "operationId": "publicSpaceWithSlug",
+        "summary": "The address GET /public/spaces/{spaceKey} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "308": {
+            "description": "Permanent Redirect: the same request at the address it has now."
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
       }
     },
     "/readyz": {
@@ -12161,6 +11755,980 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/anonymous-access": {
+      "get": {
+        "operationId": "getAnonymousAccess",
+        "summary": "Whether anybody may read the spaces that allow it without signing in, and whether search engines are asked in. For administrators.",
+        "tags": [
+          "public"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "anonymousAccess": {
+                      "$ref": "#/components/schemas/AnonymousAccessSettings"
+                    }
+                  },
+                  "required": [
+                    "anonymousAccess"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setAnonymousAccess",
+        "summary": "Let anybody read the spaces that allow it without signing in, or stop it, and say whether search engines may list those pages. For administrators.",
+        "tags": [
+          "public"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnonymousAccessSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "anonymousAccess": {
+                      "$ref": "#/components/schemas/AnonymousAccessSettings"
+                    }
+                  },
+                  "required": [
+                    "anonymousAccess"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/brand": {
+      "get": {
+        "operationId": "getBrand",
+        "summary": "The logo and footer lines the organization's exports carry; the logo is null when there is none.",
+        "tags": [
+          "brand"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "$ref": "#/components/schemas/Brand"
+                    }
+                  },
+                  "required": [
+                    "brand"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/brand/footer": {
+      "put": {
+        "operationId": "setBrandFooter",
+        "summary": "Replace the footer line of the organization's exports in English and German. For administrators.",
+        "tags": [
+          "brand"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FooterInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "$ref": "#/components/schemas/Brand"
+                    }
+                  },
+                  "required": [
+                    "brand"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/brand/logo": {
+      "delete": {
+        "operationId": "deleteBrandLogo",
+        "summary": "Take the organization's logo away; its exports then carry the name alone. For administrators.",
+        "tags": [
+          "brand"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "$ref": "#/components/schemas/Brand"
+                    }
+                  },
+                  "required": [
+                    "brand"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "brandLogo",
+        "summary": "The logo picture itself.",
+        "tags": [
+          "brand"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setBrandLogo",
+        "summary": "Replace the organization's logo with a PNG, JPEG or WebP picture of up to 2 MB, as a multipart part named file. For administrators.",
+        "tags": [
+          "brand"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "$ref": "#/components/schemas/Brand"
+                    }
+                  },
+                  "required": [
+                    "brand"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/exports": {
+      "get": {
+        "operationId": "listOrgExports",
+        "summary": "The organization's latest exports, newest first. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrgExport"
+                      }
+                    }
+                  },
+                  "required": [
+                    "exports"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrgExport",
+        "summary": "Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /site/exports follows. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "export": {
+                      "$ref": "#/components/schemas/OrgExport"
+                    }
+                  },
+                  "required": [
+                    "export"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/exports/{exportID}/file": {
+      "get": {
+        "operationId": "downloadOrgExport",
+        "summary": "The archive an export of the organization made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "exportID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/hub": {
+      "get": {
+        "operationId": "getHub",
+        "summary": "The organization's hub page as the caller may see it, and whether everybody lands on it.",
+        "tags": [
+          "hub"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hub": {
+                      "$ref": "#/components/schemas/Hub"
+                    }
+                  },
+                  "required": [
+                    "hub"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setHub",
+        "summary": "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.",
+        "tags": [
+          "hub"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HubInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hub": {
+                      "$ref": "#/components/schemas/Hub"
+                    }
+                  },
+                  "required": [
+                    "hub"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/imports": {
+      "get": {
+        "operationId": "listOrgImports",
+        "summary": "The organization's latest imports, newest first. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrgImport"
+                      }
+                    }
+                  },
+                  "required": [
+                    "imports"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrgImport",
+        "summary": "Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /site/imports/{importID} follows to its report. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "import": {
+                      "$ref": "#/components/schemas/OrgImport"
+                    }
+                  },
+                  "required": [
+                    "import"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/imports/{importID}": {
+      "get": {
+        "operationId": "getOrgImport",
+        "summary": "One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "importID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "import": {
+                      "$ref": "#/components/schemas/OrgImport"
+                    }
+                  },
+                  "required": [
+                    "import"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/permissions": {
+      "get": {
+        "operationId": "listGlobalPermissions",
+        "summary": "Each global permission and whom it is granted to. For administrators.",
+        "tags": [
+          "permissions"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GlobalGrant"
+                      }
+                    }
+                  },
+                  "required": [
+                    "permissions"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/permissions/{permission}": {
+      "put": {
+        "operationId": "setGlobalPermission",
+        "summary": "Replace whom a global permission is granted to. For administrators.",
+        "tags": [
+          "permissions"
+        ],
+        "parameters": [
+          {
+            "name": "permission",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "use",
+                "createSpace",
+                "administer"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalGrantInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "permission": {
+                      "$ref": "#/components/schemas/GlobalGrant"
+                    }
+                  },
+                  "required": [
+                    "permission"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/public-links": {
+      "get": {
+        "operationId": "getPublicLinks",
+        "summary": "Whether the editors of a page may open it to anybody through a public link. For administrators.",
+        "tags": [
+          "public"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "publicLinks": {
+                      "$ref": "#/components/schemas/PublicLinkSettings"
+                    }
+                  },
+                  "required": [
+                    "publicLinks"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setPublicLinks",
+        "summary": "Allow public links, or stop every one of them and the making of more; stopped links work again once they are allowed again. For administrators.",
+        "tags": [
+          "public"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicLinkSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "publicLinks": {
+                      "$ref": "#/components/schemas/PublicLinkSettings"
+                    }
+                  },
+                  "required": [
+                    "publicLinks"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/tokens": {
+      "get": {
+        "operationId": "listOrgAPITokens",
+        "summary": "Every personal access token in the organization, with whose it is. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tokens": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrgAPIToken"
+                      }
+                    }
+                  },
+                  "required": [
+                    "tokens"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/tokens/{tokenID}": {
+      "delete": {
+        "operationId": "revokeOrgAPIToken",
+        "summary": "Revoke anybody's token in the organization. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "parameters": [
+          {
+            "name": "tokenID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -16628,12 +17196,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "membership": {
-                      "$ref": "#/components/schemas/Membership"
+                    "admitted": {
+                      "$ref": "#/components/schemas/Admitted"
                     }
                   },
                   "required": [
-                    "membership"
+                    "admitted"
                   ]
                 }
               }
@@ -17564,6 +18132,28 @@
           }
         },
         "required": [
+          "role"
+        ]
+      },
+      "Admitted": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "guest"
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId",
           "role"
         ]
       },
@@ -19269,47 +19859,6 @@
           "newAccount"
         ]
       },
-      "CurrentOrg": {
-        "type": "object",
-        "properties": {
-          "guestSpace": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/SpaceRef"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "owner",
-              "admin",
-              "member",
-              "guest"
-            ]
-          },
-          "slug": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "slug",
-          "name",
-          "role",
-          "guestSpace"
-        ]
-      },
       "Cursor": {
         "type": "object",
         "properties": {
@@ -20957,18 +21506,12 @@
           "organization": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/CurrentOrg"
+                "$ref": "#/components/schemas/Standing"
               },
               {
                 "type": "null"
               }
             ]
-          },
-          "organizations": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Membership"
-            }
           },
           "user": {
             "$ref": "#/components/schemas/User"
@@ -20976,8 +21519,7 @@
         },
         "required": [
           "user",
-          "organization",
-          "organizations"
+          "organization"
         ]
       },
       "MediaType": {
@@ -21040,36 +21582,6 @@
           "roleSource",
           "joinedAt",
           "guestSpace"
-        ]
-      },
-      "Membership": {
-        "type": "object",
-        "properties": {
-          "orgId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "orgName": {
-            "type": "string"
-          },
-          "orgSlug": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "owner",
-              "admin",
-              "member",
-              "guest"
-            ]
-          }
-        },
-        "required": [
-          "orgId",
-          "orgSlug",
-          "orgName",
-          "role"
         ]
       },
       "Mentionable": {
@@ -21265,6 +21777,9 @@
       "Operation": {
         "type": "object",
         "properties": {
+          "deprecated": {
+            "type": "boolean"
+          },
           "description": {
             "type": "string"
           },
@@ -23173,13 +23688,9 @@
           },
           "name": {
             "type": "string"
-          },
-          "slug": {
-            "type": "string"
           }
         },
         "required": [
-          "slug",
           "name",
           "indexable",
           "footer",
@@ -25198,6 +25709,38 @@
           "archivable"
         ]
       },
+      "Standing": {
+        "type": "object",
+        "properties": {
+          "guestSpace": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SpaceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "guest"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "role",
+          "guestSpace"
+        ]
+      },
       "Star": {
         "type": "object",
         "properties": {
@@ -25328,17 +25871,6 @@
         },
         "required": [
           "type"
-        ]
-      },
-      "SwitchOrgRequest": {
-        "type": "object",
-        "properties": {
-          "slug": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "slug"
         ]
       },
       "Switches": {

@@ -39,10 +39,6 @@ func TestATokenActsAsItsOwnerUntilRevoked(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	m := h.makeMember(t, "token-owner")
-	other := h.makeOtherOrganization(t, "token-elsewhere")
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, other.org, m.user); err != nil {
-		t.Fatal(err)
-	}
 	browser := api.as(t, m.user, m.org, h.slugOf(t, m.org))
 
 	id, secret := makeToken(t, browser, map[string]any{"name": "deploy"})
@@ -66,11 +62,8 @@ func TestATokenActsAsItsOwnerUntilRevoked(t *testing.T) {
 
 	script := api.withToken(secret)
 	me := want(t, script.get(t, "/api/v1/auth/me"), http.StatusOK, "who the token is")
-	if obj(t, me, "user")["id"] != m.user.String() || obj(t, me, "organization")["id"] != m.org.String() {
-		t.Fatalf("the token is not its owner in its organization: %s", me.Raw)
-	}
-	if orgs := list(t, me, "organizations"); len(orgs) != 1 {
-		t.Errorf("a token reaches only the organization it was made in, got %v", orgs)
+	if obj(t, me, "user")["id"] != m.user.String() || obj(t, me, "organization")["role"] != "owner" {
+		t.Fatalf("the token is not its owner: %s", me.Raw)
 	}
 	if h.lastUsed(t, id) == nil {
 		t.Error("using the token did not record last_used_at")
@@ -79,9 +72,6 @@ func TestATokenActsAsItsOwnerUntilRevoked(t *testing.T) {
 	want(t, script.post(t, "/api/v1/themes", map[string]any{"name": "Made by a script"}), http.StatusCreated, "a token without scopes writes")
 	if code := errorCode(t, want(t, script.post(t, "/api/v1/tokens", map[string]any{"name": "child"}), http.StatusForbidden, "a token making a token")); code != "session_only" {
 		t.Errorf("a token making a token = %s", code)
-	}
-	if code := errorCode(t, want(t, script.post(t, "/api/v1/auth/switch-org", map[string]any{"slug": h.slugOf(t, other.org)}), http.StatusBadRequest, "a token switching")); code != "bad_request" {
-		t.Errorf("a token switching organizations = %s", code)
 	}
 
 	want(t, browser.delete(t, "/api/v1/tokens/"+id), http.StatusNoContent, "revoke")
@@ -180,17 +170,17 @@ func TestAdministratorsSeeAndRevokeEveryToken(t *testing.T) {
 	member := api.as(t, memberID, owner.org, slug)
 
 	id, secret := makeToken(t, member, map[string]any{"name": "member's script"})
-	all := list(t, want(t, admin.get(t, "/api/v1/org/tokens"), http.StatusOK, "the organization's tokens"), "tokens")
+	all := list(t, want(t, admin.get(t, "/api/v1/site/tokens"), http.StatusOK, "the organization's tokens"), "tokens")
 	if len(all) != 1 || all[0].(map[string]any)["owner"].(map[string]any)["id"] != memberID.String() || all[0].(map[string]any)["secret"] != nil {
 		t.Fatalf("the administrator does not see whose token it is, or sees its secret: %v", all)
 	}
-	errorCode(t, want(t, member.get(t, "/api/v1/org/tokens"), http.StatusForbidden, "a member listing everybody's tokens"))
-	errorCode(t, want(t, member.delete(t, "/api/v1/org/tokens/"+id), http.StatusForbidden, "a member revoking as an administrator"))
+	errorCode(t, want(t, member.get(t, "/api/v1/site/tokens"), http.StatusForbidden, "a member listing everybody's tokens"))
+	errorCode(t, want(t, member.delete(t, "/api/v1/site/tokens/"+id), http.StatusForbidden, "a member revoking as an administrator"))
 	errorCode(t, want(t, admin.delete(t, "/api/v1/tokens/"+id), http.StatusNotFound, "an administrator revoking somebody's token as their own"))
 
-	want(t, admin.delete(t, "/api/v1/org/tokens/"+id), http.StatusNoContent, "the administrator revokes it")
+	want(t, admin.delete(t, "/api/v1/site/tokens/"+id), http.StatusNoContent, "the administrator revokes it")
 	want(t, api.withToken(secret).get(t, "/api/v1/auth/me"), http.StatusUnauthorized, "the revoked token")
-	want(t, admin.delete(t, "/api/v1/org/tokens/"+id), http.StatusNotFound, "revoke twice")
+	want(t, admin.delete(t, "/api/v1/site/tokens/"+id), http.StatusNotFound, "revoke twice")
 
 	// Leaving the organization takes a person's tokens there with them.
 	_, kept := makeToken(t, member, map[string]any{"name": "outlives nothing"})

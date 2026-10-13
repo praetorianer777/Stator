@@ -168,10 +168,10 @@ func TestAPageIsExportedToWordAsItsReaderReadsIt(t *testing.T) {
 
 	t.Run("anybody exports what anybody may read, without what only members read", func(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/spaces/WRD/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open WRD")
-		want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+		want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
 		h.settle(t)
 		anon := api.anonymous()
-		resp, data := anon.download(t, publicPath(slug, "/pages/", guide, "/docx"))
+		resp, data := anon.download(t, publicPath("/pages/", guide, "/docx"))
 		parts := wordFile(t, resp, data, "the public document")
 		body := parts["word/document.xml"]
 		if strings.Contains(body, "Only the owner reads this.") || !strings.Contains(body, "Setting up") {
@@ -183,7 +183,7 @@ func TestAPageIsExportedToWordAsItsReaderReadsIt(t *testing.T) {
 		if core := parts["docProps/core.xml"]; strings.Contains(core, "creator") || strings.Contains(core, "lastModifiedBy") {
 			t.Errorf("the public document names who wrote it: %s", core)
 		}
-		want(t, anon.get(t, publicPath(slug, "/pages/", secret, "/docx")), http.StatusNotFound, "export a page nobody may read")
+		want(t, anon.get(t, publicPath("/pages/", secret, "/docx")), http.StatusNotFound, "export a page nobody may read")
 	})
 
 	t.Run("a public link exports its page for whoever holds it, until it is revoked", func(t *testing.T) {
@@ -192,7 +192,7 @@ func TestAPageIsExportedToWordAsItsReaderReadsIt(t *testing.T) {
 		linkID := obj(t, made, "link")["id"].(string)
 		h.settle(t)
 		anon := api.anonymous()
-		resp, data := anon.download(t, linkPath(slug, token, "/docx"))
+		resp, data := anon.download(t, linkPath(token, "/docx"))
 		parts := wordFile(t, resp, data, "the link's document")
 		if got := resp.Header.Get("Content-Disposition"); !strings.Contains(got, `filename=word-guide-`) {
 			t.Errorf("the link's document is named %q, which should say nothing of its space", got)
@@ -207,7 +207,7 @@ func TestAPageIsExportedToWordAsItsReaderReadsIt(t *testing.T) {
 		}
 		want(t, owner.delete(t, pagePath(guide, "/public-links/", linkID)), http.StatusNoContent, "revoke the link")
 		h.settle(t)
-		if got := anon.get(t, linkPath(slug, token, "/docx")); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
+		if got := anon.get(t, linkPath(token, "/docx")); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
 			t.Errorf("the revoked link exported %d %s", got.Status, got.Raw)
 		}
 	})
@@ -217,7 +217,7 @@ func TestAPageIsExportedToWordAsItsReaderReadsIt(t *testing.T) {
 		anon := api.anonymous()
 		throttled := false
 		for range httpapi.PublicWordExportsPerMinute + 1 {
-			if anon.get(t, publicPath(slug, "/pages/", guide, "/docx")).Status == http.StatusTooManyRequests {
+			if anon.get(t, publicPath("/pages/", guide, "/docx")).Status == http.StatusTooManyRequests {
 				throttled = true
 				break
 			}

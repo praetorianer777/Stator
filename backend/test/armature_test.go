@@ -139,7 +139,7 @@ func TestAnAdministratorConnectsArmatureAndMembersTheirTokens(t *testing.T) {
 	if conn["baseUrl"] != base || conn["orgSlug"] != slug || conn["webhookSecretSet"] != true || conn["armatureOrgId"] != nil {
 		t.Errorf("the connection is %v", conn)
 	}
-	if conn["webhookUrl"] != armatureAppURL+"/api/v1/armature/webhook/"+slug || len(conn["webhookTopics"].([]any)) != len(armature.WebhookTopics) {
+	if conn["webhookUrl"] != armatureAppURL+"/api/v1/armature/webhook" || len(conn["webhookTopics"].([]any)) != len(armature.WebhookTopics) {
 		t.Errorf("the webhook settings are %v %v", conn["webhookUrl"], conn["webhookTopics"])
 	}
 	if bytes.Contains(saved.Raw, []byte(webhookSecret)) {

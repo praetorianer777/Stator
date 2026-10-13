@@ -201,7 +201,7 @@ func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
 		if can["addComments"] != true || can["editPages"] != false || can["administer"] != false {
 			t.Errorf("a member is offered %v", can)
 		}
-		want(t, owner.put(t, "/api/v1/org/permissions/createSpace", map[string]any{"subjects": []any{user(memberID)}}), http.StatusOK, "let the member create spaces")
+		want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{user(memberID)}}), http.StatusOK, "let the member create spaces")
 		for what, got := range map[string]response{
 			"looks for it": member.get(t, "/api/v1/example-space"),
 			"makes it":     member.post(t, "/api/v1/example-space", map[string]any{}),
@@ -395,7 +395,7 @@ func TestTheDatabaseKeepsTheExampleTheAdministrators(t *testing.T) {
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
 	memberID := h.addPerson(t, home.org, "member")
-	want(t, owner.put(t, "/api/v1/org/permissions/createSpace", map[string]any{"subjects": []any{user(memberID)}}), http.StatusOK, "let the member create spaces")
+	want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{user(memberID)}}), http.StatusOK, "let the member create spaces")
 	ordinary := obj(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "PLAIN", "name": "Plain"}), http.StatusCreated, "make a space"), "space")["id"]
 
 	insert := `INSERT INTO space (id, org_id, key, name, created_by, example, example_version, example_language) VALUES ($1, $2, $3, 'Mine', $4, true, 1, 'en')`

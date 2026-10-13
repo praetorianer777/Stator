@@ -404,7 +404,7 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, gwenEmail) })
 	gwen := obj(t, want(t, owner.post(t, "/api/v1/spaces/TSQL/guests", map[string]any{"email": gwenEmail, "role": "editor"}), http.StatusCreated, "invite gwen"), "guest")
 	gwenID := uuid.MustParse(gwen["userId"].(string))
-	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+	want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
 	want(t, owner.put(t, "/api/v1/spaces/TSQL/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open TSQL")
 	h.settle(t)
 	gwenAPI := api.as(t, gwenID, home.org, slug)

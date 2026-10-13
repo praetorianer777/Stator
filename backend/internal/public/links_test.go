@@ -74,8 +74,8 @@ func TestATokenIsWhatGenerateTokenMakesAndNothingElse(t *testing.T) {
 	}
 }
 
-func TestALinksAddressNamesTheOrganizationThenTheToken(t *testing.T) {
-	if got := LinkPath("acme", "abc_DEF-123"); got != "/public/acme/link/abc_DEF-123" {
+func TestALinksAddressIsItsTokenUnderPublic(t *testing.T) {
+	if got := LinkPath("abc_DEF-123"); got != "/public/link/abc_DEF-123" {
 		t.Errorf("LinkPath = %q", got)
 	}
 }

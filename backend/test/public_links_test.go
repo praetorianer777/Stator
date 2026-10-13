@@ -17,8 +17,8 @@ import (
 )
 
 // linkPath is the api's address of what a link opens, and below it.
-func linkPath(slug, token string, rest ...string) string {
-	return publicPath(slug, "/links/", token) + strings.Join(rest, "")
+func linkPath(token string, rest ...string) string {
+	return publicPath("/links/", token) + strings.Join(rest, "")
 }
 
 // readThrough scopes a raw connection to an organization as an anonymous
@@ -66,7 +66,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 	file := obj(t, want(t, owner.upload(t, pagePath(guide, "/attachments"), "desk.txt", []byte("opening hours")), http.StatusCreated, "a file"), "attachment")["id"].(string)
 	besideFile := obj(t, want(t, owner.upload(t, pagePath(beside, "/attachments"), "beside.txt", []byte("not linked")), http.StatusCreated, "a file beside"), "attachment")["id"].(string)
 
-	if got := obj(t, want(t, owner.get(t, "/api/v1/org/public-links"), http.StatusOK, "the switch"), "publicLinks"); got["enabled"] != true {
+	if got := obj(t, want(t, owner.get(t, "/api/v1/site/public-links"), http.StatusOK, "the switch"), "publicLinks"); got["enabled"] != true {
 		t.Fatalf("public links start %v, want allowed", got)
 	}
 	var max int
@@ -77,7 +77,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 	made := want(t, owner.post(t, pagePath(guide, "/public-links"), map[string]any{"label": "For the auditors"}), http.StatusCreated, "make a link")
 	token, _ := made.Body["token"].(string)
 	linkID := obj(t, made, "link")["id"].(string)
-	if !public.IsToken(token) || made.Body["path"] != "/public/"+slug+"/link/"+token {
+	if !public.IsToken(token) || made.Body["path"] != "/public/link/"+token {
 		t.Fatalf("the link answered token %q and path %v", token, made.Body["path"])
 	}
 
@@ -106,13 +106,13 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 		}
 		want(t, ina.post(t, pagePath(guide, "/public-links"), map[string]any{}), http.StatusForbidden, "ina makes a link")
 		want(t, ina.delete(t, pagePath(guide, "/public-links/", linkID)), http.StatusForbidden, "ina revokes the link")
-		want(t, ina.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusForbidden, "ina turns links off")
-		want(t, ina.get(t, "/api/v1/org/public-links"), http.StatusForbidden, "ina reads the switch")
+		want(t, ina.put(t, "/api/v1/site/public-links", map[string]any{"enabled": false}), http.StatusForbidden, "ina turns links off")
+		want(t, ina.get(t, "/api/v1/site/public-links"), http.StatusForbidden, "ina reads the switch")
 		want(t, owner.get(t, pagePath(uuid.NewString(), "/public-links")), http.StatusNotFound, "the links of no page")
 	})
 
 	t.Run("anybody reads the page through it, with nobody named and nothing kept", func(t *testing.T) {
-		resp, raw := anon.download(t, linkPath(slug, token))
+		resp, raw := anon.download(t, linkPath(token))
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("the link = %d %s", resp.StatusCode, raw)
 		}
@@ -121,7 +121,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 				t.Errorf("the link is served with %s %q, want %q", header, got, want)
 			}
 		}
-		got := want(t, anon.get(t, linkPath(slug, token)), http.StatusOK, "the link")
+		got := want(t, anon.get(t, linkPath(token)), http.StatusOK, "the link")
 		p := obj(t, got, "page")
 		if p["id"] != guide || p["title"] != "Linked guide" || !containsText(got.Raw, "Ask at the desk") {
 			t.Errorf("the link opens %s", got.Raw)
@@ -136,44 +136,43 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 				t.Errorf("the linked page carries %s", field)
 			}
 		}
-		if site := obj(t, got, "site"); site["slug"] != slug || site["indexable"] != false {
+		if site := obj(t, got, "site"); site["name"] == nil || site["slug"] != nil || site["indexable"] != false {
 			t.Errorf("the link names the site %v", site)
 		}
 	})
 
 	t.Run("its page's files open through it and no other", func(t *testing.T) {
-		resp, body := anon.download(t, linkPath(slug, token, "/attachments/", file))
+		resp, body := anon.download(t, linkPath(token, "/attachments/", file))
 		if resp.StatusCode != http.StatusOK || string(body) != "opening hours" || resp.Header.Get("Cache-Control") != "no-store" {
 			t.Errorf("the guide's file = %d %q, caching %q", resp.StatusCode, body, resp.Header.Get("Cache-Control"))
 		}
-		want(t, anon.get(t, linkPath(slug, token, "/attachments/", besideFile)), http.StatusNotFound, "a file beside")
-		resp, body = anon.downloadRange(t, linkPath(slug, token, "/attachments/", file), "bytes=-5", "")
+		want(t, anon.get(t, linkPath(token, "/attachments/", besideFile)), http.StatusNotFound, "a file beside")
+		resp, body = anon.downloadRange(t, linkPath(token, "/attachments/", file), "bytes=-5", "")
 		if resp.StatusCode != http.StatusPartialContent || string(body) != "hours" || resp.Header.Get("Cache-Control") != "no-store" {
 			t.Errorf("a stretch of the guide's file = %d %q, caching %q", resp.StatusCode, body, resp.Header.Get("Cache-Control"))
 		}
-		if resp, _ := anon.downloadRange(t, linkPath(slug, token, "/attachments/", file), "bytes=99-", ""); resp.StatusCode != http.StatusRequestedRangeNotSatisfiable {
+		if resp, _ := anon.downloadRange(t, linkPath(token, "/attachments/", file), "bytes=99-", ""); resp.StatusCode != http.StatusRequestedRangeNotSatisfiable {
 			t.Errorf("a stretch past the guide's file = %d", resp.StatusCode)
 		}
-		if resp, _ := anon.downloadRange(t, linkPath(slug, token, "/attachments/", besideFile), "bytes=0-1", ""); resp.StatusCode != http.StatusNotFound {
+		if resp, _ := anon.downloadRange(t, linkPath(token, "/attachments/", besideFile), "bytes=0-1", ""); resp.StatusCode != http.StatusNotFound {
 			t.Errorf("a stretch of a file beside = %d", resp.StatusCode)
 		}
 	})
 
 	t.Run("nothing else opens through it", func(t *testing.T) {
 		for what, path := range map[string]string{
-			"the page through the public reads": publicPath(slug, "/pages/", guide),
-			"the page below":                    publicPath(slug, "/pages/", below),
-			"the site":                          publicPath(slug),
-			"a token nobody holds":              linkPath(slug, strings.Repeat("x", 43)),
-			"a token of the wrong shape":        linkPath(slug, "short"),
+			"the page through the public reads": publicPath("/pages/", guide),
+			"the page below":                    publicPath("/pages/", below),
+			"the site":                          publicPath(),
+			"a token nobody holds":              linkPath(strings.Repeat("x", 43)),
+			"a token of the wrong shape":        linkPath("short"),
 		} {
 			if got := anon.get(t, path); got.Status != http.StatusNotFound {
 				t.Errorf("%s = %d %s", what, got.Status, got.Raw)
 			}
 		}
-		other := h.makeOtherOrganization(t, "public-links-other")
-		if got := anon.get(t, linkPath(h.slugOf(t, other.org), token)); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
-			t.Errorf("the token under another organization = %d %s", got.Status, got.Raw)
+		if got := anon.get(t, oldPublicPath("no-such-org-here", "/links/", token)); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
+			t.Errorf("the token under an old address naming another organization = %d %s", got.Status, got.Raw)
 		}
 		for path, method := range map[string]string{
 			pagePath(guide):                  http.MethodGet,
@@ -296,15 +295,15 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 
 	t.Run("a link stops while the page is restricted or links are off, and comes back", func(t *testing.T) {
 		want(t, restrict(t, owner, guide, []any{user(home.user), user(inaID)}, []any{user(home.user)}), http.StatusOK, "restrict the guide")
-		if got := anon.get(t, linkPath(slug, token)); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
+		if got := anon.get(t, linkPath(token)); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
 			t.Errorf("the link of a restricted page = %d %s", got.Status, got.Raw)
 		}
 		want(t, restrict(t, owner, guide, nil, []any{user(home.user)}), http.StatusOK, "lift the view list")
-		want(t, anon.get(t, linkPath(slug, token)), http.StatusOK, "the link again")
+		want(t, anon.get(t, linkPath(token)), http.StatusOK, "the link again")
 
-		want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusOK, "turn links off")
-		want(t, anon.get(t, linkPath(slug, token)), http.StatusNotFound, "the link while links are off")
-		want(t, anon.get(t, linkPath(slug, token, "/attachments/", file)), http.StatusNotFound, "the file while links are off")
+		want(t, owner.put(t, "/api/v1/site/public-links", map[string]any{"enabled": false}), http.StatusOK, "turn links off")
+		want(t, anon.get(t, linkPath(token)), http.StatusNotFound, "the link while links are off")
+		want(t, anon.get(t, linkPath(token, "/attachments/", file)), http.StatusNotFound, "the file while links are off")
 		if got := owner.post(t, pagePath(guide, "/public-links"), map[string]any{}); got.Status != http.StatusConflict || errorCode(t, got) != "link_refused" {
 			t.Errorf("a link while links are off = %d %s", got.Status, got.Raw)
 		}
@@ -317,17 +316,17 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 		if data := h.recordedOnce(t, home.org, "org.public_links_set", &home.user, nil); !strings.Contains(data, `"enabled": false`) {
 			t.Errorf("the switch's record reads %s", data)
 		}
-		want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": true}), http.StatusOK, "turn links on")
-		want(t, anon.get(t, linkPath(slug, token)), http.StatusOK, "the link once links are on again")
+		want(t, owner.put(t, "/api/v1/site/public-links", map[string]any{"enabled": true}), http.StatusOK, "turn links on")
+		want(t, anon.get(t, linkPath(token)), http.StatusOK, "the link once links are on again")
 	})
 
 	t.Run("revoking ends the link for good and keeps the row", func(t *testing.T) {
 		want(t, owner.delete(t, pagePath(guide, "/public-links/", linkID)), http.StatusNoContent, "revoke the link")
 		want(t, owner.delete(t, pagePath(guide, "/public-links/", linkID)), http.StatusNotFound, "revoke it twice")
-		if got := anon.get(t, linkPath(slug, token)); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
+		if got := anon.get(t, linkPath(token)); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
 			t.Errorf("a revoked link = %d %s", got.Status, got.Raw)
 		}
-		want(t, anon.get(t, linkPath(slug, token, "/attachments/", file)), http.StatusNotFound, "a revoked link's file")
+		want(t, anon.get(t, linkPath(token, "/attachments/", file)), http.StatusNotFound, "a revoked link's file")
 		var by uuid.UUID
 		if err := h.super.QueryRow(ctx, `SELECT revoked_by FROM page_link WHERE id = $1 AND revoked_at IS NOT NULL`, linkID).Scan(&by); err != nil || by != home.user {
 			t.Errorf("the revoked row is gone or unmarked: %v %v", by, err)
@@ -350,13 +349,13 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 	t.Run("a link that ran out opens nothing", func(t *testing.T) {
 		brief := want(t, owner.post(t, pagePath(guide, "/public-links"), map[string]any{"expiresAt": "2099-01-01T00:00:00Z"}), http.StatusCreated, "a brief link")
 		briefToken := brief.Body["token"].(string)
-		want(t, anon.get(t, linkPath(slug, briefToken)), http.StatusOK, "the brief link")
+		want(t, anon.get(t, linkPath(briefToken)), http.StatusOK, "the brief link")
 		if _, err := h.super.Exec(ctx, `UPDATE page_link SET created_at = now() - interval '2 days', expires_at = now() - interval '1 day' WHERE id = $1`,
 			obj(t, brief, "link")["id"]); err != nil {
 			t.Fatal(err)
 		}
 		// Written past the api, so the replica the reader is served from may lag.
-		waitFor(t, "the run out link to open nothing", func() bool { return anon.get(t, linkPath(slug, briefToken)).Status == http.StatusNotFound })
+		waitFor(t, "the run out link to open nothing", func() bool { return anon.get(t, linkPath(briefToken)).Status == http.StatusNotFound })
 		conn := appConn(t)
 		readThrough(t, conn, home.org, briefToken)
 		var n int

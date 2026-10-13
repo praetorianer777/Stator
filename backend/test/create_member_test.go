@@ -56,7 +56,7 @@ func TestAnAdministratorAddsPeopleWhoSignInWithAPassword(t *testing.T) {
 			t.Fatalf("login = %d %v", resp.StatusCode, body)
 		}
 		status, me := person.me(t, a)
-		if status != http.StatusOK || me["organization"].(map[string]any)["slug"] != org.Slug {
+		if status != http.StatusOK || me["organization"].(map[string]any)["role"] != "member" {
 			t.Fatalf("/auth/me = %d %v", status, me)
 		}
 	})

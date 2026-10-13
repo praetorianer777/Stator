@@ -43,13 +43,13 @@ func (s *Server) handleAdmitJoinRequest(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	membership, lsn, err := s.Accounts.AdmitJoinRequest(r.Context(), p.Org.ID, userID, req.Role, p.UserID, clientIP(r))
+	admitted, lsn, err := s.Accounts.AdmitJoinRequest(r.Context(), p.Org.ID, userID, req.Role, p.UserID, clientIP(r))
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"membership": membership})
+	respondJSON(w, r, http.StatusOK, map[string]any{"admitted": admitted})
 }
 
 func (s *Server) handleDeclineJoinRequest(w http.ResponseWriter, r *http.Request) {

@@ -137,8 +137,7 @@ func (s *Server) handlePublicPagePDF(w http.ResponseWriter, r *http.Request) {
 	if !publicPDFs.gate(w, r, clientIP(r)+" "+got.ID.String(), errPublicPDFs) {
 		return
 	}
-	org := chi.URLParam(r, "orgSlug")
-	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: "/print/public/" + url.PathEscape(org) + "/p/" + got.ID.String(), Language: printLanguage(r, nil)})
+	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: "/print/public/p/" + got.ID.String(), Language: printLanguage(r, nil)})
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -160,8 +159,7 @@ func (s *Server) handleLinkedPagePDF(w http.ResponseWriter, r *http.Request) {
 	if !publicPDFs.gate(w, r, clientIP(r)+" "+got.ID.String(), errPublicPDFs) {
 		return
 	}
-	org, token := chi.URLParam(r, "orgSlug"), chi.URLParam(r, "token")
-	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: "/print/public/" + url.PathEscape(org) + "/link/" + url.PathEscape(token), Language: printLanguage(r, nil)})
+	pdf, err := s.renderer().PDF(r.Context(), render.Request{Path: "/print/public/link/" + url.PathEscape(chi.URLParam(r, "token")), Language: printLanguage(r, nil)})
 	if err != nil {
 		respondError(w, r, err)
 		return

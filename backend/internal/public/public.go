@@ -41,7 +41,6 @@ type Settings struct {
 // Site is an organization as an anonymous reader finds it.
 type Site struct {
 	ID        uuid.UUID `json:"-"`
-	Slug      string    `json:"slug"`
 	Name      string    `json:"name"`
 	Indexable bool      `json:"indexable"`
 	// Footer is the line the organization's exports print; LogoVersion is

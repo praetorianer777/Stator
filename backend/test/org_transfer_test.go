@@ -30,10 +30,10 @@ func orgTransferAPI(t *testing.T, h *harness) *apiServer {
 // exportOrg exports the caller's organization and downloads the archive.
 func (a *apiServer) exportOrg(t *testing.T, c *client) (map[string]any, []byte) {
 	t.Helper()
-	queued := obj(t, want(t, c.post(t, "/api/v1/org/exports", nil), http.StatusAccepted, "export the organization"), "export")
+	queued := obj(t, want(t, c.post(t, "/api/v1/site/exports", nil), http.StatusAccepted, "export the organization"), "export")
 	id := queued["id"].(string)
 	done := a.followTransfer(t, func() map[string]any {
-		for _, each := range list(t, want(t, c.get(t, "/api/v1/org/exports"), http.StatusOK, "follow the export"), "exports") {
+		for _, each := range list(t, want(t, c.get(t, "/api/v1/site/exports"), http.StatusOK, "follow the export"), "exports") {
 			if job := each.(map[string]any); job["id"] == id {
 				return job
 			}
@@ -44,7 +44,7 @@ func (a *apiServer) exportOrg(t *testing.T, c *client) (map[string]any, []byte) 
 	if done["state"] != "done" {
 		t.Fatalf("the organization's export did not finish: %v", done)
 	}
-	resp, data := c.download(t, "/api/v1/org/exports/"+id+"/file")
+	resp, data := c.download(t, "/api/v1/site/exports/"+id+"/file")
 	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "application/zip" {
 		t.Fatalf("the export downloads as %d %s: %s", resp.StatusCode, resp.Header.Get("Content-Type"), data)
 	}
@@ -61,7 +61,7 @@ func sendOrgArchive(t *testing.T, c *client, data []byte) response {
 	}
 	_, _ = part.Write(data)
 	_ = form.Close()
-	return c.send(t, http.MethodPost, "/api/v1/org/imports", form.FormDataContentType(), &body)
+	return c.send(t, http.MethodPost, "/api/v1/site/imports", form.FormDataContentType(), &body)
 }
 
 // importOrg imports an organization's archive and follows the job to its end.
@@ -70,7 +70,7 @@ func (a *apiServer) importOrg(t *testing.T, c *client, data []byte) map[string]a
 	queued := obj(t, want(t, sendOrgArchive(t, c, data), http.StatusAccepted, "import the organization"), "import")
 	id := queued["id"].(string)
 	return a.followTransfer(t, func() map[string]any {
-		return obj(t, want(t, c.get(t, "/api/v1/org/imports/"+id), http.StatusOK, "follow the import"), "import")
+		return obj(t, want(t, c.get(t, "/api/v1/site/imports/"+id), http.StatusOK, "follow the import"), "import")
 	})
 }
 
@@ -95,7 +95,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	doraEmail := emailOf(t, h, doraID)
 	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, doraEmail) })
 	writers := h.makeGroup(t, from.org, "Writers", annID, doraID)
-	want(t, owner.put(t, "/api/v1/org/permissions/createSpace", map[string]any{"subjects": []any{group(writers)}}), http.StatusOK, "let the writers create spaces")
+	want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{group(writers)}}), http.StatusOK, "let the writers create spaces")
 
 	trip := newTree(t, owner, "TRIP", "Trip")
 	top := trip.add(trip.homeID, "Top")
@@ -122,9 +122,9 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	want(t, ann.post(t, "/api/v1/spaces", map[string]any{"key": "ANNS", "name": "Ann's own", "personal": true}), http.StatusCreated, "ann's personal space")
 	newTree(t, owner, "OLD", "Old times")
 	want(t, owner.put(t, "/api/v1/spaces/OLD/archive", nil), http.StatusOK, "archive OLD")
-	want(t, owner.put(t, "/api/v1/org/hub", map[string]any{"pageId": nested, "landing": true}), http.StatusOK, "choose the hub")
-	want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal use only", "de": "Nur intern"}), http.StatusOK, "set the footer")
-	want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngOf(t, 8, 4)), http.StatusOK, "set the logo")
+	want(t, owner.put(t, "/api/v1/site/hub", map[string]any{"pageId": nested, "landing": true}), http.StatusOK, "choose the hub")
+	want(t, owner.put(t, "/api/v1/site/brand/footer", map[string]any{"en": "Internal use only", "de": "Nur intern"}), http.StatusOK, "set the footer")
+	want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/site/brand/logo", "logo.png", pngOf(t, 8, 4)), http.StatusOK, "set the logo")
 	house := obj(t, want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "House"}), http.StatusCreated, "make a theme"), "theme")["id"].(string)
 	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M2 2h12v12H2z"/></svg>`)
 	glyph := obj(t, want(t, owner.upload(t, "/api/v1/themes/"+house+"/assets", "block.svg", svg), http.StatusCreated, "upload a glyph"), "asset")["id"].(string)
@@ -192,14 +192,14 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	})
 
 	t.Run("nobody but an administrator of the organization exports it or reads its exports", func(t *testing.T) {
-		if code := errorCode(t, want(t, bob.post(t, "/api/v1/org/exports", nil), http.StatusForbidden, "a member exports")); code != "forbidden" {
+		if code := errorCode(t, want(t, bob.post(t, "/api/v1/site/exports", nil), http.StatusForbidden, "a member exports")); code != "forbidden" {
 			t.Errorf("a member's export is refused as %s", code)
 		}
-		want(t, bob.get(t, "/api/v1/org/exports"), http.StatusForbidden, "a member lists the exports")
-		made := list(t, want(t, owner.get(t, "/api/v1/org/exports"), http.StatusOK, "the owner lists them"), "exports")[0].(map[string]any)
-		want(t, bob.get(t, "/api/v1/org/exports/"+made["id"].(string)+"/file"), http.StatusForbidden, "a member downloads one")
-		want(t, owner.get(t, "/api/v1/org/exports/"+uuid.NewString()+"/file"), http.StatusNotFound, "no such export")
-		want(t, ann.post(t, "/api/v1/org/imports", nil), http.StatusForbidden, "a member imports")
+		want(t, bob.get(t, "/api/v1/site/exports"), http.StatusForbidden, "a member lists the exports")
+		made := list(t, want(t, owner.get(t, "/api/v1/site/exports"), http.StatusOK, "the owner lists them"), "exports")[0].(map[string]any)
+		want(t, bob.get(t, "/api/v1/site/exports/"+made["id"].(string)+"/file"), http.StatusForbidden, "a member downloads one")
+		want(t, owner.get(t, "/api/v1/site/exports/"+uuid.NewString()+"/file"), http.StatusNotFound, "no such export")
+		want(t, ann.post(t, "/api/v1/site/imports", nil), http.StatusForbidden, "a member imports")
 	})
 
 	if _, err := h.super.Exec(ctx, `DELETE FROM app_user WHERE id = $1`, doraID); err != nil {
@@ -237,7 +237,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		if len(report["notCarried"].([]any)) == 0 {
 			t.Errorf("the report lists nothing left out: %v", report)
 		}
-		if imports := list(t, want(t, landed.get(t, "/api/v1/org/imports"), http.StatusOK, "the imports"), "imports"); len(imports) != 1 || imports[0].(map[string]any)["id"] != job["id"] {
+		if imports := list(t, want(t, landed.get(t, "/api/v1/site/imports"), http.StatusOK, "the imports"), "imports"); len(imports) != 1 || imports[0].(map[string]any)["id"] != job["id"] {
 			t.Errorf("the organization's imports are %v", imports)
 		}
 	})
@@ -339,15 +339,15 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	})
 
 	t.Run("settings, brand, themes, templates and webhooks come along", func(t *testing.T) {
-		hub := obj(t, want(t, landed.get(t, "/api/v1/org/hub"), http.StatusOK, "the hub"), "hub")
+		hub := obj(t, want(t, landed.get(t, "/api/v1/site/hub"), http.StatusOK, "the hub"), "hub")
 		if page, _ := hub["page"].(map[string]any); page == nil || page["id"] != nestedThere || hub["landing"] != true {
 			t.Errorf("the hub is %v", hub)
 		}
-		b := obj(t, want(t, landed.get(t, "/api/v1/org/brand"), http.StatusOK, "the brand"), "brand")
+		b := obj(t, want(t, landed.get(t, "/api/v1/site/brand"), http.StatusOK, "the brand"), "brand")
 		if footer := b["footer"].(map[string]any); footer["en"] != "Internal use only" || b["logo"] == nil {
 			t.Errorf("the brand is %v", b)
 		}
-		if resp, data := landed.download(t, "/api/v1/org/brand/logo"); resp.StatusCode != http.StatusOK || len(data) == 0 {
+		if resp, data := landed.download(t, "/api/v1/site/brand/logo"); resp.StatusCode != http.StatusOK || len(data) == 0 {
 			t.Errorf("the logo answers %d", resp.StatusCode)
 		}
 		var themeID, spec string

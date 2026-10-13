@@ -675,22 +675,22 @@ func TestTheBootstrapOrganizationIsNamedOrDefaultsToTheDemo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Bootstrap.OrgSlug != "demo" || c.Bootstrap.OrgName != "Demo" {
-		t.Errorf("default organization = %q %q", c.Bootstrap.OrgSlug, c.Bootstrap.OrgName)
+	if c.Bootstrap.OrgName != "Demo" {
+		t.Errorf("default organization = %q", c.Bootstrap.OrgName)
 	}
-	t.Setenv("STATOR_BOOTSTRAP_ORG_SLUG", "acme")
 	t.Setenv("STATOR_BOOTSTRAP_ORG_NAME", "Acme Corp")
-	if c, err = Load(); err != nil || c.Bootstrap.OrgSlug != "acme" || c.Bootstrap.OrgName != "Acme Corp" {
+	if c, err = Load(); err != nil || c.Bootstrap.OrgName != "Acme Corp" {
 		t.Fatalf("named organization = %+v, %v", c.Bootstrap, err)
 	}
 }
 
-func TestABootstrapSlugTheDatabaseWouldRefuseIsRefusedAtOnce(t *testing.T) {
-	for _, slug := range []string{"A", "ab", "-acme", "acme-", "Acme", "acme corp", "a_b_c"} {
-		clean(t)
-		t.Setenv("STATOR_BOOTSTRAP_ORG_SLUG", slug)
-		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_BOOTSTRAP_ORG_SLUG") {
-			t.Errorf("slug %q should be refused by name: %v", slug, err)
-		}
+// The slug is no longer read; a deployment still setting it is told so
+// rather than left to believe it counts.
+func TestTheRetiredBootstrapSlugIsRefusedInASentence(t *testing.T) {
+	clean(t)
+	t.Setenv("STATOR_BOOTSTRAP_ORG_SLUG", "acme")
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "STATOR_BOOTSTRAP_ORG_SLUG is no longer read") {
+		t.Errorf("the old slug setting = %v, want it refused by name", err)
 	}
 }

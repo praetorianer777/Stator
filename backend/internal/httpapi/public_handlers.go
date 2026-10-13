@@ -13,18 +13,92 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/space"
 )
 
-// Reading without signing in: the organization in the address, an anonymous
-// reader in every transaction, whatever credential rides along.
+// Reading without signing in: an anonymous reader in every transaction,
+// whatever credential rides along.
 
-// publicPathPrefix is where the reads for anybody live; authentication
-// leaves them alone, so no session can widen or refuse them.
-const publicPathPrefix = APIPrefix + "/public/"
+// publicPath is where the reads for anybody live; authentication leaves them
+// alone, so no session can widen or refuse them.
+const (
+	publicPath       = APIPrefix + "/public"
+	publicPathPrefix = publicPath + "/"
+)
 
 // publicMaxAge is how long a cache may keep a public answer: a page restricted
 // or a space closed stops being served by a shared cache within it.
 const publicMaxAge = 60
 
-func isPublicPath(r *http.Request) bool { return strings.HasPrefix(r.URL.Path, publicPathPrefix) }
+func isPublicPath(r *http.Request) bool {
+	return r.URL.Path == publicPath || strings.HasPrefix(r.URL.Path, publicPathPrefix)
+}
+
+// oldPublicPaths are the reads for anybody as their addresses ran after
+// /public/{orgSlug} before #380, with the operation id each answers under.
+var oldPublicPaths = []struct{ path, id string }{
+	{"", "publicSiteWithSlug"},
+	{"/spaces/{spaceKey}", "publicSpaceWithSlug"},
+	{"/pages/{pageID}", "publicPageWithSlug"},
+	{"/pages/{pageID}/pdf", "publicPagePDFWithSlug"},
+	{"/pages/{pageID}/docx", "publicPageWordWithSlug"},
+	{"/attachments/{attachmentID}", "publicAttachmentWithSlug"},
+	{"/logo", "publicLogoWithSlug"},
+	{"/search", "publicSearchWithSlug"},
+	{"/links/{token}", "linkedPageWithSlug"},
+	{"/links/{token}/pdf", "linkedPagePDFWithSlug"},
+	{"/links/{token}/docx", "linkedPageWordWithSlug"},
+	{"/links/{token}/attachments/{attachmentID}", "linkedAttachmentWithSlug"},
+	{"/links/{token}/logo", "linkedLogoWithSlug"},
+}
+
+// oldPublicOperations describes oldPublicPaths for the table.
+func oldPublicOperations() []operation {
+	out := make([]operation, 0, len(oldPublicPaths))
+	for _, old := range oldPublicPaths {
+		out = append(out, operation{method: "GET", path: "/public/{orgSlug}" + old.path, handler: "handleOldPublicPath", id: old.id,
+			tag: "public", public: true, redirect: true, deprecated: true,
+			summary:   "The address GET /public" + old.path + " had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
+			responses: map[int]any{404: errorEnvelope{}}})
+	}
+	return out
+}
+
+// handleOldPublicPath sends an address naming the organization on to the same
+// read without it, so links already shared keep working; another slug is not found.
+func (s *Server) handleOldPublicPath(w http.ResponseWriter, r *http.Request) {
+	_, rest, _ := strings.Cut(strings.TrimPrefix(r.URL.EscapedPath(), publicPathPrefix), "/")
+	link := strings.HasPrefix(rest, linkSegment+"/")
+	if link {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+	}
+	if !s.namesTheInstance(r, chi.URLParam(r, "orgSlug")) {
+		w.Header().Set("X-Robots-Tag", "noindex, nofollow")
+		if link {
+			respondError(w, r, public.ErrLinkGone)
+		} else {
+			respondError(w, r, public.ErrNotPublic)
+		}
+		return
+	}
+	target := publicPath
+	if rest != "" {
+		target += "/" + rest
+	}
+	if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	w.Header().Set("Location", target)
+	w.WriteHeader(http.StatusPermanentRedirect)
+}
+
+// namesTheInstance says whether slug is the organization's, as an old public
+// address would have spelled it.
+func (s *Server) namesTheInstance(r *http.Request, slug string) bool {
+	if s.Instance == nil {
+		return false
+	}
+	org, err := s.Instance.Org(r.Context())
+	return err == nil && strings.EqualFold(strings.TrimSpace(slug), org.Slug)
+}
 
 type ctxSiteKey struct{}
 
@@ -33,15 +107,20 @@ func siteFrom(r *http.Request) *public.Site {
 	return site
 }
 
-// anonymousReader finds the organization the address names, refuses one that
-// lets nobody read without signing in, and reads as nobody from then on.
+// anonymousReader refuses while the organization lets nobody read without
+// signing in, and reads as nobody from then on.
 func (s *Server) anonymousReader(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.Public == nil {
+		if s.Public == nil || s.Instance == nil {
 			respondError(w, r, public.ErrNotPublic)
 			return
 		}
-		site, err := s.Public.Site(r.Context(), chi.URLParam(r, "orgSlug"))
+		org, err := s.Instance.Org(r.Context())
+		if err != nil {
+			respondError(w, r, err)
+			return
+		}
+		site, err := s.Public.Site(r.Context(), org)
 		if err != nil {
 			respondError(w, r, err)
 			return
@@ -49,7 +128,7 @@ func (s *Server) anonymousReader(next http.Handler) http.Handler {
 		if !site.Indexable {
 			w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 		}
-		ctx := public.Reading(r.Context(), site)
+		ctx := public.Reading(r.Context(), org)
 		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, ctxSiteKey{}, site)))
 	})
 }

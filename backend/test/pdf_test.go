@@ -276,16 +276,16 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 
 	t.Run("anybody prints what anybody may read, and nothing else", func(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/spaces/"+pdfKey+"/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open PDF")
-		want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+		want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
 		h.settle(t)
 		anon := api.anonymous()
-		resp, data := anon.download(t, publicPath(slug, "/pages/", guide, "/pdf"))
+		resp, data := anon.download(t, publicPath("/pages/", guide, "/pdf"))
 		printed(t, resp, data, "Printed guide", "the public PDF")
-		if asked := tap.last(t); asked.Token != "" || asked.Path != "/print/public/"+slug+"/p/"+guide {
+		if asked := tap.last(t); asked.Token != "" || asked.Path != "/print/public/p/"+guide {
 			t.Errorf("the public print was asked for %q with a token %q", asked.Path, asked.Token)
 		}
 		for _, page := range []string{secret, far} {
-			want(t, anon.get(t, publicPath(slug, "/pages/", page, "/pdf")), http.StatusNotFound, "print a page nobody may read")
+			want(t, anon.get(t, publicPath("/pages/", page, "/pdf")), http.StatusNotFound, "print a page nobody may read")
 		}
 	})
 
@@ -295,14 +295,14 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 		linkID := obj(t, made, "link")["id"].(string)
 		h.settle(t)
 		anon := api.anonymous()
-		resp, data := anon.download(t, linkPath(slug, token, "/pdf"))
+		resp, data := anon.download(t, linkPath(token, "/pdf"))
 		printed(t, resp, data, "Printed guide", "the link's PDF")
 		if got := resp.Header.Get("Content-Disposition"); !strings.Contains(got, `filename=printed-guide-`) {
 			t.Errorf("the link's PDF is named %q, which should say nothing of its space", got)
 		}
 		want(t, owner.delete(t, pagePath(guide, "/public-links/", linkID)), http.StatusNoContent, "revoke the link")
 		h.settle(t)
-		if got := anon.get(t, linkPath(slug, token, "/pdf")); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
+		if got := anon.get(t, linkPath(token, "/pdf")); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
 			t.Errorf("the revoked link printed %d %s", got.Status, got.Raw)
 		}
 	})

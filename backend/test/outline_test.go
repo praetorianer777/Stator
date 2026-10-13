@@ -43,7 +43,7 @@ func TestTheOutlineWalkAnswersAsRowLevelSecurity(t *testing.T) {
 	docs.add(archived, "Below the archive")
 	want(t, owner.put(t, pagePath(archived, "/archive"), nil), http.StatusOK, "archive a page")
 
-	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+	want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
 	want(t, owner.put(t, "/api/v1/spaces/WALK/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open WALK")
 	shut := newTree(t, owner, "SHUTW", "Shut")
 	h.closeSpace(t, shut.space, annID, benID)

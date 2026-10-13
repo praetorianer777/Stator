@@ -1,6 +1,6 @@
 // Command seed makes a database worth opening. Bare, it makes the demo
 // organization of a development stack; `seed bootstrap` makes the organization
-// STATOR_BOOTSTRAP_ORG_* names, its first local administrator and, when
+// STATOR_BOOTSTRAP_ORG_NAME names, its first local administrator and, when
 // configured, its identity provider and members, which is what a fresh
 // production install needs and nothing more.
 package main
@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/secret"
@@ -54,21 +55,21 @@ func run() error {
 	}
 	defer cluster.Close()
 
-	res, err := seed.Ensure(ctx, cluster, boot.OrgSlug, boot.OrgName)
+	res, err := seed.Ensure(ctx, cluster, boot.OrgName)
 	if err != nil {
 		return err
 	}
-	log.Info("seed done", "org", boot.OrgSlug, "created", res.OrgCreated)
+	log.Info("seed done", "created", res.OrgCreated)
 
 	accounts := auth.NewService(cluster, auth.DefaultPasswordParams(), cfg.Auth.SessionTTL)
 	// Somebody has to be able to get in before any identity provider is set
 	// up, and that somebody is named by the operator rather than invented here.
 	if cfg.Bootstrap.AdminEmail != "" {
-		made, err := accounts.EnsureAdmin(ctx, boot.OrgSlug, cfg.Bootstrap.AdminEmail, bootstrapAdminName, cfg.Bootstrap.AdminPassword)
+		made, err := accounts.EnsureAdmin(ctx, cfg.Bootstrap.AdminEmail, bootstrapAdminName, cfg.Bootstrap.AdminPassword)
 		if err != nil {
 			return err
 		}
-		log.Info("bootstrap administrator ready", "email", cfg.Bootstrap.AdminEmail, "org", boot.OrgSlug, "created", made)
+		log.Info("bootstrap administrator ready", "email", cfg.Bootstrap.AdminEmail, "created", made)
 	}
 
 	var box *secret.Box
@@ -77,25 +78,25 @@ func run() error {
 			return err
 		}
 	}
-	org, err := accounts.OrgBySlug(ctx, boot.OrgSlug)
+	org, err := instance.NewResolver(cluster).Org(ctx)
 	if err != nil {
 		return err
 	}
 	// Named ahead of time, so they sign in through the provider without
 	// waiting for anybody to let them in.
 	sso := oidc.NewService(cluster, box, cfg.Auth.OIDCRedirectURL)
-	done, err := seed.Populate(ctx, accounts, sso, *org, seed.Bootstrapped(cfg.Bootstrap))
+	done, err := seed.Populate(ctx, accounts, sso, org, seed.Bootstrapped(cfg.Bootstrap))
 	if err != nil {
 		return err
 	}
 	for _, m := range done.Added {
-		log.Info("member let in ahead of sign-in", "email", m.Email, "role", m.Role, "org", boot.OrgSlug)
+		log.Info("member let in ahead of sign-in", "email", m.Email, "role", m.Role)
 	}
 	switch {
 	case done.ProviderCreated:
-		log.Info("identity provider configured", "org", boot.OrgSlug, "issuer", cfg.Bootstrap.OIDCIssuer)
+		log.Info("identity provider configured", "issuer", cfg.Bootstrap.OIDCIssuer)
 	case done.ProviderExisting:
-		log.Info("the organization's identity provider is already set up", "org", boot.OrgSlug)
+		log.Info("the organization's identity provider is already set up")
 	}
 	return nil
 }
