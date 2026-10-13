@@ -1,9 +1,9 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import type { StatorApi } from "../fixtures/api";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
-import { uniqueName } from "../fixtures/seed";
+import { uniqueName, uniqueWord } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../fixtures/spaces";
 
@@ -26,63 +26,69 @@ test.describe("search", { tag: ["@auth"] }, () => {
 
   test("finds a page by its title and by words of its body, with the matches marked", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Find");
-    await createPage(api, space.homePageId, "Zephyr quarterly report", paragraph("The flamingo budget grew this quarter."));
+    const zephyr = uniqueWord(testInfo, "zephyr");
+    const flamingo = uniqueWord(testInfo, "flamingo");
+    const title = `${zephyr} quarterly report`;
+    await createPage(api, space.homePageId, title, paragraph(`The ${flamingo} budget grew this quarter.`));
 
-    await openShowing(page, "/search?q=zephyr", hit(page, "Zephyr quarterly report"));
-    await expect(hit(page, "Zephyr quarterly report").locator("mark").first()).toHaveText("Zephyr");
+    await openShowing(page, `/search?q=${zephyr}`, hit(page, title));
+    await expect(hit(page, title).locator("mark").first()).toHaveText(zephyr);
 
-    await page.locator("[data-search-query]").fill("flamingo");
+    await page.locator("[data-search-query]").fill(flamingo);
     await page.locator("[data-search-query]").press("Enter");
-    await expect(page).toHaveURL(/\/search\?q=flamingo$/);
-    const found = hit(page, "Zephyr quarterly report");
-    await expect(found.locator("[data-search-snippet] mark")).toHaveText("flamingo");
-    await found.getByRole("link", { name: "Zephyr quarterly report" }).click();
-    await expect(page.locator("main").getByRole("heading", { level: 1 })).toHaveText("Zephyr quarterly report");
+    await expect(page).toHaveURL(new RegExp(`/search\\?q=${flamingo}$`));
+    const found = hit(page, title);
+    await expect(found.locator("[data-search-snippet] mark")).toHaveText(flamingo);
+    await found.getByRole("link", { name: title }).click();
+    await expect(page.locator("main").getByRole("heading", { level: 1 })).toHaveText(title);
   });
 
   test("narrows the hits to a space, and keeps the filter in the address", async ({ page, api }, testInfo) => {
     const here = await freshSpace(api, testInfo, "Here", "H");
     const there = await freshSpace(api, testInfo, "There", "T");
-    await createPage(api, here.homePageId, "Nebula notes here");
-    await createPage(api, there.homePageId, "Nebula notes there");
+    const nebula = uniqueWord(testInfo, "nebula");
+    await createPage(api, here.homePageId, `${nebula} notes here`);
+    await createPage(api, there.homePageId, `${nebula} notes there`);
 
-    await openShowing(page, "/search?q=nebula", hit(page, "Nebula notes there"));
-    await expect(hit(page, "Nebula notes here")).toBeVisible();
+    await openShowing(page, `/search?q=${nebula}`, hit(page, `${nebula} notes there`));
+    await expect(hit(page, `${nebula} notes here`)).toBeVisible();
     await page.locator('[data-filter="space"]').selectOption(here.key);
     await expect(page).toHaveURL(new RegExp(`space=${here.key}`));
-    await expect(hit(page, "Nebula notes here")).toBeVisible();
-    await expect(hit(page, "Nebula notes there")).toHaveCount(0);
+    await expect(hit(page, `${nebula} notes here`)).toBeVisible();
+    await expect(hit(page, `${nebula} notes there`)).toHaveCount(0);
 
     await page.reload();
     await expect(page.locator('[data-filter="space"]')).toHaveValue(here.key);
-    await expect(hit(page, "Nebula notes there")).toHaveCount(0);
+    await expect(hit(page, `${nebula} notes there`)).toHaveCount(0);
   });
 
   test("quick search opens a page from the keyboard, and Enter on the words opens the full search", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Quick");
-    const target = await createPage(api, space.homePageId, "Kestrel runbook");
-    await createPage(api, space.homePageId, "Kestrel rota");
+    const kestrel = uniqueWord(testInfo, "kestrel");
+    const runbook = `${kestrel} runbook`;
+    const target = await createPage(api, space.homePageId, runbook);
+    await createPage(api, space.homePageId, `${kestrel} rota`);
 
     await page.goto("/");
     await expect(async () => {
       await page.keyboard.press("Control+k");
-      await palette(page).getByRole("combobox").fill("kestrel ru");
-      await expect(option(page, "Kestrel runbook")).toBeVisible(ONE_LOOK);
+      await palette(page).getByRole("combobox").fill(`${kestrel} ru`);
+      await expect(option(page, runbook)).toBeVisible(ONE_LOOK);
     }).toPass();
     const input = palette(page).getByRole("combobox");
     await expect(input).toBeFocused();
     await page.keyboard.press("ArrowDown");
-    await expect(input).toHaveAttribute("aria-activedescendant", (await option(page, "Kestrel runbook").getAttribute("id")) ?? "");
-    await expect(option(page, "Kestrel runbook")).toHaveAttribute("aria-selected", "true");
+    await expect(input).toHaveAttribute("aria-activedescendant", (await option(page, runbook).getAttribute("id")) ?? "");
+    await expect(option(page, runbook)).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(new RegExp(`/p/${target.id}/kestrel-runbook$`));
+    await expect(page).toHaveURL(new RegExp(`/p/${target.id}/${kestrel}-runbook$`));
     await expect(palette(page)).toHaveCount(0);
 
     await page.keyboard.press("Control+k");
-    await palette(page).getByRole("combobox").fill("kestrel");
+    await palette(page).getByRole("combobox").fill(kestrel);
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/search\?q=kestrel$/);
-    await expect(page.locator("[data-search-query]")).toHaveValue("kestrel");
+    await expect(page).toHaveURL(new RegExp(`/search\\?q=${kestrel}$`));
+    await expect(page.locator("[data-search-query]")).toHaveValue(kestrel);
   });
 
   test("quick search lists the pages opened last, the latest first", async ({ page, api }, testInfo) => {
@@ -108,32 +114,34 @@ test.describe("search", { tag: ["@auth"] }, () => {
 
   test("a page in the trash is not found", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Trashed");
-    await createPage(api, space.homePageId, "Walrus handover kept");
-    const gone = await createPage(api, space.homePageId, "Walrus handover gone");
+    const walrus = uniqueWord(testInfo, "walrus");
+    await createPage(api, space.homePageId, `${walrus} handover kept`);
+    const gone = await createPage(api, space.homePageId, `${walrus} handover gone`);
     await api.DELETE("/pages/{pageID}", { params: { path: { pageID: gone.id } } });
 
-    await openShowing(page, "/search?q=walrus", hit(page, "Walrus handover kept"));
-    await expect(hit(page, "Walrus handover gone")).toHaveCount(0);
+    await openShowing(page, `/search?q=${walrus}`, hit(page, `${walrus} handover kept`));
+    await expect(hit(page, `${walrus} handover gone`)).toHaveCount(0);
 
     await page.keyboard.press("Control+k");
-    await palette(page).getByRole("combobox").fill("walrus handover");
-    await expect(option(page, "Walrus handover kept")).toBeVisible();
-    await expect(option(page, "Walrus handover gone")).toHaveCount(0);
+    await palette(page).getByRole("combobox").fill(`${walrus} handover`);
+    await expect(option(page, `${walrus} handover kept`)).toBeVisible();
+    await expect(option(page, `${walrus} handover gone`)).toHaveCount(0);
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
     test(`the search page and quick search pass axe in ${scheme}`, async ({ page, api }, testInfo) => {
       const space = await freshSpace(api, testInfo, "Axe");
-      await createPage(api, space.homePageId, "Puffin guide", paragraph("Where the puffin nests."));
+      const puffin = uniqueWord(testInfo, "puffin");
+      await createPage(api, space.homePageId, `${puffin} guide`, paragraph(`Where the ${puffin} nests.`));
       await startInScheme(page, scheme);
 
-      await openShowing(page, "/search?q=puffin", hit(page, "Puffin guide"));
+      await openShowing(page, `/search?q=${puffin}`, hit(page, `${puffin} guide`));
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
       await expectAccessible(page);
 
       await page.keyboard.press("Control+k");
-      await palette(page).getByRole("combobox").fill("puffin");
-      await expect(option(page, "Puffin guide")).toBeVisible();
+      await palette(page).getByRole("combobox").fill(puffin);
+      await expect(option(page, `${puffin} guide`)).toBeVisible();
       await page.keyboard.press("ArrowDown");
       await expectAccessible(page);
     });

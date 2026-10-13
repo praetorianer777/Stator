@@ -2,7 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import type { StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { withDatabase } from "../fixtures/db";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -70,10 +70,10 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
   });
 
-  test("an administrator opens it, narrows it to one space's changes and pages through them", async ({ page, api, freshOrg }, testInfo) => {
+  test("an administrator opens it, narrows it to one space's changes and pages through them", async ({ page, api, team }, testInfo) => {
     const key = uniqueKey(testInfo);
     made.push(key);
-    const space = await busySpace(api, freshOrg.id, key, uniqueName(testInfo, "Busy"));
+    const space = await busySpace(api, team.org.id, key, uniqueName(testInfo, "Busy"));
 
     await openUntil(page, "/", async () => {
       await page.locator('[data-action="account"]').click();
@@ -137,10 +137,10 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     await expect(bob.locator('[role="menu"] [data-action="audit-log"]')).toHaveCount(0);
   });
 
-  test("it is narrowed and paged from the keyboard", { tag: ["@desktop"] }, async ({ page, api, freshOrg }, testInfo) => {
+  test("it is narrowed and paged from the keyboard", { tag: ["@desktop"] }, async ({ page, api, team }, testInfo) => {
     const key = uniqueKey(testInfo);
     made.push(key);
-    const space = await busySpace(api, freshOrg.id, key, uniqueName(testInfo, "Keys"));
+    const space = await busySpace(api, team.org.id, key, uniqueName(testInfo, "Keys"));
     await openLog(page, space.name);
 
     await page.getByLabel("Action").focus();
@@ -155,20 +155,20 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
-    test(`it passes axe in ${scheme}`, async ({ page, api, freshOrg }, testInfo) => {
+    test(`it passes axe in ${scheme}`, async ({ page, api, team }, testInfo) => {
       const key = uniqueKey(testInfo);
       made.push(key);
-      const space = await busySpace(api, freshOrg.id, key, uniqueName(testInfo, `Axe ${scheme}`));
+      const space = await busySpace(api, team.org.id, key, uniqueName(testInfo, `Axe ${scheme}`));
       await startInScheme(page, scheme);
       await openLog(page, space.name);
       await expectAccessible(page);
     });
   }
 
-  test("on a phone the filters stack and the page never scrolls sideways", { tag: ["@mobile"] }, async ({ page, api, freshOrg }, testInfo) => {
+  test("on a phone the filters stack and the page never scrolls sideways", { tag: ["@mobile"] }, async ({ page, api, team }, testInfo) => {
     const key = uniqueKey(testInfo);
     made.push(key);
-    const space = await busySpace(api, freshOrg.id, key, uniqueName(testInfo, "Phone"));
+    const space = await busySpace(api, team.org.id, key, uniqueName(testInfo, "Phone"));
     await openLog(page, space.name);
     await expect(page.getByLabel("Action")).toBeVisible();
     await expect(page.getByLabel("From")).toBeVisible();

@@ -2,7 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -10,7 +10,10 @@ import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spa
 
 // Delivery goes through the outbox and the worker.
 const DELIVERY_MS = 30_000;
-const BOB = "Bob Builder";
+// The spec's own bob, named after it (fixtures/team.ts). A mention's query
+// ends at a space, so it asks for the start of his address, his alone.
+let BOB = "";
+let BOB_ADDRESS = "";
 
 const bell = (page: Page) => page.locator('[data-action="notifications"]');
 const panel = (page: Page) => page.locator("[data-notification-panel]");
@@ -51,6 +54,10 @@ async function toldAbout(page: Page, title: string) {
 }
 
 test.describe("mentions", { tag: ["@auth"] }, () => {
+  test.beforeEach(({ team }) => {
+    BOB = team.people.bob.name;
+    BOB_ADDRESS = team.people.bob.email.split("@")[0]!;
+  });
   const made: string[] = [];
   test.afterEach(async ({ api }) => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
@@ -70,7 +77,7 @@ test.describe("mentions", { tag: ["@auth"] }, () => {
     await openPage(page, space.key, plan);
     await editPage(page);
     await page.keyboard.type(" Owner: ");
-    const option = await offer(page, "bob", BOB);
+    const option = await offer(page, BOB_ADDRESS, BOB);
     await expect(option).not.toHaveAttribute("data-cannot-view");
     await page.keyboard.press("Enter");
     await expect(mentionList(page)).toHaveCount(0);
@@ -97,7 +104,7 @@ test.describe("mentions", { tag: ["@auth"] }, () => {
     await page.locator('[data-comments] [data-action="add-comment"]').click();
     await page.locator("#new-comment").click();
     await page.keyboard.type("Can you check this, ");
-    await offer(page, "bo", BOB);
+    await offer(page, BOB_ADDRESS.slice(0, -1), BOB);
     await page.keyboard.press("Enter");
     await expect(page.locator("#new-comment [data-mention]")).toHaveText(`@${BOB}`);
     await page.keyboard.press("ControlOrMeta+Enter");
@@ -124,7 +131,7 @@ test.describe("mentions", { tag: ["@auth"] }, () => {
     await openPage(page, space.key, secret);
     await editPage(page);
     await page.keyboard.type(" Ask ");
-    const option = await offer(page, "bob", BOB);
+    const option = await offer(page, BOB_ADDRESS, BOB);
     await expect(option).toHaveAttribute("data-cannot-view");
     await expect(option).toContainText("cannot see this page");
     await expect(mentionList(page).getByRole("option", { name: /Alice/ })).toHaveCount(0);
@@ -142,7 +149,7 @@ test.describe("mentions", { tag: ["@auth"] }, () => {
       await openPage(page, space.key, target);
       await editPage(page);
       await page.keyboard.type(" ");
-      const option = await offer(page, "", BOB);
+      const option = await offer(page, BOB_ADDRESS, BOB);
       await expect(option).toContainText("cannot see this page");
       await expect(page.locator("#page-body")).toHaveAttribute("aria-controls", (await mentionList(page).getAttribute("id"))!);
       await expectAccessible(page);

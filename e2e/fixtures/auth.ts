@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { test as base, expect, request, type Browser, type Page } from "@playwright/test";
 import { createStatorApi, type Session, type StatorApi } from "./api";
 import { KEYCLOAK_URL, WEB_URL } from "./stack";
+import { RESETS_INSTANCE } from "./projects";
+import { resetInstance } from "./testapi";
 
 // Everything about signing in lives in this file, so when the login page
 // changes this is the one place to follow it.
@@ -136,22 +138,48 @@ export async function signInToOrg(browser: Browser, user: User, org: string): Pr
   }
 }
 
+/** Somebody besides alice and bob, such as a person a test made for itself. */
+export interface SignedIn {
+  session: Session;
+}
+
+function sessionFor(sessionOf: (user: User) => Session, who: User | SignedIn): Session {
+  return typeof who === "string" ? sessionOf(who) : who.session;
+}
+
 interface SessionFixtures {
-  /** Where each user's session comes from: the setup's, or a fresh organization's. */
+  /** Where each user's session comes from: the setup's, or the spec's own people's. */
   sessionOf: (user: User) => Session;
   /** A page of its own, signed in as the user, beside the default page as alice. */
-  pageAs: (user: User) => Promise<Page>;
+  pageAs: (who: User | SignedIn) => Promise<Page>;
   /** The API as alice. */
   api: StatorApi;
   /** The API as the user. */
-  apiAs: (user: User) => Promise<StatorApi>;
+  apiAs: (who: User | SignedIn) => Promise<StatorApi>;
+  /** Puts the organization's settings back when a file of the instance projects starts. */
+  instanceSettings: undefined;
 }
+
+// A worker is a process of its own, so this is the file it last reset for.
+// The repeat is part of it: --repeat-each runs a file's repeats back to back.
+let resetFor: string | undefined;
 
 /**
  * The test for the shell: alice's page once the stack can sign in, an anonymous
  * one before, so the same specs hold on both sides of the login wall.
  */
 export const test = base.extend<SessionFixtures>({
+  instanceSettings: [
+    async ({}, use, testInfo) => {
+      const file = `${testInfo.file}#${testInfo.repeatEachIndex}`;
+      if (testInfo.project.metadata[RESETS_INSTANCE] === true && resetFor !== file) {
+        await resetInstance();
+        resetFor = file;
+      }
+      await use(undefined);
+    },
+    { auto: true },
+  ],
   sessionOf: async ({}, use) => {
     await use(stateFile);
   },
@@ -161,7 +189,7 @@ export const test = base.extend<SessionFixtures>({
   pageAs: async ({ browser, viewport, hasTouch, isMobile, sessionOf }, use) => {
     const opened: Array<{ close: () => Promise<void> }> = [];
     await use(async (user) => {
-      const context = await browser.newContext({ baseURL: WEB_URL, storageState: sessionOf(user), viewport, hasTouch, isMobile });
+      const context = await browser.newContext({ baseURL: WEB_URL, storageState: sessionFor(sessionOf, user), viewport, hasTouch, isMobile });
       opened.push(context);
       return context.newPage();
     });
@@ -175,7 +203,7 @@ export const test = base.extend<SessionFixtures>({
   apiAs: async ({ sessionOf }, use) => {
     const opened: StatorApi[] = [];
     await use(async (user) => {
-      const api = await createStatorApi(sessionOf(user));
+      const api = await createStatorApi(sessionFor(sessionOf, user));
       opened.push(api);
       return api;
     });

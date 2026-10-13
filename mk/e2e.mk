@@ -49,6 +49,11 @@ E2E_CORE_REPORT = { command -v coredumpctl >/dev/null \
 	&& coredumpctl --no-pager --since=@$$since list 2>/dev/null | grep -E "chrome|node" \
 	&& echo "These browser or test processes crashed during this run; coredumpctl info <PID> shows the stack. Rerun with DEBUG=pw:browser to see Chromium's own message."; true; }
 
+# What both phases of the suite take. The specs that change the organization
+# as a whole run after the others, one at a time (fixtures/projects.ts); a
+# phase that ONLY leaves empty is no failure.
+E2E_ARGS = --pass-with-no-tests $${ONLY:+--grep "$$ONLY"} $${REPEAT:+--repeat-each "$$REPEAT"} $${SHARD:+--shard "$$SHARD"}
+
 # npm ci only when the lock file changed since the last install, which keeps
 # a rerun of one spec to a couple of seconds.
 E2E_INSTALL = [ node_modules/.package-lock.json -nt package-lock.json ] || npm ci --no-audit --no-fund
@@ -64,13 +69,20 @@ test-e2e: ## Run the browser suite against this checkout's running stack: ONLY=<
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
 	@mkdir -p $(E2E_NPM_CACHE)
 	@since=$$(date +%s); \
-	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx tsc --noEmit && { npx playwright test --workers=$(WORKERS) $${ONLY:+--grep "$$ONLY"} $${REPEAT:+--repeat-each "$$REPEAT"} $${SHARD:+--shard "$$SHARD"}; rc=$$?; $(E2E_OOM_REPORT); exit $$rc; }'; \
+	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx tsc --noEmit && { \
+		E2E_PHASE=parallel npx playwright test --workers=$(WORKERS) $(E2E_ARGS); rc=$$?; \
+		E2E_PHASE=instance npx playwright test --workers=1 $(E2E_ARGS); rc2=$$?; \
+		$(E2E_OOM_REPORT); [ $$rc -ne 0 ] && exit $$rc; exit $$rc2; }'; \
 	rc=$$?; [ $$rc -eq 0 ] || $(E2E_CORE_REPORT); exit $$rc
 
+# Which phase's report e2e-report serves: PHASE=instance for the specs that
+# ran one at a time after the others.
+PHASE ?= parallel
+
 .PHONY: e2e-report
-e2e-report: ## Serve the last browser run's HTML report, traces included
+e2e-report: ## Serve the last browser run's HTML report, traces included: PHASE=instance for the second phase
 	@echo "Report on http://localhost:$(E2E_REPORT_PORT)"
-	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx playwright show-report playwright-report --host 127.0.0.1 --port $(E2E_REPORT_PORT)'
+	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx playwright show-report playwright-report$(if $(filter instance,$(PHASE)),-instance) --host 127.0.0.1 --port $(E2E_REPORT_PORT)'
 
 # Where the report job of CI gathers the blobs of its browser jobs.
 E2E_BLOBS ?= reports/e2e-blobs

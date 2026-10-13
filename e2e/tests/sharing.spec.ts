@@ -3,14 +3,15 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { withDatabase } from "../fixtures/db";
 import { mailsTo, mailText } from "../fixtures/mail";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
-const BOB = "Bob Builder";
-const BOB_EMAIL = "bob@stator.test";
+// The spec's own bob, named after it (fixtures/team.ts).
+let BOB = "";
+let BOB_EMAIL = "";
 // Delivery goes through the outbox and the worker, and mail through Mailpit.
 const DELIVERY_MS = 30_000;
 // How long a notice that should not come is given to come anyway.
@@ -34,6 +35,10 @@ async function pick(page: Page, typed: string, name: string) {
 }
 
 test.describe("sharing a page", { tag: ["@auth"] }, () => {
+  test.beforeEach(({ team }) => {
+    BOB = team.people.bob.name;
+    BOB_EMAIL = team.people.bob.email;
+  });
   const made: string[] = [];
   test.afterEach(async ({ api }) => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
@@ -50,7 +55,7 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     api,
     apiAs,
     pageAs,
-    freshOrg,
+    team,
   }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Share");
     const runbook = await createPage(api, space.homePageId, uniqueName(testInfo, "Runbook"), doc("Rollback steps."));
@@ -58,15 +63,15 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     const bobId = must(await bobApi.GET("/auth/me")).user.id;
     const groupName = uniqueName(testInfo, "Readers");
     await withDatabase(async (db) => {
-      const { rows } = await db.query<{ id: string }>("INSERT INTO groups (org_id, name) VALUES ($1, $2) RETURNING id", [freshOrg.id, groupName]);
-      await db.query("INSERT INTO group_member (org_id, group_id, user_id) VALUES ($1, $2, $3)", [freshOrg.id, rows[0]!.id, bobId]);
+      const { rows } = await db.query<{ id: string }>("INSERT INTO groups (org_id, name) VALUES ($1, $2) RETURNING id", [team.org.id, groupName]);
+      await db.query("INSERT INTO group_member (org_id, group_id, user_id) VALUES ($1, $2, $3)", [team.org.id, rows[0]!.id, bobId]);
     });
 
     await openPage(page, space.key, runbook);
     await shareButton(page).click();
     await expect(dialog(page).getByRole("heading", { name: `Share ${runbook.title}` })).toBeVisible();
     await expect(dialog(page).locator("[data-viewers-everyone]")).toHaveText("Everyone in the organization can view this page.");
-    await pick(page, "bob", BOB);
+    await pick(page, BOB, BOB);
     await expect(async () => {
       await picker(page).fill(groupName.slice(0, -3));
       await expect(dialog(page).getByRole("option", { name: new RegExp(`^${groupName}`) })).toBeVisible(ONE_LOOK);
@@ -115,8 +120,9 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
 
     await openPage(page, space.key, secret);
     await shareButton(page).click();
-    await expect(dialog(page).locator("[data-viewers-total]")).toHaveText("This page is restricted. 1 person can view it:");
-    await picker(page).fill("bob");
+    // The organization's administrators view every page, and every spec's alice is one.
+    await expect(dialog(page).locator("[data-viewers-total]")).toHaveText(/^This page is restricted\. \d+ (person|people) can view it:$/);
+    await picker(page).fill(BOB);
     const option = dialog(page).getByRole("option", { name: new RegExp(`^${BOB}`) });
     await expect(option).toHaveAttribute("data-option-closed", "");
     await expect(option).toContainText("Cannot view this page");
@@ -142,7 +148,7 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     await page.keyboard.press("Enter");
     await expect(dialog(page)).toBeVisible();
     await picker(page).focus();
-    await page.keyboard.type("bob");
+    await page.keyboard.type(BOB);
     await expect(dialog(page).getByRole("option", { name: new RegExp(`^${BOB}`) })).toBeVisible();
     await page.keyboard.press("Enter");
     await expect(dialog(page).locator(`[data-share-recipient="${BOB}"]`)).toBeVisible();
@@ -167,7 +173,7 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
       await shareButton(page).click();
       // Checked with the list open on bob, who may not view the page: the org
       // holds nobody else to offer once he is picked.
-      await picker(page).fill("bob");
+      await picker(page).fill(BOB);
       const option = dialog(page).getByRole("option", { name: new RegExp(`^${BOB}`) });
       await expect(option).toContainText("Cannot view this page");
       await expectAccessible(page);
@@ -184,7 +190,7 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     await expect(shareButton(page)).toBeVisible();
     expect(await scrollsSideways(page)).toBe(false);
     await shareButton(page).click();
-    await pick(page, "bob", BOB);
+    await pick(page, BOB, BOB);
     await expect(dialog(page).locator('[data-action="send-share"]')).toBeInViewport();
     expect(await scrollsSideways(page)).toBe(false);
   });

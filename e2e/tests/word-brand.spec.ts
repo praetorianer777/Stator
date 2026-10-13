@@ -1,6 +1,6 @@
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { unzip } from "../fixtures/zip";
 

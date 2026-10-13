@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import type { Page as PwPage, TestInfo } from "@playwright/test";
 import type { components } from "../../web/src/api/schema";
 import { must, type StatorApi } from "./api";
@@ -8,10 +9,17 @@ export type Space = components["schemas"]["Space"];
 const KEY_MAX_LENGTH = 10;
 const KEY_PREFIX = "E";
 
-/** A space key no other test of the spec file, worker or earlier run has used, since they share an organisation. */
-export function uniqueKey(testInfo: TestInfo): string {
-  const stamp = `${testInfo.workerIndex.toString(36)}${Date.now().toString(36)}${testInfo.repeatEachIndex.toString(36)}`;
-  return (KEY_PREFIX + stamp.toUpperCase()).slice(0, KEY_MAX_LENGTH);
+const KEY_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+/**
+ * A space key no other test, worker or earlier run has used, since every spec
+ * shares the organization. Drawn at random: a worker and a time cut to ten
+ * characters met, and callers cut a character or two off for suffixes.
+ */
+export function uniqueKey(_testInfo: TestInfo): string {
+  let key = KEY_PREFIX;
+  while (key.length < KEY_MAX_LENGTH) key += KEY_ALPHABET[randomInt(KEY_ALPHABET.length)];
+  return key;
 }
 
 export async function createSpace(api: StatorApi, key: string, name: string): Promise<Space> {

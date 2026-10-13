@@ -1,15 +1,12 @@
 import type { Locator, Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { throwawayPerson } from "../fixtures/db";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openUntil, openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
-import { WEB_URL } from "../fixtures/stack";
 
-const BOB = "Bob Builder";
 const MAX_TABS = 40;
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
@@ -68,7 +65,7 @@ test.describe("page views", { tag: ["@auth"] }, () => {
     return { space, guide };
   }
 
-  test("bob reads a page and sees how often it was read; alice, who edits it, also sees that bob read it", async ({ page, api, pageAs }, testInfo) => {
+  test("bob reads a page and sees how often it was read; alice, who edits it, also sees that bob read it", async ({ page, api, pageAs, team }, testInfo) => {
     const { space, guide } = await readOnlySpace(api, testInfo);
     const alice = must(await api.GET("/auth/me")).user;
 
@@ -90,41 +87,34 @@ test.describe("page views", { tag: ["@auth"] }, () => {
     await expect(readers.getByRole("heading", { name: "Who read it" })).toBeVisible();
     await expect(readers.locator("[data-reader]")).toHaveCount(2);
     await expect(readers.locator("[data-reader]").first()).toHaveAttribute("data-reader", alice.name);
-    await expect(reader(page, BOB)).toContainText("on 1 day");
+    await expect(reader(page, team.people.bob.name)).toContainText("on 1 day");
     expect(await scrollsSideways(page)).toBe(false);
   });
 
-  // Whether a name is shown belongs to the person in every organization, so
-  // somebody of the spec's own hides theirs: bob hiding his would hide him
-  // from every other spec running at the same time.
-  test("a reader hides their name in their profile, and alice sees them counted but not named", async ({ page, api, browser, freshOrg }, testInfo) => {
+  // Whether a name is shown belongs to the person, so somebody of the test's
+  // own hides theirs: bob hiding his would hide him from the file's other tests.
+  test("a reader hides their name in their profile, and alice sees them counted but not named", async ({ page, api, pageAs, makePerson }, testInfo) => {
     const { space, guide } = await readOnlySpace(api, testInfo);
-    const person = await throwawayPerson(testInfo, "reader", freshOrg);
-    try {
-      const context = await browser.newContext();
-      await context.addCookies([{ ...person.session, url: WEB_URL, httpOnly: true, sameSite: "Lax" }]);
-      const them = await context.newPage();
-      await openViews(them, space.key, guide, 1);
+    const person = await makePerson("reader");
+    const them = await pageAs(person);
+    await openViews(them, space.key, guide, 1);
 
-      await them.goto("/settings/profile");
-      const toggle = them.getByRole("switch", { name: "Show my name to the editors of pages I read" });
-      await expect(toggle).toHaveAttribute("aria-checked", "true");
-      await toggle.click();
-      await expect(toggle).toHaveAttribute("aria-checked", "false");
-      await expect(them.locator("[data-privacy-saved]")).toHaveText("Your choice is saved.");
-      await expect(them.getByText("You are still counted when you read a page, only without your name.")).toBeVisible();
-      expect(await scrollsSideways(them)).toBe(false);
-      await context.close();
+    await them.goto("/settings/profile");
+    const toggle = them.getByRole("switch", { name: "Show my name to the editors of pages I read" });
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await expect(them.locator("[data-privacy-saved]")).toHaveText("Your choice is saved.");
+    await expect(them.getByText("You are still counted when you read a page, only without your name.")).toBeVisible();
+    expect(await scrollsSideways(them)).toBe(false);
+    await them.context().close();
 
-      await openViews(page, space.key, guide, 2, () =>
-        expect(dialog(page).locator("[data-readers-unnamed]")).toHaveText("1 more person chose not to be named.", ONE_LOOK),
-      );
-      await expect(reader(page, person.name)).toHaveCount(0);
-      await expect(dialog(page).locator("[data-reader]")).toHaveCount(1);
-      await expect(dialog(page).locator("[data-views-in-all]")).toContainText("2 views");
-    } finally {
-      await person.remove();
-    }
+    await openViews(page, space.key, guide, 2, () =>
+      expect(dialog(page).locator("[data-readers-unnamed]")).toHaveText("1 more person chose not to be named.", ONE_LOOK),
+    );
+    await expect(reader(page, person.name)).toHaveCount(0);
+    await expect(dialog(page).locator("[data-reader]")).toHaveCount(1);
+    await expect(dialog(page).locator("[data-views-in-all]")).toContainText("2 views");
   });
 
   test("a page bob may not view tells him nothing of its views", async ({ page, api, apiAs, pageAs }, testInfo) => {

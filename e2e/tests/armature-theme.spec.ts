@@ -1,7 +1,7 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
@@ -27,22 +27,22 @@ async function stub(request: APIRequestContext, path: string, data: unknown) {
 }
 
 test.describe("following the Armature theme", { tag: ["@auth"] }, () => {
-  test.beforeEach(async ({ api, freshOrg, request }) => {
-    await request.fetch(`${armatureURL()}/_stub/${freshOrg.slug}`, {
+  test.beforeEach(async ({ api, team, request }) => {
+    await request.fetch(`${armatureURL()}/_stub/${team.label}`, {
       method: "DELETE",
     });
     await api.DELETE("/armature/connection");
     must(
       await api.PUT("/armature/connection", {
-        body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug },
+        body: { baseUrl: armatureURL(), orgSlug: team.label },
       }),
     );
     must(
       await api.PUT("/armature/account/token", {
-        body: { token: patFor(freshOrg.slug, "alice") },
+        body: { token: patFor(team.label, "alice") },
       }),
     );
-    await stub(request, `${freshOrg.slug}/people/alice/theme`, {
+    await stub(request, `${team.label}/people/alice/theme`, {
       theme: "deep-tech",
     });
   });
@@ -52,7 +52,7 @@ test.describe("following the Armature theme", { tag: ["@auth"] }, () => {
     await api.DELETE("/armature/connection");
   });
 
-  test("alice follows her Armature theme, and a change there reaches the page", async ({ page, freshOrg, request }) => {
+  test("alice follows her Armature theme, and a change there reaches the page", async ({ page, team, request }) => {
     await startInScheme(page, "light");
     await page.goto("/settings/themes");
     await expect(followSwitch(page)).toHaveAttribute("aria-checked", "false");
@@ -69,7 +69,7 @@ test.describe("following the Armature theme", { tag: ["@auth"] }, () => {
     await expect.poll(() => rootVar(page, "--color-accent")).toBe(DEEP_TECH_ACCENT);
 
     // The settings ask Armature now, so the change shows without waiting for the cache.
-    await stub(request, `${freshOrg.slug}/people/alice/theme`, {
+    await stub(request, `${team.label}/people/alice/theme`, {
       theme: "constellation",
     });
     await page.reload();
@@ -82,7 +82,7 @@ test.describe("following the Armature theme", { tag: ["@auth"] }, () => {
   });
 
   for (const scheme of SCHEMES) {
-    test(`the follow setting is accessible in ${scheme}`, async ({ page, api, freshOrg, request }) => {
+    test(`the follow setting is accessible in ${scheme}`, async ({ page, api, team, request }) => {
       // Deep-Tech, which the stub shows alice, so axe judges an example
       // theme's colours as well as the setting.
       await startInScheme(page, scheme);
@@ -94,7 +94,7 @@ test.describe("following the Armature theme", { tag: ["@auth"] }, () => {
       await expectAccessible(page);
 
       // A theme Stator cannot use says why, and the page falls back.
-      await stub(request, `${freshOrg.slug}/people/alice/theme`, {
+      await stub(request, `${team.label}/people/alice/theme`, {
         theme: "constellation",
         broken: true,
       });

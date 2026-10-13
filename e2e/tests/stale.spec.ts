@@ -2,7 +2,7 @@ import type { Locator, Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { ageQuietly, lapseVerification } from "../fixtures/db";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";

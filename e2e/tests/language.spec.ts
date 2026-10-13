@@ -1,7 +1,6 @@
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
-import { throwawayPerson, type ThrowawayPerson } from "../fixtures/db";
+import { createPerson, type Person, removePerson } from "../fixtures/team";
 import { expectAccessible, openShell } from "../fixtures/shell";
-import { WEB_URL } from "../fixtures/stack";
 
 // The choice belongs to the person, so these run as somebody of their own:
 // alice in German would be German in every other spec at the same time.
@@ -13,10 +12,10 @@ const PROFILE_TITLE = { en: "Your profile", de: "Ihr Profil" };
 /** A medium date as German writes it, day first and dotted: 02.11.2026. */
 const GERMAN_DATE = /\b\d{2}\.\d{2}\.\d{4}\b/;
 
-let person: ThrowawayPerson;
+let person: Person;
 
 async function signIn(context: BrowserContext): Promise<void> {
-  await context.addCookies([{ ...person.session, url: WEB_URL, httpOnly: true, sameSite: "Lax" }]);
+  await context.addCookies(person.session.cookies);
 }
 
 async function expectProfileIn(page: Page, language: "en" | "de"): Promise<void> {
@@ -26,11 +25,11 @@ async function expectProfileIn(page: Page, language: "en" | "de"): Promise<void>
 
 test.describe("the interface language", { tag: "@desktop" }, () => {
   test.beforeEach(async ({ context }, testInfo) => {
-    person = await throwawayPerson(testInfo, "language");
+    person = await createPerson(`language-${testInfo.workerIndex}`, "Language", "member");
     await signIn(context);
   });
   test.afterEach(async () => {
-    await person?.remove();
+    if (person) await removePerson(person.id);
   });
 
   test("is chosen in the profile, shown at once, kept by the server and writes dates in German", async ({ page, browser }) => {

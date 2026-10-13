@@ -1,8 +1,8 @@
 import { writeFileSync } from "node:fs";
 import type { Download } from "@playwright/test";
 import { createStatorApi, must } from "../fixtures/api";
-import { expect } from "../fixtures/auth";
-import { orgTest as test, withAnotherOrg } from "../fixtures/org";
+import { authTest as test, expect } from "../fixtures/auth";
+import { withAnotherOrg } from "../fixtures/org";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { WEB_URL } from "../fixtures/stack";
@@ -27,6 +27,9 @@ interface OrgManifest {
   notCarried: Array<{ key: string }>;
 }
 
+// As the realm's alice and bob rather than people of the spec's own: the
+// archive goes into a second organization alice signs in to through the
+// provider, where she must find the draft she wrote here.
 test.describe("organization export and import", { tag: ["@auth"] }, () => {
   test("an administrator exports the organization, a member cannot, and a fresh organization takes the archive whole", async ({
     page,
@@ -48,9 +51,15 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
 
       await openUntil(page, "/settings/transfer", () => expect(page.locator("[data-org-transfer]")).toBeVisible(ONE_LOOK));
       await expect(page.locator('[data-not-carried="passwords"]')).toBeVisible();
+      // The organization keeps the exports of earlier runs; this one is the one not among them.
+      const earlier = new Set(must(await api.GET("/org/exports")).exports.map((each) => each.id));
       await page.locator('[data-action="export-org"]').click();
-      const link = page.locator('[data-org-export-row="done"] [data-action="download-org-export"]').first();
-      await expect(link).toBeVisible(WORKED);
+      const row = page.locator("[data-org-export-row]").first();
+      await expect(async () => {
+        expect(earlier.has((await row.getAttribute("data-export-id")) ?? "")).toBe(false);
+      }).toPass(WORKED);
+      await expect(row).toHaveAttribute("data-org-export-row", "done", WORKED);
+      const link = row.locator('[data-action="download-org-export"]');
       const downloading = page.waitForEvent("download");
       await link.click();
       const file = await downloading;

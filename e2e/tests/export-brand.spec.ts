@@ -1,5 +1,5 @@
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { expectAccessible } from "../fixtures/shell";
 
 // A 1 by 1 PNG, which is all a logo needs to be for the page to draw it.

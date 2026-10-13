@@ -3,7 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { png, upload } from "../fixtures/files";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -116,7 +116,7 @@ test.describe("image galleries", { tag: ["@auth"] }, () => {
     await expect(shown(page).getByRole("list", { name: "Gallery of 2 pictures" })).toBeVisible();
   });
 
-  test("anybody reading the public space sees the gallery's pictures but not one of a page they may not read", async ({ api, browser, freshOrg }, testInfo) => {
+  test("anybody reading the public space sees the gallery's pictures but not one of a page they may not read", async ({ api, browser, team }, testInfo) => {
     test.slow();
     const { key, space, target, login, settings } = await screensPage(api, testInfo, made);
     const alice = must(await api.GET("/auth/me")).user;
@@ -136,9 +136,9 @@ test.describe("image galleries", { tag: ["@auth"] }, () => {
       const reader = await context.newPage();
       const gallery = shown(reader).getByRole("list", { name: "Gallery of 2 pictures" });
       // The reader is not alice, so a replica may not have her page or her switches yet.
-      await openUntil(reader, `/public/${freshOrg.slug}/s/${key}/p/${target.id}/release-screens`, () => expect(gallery).toBeVisible(ONE_LOOK));
+      await openUntil(reader, `/public/${team.org.slug}/s/${key}/p/${target.id}/release-screens`, () => expect(gallery).toBeVisible(ONE_LOOK));
       await expect(gallery).not.toContainText("Not yet");
-      const through = new RegExp(`/api/v1/public/${freshOrg.slug}/attachments/${login}\\?inline=1$`);
+      const through = new RegExp(`/api/v1/public/${team.org.slug}/attachments/${login}\\?inline=1$`);
       await expect(gallery.locator("img").first()).toHaveAttribute("src", through);
       await gallery.getByRole("button", { name: "View picture larger, 2 of 2" }).click();
       await expect(position(reader)).toHaveText("2 of 2");

@@ -2,7 +2,7 @@ import type { APIRequestContext, Locator, Page, TestInfo } from "@playwright/tes
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { focusEditor } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -79,16 +79,16 @@ test.describe("creating Armature issues from a selection", {
 }, () => {
   const made: string[] = [];
 
-  test.beforeEach(async ({ api, freshOrg, request }) => {
-    await stub(request, "DELETE", freshOrg.slug);
-    await stub(request, "PUT", `${freshOrg.slug}/people/admin/read-only-projects`, { projects: ["SEC"] });
+  test.beforeEach(async ({ api, team, request }) => {
+    await stub(request, "DELETE", team.label);
+    await stub(request, "PUT", `${team.label}/people/admin/read-only-projects`, { projects: ["SEC"] });
     await api.DELETE("/armature/connection");
     must(
       await api.PUT("/armature/connection", {
-        body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug },
+        body: { baseUrl: armatureURL(), orgSlug: team.label },
       }),
     );
-    await connect(api, patFor(freshOrg.slug, "admin"));
+    await connect(api, patFor(team.label, "admin"));
   });
 
   test.afterEach(async ({ api }) => {
@@ -153,13 +153,13 @@ test.describe("creating Armature issues from a selection", {
     test(`alice files list items as issues until Armature refuses one, and each chip follows its item, in ${scheme}`, async ({
       page,
       api,
-      freshOrg,
+      team,
       request,
     }, testInfo) => {
       const { box, dialog } = await openInEditor(page, api, testInfo, scheme);
 
       // Armature refuses the second, so the third is not tried.
-      await stub(request, "PUT", `${freshOrg.slug}/refused-summary`, {
+      await stub(request, "PUT", `${team.label}/refused-summary`, {
         summary: "Update the status page",
       });
       await focusEditor(box.locator("li p", { hasText: "Write the migration guide" }));
@@ -185,7 +185,7 @@ test.describe("creating Armature issues from a selection", {
       await expect(chip(page.locator("[data-doc]"), "CP-6")).toBeVisible();
     });
 
-    test(`alice files table rows as issues, and Armature links each back to the page, in ${scheme}`, async ({ page, api, freshOrg, request }, testInfo) => {
+    test(`alice files table rows as issues, and Armature links each back to the page, in ${scheme}`, async ({ page, api, team, request }, testInfo) => {
       const { space, target, box, dialog } = await openInEditor(page, api, testInfo, scheme);
 
       // Each row is named by its first cell with text; the header row is left out.
@@ -207,7 +207,7 @@ test.describe("creating Armature issues from a selection", {
       await expectAccessible(page);
 
       // Armature holds them as filed by alice's Armature self, each linking back to the page.
-      const filed = (await stub(request, "GET", `${freshOrg.slug}/issues/CP-7`)) as { issue: { reporter: { name: string }; description: unknown } };
+      const filed = (await stub(request, "GET", `${team.label}/issues/CP-7`)) as { issue: { reporter: { name: string }; description: unknown } };
       expect(filed.issue.reporter.name).toBe("Admin");
       expect(JSON.stringify(filed.issue.description)).toContain(`${WEB_URL}/s/${space.key}/p/${target.id}`);
       expect(JSON.stringify(filed.issue.description)).toContain(target.title);

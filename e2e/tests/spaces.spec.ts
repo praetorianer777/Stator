@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";

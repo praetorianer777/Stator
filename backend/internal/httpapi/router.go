@@ -151,8 +151,10 @@ type Server struct {
 	Fresh Freshness
 	// TestOrgs serves /test/orgs for the browser suite when it is set, to
 	// callers with TestToken; nil leaves those paths unrouted.
-	TestOrgs  TestOrgs
-	TestToken string
+	TestOrgs TestOrgs
+	// TestInstance serves the rest of /test the same way.
+	TestInstance TestInstance
+	TestToken    string
 
 	CookieName string
 	Secure     bool
@@ -345,6 +347,15 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 				r.Post("/test/orgs", s.handleCreateTestOrg)
 				r.Delete("/test/orgs/{orgSlug}", s.handleDeleteTestOrg)
 				r.Post("/test/orgs/{orgSlug}/example-space/age", s.handleAgeTestExample)
+			})
+		}
+		if s.TestInstance != nil {
+			r.Group(func(r chi.Router) {
+				r.Use(s.requireTestToken)
+				r.Post("/test/people", s.handleCreateTestPerson)
+				r.Delete("/test/people/{userID}", s.handleDeleteTestPerson)
+				r.Post("/test/reset", s.handleResetTestInstance)
+				r.Post("/test/spaces/{spaceKey}/example-space/age", s.handleAgeTestExampleSpace)
 			})
 		}
 

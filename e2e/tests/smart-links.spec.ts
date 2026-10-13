@@ -2,7 +2,7 @@ import type { Locator, Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -39,10 +39,10 @@ async function connect(api: StatorApi, token: string) {
 test.describe("smart links to Armature issues", { tag: ["@auth"] }, () => {
   const made: string[] = [];
 
-  test.beforeEach(async ({ api, freshOrg }) => {
+  test.beforeEach(async ({ api, team }) => {
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug } }));
-    await connect(api, patFor(freshOrg.slug, "alice"));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } }));
+    await connect(api, patFor(team.label, "alice"));
   });
 
   test.afterEach(async ({ api }) => {
@@ -94,7 +94,7 @@ test.describe("smart links to Armature issues", { tag: ["@auth"] }, () => {
   });
 
   for (const scheme of SCHEMES) {
-    test(`an issue only admins see, and a viewer without a token, in ${scheme}`, async ({ page, api, apiAs, pageAs, freshOrg }, testInfo) => {
+    test(`an issue only admins see, and a viewer without a token, in ${scheme}`, async ({ page, api, apiAs, pageAs, team }, testInfo) => {
       await startInScheme(page, scheme);
       const space = await freshSpace(api, testInfo);
       const target = await createPage(
@@ -115,7 +115,7 @@ test.describe("smart links to Armature issues", { tag: ["@auth"] }, () => {
 
       // bob acts as Armature's admin, who sees it.
       const bobApi = await apiAs("bob");
-      await connect(bobApi, patFor(freshOrg.slug, "admin"));
+      await connect(bobApi, patFor(team.label, "admin"));
       const bob = await pageAs("bob");
       await startInScheme(bob, scheme);
       await openPage(bob, space.key, target);

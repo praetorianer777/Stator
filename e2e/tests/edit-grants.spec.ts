@@ -2,7 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -55,7 +55,8 @@ test.describe("letting somebody edit one page", { tag: ["@auth"] }, () => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
   });
 
-  test("an administrator lets bob, who may only view the space, edit one page", async ({ page, api, apiAs, pageAs }, testInfo) => {
+  test("an administrator lets bob, who may only view the space, edit one page", async ({ page, api, apiAs, pageAs, team }, testInfo) => {
+    const bobName = team.people.bob.name;
     test.slow();
     const key = uniqueKey(testInfo);
     made.push(key);
@@ -67,17 +68,17 @@ test.describe("letting somebody edit one page", { tag: ["@auth"] }, () => {
     await page.goto(`/s/${key}/p/${guide.id}/guide`);
     let dialog = await openRestrictions(page);
     const edit = dialog.locator('[data-restriction-list="edit"]');
-    await pick(edit, "bob", "Bob Builder");
-    await expect(edit.locator('[data-subject="Bob Builder"]')).toHaveAttribute("data-subject-warning", "Cannot edit");
+    await pick(edit, bobName, bobName);
+    await expect(edit.locator(`[data-subject="${bobName}"]`)).toHaveAttribute("data-subject-warning", "Cannot edit");
     await expect(edit.locator("[data-cannot-edit-note]")).toContainText("Add them to Also allowed to edit below, or give them Add pages");
     await dialog.locator('[data-action="save-restrictions"]').click();
     await expect(dialog).toHaveCount(0);
 
     dialog = await openRestrictions(page);
-    await expect(dialog.locator('[data-restriction-list="edit"] [data-subject="Bob Builder"]')).toHaveAttribute("data-subject-warning", "Cannot edit");
+    await expect(dialog.locator(`[data-restriction-list="edit"] [data-subject="${bobName}"]`)).toHaveAttribute("data-subject-warning", "Cannot edit");
     const grant = dialog.locator('[data-restriction-list="editGrant"]');
     await expect(grant).toContainText("Nobody else.");
-    await pick(grant, "bob", "Bob Builder");
+    await pick(grant, bobName, bobName);
     await expect(dialog.locator("[data-subject-warning]")).toHaveCount(0);
     await dialog.locator('[data-action="save-restrictions"]').click();
     await expect(dialog).toHaveCount(0);

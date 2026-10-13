@@ -1,14 +1,15 @@
 import type { Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { expectAccessible } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { WEB_URL } from "../fixtures/stack";
 
 const ANONYMOUS = { cookies: [], origins: [] };
-const BOB = "Bob Builder";
+// The spec's own bob, named after it (fixtures/team.ts).
+let BOB = "";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const dialog = (page: Page) => page.locator("[data-share-dialog]");
@@ -16,6 +17,9 @@ const links = (page: Page) => dialog(page).locator("[data-public-links]");
 const openTitled = (page: Page, path: string, title: string) => openUntil(page, path, () => expect(heading(page)).toHaveText(title, ONE_LOOK));
 
 test.describe("public links", { tag: ["@auth"] }, () => {
+  test.beforeEach(({ team }) => {
+    BOB = team.people.bob.name;
+  });
   test("alice opens one page to anybody through a link, who reads it alone with nobody named, until she revokes it", async ({
     page,
     api,
@@ -25,7 +29,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
     const key = uniqueKey(testInfo);
     const word = `linkword${Date.now().toString(36)}`;
     const space = await createSpace(api, key, "Linked handbook");
-    const bob = must(await api.GET("/people", { params: { query: { q: "Bob" } } })).people.find((person) => person.name === BOB);
+    const bob = must(await api.GET("/people", { params: { query: { q: BOB } } })).people.find((person) => person.name === BOB);
     expect(bob, "bob is a member to mention").toBeTruthy();
     const guide = await createPage(api, space.homePageId, `Guide ${word}`, {
       type: "doc",

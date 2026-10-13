@@ -2,7 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -10,7 +10,10 @@ import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, typ
 
 // Delivery goes through the outbox and the worker.
 const DELIVERY_MS = 30_000;
-const BOB = "Bob Builder";
+// The spec's own bob, named after it (fixtures/team.ts). A mention's query
+// ends at a space, so it asks for the start of his address, his alone.
+let BOB = "";
+let BOB_ADDRESS = "";
 // A due day is read in UTC, as the server reads it.
 const TODAY = new Date().toISOString().slice(0, 10);
 const LONG_AGO = "2020-01-06";
@@ -60,6 +63,10 @@ async function bobsId(apiAs: (user: "bob") => Promise<StatorApi>) {
 }
 
 test.describe("tasks", { tag: ["@auth"] }, () => {
+  test.beforeEach(({ team }) => {
+    BOB = team.people.bob.name;
+    BOB_ADDRESS = team.people.bob.email.split("@")[0]!;
+  });
   const made: string[] = [];
   test.afterEach(async ({ api }) => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
@@ -88,7 +95,7 @@ test.describe("tasks", { tag: ["@auth"] }, () => {
       await page.keyboard.press("Enter");
       await insert(page, "todo");
       await page.keyboard.type("Send the notes ");
-      await page.keyboard.type("@bob");
+      await page.keyboard.type(`@${BOB_ADDRESS}`);
       const people = page.getByRole("listbox", { name: "People to mention" });
       await expect(people.getByRole("option", { name: new RegExp(BOB) })).toBeVisible();
       await page.keyboard.press("Enter");

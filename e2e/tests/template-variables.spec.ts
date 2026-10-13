@@ -1,7 +1,7 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -101,7 +101,7 @@ test.describe("templates with variables", { tag: ["@auth", "@desktop"] }, () => 
     await option(bob, "Kickoff").click();
     await expect(dialog(bob).locator("[data-template-preview] [data-template-variable=customer]")).toBeVisible();
     await valuesForm(bob).getByLabel("Customer (required)", { exact: true }).fill("Acme");
-    await valuesForm(bob).getByRole("combobox", { name: "Owner" }).fill(alice.name.slice(0, 3));
+    await valuesForm(bob).getByRole("combobox", { name: "Owner" }).fill(alice.name.split(" ")[1]!);
     await valuesForm(bob)
       .getByRole("option", { name: new RegExp(alice.name) })
       .click();

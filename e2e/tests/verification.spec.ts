@@ -2,7 +2,7 @@ import type { Locator, Page, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { lapseVerification } from "../fixtures/db";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -63,7 +63,7 @@ test.describe("owners and verified pages", { tag: ["@auth"] }, () => {
     await page.getByRole("menuitem", { name: "Owner and verification" }).click();
     const dialog = dialogOf(page, target);
     await expect(dialog.getByText("Nobody owns this page yet.")).toBeVisible();
-    await dialog.getByRole("combobox", { name: "Choose the owner" }).fill(bobMe.name.slice(0, 3));
+    await dialog.getByRole("combobox", { name: "Choose the owner" }).fill(bobMe.name.split(" ")[1]!);
     await dialog.getByRole("option", { name: new RegExp(bobMe.name) }).click();
     await expect(dialog.locator("[data-owner]")).toHaveText(bobMe.name);
     await dialog.getByRole("combobox", { name: "Valid for" }).selectOption("30");

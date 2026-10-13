@@ -2,7 +2,7 @@ import type { APIRequestContext, TestInfo } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
-import { orgTest as test } from "../fixtures/org";
+import { teamTest as test } from "../fixtures/team";
 import { openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
@@ -42,11 +42,11 @@ async function linksIn(request: APIRequestContext, tenant: string, url: string):
 test.describe("pages linked in Armature", { tag: ["@auth"] }, () => {
   const made: string[] = [];
 
-  test.beforeEach(async ({ api, freshOrg, request }) => {
-    await request.delete(`${armatureURL()}/_stub/${freshOrg.slug}`);
+  test.beforeEach(async ({ api, team, request }) => {
+    await request.delete(`${armatureURL()}/_stub/${team.label}`);
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: freshOrg.slug } }));
-    must(await api.PUT("/armature/account/token", { body: { token: patFor(freshOrg.slug, "admin") } }));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } }));
+    must(await api.PUT("/armature/account/token", { body: { token: patFor(team.label, "admin") } }));
   });
 
   test.afterEach(async ({ api }) => {
@@ -61,7 +61,7 @@ test.describe("pages linked in Armature", { tag: ["@auth"] }, () => {
   }
 
   for (const scheme of SCHEMES) {
-    test(`a published chip links the page on its issue, and taking it out unlinks it, in ${scheme}`, async ({ page, api, freshOrg, request }, testInfo) => {
+    test(`a published chip links the page on its issue, and taking it out unlinks it, in ${scheme}`, async ({ page, api, team, request }, testInfo) => {
       await startInScheme(page, scheme);
       const space = await freshSpace(api, testInfo);
       const target = await createPage(api, space.homePageId, uniqueName(testInfo, "Key rotation"), withChip("CP-4"));
@@ -76,7 +76,7 @@ test.describe("pages linked in Armature", { tag: ["@auth"] }, () => {
       await expect(row).toContainText("Linked");
       await expectAccessible(page);
 
-      const linked = await linksIn(request, freshOrg.slug, url);
+      const linked = await linksIn(request, team.label, url);
       expect(linked.map((each) => [each.issueKey, each.title, each.source, each.createdByName])).toEqual([["CP-4", target.title, "Stator", "Admin"]]);
 
       await page.locator('[data-action="edit-page"]').click();
@@ -88,7 +88,7 @@ test.describe("pages linked in Armature", { tag: ["@auth"] }, () => {
       await publishFromEditor(page);
 
       await expect(section).toBeHidden();
-      await expect.poll(async () => (await linksIn(request, freshOrg.slug, url)).length).toBe(0);
+      await expect.poll(async () => (await linksIn(request, team.label, url)).length).toBe(0);
       await expectAccessible(page);
     });
   }
