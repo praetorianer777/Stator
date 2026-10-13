@@ -7,16 +7,12 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
-	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
@@ -182,9 +178,6 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if got, _ := other.download(t, "/api/v1/themes/"+themeID+"/assets/"+assetID); got.StatusCode != http.StatusOK {
 			t.Errorf("a member cannot read a shared theme's file: %d", got.StatusCode)
 		}
-		if got, _ := stranger.download(t, "/api/v1/themes/"+themeID+"/assets/"+assetID); got.StatusCode != http.StatusNotFound {
-			t.Errorf("another organization read the file: %d", got.StatusCode)
-		}
 
 		if got := owner.upload(t, "/api/v1/themes/"+themeID+"/assets", "evil.svg", []byte(`<svg onload="alert(1)"><script>1</script></svg>`)); got.Status != http.StatusBadRequest {
 			t.Errorf("a scripted svg: %d %s", got.Status, got.Raw)
@@ -274,19 +267,29 @@ func TestThemesOverTheAPI(t *testing.T) {
 		want(t, owner.patch(t, "/api/v1/themes/"+themeID, map[string]any{"shared": true}), http.StatusOK, "share again")
 	})
 
-	t.Run("another organization sees nothing", func(t *testing.T) {
-		if got := stranger.get(t, "/api/v1/themes/"+themeID); got.Status != http.StatusNotFound {
-			t.Errorf("another organization found the theme: %d", got.Status)
+	t.Run("a member sees nothing of a private theme", func(t *testing.T) {
+		want(t, owner.patch(t, "/api/v1/themes/"+themeID, map[string]any{"shared": false}), http.StatusOK, "take it private")
+		if got := other.get(t, "/api/v1/themes/"+themeID); got.Status != http.StatusNotFound {
+			t.Errorf("a member found another's private theme: %d", got.Status)
 		}
-		if got := stranger.put(t, "/api/v1/themes/active", map[string]any{"themeId": themeID}); got.Status != http.StatusNotFound {
-			t.Errorf("another organization chose the theme: %d", got.Status)
+		if got, _ := other.download(t, "/api/v1/themes/"+themeID+"/assets/"+assetID); got.StatusCode != http.StatusNotFound {
+			t.Errorf("a member read a private theme's file: %d", got.StatusCode)
 		}
-		if got := stranger.patch(t, "/api/v1/themes/"+themeID, map[string]any{"name": "Taken"}); got.Status != http.StatusNotFound {
-			t.Errorf("another organization changed the theme: %d", got.Status)
+		if got := other.put(t, "/api/v1/themes/active", map[string]any{"themeId": themeID}); got.Status != http.StatusNotFound {
+			t.Errorf("a member chose another's private theme: %d", got.Status)
 		}
-		if seen := list(t, want(t, stranger.get(t, "/api/v1/themes"), http.StatusOK, "list"), "themes"); len(seen) != 0 {
-			t.Errorf("another organization lists %d themes", len(seen))
+		if got := other.patch(t, "/api/v1/themes/"+themeID, map[string]any{"name": "Taken"}); got.Status != http.StatusNotFound {
+			t.Errorf("a member changed another's private theme: %d", got.Status)
 		}
+		if got := admin.patch(t, "/api/v1/themes/"+themeID, map[string]any{"name": "Taken"}); got.Status != http.StatusNotFound {
+			t.Errorf("an administrator changed another's private theme: %d", got.Status)
+		}
+		for _, seen := range list(t, want(t, other.get(t, "/api/v1/themes"), http.StatusOK, "list"), "themes") {
+			if seen.(map[string]any)["id"] == themeID {
+				t.Error("a member lists another's private theme")
+			}
+		}
+		want(t, owner.patch(t, "/api/v1/themes/"+themeID, map[string]any{"shared": true}), http.StatusOK, "share again")
 	})
 
 	t.Run("deleting returns everybody to the built-in theme and empties the bucket", func(t *testing.T) {
@@ -304,71 +307,86 @@ func TestThemesOverTheAPI(t *testing.T) {
 }
 
 // The service refusing is not proof: straight through SQL as stator_app, a
-// tenant cannot read, write or reassign another tenant's themes.
+// member cannot see another's private theme, change anybody's theme or files,
+// or choose for somebody else; an administrator tidies only what is shared.
 func TestThemeRowsAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "theme-wall-a")
-	// Theme rows have no access policy within an organization, so the tenant
-	// wall is all this proves until they get one.
-	b := h.makeOtherOrganization(t, "theme-wall-b")
-	owner := api.as(t, a.user, a.org, h.slugOf(t, a.org))
+	b := h.makeOutsider(t, "theme-wall-b")
+	admin := h.addPerson(t, a.org, "admin")
+	slug := h.slugOf(t, a.org)
+	owner := api.as(t, a.user, a.org, slug)
+	outsider := api.as(t, b.user, b.org, slug)
 
-	made := want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "Walled", "shared": true}), http.StatusCreated, "make a theme")
-	themeID := obj(t, made, "theme")["id"].(string)
 	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>`)
-	want(t, owner.upload(t, "/api/v1/themes/"+themeID+"/assets", "r.svg", svg), http.StatusCreated, "upload")
-	want(t, owner.put(t, "/api/v1/themes/active", map[string]any{"themeId": themeID}), http.StatusOK, "choose")
-
-	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, os.Getenv(envPrimary))
-	if err != nil {
-		t.Fatalf("connect as the app role: %v", err)
+	private := obj(t, want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "Walled"}), http.StatusCreated, "make a private theme"), "theme")["id"].(string)
+	shared := obj(t, want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "Open", "shared": true}), http.StatusCreated, "make a shared theme"), "theme")["id"].(string)
+	theirs := obj(t, want(t, outsider.post(t, "/api/v1/themes", map[string]any{"name": "Theirs"}), http.StatusCreated, "the outsider's own theme"), "theme")["id"].(string)
+	for _, id := range []string{private, shared} {
+		want(t, owner.upload(t, "/api/v1/themes/"+id+"/assets", "r.svg", svg), http.StatusCreated, "upload")
 	}
-	t.Cleanup(func() { _ = conn.Close(context.Background()) })
+	want(t, owner.put(t, "/api/v1/themes/active", map[string]any{"themeId": private}), http.StatusOK, "choose")
+
+	conn := appConn(t)
 	count := func(sql string, args ...any) int {
 		t.Helper()
 		var n int
-		if err := conn.QueryRow(ctx, sql, args...).Scan(&n); err != nil {
+		if err := conn.QueryRow(context.Background(), sql, args...).Scan(&n); err != nil {
 			t.Fatalf("%s: %v", sql, err)
 		}
 		return n
 	}
-	tables := []string{"theme", "theme_asset", "user_theme"}
-
-	for _, table := range tables {
+	for _, table := range []string{"theme", "theme_asset", "user_theme"} {
 		if got := count(`SELECT count(*) FROM ` + table); got != 0 {
 			t.Errorf("an unscoped connection sees %d rows in %s", got, table)
 		}
 	}
-	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, b.org.String()); err != nil {
-		t.Fatal(err)
+
+	actAs(t, conn, b.org, b.user)
+	if got := count(`SELECT count(*) FROM theme WHERE id = $1`, private); got != 0 {
+		t.Error("a member sees another's private theme")
 	}
-	for _, table := range tables {
-		if got := count(`SELECT count(*) FROM `+table+` WHERE org_id = $1`, a.org); got != 0 {
-			t.Errorf("organization B sees %d of A's rows in %s", got, table)
-		}
+	if got := count(`SELECT count(*) FROM theme_asset WHERE theme_id = $1`, private); got != 0 {
+		t.Error("a member sees the files of another's private theme")
 	}
-	tag, err := conn.Exec(ctx, `UPDATE theme SET name = 'Taken', org_id = $2 WHERE id = $1`, themeID, b.org)
-	if err != nil || tag.RowsAffected() != 0 {
-		t.Errorf("organization B reached A's theme: %v rows, %v", tag.RowsAffected(), err)
+	if got := count(`SELECT count(*) FROM theme WHERE id = $1`, shared); got != 1 {
+		t.Error("a member does not see a shared theme")
 	}
-	tag, err = conn.Exec(ctx, `DELETE FROM theme_asset WHERE theme_id = $1`, themeID)
-	if err != nil || tag.RowsAffected() != 0 {
-		t.Errorf("organization B deleted A's files: %v rows, %v", tag.RowsAffected(), err)
+	if got := count(`SELECT count(*) FROM theme_asset WHERE theme_id = $1`, shared); got != 1 {
+		t.Error("a member does not see a shared theme's file")
 	}
-	if _, err := conn.Exec(ctx, `INSERT INTO theme (org_id, owner_id, name) VALUES ($1, $2, 'Planted')`, a.org, b.user); !isPolicyViolation(err) {
-		t.Errorf("organization B planted a theme in A: %v", err)
+	for _, id := range []string{private, shared} {
+		untouched(t, conn, "renaming another's theme", `UPDATE theme SET name = 'Taken' WHERE id = $1`, id)
+		untouched(t, conn, "taking another's theme", `UPDATE theme SET owner_id = $2 WHERE id = $1`, id, b.user)
+		untouched(t, conn, "deleting another's theme", `DELETE FROM theme WHERE id = $1`, id)
+		untouched(t, conn, "renaming another's file", `UPDATE theme_asset SET name = 'taken.svg' WHERE theme_id = $1`, id)
+		untouched(t, conn, "deleting another's file", `DELETE FROM theme_asset WHERE theme_id = $1`, id)
+		refused(t, conn, "a file on another's theme", `INSERT INTO theme_asset (org_id, theme_id, name, content_type, size) VALUES ($1, $2, 'x.svg', 'image/svg+xml', 1)`, a.org, id)
 	}
-	if _, err := conn.Exec(ctx, `INSERT INTO user_theme (org_id, user_id, theme_id) VALUES ($1, $2, $3)`, b.org, b.user, themeID); err == nil {
-		t.Error("organization B chose A's theme through SQL")
+	refused(t, conn, "a theme in another's name", `INSERT INTO theme (org_id, owner_id, name) VALUES ($1, $2, 'Planted')`, a.org, a.user)
+	refused(t, conn, "handing one's theme to another", `UPDATE theme SET owner_id = $2 WHERE id = $1`, theirs, a.user)
+	untouched(t, conn, "changing another's choice", `UPDATE user_theme SET theme_id = $2 WHERE user_id = $1`, a.user, shared)
+	untouched(t, conn, "dropping another's choice", `DELETE FROM user_theme WHERE user_id = $1`, a.user)
+	refused(t, conn, "choosing for the administrator", `INSERT INTO user_theme (org_id, user_id, theme_id) VALUES ($1, $2, $3)`, a.org, admin, shared)
+	refused(t, conn, "choosing another's private theme", `INSERT INTO user_theme (org_id, user_id, theme_id) VALUES ($1, $2, $3)`, a.org, b.user, private)
+	if _, err := conn.Exec(context.Background(), `INSERT INTO user_theme (org_id, user_id, theme_id) VALUES ($1, $2, $3)`, a.org, b.user, shared); err != nil {
+		t.Errorf("a member cannot choose a shared theme: %v", err)
 	}
 
-	var name string
-	err = h.cluster.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT name FROM theme WHERE id = $1`, themeID).Scan(&name)
-	})
-	if err != nil || name != "Walled" {
-		t.Errorf("A's theme is %q (%v), want it untouched", name, err)
+	actAs(t, conn, a.org, admin)
+	untouched(t, conn, "an administrator renaming a private theme", `UPDATE theme SET name = 'Taken' WHERE id = $1`, private)
+	untouched(t, conn, "an administrator deleting a private theme's file", `DELETE FROM theme_asset WHERE theme_id = $1`, private)
+	if tag, err := conn.Exec(context.Background(), `UPDATE theme SET name = 'Tidied' WHERE id = $1`, shared); err != nil || tag.RowsAffected() != 1 {
+		t.Errorf("an administrator cannot tidy a shared theme: %d rows, %v", tag.RowsAffected(), err)
+	}
+
+	var name, chosen string
+	var files int
+	err := h.super.QueryRow(context.Background(), `
+		SELECT t.name, (SELECT count(*) FROM theme_asset f WHERE f.theme_id = t.id), u.theme_id::text
+		FROM theme t JOIN user_theme u ON u.user_id = t.owner_id WHERE t.id = $1`, private).Scan(&name, &files, &chosen)
+	if err != nil || name != "Walled" || files != 1 || chosen != private {
+		t.Errorf("A's theme is %q with %d files, chosen %s (%v), want it untouched", name, files, chosen, err)
 	}
 }

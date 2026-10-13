@@ -561,16 +561,21 @@ func TestAttachmentRowsAreWalledByTheDatabase(t *testing.T) {
 	}
 	untouched(t, conn, "deleting A's file", `DELETE FROM attachment WHERE id = $1`, fileA)
 	refused(t, conn, "a file on A's page", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1)`, a.org, homeA)
-	if _, err := conn.Exec(context.Background(), `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1)`, b.org, homeB); err != nil {
+	var keyB string
+	if err := conn.QueryRow(context.Background(), `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1) RETURNING object_key`, b.org, homeB).Scan(&keyB); err != nil {
 		t.Errorf("B cannot keep a file on their own page: %v", err)
 	}
 
-	// Tombstones have no access policy within an organization, so only the
-	// tenant wall keeps the reaper off A's object until they get one.
-	c := h.makeOtherOrganization(t, "files-wall-c")
-	actAs(t, conn, c.org, c.user)
-	refused(t, conn, "a tombstone naming A's object", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyA, c.org)
-	refused(t, conn, "a tombstone in A", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyA, a.org)
+	refused(t, conn, "a tombstone naming A's file", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyA, a.org)
+	refused(t, conn, "a tombstone naming A's preview", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, "org/"+a.org.String()+"/preview/"+fileA+".pdf", a.org)
+	refused(t, conn, "a tombstone naming somebody's theme file", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, themeObject(a.org, uuid.NewString(), uuid.NewString()), a.org)
+	refused(t, conn, "a tombstone naming B's own file", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyB, b.org)
+	if tag, err := conn.Exec(context.Background(), `DELETE FROM attachment WHERE object_key = $1`, keyB); err != nil || tag.RowsAffected() != 1 {
+		t.Errorf("B cannot delete their own file: %d rows, %v", tag.RowsAffected(), err)
+	}
+	if h.tombstones(t, keyB) != 1 {
+		t.Error("deleting B's own file left no tombstone")
+	}
 
 	actAs(t, conn, a.org, a.user)
 	refused(t, conn, "moving a file off its bytes", `UPDATE attachment SET page_id = $2 WHERE id = $1`, fileA, homeA)

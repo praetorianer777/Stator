@@ -578,6 +578,13 @@ func (s *Service) create(ctx context.Context, owner uuid.UUID, in Input, mirror 
 // an administrator, who may tidy what anybody shared.
 func lockOwned(ctx context.Context, tx db.DBTX, id, actor uuid.UUID, administers bool) (*Theme, error) {
 	current, err := readOne(ctx, tx, actor, id, ` WHERE t.id = $2 FOR UPDATE OF t`)
+	if errors.Is(err, ErrNotFound) {
+		// The database locks a theme only for whoever may change it, so one
+		// the actor sees without that is somebody else's shared theme.
+		if _, seen := readOne(ctx, tx, actor, id, ` WHERE t.id = $2`); seen == nil {
+			return nil, ErrNotYours
+		}
+	}
 	if err != nil {
 		return nil, err
 	}

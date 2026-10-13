@@ -5,16 +5,13 @@ package test
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // makeToken asks for a token over the API and returns its id and secret.
@@ -208,69 +205,65 @@ func TestAdministratorsSeeAndRevokeEveryToken(t *testing.T) {
 }
 
 // The service refusing is not proof: straight through SQL as stator_app, a
-// tenant can neither see, change nor plant another tenant's tokens.
+// member can neither see, change, revoke nor plant another member's tokens,
+// and an administrator sees and revokes them as the organization's routes do.
 func TestTokenRowsAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "token-wall-a")
-	// Token rows have no policy keeping them their owner's within an
-	// organization, so the tenant wall is all this proves until they get one.
-	b := h.makeOtherOrganization(t, "token-wall-b")
-	idA, _ := makeToken(t, api.as(t, a.user, a.org, h.slugOf(t, a.org)), map[string]any{"name": "a's"})
-	makeToken(t, api.as(t, b.user, b.org, h.slugOf(t, b.org)), map[string]any{"name": "b's"})
+	b := h.makeOutsider(t, "token-wall-b")
+	c := h.makeOutsider(t, "token-wall-c")
+	slug := h.slugOf(t, a.org)
+	holder := api.as(t, b.user, b.org, slug)
+	newTree(t, holder, "TOKWALL", "Token wall")
+	idB, _ := makeToken(t, holder, map[string]any{"name": "b's", "spaces": []string{"TOKWALL"}})
+	idC, _ := makeToken(t, api.as(t, c.user, c.org, slug), map[string]any{"name": "c's"})
 
-	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, os.Getenv(envPrimary))
-	if err != nil {
-		t.Fatalf("connect as the app role: %v", err)
-	}
-	t.Cleanup(func() { _ = conn.Close(context.Background()) })
+	conn := appConn(t)
 	count := func(sql string, args ...any) int {
 		t.Helper()
 		var n int
-		if err := conn.QueryRow(ctx, sql, args...).Scan(&n); err != nil {
+		if err := conn.QueryRow(context.Background(), sql, args...).Scan(&n); err != nil {
 			t.Fatalf("%s: %v", sql, err)
 		}
 		return n
 	}
-
 	if got := count(`SELECT count(*) FROM api_token`); got != 0 {
 		t.Errorf("an unscoped connection sees %d tokens", got)
 	}
-	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, b.org.String()); err != nil {
-		t.Fatal(err)
-	}
+
+	actAs(t, conn, c.org, c.user)
 	if got := count(`SELECT count(*) FROM api_token`); got != 1 {
-		t.Errorf("organization B sees %d tokens, want its own one", got)
+		t.Errorf("a member sees %d tokens, want their own one", got)
 	}
-	if got := count(`SELECT count(*) FROM api_token WHERE id = $1 OR org_id = $2`, idA, a.org); got != 0 {
-		t.Errorf("organization B sees %d of A's tokens", got)
+	if got := count(`SELECT count(*) FROM api_token WHERE id = $1`, idB); got != 0 {
+		t.Error("a member sees another's token")
 	}
-	tag, err := conn.Exec(ctx, `UPDATE api_token SET expires_at = NULL, scopes = '{}', org_id = $2 WHERE id = $1`, idA, b.org)
-	if err != nil || tag.RowsAffected() != 0 {
-		t.Errorf("organization B changed A's token: %v rows, %v", tag.RowsAffected(), err)
+	if got := count(`SELECT count(*) FROM api_token_space WHERE token_id = $1`, idB); got != 0 {
+		t.Error("a member sees the spaces of another's token")
 	}
-	tag, err = conn.Exec(ctx, `DELETE FROM api_token WHERE id = $1`, idA)
-	if err != nil || tag.RowsAffected() != 0 {
-		t.Errorf("organization B revoked A's token: %v rows, %v", tag.RowsAffected(), err)
-	}
+	untouched(t, conn, "widening another's token", `UPDATE api_token SET expires_at = NULL, scopes = '{}' WHERE id = $1`, idB)
+	untouched(t, conn, "revoking another's token", `DELETE FROM api_token WHERE id = $1`, idB)
+	untouched(t, conn, "dropping another token's spaces", `DELETE FROM api_token_space WHERE token_id = $1`, idB)
+	refused(t, conn, "handing one's token to another", `UPDATE api_token SET user_id = $2 WHERE id = $1`, idC, b.user)
 	_, digest, _ := auth.GenerateAPIToken()
-	if _, err := conn.Exec(ctx, `INSERT INTO api_token (org_id, user_id, name, token_hash) VALUES ($1, $2, 'planted', $3)`, a.org, a.user, digest); !isPolicyViolation(err) {
-		t.Errorf("organization B planted a token in A: %v", err)
+	if _, err := conn.Exec(context.Background(), `INSERT INTO api_token (org_id, user_id, name, token_hash) VALUES ($1, $2, 'planted', $3)`, a.org, b.user, digest); !isPolicyViolation(err) {
+		t.Errorf("a member planted a token for another: %v", err)
 	}
-	// Within its own organization, B still cannot make a token for somebody
-	// who is not a member there, nor one that carries a scope nobody enforces.
-	if _, err := conn.Exec(ctx, `INSERT INTO api_token (org_id, user_id, name, token_hash) VALUES ($1, $2, 'stranger', $3)`, b.org, a.user, digest); err == nil {
-		t.Error("B made a token for a person who is not its member")
-	}
-	if _, err := conn.Exec(ctx, `INSERT INTO api_token (org_id, user_id, name, token_hash, scopes) VALUES ($1, $2, 'root', $3, '{admin}')`, b.org, b.user, digest); err == nil {
-		t.Error("B made a token with a scope nobody enforces")
-	}
-	if _, err := conn.Exec(ctx, `INSERT INTO api_token (org_id, user_id, name, token_hash) VALUES ($1, $2, 'clear', 'stator_pat_in_the_clear')`, b.org, b.user); err == nil {
-		t.Error("B stored something other than a SHA-256")
+	// Even of their own, a member cannot make one that carries a scope
+	// nobody enforces, nor keep the secret in the clear.
+	refused(t, conn, "a scope nobody enforces", `INSERT INTO api_token (org_id, user_id, name, token_hash, scopes) VALUES ($1, $2, 'root', $3, '{admin}')`, a.org, c.user, digest)
+	refused(t, conn, "a secret in the clear", `INSERT INTO api_token (org_id, user_id, name, token_hash) VALUES ($1, $2, 'clear', 'stator_pat_in_the_clear')`, a.org, c.user)
+
+	if got := h.count(t, b.ctx, `SELECT count(*) FROM api_token t JOIN api_token_space s ON s.token_id = t.id WHERE t.id = $1 AND t.expires_at IS NULL`, idB); got != 1 {
+		t.Error("B's token is not as B left it")
 	}
 
-	if got := h.count(t, a.ctx, `SELECT count(*) FROM api_token WHERE id = $1 AND expires_at IS NULL AND org_id = $2`, idA, a.org); got != 1 {
-		t.Errorf("A's token is not as A left it")
+	actAs(t, conn, a.org, a.user)
+	if got := count(`SELECT count(*) FROM api_token_space WHERE token_id = $1`, idB); got != 1 {
+		t.Error("an administrator does not see the spaces of a member's token")
+	}
+	if tag, err := conn.Exec(context.Background(), `DELETE FROM api_token WHERE id = $1`, idB); err != nil || tag.RowsAffected() != 1 {
+		t.Errorf("an administrator cannot revoke a member's token: %d rows, %v", tag.RowsAffected(), err)
 	}
 }
