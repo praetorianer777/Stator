@@ -110,29 +110,6 @@ export async function saveSession(browser: Browser, user: User): Promise<void> {
   }
 }
 
-/**
- * Signs the user in to another organization through its provider and returns the
- * session, in memory. Keycloak still knows them from the setup's sign-in, so it
- * usually sends the browser straight back; its form is filled when it asks.
- */
-export async function signInToOrg(browser: Browser, user: User, _org: string): Promise<Exclude<Session, string>> {
-  const context = await browser.newContext({ baseURL: WEB_URL, storageState: stateFile(user) });
-  try {
-    const page = await context.newPage();
-    await page.goto("/api/v1/auth/oidc/start");
-    if (page.url().startsWith(KEYCLOAK_URL)) await submitKeycloak(page, USERS[user].username, USERS[user].password);
-    await expect
-      .poll(async () => {
-        const me = await page.request.get(ME_PATH);
-        return me.ok() ? Boolean(((await me.json()) as { organization?: object | null }).organization) : me.status();
-      })
-      .toBe(true);
-    return await context.storageState();
-  } finally {
-    await context.close();
-  }
-}
-
 /** Somebody besides alice and bob, such as a person a test made for itself. */
 export interface SignedIn {
   session: Session;

@@ -243,6 +243,14 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 	if _, err := accounts.EnsureAdmin(ctx, email, "Administrator", "second password 2"); err != nil {
 		t.Fatalf("a changed password: %v", err)
 	}
+
+	res, err := seed.Ensure(ctx, h.cluster, "Another")
+	if err != nil || res.OrgCreated {
+		t.Fatalf("bootstrapping under another name = %+v, %v; want the organization there left alone", res, err)
+	}
+	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org`).Scan(&org); err != nil || org != 1 {
+		t.Fatalf("organizations after bootstrapping again: %d (%v), want 1", org, err)
+	}
 }
 
 // Where the role that ran the migrations is an ordinary owner, as under

@@ -129,7 +129,7 @@ func TestTheOutlineWalkAnswersAsRowLevelSecurity(t *testing.T) {
 		}
 		actAs(t, conn, b.org, b.user)
 		if n := count(`SELECT count(*) FROM page_outline_rows($1)`, docs.homeID); n != 0 {
-			t.Errorf("another organization walks %d of WALK's pages", n)
+			t.Errorf("a member the space is closed to walks %d of WALK's pages", n)
 		}
 	})
 }

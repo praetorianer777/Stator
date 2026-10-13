@@ -3,6 +3,53 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-13: One organization per instance, and the upgrade refuses several (#380)
+
+A Stator instance serves one organization; whoever needs a second runs a
+second instance. Stator is run by one team on one installation, and every
+table, policy, address and test carried an organization it did not need for
+that: a switcher, a slug in links and sign-in, a tenant set on every
+transaction. Separate instances keep organizations apart by separate
+databases and buckets, a stronger wall than row level security in one
+database. This replaces "Multi-tenant by organisation, enforced by the
+database" (2026-09-29); the plan in `docs/plans/380-one-organization.md` takes
+the rest of it out in steps, each with every test layer green.
+
+- **The upgrade refuses an instance holding several.** Migration
+  `00740_one_organization.sql` fails when `org` has more than one row, with a
+  message that names the organizations and says what to do: export every
+  organization (Settings, Export and import, #383), delete all but one, then
+  upgrade again. Goose runs it in a transaction, so a refused upgrade leaves
+  the database as it was and `migrate` exits non-zero before the api starts
+  on code that assumes one. The operator reads the message in the migrate
+  log, so it holds up without the docs; `docs/organization-transfer.md` says
+  how to split an instance. It is the first migration of the release that
+  takes organizations out of the code, so no instance with several reaches
+  that code. An empty instance passes, and bootstrap makes its organization.
+- **The database keeps it at one.** The trigger `org_is_the_only_one` refuses
+  a second `INSERT INTO org` with a sentence, for the superuser and
+  `stator_admin` as well, whom no policy binds; a unique index on a constant
+  holds where the trigger cannot see the row there is, for two inserts at
+  once or a caller row level security hides it from. Both go when `org`
+  becomes a one-row table by its key. `seed bootstrap` with another slug
+  than the instance's organization fails with a sentence naming the one
+  there is.
+- **The tenant wall's tests go, the other guards stay.** The tests that a
+  second organization's rows stay out of reach, the throwaway organizations
+  of the browser suite (`POST /test/orgs` and `internal/testorg`) and
+  switching between organizations go. What they also proved that is not
+  about organizations stays, with an outsider in the same organization: row
+  level security cannot be lifted by the application's role, a group holds
+  only members, a group role cannot grant ownership, an account that exists
+  without a membership keeps its password when it is let in, a member does
+  not read the provider's settings, and an unreachable provider is reported.
+- **Moving between instances is proven by two databases.** An organization's
+  and a space's archive are exported from the test's database and imported
+  into a second clone of the template, a fresh instance, where the people
+  are found by their address. The browser suite keeps the export, a member's
+  refusal and the refusal of an organization that has spaces; the import
+  into a fresh instance is the integration suite's.
+
 ## 2026-10-12: The browser specs share the one organization (#380)
 
 An instance serves one organization (#380), so a spec can no longer stay out

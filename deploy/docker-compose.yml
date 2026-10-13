@@ -54,9 +54,9 @@ x-armature-env: &armature-env
   STATOR_OUTBOUND_ALLOW: armature-stub,web
   STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080
 
-# Who an organization of the stack is made with: the realm's people, let in
-# ahead of time, and the realm as its provider. The seed gives them to demo;
-# the api gives them to every throwaway organization of the browser suite.
+# Who the stack's organization is made with: the realm's people, let in ahead
+# of time, and the realm as its provider. The seed gives them to demo, and the
+# browser suite's reset gives them back.
 # Anybody else the realm signs in waits for an administrator.
 x-bootstrap-env: &bootstrap-env
   STATOR_BOOTSTRAP_OIDC_ISSUER: http://localhost:${KEYCLOAK_PORT:-8180}/realms/stator-dev

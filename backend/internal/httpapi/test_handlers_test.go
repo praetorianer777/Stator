@@ -12,28 +12,9 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/testinstance"
-	"github.com/praetorianer777/stator/backend/internal/testorg"
 )
 
 const unitTestToken = "a token for the unit tests"
-
-// fakeTestOrgs answers without a database, so a test sees what reached it.
-type fakeTestOrgs struct{ created, deleted, aged int }
-
-func (f *fakeTestOrgs) Create(_ context.Context, label string) (*testorg.Org, error) {
-	f.created++
-	return &testorg.Org{ID: uuid.New(), Slug: label + "-0123abcd"}, nil
-}
-
-func (f *fakeTestOrgs) Delete(context.Context, string) error {
-	f.deleted++
-	return nil
-}
-
-func (f *fakeTestOrgs) AgeExample(context.Context, string, string) error {
-	f.aged++
-	return nil
-}
 
 // fakeTestInstance answers without a database; err, when set, is what every
 // call returns.
@@ -80,8 +61,6 @@ func TestTestEndpointsIgnoreSessionsAndAccessTokens(t *testing.T) {
 		"read-only": {UserID: uuid.New(), TokenID: &tokenID, Scopes: []string{auth.ScopeRead}},
 		"session":   {UserID: uuid.New(), SessionID: &sessionID, Role: auth.RoleOwner},
 	}
-	orgs := &fakeTestOrgs{}
-	s.TestOrgs = orgs
 	instance := &fakeTestInstance{}
 	s.TestInstance = instance
 	s.TestToken = unitTestToken
@@ -114,21 +93,16 @@ func TestTestEndpointsIgnoreSessionsAndAccessTokens(t *testing.T) {
 			}
 		}
 	}
-	if orgs.created != 4 || orgs.deleted != 4 {
-		t.Fatalf("reached the service %d and %d times, want 4 each", orgs.created, orgs.deleted)
-	}
 	if instance.made != 4 || instance.deleted != 4 || instance.reset != 4 || instance.aged != 4 {
 		t.Fatalf("reached the instance %d, %d, %d and %d times, want 4 each", instance.made, instance.deleted, instance.reset, instance.aged)
 	}
 }
 
 // testRequestStatuses is what each of testRequests answers with the token.
-var testRequestStatuses = []int{http.StatusCreated, http.StatusNoContent, http.StatusCreated, http.StatusNoContent, http.StatusNoContent, http.StatusNoContent}
+var testRequestStatuses = []int{http.StatusCreated, http.StatusNoContent, http.StatusNoContent, http.StatusNoContent}
 
 func testRequests() []*http.Request {
 	return []*http.Request{
-		httptest.NewRequest(http.MethodPost, APIPrefix+"/test/orgs", strings.NewReader(`{"label":"x"}`)),
-		httptest.NewRequest(http.MethodDelete, APIPrefix+"/test/orgs/x-1234", nil),
 		httptest.NewRequest(http.MethodPost, APIPrefix+"/test/people", strings.NewReader(`{"label":"x","role":"member"}`)),
 		httptest.NewRequest(http.MethodDelete, APIPrefix+"/test/people/"+uuid.NewString(), nil),
 		httptest.NewRequest(http.MethodPost, APIPrefix+"/test/reset", nil),
@@ -208,7 +182,6 @@ func TestTestEndpointsAreNotFoundWhenOff(t *testing.T) {
 
 func TestTestEndpointsRefuseAWrongOrMissingToken(t *testing.T) {
 	s := newServer(t)
-	s.TestOrgs = &fakeTestOrgs{}
 	s.TestInstance = &fakeTestInstance{}
 	s.TestToken = unitTestToken
 	h := s.Routes(nil)
@@ -237,7 +210,6 @@ func TestTestEndpointsRefuseAWrongOrMissingToken(t *testing.T) {
 // published document still names only the public table.
 func TestTestRoutesAreServedWhenOnAndNeverDocumented(t *testing.T) {
 	s := newServer(t)
-	s.TestOrgs = &fakeTestOrgs{}
 	s.TestInstance = &fakeTestInstance{}
 	served := routedBy(t, s)
 	want := map[string]bool{}

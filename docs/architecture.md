@@ -39,7 +39,10 @@ Keycloak / any OIDC provider <── login ──┘
 ### Multi-tenancy
 
 Every table carries an organisation and a row-level security policy keyed on
-`current_org_id()`, which each transaction sets. The application connects as
+`current_org_id()`, which each transaction sets. An instance holds one
+organization (#380): the database refuses a second (`org_is_the_only_one`),
+and the organization leaves the columns, policies and code in the steps of
+`docs/plans/380-one-organization.md`. The application connects as
 `stator_app`, which cannot bypass RLS; migrations run as `stator_admin`.
 Each transaction of a request also names the person it acts for, read by
 `current_actor_id()`, and restrictive policies hold `stator_app` to that
@@ -242,8 +245,10 @@ runs in the Go toolchain container on the stack's network and reaches every
 service by name; it writes files to a bucket of its own, `stator-test`, beside
 the app's `stator-files`. Each of its tests runs in a database of its own,
 cloned from a template the suite migrates once and followed by the replica
-(`backend/test/database_test.go`), with one organization in it; only the
-tests of what `migrate` and `seed` left behind read the stack's own database.
+(`backend/test/database_test.go`), with one organization in it; a test of
+what moves between instances clones a second one as the fresh instance. Only
+the tests of what `migrate` and `seed` left behind read the stack's own
+database.
 
 ### Kubernetes
 
@@ -297,9 +302,9 @@ could freeze every browser for seconds. A setup project signs alice and bob in
 once and stores their sessions under `e2e/.auth/`, and leaves `demo` showing the built-in theme, as does a
 teardown project after the last spec; specs tagged `@auth` skip while the
 stack cannot sign anyone in. Chromium runs at desktop size and at 360x740.
-What no endpoint makes yet, such as an organization whose provider is down,
-a spec arranges straight in the database through `e2e/fixtures/db.ts`, with
-the superuser URL `.cache/stack.env` names, and removes again.
+What no endpoint makes yet, such as a provider that is down, a spec
+arranges straight in the database through `e2e/fixtures/db.ts`, with the
+superuser URL `.cache/stack.env` names, and puts back again.
 
 Every spec shares the one organization (#380), and keeps its data apart by
 people and spaces of its own. A spec on `teamTest` from `e2e/fixtures/team.ts`
@@ -321,9 +326,8 @@ one worker, and `POST /api/v1/test/reset` puts the organization's settings
 back as the bootstrap left them before each of their files starts, and in the
 setup and teardown. `make test-e2e` runs the two phases one after the other,
 since a project depending on another would run all of the other in every CI
-shard; each phase shards the same way. Only two specs make a second
-organization: the import of an organization's archive, which takes one
-without spaces, and the sign-in through a provider that cannot be reached.
-`tests/test-ci.sh` keeps it to them. See `docs/decisions.md`.
+shard; each phase shards the same way. No spec makes a second
+organization, which the database refuses, and `tests/test-ci.sh` fails one
+that tries. See `docs/decisions.md`.
 
 A Helm chart follows later.

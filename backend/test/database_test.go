@@ -276,7 +276,38 @@ func cloneDatabase(t *testing.T) {
 	if strings.HasPrefix(databaseOf(os.Getenv(envPrimary)), testDatabasePrefix) {
 		return
 	}
-	superURL := os.Getenv(envSuperuser)
+	moveToClone(t)
+}
+
+// lastingSuperuserURL reaches the superuser in a database that outlives the
+// test, since the run's last drops connect through the last one retired.
+func lastingSuperuserURL(t *testing.T) string {
+	t.Helper()
+	u := os.Getenv(envSuperuser)
+	if !strings.HasPrefix(databaseOf(u), testDatabasePrefix) {
+		return u
+	}
+	lasting, err := databaseURL(u, maintenanceDatabase)
+	if err != nil {
+		t.Fatalf("%s: %v", envSuperuser, err)
+	}
+	return lasting
+}
+
+// newFreshHarness connects to another database of the test's own, freshly
+// cloned: a second instance, for what travels from one to another (#380).
+// What the suite reads from the environment afterwards reaches the new one.
+func newFreshHarness(t *testing.T) *harness {
+	t.Helper()
+	moveToClone(t)
+	return connectHarness(t)
+}
+
+// moveToClone clones the template and points every connection the suite
+// reads from the environment at the clone until the test ends.
+func moveToClone(t *testing.T) {
+	t.Helper()
+	superURL := lastingSuperuserURL(t)
 	ctx := context.Background()
 	super, err := pgxpool.New(ctx, superURL)
 	if err != nil {

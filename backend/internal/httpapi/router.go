@@ -159,10 +159,8 @@ type Server struct {
 	// Fresh remembers each caller's last write between requests; nil leaves
 	// reads unpinned, which is only right without replicas.
 	Fresh Freshness
-	// TestOrgs serves /test/orgs for the browser suite when it is set, to
+	// TestInstance serves /test for the browser suite when it is set, to
 	// callers with TestToken; nil leaves those paths unrouted.
-	TestOrgs TestOrgs
-	// TestInstance serves the rest of /test the same way.
 	TestInstance TestInstance
 	TestToken    string
 
@@ -357,14 +355,6 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/armature/theme", s.handleUnfollowArmatureTheme)
 		})
 
-		if s.TestOrgs != nil {
-			r.Group(func(r chi.Router) {
-				r.Use(s.requireTestToken)
-				r.Post("/test/orgs", s.handleCreateTestOrg)
-				r.Delete("/test/orgs/{orgSlug}", s.handleDeleteTestOrg)
-				r.Post("/test/orgs/{orgSlug}/example-space/age", s.handleAgeTestExample)
-			})
-		}
 		if s.TestInstance != nil {
 			r.Group(func(r chi.Router) {
 				r.Use(s.requireTestToken)

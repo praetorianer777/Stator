@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 )
 
@@ -56,7 +58,8 @@ func sendJSON(t *testing.T, b *browser, method, target string, body any) (int, m
 }
 
 // The session's own operations and the provider settings, the way the web
-// client calls them: a signed-in administrator reads and saves the provider.
+// client calls them: a signed-in administrator reads and saves the provider,
+// and a member may not.
 func TestAnAdministratorsSessionOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	a := h.startAPI(t, testSessionTTL)
@@ -78,5 +81,20 @@ func TestAnAdministratorsSessionOverTheAPI(t *testing.T) {
 	}
 	if status, _ := sendJSON(t, b, http.MethodPut, base+"/oidc-provider", map[string]any{"issuer": "", "clientId": ""}); status != http.StatusUnprocessableEntity {
 		t.Errorf("saving an empty provider = %d, want 422", status)
+	}
+
+	// A member's session does not reach the provider settings.
+	memberEmail := "member-" + uuid.NewString()[:8] + "@stator.test"
+	h.forgetPerson(t, memberEmail)
+	const memberPassword = "a member's own password"
+	if status, body := sendJSON(t, b, http.MethodPost, base+"/users", map[string]any{"email": memberEmail, "role": "member", "password": memberPassword}); status != http.StatusCreated {
+		t.Fatalf("add a member = %d %v", status, body)
+	}
+	m := newBrowser(t)
+	if status, body := sendJSON(t, m, http.MethodPost, base+"/auth/login", map[string]any{"email": memberEmail, "password": memberPassword}); status != http.StatusOK {
+		t.Fatalf("the member signs in = %d %v", status, body)
+	}
+	if resp, _ := m.get(t, base+"/oidc-provider"); resp.StatusCode != http.StatusForbidden {
+		t.Errorf("a member reading the provider = %s, want 403", resp.Status)
 	}
 }

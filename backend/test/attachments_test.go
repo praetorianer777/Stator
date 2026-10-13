@@ -18,7 +18,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 )
 
@@ -490,38 +489,6 @@ func TestARestoredVersionShowsADeletedFileAsMissing(t *testing.T) {
 	}
 	if n := len(list(t, want(t, owner.get(t, "/api/v1/pages/"+pageID+"/attachments"), http.StatusOK, "list"), "attachments")); n != 0 {
 		t.Fatalf("the page lists %d files after the restore", n)
-	}
-}
-
-// Deleting an organization cascades to its files, and the tombstones it
-// leaves behind let the worker's reaper empty its prefix.
-func TestTheReaperEmptiesADeletedOrganization(t *testing.T) {
-	h := newHarness(t)
-	api := newAPIServer(t, h)
-	home := h.makeMember(t, "files-reap")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
-	docs := newTree(t, owner, "REAP", "Reaped")
-	id := obj(t, want(t, owner.upload(t, "/api/v1/pages/"+docs.homeID+"/attachments", "a.txt", []byte("a")), http.StatusCreated, "upload"), "attachment")["id"].(string)
-	key := objectKey(home.org, docs.homeID, id)
-
-	if _, err := h.super.Exec(context.Background(), `DELETE FROM org WHERE id = $1`, home.org); err != nil {
-		t.Fatal(err)
-	}
-	if h.tombstones(t, key) != 1 {
-		t.Fatal("deleting the organization left no tombstone")
-	}
-	reaper := attachment.NewReaper(api.attachments, discard(), 0)
-	for h.tombstones(t, key) > 0 {
-		n, err := reaper.Once(context.Background())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if n == 0 && h.tombstones(t, key) > 0 {
-			t.Fatal("the reaper stopped with the tombstone still there")
-		}
-	}
-	if inBucket(t, api.store, key) != nil {
-		t.Error("the reaper left the bytes")
 	}
 }
 

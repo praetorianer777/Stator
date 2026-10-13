@@ -11,6 +11,51 @@ it, and comes back only as the same site.
 Both run in the worker, which a page in the settings follows: Settings, then
 **Export and import** (`/settings/transfer`).
 
+## Splitting an instance before the upgrade
+
+An instance serves one organization (#380). The upgrade that brings this in
+refuses an instance holding several, and its `migrate` step (the compose
+service, or the chart's migrate Job) fails with a message naming them:
+
+```text
+This instance holds 2 organizations (acme, globex), and Stator now serves one
+organization per instance. Export every organization (Settings, Export and
+import; see docs/organization-transfer.md), delete all but one, then upgrade
+again.
+```
+
+The refused migration changes nothing, so the database is as it was before
+the upgrade. Go back to the release you ran before, and then:
+
+1. Take a backup (`docs/backup-and-restore.md`), in case a step below goes
+   wrong.
+2. In every organization, an administrator exports it under Settings,
+   Export and import, and keeps the archive.
+3. Choose the organization that stays on this instance. Delete each of the
+   others as the database's owner (`stator` on the compose stack), naming it
+   by its slug, and note its id first: its files are under `org/<id>/` in the
+   bucket.
+
+   ```sql
+   SELECT id FROM org WHERE slug = 'globex';
+   BEGIN;
+   DELETE FROM user_session WHERE proof_org_id = (SELECT id FROM org WHERE slug = 'globex');
+   -- Cleared first: the organization's own theme and hub page go with it.
+   UPDATE org SET default_theme_id = NULL, hub_page_id = NULL WHERE slug = 'globex';
+   DELETE FROM org WHERE slug = 'globex';
+   COMMIT;
+   ```
+
+   Every row of the organization goes with it. The worker removes the files
+   of its pages, which the deletion leaves tombstones for; remove what is
+   left under `org/<id>/` in the bucket yourself, such as its themes' files
+   and its logo.
+4. Upgrade again. With one organization left, the migrations go through and
+   it keeps everything it holds.
+5. For each archive of an organization you deleted, install a fresh Stator
+   of the new release, bootstrap it (`seed bootstrap`, or the chart's
+   bootstrap Job) and import the archive there, as below.
+
 ## Exporting
 
 **Export organization** queues the export. The worker writes the archive in

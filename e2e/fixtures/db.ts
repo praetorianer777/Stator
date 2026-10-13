@@ -1,4 +1,3 @@
-import type { TestInfo } from "@playwright/test";
 import pg from "pg";
 import { superuserURL } from "./stack";
 
@@ -48,19 +47,6 @@ async function settle(client: pg.Client): Promise<void> {
  * who it is fails at once rather than after a timeout.
  */
 export const DEAD_ISSUER = "http://127.0.0.1:9/realms/nowhere";
-
-/** An organisation of its own whose provider cannot be reached; call remove when done. */
-export async function orgWithDeadProvider(testInfo: TestInfo): Promise<{ slug: string; remove: () => Promise<void> }> {
-  const slug = `e2e-dead-${testInfo.workerIndex}-${Date.now().toString(36)}`;
-  await withDatabase(async (db) => {
-    const { rows } = await db.query<{ id: string }>("INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id", [slug, "Dead provider"]);
-    await db.query("INSERT INTO oidc_provider (org_id, issuer, client_id) VALUES ($1, $2, 'stator')", [rows[0]!.id, DEAD_ISSUER]);
-  });
-  return {
-    slug,
-    remove: () => withDatabase(async (db) => void (await db.query("DELETE FROM org WHERE slug = $1", [slug]))),
-  };
-}
 
 /**
  * Makes a page's verification run out a minute ago. The database stamps every

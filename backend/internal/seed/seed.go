@@ -57,7 +57,7 @@ type People struct {
 }
 
 // Bootstrapped is who STATOR_BOOTSTRAP_MEMBERS and STATOR_BOOTSTRAP_OIDC_*
-// name: the demo organization's people, and every throwaway one's.
+// name: the people of the organization seed or seed bootstrap makes.
 func Bootstrapped(cfg config.Bootstrap) People {
 	var people People
 	for _, m := range cfg.Members {

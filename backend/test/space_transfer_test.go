@@ -194,11 +194,28 @@ func emailOf(t *testing.T, h *harness, id uuid.UUID) string {
 	return email
 }
 
-// A space goes out of one organization as an archive and comes into another
+// accountLike makes an account with the address and name of one in another
+// instance, and no membership: somebody an import finds by their address.
+func (h *harness) accountLike(t *testing.T, elsewhere *harness, id uuid.UUID) uuid.UUID {
+	t.Helper()
+	ctx := context.Background()
+	var email, name string
+	if err := elsewhere.super.QueryRow(ctx, `SELECT email::text, name FROM app_user WHERE id = $1`, id).Scan(&email, &name); err != nil {
+		t.Fatal(err)
+	}
+	var made uuid.UUID
+	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, $2) RETURNING id`, email, name).Scan(&made); err != nil {
+		t.Fatalf("make %s's account: %v", email, err)
+	}
+	h.settle(t)
+	return made
+}
+
+// A space goes out of one instance as an archive and comes into another
 // whole: its tree, every version with its author, files with their versions,
 // labels, discussions, reactions, the blog, calendars, templates and who may
 // do what, with the people and groups found again by address and name.
-func TestASpaceTravelsToAnotherOrganizationWhole(t *testing.T) {
+func TestASpaceTravelsToAnotherInstanceWhole(t *testing.T) {
 	h := newHarness(t)
 	api := transferAPI(t, h)
 	from := h.makeMember(t, "travel-from")
@@ -362,18 +379,24 @@ func TestASpaceTravelsToAnotherOrganizationWhole(t *testing.T) {
 		}
 	})
 
-	to := h.makeOtherOrganization(t, "travel-to")
-	toSlug := h.slugOf(t, to.org)
-	landedOwner := api.as(t, to.user, to.org, toSlug)
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, to.org, annID); err != nil {
+	// The archive lands in a fresh instance, where ann is a member and the
+	// organizer is nobody.
+	fresh := newFreshHarness(t)
+	freshAPI := transferAPI(t, fresh)
+	to := fresh.makeMember(t, "travel-to")
+	toSlug := fresh.slugOf(t, to.org)
+	landedOwner := freshAPI.as(t, to.user, to.org, toSlug)
+	annThereID := fresh.accountLike(t, h, annID)
+	if _, err := fresh.super.Exec(context.Background(), `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, to.org, annThereID); err != nil {
 		t.Fatal(err)
 	}
-	landedWriters := h.makeGroup(t, to.org, "writers")
-	annThere := api.as(t, annID, to.org, toSlug)
+	fresh.settle(t)
+	landedWriters := fresh.makeGroup(t, to.org, "writers")
+	annThere := freshAPI.as(t, annThereID, to.org, toSlug)
 
 	var landed map[string]any
-	t.Run("the archive comes into another organization under a new key", func(t *testing.T) {
-		landed = api.importSpace(t, landedOwner, archive, "key=landed&name=Landed+trip")
+	t.Run("the archive comes into another instance under a new key", func(t *testing.T) {
+		landed = freshAPI.importSpace(t, landedOwner, archive, "key=landed&name=Landed+trip")
 		if landed["state"] != "done" || landed["spaceKey"] != "LANDED" {
 			t.Fatalf("the import ended as %v", landed)
 		}
@@ -417,14 +440,14 @@ func TestASpaceTravelsToAnotherOrganizationWhole(t *testing.T) {
 			t.Fatalf("Nested has %d versions", len(versions))
 		}
 		latest, oldest := versions[0].(map[string]any), versions[2].(map[string]any)
-		if latest["authorId"] != annID.String() || latest["comment"] != "Ann's turn" || latest["originalAuthor"] != nil {
+		if latest["authorId"] != annThereID.String() || latest["comment"] != "Ann's turn" || latest["originalAuthor"] != nil {
 			t.Errorf("Ann's version came across as %v", latest)
 		}
 		if oldest["authorId"] != to.user.String() || oldest["originalAuthor"] != "Person of travel-from" {
 			t.Errorf("the owner's version came across as %v", oldest)
 		}
 		body := string(want(t, landedOwner.get(t, pagePath(nestedThere, "/versions/2")), http.StatusOK, "version 2").Raw)
-		if !strings.Contains(body, annID.String()) || strings.Contains(body, from.user.String()) || !strings.Contains(body, "@The Organizer") ||
+		if !strings.Contains(body, annThereID.String()) || strings.Contains(body, from.user.String()) || !strings.Contains(body, "@The Organizer") ||
 			!strings.Contains(body, "/s/LANDED/p/"+ids["Top"]) || strings.Contains(body, second["id"].(string)) {
 			t.Errorf("version 2 reads %s", body)
 		}
@@ -450,7 +473,7 @@ func TestASpaceTravelsToAnotherOrganizationWhole(t *testing.T) {
 			t.Errorf("the labels are %v", got)
 		}
 		threads := string(want(t, landedOwner.get(t, pagePath(nestedThere, "/comments")), http.StatusOK, "the discussion").Raw)
-		if !strings.Contains(threads, "Looks good") || !strings.Contains(threads, annID.String()) {
+		if !strings.Contains(threads, "Looks good") || !strings.Contains(threads, annThereID.String()) {
 			t.Errorf("the discussion reads %s", threads)
 		}
 		reactionsOn, _ := json.Marshal(obj(t, want(t, landedOwner.get(t, pagePath(nestedThere)), http.StatusOK, "the page"), "page")["reactions"])
@@ -474,13 +497,13 @@ func TestASpaceTravelsToAnotherOrganizationWhole(t *testing.T) {
 
 	t.Run("who may do what is found again by address and name", func(t *testing.T) {
 		grants := string(want(t, landedOwner.get(t, "/api/v1/spaces/LANDED/permissions"), http.StatusOK, "the permissions").Raw)
-		for _, want := range []string{landedWriters.String(), annID.String(), to.user.String()} {
+		for _, want := range []string{landedWriters.String(), annThereID.String(), to.user.String()} {
 			if !strings.Contains(grants, want) {
 				t.Errorf("the permissions lack %s: %s", want, grants)
 			}
 		}
 		lists := string(want(t, annThere.get(t, pagePath(ids["Top"], "/restrictions")), http.StatusOK, "Top's lists").Raw)
-		if !strings.Contains(lists, landedWriters.String()) || !strings.Contains(lists, annID.String()) {
+		if !strings.Contains(lists, landedWriters.String()) || !strings.Contains(lists, annThereID.String()) {
 			t.Errorf("Top's lists read %s", lists)
 		}
 	})

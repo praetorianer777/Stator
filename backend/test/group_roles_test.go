@@ -378,20 +378,17 @@ func (h *harness) countRows(t *testing.T, sql string, args ...any) int {
 	return n
 }
 
-// Straight through SQL as stator_app, one organization's mapping is out of
-// another's reach, and a mapping cannot grant ownership.
-func TestRawSQLCannotReachAnotherTenantsGroupRoles(t *testing.T) {
+// Straight through SQL as stator_app, the mappings show nothing without the
+// organization, and a mapping cannot grant ownership.
+func TestRawSQLKeepsGroupRolesToWhatTheyMayGrant(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "nu")
-	b := h.makeOtherOrganization(t, "xi")
 	ctx := context.Background()
-	for _, m := range []member{a, b} {
-		if _, err := h.super.Exec(ctx, `INSERT INTO oidc_provider (org_id, issuer, client_id) VALUES ($1, 'https://id.test', 'stator')`, m.org); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := h.super.Exec(ctx, `INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, 'staff', 'admin')`, m.org); err != nil {
-			t.Fatal(err)
-		}
+	if _, err := h.super.Exec(ctx, `INSERT INTO oidc_provider (org_id, issuer, client_id) VALUES ($1, 'https://id.test', 'stator')`, a.org); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.super.Exec(ctx, `INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, 'staff', 'admin')`, a.org); err != nil {
+		t.Fatal(err)
 	}
 
 	unscoped, err := pgx.Connect(ctx, os.Getenv(envPrimary))
@@ -406,22 +403,13 @@ func TestRawSQLCannotReachAnotherTenantsGroupRoles(t *testing.T) {
 
 	conn := h.appConn(t, a.org)
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM oidc_group_role`).Scan(&n); err != nil || n != 1 {
-		t.Fatalf("org A sees %d mappings, want its own one (%v)", n, err)
-	}
-	tag, err := conn.Exec(ctx, `UPDATE oidc_group_role SET org_role = 'member' WHERE org_id = $1`, b.org)
-	if err != nil || tag.RowsAffected() != 0 {
-		t.Fatalf("org A changed org B's mapping: %v %v", tag, err)
-	}
-	tag, err = conn.Exec(ctx, `DELETE FROM oidc_group_role WHERE org_id = $1`, b.org)
-	if err != nil || tag.RowsAffected() != 0 {
-		t.Fatalf("org A deleted org B's mapping: %v %v", tag, err)
+		t.Fatalf("the organization sees %d mappings, want its one (%v)", n, err)
 	}
 	for name, attempt := range map[string]struct {
 		sql  string
 		args []any
 		code string
 	}{
-		"mapping a group for another tenant": {`INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, 'evil', 'admin')`, []any{b.org}, "42501"},
 		"granting ownership through a group": {`INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, 'founders', 'owner')`, []any{a.org}, "23514"},
 		"mapping the same group twice":       {`INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, 'staff', 'member')`, []any{a.org}, "23505"},
 		"mapping a blank group":              {`INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, '  ', 'member')`, []any{a.org}, "23514"},
@@ -433,11 +421,6 @@ func TestRawSQLCannotReachAnotherTenantsGroupRoles(t *testing.T) {
 				t.Fatalf("%s = %v, want SQLSTATE %s", attempt.sql, err, attempt.code)
 			}
 		})
-	}
-	var stillB int
-	_ = h.super.QueryRow(ctx, `SELECT count(*) FROM oidc_group_role WHERE org_id = $1 AND org_role = 'admin'`, b.org).Scan(&stillB)
-	if stillB != 1 {
-		t.Fatal("org B's mapping did not survive org A")
 	}
 }
 
