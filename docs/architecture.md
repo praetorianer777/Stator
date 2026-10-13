@@ -157,17 +157,20 @@ process, which is only right for a single api process. `/readyz` and
   Only the id finds a page; the slug is for people and is put right when stale.
   A blog post is a page and has a page's address; the space's blog is
   `/s/{spaceKey}/blog`, a month of it `?year=2026&month=10`.
-- The pages anybody may read are at `/public/{org}`, outside the app's shell
-  and its sign-in guard, read through `/api/v1/public/{org}`; the document
-  view draws them with every link and file through those reads.
+- The pages anybody may read are at `/public`, outside the app's shell and
+  its sign-in guard, read through `/api/v1/public`; the document view draws
+  them with every link and file through those reads. The addresses before
+  #380 named the organization, `/public/{org}/...`: the api answers its old
+  reads with `308` to the new ones when the slug is the instance's, and the
+  web client sends an old page address on once the api has said so.
 - The render service prints a page from `/print/p/{id}`,
-  `/print/public/{org}/p/{id}` or `/print/public/{org}/link/{token}`: the
+  `/print/public/p/{id}` or `/print/public/link/{token}`: the
   page alone, outside the shell, which marks the document
   `data-print-ready` once nothing is loading or drawing, and states the
   running header and footer in `data-print-meta`.
-- A public link opens `/public/{org}/link/{token}`, the same reading view
-  for that one page without the shell's tree and search, read through
-  `/api/v1/public/{org}/links/{token}`; its files come through the link too.
+- A public link opens `/public/link/{token}`, the same reading view for
+  that one page without the shell's tree and search, read through
+  `/api/v1/public/links/{token}`; its files come through the link too.
 
 ## Armature integration
 

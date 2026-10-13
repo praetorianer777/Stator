@@ -246,7 +246,7 @@ func TestAMappedGroupGrantsItsRoleAndTakesItBack(t *testing.T) {
 func signedIn(t *testing.T, a *api, org tenant.Org, username, password string) *browser {
 	t.Helper()
 	b := newBrowser(t)
-	if landing := b.signIn(t, a, org.Slug, username, password, "/"); landing != "http://"+appHost+"/" {
+	if landing := b.signIn(t, a, username, password, "/"); landing != "http://"+appHost+"/" {
 		t.Fatalf("%s landed on %q", username, landing)
 	}
 	return b
@@ -264,7 +264,7 @@ func TestAMappedGroupLetsSomebodyInWithoutWaiting(t *testing.T) {
 	admin, _ := adminOf(t, h, a, org)
 
 	t.Run("before the mapping carol waits like anybody", func(t *testing.T) {
-		if landing := newBrowser(t).signIn(t, a, org.Slug, "carol", carolPassword, "/"); landing != "http://"+appHost+"/login?sso=not_a_member" {
+		if landing := newBrowser(t).signIn(t, a, "carol", carolPassword, "/"); landing != "http://"+appHost+"/login?sso=not_a_member" {
 			t.Fatalf("carol landed on %q", landing)
 		}
 		if n := h.countRows(t, `SELECT count(*) FROM org_join_request r JOIN app_user u ON u.id = r.user_id WHERE r.org_id = $1 AND u.email = 'carol@stator.test'`, org.ID); n != 1 {
@@ -277,7 +277,7 @@ func TestAMappedGroupLetsSomebodyInWithoutWaiting(t *testing.T) {
 
 	t.Run("once engineering is mapped carol joins directly", func(t *testing.T) {
 		b := newBrowser(t)
-		if landing := b.signIn(t, a, org.Slug, "carol", carolPassword, "/spaces"); landing != "http://"+appHost+"/spaces" {
+		if landing := b.signIn(t, a, "carol", carolPassword, "/spaces"); landing != "http://"+appHost+"/spaces" {
 			t.Fatalf("carol landed on %q, want where she was going", landing)
 		}
 		if role := roleIn(t, b, a); role != "member" {
@@ -305,7 +305,7 @@ func TestAMappedGroupLetsSomebodyInWithoutWaiting(t *testing.T) {
 	})
 
 	t.Run("bob, in no mapped group, still waits", func(t *testing.T) {
-		if landing := newBrowser(t).signIn(t, a, org.Slug, "bob", bobPassword, "/"); landing != "http://"+appHost+"/login?sso=not_a_member" {
+		if landing := newBrowser(t).signIn(t, a, "bob", bobPassword, "/"); landing != "http://"+appHost+"/login?sso=not_a_member" {
 			t.Fatalf("bob landed on %q", landing)
 		}
 		if role, _ := h.standing(t, org, "bob@stator.test"); role != "" {

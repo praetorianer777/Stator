@@ -10,9 +10,9 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/public"
 )
 
-// linkPathInfix is what precedes a link's token in an address of the api,
-// after the organization: /public/{org}/links/{token}.
-const linkPathInfix = "/links/"
+// linkSegment is what precedes a link's token in an address of the api:
+// /public/links/{token}, or /public/{org}/links/{token} in the old form.
+const linkSegment = "links"
 
 // redactPath, adapted from Armature's, keeps a public link's token out of the
 // access log and the traces, where a path is written whole.
@@ -20,17 +20,14 @@ func redactPath(path string) string {
 	if !strings.HasPrefix(path, publicPathPrefix) {
 		return path
 	}
-	rest := path[len(publicPathPrefix):]
-	slash := strings.IndexByte(rest, '/')
-	if slash < 0 || !strings.HasPrefix(rest[slash:], linkPathInfix) {
-		return path
+	segments := strings.Split(path[len(publicPathPrefix):], "/")
+	for i := 0; i < len(segments)-1 && i < 2; i++ {
+		if segments[i] == linkSegment {
+			segments[i+1] = "{token}"
+			return publicPathPrefix + strings.Join(segments, "/")
+		}
 	}
-	head := publicPathPrefix + rest[:slash] + linkPathInfix
-	after := rest[slash+len(linkPathInfix):]
-	if i := strings.IndexByte(after, '/'); i >= 0 {
-		return head + "{token}" + after[i:]
-	}
-	return head + "{token}"
+	return path
 }
 
 // linkReader reads as an anonymous reader holding the token, in the organization
@@ -43,12 +40,17 @@ func (s *Server) linkReader(next http.Handler) http.Handler {
 		h.Set("Cache-Control", "no-store")
 		h.Set("Referrer-Policy", "no-referrer")
 		token := chi.URLParam(r, "token")
-		if s.Public == nil || !public.IsToken(token) {
+		if s.Public == nil || s.Instance == nil || !public.IsToken(token) {
 			h.Set("X-Robots-Tag", "noindex, nofollow")
 			respondError(w, r, public.ErrLinkGone)
 			return
 		}
-		site, err := s.Public.LinkSite(r.Context(), chi.URLParam(r, "orgSlug"))
+		org, err := s.Instance.Org(r.Context())
+		if err != nil {
+			respondError(w, r, err)
+			return
+		}
+		site, err := s.Public.LinkSite(r.Context(), org)
 		if err != nil {
 			h.Set("X-Robots-Tag", "noindex, nofollow")
 			respondError(w, r, err)
@@ -57,7 +59,7 @@ func (s *Server) linkReader(next http.Handler) http.Handler {
 		if !site.Indexable {
 			h.Set("X-Robots-Tag", "noindex, nofollow")
 		}
-		ctx := public.ReadingLink(r.Context(), site, token)
+		ctx := public.ReadingLink(r.Context(), org, token)
 		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, ctxSiteKey{}, site)))
 	})
 }

@@ -1,6 +1,7 @@
 import { request, type Page } from "@playwright/test";
 import { LOGIN_PATH, ME_PATH, authTest as test, expect, signIn, signInWithPassword, startSSO, stateFile, submitKeycloak } from "../fixtures/auth";
-import { deadenProvider } from "../fixtures/db";
+import { must, type StatorApi } from "../fixtures/api";
+import { DEAD_ISSUER } from "../fixtures/db";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -8,6 +9,26 @@ const ANONYMOUS = { cookies: [], origins: [] };
 const SCHEMES: ColourScheme[] = ["light", "dark"];
 
 const accountItem = (page: Page, action: string) => page.locator(`[role="menu"] [data-action="${action}"]`);
+
+/** Changes the identity provider for one test, then puts it back as it was, its stored secret kept. */
+async function withProvider(api: StatorApi, change: { issuer?: string; enabled?: boolean }, fn: () => Promise<void>): Promise<void> {
+  const { provider } = must(await api.GET("/oidc-provider"));
+  if (!provider) throw new Error("The organization has no identity provider to change. Did the seed set one up?");
+  const kept = {
+    issuer: provider.issuer,
+    clientId: provider.clientId,
+    groupsClaim: provider.groupsClaim,
+    scopes: provider.scopes,
+    createGroups: provider.createGroups,
+    enabled: provider.enabled,
+  };
+  must(await api.PUT("/oidc-provider", { body: { ...kept, ...change } }));
+  try {
+    await fn();
+  } finally {
+    must(await api.PUT("/oidc-provider", { body: kept }));
+  }
+}
 
 // The harness proving itself, and the sign-in flows a browser alone can walk.
 test.describe("sign-in", { tag: "@auth" }, () => {
@@ -37,7 +58,7 @@ test.describe("sign-in", { tag: "@auth" }, () => {
   test("the SSO settings show the callback address, and a save with a blank secret keeps the stored one", async ({ page, browser }) => {
     await page.goto("/settings/sso");
     await expect(page.getByText("Register this redirect address with the provider:")).toBeVisible();
-    await expect(page.locator("form code").first()).toContainText("/api/v1/auth/oidc/");
+    await expect(page.locator("form code").first()).toContainText("/api/v1/auth/oidc/callback");
     const secret = page.getByLabel("Client secret", { exact: true });
     await expect(secret).toHaveValue("");
     await expect(secret).toHaveAttribute("placeholder", "Stored. Leave blank to keep it.");
@@ -116,24 +137,25 @@ test.describe("sign-in", { tag: "@auth" }, () => {
       await expect(page).toHaveURL(new RegExp(`${LOGIN_PATH}\\?next=`));
     });
 
-    test("an organisation without SSO sends the visitor back with a message", async ({ page }) => {
-      await startSSO(page, "no-such-org");
-      await expect(page).toHaveURL(/\/login\?sso=not_configured/);
-      await expect(page.getByRole("alert")).toHaveText("That organization does not sign in with SSO. Check its name, or ask one of its administrators.");
+    test("a provider that is switched off sends the visitor back with a message", async ({ page, api }) => {
+      await withProvider(api, { enabled: false }, async () => {
+        await startSSO(page);
+        await expect(page).toHaveURL(/\/login\?sso=not_configured/);
+        await expect(page.getByRole("alert")).toHaveText(
+          "Signing in with SSO is not set up here yet. Sign in with a password, or ask an administrator to set it up.",
+        );
+      });
     });
 
-    test("an organisation whose provider cannot be reached says so", async ({ page }) => {
-      const revive = await deadenProvider();
-      try {
+    test("a provider that cannot be reached says so", async ({ page, api }) => {
+      await withProvider(api, { issuer: DEAD_ISSUER }, async () => {
         await startSSO(page);
         await expect(page).toHaveURL(/\/login\?sso=unreachable/);
         await expect(page.getByRole("alert")).toHaveText(
-          "Stator could not reach your organization's identity provider. Try again in a moment, and tell an administrator if it keeps failing.",
+          "Stator could not reach your identity provider. Try again in a moment, and tell an administrator if it keeps failing.",
         );
         expect((await page.request.get(ME_PATH)).status()).toBe(401);
-      } finally {
-        await revive();
-      }
+      });
     });
 
     for (const scheme of SCHEMES) {

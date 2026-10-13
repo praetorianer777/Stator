@@ -14,7 +14,7 @@ const member = { ...signedIn, organization: { ...signedIn.organization!, role: "
 
 function stubHub(hub: Answer, more: Record<string, Answer> = {}) {
   return stubApi({
-    "GET /org/hub": hub,
+    "GET /site/hub": hub,
     "GET /spaces": { status: 200, body: { spaces: [space] } },
     "GET /spaces/NEWS": { status: 200, body: { space } },
     [`GET /pages/${front.id}`]: { status: 200, body: { page: front, space } },
@@ -64,7 +64,7 @@ describe("choosing the hub", () => {
   it("lets an administrator pick a page and make everybody land on it", async () => {
     const sent = stubHub(
       { status: 200, body: { hub: { page: null, landing: false } } },
-      { "PUT /org/hub": { status: 200, body: { hub: { page: hubPage, landing: true } } } },
+      { "PUT /site/hub": { status: 200, body: { hub: { page: hubPage, landing: true } } } },
     );
     await renderAt("/settings/hub");
     expect(await screen.findByText("There is no hub page yet.")).toBeInTheDocument();

@@ -8,13 +8,13 @@ export function pagePdfHref(pageId: string): string {
 }
 
 /** Where a page anybody may read is printed. */
-export function publicPdfHref(org: string, pageId: string): string {
-  return `${API_BASE}/public/${encodeURIComponent(org)}/pages/${encodeURIComponent(pageId)}/pdf`;
+export function publicPdfHref(pageId: string): string {
+  return `${API_BASE}/public/pages/${encodeURIComponent(pageId)}/pdf`;
 }
 
 /** Where the page a public link opens is printed, for whoever holds the link. */
-export function linkedPdfHref(org: string, token: string): string {
-  return `${API_BASE}/public/${encodeURIComponent(org)}/links/${encodeURIComponent(token)}/pdf`;
+export function linkedPdfHref(token: string): string {
+  return `${API_BASE}/public/links/${encodeURIComponent(token)}/pdf`;
 }
 
 /** An exported page and the name the API gave it. */

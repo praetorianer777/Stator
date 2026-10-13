@@ -75,13 +75,13 @@ describe("exporting the organization", () => {
     let jobs: OrgExport[] = [];
     let looks = 0;
     const sent = stubApi({
-      "GET /org/imports": { status: 200, body: { imports: [] } },
-      "GET /org/exports": () => {
+      "GET /site/imports": { status: 200, body: { imports: [] } },
+      "GET /site/exports": () => {
         if (jobs.length && ++looks > 2)
           jobs = [anExport({ state: "done", fileName: "acme-organization-2026-10-12.zip", size: 4096, expiresAt: "2026-10-13T10:00:00Z" })];
         return { status: 200, body: { exports: jobs } };
       },
-      "POST /org/exports": () => {
+      "POST /site/exports": () => {
         jobs = [anExport({ state: "running", progress: { done: 1, total: 4 } })];
         return { status: 202, body: { export: jobs[0] } };
       },
@@ -92,8 +92,8 @@ describe("exporting the organization", () => {
     expect(screen.getByText("Webhook signing secrets.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Export organization" }));
     const link = await screen.findByRole("link", { name: "Download" });
-    expect(link).toHaveAttribute("href", "/api/v1/org/exports/e-1/file");
-    expect(sent.filter((r) => r.method === "POST").map((r) => r.path)).toEqual(["/org/exports"]);
+    expect(link).toHaveAttribute("href", "/api/v1/site/exports/e-1/file");
+    expect(sent.filter((r) => r.method === "POST").map((r) => r.path)).toEqual(["/site/exports"]);
     expect(screen.getByRole("button", { name: "Export organization" })).toBeEnabled();
     expect(await axeViolations()).toEqual([]);
   });
@@ -112,8 +112,8 @@ describe("importing an organization", () => {
     let jobs: OrgImport[] = [];
     let looks = 0;
     stubApi({
-      "GET /org/exports": { status: 200, body: { exports: [] } },
-      "GET /org/imports": () => {
+      "GET /site/exports": { status: 200, body: { exports: [] } },
+      "GET /site/imports": () => {
         if (jobs.length && ++looks > 2) jobs = [anImport({ state: "done", report })];
         return { status: 200, body: { imports: jobs } };
       },
@@ -125,7 +125,7 @@ describe("importing an organization", () => {
     await userEvent.upload(document.querySelector<HTMLInputElement>("[data-org-import-file]")!, file);
     await userEvent.click(screen.getByRole("button", { name: "Import organization" }));
     const sent = upload(uploads, 0);
-    expect(sent.url).toBe("/api/v1/org/imports");
+    expect(sent.url).toBe("/api/v1/site/imports");
     expect(sent.file.name).toBe("acme-organization.zip");
     jobs = [anImport({ state: "running", progress: { done: 2, total: 9 } })];
     sent.respond(202, { import: jobs[0] });
@@ -140,8 +140,8 @@ describe("importing an organization", () => {
   it("says in a sentence why an organization with spaces takes no archive", async () => {
     const uploads = stubUploads();
     stubApi({
-      "GET /org/exports": { status: 200, body: { exports: [] } },
-      "GET /org/imports": { status: 200, body: { imports: [] } },
+      "GET /site/exports": { status: 200, body: { exports: [] } },
+      "GET /site/imports": { status: 200, body: { imports: [] } },
     });
     await renderAt("/settings/transfer");
     await screen.findByText("The organization has not been exported yet.");

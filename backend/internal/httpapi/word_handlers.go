@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/attachment"
@@ -145,8 +144,7 @@ func (s *Server) handlePublicPageWord(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, err)
 		return
 	}
-	org := url.PathEscape(chi.URLParam(r, "orgSlug"))
-	site := "/public/" + org
+	const site = "/public"
 	reader := docx.Reader{
 		BaseURL: s.AppBaseURL,
 		Picture: s.publicPicture(func(ctx context.Context, file uuid.UUID) (*attachment.Located, error) {
@@ -154,7 +152,7 @@ func (s *Server) handlePublicPageWord(w http.ResponseWriter, r *http.Request) {
 		}),
 		IncludeURL: func(pageID uuid.UUID) string { return s.appURL(site + "/p/" + pageID.String()) },
 		FileURL: func(file uuid.UUID) string {
-			return s.appURL("/api/v1/public/" + org + "/attachments/" + file.String())
+			return s.appURL(APIPrefix + "/public/attachments/" + file.String())
 		},
 	}
 	lang := printLanguage(r, nil)

@@ -14,7 +14,7 @@ test.describe("the organization's hub", { tag: ["@auth"] }, () => {
   const made: string[] = [];
   // The hub belongs to the organization a worker's tests share, so each test leaves none.
   test.afterEach(async ({ api }) => {
-    must(await api.PUT("/org/hub", { body: { pageId: null, landing: false } }));
+    must(await api.PUT("/site/hub", { body: { pageId: null, landing: false } }));
     for (const key of made.splice(0)) await deleteSpace(api, key);
   });
 
@@ -47,7 +47,7 @@ test.describe("the organization's hub", { tag: ["@auth"] }, () => {
       made.push(key);
       const space = await createSpace(api, key, uniqueName(testInfo, "Axe"));
       const front = await createPage(api, space.homePageId, "Front page");
-      must(await api.PUT("/org/hub", { body: { pageId: front.id, landing: false } }));
+      must(await api.PUT("/site/hub", { body: { pageId: front.id, landing: false } }));
       await startInScheme(page, scheme);
       await page.goto("/settings/hub");
       await expect(page.locator("[data-hub-current]")).toContainText("Front page");

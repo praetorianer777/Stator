@@ -24,7 +24,7 @@ const orgImportsQueryKey = ["org-imports"] as const;
 export function useOrgExports() {
   return useQuery({
     queryKey: orgExportsQueryKey,
-    queryFn: async (): Promise<OrgExport[]> => (await api.GET("/org/exports")).data!.exports,
+    queryFn: async (): Promise<OrgExport[]> => (await api.GET("/site/exports")).data!.exports,
     refetchInterval: (query) => (query.state.data?.some(transferOpen) ? SPACE_TRANSFER_POLL_MS : false),
   });
 }
@@ -33,7 +33,7 @@ export function useOrgExports() {
 export function useCreateOrgExport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (): Promise<OrgExport> => (await api.POST("/org/exports")).data!.export,
+    mutationFn: async (): Promise<OrgExport> => (await api.POST("/site/exports")).data!.export,
     onSuccess: (job) => {
       queryClient.setQueryData<OrgExport[]>(orgExportsQueryKey, (jobs) => [job, ...(jobs ?? []).filter((j) => j.id !== job.id)]);
     },
@@ -42,7 +42,7 @@ export function useCreateOrgExport() {
 
 /** Where an organization's archive is downloaded from, which the browser saves itself. */
 export function orgExportHref(id: string): string {
-  return `${API_BASE}/org/exports/${encodeURIComponent(id)}/file`;
+  return `${API_BASE}/site/exports/${encodeURIComponent(id)}/file`;
 }
 
 /** The organization's latest imports, asked again while one is under way; a finished one fills the spaces. */
@@ -51,7 +51,7 @@ export function useOrgImports() {
   return useQuery({
     queryKey: orgImportsQueryKey,
     queryFn: async (): Promise<OrgImport[]> => {
-      const jobs = (await api.GET("/org/imports")).data!.imports;
+      const jobs = (await api.GET("/site/imports")).data!.imports;
       if (jobs.some((j) => j.state === "done")) await queryClient.invalidateQueries({ queryKey: spacesQueryKey });
       return jobs;
     },
@@ -66,7 +66,7 @@ export function useImportOrg() {
   const mutation = useMutation({
     mutationFn: async (file: File): Promise<OrgImport> => {
       setProgress(0);
-      return (await uploadArchive<{ import: OrgImport }>(`${API_BASE}/org/imports`, file, setProgress)).import;
+      return (await uploadArchive<{ import: OrgImport }>(`${API_BASE}/site/imports`, file, setProgress)).import;
     },
     onSuccess: (job) => {
       queryClient.setQueryData<OrgImport[]>(orgImportsQueryKey, (jobs) => [job, ...(jobs ?? []).filter((j) => j.id !== job.id)]);

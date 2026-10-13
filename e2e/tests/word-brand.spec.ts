@@ -28,10 +28,10 @@ test.describe("the brand in a Word document", { tag: ["@auth", "@desktop"] }, ()
       expect(plain.get("word/header1.xml")?.toString()).not.toContain("<w:drawing>");
       expect(plain.has("word/media/brandlogo.png")).toBe(false);
 
-      must(await api.PUT("/org/brand/footer", { body: { en: "Internal use only", de: "Nur intern" } }));
+      must(await api.PUT("/site/brand/footer", { body: { en: "Internal use only", de: "Nur intern" } }));
       const form = new FormData();
       form.append("file", new Blob([new Uint8Array(LOGO)], { type: "image/png" }), "logo.png");
-      must(await api.PUT("/org/brand/logo", { body: form as unknown as { file: string } }));
+      must(await api.PUT("/site/brand/logo", { body: form as unknown as { file: string } }));
 
       await expect
         .poll(async () => {

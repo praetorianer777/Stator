@@ -8,14 +8,14 @@ import (
 	"net/mail"
 	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// bootstrapSlug is the shape the org table's org_slug_shape check accepts.
-var bootstrapSlug = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`)
+// retiredBootstrapSlug named the organization's slug, which nobody types or
+// reads since an instance serves one organization.
+const retiredBootstrapSlug = "STATOR_BOOTSTRAP_ORG_SLUG"
 
 // Environments a deployment may declare itself as.
 const (
@@ -41,9 +41,7 @@ const (
 	DefaultS3Bucket        = "stator-files"
 	DefaultS3Region        = "us-east-1"
 	DefaultMailFrom        = "Stator <no-reply@stator.localhost>"
-	// DefaultBootstrapOrgSlug and DefaultBootstrapOrgName are seed.DemoOrgSlug
-	// and seed.DemoOrgName, which a test holds the two to.
-	DefaultBootstrapOrgSlug = "demo"
+	// DefaultBootstrapOrgName is seed.DemoOrgName, which a test holds it to.
 	DefaultBootstrapOrgName = "Demo"
 	DefaultSessionTTL       = 720 * time.Hour
 	// DefaultRetainAudit and MinRetainAudit are audit.DefaultRetention and
@@ -228,9 +226,8 @@ type Armature struct {
 // Bootstrap is what cmd/seed sets up in the demo organization: a first local
 // administrator, and an identity provider when it has none yet.
 type Bootstrap struct {
-	// OrgSlug and OrgName name the organization the administrator and the
-	// provider belong to; the development seed leaves them as the demo's.
-	OrgSlug string
+	// OrgName names the organization when the bootstrap makes it; one made
+	// before keeps its name.
 	OrgName string
 
 	AdminEmail    string
@@ -359,7 +356,6 @@ func Load() (Config, error) {
 			MaxSize:     l.size("STATOR_RENDER_MAX_SIZE", DefaultRenderMaxSize),
 		},
 		Bootstrap: Bootstrap{
-			OrgSlug:    l.str("STATOR_BOOTSTRAP_ORG_SLUG", DefaultBootstrapOrgSlug),
 			OrgName:    l.str("STATOR_BOOTSTRAP_ORG_NAME", DefaultBootstrapOrgName),
 			AdminEmail: l.str("STATOR_BOOTSTRAP_ADMIN_EMAIL", ""),
 			// Not trimmed: a password is exactly what was typed.
@@ -433,8 +429,8 @@ func Load() (Config, error) {
 	if u, err := url.Parse(c.Auth.OIDCRedirectURL); err != nil || u.Scheme == "" || u.Host == "" {
 		l.problem(fmt.Sprintf("STATOR_OIDC_REDIRECT_URL is %q; set it to an absolute URL ending in %s.", c.Auth.OIDCRedirectURL, OIDCCallbackPath))
 	}
-	if !bootstrapSlug.MatchString(c.Bootstrap.OrgSlug) {
-		l.problem(fmt.Sprintf("STATOR_BOOTSTRAP_ORG_SLUG is %q; use 3 to 40 lowercase letters, digits and hyphens, not starting or ending with a hyphen.", c.Bootstrap.OrgSlug))
+	if strings.TrimSpace(os.Getenv(retiredBootstrapSlug)) != "" {
+		l.problem(retiredBootstrapSlug + " is no longer read, since an instance serves one organization and no address names it. Remove the setting; STATOR_BOOTSTRAP_ORG_NAME still names the organization.")
 	}
 	if c.Bootstrap.OrgName == "" {
 		l.problem("STATOR_BOOTSTRAP_ORG_NAME is empty; give the organization a name.")

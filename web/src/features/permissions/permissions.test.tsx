@@ -56,8 +56,8 @@ describe("the organization's permissions", () => {
   it("let an administrator grant creating spaces to a group, saved only on Save", async () => {
     const sent = stubApi({
       "GET /access/me": { status: 200, body: { can: { use: true, createSpace: true, administer: true } } },
-      "GET /org/permissions": { status: 200, body: { permissions: grants } },
-      "PUT /org/permissions/createSpace": { status: 200, body: { permission: { ...grants[1], subjects: [eng] } } },
+      "GET /site/permissions": { status: 200, body: { permissions: grants } },
+      "PUT /site/permissions/createSpace": { status: 200, body: { permission: { ...grants[1], subjects: [eng] } } },
       ...pickers,
     });
     await renderAt("/");
@@ -74,11 +74,11 @@ describe("the organization's permissions", () => {
     expect(sent.some((r) => r.method === "PUT")).toBe(false);
     await userEvent.click(within(card).getByRole("button", { name: "Save changes" }));
     expect(await within(card).findByText("Saved.")).toBeInTheDocument();
-    expect(sent.find((r) => r.method === "PUT")).toMatchObject({ path: "/org/permissions/createSpace", body: { subjects: [{ type: "group", id: ids.eng }] } });
+    expect(sent.find((r) => r.method === "PUT")).toMatchObject({ path: "/site/permissions/createSpace", body: { subjects: [{ type: "group", id: ids.eng }] } });
   });
 
   it("show administering as following the roles, with no way to change it here", async () => {
-    stubApi({ "GET /org/permissions": { status: 200, body: { permissions: grants } }, ...pickers });
+    stubApi({ "GET /site/permissions": { status: 200, body: { permissions: grants } }, ...pickers });
     await renderAt("/settings/permissions");
     const card = (await screen.findByText("Administer the organization")).closest<HTMLElement>("[data-global-permission]")!;
     expect(within(card).getByText(/follows the roles of the organization's members/)).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe("a member the organization does not let in", () => {
     stubApi({ "GET /spaces": noAccess, "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } });
     await renderAt("/spaces", { me: member });
     expect(await screen.findByRole("heading", { name: "You do not have access to Demo" })).toBeInTheDocument();
-    expect(screen.getByText(/Ask one of its administrators to add you under Permissions/)).toBeInTheDocument();
+    expect(screen.getByText(/Ask an administrator to add you under Permissions/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
     expect(document.querySelector("[data-top-bar]")).toBeNull();
     expect(await axeViolations()).toEqual([]);

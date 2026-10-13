@@ -41,10 +41,10 @@ test.describe("the brand in an offline copy of a space", { tag: ["@auth", "@desk
         type: "doc",
         content: [{ type: "paragraph", content: [{ type: "text", text: "Pack light." }] }],
       });
-      must(await api.PUT("/org/brand/footer", { body: { en: "Internal use only", de: "Nur intern" } }));
+      must(await api.PUT("/site/brand/footer", { body: { en: "Internal use only", de: "Nur intern" } }));
       const form = new FormData();
       form.append("file", new Blob([new Uint8Array(LOGO)], { type: "image/png" }), "logo.png");
-      must(await api.PUT("/org/brand/logo", { body: form as unknown as { file: string } }));
+      must(await api.PUT("/site/brand/logo", { body: form as unknown as { file: string } }));
 
       const entries = unzip(await bytesOf(await exportHtml(page, key)));
       expect(entries.has("files/brand/logo.png")).toBe(true);

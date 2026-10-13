@@ -11,7 +11,7 @@ export const hubQueryKey = ["org", "hub"] as const;
 
 export const hubQuery = {
   queryKey: hubQueryKey,
-  queryFn: async (): Promise<Hub> => (await api.GET("/org/hub")).data!.hub,
+  queryFn: async (): Promise<Hub> => (await api.GET("/site/hub")).data!.hub,
   staleTime: HUB_STALE_MS,
 } as const;
 
@@ -22,7 +22,7 @@ export function useHub() {
 export function useSetHub() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (body: HubChoice): Promise<Hub> => (await api.PUT("/org/hub", { body })).data!.hub,
+    mutationFn: async (body: HubChoice): Promise<Hub> => (await api.PUT("/site/hub", { body })).data!.hub,
     onSuccess: (saved) => queryClient.setQueryData(hubQueryKey, saved),
   });
 }

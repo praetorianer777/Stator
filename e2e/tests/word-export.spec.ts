@@ -163,11 +163,10 @@ test.describe("Word export", { tag: ["@auth"] }, () => {
     try {
       const guide = await createPage(api, space.homePageId, `Open ${word}`, { type: "doc", content: [paragraph("Anybody may read this.")] });
       must(await api.PUT("/spaces/{spaceKey}/anonymous-access", { params: { path: { spaceKey: key } }, body: { view: true } }));
-      must(await api.PUT("/org/anonymous-access", { body: { enabled: true, indexable: false } }));
-      const org = must(await api.GET("/auth/me")).organization!.slug;
+      must(await api.PUT("/site/anonymous-access", { body: { enabled: true, indexable: false } }));
       const reader = await context.newPage();
 
-      await openTitled(reader, `/public/${org}/s/${key}/p/${guide.id}/open`, guide.title);
+      await openTitled(reader, `/public/s/${key}/p/${guide.id}/open`, guide.title);
       await expect(reader.locator('[data-action="export-pdf"]')).toBeVisible();
       const file = await exportWord(reader, () => reader.locator('[data-action="export-docx"]').click());
       expect(file.suggestedFilename()).toMatch(new RegExp(`^${key}-open-${word}-.*\\.docx$`));
@@ -184,7 +183,7 @@ test.describe("Word export", { tag: ["@auth"] }, () => {
       await expectAccessible(reader);
     } finally {
       await context.close();
-      must(await api.PUT("/org/anonymous-access", { body: { enabled: false, indexable: false } }));
+      must(await api.PUT("/site/anonymous-access", { body: { enabled: false, indexable: false } }));
       await deleteSpace(api, key);
     }
   });

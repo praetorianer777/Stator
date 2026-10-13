@@ -109,8 +109,8 @@ JAR="$(mktemp)"
 code="$(curl -s -o /dev/null -w '%{http_code}' -c "$JAR" -H 'Content-Type: application/json' \
   -d "{\"email\":\"admin@chart-test.example\",\"password\":\"${PASSWORD}\"}" "http://127.0.0.1:${LOCAL_PORT}/api/v1/auth/login")"
 [[ "$code" == 200 ]] || fail "the bootstrap administrator could not sign in: $code"
-slug="$(curl -s -b "$JAR" "http://127.0.0.1:${LOCAL_PORT}/api/v1/auth/me" | jq -r '.organization.slug')"
-[[ "$slug" == trial ]] || fail "signed in to organization [$slug], want [trial]"
+name="$(curl -s -b "$JAR" "http://127.0.0.1:${LOCAL_PORT}/api/v1/auth/me" | jq -r '.organization.name')"
+[[ "$name" == Trial ]] || fail "signed in to organization [$name], want [Trial]"
 ok "the bootstrap administrator signs in to the organization the Job made"
 
 say "Upgrade"

@@ -396,8 +396,19 @@ var errWebhookTooLarge = &APIError{Status: http.StatusRequestEntityTooLarge, Cod
 	Message: "The delivery is larger than Stator reads. Subscribe the endpoint to the issue topics only."}
 
 func (s *Server) handleArmatureWebhook(w http.ResponseWriter, r *http.Request) {
-	if s.Armature == nil {
+	if s.Armature == nil || s.Instance == nil {
 		respondError(w, r, errArmatureOff)
+		return
+	}
+	org, err := s.Instance.Org(r.Context())
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	// Receivers set up before the address lost the organization's slug still
+	// post to the old one; any other slug never was this organization.
+	if slug := chi.URLParam(r, "orgSlug"); slug != "" && !strings.EqualFold(slug, org.Slug) {
+		respondError(w, r, errBadSignature)
 		return
 	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, armature.WebhookMaxBytes))
@@ -410,7 +421,7 @@ func (s *Server) handleArmatureWebhook(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrBadRequest("The delivery could not be read. Armature sends it again by itself."))
 		return
 	}
-	err = s.Armature.Webhook(r.Context(), chi.URLParam(r, "orgSlug"), body, r.Header.Get(armature.SignatureHeader))
+	err = s.Armature.Webhook(r.Context(), org, body, r.Header.Get(armature.SignatureHeader))
 	if errors.Is(err, armature.ErrBadSignature) {
 		respondError(w, r, errBadSignature)
 		return

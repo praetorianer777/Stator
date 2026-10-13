@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/docx"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/hub"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -385,12 +386,12 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, auth.ErrUserInactive):
 		return &APIError{Status: http.StatusForbidden, Code: "account_inactive",
 			Message: "This account has been deactivated. Ask an administrator of your organization to turn it back on."}
-	case errors.Is(err, auth.ErrNotAMember):
-		return &APIError{Status: http.StatusForbidden, Code: "not_a_member",
-			Message: "You are not a member of that organization. Check its name, or ask one of its administrators to let you in."}
-	case errors.Is(err, auth.ErrSessionStaysHome):
-		return &APIError{Status: http.StatusForbidden, Code: "session_stays_home",
-			Message: "Your sign-in does not reach that organization. Sign in there through its own sign-in page."}
+	case errors.Is(err, instance.ErrNone):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "not_bootstrapped",
+			Message: "Stator is not set up yet. Ask its operator to run seed bootstrap.", cause: err}
+	case errors.Is(err, instance.ErrSeveral):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "several_organizations",
+			Message: "Stator cannot tell which organization it serves. Ask its operator to read the api's log.", cause: err}
 	case errors.Is(err, auth.ErrBadLocale):
 		return ErrValidation(map[string]string{"locale": "Choose English, German, or the language of your browser."})
 	case errors.Is(err, auth.ErrNoSuchRequest):
@@ -425,7 +426,7 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That token was not found. It may have been revoked already; reload the list.")
 	case errors.Is(err, oidc.ErrNotConfigured):
 		return &APIError{Status: http.StatusNotFound, Code: "sso_not_configured",
-			Message: "That organization does not sign in through an identity provider. Check its name, or sign in with a password."}
+			Message: "Signing in through an identity provider is not set up here. Sign in with a password, or ask an administrator to set up the provider."}
 	case errors.Is(err, armature.ErrNotConfigured):
 		return &APIError{Status: http.StatusConflict, Code: "armature_not_configured",
 			Message: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature."}
@@ -439,7 +440,7 @@ func toAPIError(err error) *APIError {
 		return &APIError{Status: http.StatusBadGateway, Code: "armature_unreachable",
 			Message: "Armature did not answer. Try again in a moment, and tell an administrator if it keeps happening.", cause: err}
 	case errors.Is(err, tenant.ErrNoTenant):
-		return &APIError{Status: http.StatusBadRequest, Code: "no_organization", Message: "Select an organization first."}
+		return &APIError{Status: http.StatusBadRequest, Code: "no_organization", Message: "You are not a member here yet. Ask an administrator to let you in."}
 	case errors.Is(err, objectstore.ErrUnavailable):
 		return &APIError{Status: http.StatusServiceUnavailable, Code: "storage_unavailable", Message: "Files cannot be stored on this server yet. Ask an administrator to set up file storage.", cause: err}
 	case errors.Is(err, theme.ErrNotAThemeFile), errors.Is(err, theme.ErrDefaultNotShared):

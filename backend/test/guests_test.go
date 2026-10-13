@@ -428,7 +428,7 @@ func TestAGuestSignsInAsAGuestWhateverTheirGroups(t *testing.T) {
 	}
 
 	b := newBrowser(t)
-	b.signIn(t, a, org.Slug, "alice", alicePassword, "/")
+	b.signIn(t, a, "alice", alicePassword, "/")
 	status, me := b.me(t, a)
 	current, _ := me["organization"].(map[string]any)
 	if status != http.StatusOK || current["role"] != "guest" {

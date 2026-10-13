@@ -45,7 +45,7 @@ describe("the single sign-on settings", () => {
       createGroups: true,
       enabled: true,
     });
-    expect(await screen.findByText("/api/v1/auth/oidc/demo/start")).toBeInTheDocument();
+    expect(await screen.findByText("/api/v1/auth/oidc/start")).toBeInTheDocument();
     // The saved row comes back newer, which starts the form afresh; the word stays.
     expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
   });
@@ -90,11 +90,11 @@ describe("the single sign-on settings", () => {
     stubApi({
       "GET /oidc-provider": {
         status: 403,
-        body: { error: { code: "forbidden", message: "Only an administrator of this organization can do that. Ask one of them." } },
+        body: { error: { code: "forbidden", message: "Only an administrator can do that. Ask one of them." } },
       },
     });
     await renderAt("/settings/sso");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Only an administrator of this organization can change how its members sign in.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Only an administrator can change how members sign in.");
   });
 
   it("passes axe", async () => {

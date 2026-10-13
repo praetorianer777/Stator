@@ -32,6 +32,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/hub"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
@@ -173,7 +174,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	site, err := resolveInstance(ctx, cluster, log)
+	if err != nil {
+		return err
+	}
 	server := &httpapi.Server{
+		Instance:          site,
 		Collab:            collabs,
 		DB:                cluster,
 		Fresh:             fresh,
@@ -227,7 +233,7 @@ func run() error {
 	}
 	if cfg.TestEndpoints.Enabled {
 		log.Warn("STATOR_TEST_ENDPOINTS is on: " + httpapi.APIPrefix + "/test makes people and resets the organization for anybody with its token")
-		server.TestInstance = testinstance.NewService(cluster, sso, cfg.Bootstrap.OrgSlug, seed.Bootstrapped(cfg.Bootstrap), accounts.SessionTTL())
+		server.TestInstance = testinstance.NewService(cluster, sso, seed.Bootstrapped(cfg.Bootstrap), accounts.SessionTTL())
 		server.TestToken = cfg.TestEndpoints.Token
 	}
 	origins := cfg.CORSOrigins
@@ -288,6 +294,19 @@ func run() error {
 	}
 	log.Info("api stopped cleanly")
 	return nil
+}
+
+// resolveInstance finds the organization before anybody asks and refuses a
+// database holding several; one the seed has not made yet is found later.
+func resolveInstance(ctx context.Context, cluster *db.Cluster, log *slog.Logger) (*instance.Resolver, error) {
+	site := instance.NewResolver(cluster)
+	switch _, err := site.Org(ctx); {
+	case errors.Is(err, instance.ErrNone):
+		log.Warn("the instance has no organization yet; run seed bootstrap to make it")
+	case err != nil:
+		return nil, err
+	}
+	return site, nil
 }
 
 func telemetryConfig(cfg config.Config, service string) observability.Config {

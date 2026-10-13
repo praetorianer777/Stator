@@ -13,10 +13,11 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
-// ErrBadSignature is any delivery that cannot be trusted, an unknown
-// organization included, so the receiver never says which ones exist.
+// ErrBadSignature is any delivery that cannot be trusted, one sent to an old
+// address naming another organization included.
 var ErrBadSignature = errors.New("the webhook signature does not match")
 
 // Sign is Armature's webhook.Sign: sha256= and the lower case hex HMAC-SHA256
@@ -63,16 +64,16 @@ func WebhookClears(topic string, payload json.RawMessage) (keys []string, search
 	return keys, searches
 }
 
-// webhookTarget is what the receiver needs of an organization by its slug.
+// webhookTarget is what the receiver needs of the organization.
 type webhookTarget struct {
 	OrgID         uuid.UUID
 	Sealed        []byte
 	ArmatureOrgID *uuid.UUID
 }
 
-// Webhook verifies one delivery to orgSlug and clears what it announces; a
+// Webhook verifies one delivery to org and clears what it announces; a
 // replay of an event already acted on changes nothing.
-func (s *Service) Webhook(ctx context.Context, orgSlug string, body []byte, signature string) error {
+func (s *Service) Webhook(ctx context.Context, org tenant.Org, body []byte, signature string) error {
 	var target *webhookTarget
 	// As the admin role: nobody signs in, and the organization is only
 	// known once its secret has vouched for the body.
@@ -81,7 +82,7 @@ func (s *Service) Webhook(ctx context.Context, orgSlug string, body []byte, sign
 		err := tx.QueryRow(ctx, `
 			SELECT o.id, c.webhook_secret, c.armature_org_id
 			FROM org o JOIN armature_connection c ON c.org_id = o.id
-			WHERE o.slug = $1 AND o.archived_at IS NULL AND c.webhook_secret IS NOT NULL`, orgSlug,
+			WHERE o.id = $1 AND o.archived_at IS NULL AND c.webhook_secret IS NOT NULL`, org.ID,
 		).Scan(&t.OrgID, &t.Sealed, &t.ArmatureOrgID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil

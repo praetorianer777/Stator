@@ -386,7 +386,7 @@ func TestAVideoPlaysInPlaceAndSeeksByRanges(t *testing.T) {
 		if resp, _ := nobody.downloadRange(t, path, "bytes=0-3", ""); resp.StatusCode != http.StatusUnauthorized {
 			t.Errorf("without a session: %d", resp.StatusCode)
 		}
-		if resp, _ := nobody.downloadRange(t, publicPath(slug, "/attachments/", id), "bytes=0-3", ""); resp.StatusCode != http.StatusNotFound {
+		if resp, _ := nobody.downloadRange(t, publicPath("/attachments/", id), "bytes=0-3", ""); resp.StatusCode != http.StatusNotFound {
 			t.Errorf("through the public reads of a closed space: %d", resp.StatusCode)
 		}
 	})

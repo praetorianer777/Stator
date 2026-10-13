@@ -18,16 +18,12 @@ export const USERS: Record<User, { username: string; password: string }> = {
   bob: { username: "bob", password: "bob password" },
 };
 
-/** The organisation the seed makes. */
-export const ORG_SLUG = "demo";
-
 /** The owner the server bootstraps, the one account that signs in with a password. */
 export const BOOTSTRAP_OWNER = { email: "admin@stator.test", password: "stator admin password" };
 
 /** What the login page offers, and what answers once someone is signed in. */
 export const LOGIN_PATH = "/login";
 export const ME_PATH = "/api/v1/auth/me";
-const ORG_FIELD = "Organization";
 const SSO_START = '[data-action="sso"]';
 const PASSWORD_SUBMIT = '[data-action="password-sign-in"]';
 
@@ -65,9 +61,8 @@ export function authAvailable(): Promise<boolean> {
  * Starts SSO from the login page, staying on it when a redirect brought the browser
  * there so its `next` is kept; the caller waits for the page the provider leads to.
  */
-export async function startSSO(page: Page, org: string = ORG_SLUG): Promise<void> {
+export async function startSSO(page: Page): Promise<void> {
   if (!page.url().startsWith(`${WEB_URL}${LOGIN_PATH}`)) await page.goto(LOGIN_PATH);
-  await page.getByLabel(ORG_FIELD, { exact: true }).fill(org);
   await page.locator(SSO_START).click(LEAVES_THE_PAGE);
 }
 

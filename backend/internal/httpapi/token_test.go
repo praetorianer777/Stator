@@ -31,7 +31,7 @@ func tokenServer(t *testing.T) *Server {
 	return s
 }
 
-// The table's orgWide marks and the router agree both ways: a token limited to
+// The table's wholeInstance marks and the router agree both ways: a token limited to
 // spaces is refused every marked operation and no other one.
 func TestATokenLimitedToSpacesIsRefusedTheWholeOrganization(t *testing.T) {
 	router := tokenServer(t).Routes(nil)
@@ -44,15 +44,15 @@ func TestATokenLimitedToSpacesIsRefusedTheWholeOrganization(t *testing.T) {
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, withBearer(route.Method, path, "spaces", `{}`))
 		refused := rec.Code == http.StatusForbidden && strings.Contains(rec.Body.String(), `"spaces_token"`)
-		if route.OrgWide {
+		if route.WholeInstance {
 			marked++
 		}
-		if refused != route.OrgWide {
-			t.Errorf("a token limited to spaces at %s %s = %d %s, orgWide %v", route.Method, route.Path, rec.Code, rec.Body.String(), route.OrgWide)
+		if refused != route.WholeInstance {
+			t.Errorf("a token limited to spaces at %s %s = %d %s, wholeInstance %v", route.Method, route.Path, rec.Code, rec.Body.String(), route.WholeInstance)
 		}
 	}
 	if marked == 0 {
-		t.Fatal("no operation is marked orgWide")
+		t.Fatal("no operation is marked wholeInstance")
 	}
 	// The person behind it, signed in, gets past the same guard.
 	resp, body := serve(t, router, withBearer(http.MethodGet, APIPrefix+"/audit", "session", ""))
@@ -67,7 +67,7 @@ func TestATokenLimitedToSpacesIsOfferedNoOrganizationTool(t *testing.T) {
 		t.Fatalf("%d tools for a limited token of %d", len(limited), len(all))
 	}
 	for _, tool := range limited {
-		if t2, _ := toolByName(tool["name"].(string)); t2.OrgWide {
+		if t2, _ := toolByName(tool["name"].(string)); t2.WholeInstance {
 			t.Errorf("a limited token is offered %s", tool["name"])
 		}
 	}

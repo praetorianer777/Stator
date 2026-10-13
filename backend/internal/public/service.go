@@ -26,18 +26,17 @@ type Service struct {
 
 func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
 
-// Site finds the organization a public address names. One that is archived,
-// or lets nobody read without signing in, is not found, as one that does not
-// exist: an address tells nobody which organizations there are.
-func (s *Service) Site(ctx context.Context, slug string) (*Site, error) {
+// Site is the organization as an anonymous reader finds it; while it lets
+// nobody read without signing in, it is not found.
+func (s *Service) Site(ctx context.Context, org tenant.Org) (*Site, error) {
 	var out Site
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT o.id, o.slug::text, o.name, o.anonymous_indexable, COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''),
+			SELECT o.id, o.name, o.anonymous_indexable, COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''),
 			       CASE WHEN b.logo_type IS NOT NULL THEN b.logo_version END
 			FROM org o LEFT JOIN org_brand b ON b.org_id = o.id
-			WHERE o.slug = $1 AND o.anonymous_access AND o.archived_at IS NULL`, strings.ToLower(strings.TrimSpace(slug))).
-			Scan(&out.ID, &out.Slug, &out.Name, &out.Indexable, &out.Footer.En, &out.Footer.De, &out.LogoVersion)
+			WHERE o.id = $1 AND o.anonymous_access AND o.archived_at IS NULL`, org.ID).
+			Scan(&out.ID, &out.Name, &out.Indexable, &out.Footer.En, &out.Footer.De, &out.LogoVersion)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotPublic
@@ -48,10 +47,10 @@ func (s *Service) Site(ctx context.Context, slug string) (*Site, error) {
 	return &out, nil
 }
 
-// Reading binds ctx to the site as an anonymous reader, whom the database
-// holds to the spaces open to anybody whatever a query forgets to ask.
-func Reading(ctx context.Context, site *Site) context.Context {
-	return db.WithAnonymous(tenant.WithOrg(ctx, tenant.Org{ID: site.ID, Slug: site.Slug}))
+// Reading binds ctx to the organization as an anonymous reader, whom the
+// database holds to the spaces open to anybody whatever a query forgets.
+func Reading(ctx context.Context, org tenant.Org) context.Context {
+	return db.WithAnonymous(tenant.WithOrg(ctx, org))
 }
 
 // A space or page an anonymous reader may read, asked again in the service

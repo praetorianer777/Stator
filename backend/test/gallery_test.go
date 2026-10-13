@@ -122,18 +122,18 @@ func TestAGalleryShowsEachReaderThePicturesTheyMayDownload(t *testing.T) {
 
 	t.Run("an anonymous reader gets the gallery and downloads only the public pictures", func(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/spaces/GALL/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the gallery's space")
-		want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+		want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
 		h.settle(t)
-		page := obj(t, want(t, anon.get(t, publicPath(slug, "/pages/", album)), http.StatusOK, "the public album"), "page")
+		page := obj(t, want(t, anon.get(t, publicPath("/pages/", album)), http.StatusOK, "the public album"), "page")
 		if got := galleryIn(t, page["body"]); len(got) != 3 {
 			t.Fatalf("the public gallery names %v", got)
 		}
 		for _, id := range []string{first, second} {
-			if resp, _ := anon.download(t, publicPath(slug, "/attachments/", id)); resp.StatusCode != http.StatusOK {
+			if resp, _ := anon.download(t, publicPath("/attachments/", id)); resp.StatusCode != http.StatusOK {
 				t.Errorf("the public picture %s: %d", id, resp.StatusCode)
 			}
 		}
-		want(t, anon.get(t, publicPath(slug, "/attachments/", hidden)), http.StatusNotFound, "the hidden picture, read by anybody")
+		want(t, anon.get(t, publicPath("/attachments/", hidden)), http.StatusNotFound, "the hidden picture, read by anybody")
 
 		conn := appConn(t)
 		actAnonymously(t, conn, home.org)

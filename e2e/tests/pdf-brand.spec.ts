@@ -25,10 +25,10 @@ test.describe("the brand in a PDF", { tag: ["@auth", "@desktop"] }, () => {
       };
       const before = (await pdf()).match(IMAGE)?.length ?? 0;
 
-      must(await api.PUT("/org/brand/footer", { body: { en: "Internal use only", de: "Nur intern" } }));
+      must(await api.PUT("/site/brand/footer", { body: { en: "Internal use only", de: "Nur intern" } }));
       const form = new FormData();
       form.append("file", new Blob([new Uint8Array(LOGO)], { type: "image/png" }), "logo.png");
-      must(await api.PUT("/org/brand/logo", { body: form as unknown as { file: string } }));
+      must(await api.PUT("/site/brand/logo", { body: form as unknown as { file: string } }));
 
       await page.goto(`/print/p/${guide.id}`);
       const meta = page.locator("[data-print-meta]");
@@ -49,8 +49,8 @@ test.describe("the brand in a PDF", { tag: ["@auth", "@desktop"] }, () => {
         type: "doc",
         content: [{ type: "paragraph", content: [{ type: "text", text: "No brand here." }] }],
       });
-      must(await api.DELETE("/org/brand/logo"));
-      must(await api.PUT("/org/brand/footer", { body: { en: "", de: "" } }));
+      must(await api.DELETE("/site/brand/logo"));
+      must(await api.PUT("/site/brand/footer", { body: { en: "", de: "" } }));
       await page.goto(`/print/p/${guide.id}`);
       await expect(page.locator("html")).toHaveAttribute("data-print-ready", "", PRINTED);
       const meta = page.locator("[data-print-meta]");

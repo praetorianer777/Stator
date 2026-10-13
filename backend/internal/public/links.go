@@ -22,8 +22,8 @@ const (
 	MaxLinksPerPage = 5
 	// MaxLinkLabelLength bounds the label that tells a page's links apart.
 	MaxLinkLabelLength = 60
-	// LinkPathSegment is the part of a public address after the organization
-	// that a link's token follows, in the web client as in the api.
+	// LinkPathSegment is the part of a public address in the web client that
+	// a link's token follows.
 	LinkPathSegment = "link"
 )
 
@@ -148,10 +148,9 @@ func (in LinkInput) Clean(now time.Time) (string, error) {
 	return label, nil
 }
 
-// LinkPath is the web client's address of a link: the organization, then
-// the token, so the address names whom it reads in as #79's public pages do.
-func LinkPath(orgSlug, token string) string {
-	return "/public/" + url.PathEscape(orgSlug) + "/" + LinkPathSegment + "/" + url.PathEscape(token)
+// LinkPath is the web client's address of a link.
+func LinkPath(token string) string {
+	return "/public/" + LinkPathSegment + "/" + url.PathEscape(token)
 }
 
 // IsToken says whether a string has the shape of a link's token.

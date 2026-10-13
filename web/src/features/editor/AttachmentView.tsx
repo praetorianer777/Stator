@@ -16,10 +16,10 @@ import type { DocNode } from "./schema";
 
 /** Where a file downloads from, or shows in place: the public reads, or the link's, for somebody who is not signed in. */
 export function useFileUrl(): (id: string, inline?: boolean) => string {
-  const org = usePublicReading();
+  const reading = usePublicReading();
   const token = usePublicLink();
-  if (org && token) return (id, inline) => linkedAttachmentUrl(org, token, id, inline);
-  return org ? (id, inline) => publicAttachmentUrl(org, id, inline) : attachmentUrl;
+  if (reading && token) return (id, inline) => linkedAttachmentUrl(token, id, inline);
+  return reading ? publicAttachmentUrl : attachmentUrl;
 }
 
 function idOf(node: DocNode): string | null {

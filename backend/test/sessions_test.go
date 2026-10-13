@@ -29,7 +29,7 @@ func bootstrapAdmin(t *testing.T, h *harness, a *api, org tenant.Org) string {
 	t.Helper()
 	email := "admin-" + uuid.NewString()[:8] + "@stator.test"
 	h.forgetPerson(t, email)
-	if _, err := a.accounts.EnsureAdmin(context.Background(), org.Slug, email, "Admin", adminPassword); err != nil {
+	if _, err := a.accounts.EnsureAdmin(context.Background(), email, "Admin", adminPassword); err != nil {
 		t.Fatalf("bootstrap the administrator: %v", err)
 	}
 	return email
@@ -58,7 +58,7 @@ func TestTheBootstrapAdministratorIsMadeOnce(t *testing.T) {
 	email := "boot-" + uuid.NewString()[:8] + "@stator.test"
 	h.forgetPerson(t, email)
 
-	created, err := a.accounts.EnsureAdmin(ctx, org.Slug, email, "Boot", adminPassword)
+	created, err := a.accounts.EnsureAdmin(ctx, email, "Boot", adminPassword)
 	if err != nil || !created {
 		t.Fatalf("first run = %v, %v", created, err)
 	}
@@ -72,20 +72,20 @@ func TestTheBootstrapAdministratorIsMadeOnce(t *testing.T) {
 		t.Fatalf("hash %q, role %q", hash, role)
 	}
 
-	created, err = a.accounts.EnsureAdmin(ctx, org.Slug, email, "Boot", adminPassword)
+	created, err = a.accounts.EnsureAdmin(ctx, email, "Boot", adminPassword)
 	var again string
 	_ = h.super.QueryRow(ctx, `SELECT password_hash FROM app_user WHERE email = $1`, email).Scan(&again)
 	if err != nil || created || again != hash {
 		t.Fatalf("second run changed something: created %v, err %v, hash changed %v", created, err, again != hash)
 	}
 
-	if _, err := a.accounts.EnsureAdmin(ctx, org.Slug, email, "Boot", "a different long password"); err != nil {
+	if _, err := a.accounts.EnsureAdmin(ctx, email, "Boot", "a different long password"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := a.accounts.Login(ctx, email, "a different long password", "", ""); err != nil {
 		t.Fatalf("the reset password does not sign in: %v", err)
 	}
-	if _, err := a.accounts.EnsureAdmin(ctx, org.Slug, email, "Boot", "short"); !errors.Is(err, auth.ErrPasswordTooShort) {
+	if _, err := a.accounts.EnsureAdmin(ctx, email, "Boot", "short"); !errors.Is(err, auth.ErrPasswordTooShort) {
 		t.Fatalf("a short password = %v", err)
 	}
 }
@@ -116,7 +116,7 @@ func TestPasswordLoginSessionsExpireAndEnd(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("login = %d %v", resp.StatusCode, body)
 	}
-	if current, _ := body["organization"].(map[string]any); current["slug"] != org.Slug || current["role"] != "owner" {
+	if current, _ := body["organization"].(map[string]any); current["name"] == nil || current["role"] != "owner" {
 		t.Fatalf("login answered %v", body)
 	}
 	secret := b.sessionCookie(t, a, h.cfg.Auth.SessionCookie)

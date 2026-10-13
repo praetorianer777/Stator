@@ -1,5 +1,8 @@
-import { Outlet, createRoute } from "@tanstack/react-router";
+import { Outlet, createRoute, redirect } from "@tanstack/react-router";
+import { namesTheSite } from "@/api/public";
+import { PUBLIC_PATH } from "@/config";
 import {
+  NotPublic,
   PublicLinkScreen,
   PublicPageLookup,
   PublicPageScreen,
@@ -10,17 +13,13 @@ import {
 } from "@/features/public/PublicScreens";
 import { rootRoute } from "./root";
 
-/**
- * What an organization lets anybody read, without signing in: outside the
- * app's shell and its sign-in guard, named by the organization's slug.
- */
+/** What the organization lets anybody read, without signing in: outside the app's shell and its sign-in guard. */
 export const publicRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/public/$org",
+  path: "/public",
   component: function PublicLayout() {
-    const { org } = publicRoute.useParams();
     return (
-      <PublicShell org={org}>
+      <PublicShell>
         <Outlet />
       </PublicShell>
     );
@@ -30,18 +29,15 @@ export const publicRoute = createRoute({
 export const publicSiteRoute = createRoute({
   getParentRoute: () => publicRoute,
   path: "/",
-  component: function PublicSite() {
-    const { org } = publicSiteRoute.useParams();
-    return <PublicSiteScreen org={org} />;
-  },
+  component: PublicSiteScreen,
 });
 
 export const publicSpaceRoute = createRoute({
   getParentRoute: () => publicRoute,
   path: "/s/$spaceKey",
   component: function PublicSpace() {
-    const { org, spaceKey } = publicSpaceRoute.useParams();
-    return <PublicSpaceScreen org={org} spaceKey={spaceKey} />;
+    const { spaceKey } = publicSpaceRoute.useParams();
+    return <PublicSpaceScreen spaceKey={spaceKey} />;
   },
 });
 
@@ -50,8 +46,8 @@ export const publicPageRoute = createRoute({
   getParentRoute: () => publicRoute,
   path: "/s/$spaceKey/p/$pageId/$slug",
   component: function PublicPage() {
-    const { org, pageId } = publicPageRoute.useParams();
-    return <PublicPageScreen org={org} pageId={pageId} />;
+    const { pageId } = publicPageRoute.useParams();
+    return <PublicPageScreen pageId={pageId} />;
   },
 });
 
@@ -60,8 +56,8 @@ export const publicPageBareRoute = createRoute({
   getParentRoute: () => publicRoute,
   path: "/p/$pageId",
   component: function PublicPageBare() {
-    const { org, pageId } = publicPageBareRoute.useParams();
-    return <PublicPageLookup org={org} pageId={pageId} />;
+    const { pageId } = publicPageBareRoute.useParams();
+    return <PublicPageLookup pageId={pageId} />;
   },
 });
 
@@ -79,9 +75,8 @@ export const publicSearchRoute = createRoute({
     return { ...(q ? { q } : {}), ...(Number.isInteger(page) && page > 1 ? { page } : {}) };
   },
   component: function PublicSearchRoute() {
-    const { org } = publicSearchRoute.useParams();
     const { q = "", page = 1 } = publicSearchRoute.useSearch();
-    return <PublicSearchScreen org={org} q={q} page={page} />;
+    return <PublicSearchScreen q={q} page={page} />;
   },
 });
 
@@ -91,10 +86,31 @@ export const publicSearchRoute = createRoute({
  */
 export const publicLinkRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/public/$org/link/$token",
+  path: "/public/link/$token",
   component: function PublicLink() {
-    const { org, token } = publicLinkRoute.useParams();
-    return <PublicLinkScreen org={org} token={token} />;
+    const { token } = publicLinkRoute.useParams();
+    return <PublicLinkScreen token={token} />;
+  },
+});
+
+// An address shared while the public pages named the organization is sent on
+// when the slug is this organization's, which only the API knows, and is not
+// found otherwise. The fixed paths above win over it.
+export const oldPublicRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/public/$org/$",
+  beforeLoad: async ({ params, location }) => {
+    if (await namesTheSite(params.org)) {
+      const rest = params._splat ? `/${params._splat}` : "";
+      throw redirect({ href: `${PUBLIC_PATH}${rest}${location.searchStr}${location.hash ? `#${location.hash}` : ""}`, replace: true });
+    }
+  },
+  component: function OldPublicAddress() {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        <NotPublic next="/" />
+      </main>
+    );
   },
 });
 

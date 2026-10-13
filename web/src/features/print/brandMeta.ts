@@ -15,9 +15,9 @@ export function footerLine(footer: { en: string; de: string }, lang: Language = 
 }
 
 /** Where a public site, or a public link, serves the organization's logo from. */
-export function publicLogoHref(org: string, logoVersion: number | null, token?: string): string | null {
+export function publicLogoHref(logoVersion: number | null, token?: string): string | null {
   if (logoVersion === null) return null;
-  const base = token ? `${API_BASE}/public/${org}/links/${token}` : `${API_BASE}/public/${org}`;
+  const base = token ? `${API_BASE}/public/links/${token}` : `${API_BASE}/public`;
   return `${base}/logo?v=${logoVersion}`;
 }
 

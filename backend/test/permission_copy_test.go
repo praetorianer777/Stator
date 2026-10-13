@@ -87,7 +87,7 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 		map[string]any{"subject": user(carlID), "permissions": []any{"administer"}},
 		map[string]any{"subject": user(bobID), "permissions": []any{"view"}},
 	}}), http.StatusOK, "TGT's table")
-	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "let anybody read")
+	want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "let anybody read")
 	want(t, owner.put(t, "/api/v1/spaces/SRC/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open SRC to anybody")
 	var guests []uuid.UUID
 	for _, invite := range []struct{ key, name string }{{"SRC", "Gwen"}, {"TGT", "Hank"}} {

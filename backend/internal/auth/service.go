@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
@@ -49,8 +50,8 @@ type Credentials struct {
 // when the email is unknown so that both branches of Login cost the same.
 const decoyHash = "$argon2id$v=19$m=65536,t=3,p=4$c29tZS1zdGF0aWMtc2FsdA$Zm9yLXRpbWluZy1lcXVhbGl0eS1vbmx5LW5vdC1hLXNl"
 
-// Login verifies a password and opens a session in the person's first
-// organization. An unknown address and a wrong password fail alike.
+// Login verifies a password and opens a session, in the organization when
+// the person is a member. An unknown address and a wrong password fail alike.
 func (s *Service) Login(ctx context.Context, email, password, userAgent, ip string) (*Credentials, error) {
 	email = NormalizeEmail(email)
 
@@ -94,17 +95,26 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 		}
 	}
 
-	memberships, err := s.memberships(ctx, p.UserID, nil)
-	if err != nil {
-		return nil, err
-	}
 	var orgID *uuid.UUID
-	if len(memberships) > 0 {
-		m := memberships[0]
-		orgID = &m.OrgID
-		p.Org = &tenant.Org{ID: m.OrgID, Slug: m.OrgSlug}
-		p.OrgName = m.OrgName
-		p.Role = m.Role
+	var guest guestSpaceColumns
+	var org tenant.Org
+	err = s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		return tx.QueryRow(ctx, `
+			SELECT o.id, o.slug, o.name, m.org_role, gs.id, gs.key, gs.name
+			FROM org_member m
+			JOIN org o ON o.id = m.org_id
+			LEFT JOIN space gs ON gs.org_id = m.org_id AND gs.id = m.guest_space_id
+			WHERE m.user_id = $1 AND o.archived_at IS NULL
+			ORDER BY m.created_at LIMIT 1`, p.UserID,
+		).Scan(&org.ID, &org.Slug, &p.OrgName, &p.Role, &guest.id, &guest.key, &guest.name)
+	})
+	switch {
+	case err == nil:
+		orgID = &org.ID
+		p.Org = &org
+		p.GuestSpace = guest.ref()
+	case !errors.Is(err, pgx.ErrNoRows):
+		return nil, err
 	}
 
 	expiresAt := s.now().Add(s.sessionTTL)
@@ -201,83 +211,6 @@ func (s *Service) Logout(ctx context.Context, sessionID uuid.UUID) error {
 	return err
 }
 
-// Organizations lists where the caller may act: their memberships, narrowed to
-// the ones their session reaches, oldest first so the first is a stable default.
-func (s *Service) Organizations(ctx context.Context, p *Principal) ([]Membership, error) {
-	all, err := s.memberships(ctx, p.UserID, p.SessionID)
-	if err != nil || p.TokenID == nil {
-		return all, err
-	}
-	// A token is bound to the organization it was made in.
-	return slices.DeleteFunc(all, func(m Membership) bool { return !p.InOrg() || m.OrgID != p.Org.ID }), nil
-}
-
-func (s *Service) memberships(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID) ([]Membership, error) {
-	out := []Membership{}
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `
-			SELECT o.id, o.slug, o.name, m.org_role
-			FROM org_member m
-			JOIN org o ON o.id = m.org_id
-			LEFT JOIN user_session s ON s.id = $2
-			WHERE m.user_id = $1 AND o.archived_at IS NULL
-			  AND ($2::uuid IS NULL OR session_reaches(s.proof, s.proof_org_id, s.user_id, o.id))
-			ORDER BY m.created_at, o.slug`, userID, sessionID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var m Membership
-			if err := rows.Scan(&m.OrgID, &m.OrgSlug, &m.OrgName, &m.Role); err != nil {
-				return err
-			}
-			out = append(out, m)
-		}
-		return rows.Err()
-	})
-	return out, err
-}
-
-// SwitchOrg points a session at another of the person's organizations, when its
-// proof reaches there by the same function the database's trigger applies.
-func (s *Service) SwitchOrg(ctx context.Context, sessionID, userID uuid.UUID, slug string) (*CurrentOrg, db.LSN, error) {
-	var org CurrentOrg
-	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var guest guestSpaceColumns
-		err := tx.QueryRow(ctx, `
-			SELECT o.id, o.slug, o.name, m.org_role, gs.id, gs.key, gs.name
-			FROM org o
-			JOIN org_member m ON m.org_id = o.id AND m.user_id = $2
-			LEFT JOIN space gs ON gs.org_id = m.org_id AND gs.id = m.guest_space_id
-			WHERE o.slug = $1 AND o.archived_at IS NULL`,
-			strings.ToLower(strings.TrimSpace(slug)), userID,
-		).Scan(&org.ID, &org.Slug, &org.Name, &org.Role, &guest.id, &guest.key, &guest.name)
-		org.GuestSpace = guest.ref()
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotAMember
-		}
-		if err != nil {
-			return err
-		}
-		var reaches bool
-		if err := tx.QueryRow(ctx, `
-			SELECT session_reaches(proof, proof_org_id, user_id, $2) FROM user_session WHERE id = $1`,
-			sessionID, org.ID).Scan(&reaches); err != nil {
-			return err
-		}
-		if !reaches {
-			return ErrSessionStaysHome
-		}
-		_, err = tx.Exec(ctx, `UPDATE user_session SET current_org_id = $2 WHERE id = $1`, sessionID, org.ID)
-		return err
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	return &org, lsn, nil
-}
-
 // SetLocale records the language a person reads the interface in;
 // LocaleBrowser hands the choice back to their browser.
 func (s *Service) SetLocale(ctx context.Context, userID uuid.UUID, locale Locale) (db.LSN, error) {
@@ -299,27 +232,9 @@ func (s *Service) SetShowInReaders(ctx context.Context, userID uuid.UUID, show b
 	})
 }
 
-// OrgBySlug finds an organization by the slug in a URL. It runs on the admin
-// path because a sign-in has to know its tenant before anybody is signed in.
-func (s *Service) OrgBySlug(ctx context.Context, slug string) (*tenant.Org, error) {
-	var org tenant.Org
-	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `SELECT id, slug FROM org WHERE slug = $1 AND archived_at IS NULL`,
-			strings.ToLower(strings.TrimSpace(slug)),
-		).Scan(&org.ID, &org.Slug)
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotAMember
-	}
-	if err != nil {
-		return nil, fmt.Errorf("find organization: %w", err)
-	}
-	return &org, nil
-}
-
 // EnsureAdmin makes email a local owner of the organization, reporting whether
 // the account is new. Run again it changes nothing, or resets a changed password.
-func (s *Service) EnsureAdmin(ctx context.Context, orgSlug, email, name, password string) (bool, error) {
+func (s *Service) EnsureAdmin(ctx context.Context, email, name, password string) (bool, error) {
 	email = NormalizeEmail(email)
 	if !strings.Contains(email, "@") {
 		return false, fmt.Errorf("%q is not an email address", email)
@@ -355,14 +270,11 @@ func (s *Service) EnsureAdmin(ctx context.Context, orgSlug, email, name, passwor
 
 	var created bool
 	_, err = s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var orgID uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT id FROM org WHERE slug = $1`, orgSlug).Scan(&orgID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("there is no organization %q to make %s an administrator of", orgSlug, email)
-		}
+		org, err := instance.Find(ctx, tx)
 		if err != nil {
 			return err
 		}
+		orgID := org.ID
 		var userID uuid.UUID
 		// xmax is zero on a row this statement inserted rather than updated.
 		err = tx.QueryRow(ctx, `

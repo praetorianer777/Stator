@@ -187,7 +187,7 @@ test.describe("attachment lightbox", { tag: ["@auth"] }, () => {
       const reader = await context.newPage();
       await openUntil(reader, link.path, () => expect(picture(reader)).toBeVisible(ONE_LOOK));
       await picture(reader).click();
-      const through = new RegExp(`/api/v1/public/[^/]+/links/[^/]+/attachments/${harbour}\\?inline=1$`);
+      const through = new RegExp(`/api/v1/public/links/[^/]+/attachments/${harbour}\\?inline=1$`);
       await expect(zoom(reader)).toHaveAttribute("src", through);
       await expect.poll(() => zoom(reader).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(PICTURE_WIDTH);
       await reader.keyboard.press("Escape");

@@ -36,6 +36,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/hub"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -117,7 +118,7 @@ func newAPIServer(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *ap
 	a.attachments = attachment.NewService(h.cluster, store, pages).WithMaxSize(testUploadLimit).WithLogger(discard()).
 		WithConverter(convert.New(h.cfg.ConverterURL, attachment.MaxPreviewSize))
 	server := &httpapi.Server{
-		DB: h.cluster, Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
+		DB: h.cluster, Instance: instance.NewResolver(h.cluster), Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
 		Labels: label.NewService(h.cluster, pages), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Tasks: task.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Calendars: calendar.NewService(h.cluster), Guests: guest.NewService(h.cluster), Public: public.NewService(h.cluster), Hub: hub.NewService(h.cluster), Brand: brand.NewService(h.cluster, h.appStore(t)), Templates: template.NewService(h.cluster), ExampleJobs: example.NewJobs(h.cluster), Word: wordio.NewService(h.cluster, pages, a.attachments, store), SpaceTransfers: spaceio.NewJobs(h.cluster, h.appStore(t)),
 		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),

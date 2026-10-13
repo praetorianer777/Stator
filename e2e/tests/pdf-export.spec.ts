@@ -139,11 +139,10 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
         content: [{ type: "paragraph", content: [{ type: "text", text: "Anybody may read this." }] }],
       });
       must(await api.PUT("/spaces/{spaceKey}/anonymous-access", { params: { path: { spaceKey: key } }, body: { view: true } }));
-      must(await api.PUT("/org/anonymous-access", { body: { enabled: true, indexable: false } }));
-      const org = must(await api.GET("/auth/me")).organization!.slug;
+      must(await api.PUT("/site/anonymous-access", { body: { enabled: true, indexable: false } }));
       const reader = await context.newPage();
 
-      await openTitled(reader, `/public/${org}/s/${key}/p/${guide.id}/open`, guide.title);
+      await openTitled(reader, `/public/s/${key}/p/${guide.id}/open`, guide.title);
       const file = await exportPdf(reader, () => reader.locator('[data-action="export-pdf"]').click());
       expect(file.suggestedFilename()).toMatch(new RegExp(`^${key}-open-${word}-`));
       expectPdf(await bytesOf(file), guide.title);
@@ -155,7 +154,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
       expectPdf(await bytesOf(linkedFile), guide.title);
     } finally {
       await context.close();
-      must(await api.PUT("/org/anonymous-access", { body: { enabled: false, indexable: false } }));
+      must(await api.PUT("/site/anonymous-access", { body: { enabled: false, indexable: false } }));
       await deleteSpace(api, key);
     }
   });

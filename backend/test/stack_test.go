@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"io"
 	"io/fs"
 	"net/http"
@@ -206,29 +205,24 @@ func TestTheSeedIsIdempotent(t *testing.T) {
 }
 
 // A production install runs the bootstrap on every install and upgrade: it
-// makes the named organization and its administrator once, leaves them alone
-// after, and a changed password is the one thing it applies again. Another
-// organization is refused: an instance has one.
+// makes the organization and its administrator once, leaves them alone after,
+// and a changed password is the one thing it applies again.
 func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 	h := newHarness(t)
 	ctx := context.Background()
 	accounts := auth.NewService(h.cluster, cheapPasswords(), time.Hour)
-	slug := "boot-" + strings.ToLower(strconv.FormatInt(time.Now().UnixNano(), 36))
-	email := slug + "@bootstrap.test"
-	t.Cleanup(func() {
-		_, _ = h.super.Exec(ctx, `DELETE FROM org WHERE slug = $1`, slug)
-		_, _ = h.super.Exec(ctx, `DELETE FROM app_user WHERE email = $1`, email)
-	})
+	email := "boot-" + strings.ToLower(strconv.FormatInt(time.Now().UnixNano(), 36)) + "@bootstrap.test"
+	t.Cleanup(func() { _, _ = h.super.Exec(ctx, `DELETE FROM app_user WHERE email = $1`, email) })
 
 	for run := range 2 {
-		res, err := seed.Ensure(ctx, h.cluster, slug, "Bootstrapped")
+		res, err := seed.Ensure(ctx, h.cluster, "Bootstrapped")
 		if err != nil {
 			t.Fatalf("run %d: %v", run+1, err)
 		}
 		if res.OrgCreated != (run == 0) {
 			t.Errorf("run %d: organization created = %v", run+1, res.OrgCreated)
 		}
-		made, err := accounts.EnsureAdmin(ctx, slug, email, "Administrator", "first password 1")
+		made, err := accounts.EnsureAdmin(ctx, email, "Administrator", "first password 1")
 		if err != nil {
 			t.Fatalf("run %d: %v", run+1, err)
 		}
@@ -238,24 +232,24 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 	}
 
 	var org, owners int
-	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org WHERE slug = $1`, slug).Scan(&org); err != nil || org != 1 {
-		t.Fatalf("organizations named %s: %d (%v), want 1", slug, org, err)
+	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org WHERE name = 'Bootstrapped'`).Scan(&org); err != nil || org != 1 {
+		t.Fatalf("organizations: %d (%v), want the one the bootstrap made", org, err)
 	}
 	if err := h.super.QueryRow(ctx, `
-		SELECT count(*) FROM org_member m JOIN org o ON o.id = m.org_id JOIN app_user u ON u.id = m.user_id
-		WHERE o.slug = $1 AND u.email = $2 AND m.org_role = 'owner'`, slug, email).Scan(&owners); err != nil || owners != 1 {
+		SELECT count(*) FROM org_member m JOIN app_user u ON u.id = m.user_id
+		WHERE u.email = $1 AND m.org_role = 'owner'`, email).Scan(&owners); err != nil || owners != 1 {
 		t.Fatalf("owners named %s: %d (%v), want 1", email, owners, err)
 	}
-	if _, err := accounts.EnsureAdmin(ctx, slug, email, "Administrator", "second password 2"); err != nil {
+	if _, err := accounts.EnsureAdmin(ctx, email, "Administrator", "second password 2"); err != nil {
 		t.Fatalf("a changed password: %v", err)
 	}
 
-	res, err := seed.Ensure(ctx, h.cluster, "another-"+slug, "Another")
-	if !errors.Is(err, seed.ErrAnotherOrganization) || res.OrgCreated || !strings.Contains(err.Error(), slug) {
-		t.Fatalf("bootstrapping another organization = %+v, %v; want a refusal naming %s", res, err, slug)
+	res, err := seed.Ensure(ctx, h.cluster, "Another")
+	if err != nil || res.OrgCreated {
+		t.Fatalf("bootstrapping under another name = %+v, %v; want the organization there left alone", res, err)
 	}
 	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org`).Scan(&org); err != nil || org != 1 {
-		t.Fatalf("organizations after bootstrapping another: %d (%v), want 1", org, err)
+		t.Fatalf("organizations after bootstrapping again: %d (%v), want 1", org, err)
 	}
 }
 

@@ -119,7 +119,7 @@ describe("connecting Armature as an administrator", () => {
   it("tells a member the page is for administrators", async () => {
     stubApi({ "GET /armature/connection": { status: 403, body: { error: { code: "forbidden", message: "Only an administrator." } } } });
     await renderAt("/settings/armature");
-    expect(await screen.findByText("Only an administrator of this organization can connect Armature.")).toBeInTheDocument();
+    expect(await screen.findByText("Only an administrator can connect Armature.")).toBeInTheDocument();
   });
 });
 

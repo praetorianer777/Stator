@@ -49,11 +49,12 @@ MCP code decides a permission.
 A read-only token is offered only the tools that read (`GET` routes), and a
 writing tool called anyway is refused with the read-only sentence before the
 call is made. A token limited to spaces sees those spaces alone, as it does
-over HTTP, and is not offered the tools the route table marks `orgWide`,
-such as `list_audit_log`; one called anyway is refused with the
+over HTTP, and is not offered the tools the route table marks
+`wholeInstance`, which concern the instance as a whole, such as
+`list_audit_log`; one called anyway is refused with the
 `spaces_token` sentence. A guest of a space, who has no tokens and reaches
 the tools with their session, is held the same way: their space and the
-people in it alone, no `orgWide` tool offered, and one called anyway refused
+people in it alone, no `wholeInstance` tool offered, and one called anyway refused
 with the `guest` sentence. A result longer than 64 KiB is cut and says how
 to ask for less.
 
@@ -158,8 +159,8 @@ the unit tests. Declined, following Armature's rule of reads and safe writes:
   uploads, and several are imported by the worker; `import_markdown`
   carries a model's words into a new page;
 - Armature's issues, which Armature's own MCP endpoint serves as the person;
-- the reading view for people who are not signed in (`/public/{orgSlug}`
-  and below, a public link's page and both their PDFs and Word documents
+- the reading view for people who are not signed in (`/public` and
+  below, a public link's page and both their PDFs and Word documents
   included) and the
   switches that open it:
   an assistant acts for a member, for whom `get_page` and `search` read the

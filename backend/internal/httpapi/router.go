@@ -43,6 +43,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
+	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
@@ -63,10 +64,19 @@ type Database interface {
 	Stats() db.Stats
 }
 
+// Instance finds the one organization the instance serves; *instance.Resolver
+// is the real one.
+type Instance interface {
+	Org(ctx context.Context) (tenant.Org, error)
+}
+
 // Server holds everything the handlers need.
 type Server struct {
 	DB   Database
 	Auth Authenticator
+	// Instance is the organization the reads for anybody, a provider's
+	// sign-in and Armature's deliveries are for; nil serves none of them.
+	Instance Instance
 	// Accounts signs people in and out; OIDC runs sign-in through a provider.
 	// Both nil answer every sign-in route that it is not set up.
 	Accounts *auth.Service
@@ -199,28 +209,35 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Get("/openapi.json", s.handleOpenAPI)
 
 		r.Post("/auth/login", s.handleLogin)
-		r.Get("/auth/oidc/{orgSlug}/start", s.handleOIDCStart)
+		r.Get("/auth/oidc/start", s.handleOIDCStart)
 		r.Get("/auth/oidc/callback", s.handleOIDCCallback)
+		r.Post("/armature/webhook", s.handleArmatureWebhook)
+		// The address before #380, which receivers set up in Armature still use.
 		r.Post("/armature/webhook/{orgSlug}", s.handleArmatureWebhook)
 		r.Group(func(r chi.Router) {
 			r.Use(s.anonymousReader)
-			r.Get("/public/{orgSlug}", s.handlePublicSite)
-			r.Get("/public/{orgSlug}/spaces/{spaceKey}", s.handlePublicSpace)
-			r.Get("/public/{orgSlug}/pages/{pageID}", s.handlePublicPage)
-			r.Get("/public/{orgSlug}/pages/{pageID}/pdf", s.handlePublicPagePDF)
-			r.Get("/public/{orgSlug}/pages/{pageID}/docx", s.handlePublicPageWord)
-			r.Get("/public/{orgSlug}/attachments/{attachmentID}", s.handlePublicAttachment)
-			r.Get("/public/{orgSlug}/logo", s.handlePublicLogo)
-			r.Get("/public/{orgSlug}/search", s.handlePublicSearch)
+			r.Get("/public", s.handlePublicSite)
+			r.Get("/public/spaces/{spaceKey}", s.handlePublicSpace)
+			r.Get("/public/pages/{pageID}", s.handlePublicPage)
+			r.Get("/public/pages/{pageID}/pdf", s.handlePublicPagePDF)
+			r.Get("/public/pages/{pageID}/docx", s.handlePublicPageWord)
+			r.Get("/public/attachments/{attachmentID}", s.handlePublicAttachment)
+			r.Get("/public/logo", s.handlePublicLogo)
+			r.Get("/public/search", s.handlePublicSearch)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(s.linkReader)
-			r.Get("/public/{orgSlug}/links/{token}", s.handleLinkedPage)
-			r.Get("/public/{orgSlug}/links/{token}/pdf", s.handleLinkedPagePDF)
-			r.Get("/public/{orgSlug}/links/{token}/docx", s.handleLinkedPageWord)
-			r.Get("/public/{orgSlug}/links/{token}/attachments/{attachmentID}", s.handleLinkedAttachment)
-			r.Get("/public/{orgSlug}/links/{token}/logo", s.handleLinkedLogo)
+			r.Get("/public/links/{token}", s.handleLinkedPage)
+			r.Get("/public/links/{token}/pdf", s.handleLinkedPagePDF)
+			r.Get("/public/links/{token}/docx", s.handleLinkedPageWord)
+			r.Get("/public/links/{token}/attachments/{attachmentID}", s.handleLinkedAttachment)
+			r.Get("/public/links/{token}/logo", s.handleLinkedLogo)
 		})
+		// The addresses before #380 named the organization; the fixed paths
+		// above win over a slug of the same name.
+		for _, old := range oldPublicPaths {
+			r.Get("/public/{orgSlug}"+old.path, s.handleOldPublicPath)
+		}
 		mountPending(r, true)
 
 		r.Group(func(r chi.Router) {
@@ -228,7 +245,6 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/auth/logout", s.handleLogout)
 			r.Get("/auth/me", s.handleMe)
 			r.Patch("/auth/me", s.handleUpdateMe)
-			r.Post("/auth/switch-org", s.handleSwitchOrg)
 		})
 
 		r.Group(func(r chi.Router) {
@@ -244,27 +260,27 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/users/requests", s.handleListJoinRequests)
 			r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)
 			r.Delete("/users/requests/{userID}", s.handleDeclineJoinRequest)
-			r.Get("/org/tokens", s.handleListOrgAPITokens)
-			r.Delete("/org/tokens/{tokenID}", s.handleRevokeOrgAPIToken)
-			r.Get("/org/permissions", s.handleListGlobalPermissions)
-			r.Put("/org/permissions/{permission}", s.handleSetGlobalPermission)
-			r.Put("/org/hub", s.handleSetHub)
-			r.Put("/org/brand/footer", s.handleSetBrandFooter)
-			r.Put("/org/brand/logo", s.handleSetBrandLogo)
-			r.Delete("/org/brand/logo", s.handleDeleteBrandLogo)
-			r.Get("/org/anonymous-access", s.handleGetAnonymousAccess)
-			r.Put("/org/anonymous-access", s.handleSetAnonymousAccess)
-			r.Get("/org/public-links", s.handleGetPublicLinks)
-			r.Put("/org/public-links", s.handleSetPublicLinks)
+			r.Get("/site/tokens", s.handleListOrgAPITokens)
+			r.Delete("/site/tokens/{tokenID}", s.handleRevokeOrgAPIToken)
+			r.Get("/site/permissions", s.handleListGlobalPermissions)
+			r.Put("/site/permissions/{permission}", s.handleSetGlobalPermission)
+			r.Put("/site/hub", s.handleSetHub)
+			r.Put("/site/brand/footer", s.handleSetBrandFooter)
+			r.Put("/site/brand/logo", s.handleSetBrandLogo)
+			r.Delete("/site/brand/logo", s.handleDeleteBrandLogo)
+			r.Get("/site/anonymous-access", s.handleGetAnonymousAccess)
+			r.Put("/site/anonymous-access", s.handleSetAnonymousAccess)
+			r.Get("/site/public-links", s.handleGetPublicLinks)
+			r.Put("/site/public-links", s.handleSetPublicLinks)
 			r.Get("/spaces/{spaceKey}/guests", s.handleListGuests)
 			r.Post("/spaces/{spaceKey}/guests", s.handleInviteGuest)
 			r.Delete("/spaces/{spaceKey}/guests/{userID}", s.handleRemoveGuest)
-			r.Post("/org/exports", s.handleCreateOrgExport)
-			r.Get("/org/exports", s.handleListOrgExports)
-			r.Get("/org/exports/{exportID}/file", s.handleDownloadOrgExport)
-			r.Post("/org/imports", s.handleCreateOrgImport)
-			r.Get("/org/imports", s.handleListOrgImports)
-			r.Get("/org/imports/{importID}", s.handleGetOrgImport)
+			r.Post("/site/exports", s.handleCreateOrgExport)
+			r.Get("/site/exports", s.handleListOrgExports)
+			r.Get("/site/exports/{exportID}/file", s.handleDownloadOrgExport)
+			r.Post("/site/imports", s.handleCreateOrgImport)
+			r.Get("/site/imports", s.handleListOrgImports)
+			r.Get("/site/imports/{importID}", s.handleGetOrgImport)
 		})
 
 		// What the caller may do is theirs to read even without use, so the
@@ -272,7 +288,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.With(requireOrg).Get("/access/me", s.handleMyAccess)
 
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg, s.requireUse, requireWholeOrg)
+			r.Use(requireOrg, s.requireUse, requireWholeInstance)
 			r.Get("/tokens", s.handleListAPITokens)
 			// Making one is for a session only, so a leaked token cannot mint a
 			// longer lived one and outlive its own revocation.
@@ -355,14 +371,14 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/groups", s.handleListGroups)
 			r.Get("/spaces", s.handleListSpaces)
 			// A new space is outside every space a limited token names.
-			r.With(requireWholeOrg).Post("/spaces", s.handleCreateSpace)
-			r.With(requireWholeOrg).Get("/example-space", s.handleGetExampleSpace)
-			r.With(requireWholeOrg).Post("/example-space", s.handleCreateExampleSpace)
-			r.With(requireWholeOrg).Post("/example-space/renew", s.handleRenewExampleSpace)
+			r.With(requireWholeInstance).Post("/spaces", s.handleCreateSpace)
+			r.With(requireWholeInstance).Get("/example-space", s.handleGetExampleSpace)
+			r.With(requireWholeInstance).Post("/example-space", s.handleCreateExampleSpace)
+			r.With(requireWholeInstance).Post("/example-space/renew", s.handleRenewExampleSpace)
 			// An import makes a new space, outside every space a limited token names.
-			r.With(requireWholeOrg).Post("/space-imports", s.handleCreateSpaceImport)
-			r.With(requireWholeOrg).Get("/space-imports", s.handleListSpaceImports)
-			r.With(requireWholeOrg).Get("/space-imports/{importID}", s.handleGetSpaceImport)
+			r.With(requireWholeInstance).Post("/space-imports", s.handleCreateSpaceImport)
+			r.With(requireWholeInstance).Get("/space-imports", s.handleListSpaceImports)
+			r.With(requireWholeInstance).Get("/space-imports/{importID}", s.handleGetSpaceImport)
 			r.Post("/spaces/{spaceKey}/exports", s.handleCreateSpaceExport)
 			r.Get("/spaces/{spaceKey}/exports", s.handleListSpaceExports)
 			r.Get("/space-exports/{exportID}/file", s.handleDownloadSpaceExport)
@@ -518,9 +534,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/spaces/{spaceKey}/star", s.handleUnstarSpace)
 			r.Get("/stars", s.handleListStars)
 			r.Get("/home/updates", s.handleHomeUpdates)
-			r.Get("/org/hub", s.handleGetHub)
-			r.Get("/org/brand", s.handleGetBrand)
-			r.Get("/org/brand/logo", s.handleBrandLogo)
+			r.Get("/site/hub", s.handleGetHub)
+			r.Get("/site/brand", s.handleGetBrand)
+			r.Get("/site/brand/logo", s.handleBrandLogo)
 			r.Get("/link-preview", s.handleLinkPreview)
 			r.Get("/home/edited", s.handleHomeEdited)
 			r.Get("/stale-pages", s.handleListStalePages)

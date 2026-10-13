@@ -17,18 +17,18 @@ export const printPageRoute = createRoute({
 
 export const printPublicPageRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/print/public/$org/p/$pageId",
+  path: "/print/public/p/$pageId",
   component: function PrintPublicPage() {
-    const { org, pageId } = printPublicPageRoute.useParams();
-    return <PrintPublicPageScreen org={org} pageId={pageId} />;
+    const { pageId } = printPublicPageRoute.useParams();
+    return <PrintPublicPageScreen pageId={pageId} />;
   },
 });
 
 export const printLinkRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/print/public/$org/link/$token",
+  path: "/print/public/link/$token",
   component: function PrintLink() {
-    const { org, token } = printLinkRoute.useParams();
-    return <PrintLinkedPageScreen org={org} token={token} />;
+    const { token } = printLinkRoute.useParams();
+    return <PrintLinkedPageScreen token={token} />;
   },
 });

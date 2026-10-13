@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 )
@@ -16,19 +14,17 @@ import (
 // outside authentication, since nobody is signed in yet; the configuration
 // behind them is organization administration.
 
-// handleOIDCStart sends the browser to the provider. The organization is in
-// the path because a sign-in has to know its tenant before anybody is signed in.
+// handleOIDCStart sends the browser to the organization's provider.
 func (s *Server) handleOIDCStart(w http.ResponseWriter, r *http.Request) {
-	if s.OIDC == nil || s.Accounts == nil {
+	if s.OIDC == nil || s.Accounts == nil || s.Instance == nil {
 		respondError(w, r, errSignInOff)
 		return
 	}
 	// The browser arrived by navigation, so a refusal sends it back to the
 	// sign-in page with a reason it can show, like the callback does.
-	org, err := s.Accounts.OrgBySlug(r.Context(), chi.URLParam(r, "orgSlug"))
+	org, err := s.Instance.Org(r.Context())
 	if err != nil {
-		// An organization that does not exist and one with no provider get the
-		// same answer, so this endpoint cannot be used to enumerate slugs.
+		loggerFrom(r.Context()).Warn("a sign-in through an identity provider found no organization", "error", err)
 		s.landAfterSignIn(w, r, "", signInFailure(oidc.ErrNotConfigured))
 		return
 	}

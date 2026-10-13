@@ -24,66 +24,66 @@ func TestTheBrandIsChangedByAdministratorsAndReadByMembers(t *testing.T) {
 	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
 
 	t.Run("a new organization has no brand", func(t *testing.T) {
-		got := obj(t, want(t, member.get(t, "/api/v1/org/brand"), http.StatusOK, "read the brand"), "brand")
+		got := obj(t, want(t, member.get(t, "/api/v1/site/brand"), http.StatusOK, "read the brand"), "brand")
 		footer, _ := got["footer"].(map[string]any)
 		if got["logo"] != nil || footer["en"] != "" || footer["de"] != "" {
 			t.Fatalf("a new organization has the brand %v", got)
 		}
-		if got := member.get(t, "/api/v1/org/brand/logo"); got.Status != http.StatusNotFound {
+		if got := member.get(t, "/api/v1/site/brand/logo"); got.Status != http.StatusNotFound {
 			t.Errorf("a logo that is not there answered %d", got.Status)
 		}
 	})
 
 	t.Run("an administrator sets the footer and the logo, and a member reads both", func(t *testing.T) {
-		want(t, admin.put(t, "/api/v1/org/brand/footer", map[string]any{"en": " Internal ", "de": "Intern"}), http.StatusOK, "set the footer")
-		set := obj(t, want(t, admin.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngLogo), http.StatusOK, "set the logo"), "brand")
+		want(t, admin.put(t, "/api/v1/site/brand/footer", map[string]any{"en": " Internal ", "de": "Intern"}), http.StatusOK, "set the footer")
+		set := obj(t, want(t, admin.uploadWith(t, http.MethodPut, "/api/v1/site/brand/logo", "logo.png", pngLogo), http.StatusOK, "set the logo"), "brand")
 		logo, _ := set["logo"].(map[string]any)
 		if logo["contentType"] != "image/png" || logo["size"] != float64(len(pngLogo)) || logo["version"] != float64(1) {
 			t.Fatalf("the logo reads %v", logo)
 		}
-		got := obj(t, want(t, member.get(t, "/api/v1/org/brand"), http.StatusOK, "the member reads it"), "brand")
+		got := obj(t, want(t, member.get(t, "/api/v1/site/brand"), http.StatusOK, "the member reads it"), "brand")
 		if footer, _ := got["footer"].(map[string]any); footer["en"] != "Internal" || footer["de"] != "Intern" {
 			t.Errorf("the member reads the footer %v", footer)
 		}
-		resp, data := member.download(t, "/api/v1/org/brand/logo")
+		resp, data := member.download(t, "/api/v1/site/brand/logo")
 		if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "image/png" || !bytes.Equal(data, pngLogo) || resp.Header.Get("X-Content-Type-Options") != "nosniff" {
 			t.Errorf("the logo came as %d %s with %d bytes", resp.StatusCode, resp.Header.Get("Content-Type"), len(data))
 		}
 	})
 
 	t.Run("a new upload is a new version and taking it away leaves none", func(t *testing.T) {
-		again := obj(t, want(t, admin.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngLogo), http.StatusOK, "replace the logo"), "brand")
+		again := obj(t, want(t, admin.uploadWith(t, http.MethodPut, "/api/v1/site/brand/logo", "logo.png", pngLogo), http.StatusOK, "replace the logo"), "brand")
 		if logo, _ := again["logo"].(map[string]any); logo["version"] != float64(2) {
 			t.Fatalf("the replaced logo reads %v", logo)
 		}
-		gone := obj(t, want(t, admin.delete(t, "/api/v1/org/brand/logo"), http.StatusOK, "take it away"), "brand")
+		gone := obj(t, want(t, admin.delete(t, "/api/v1/site/brand/logo"), http.StatusOK, "take it away"), "brand")
 		if gone["logo"] != nil {
 			t.Errorf("the logo is still %v", gone["logo"])
 		}
-		if got := member.get(t, "/api/v1/org/brand/logo"); got.Status != http.StatusNotFound {
+		if got := member.get(t, "/api/v1/site/brand/logo"); got.Status != http.StatusNotFound {
 			t.Errorf("a removed logo answered %d", got.Status)
 		}
 	})
 
 	t.Run("a member changes nothing", func(t *testing.T) {
-		if got := member.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Mine", "de": ""}); got.Status != http.StatusForbidden {
+		if got := member.put(t, "/api/v1/site/brand/footer", map[string]any{"en": "Mine", "de": ""}); got.Status != http.StatusForbidden {
 			t.Errorf("a member set the footer: %d %s", got.Status, got.Raw)
 		}
-		if got := member.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngLogo); got.Status != http.StatusForbidden {
+		if got := member.uploadWith(t, http.MethodPut, "/api/v1/site/brand/logo", "logo.png", pngLogo); got.Status != http.StatusForbidden {
 			t.Errorf("a member set the logo: %d %s", got.Status, got.Raw)
 		}
-		if got := member.delete(t, "/api/v1/org/brand/logo"); got.Status != http.StatusForbidden {
+		if got := member.delete(t, "/api/v1/site/brand/logo"); got.Status != http.StatusForbidden {
 			t.Errorf("a member took the logo away: %d %s", got.Status, got.Raw)
 		}
 	})
 
 	t.Run("what is not a logo or not a footer is refused in a sentence", func(t *testing.T) {
 		for what, data := range map[string][]byte{"an SVG": []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`), "text": []byte("logo"), "a script": []byte("<script>1</script>")} {
-			if got := admin.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", data); got.Status != http.StatusBadRequest {
+			if got := admin.uploadWith(t, http.MethodPut, "/api/v1/site/brand/logo", "logo.png", data); got.Status != http.StatusBadRequest {
 				t.Errorf("%s: %d %s", what, got.Status, got.Raw)
 			}
 		}
-		if got := admin.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "big.png", append(append([]byte{}, pngLogo...), make([]byte, 3<<20)...)); got.Status != http.StatusRequestEntityTooLarge {
+		if got := admin.uploadWith(t, http.MethodPut, "/api/v1/site/brand/logo", "big.png", append(append([]byte{}, pngLogo...), make([]byte, 3<<20)...)); got.Status != http.StatusRequestEntityTooLarge {
 			t.Errorf("a 3 MB logo: %d", got.Status)
 		}
 		long := string(bytes.Repeat([]byte("x"), 201))
@@ -91,7 +91,7 @@ func TestTheBrandIsChangedByAdministratorsAndReadByMembers(t *testing.T) {
 			"a line break": {"en": "one\ntwo", "de": ""},
 			"too long":     {"en": "", "de": long},
 		} {
-			if got := admin.put(t, "/api/v1/org/brand/footer", body); got.Status != http.StatusUnprocessableEntity {
+			if got := admin.put(t, "/api/v1/site/brand/footer", body); got.Status != http.StatusUnprocessableEntity {
 				t.Errorf("%s: %d %s", what, got.Status, got.Raw)
 			}
 		}
@@ -110,7 +110,7 @@ func TestTheBrandIsHeldByTheDatabase(t *testing.T) {
 	home := h.makeMember(t, "brand-db")
 	admin := api.as(t, home.user, home.org, h.slugOf(t, home.org))
 	memberID := h.addPerson(t, home.org, "member")
-	want(t, admin.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal", "de": ""}), http.StatusOK, "set the footer")
+	want(t, admin.put(t, "/api/v1/site/brand/footer", map[string]any{"en": "Internal", "de": ""}), http.StatusOK, "set the footer")
 
 	conn := appConn(t)
 	ctx := context.Background()
@@ -134,12 +134,12 @@ func TestAnonymousReadersSeeTheBrandOfAnOpenOrganization(t *testing.T) {
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
 	anon := api.anonymous()
-	base := "/api/v1/public/" + slug
+	base := publicPath()
 
 	open := newTree(t, owner, "OPEN", "Open handbook")
 	open.add(open.homeID, "Guide")
 	want(t, owner.put(t, "/api/v1/spaces/OPEN/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the space")
-	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+	want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
 
 	site := func() map[string]any {
 		return obj(t, want(t, anon.get(t, base), http.StatusOK, "the public site"), "site")
@@ -151,8 +151,8 @@ func TestAnonymousReadersSeeTheBrandOfAnOpenOrganization(t *testing.T) {
 		t.Errorf("a logo that is not there answered %d", got.Status)
 	}
 
-	want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal", "de": "Intern"}), http.StatusOK, "set the footer")
-	want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngLogo), http.StatusOK, "set the logo")
+	want(t, owner.put(t, "/api/v1/site/brand/footer", map[string]any{"en": "Internal", "de": "Intern"}), http.StatusOK, "set the footer")
+	want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/site/brand/logo", "logo.png", pngLogo), http.StatusOK, "set the logo")
 	got := site()
 	if got["logoVersion"] != float64(1) || got["footer"].(map[string]any)["de"] != "Intern" {
 		t.Fatalf("a site with a brand reads %v", got)
@@ -182,7 +182,7 @@ func TestAnonymousReadersSeeTheBrandOfAnOpenOrganization(t *testing.T) {
 		}
 	})
 
-	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": false}), http.StatusOK, "close the organization")
+	want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": false}), http.StatusOK, "close the organization")
 	if got := anon.get(t, base+"/logo"); got.Status != http.StatusNotFound {
 		t.Errorf("a closed organization's logo answered %d", got.Status)
 	}
@@ -218,8 +218,8 @@ func TestAWordExportCarriesTheBrand(t *testing.T) {
 		accentTheme := idOf(t, want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "House", "spec": map[string]any{"colors": map[string]any{"light": map[string]string{"accent": "#336699"}}}}), http.StatusCreated, "make a theme"), "theme")
 		want(t, owner.patch(t, "/api/v1/themes/"+accentTheme, map[string]any{"shared": true}), http.StatusOK, "share it")
 		want(t, owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": accentTheme}), http.StatusOK, "make it the default")
-		want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal use only", "de": "Nur intern"}), http.StatusOK, "set the footer")
-		want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngOf(t, 80, 40)), http.StatusOK, "set the logo")
+		want(t, owner.put(t, "/api/v1/site/brand/footer", map[string]any{"en": "Internal use only", "de": "Nur intern"}), http.StatusOK, "set the footer")
+		want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/site/brand/logo", "logo.png", pngOf(t, 80, 40)), http.StatusOK, "set the logo")
 
 		resp, data := owner.download(t, pagePath(guide, "/docx"))
 		parts := wordFile(t, resp, data, "the branded export")
@@ -239,8 +239,8 @@ func TestAWordExportCarriesTheBrand(t *testing.T) {
 
 	t.Run("a public export carries it too", func(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/spaces/BRW/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the space")
-		want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
-		resp, data := anon.download(t, "/api/v1/public/"+slug+"/pages/"+guide+"/docx")
+		want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
+		resp, data := anon.download(t, publicPath("/pages/", guide, "/docx"))
 		parts := wordFile(t, resp, data, "the public export")
 		if !strings.Contains(parts["word/header1.xml"], "<w:drawing>") || !strings.Contains(parts["word/footer1.xml"], "Internal use only") {
 			t.Errorf("the public export lacks the brand:\nheader %s\nfooter %s", parts["word/header1.xml"], parts["word/footer1.xml"])
@@ -280,8 +280,8 @@ func TestAnHTMLExportCarriesTheBrand(t *testing.T) {
 			"light": map[string]string{"accent": "#336699"}, "dark": map[string]string{"accent": "#99ccff"}}}}), http.StatusCreated, "make a theme"), "theme")
 		want(t, owner.patch(t, "/api/v1/themes/"+theme, map[string]any{"shared": true}), http.StatusOK, "share it")
 		want(t, owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": theme}), http.StatusOK, "make it the default")
-		want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal use only", "de": "Nur intern"}), http.StatusOK, "set the footer")
-		want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/org/brand/logo", "logo.png", pngLogo), http.StatusOK, "set the logo")
+		want(t, owner.put(t, "/api/v1/site/brand/footer", map[string]any{"en": "Internal use only", "de": "Nur intern"}), http.StatusOK, "set the footer")
+		want(t, owner.uploadWith(t, http.MethodPut, "/api/v1/site/brand/logo", "logo.png", pngLogo), http.StatusOK, "set the logo")
 
 		_, data := api.exportSpace(t, owner, "BRH", "html")
 		files := archiveFiles(t, data)

@@ -4,10 +4,6 @@ package seed
 
 import (
 	"context"
-	"errors"
-	"fmt"
-
-	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
@@ -16,7 +12,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
-// Seeded names, fixed so a second run finds what the first made.
+// Seeded names. The slug is the organization's key until it goes from the
+// schema; nobody types or reads it.
 const (
 	DemoOrgSlug = "demo"
 	DemoOrgName = "Demo"
@@ -30,42 +27,17 @@ type Result struct {
 // Run seeds the cluster through the admin role, since making an organization
 // precedes any tenant.
 func Run(ctx context.Context, cluster *db.Cluster) (Result, error) {
-	return Ensure(ctx, cluster, DemoOrgSlug, DemoOrgName)
+	return Ensure(ctx, cluster, DemoOrgName)
 }
 
-// ErrAnotherOrganization is what Ensure returns, wrapped in a sentence, when
-// the instance already has an organization of another slug.
-var ErrAnotherOrganization = errors.New("the instance already has another organization")
-
-type anotherOrganization struct{ have, asked string }
-
-func (e anotherOrganization) Error() string {
-	return fmt.Sprintf("This instance already has its organization, %s, and Stator serves one organization per instance. "+
-		"Bootstrap %s again, or bootstrap %s on a fresh instance of its own.", e.have, e.have, e.asked)
-}
-
-func (e anotherOrganization) Is(target error) bool { return target == ErrAnotherOrganization }
-
-// Ensure makes the organization of that slug when the instance has none, and
-// leaves an existing one, whatever it is now called, as it is.
-func Ensure(ctx context.Context, cluster *db.Cluster, slug, name string) (Result, error) {
+// Ensure makes the instance's organization when there is none, and leaves an
+// existing one, whatever it is now called, as it is.
+func Ensure(ctx context.Context, cluster *db.Cluster, name string) (Result, error) {
 	var res Result
 	_, err := cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var have string
-		err := tx.QueryRow(ctx, `SELECT slug FROM org LIMIT 1`).Scan(&have)
-		switch {
-		case err == nil && have == slug:
-			return nil
-		case err == nil:
-			return anotherOrganization{have: have, asked: slug}
-		case !errors.Is(err, pgx.ErrNoRows):
-			return err
-		}
-		if _, err := tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ($1, $2)`, slug, name); err != nil {
-			return err
-		}
-		res.OrgCreated = true
-		return nil
+		tag, err := tx.Exec(ctx, `INSERT INTO org (slug, name) SELECT $1, $2 WHERE NOT EXISTS (SELECT FROM org)`, DemoOrgSlug, name)
+		res.OrgCreated = tag.RowsAffected() == 1
+		return err
 	})
 	return res, err
 }
@@ -114,7 +86,7 @@ type Populated struct {
 func Populate(ctx context.Context, accounts *auth.Service, sso *oidc.Service, org tenant.Org, people People) (Populated, error) {
 	var out Populated
 	for _, m := range people.Members {
-		added, err := accounts.EnsureMember(ctx, org.Slug, m.Email, m.Role)
+		added, err := accounts.EnsureMember(ctx, m.Email, m.Role)
 		if err != nil {
 			return out, err
 		}

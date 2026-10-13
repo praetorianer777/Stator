@@ -10,8 +10,8 @@ natively rather than converted.
 | Operation | Who | Answers |
 |---|---|---|
 | `GET /pages/{pageID}/docx` | a member who may view the page | the page as the member reads it; audited as `page.exported` with scope `docx` |
-| `GET /public/{orgSlug}/pages/{pageID}/docx` | anybody, for a page anybody may read | the page as anybody reads it, six a minute per page from one address |
-| `GET /public/{orgSlug}/links/{token}/docx` | whoever holds a public link | the page the link opens, without the link in it |
+| `GET /public/pages/{pageID}/docx` | anybody, for a page anybody may read | the page as anybody reads it, six a minute per page from one address |
+| `GET /public/links/{token}/docx` | whoever holds a public link | the page the link opens, without the link in it |
 
 A folder and a page never published are refused with 409 `not_exportable`.
 Pictures past 50 MB in all are refused with 422 `docx_too_large`. The file is

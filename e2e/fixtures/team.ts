@@ -1,11 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { basename } from "node:path";
-import { request } from "@playwright/test";
 import type { Session } from "./api";
-import { authTest, ME_PATH, type User } from "./auth";
+import { authTest, type User } from "./auth";
+import { withDatabase } from "./db";
 import { RESETS_INSTANCE } from "./projects";
 import { TEST_API_PATH, testEndpoints } from "./testapi";
-import { WEB_URL } from "./stack";
 
 /** What a person may be in the organization; a guest belongs to one space. */
 export type Role = "admin" | "member" | "guest";
@@ -26,7 +25,7 @@ export interface Person {
 export interface Team {
   /** The spec's name and a random suffix, as a stub tenant or anything else of the spec's own. */
   label: string;
-  /** The one organization, for what still names it: public addresses and rows written in SQL. */
+  /** The one organization, for rows written in SQL and the public addresses from before they stopped naming it. */
   org: { id: string; slug: string };
   people: Record<User, Person>;
 }
@@ -65,16 +64,14 @@ export async function removePerson(id: string): Promise<void> {
   }
 }
 
-async function organizationOf(person: Person): Promise<Team["org"]> {
-  const context = await request.newContext({ baseURL: WEB_URL, storageState: person.session });
-  try {
-    const res = await context.get(ME_PATH);
-    if (!res.ok()) throw new Error(`GET ${ME_PATH} as ${person.email} answered ${res.status()}: ${await res.text()}`);
-    const { organization } = (await res.json()) as { organization: { id: string; slug: string } };
-    return { id: organization.id, slug: organization.slug };
-  } finally {
-    await context.dispose();
-  }
+// The api names the organization nowhere any more, so it is read where it is
+// kept; the oldest is the seed's, which the api serves.
+async function organization(): Promise<Team["org"]> {
+  return withDatabase(async (db) => {
+    const { rows } = await db.query<Team["org"]>("SELECT id, slug::text AS slug FROM org ORDER BY created_at LIMIT 1");
+    if (!rows[0]) throw new Error("The stack has no organization. Did the seed run?");
+    return rows[0];
+  });
 }
 
 /** "themes.spec.ts" becomes "themes", so a leftover person names the spec that made them. */
@@ -92,7 +89,7 @@ async function makeTeam(spec: string): Promise<Team> {
     for (const person of people) await removePerson(person.id).catch(() => {});
     throw failed.reason;
   }
-  return { label, org: await organizationOf(people[0]!), people: Object.fromEntries(users.map((user, i) => [user, people[i]!])) as Team["people"] };
+  return { label, org: await organization(), people: Object.fromEntries(users.map((user, i) => [user, people[i]!])) as Team["people"] };
 }
 
 interface TeamPool {

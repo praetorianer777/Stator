@@ -149,12 +149,12 @@ func (s *Server) dispatchMCP(r *http.Request, req rpcRequest) (any, *rpcError) {
 }
 
 // listTools leaves the writing tools out for a token made to read, and the
-// organization-wide ones for a token limited to spaces and for a guest, so an
+// whole-instance ones for a token limited to spaces and for a guest, so an
 // assistant is never offered what it would only be refused.
 func listTools(readOnly, spacesOnly bool) []map[string]any {
 	out := []map[string]any{}
 	for _, t := range toolCatalog() {
-		if (readOnly && !t.ReadOnly) || (spacesOnly && t.OrgWide) {
+		if (readOnly && !t.ReadOnly) || (spacesOnly && t.WholeInstance) {
 			continue
 		}
 		out = append(out, map[string]any{
@@ -177,10 +177,10 @@ func (s *Server) callTool(r *http.Request, params toolCallParams) (any, *rpcErro
 	if !tool.ReadOnly && PrincipalFrom(r.Context()).ReadOnly() {
 		return refusal(errReadOnlyToken.Message), nil
 	}
-	if tool.OrgWide && PrincipalFrom(r.Context()).Guest() {
+	if tool.WholeInstance && PrincipalFrom(r.Context()).Guest() {
 		return refusal(errGuest.Message), nil
 	}
-	if tool.OrgWide && PrincipalFrom(r.Context()).InSpacesOnly() {
+	if tool.WholeInstance && PrincipalFrom(r.Context()).InSpacesOnly() {
 		return refusal(errSpacesToken.Message), nil
 	}
 	inner, err := tool.request(r, params.Arguments)

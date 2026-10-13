@@ -16,8 +16,14 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
-// publicPath is an address of the reads for anybody in the organization slug.
-func publicPath(slug string, rest ...string) string {
+// publicPath is an address of the reads for anybody.
+func publicPath(rest ...string) string {
+	return "/api/v1/public" + strings.Join(rest, "")
+}
+
+// oldPublicPath is the address a read for anybody had while it named the
+// organization slug.
+func oldPublicPath(slug string, rest ...string) string {
 	return "/api/v1/public/" + slug + strings.Join(rest, "")
 }
 
@@ -75,7 +81,7 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 		if got["view"] != true || got["orgEnabled"] != false {
 			t.Errorf("opening OPEN answered %v", got)
 		}
-		for _, path := range []string{publicPath(slug), publicPath(slug, "/pages/", guide), publicPath(slug, "/spaces/OPEN")} {
+		for _, path := range []string{publicPath(), publicPath("/pages/", guide), publicPath("/spaces/OPEN")} {
 			if got := anon.get(t, path); got.Status != http.StatusNotFound || errorCode(t, got) != "not_public" {
 				t.Errorf("%s = %d %s, want 404 not_public", path, got.Status, got.Raw)
 			}
@@ -83,12 +89,12 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 	})
 
 	t.Run("only administrators open the organization and the space", func(t *testing.T) {
-		want(t, ina.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusForbidden, "ina opens the organization")
-		want(t, ina.get(t, "/api/v1/org/anonymous-access"), http.StatusForbidden, "ina reads the switch")
+		want(t, ina.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusForbidden, "ina opens the organization")
+		want(t, ina.get(t, "/api/v1/site/anonymous-access"), http.StatusForbidden, "ina reads the switch")
 		want(t, ina.put(t, "/api/v1/spaces/OPEN/anonymous-access", map[string]any{"view": true}), http.StatusForbidden, "ina opens OPEN")
 	})
 
-	got := obj(t, want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization"), "anonymousAccess")
+	got := obj(t, want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization"), "anonymousAccess")
 	if got["enabled"] != true || got["indexable"] != false {
 		t.Fatalf("the switch answered %v", got)
 	}
@@ -101,7 +107,7 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 				t.Errorf("the audit log has %s = %v (%v)", action, on, err)
 			}
 		}
-		if got := obj(t, want(t, owner.get(t, "/api/v1/org/anonymous-access"), http.StatusOK, "the switch"), "anonymousAccess"); got["enabled"] != true {
+		if got := obj(t, want(t, owner.get(t, "/api/v1/site/anonymous-access"), http.StatusOK, "the switch"), "anonymousAccess"); got["enabled"] != true {
 			t.Errorf("the switch reads %v", got)
 		}
 		access := obj(t, want(t, owner.get(t, "/api/v1/spaces/OPEN/anonymous-access"), http.StatusOK, "OPEN's access"), "anonymousAccess")
@@ -117,29 +123,29 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 	})
 
 	t.Run("the site lists the open space and asks search engines to stay away", func(t *testing.T) {
-		got := want(t, anon.get(t, publicPath(slug)), http.StatusOK, "the site")
+		got := want(t, anon.get(t, publicPath()), http.StatusOK, "the site")
 		if keys := spaceKeysOf(t, got); !slices.Equal(keys, []string{"OPEN"}) {
 			t.Errorf("the site lists %v", keys)
 		}
 		if site := obj(t, got, "site"); site["name"] != "public-read" || site["indexable"] != false {
 			t.Errorf("the site is %v", site)
 		}
-		resp, _ := anon.download(t, publicPath(slug))
+		resp, _ := anon.download(t, publicPath())
 		if resp.Header.Get("X-Robots-Tag") != "noindex, nofollow" || !strings.HasPrefix(resp.Header.Get("Cache-Control"), "public") {
 			t.Errorf("the site is served with robots %q and caching %q", resp.Header.Get("X-Robots-Tag"), resp.Header.Get("Cache-Control"))
 		}
 	})
 
 	t.Run("the tree holds published pages nobody restricted", func(t *testing.T) {
-		pages := titlesOf(t, want(t, anon.get(t, publicPath(slug, "/spaces/OPEN")), http.StatusOK, "the open tree"), "pages")
+		pages := titlesOf(t, want(t, anon.get(t, publicPath("/spaces/OPEN")), http.StatusOK, "the open tree"), "pages")
 		if !has(pages, "Zebra guide") || has(pages, "Zebra secret") || has(pages, "Zebra below the secret") || has(pages, "Zebra draft") {
 			t.Errorf("the open tree lists %v", pages)
 		}
-		want(t, anon.get(t, publicPath(slug, "/spaces/SHUT")), http.StatusNotFound, "the shut tree")
+		want(t, anon.get(t, publicPath("/spaces/SHUT")), http.StatusNotFound, "the shut tree")
 	})
 
 	t.Run("a page reads with nobody named in it", func(t *testing.T) {
-		got := want(t, anon.get(t, publicPath(slug, "/pages/", guide)), http.StatusOK, "the guide")
+		got := want(t, anon.get(t, publicPath("/pages/", guide)), http.StatusOK, "the guide")
 		for _, personal := range []string{"Ina Insider", inaID.String(), home.user.String(), "Person of public-read", ownerEmail, "Ina was here", "👍"} {
 			if containsText(got.Raw, personal) {
 				t.Errorf("the public guide names %q: %s", personal, got.Raw)
@@ -159,31 +165,31 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 	t.Run("what is not public is not found, whoever asks", func(t *testing.T) {
 		for what, id := range map[string]string{"a restricted page": secret, "a page below it": below, "a draft": draft, "a page of a shut space": elsewhere} {
 			want(t, owner.get(t, pagePath(id)), http.StatusOK, "the owner reads "+what)
-			if got := anon.get(t, publicPath(slug, "/pages/", id)); got.Status != http.StatusNotFound {
+			if got := anon.get(t, publicPath("/pages/", id)); got.Status != http.StatusNotFound {
 				t.Errorf("%s = %d %s", what, got.Status, got.Raw)
 			}
 			// The owner's session rides along and widens nothing.
-			if got := owner.get(t, publicPath(slug, "/pages/", id)); got.Status != http.StatusNotFound {
+			if got := owner.get(t, publicPath("/pages/", id)); got.Status != http.StatusNotFound {
 				t.Errorf("%s with a session riding along = %d", what, got.Status)
 			}
 		}
-		want(t, anon.get(t, publicPath("no-such-org-here")), http.StatusNotFound, "no organization")
+		want(t, anon.get(t, oldPublicPath("no-such-org-here")), http.StatusNotFound, "an old address naming no organization here")
 	})
 
 	t.Run("files of public pages download and others do not", func(t *testing.T) {
-		resp, body := anon.download(t, publicPath(slug, "/attachments/", file))
+		resp, body := anon.download(t, publicPath("/attachments/", file))
 		if resp.StatusCode != http.StatusOK || string(body) != "look both ways" {
 			t.Errorf("the public file = %d %q", resp.StatusCode, body)
 		}
-		want(t, anon.get(t, publicPath(slug, "/attachments/", hidden)), http.StatusNotFound, "a file of a shut page")
-		resp, body = anon.downloadRange(t, publicPath(slug, "/attachments/", file), "bytes=5-8", "")
+		want(t, anon.get(t, publicPath("/attachments/", hidden)), http.StatusNotFound, "a file of a shut page")
+		resp, body = anon.downloadRange(t, publicPath("/attachments/", file), "bytes=5-8", "")
 		if resp.StatusCode != http.StatusPartialContent || string(body) != "both" || !strings.HasPrefix(resp.Header.Get("Cache-Control"), "public") {
 			t.Errorf("a stretch of the public file = %d %q, caching %q", resp.StatusCode, body, resp.Header.Get("Cache-Control"))
 		}
-		if resp, _ := anon.downloadRange(t, publicPath(slug, "/attachments/", file), "bytes=500-", ""); resp.StatusCode != http.StatusRequestedRangeNotSatisfiable {
+		if resp, _ := anon.downloadRange(t, publicPath("/attachments/", file), "bytes=500-", ""); resp.StatusCode != http.StatusRequestedRangeNotSatisfiable {
 			t.Errorf("a stretch past the public file's end = %d", resp.StatusCode)
 		}
-		if resp, _ := anon.downloadRange(t, publicPath(slug, "/attachments/", hidden), "bytes=0-1", ""); resp.StatusCode != http.StatusNotFound {
+		if resp, _ := anon.downloadRange(t, publicPath("/attachments/", hidden), "bytes=0-1", ""); resp.StatusCode != http.StatusNotFound {
 			t.Errorf("a stretch of a file of a shut page = %d", resp.StatusCode)
 		}
 	})
@@ -200,17 +206,17 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 			}
 			return out
 		}
-		got := want(t, anon.get(t, publicPath(slug, "/search?q=zebra")), http.StatusOK, "search zebra")
+		got := want(t, anon.get(t, publicPath("/search?q=zebra")), http.StatusOK, "search zebra")
 		if found := titles(got); !slices.Equal(found, []string{"Zebra guide"}) {
 			t.Errorf("anybody finds %v", found)
 		}
 		if containsText(got.Raw, "Ina") {
 			t.Errorf("a snippet names Ina: %s", got.Raw)
 		}
-		if found := titles(want(t, anon.get(t, publicPath(slug, "/search?q=Insider")), http.StatusOK, "search a name")); len(found) != 0 {
+		if found := titles(want(t, anon.get(t, publicPath("/search?q=Insider")), http.StatusOK, "search a name")); len(found) != 0 {
 			t.Errorf("anybody finds pages by the name of a person they mention: %v", found)
 		}
-		want(t, anon.get(t, publicPath(slug, "/search?q=")), http.StatusUnprocessableEntity, "an empty search")
+		want(t, anon.get(t, publicPath("/search?q=")), http.StatusUnprocessableEntity, "an empty search")
 	})
 
 	t.Run("everything else still wants a sign-in", func(t *testing.T) {
@@ -231,7 +237,7 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 				t.Errorf("%s %s = %d, want 401", method, path, got.Status)
 			}
 		}
-		if got := anon.post(t, publicPath(slug, "/pages/", guide), map[string]any{}); got.Status != http.StatusMethodNotAllowed {
+		if got := anon.post(t, publicPath("/pages/", guide), map[string]any{}); got.Status != http.StatusMethodNotAllowed {
 			t.Errorf("a write to a public page = %d", got.Status)
 		}
 	})
@@ -318,14 +324,14 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 
 	t.Run("closing the space or the organization ends it at once", func(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/spaces/OPEN/anonymous-access", map[string]any{"view": false}), http.StatusOK, "close OPEN")
-		want(t, anon.get(t, publicPath(slug, "/pages/", guide)), http.StatusNotFound, "the guide of a closed space")
+		want(t, anon.get(t, publicPath("/pages/", guide)), http.StatusNotFound, "the guide of a closed space")
 		want(t, owner.put(t, "/api/v1/spaces/OPEN/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open OPEN again")
-		want(t, anon.get(t, publicPath(slug, "/pages/", guide)), http.StatusOK, "the guide again")
-		want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": false}), http.StatusOK, "close the organization")
-		want(t, anon.get(t, publicPath(slug, "/pages/", guide)), http.StatusNotFound, "the guide of a closed organization")
-		want(t, anon.get(t, publicPath(slug)), http.StatusNotFound, "a closed site")
-		want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true, "indexable": true}), http.StatusOK, "open for search engines")
-		resp, _ := anon.download(t, publicPath(slug))
+		want(t, anon.get(t, publicPath("/pages/", guide)), http.StatusOK, "the guide again")
+		want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": false}), http.StatusOK, "close the organization")
+		want(t, anon.get(t, publicPath("/pages/", guide)), http.StatusNotFound, "the guide of a closed organization")
+		want(t, anon.get(t, publicPath()), http.StatusNotFound, "a closed site")
+		want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true, "indexable": true}), http.StatusOK, "open for search engines")
+		resp, _ := anon.download(t, publicPath())
 		if resp.StatusCode != http.StatusOK || resp.Header.Get("X-Robots-Tag") != "" {
 			t.Errorf("an indexable site = %d with robots %q", resp.StatusCode, resp.Header.Get("X-Robots-Tag"))
 		}
@@ -377,5 +383,46 @@ func TestAnonymousReadersAreHeldByEveryTable(t *testing.T) {
 	}
 	if seen < 3 {
 		t.Fatalf("only %d tables found; the schema is not migrated", seen)
+	}
+}
+
+// The addresses of the reads for anybody named the organization before
+// #380, and people still hold them: with its slug each is sent on for good
+// to the same read without it, query and all; with another it is not found.
+func TestOldPublicAddressesAreSentOnToTheirNewOnes(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "public-old")
+	slug := h.slugOf(t, home.org)
+	noFollowing := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	get := func(path string) *http.Response {
+		t.Helper()
+		resp, err := noFollowing.Get(api.srv.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		return resp
+	}
+	page, file, token := uuid.NewString(), uuid.NewString(), strings.Repeat("t", 43)
+	for _, rest := range []string{
+		"", "/spaces/OPEN", "/pages/" + page, "/pages/" + page + "/pdf", "/pages/" + page + "/docx",
+		"/attachments/" + file + "?inline=1", "/logo", "/search?q=zebra&space=OPEN",
+		"/links/" + token, "/links/" + token + "/pdf", "/links/" + token + "/docx",
+		"/links/" + token + "/attachments/" + file, "/links/" + token + "/logo",
+	} {
+		for _, spelled := range []string{slug, strings.ToUpper(slug)} {
+			resp := get(oldPublicPath(spelled, rest))
+			if resp.StatusCode != http.StatusPermanentRedirect || resp.Header.Get("Location") != publicPath(rest) {
+				t.Errorf("%s = %s to %q, want %s", oldPublicPath(spelled, rest), resp.Status, resp.Header.Get("Location"), publicPath(rest))
+			}
+		}
+		resp := get(oldPublicPath("no-such-org-here", rest))
+		if resp.StatusCode != http.StatusNotFound || resp.Header.Get("Location") != "" {
+			t.Errorf("%s = %s to %q, want not found", oldPublicPath("no-such-org-here", rest), resp.Status, resp.Header.Get("Location"))
+		}
+		if strings.HasPrefix(rest, "/links/") && resp.Header.Get("Cache-Control") != "no-store" {
+			t.Errorf("%s may be cached: %q", oldPublicPath("no-such-org-here", rest), resp.Header.Get("Cache-Control"))
+		}
 	}
 }

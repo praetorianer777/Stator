@@ -45,7 +45,7 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
       await page.getByLabel("Webhook secret", { exact: true }).fill(WEBHOOK_SECRET);
       await page.locator('[data-action="save-armature"]').click();
       await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
-      await expect(page.getByLabel("Webhook address", { exact: true })).toHaveValue(new RegExp(`/api/v1/armature/webhook/${team.org.slug}$`));
+      await expect(page.getByLabel("Webhook address", { exact: true })).toHaveValue(new RegExp(`/api/v1/armature/webhook$`));
       await expect(page.getByLabel("Webhook secret", { exact: true })).toHaveValue("");
       await expect(page.locator("body")).not.toContainText(WEBHOOK_SECRET);
       // The disconnect button is the danger variant, so axe judges its colours too.
@@ -92,6 +92,6 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
     expect((await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } })).response.status).toBe(200);
     await openShowing(bob, PROFILE_PATH, bob.getByLabel("Armature token", { exact: true }));
     await bob.goto(SETTINGS_PATH);
-    await expect(bob.getByText("Only an administrator of this organization can connect Armature.")).toBeVisible();
+    await expect(bob.getByText("Only an administrator can connect Armature.")).toBeVisible();
   });
 });

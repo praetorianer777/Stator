@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/guest"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/seed"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -36,8 +37,8 @@ var (
 	// ErrGuestSpace is returned when a guest names no space it can be let
 	// into, or somebody else names one.
 	ErrGuestSpace = errors.New("a guest needs the key of an existing space, and nobody else takes one")
-	// ErrNoOrganization is returned when the organization the bootstrap names is missing.
-	ErrNoOrganization = errors.New("the bootstrap organization does not exist; run the seed")
+	// ErrNoOrganization is returned before the seed has made the organization.
+	ErrNoOrganization = errors.New("the organization does not exist yet; run the seed")
 )
 
 // PeopleDomain is where every test person's address is. Only a person at it
@@ -78,17 +79,16 @@ type Session struct {
 	LSN       db.LSN
 }
 
-// Service works on the organization the bootstrap names.
+// Service works on the instance's organization.
 type Service struct {
 	db         *db.Cluster
 	sso        *oidc.Service
-	org        string
 	people     seed.People
 	sessionTTL time.Duration
 }
 
-func NewService(cluster *db.Cluster, sso *oidc.Service, orgSlug string, people seed.People, sessionTTL time.Duration) *Service {
-	return &Service{db: cluster, sso: sso, org: orgSlug, people: people, sessionTTL: sessionTTL}
+func NewService(cluster *db.Cluster, sso *oidc.Service, people seed.People, sessionTTL time.Duration) *Service {
+	return &Service{db: cluster, sso: sso, people: people, sessionTTL: sessionTTL}
 }
 
 // CreatePerson makes a person in the organization with the role asked for
@@ -188,11 +188,11 @@ func (s *Service) DeletePerson(ctx context.Context, id uuid.UUID) error {
 func (s *Service) Reset(ctx context.Context) error {
 	var org tenant.Org
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		id, err := s.orgID(ctx, tx)
-		if err != nil {
+		var err error
+		if org, err = instance.Find(ctx, tx); err != nil {
 			return err
 		}
-		org = tenant.Org{ID: id, Slug: s.org}
+		id := org.ID
 		for i, stmt := range resetStatements {
 			if _, err := tx.Exec(ctx, stmt, id); err != nil {
 				return fmt.Errorf("reset the organization, statement %d: %w", i+1, err)
@@ -269,12 +269,11 @@ func (s *Service) AgeExample(ctx context.Context, spaceKey, drop string) error {
 }
 
 func (s *Service) orgID(ctx context.Context, tx db.DBTX) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT id FROM org WHERE slug = $1`, s.org).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
+	org, err := instance.Find(ctx, tx)
+	if errors.Is(err, instance.ErrNone) {
 		return uuid.Nil, ErrNoOrganization
 	}
-	return id, err
+	return org.ID, err
 }
 
 // localPart keeps what an address's local part takes, so any label works.

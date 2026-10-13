@@ -38,9 +38,15 @@ func (d delivery) body(t *testing.T) []byte {
 	return raw
 }
 
-func postWebhook(t *testing.T, api *apiServer, slug string, body []byte, signature string) response {
+// postWebhook posts to the receiver's address, or with oldSlug to the one
+// it had while it named the organization.
+func postWebhook(t *testing.T, api *apiServer, oldSlug string, body []byte, signature string) response {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPost, api.srv.URL+"/api/v1/armature/webhook/"+slug, bytes.NewReader(body))
+	address := api.srv.URL + "/api/v1/armature/webhook"
+	if oldSlug != "" {
+		address += "/" + oldSlug
+	}
+	req, err := http.NewRequest(http.MethodPost, address, bytes.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +102,7 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 	send := func(d delivery, secret string) response {
 		t.Helper()
 		body := d.body(t)
-		return postWebhook(t, api, slug, body, armature.Sign(body, secret))
+		return postWebhook(t, api, "", body, armature.Sign(body, secret))
 	}
 
 	before := status("CP-2")
@@ -125,6 +131,15 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 		}
 		if got := status("CP-2"); got != "done" {
 			t.Errorf("a replay cleared the cache: the issue is %s", got)
+		}
+
+		// Receivers set up before the address lost the slug post there still.
+		old := delivery{ID: uuid.New(), Topic: "issue.transitioned", OrgID: armatureOrg, Payload: map[string]any{"key": "CP-2"}}.body(t)
+		if r := postWebhook(t, api, slug, old, armature.Sign(old, webhookSecret)); r.Status != http.StatusNoContent {
+			t.Errorf("a delivery to the old address is answered %d %s", r.Status, r.Raw)
+		}
+		if got := status("CP-2"); got != "in_progress" {
+			t.Errorf("a delivery to the old address left the issue %s, want in_progress", got)
 		}
 		var remembered time.Duration
 		remembered, _ = h.valkey(t).TTL(context.Background(), armature.EventKey(home.org, d.ID)).Result()
@@ -175,11 +190,11 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 			name, slug, signature string
 			body                  []byte
 		}{
-			{"another secret", slug, armature.Sign(body, webhookSecret+"x"), body},
-			{"no signature", slug, "", body},
-			{"a body changed after signing", slug, armature.Sign(body, webhookSecret), append(bytes.Clone(body[:len(body)-1]), []byte(`,"x":1}`)...)},
-			{"another Armature organization", slug, "", nil},
-			{"no such organization", "no-such-org-" + strings.ToLower(uuid.NewString()[:8]), armature.Sign(body, webhookSecret), body},
+			{"another secret", "", armature.Sign(body, webhookSecret+"x"), body},
+			{"no signature", "", "", body},
+			{"a body changed after signing", "", armature.Sign(body, webhookSecret), append(bytes.Clone(body[:len(body)-1]), []byte(`,"x":1}`)...)},
+			{"another Armature organization", "", "", nil},
+			{"an old address naming another organization", "no-such-org-" + strings.ToLower(uuid.NewString()[:8]), armature.Sign(body, webhookSecret), body},
 		} {
 			if tc.body == nil {
 				foreign := delivery{ID: uuid.New(), Topic: "issue.updated", OrgID: uuid.New(), Payload: map[string]any{"key": "CP-1"}}.body(t)
@@ -210,7 +225,7 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 
 	t.Run("a body over the limit is refused before it is read whole", func(t *testing.T) {
 		huge := bytes.Repeat([]byte("x"), armature.WebhookMaxBytes+1)
-		r := postWebhook(t, api, slug, huge, armature.Sign(huge, webhookSecret))
+		r := postWebhook(t, api, "", huge, armature.Sign(huge, webhookSecret))
 		if r.Status != http.StatusRequestEntityTooLarge || errorCode(t, r) != "too_large" {
 			t.Errorf("a large body is answered %d %s", r.Status, r.Raw)
 		}

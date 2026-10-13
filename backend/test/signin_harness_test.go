@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/tenant"
@@ -83,6 +84,7 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 		box:      box,
 	}
 	server.Config.Handler = observed(t, (&httpapi.Server{
+		Instance:        instance.NewResolver(h.cluster),
 		DB:              h.cluster,
 		Fresh:           h.freshness(t),
 		Auth:            a.accounts,
@@ -181,9 +183,9 @@ var loginFormAction = regexp.MustCompile(`id="kc-form-login"[^>]*action="([^"]+)
 
 // signIn goes the whole way a person does, through Keycloak's login form, and
 // returns where the app was told to land.
-func (b *browser) signIn(t *testing.T, a *api, orgSlug, username, password, next string) string {
+func (b *browser) signIn(t *testing.T, a *api, username, password, next string) string {
 	t.Helper()
-	start := a.URL + httpapi.APIPrefix + "/auth/oidc/" + orgSlug + "/start"
+	start := a.URL + httpapi.APIPrefix + "/auth/oidc/start"
 	if next != "" {
 		start += "?next=" + url.QueryEscape(next)
 	}

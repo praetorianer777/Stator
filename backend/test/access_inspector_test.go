@@ -136,10 +136,10 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 	})
 
 	t.Run("use granted to a group decides who uses the organization", func(t *testing.T) {
-		want(t, owner.put(t, "/api/v1/org/permissions/use", map[string]any{"subjects": []any{group(writers), user(annID)}}), http.StatusOK, "use for Writers and ann")
+		want(t, owner.put(t, "/api/v1/site/permissions/use", map[string]any{"subjects": []any{group(writers), user(annID)}}), http.StatusOK, "use for Writers and ann")
 		// Through the API rather than a cleanup, so the next reader waits for the replica to have it.
 		defer func() {
-			want(t, owner.put(t, "/api/v1/org/permissions/use", map[string]any{"subjects": []any{everyone}}), http.StatusOK, "use for everyone again")
+			want(t, owner.put(t, "/api/v1/site/permissions/use", map[string]any{"subjects": []any{everyone}}), http.StatusOK, "use for everyone again")
 		}()
 		h.settle(t)
 		if d := decider(inspect(ann, open, carlID).Rights[0]); d == nil || d.Kind != perm.StepUse {

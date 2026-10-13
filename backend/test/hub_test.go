@@ -25,15 +25,15 @@ func TestTheHubIsChosenByAdministratorsAndReadByWhoeverMayReadIt(t *testing.T) {
 	front := news.add(news.homeID, "Front page")
 
 	t.Run("there is none to begin with", func(t *testing.T) {
-		got := obj(t, want(t, member.get(t, "/api/v1/org/hub"), http.StatusOK, "read the hub"), "hub")
+		got := obj(t, want(t, member.get(t, "/api/v1/site/hub"), http.StatusOK, "read the hub"), "hub")
 		if got["page"] != nil || got["landing"] != false {
 			t.Fatalf("a new organization has the hub %v", got)
 		}
 	})
 
 	t.Run("an administrator chooses it, and everybody lands on it", func(t *testing.T) {
-		want(t, admin.put(t, "/api/v1/org/hub", map[string]any{"pageId": front, "landing": true}), http.StatusOK, "choose the hub")
-		got := obj(t, want(t, member.get(t, "/api/v1/org/hub"), http.StatusOK, "the member reads it"), "hub")
+		want(t, admin.put(t, "/api/v1/site/hub", map[string]any{"pageId": front, "landing": true}), http.StatusOK, "choose the hub")
+		got := obj(t, want(t, member.get(t, "/api/v1/site/hub"), http.StatusOK, "the member reads it"), "hub")
 		page, _ := got["page"].(map[string]any)
 		if page["id"] != front || page["title"] != "Front page" || page["spaceKey"] != "NEWS" || got["landing"] != true {
 			t.Fatalf("the member reads the hub %v", got)
@@ -41,7 +41,7 @@ func TestTheHubIsChosenByAdministratorsAndReadByWhoeverMayReadIt(t *testing.T) {
 	})
 
 	t.Run("a member does not choose it", func(t *testing.T) {
-		got := member.put(t, "/api/v1/org/hub", map[string]any{"pageId": nil, "landing": false})
+		got := member.put(t, "/api/v1/site/hub", map[string]any{"pageId": nil, "landing": false})
 		if got.Status != http.StatusForbidden {
 			t.Fatalf("a member chose the hub: %d %s", got.Status, got.Raw)
 		}
@@ -55,7 +55,7 @@ func TestTheHubIsChosenByAdministratorsAndReadByWhoeverMayReadIt(t *testing.T) {
 			"a trashed page":     {"pageId": gone, "landing": false},
 			"no such page":       {"pageId": "0195f000-0000-7000-8000-000000000999", "landing": false},
 		} {
-			if got := admin.put(t, "/api/v1/org/hub", body); got.Status != http.StatusUnprocessableEntity {
+			if got := admin.put(t, "/api/v1/site/hub", body); got.Status != http.StatusUnprocessableEntity {
 				t.Errorf("%s: %d %s", what, got.Status, got.Raw)
 			}
 		}
@@ -63,7 +63,7 @@ func TestTheHubIsChosenByAdministratorsAndReadByWhoeverMayReadIt(t *testing.T) {
 
 	t.Run("whoever may not read the page has no hub, and lands nowhere", func(t *testing.T) {
 		want(t, restrict(t, admin, front, []any{user(home.user)}, nil), http.StatusOK, "restrict the front page")
-		got := obj(t, want(t, member.get(t, "/api/v1/org/hub"), http.StatusOK, "the member reads it"), "hub")
+		got := obj(t, want(t, member.get(t, "/api/v1/site/hub"), http.StatusOK, "the member reads it"), "hub")
 		if got["page"] != nil || got["landing"] != false {
 			t.Fatalf("a member who may not read the page has the hub %v", got)
 		}
@@ -81,7 +81,7 @@ func TestTheHubIsChosenByAdministratorsAndReadByWhoeverMayReadIt(t *testing.T) {
 	})
 
 	t.Run("an administrator clears it", func(t *testing.T) {
-		got := obj(t, want(t, admin.put(t, "/api/v1/org/hub", map[string]any{"pageId": nil, "landing": false}), http.StatusOK, "clear the hub"), "hub")
+		got := obj(t, want(t, admin.put(t, "/api/v1/site/hub", map[string]any{"pageId": nil, "landing": false}), http.StatusOK, "clear the hub"), "hub")
 		if got["page"] != nil || got["landing"] != false {
 			t.Fatalf("the cleared hub reads %v", got)
 		}

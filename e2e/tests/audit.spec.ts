@@ -124,13 +124,11 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     const bobApi = await apiAs("bob");
     const refused = await bobApi.GET("/audit");
     expect(refused.response.status).toBe(403);
-    expect((refused.error as { error?: { message?: string } } | undefined)?.error?.message).toMatch(
-      /^Only an administrator of this organization can do that\. Ask one of them/,
-    );
+    expect((refused.error as { error?: { message?: string } } | undefined)?.error?.message).toMatch(/^Only an administrator can do that\. Ask one of them/);
 
     const bob = await pageAs("bob");
     await bob.goto(AUDIT_PATH);
-    await expect(bob.locator("[data-audit-refused]")).toContainText("Only an administrator of this organization reads its audit log.");
+    await expect(bob.locator("[data-audit-refused]")).toContainText("Only an administrator reads the audit log.");
     await expect(bob.locator("[data-audit-row]")).toHaveCount(0);
     await bob.locator('[data-action="account"]').click();
     await expect(bob.getByRole("menu")).toBeVisible();

@@ -84,6 +84,9 @@ type operation struct {
 	binary bool
 	// redirect routes answer with a Location header rather than a body.
 	redirect bool
+	// deprecated routes are an old address kept for whoever still has it; a
+	// deprecated redirect sends there for good.
+	deprecated bool
 	// upgrade routes become a WebSocket, described in description.
 	upgrade     bool
 	description string
@@ -99,9 +102,9 @@ type operation struct {
 	// toolFile is the name a multipart tool sends its content under when the
 	// call names none.
 	toolFile string
-	// orgWide routes concern the organization as a whole, which a token
+	// wholeInstance routes concern the instance as a whole, which a token
 	// limited to spaces is refused; token_test.go holds the router to it.
-	orgWide bool
+	wholeInstance bool
 }
 
 // collabProtocol is what a client of handleCollab has to know beyond the handshake.
@@ -116,7 +119,7 @@ const collabProtocol = "Binary frames in y-protocols' framing: a varuint message
 
 // operations is the table. Order is by area, then by path; paths are relative
 // to APIPrefix except the probes, which live at the root.
-var operations = []operation{
+var operations = append([]operation{
 	{method: "GET", path: "/healthz", handler: "handleLiveness", tag: "health", summary: "Whether the process is running.", public: true,
 		responses: ok(statusResponse{})},
 	{method: "GET", path: "/readyz", handler: "handleReadiness", tag: "health", summary: "Whether the process can serve traffic, and how reads are routed.", public: true,
@@ -126,50 +129,48 @@ var operations = []operation{
 
 	{method: "POST", path: "/auth/login", handler: "handleLogin", tag: "auth", summary: "Sign in a local account with email and password, and set the session cookie.", public: true,
 		request: loginRequest{}, responses: ok(meResponse{})},
-	{method: "GET", path: "/auth/oidc/{orgSlug}/start", handler: "handleOIDCStart", tag: "auth", summary: "Begin signing in through the organization's identity provider.", public: true, redirect: true,
+	{method: "GET", path: "/auth/oidc/start", handler: "handleOIDCStart", tag: "auth", summary: "Begin signing in through the identity provider.", public: true, redirect: true,
 		query: []param{{name: "next", description: "A path of this application to land on afterwards."}}, responses: map[int]any{}},
 	{method: "GET", path: "/auth/oidc/callback", handler: "handleOIDCCallback", tag: "auth", summary: "Where the identity provider sends the browser back; sets the session cookie.", public: true, redirect: true,
 		query: []param{{name: "state"}, {name: "code"}, {name: "error"}}, responses: map[int]any{}},
 	{method: "POST", path: "/auth/logout", handler: "handleLogout", tag: "auth", summary: "End the session.", responses: none()},
-	{method: "GET", path: "/auth/me", handler: "handleMe", tool: "whoami", toolHelp: "Who the token belongs to and which organization it acts in.", tag: "auth", summary: "Who is signed in, and the organizations they may act in.",
+	{method: "GET", path: "/auth/me", handler: "handleMe", tool: "whoami", toolHelp: "Who the token belongs to and their role.", tag: "auth", summary: "Who is signed in, and their role.",
 		responses: ok(meResponse{})},
 	{method: "PATCH", path: "/auth/me", handler: "handleUpdateMe", tag: "auth", summary: "Change the caller's own settings, such as the language the interface speaks to them.",
 		request: updateMeRequest{}, responses: map[int]any{200: meResponse{}, 422: errorEnvelope{}}},
-	{method: "POST", path: "/auth/switch-org", handler: "handleSwitchOrg", tag: "auth", summary: "Move the session to another organization.",
-		request: switchOrgRequest{}, responses: ok(env{"organization": auth.CurrentOrg{}})},
 
-	{method: "GET", path: "/oidc-provider", handler: "handleGetOIDCProvider", orgWide: true, tag: "access", summary: "The organization's identity provider, if one is configured. For administrators.",
+	{method: "GET", path: "/oidc-provider", handler: "handleGetOIDCProvider", wholeInstance: true, tag: "access", summary: "The organization's identity provider, if one is configured. For administrators.",
 		responses: ok(providerView{})},
-	{method: "PUT", path: "/oidc-provider", handler: "handleSaveOIDCProvider", orgWide: true, tag: "access", summary: "Configure the organization's identity provider. For administrators.",
+	{method: "PUT", path: "/oidc-provider", handler: "handleSaveOIDCProvider", wholeInstance: true, tag: "access", summary: "Configure the organization's identity provider. For administrators.",
 		request: saveOIDCProviderRequest{}, responses: ok(providerView{})},
-	{method: "GET", path: "/oidc-provider/group-roles", handler: "handleListGroupRoles", orgWide: true, tag: "access", summary: "Which provider groups grant which role. For administrators.",
+	{method: "GET", path: "/oidc-provider/group-roles", handler: "handleListGroupRoles", wholeInstance: true, tag: "access", summary: "Which provider groups grant which role. For administrators.",
 		responses: ok(env{"groupRoles": []oidc.GroupRole{}})},
-	{method: "POST", path: "/oidc-provider/group-roles", handler: "handleSetGroupRole", orgWide: true, tag: "access", summary: "Map a provider group to a role, or change the role it maps to; members follow at their next sign-in. For administrators.",
+	{method: "POST", path: "/oidc-provider/group-roles", handler: "handleSetGroupRole", wholeInstance: true, tag: "access", summary: "Map a provider group to a role, or change the role it maps to; members follow at their next sign-in. For administrators.",
 		request: setGroupRoleRequest{}, responses: ok(env{"groupRole": oidc.GroupRole{}})},
-	{method: "DELETE", path: "/oidc-provider/group-roles/{groupRoleID}", handler: "handleRemoveGroupRole", orgWide: true, tag: "access", summary: "Unmap a provider group; the roles it granted go at each person's next sign-in. For administrators.",
+	{method: "DELETE", path: "/oidc-provider/group-roles/{groupRoleID}", handler: "handleRemoveGroupRole", wholeInstance: true, tag: "access", summary: "Unmap a provider group; the roles it granted go at each person's next sign-in. For administrators.",
 		responses: none()},
-	{method: "GET", path: "/users", handler: "handleListMembers", orgWide: true, tag: "access", summary: "The organization's members, with their roles and whether the identity provider decides them. For administrators.",
+	{method: "GET", path: "/users", handler: "handleListMembers", wholeInstance: true, tag: "access", summary: "The organization's members, with their roles and whether the identity provider decides them. For administrators.",
 		responses: ok(env{"members": []auth.Member{}})},
-	{method: "POST", path: "/users", handler: "handleCreateMember", orgWide: true, tag: "access", summary: "Add a person with a password, so they can sign in without an identity provider; a password left out is made and shown once. An address that already has an account joins with its own password. For administrators.",
+	{method: "POST", path: "/users", handler: "handleCreateMember", wholeInstance: true, tag: "access", summary: "Add a person with a password, so they can sign in without an identity provider; a password left out is made and shown once. An address that already has an account joins with its own password. For administrators.",
 		request: createMemberRequest{}, responses: created(env{"member": auth.CreatedMember{}})},
-	{method: "DELETE", path: "/users/{userID}", handler: "handleRemoveMember", orgWide: true, tag: "access", summary: "Take somebody out of the organization. The owner stays. For administrators.",
+	{method: "DELETE", path: "/users/{userID}", handler: "handleRemoveMember", wholeInstance: true, tag: "access", summary: "Take somebody out of the organization. The owner stays. For administrators.",
 		responses: none()},
-	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", orgWide: true, tag: "access", summary: "Who signed in through the identity provider and is waiting to be let in. For administrators.",
+	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", wholeInstance: true, tag: "access", summary: "Who signed in through the identity provider and is waiting to be let in. For administrators.",
 		responses: ok(env{"requests": []auth.JoinRequest{}})},
-	{method: "POST", path: "/users/requests/{userID}/admit", handler: "handleAdmitJoinRequest", orgWide: true, tag: "access", summary: "Let a waiting person in with the standing given. For administrators.",
-		request: admitRequest{}, responses: ok(env{"membership": auth.Membership{}})},
-	{method: "DELETE", path: "/users/requests/{userID}", handler: "handleDeclineJoinRequest", orgWide: true, tag: "access", summary: "Turn a waiting person away; they may ask again. For administrators.",
+	{method: "POST", path: "/users/requests/{userID}/admit", handler: "handleAdmitJoinRequest", wholeInstance: true, tag: "access", summary: "Let a waiting person in with the standing given. For administrators.",
+		request: admitRequest{}, responses: ok(env{"admitted": auth.Admitted{}})},
+	{method: "DELETE", path: "/users/requests/{userID}", handler: "handleDeclineJoinRequest", wholeInstance: true, tag: "access", summary: "Turn a waiting person away; they may ask again. For administrators.",
 		responses: none()},
-	{method: "GET", path: "/org/tokens", handler: "handleListOrgAPITokens", orgWide: true, tag: "access", summary: "Every personal access token in the organization, with whose it is. For administrators.",
+	{method: "GET", path: "/site/tokens", handler: "handleListOrgAPITokens", wholeInstance: true, tag: "access", summary: "Every personal access token in the organization, with whose it is. For administrators.",
 		responses: ok(env{"tokens": []auth.OrgAPIToken{}})},
-	{method: "DELETE", path: "/org/tokens/{tokenID}", handler: "handleRevokeOrgAPIToken", orgWide: true, tag: "access", summary: "Revoke anybody's token in the organization. For administrators.",
+	{method: "DELETE", path: "/site/tokens/{tokenID}", handler: "handleRevokeOrgAPIToken", wholeInstance: true, tag: "access", summary: "Revoke anybody's token in the organization. For administrators.",
 		responses: none()},
 
-	{method: "GET", path: "/tokens", handler: "handleListAPITokens", orgWide: true, tag: "tokens", summary: "The caller's personal access tokens in this organization, without their secrets.",
+	{method: "GET", path: "/tokens", handler: "handleListAPITokens", wholeInstance: true, tag: "tokens", summary: "The caller's personal access tokens in this organization, without their secrets.",
 		responses: ok(env{"tokens": []auth.APIToken{}})},
-	{method: "POST", path: "/tokens", handler: "handleCreateAPIToken", orgWide: true, tag: "tokens", summary: "Make a personal access token; the secret is in this answer and never again. Needs a session.",
+	{method: "POST", path: "/tokens", handler: "handleCreateAPIToken", wholeInstance: true, tag: "tokens", summary: "Make a personal access token; the secret is in this answer and never again. Needs a session.",
 		request: createTokenRequest{}, responses: created(env{"token": auth.APIToken{}})},
-	{method: "DELETE", path: "/tokens/{tokenID}", handler: "handleRevokeAPIToken", orgWide: true, tag: "tokens", summary: "Revoke one of the caller's tokens; it stops working at once.",
+	{method: "DELETE", path: "/tokens/{tokenID}", handler: "handleRevokeAPIToken", wholeInstance: true, tag: "tokens", summary: "Revoke one of the caller's tokens; it stops working at once.",
 		responses: none()},
 
 	// Themes, as Armature serves them.
@@ -192,13 +193,13 @@ var operations = []operation{
 	{method: "GET", path: "/spaces", handler: "handleListSpaces", tool: "list_spaces", toolHelp: "The spaces the caller may see, with the keys other tools take; archived true lists archived ones too.", tag: "spaces", summary: "Every space the caller may see, by name; archived ones only when asked for.",
 		query:     []param{{name: "archived", schema: &openapi.Schema{Type: "boolean"}, description: "true to list archived spaces too; false when absent."}},
 		responses: ok(env{"spaces": []space.Space{}})},
-	{method: "POST", path: "/spaces", handler: "handleCreateSpace", orgWide: true, tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
-	{method: "GET", path: "/example-space", handler: "handleGetExampleSpace", orgWide: true, tag: "spaces", summary: "The organization's example space, the one whose pages explain Stator, null while there is none or it is being made; the latest making or renewal of it; and which version of its content it has, with what the newer ones bring. For administrators.",
+	{method: "POST", path: "/spaces", handler: "handleCreateSpace", wholeInstance: true, tag: "spaces", summary: "Make a space and its home page. For whoever may create spaces; with personal, everybody makes their own one, which only they see.", request: space.CreateInput{}, responses: created(env{"space": space.Space{}})},
+	{method: "GET", path: "/example-space", handler: "handleGetExampleSpace", wholeInstance: true, tag: "spaces", summary: "The organization's example space, the one whose pages explain Stator, null while there is none or it is being made; the latest making or renewal of it; and which version of its content it has, with what the newer ones bring. For administrators.",
 		query:     []param{{name: "language", description: "en or de, the language of what the newer versions bring; the caller's own when absent."}},
 		responses: ok(exampleSpaceResponse{})},
-	{method: "POST", path: "/example-space", handler: "handleCreateExampleSpace", orgWide: true, tag: "spaces", summary: "Ask the worker to make the example space, whose pages explain Stator, in the language asked for, else the caller's own: 202 with the job, the same one while it is queued or running, or 200 with the space when the organization has it already. For administrators.",
+	{method: "POST", path: "/example-space", handler: "handleCreateExampleSpace", wholeInstance: true, tag: "spaces", summary: "Ask the worker to make the example space, whose pages explain Stator, in the language asked for, else the caller's own: 202 with the job, the same one while it is queued or running, or 200 with the space when the organization has it already. For administrators.",
 		request: exampleSpaceRequest{}, responses: map[int]any{200: exampleSpaceResponse{}, 202: exampleSpaceResponse{}, 422: errorEnvelope{}}},
-	{method: "POST", path: "/example-space/renew", handler: "handleRenewExampleSpace", orgWide: true, tag: "spaces", summary: "Ask the worker to bring the example space's guides to the current version of its content, in the language asked for, else the one its pages are in: pages nobody changed are published again, changed ones are kept and reported. 202 with the job, or the one queued or running already; 409 when there is no example. For administrators.",
+	{method: "POST", path: "/example-space/renew", handler: "handleRenewExampleSpace", wholeInstance: true, tag: "spaces", summary: "Ask the worker to bring the example space's guides to the current version of its content, in the language asked for, else the one its pages are in: pages nobody changed are published again, changed ones are kept and reported. 202 with the job, or the one queued or running already; 409 when there is no example. For administrators.",
 		request: renewExampleSpaceRequest{}, responses: map[int]any{202: exampleSpaceResponse{}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
 	// Space export and import (#88), run by the worker.
 	{method: "POST", path: "/spaces/{spaceKey}/exports", handler: "handleCreateSpaceExport", tag: "spaces",
@@ -210,36 +211,36 @@ var operations = []operation{
 	{method: "GET", path: "/space-exports/{exportID}/file", handler: "handleDownloadSpaceExport", tag: "spaces", binary: true,
 		summary:   "The file an export made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after.",
 		responses: map[int]any{200: nil, 409: errorEnvelope{}, 410: errorEnvelope{}}},
-	{method: "POST", path: "/space-imports", handler: "handleCreateSpaceImport", orgWide: true, tag: "spaces", multipart: true,
+	{method: "POST", path: "/space-imports", handler: "handleCreateSpaceImport", wholeInstance: true, tag: "spaces", multipart: true,
 		summary: "Upload a zip, as a multipart part named file, and ask the worker to make a new space of it: a space archive of Stator, under the key and name given, else the archive's own; or a space export of another wiki, HTML or XML, under the key given and the name given, else the export's own (docs/wiki-import.md). Refused at once when the file is neither, or the key is taken or, for an export, missing; 202 with the job, which GET /space-imports/{importID} follows to its report. For whoever may create spaces.",
 		query: []param{
 			{name: "key", description: "The new space's key; the archive's own when absent, and required for another wiki's export."},
 			{name: "name", description: "The new space's name; the archive's or the export's own when absent."},
 		},
 		responses: map[int]any{202: env{"import": spaceio.ImportJob{}}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
-	{method: "GET", path: "/space-imports", handler: "handleListSpaceImports", orgWide: true, tag: "spaces",
+	{method: "GET", path: "/space-imports", handler: "handleListSpaceImports", wholeInstance: true, tag: "spaces",
 		summary:   "The caller's latest imports of spaces, newest first.",
 		responses: ok(env{"imports": []spaceio.ImportJob{}})},
-	{method: "GET", path: "/space-imports/{importID}", handler: "handleGetSpaceImport", orgWide: true, tag: "spaces",
+	{method: "GET", path: "/space-imports/{importID}", handler: "handleGetSpaceImport", wholeInstance: true, tag: "spaces",
 		summary:   "One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, page by page for another wiki's export, or why it failed.",
 		responses: ok(env{"import": spaceio.ImportJob{}})},
 	// Organization export and import (#383), run by the worker.
-	{method: "POST", path: "/org/exports", handler: "handleCreateOrgExport", orgWide: true, tag: "organization",
-		summary:   "Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /org/exports follows. For administrators.",
+	{method: "POST", path: "/site/exports", handler: "handleCreateOrgExport", wholeInstance: true, tag: "organization",
+		summary:   "Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /site/exports follows. For administrators.",
 		responses: map[int]any{202: env{"export": spaceio.OrgExportJob{}}}},
-	{method: "GET", path: "/org/exports", handler: "handleListOrgExports", orgWide: true, tag: "organization",
+	{method: "GET", path: "/site/exports", handler: "handleListOrgExports", wholeInstance: true, tag: "organization",
 		summary:   "The organization's latest exports, newest first. For administrators.",
 		responses: ok(env{"exports": []spaceio.OrgExportJob{}})},
-	{method: "GET", path: "/org/exports/{exportID}/file", handler: "handleDownloadOrgExport", orgWide: true, tag: "organization", binary: true,
+	{method: "GET", path: "/site/exports/{exportID}/file", handler: "handleDownloadOrgExport", wholeInstance: true, tag: "organization", binary: true,
 		summary:   "The archive an export of the organization made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after. For administrators.",
 		responses: map[int]any{200: nil, 409: errorEnvelope{}, 410: errorEnvelope{}}},
-	{method: "POST", path: "/org/imports", handler: "handleCreateOrgImport", orgWide: true, tag: "organization", multipart: true,
-		summary:   "Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /org/imports/{importID} follows to its report. For administrators.",
+	{method: "POST", path: "/site/imports", handler: "handleCreateOrgImport", wholeInstance: true, tag: "organization", multipart: true,
+		summary:   "Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /site/imports/{importID} follows to its report. For administrators.",
 		responses: map[int]any{202: env{"import": spaceio.OrgImportJob{}}, 409: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
-	{method: "GET", path: "/org/imports", handler: "handleListOrgImports", orgWide: true, tag: "organization",
+	{method: "GET", path: "/site/imports", handler: "handleListOrgImports", wholeInstance: true, tag: "organization",
 		summary:   "The organization's latest imports, newest first. For administrators.",
 		responses: ok(env{"imports": []spaceio.OrgImportJob{}})},
-	{method: "GET", path: "/org/imports/{importID}", handler: "handleGetOrgImport", orgWide: true, tag: "organization",
+	{method: "GET", path: "/site/imports/{importID}", handler: "handleGetOrgImport", wholeInstance: true, tag: "organization",
 		summary:   "One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators.",
 		responses: ok(env{"import": spaceio.OrgImportJob{}})},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
@@ -514,66 +515,66 @@ var operations = []operation{
 	// Permissions (#19).
 	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "permissions", summary: "What the caller may do across the organization, which decides which buttons to draw.",
 		responses: ok(env{"can": perm.GlobalCan{}})},
-	{method: "GET", path: "/org/permissions", handler: "handleListGlobalPermissions", orgWide: true, tag: "permissions", summary: "Each global permission and whom it is granted to. For administrators.",
+	{method: "GET", path: "/site/permissions", handler: "handleListGlobalPermissions", wholeInstance: true, tag: "permissions", summary: "Each global permission and whom it is granted to. For administrators.",
 		responses: ok(env{"permissions": []perm.GlobalGrant{}})},
-	{method: "PUT", path: "/org/permissions/{permission}", handler: "handleSetGlobalPermission", orgWide: true, tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.",
+	{method: "PUT", path: "/site/permissions/{permission}", handler: "handleSetGlobalPermission", wholeInstance: true, tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.",
 		request: perm.GlobalGrantInput{}, responses: ok(env{"permission": perm.GlobalGrant{}})},
 	{method: "GET", path: "/link-preview", handler: "handleLinkPreview", tag: "pages", summary: "What a web page says about itself, its title, summary and site, for a link's card, and the player it embeds in when its site is allowlisted. Read through the outbound guard and kept an hour.",
 		query:     []param{{name: "url", schema: &openapi.Schema{Type: "string", Format: "uri"}, description: "The full address of the web page, http or https."}},
 		responses: ok(env{"preview": unfurl.LinkPreview{}})},
-	{method: "GET", path: "/org/hub", handler: "handleGetHub", tool: "get_hub", toolHelp: "The organization's hub page, if there is one the caller may read, and whether everybody lands on it.", tag: "hub", summary: "The organization's hub page as the caller may see it, and whether everybody lands on it.", responses: ok(env{"hub": hub.Hub{}})},
-	{method: "PUT", path: "/org/hub", handler: "handleSetHub", orgWide: true, tag: "hub", summary: "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.", request: hub.HubInput{}, responses: ok(env{"hub": hub.Hub{}})},
-	{method: "GET", path: "/org/brand", handler: "handleGetBrand", tag: "brand", summary: "The logo and footer lines the organization's exports carry; the logo is null when there is none.", responses: ok(env{"brand": brand.Brand{}})},
-	{method: "PUT", path: "/org/brand/footer", handler: "handleSetBrandFooter", orgWide: true, tag: "brand", summary: "Replace the footer line of the organization's exports in English and German. For administrators.", request: brand.FooterInput{}, responses: ok(env{"brand": brand.Brand{}})},
-	{method: "PUT", path: "/org/brand/logo", handler: "handleSetBrandLogo", orgWide: true, tag: "brand", summary: "Replace the organization's logo with a PNG, JPEG or WebP picture of up to 2 MB, as a multipart part named file. For administrators.", multipart: true, responses: ok(env{"brand": brand.Brand{}})},
-	{method: "DELETE", path: "/org/brand/logo", handler: "handleDeleteBrandLogo", orgWide: true, tag: "brand", summary: "Take the organization's logo away; its exports then carry the name alone. For administrators.", responses: ok(env{"brand": brand.Brand{}})},
-	{method: "GET", path: "/org/brand/logo", handler: "handleBrandLogo", tag: "brand", summary: "The logo picture itself.", binary: true, responses: ok(nil)},
-	{method: "GET", path: "/org/anonymous-access", handler: "handleGetAnonymousAccess", orgWide: true, tag: "public", summary: "Whether anybody may read the spaces that allow it without signing in, and whether search engines are asked in. For administrators.",
+	{method: "GET", path: "/site/hub", handler: "handleGetHub", tool: "get_hub", toolHelp: "The organization's hub page, if there is one the caller may read, and whether everybody lands on it.", tag: "hub", summary: "The organization's hub page as the caller may see it, and whether everybody lands on it.", responses: ok(env{"hub": hub.Hub{}})},
+	{method: "PUT", path: "/site/hub", handler: "handleSetHub", wholeInstance: true, tag: "hub", summary: "Choose the organization's hub page, or none, and whether everybody lands on it. For administrators.", request: hub.HubInput{}, responses: ok(env{"hub": hub.Hub{}})},
+	{method: "GET", path: "/site/brand", handler: "handleGetBrand", tag: "brand", summary: "The logo and footer lines the organization's exports carry; the logo is null when there is none.", responses: ok(env{"brand": brand.Brand{}})},
+	{method: "PUT", path: "/site/brand/footer", handler: "handleSetBrandFooter", wholeInstance: true, tag: "brand", summary: "Replace the footer line of the organization's exports in English and German. For administrators.", request: brand.FooterInput{}, responses: ok(env{"brand": brand.Brand{}})},
+	{method: "PUT", path: "/site/brand/logo", handler: "handleSetBrandLogo", wholeInstance: true, tag: "brand", summary: "Replace the organization's logo with a PNG, JPEG or WebP picture of up to 2 MB, as a multipart part named file. For administrators.", multipart: true, responses: ok(env{"brand": brand.Brand{}})},
+	{method: "DELETE", path: "/site/brand/logo", handler: "handleDeleteBrandLogo", wholeInstance: true, tag: "brand", summary: "Take the organization's logo away; its exports then carry the name alone. For administrators.", responses: ok(env{"brand": brand.Brand{}})},
+	{method: "GET", path: "/site/brand/logo", handler: "handleBrandLogo", tag: "brand", summary: "The logo picture itself.", binary: true, responses: ok(nil)},
+	{method: "GET", path: "/site/anonymous-access", handler: "handleGetAnonymousAccess", wholeInstance: true, tag: "public", summary: "Whether anybody may read the spaces that allow it without signing in, and whether search engines are asked in. For administrators.",
 		responses: ok(env{"anonymousAccess": public.Settings{}})},
-	{method: "PUT", path: "/org/anonymous-access", handler: "handleSetAnonymousAccess", orgWide: true, tag: "public", summary: "Let anybody read the spaces that allow it without signing in, or stop it, and say whether search engines may list those pages. For administrators.",
+	{method: "PUT", path: "/site/anonymous-access", handler: "handleSetAnonymousAccess", wholeInstance: true, tag: "public", summary: "Let anybody read the spaces that allow it without signing in, or stop it, and say whether search engines may list those pages. For administrators.",
 		request: public.Settings{}, responses: ok(env{"anonymousAccess": public.Settings{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/anonymous-access", handler: "handleGetSpaceAnonymousAccess", tag: "public", summary: "Whether anybody may read this space without signing in, and whether the organization allows it at all. For the space's administrators.",
 		responses: ok(env{"anonymousAccess": space.AnonymousAccess{}})},
 	{method: "PUT", path: "/spaces/{spaceKey}/anonymous-access", handler: "handleSetSpaceAnonymousAccess", tag: "public", summary: "Let anybody read this space's published pages without signing in, or stop it; it counts while the organization allows it. A personal space stays private. For the space's administrators.",
 		request: space.AnonymousAccessInput{}, responses: map[int]any{200: env{"anonymousAccess": space.AnonymousAccess{}}, 422: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}", handler: "handlePublicSite", tag: "public", public: true, summary: "The organization and the spaces anybody may read in it without signing in. Not found, as not_public, when it lets nobody in.",
+	{method: "GET", path: "/public", handler: "handlePublicSite", tag: "public", public: true, summary: "The organization and the spaces anybody may read in it without signing in. Not found, as not_public, when it lets nobody in.",
 		responses: map[int]any{200: env{"site": public.Site{}, "spaces": []public.Space{}}, 404: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/spaces/{spaceKey}", handler: "handlePublicSpace", tag: "public", public: true, summary: "A space anybody may read, with its published pages in reading order.",
+	{method: "GET", path: "/public/spaces/{spaceKey}", handler: "handlePublicSpace", tag: "public", public: true, summary: "A space anybody may read, with its published pages in reading order.",
 		responses: map[int]any{200: env{"space": public.Space{}, "pages": []public.TreePage{}}, 404: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/pages/{pageID}", handler: "handlePublicPage", tag: "public", public: true, summary: "A published page anybody may read, with the people it mentions unnamed and nothing about who wrote or read it.",
+	{method: "GET", path: "/public/pages/{pageID}", handler: "handlePublicPage", tag: "public", public: true, summary: "A published page anybody may read, with the people it mentions unnamed and nothing about who wrote or read it.",
 		responses: map[int]any{200: env{"page": public.Page{}}, 404: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/pages/{pageID}/pdf", handler: "handlePublicPagePDF", tag: "public", public: true, binary: true,
+	{method: "GET", path: "/public/pages/{pageID}/pdf", handler: "handlePublicPagePDF", tag: "public", public: true, binary: true,
 		summary:   "A published page anybody may read as a PDF, printed as anybody reads it. At most six a minute of one page from one address, then too_many_requests; otherwise refused as GET /pages/{pageID}/pdf refuses.",
 		responses: map[int]any{200: nil, 404: errorEnvelope{}, 409: errorEnvelope{}, 422: errorEnvelope{}, 429: errorEnvelope{}, 502: errorEnvelope{}, 503: errorEnvelope{}, 504: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/pages/{pageID}/docx", handler: "handlePublicPageWord", tag: "public", public: true, binary: true,
+	{method: "GET", path: "/public/pages/{pageID}/docx", handler: "handlePublicPageWord", tag: "public", public: true, binary: true,
 		summary:   "A published page anybody may read as a Word document, as anybody reads it. At most six a minute of one page from one address, then too_many_requests; otherwise refused as GET /pages/{pageID}/docx refuses.",
 		responses: map[int]any{200: nil, 404: errorEnvelope{}, 409: errorEnvelope{}, 422: errorEnvelope{}, 429: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/attachments/{attachmentID}", handler: "handlePublicAttachment", tag: "public", public: true, summary: "The bytes of a file on a page anybody may read, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.", binary: true,
+	{method: "GET", path: "/public/attachments/{attachmentID}", handler: "handlePublicAttachment", tag: "public", public: true, summary: "The bytes of a file on a page anybody may read, as a download. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.", binary: true,
 		query: []param{{name: "inline", description: "1 to show images, videos, PDFs and text in place."}}, responses: map[int]any{200: nil, 206: nil, 404: errorEnvelope{}, 416: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/logo", handler: "handlePublicLogo", tag: "public", public: true, binary: true, summary: "The organization's logo, which the site's logoVersion says is there.", responses: map[int]any{200: nil, 404: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/search", handler: "handlePublicSearch", tag: "public", public: true, summary: "Published pages anybody may read whose words match, the best first.",
+	{method: "GET", path: "/public/logo", handler: "handlePublicLogo", tag: "public", public: true, binary: true, summary: "The organization's logo, which the site's logoVersion says is there.", responses: map[int]any{200: nil, 404: errorEnvelope{}}},
+	{method: "GET", path: "/public/search", handler: "handlePublicSearch", tag: "public", public: true, summary: "Published pages anybody may read whose words match, the best first.",
 		query: []param{
 			{name: "q", description: "Words, quoted phrases, or and -word."},
 			{name: "space", description: "A space key to stay inside."},
 			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
 			{name: "offset", schema: intParam, description: "How many hits to skip."},
 		}, responses: map[int]any{200: env{"hits": []search.AnonymousHit{}, "more": false, "limit": 0, "offset": 0}, 404: errorEnvelope{}, 422: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/links/{token}", handler: "handleLinkedPage", tag: "public", public: true,
+	{method: "GET", path: "/public/links/{token}", handler: "handleLinkedPage", tag: "public", public: true,
 		summary:   "The one published page a public link opens, with the people it mentions unnamed and nothing of its space, tree or people. Not found, as link_gone, once the link is revoked or ran out, the page may no longer be opened, or the organization allows no links. Never cached.",
 		responses: map[int]any{200: env{"site": public.Site{}, "page": public.LinkedPage{}}, 404: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/links/{token}/pdf", handler: "handleLinkedPagePDF", tag: "public", public: true, binary: true,
-		summary:   "The page a public link opens as a PDF, for whoever holds the link, printed as the link shows it. Not found, as link_gone, when the link no longer opens the page; never cached; otherwise refused as GET /public/{orgSlug}/pages/{pageID}/pdf refuses.",
+	{method: "GET", path: "/public/links/{token}/pdf", handler: "handleLinkedPagePDF", tag: "public", public: true, binary: true,
+		summary:   "The page a public link opens as a PDF, for whoever holds the link, printed as the link shows it. Not found, as link_gone, when the link no longer opens the page; never cached; otherwise refused as GET /public/pages/{pageID}/pdf refuses.",
 		responses: map[int]any{200: nil, 404: errorEnvelope{}, 409: errorEnvelope{}, 422: errorEnvelope{}, 429: errorEnvelope{}, 502: errorEnvelope{}, 503: errorEnvelope{}, 504: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/links/{token}/docx", handler: "handleLinkedPageWord", tag: "public", public: true, binary: true,
-		summary:   "The page a public link opens as a Word document, for whoever holds the link, as the link shows it and without the link in it. Not found, as link_gone, when the link no longer opens the page; never cached; otherwise refused as GET /public/{orgSlug}/pages/{pageID}/docx refuses.",
+	{method: "GET", path: "/public/links/{token}/docx", handler: "handleLinkedPageWord", tag: "public", public: true, binary: true,
+		summary:   "The page a public link opens as a Word document, for whoever holds the link, as the link shows it and without the link in it. Not found, as link_gone, when the link no longer opens the page; never cached; otherwise refused as GET /public/pages/{pageID}/docx refuses.",
 		responses: map[int]any{200: nil, 404: errorEnvelope{}, 409: errorEnvelope{}, 422: errorEnvelope{}, 429: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/links/{token}/attachments/{attachmentID}", handler: "handleLinkedAttachment", tag: "public", public: true, binary: true,
+	{method: "GET", path: "/public/links/{token}/attachments/{attachmentID}", handler: "handleLinkedAttachment", tag: "public", public: true, binary: true,
 		summary: "The bytes of a file of the page a public link opens, as a download; files of every other page are not found. Never cached. One byte range in a Range header is answered 206 with that stretch, and one starting past the end 416.",
 		query:   []param{{name: "inline", description: "1 to show images, videos, PDFs and text in place."}}, responses: map[int]any{200: nil, 206: nil, 404: errorEnvelope{}, 416: errorEnvelope{}}},
-	{method: "GET", path: "/public/{orgSlug}/links/{token}/logo", handler: "handleLinkedLogo", tag: "public", public: true, binary: true, summary: "The organization's logo, for the page a public link opens.", responses: map[int]any{200: nil, 404: errorEnvelope{}}},
-	{method: "GET", path: "/org/public-links", handler: "handleGetPublicLinks", orgWide: true, tag: "public", summary: "Whether the editors of a page may open it to anybody through a public link. For administrators.",
+	{method: "GET", path: "/public/links/{token}/logo", handler: "handleLinkedLogo", tag: "public", public: true, binary: true, summary: "The organization's logo, for the page a public link opens.", responses: map[int]any{200: nil, 404: errorEnvelope{}}},
+	{method: "GET", path: "/site/public-links", handler: "handleGetPublicLinks", wholeInstance: true, tag: "public", summary: "Whether the editors of a page may open it to anybody through a public link. For administrators.",
 		responses: ok(env{"publicLinks": public.LinkSettings{}})},
-	{method: "PUT", path: "/org/public-links", handler: "handleSetPublicLinks", orgWide: true, tag: "public",
+	{method: "PUT", path: "/site/public-links", handler: "handleSetPublicLinks", wholeInstance: true, tag: "public",
 		summary: "Allow public links, or stop every one of them and the making of more; stopped links work again once they are allowed again. For administrators.",
 		request: public.LinkSettings{}, responses: ok(env{"publicLinks": public.LinkSettings{}})},
 	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
@@ -589,11 +590,11 @@ var operations = []operation{
 	{method: "POST", path: "/spaces/{spaceKey}/permissions/copy", handler: "handleCopyPermissions", tag: "permissions",
 		summary: "Apply the preview whose fingerprint the request carries, in one step; refused as copy_changed once either space's permissions changed since, and as no_administrator when it would leave this space without one. For whoever administers both spaces.",
 		request: space.CopyInput{}, responses: map[int]any{200: env{"grants": []perm.SpaceGrant{}, "copy": space.CopyPreview{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
-	{method: "GET", path: "/spaces/{spaceKey}/guests", handler: "handleListGuests", orgWide: true, tag: "permissions", summary: "The people from outside let into this space alone, with what they may do there. For administrators of the organization.",
+	{method: "GET", path: "/spaces/{spaceKey}/guests", handler: "handleListGuests", wholeInstance: true, tag: "permissions", summary: "The people from outside let into this space alone, with what they may do there. For administrators of the organization.",
 		responses: ok(env{"guests": []guest.Guest{}})},
-	{method: "POST", path: "/spaces/{spaceKey}/guests", handler: "handleInviteGuest", orgWide: true, tag: "permissions", summary: "Let somebody from outside into this space alone, as a viewer, commenter or editor; they sign in through the organization's provider with the address given. For administrators of the organization.",
+	{method: "POST", path: "/spaces/{spaceKey}/guests", handler: "handleInviteGuest", wholeInstance: true, tag: "permissions", summary: "Let somebody from outside into this space alone, as a viewer, commenter or editor; they sign in through the organization's provider with the address given. For administrators of the organization.",
 		request: guest.InviteInput{}, responses: map[int]any{201: env{"guest": guest.Guest{}}, 422: errorEnvelope{}}},
-	{method: "DELETE", path: "/spaces/{spaceKey}/guests/{userID}", handler: "handleRemoveGuest", orgWide: true, tag: "permissions", summary: "Take a guest out of this space, and so out of the organization. For administrators of the organization.",
+	{method: "DELETE", path: "/spaces/{spaceKey}/guests/{userID}", handler: "handleRemoveGuest", wholeInstance: true, tag: "permissions", summary: "Take a guest out of this space, and so out of the organization. For administrators of the organization.",
 		responses: none()},
 	{method: "GET", path: "/pages/{pageID}/restrictions", handler: "handleGetPageRestrictions", tag: "permissions", summary: "Who may view and edit a page beyond the space's permissions, and the restricted pages above it.",
 		responses: ok(env{"restrictions": page.Restrictions{}})},
@@ -821,51 +822,51 @@ var operations = []operation{
 		request: notify.Preferences{}, responses: ok(env{"preferences": notify.Preferences{}})},
 
 	// Connecting Armature (#27); see docs/api-contract-m3.md.
-	{method: "GET", path: "/armature/connection", handler: "handleGetArmatureConnection", orgWide: true, tag: "armature",
+	{method: "GET", path: "/armature/connection", handler: "handleGetArmatureConnection", wholeInstance: true, tag: "armature",
 		summary:   "The organization's Armature instance and what to enter in Armature's webhook settings, or null. For administrators.",
 		responses: ok(env{"connection": (*armature.Connection)(nil)})},
-	{method: "PUT", path: "/armature/connection", handler: "handleSaveArmatureConnection", orgWide: true, tag: "armature",
+	{method: "PUT", path: "/armature/connection", handler: "handleSaveArmatureConnection", wholeInstance: true, tag: "armature",
 		summary: "Connect an Armature instance; a new address or organization forgets every stored token. For administrators.",
 		request: armature.ConnectionInput{}, responses: ok(env{"connection": armature.Connection{}})},
-	{method: "DELETE", path: "/armature/connection", handler: "handleRemoveArmatureConnection", orgWide: true, tag: "armature",
+	{method: "DELETE", path: "/armature/connection", handler: "handleRemoveArmatureConnection", wholeInstance: true, tag: "armature",
 		summary:   "Disconnect Armature, forgetting every stored token and the webhook secret. For administrators.",
 		responses: none()},
 
 	// The audit log (#107), as Armature's administrators read theirs.
-	{method: "GET", path: "/audit", handler: "handleListAudit", orgWide: true, tool: "list_audit_log", toolHelp: "Who did what in the organization, newest first. For administrators.", tag: "audit",
+	{method: "GET", path: "/audit", handler: "handleListAudit", wholeInstance: true, tool: "list_audit_log", toolHelp: "Who did what in the organization, newest first. For administrators.", tag: "audit",
 		summary: "Who did what to the organization, newest first: members, sign-in, tokens, spaces, permissions, deletions for good and exports; next is the cursor for the window after, null at the end. For administrators.",
 		query:   append(auditQuery, keysetQueryOf(audit.DefaultLimit, audit.MaxLimit)...), responses: ok(env{"entries": []audit.AuditEntry{}, "next": (*string)(nil)})},
-	{method: "GET", path: "/audit/facets", handler: "handleAuditFacets", orgWide: true, tag: "audit",
+	{method: "GET", path: "/audit/facets", handler: "handleAuditFacets", wholeInstance: true, tag: "audit",
 		summary:   "The actions, people and kinds of target the log holds, to narrow it by, and how many days an entry is kept, 0 for ever. For administrators.",
 		responses: ok(env{"facets": audit.AuditFacets{}})},
-	{method: "GET", path: "/audit/export", handler: "handleExportAudit", orgWide: true, tag: "audit",
+	{method: "GET", path: "/audit/export", handler: "handleExportAudit", wholeInstance: true, tag: "audit",
 		summary: "The log as a CSV file, newest first, narrowed like the list; the export is itself recorded. Refused with export_too_large past " + strconv.Itoa(audit.MaxExport) + " entries. For administrators.",
 		binary:  true, query: auditQuery, responses: map[int]any{200: nil, 422: errorEnvelope{}}},
 
 	// Webhooks (#110), as Armature's administrators keep theirs.
-	{method: "GET", path: "/webhooks", handler: "handleListWebhooks", orgWide: true, tag: "webhooks",
+	{method: "GET", path: "/webhooks", handler: "handleListWebhooks", wholeInstance: true, tag: "webhooks",
 		summary:   "Where the organization's events are posted, by name, without their secrets. For administrators.",
 		responses: ok(env{"webhooks": []webhook.Webhook{}})},
-	{method: "POST", path: "/webhooks", handler: "handleCreateWebhook", orgWide: true, tag: "webhooks",
+	{method: "POST", path: "/webhooks", handler: "handleCreateWebhook", wholeInstance: true, tag: "webhooks",
 		summary: "Add a webhook; its secret is in this answer and never again. The caller becomes its owner, whose permissions every payload is read with. For administrators.",
 		request: webhook.WebhookInput{}, responses: map[int]any{201: env{"webhook": webhook.Webhook{}}, 422: errorEnvelope{}}},
-	{method: "PATCH", path: "/webhooks/{webhookID}", handler: "handleUpdateWebhook", orgWide: true, tag: "webhooks",
+	{method: "PATCH", path: "/webhooks/{webhookID}", handler: "handleUpdateWebhook", wholeInstance: true, tag: "webhooks",
 		summary: "Change a webhook's name, address, topics or whether it is on; the caller becomes its owner, and turning it on clears its failures. For administrators.",
 		request: webhook.WebhookInput{}, responses: map[int]any{200: env{"webhook": webhook.Webhook{}}, 422: errorEnvelope{}}},
-	{method: "DELETE", path: "/webhooks/{webhookID}", handler: "handleDeleteWebhook", orgWide: true, tag: "webhooks",
+	{method: "DELETE", path: "/webhooks/{webhookID}", handler: "handleDeleteWebhook", wholeInstance: true, tag: "webhooks",
 		summary:   "Remove a webhook and its log. For administrators.",
 		responses: none()},
-	{method: "POST", path: "/webhooks/{webhookID}/rotate-secret", handler: "handleRotateWebhookSecret", orgWide: true, tag: "webhooks",
+	{method: "POST", path: "/webhooks/{webhookID}/rotate-secret", handler: "handleRotateWebhookSecret", wholeInstance: true, tag: "webhooks",
 		summary:   "Issue a new secret, in this answer and never again; the old one stops at once. For administrators.",
 		responses: ok(env{"webhook": webhook.Webhook{}})},
-	{method: "POST", path: "/webhooks/{webhookID}/test", handler: "handleTestWebhook", orgWide: true, tag: "webhooks",
+	{method: "POST", path: "/webhooks/{webhookID}/test", handler: "handleTestWebhook", wholeInstance: true, tag: "webhooks",
 		summary:   "Post a ping now, even while the webhook is off, and answer the attempt as logged. For administrators.",
 		responses: ok(env{"delivery": webhook.WebhookDelivery{}})},
-	{method: "GET", path: "/webhooks/{webhookID}/deliveries", handler: "handleListWebhookDeliveries", orgWide: true, tag: "webhooks",
+	{method: "GET", path: "/webhooks/{webhookID}/deliveries", handler: "handleListWebhookDeliveries", wholeInstance: true, tag: "webhooks",
 		summary:   "A webhook's log, one row per attempt, newest first; kept for " + strconv.Itoa(int(webhook.DeliveryRetention.Hours()/24)) + " days. For administrators.",
 		query:     []param{{name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(webhook.MaxDeliveries) + "; " + strconv.Itoa(webhook.DefaultDeliveries) + " when absent."}},
 		responses: map[int]any{200: env{"deliveries": []webhook.WebhookDelivery{}}, 422: errorEnvelope{}}},
-	{method: "POST", path: "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", handler: "handleRedeliverWebhook", orgWide: true, tag: "webhooks",
+	{method: "POST", path: "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", handler: "handleRedeliverWebhook", wholeInstance: true, tag: "webhooks",
 		summary:   "Send a logged delivery's event again, now, as its next attempt, with the payload read afresh as the owner. For administrators.",
 		responses: ok(env{"delivery": webhook.WebhookDelivery{}})},
 
@@ -935,8 +936,11 @@ var operations = []operation{
 		responses: ok(env{"links": []armature.Link{}})},
 
 	// Webhooks (#33): Armature signs, so nobody signs in.
-	{method: "POST", path: "/armature/webhook/{orgSlug}", handler: "handleArmatureWebhook", tag: "armature", public: true,
+	{method: "POST", path: "/armature/webhook", handler: "handleArmatureWebhook", tag: "armature", public: true,
 		summary: "Where Armature posts issue events, signed with the organization's webhook secret; clears the cached issues they name.",
+		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}}},
+	{method: "POST", path: "/armature/webhook/{orgSlug}", handler: "handleArmatureWebhook", id: "armatureWebhookWithSlug", tag: "armature", public: true, deprecated: true,
+		summary: "The address POST /armature/webhook had while it named the organization, kept for receivers set up with it; a slug that is not the organization's is refused as a bad signature.",
 		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}}},
 
 	// Following the Armature theme (#34).
@@ -952,7 +956,7 @@ var operations = []operation{
 
 	{method: "POST", path: "/mcp", handler: "handleMCP", id: "mcp", tag: "mcp", summary: "The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller.",
 		raw: true, rawNote: "A JSON-RPC 2.0 request as the Model Context Protocol defines it.", responses: map[int]any{200: rpcResponse{}, 202: nil}},
-}
+}, oldPublicOperations()...)
 
 var (
 	intParam  = &openapi.Schema{Type: "integer"}
@@ -1268,9 +1272,13 @@ func Spec() *openapi.Document {
 			}
 			o.Responses[strconv.Itoa(status)] = r
 		}
-		if op.redirect {
+		switch {
+		case op.redirect && op.deprecated:
+			o.Responses["308"] = &openapi.Response{Description: "Permanent Redirect: the same request at the address it has now."}
+		case op.redirect:
 			o.Responses["302"] = &openapi.Response{Description: "Found: the browser is sent on."}
 		}
+		o.Deprecated = op.deprecated
 		o.Responses["default"] = &openapi.Response{Description: "An error, in the one shape every endpoint uses.",
 			Content: map[string]openapi.MediaType{"application/json": {Schema: errorSchema}}}
 		if op.public {
@@ -1352,15 +1360,15 @@ type Route struct {
 	Pending bool
 	// Upgrade operations become a WebSocket.
 	Upgrade bool
-	// OrgWide operations are refused a token limited to spaces.
-	OrgWide bool
+	// WholeInstance operations are refused a token limited to spaces.
+	WholeInstance bool
 }
 
 // Catalog lists every operation in the table.
 func Catalog() []Route {
 	out := make([]Route, 0, len(operations))
 	for _, op := range operations {
-		out = append(out, Route{Method: op.method, Path: op.path, ID: op.operationID(), Public: op.public, Binary: op.binary, Redirect: op.redirect, Pending: op.pending, Upgrade: op.upgrade, OrgWide: op.orgWide})
+		out = append(out, Route{Method: op.method, Path: op.path, ID: op.operationID(), Public: op.public, Binary: op.binary, Redirect: op.redirect, Pending: op.pending, Upgrade: op.upgrade, WholeInstance: op.wholeInstance})
 	}
 	return out
 }

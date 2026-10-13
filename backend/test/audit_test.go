@@ -108,7 +108,7 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, restrict(t, owner, plans, []any{user(home.user), user(annID)}, nil), http.StatusOK, "restrict Plans")
 	once(audit.ActionPageRestrictionsSet, me, plans)
 
-	want(t, owner.put(t, "/api/v1/org/permissions/createSpace", map[string]any{"subjects": []any{user(annID)}}), http.StatusOK, "grant createSpace")
+	want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{user(annID)}}), http.StatusOK, "grant createSpace")
 	once(audit.ActionOrgPermissionSet, me, nil)
 
 	made := want(t, ann.post(t, "/api/v1/tokens", map[string]any{"name": "Ann's script"}), http.StatusCreated, "ann makes a token")
@@ -117,7 +117,7 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	if data := once(audit.ActionTokenCreated, &annID, tokenID); strings.Contains(data, secret) || strings.Contains(data, auth.APITokenPrefix) {
 		t.Errorf("the record of a new token holds its secret: %s", data)
 	}
-	want(t, owner.delete(t, "/api/v1/org/tokens/"+tokenID), http.StatusNoContent, "the owner revokes ann's token")
+	want(t, owner.delete(t, "/api/v1/site/tokens/"+tokenID), http.StatusNoContent, "the owner revokes ann's token")
 	once(audit.ActionTokenRevoked, me, tokenID)
 
 	thread := startThread(t, ann, plans, "Ann's note.")
@@ -142,14 +142,14 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": nil}), http.StatusOK, "back to the built-in theme")
 	once(audit.ActionThemeDefaultSet, me, nil)
 
-	want(t, owner.put(t, "/api/v1/org/hub", map[string]any{"pageId": plans, "landing": true}), http.StatusOK, "choose the hub")
+	want(t, owner.put(t, "/api/v1/site/hub", map[string]any{"pageId": plans, "landing": true}), http.StatusOK, "choose the hub")
 	if data := once(audit.ActionOrgHubSet, me, plans); !strings.Contains(data, "Plans") {
 		t.Errorf("the hub's entry holds %s", data)
 	}
-	want(t, owner.put(t, "/api/v1/org/hub", map[string]any{"pageId": nil, "landing": false}), http.StatusOK, "clear the hub")
+	want(t, owner.put(t, "/api/v1/site/hub", map[string]any{"pageId": nil, "landing": false}), http.StatusOK, "clear the hub")
 	once(audit.ActionOrgHubSet, me, nil)
 
-	want(t, owner.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal", "de": "Intern"}), http.StatusOK, "set the footer")
+	want(t, owner.put(t, "/api/v1/site/brand/footer", map[string]any{"en": "Internal", "de": "Intern"}), http.StatusOK, "set the footer")
 	if data := once(audit.ActionOrgBrandSet, me, nil); !strings.Contains(data, "footer") {
 		t.Errorf("the brand's entry holds %s", data)
 	}
@@ -269,11 +269,11 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.delete(t, "/api/v1/spaces/AUD/shortcuts/"+cut), http.StatusNoContent, "remove the shortcut")
 	once(audit.ActionShortcutRemoved, me, spaceID)
 
-	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "open the organization to anybody")
+	want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "open the organization to anybody")
 	if data := once(audit.ActionOrgAnonymousAccessSet, me, nil); !strings.Contains(data, `"enabled": true`) {
 		t.Errorf("the switch's record reads %s", data)
 	}
-	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "the same switch again")
+	want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "the same switch again")
 	once(audit.ActionOrgAnonymousAccessSet, me, nil)
 	want(t, owner.put(t, "/api/v1/spaces/AUD/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open the space to anybody")
 	once(audit.ActionSpaceAnonymousAccessSet, me, spaceID)
@@ -291,11 +291,11 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	}
 	want(t, owner.delete(t, pagePath(notes, "/public-links/", linkID)), http.StatusNoContent, "revoke the link")
 	once(audit.ActionPageLinkRevoked, me, notes)
-	want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusOK, "stop public links")
+	want(t, owner.put(t, "/api/v1/site/public-links", map[string]any{"enabled": false}), http.StatusOK, "stop public links")
 	if data := once(audit.ActionOrgPublicLinksSet, me, nil); !strings.Contains(data, `"enabled": false`) {
 		t.Errorf("the links switch's record reads %s", data)
 	}
-	want(t, owner.put(t, "/api/v1/org/public-links", map[string]any{"enabled": false}), http.StatusOK, "the same links switch again")
+	want(t, owner.put(t, "/api/v1/site/public-links", map[string]any{"enabled": false}), http.StatusOK, "the same links switch again")
 	once(audit.ActionOrgPublicLinksSet, me, nil)
 
 	reviewRule := map[string]any{"reviewers": []any{user(annID)}, "required": 1}
@@ -355,7 +355,7 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 		t.Errorf("the import's record reads %s, after %v", data, imported)
 	}
 
-	orgExport := obj(t, want(t, owner.post(t, "/api/v1/org/exports", nil), http.StatusAccepted, "export the organization"), "export")
+	orgExport := obj(t, want(t, owner.post(t, "/api/v1/site/exports", nil), http.StatusAccepted, "export the organization"), "export")
 	if data := once(audit.ActionOrgExported, me, nil); !strings.Contains(data, orgExport["id"].(string)) {
 		t.Errorf("the organization's export reads %s", data)
 	}
