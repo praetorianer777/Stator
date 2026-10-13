@@ -35,7 +35,7 @@ jobs:
   bootstrap:
     enabled: true
 bootstrap:
-  org: { slug: trial, name: Trial }
+  org: { name: Trial }
   admin: { email: admin@chart-test.example }
 
 images:
