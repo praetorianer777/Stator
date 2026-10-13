@@ -80,22 +80,58 @@ func (s *Service) Save(ctx context.Context, in Provider) (*Provider, db.LSN, err
 	if err != nil {
 		return nil, 0, err
 	}
-	in, err = normalize(in)
+	_, lsn, err := s.store(ctx, s.db.Write, org.ID, in, false)
 	if err != nil {
-		return nil, 0, err
+		return nil, lsn, err
+	}
+	saved, err := s.Provider(ctx)
+	return saved, lsn, err
+}
+
+// Bootstrap points the organization at the operator's provider unless it has
+// one, and reports whether it did. It acts for no member, so as stator_admin.
+func (s *Service) Bootstrap(ctx context.Context, orgID uuid.UUID, in Provider) (bool, error) {
+	created, _, err := s.store(ctx, s.db.WriteAdmin, orgID, in, true)
+	return created, err
+}
+
+// Configure writes the organization's provider for the operator, over any
+// already there. It acts for no member, so as stator_admin.
+func (s *Service) Configure(ctx context.Context, orgID uuid.UUID, in Provider) error {
+	_, _, err := s.store(ctx, s.db.WriteAdmin, orgID, in, false)
+	return err
+}
+
+// store writes a provider through write and reports whether it did; keep
+// leaves a provider already there as it is.
+func (s *Service) store(
+	ctx context.Context,
+	write func(context.Context, func(context.Context, db.DBTX) error) (db.LSN, error),
+	orgID uuid.UUID, in Provider, keep bool,
+) (bool, db.LSN, error) {
+	in, err := normalize(in)
+	if err != nil {
+		return false, 0, err
 	}
 	var sealed []byte
 	if in.ClientSecret != "" {
-		sealed, err = s.box.Seal([]byte(in.ClientSecret), org.ID[:])
+		sealed, err = s.box.Seal([]byte(in.ClientSecret), orgID[:])
 		if errors.Is(err, secret.ErrNoKey) {
-			return nil, 0, &ValidationError{Field: "clientSecret", Message: "The server has no STATOR_SECRET_KEY, so it cannot store a client secret. Set one and try again."}
+			return false, 0, &ValidationError{Field: "clientSecret", Message: "The server has no STATOR_SECRET_KEY, so it cannot store a client secret. Set one and try again."}
 		}
 		if err != nil {
-			return nil, 0, err
+			return false, 0, err
 		}
 	}
 
-	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+	stored := false
+	lsn, err := write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		if keep {
+			var exists bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM oidc_provider WHERE org_id = $1)`, orgID).Scan(&exists); err != nil || exists {
+				return err
+			}
+		}
 		_, err := tx.Exec(ctx, `
 			INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret, groups_claim, scopes, create_groups, enabled)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -107,16 +143,17 @@ func (s *Service) Save(ctx context.Context, in Provider) (*Provider, db.LSN, err
 			    scopes = EXCLUDED.scopes,
 			    create_groups = EXCLUDED.create_groups,
 			    enabled = EXCLUDED.enabled`,
-			org.ID, in.Issuer, in.ClientID, sealed, in.GroupsClaim, in.Scopes, in.CreateGroups, in.Enabled)
+			orgID, in.Issuer, in.ClientID, sealed, in.GroupsClaim, in.Scopes, in.CreateGroups, in.Enabled)
 		if err != nil {
 			return err
 		}
+		stored = true
 		secretChange := "kept"
 		if sealed != nil {
 			secretChange = "set"
 		}
 		actor, _ := db.UserFrom(ctx)
-		return audit.Write(ctx, tx, org.ID, audit.Entry{
+		return audit.Write(ctx, tx, orgID, audit.Entry{
 			Action: audit.ActionSSOProviderSaved, TargetType: "oidc_provider", Actor: actor,
 			Data: map[string]any{
 				"issuer": in.Issuer, "clientId": in.ClientID, "clientSecret": secretChange, "groupsClaim": in.GroupsClaim,
@@ -125,16 +162,14 @@ func (s *Service) Save(ctx context.Context, in Provider) (*Provider, db.LSN, err
 		})
 	})
 	if err != nil {
-		return nil, 0, fmt.Errorf("save the identity provider: %w", err)
+		return false, lsn, fmt.Errorf("save the identity provider: %w", err)
 	}
 
 	// A changed issuer means the cached discovery is about somewhere else.
 	s.mu.Lock()
 	delete(s.discovered, in.Issuer)
 	s.mu.Unlock()
-
-	saved, err := s.Provider(ctx)
-	return saved, lsn, err
+	return stored, lsn, nil
 }
 
 // normalize trims a provider's settings, fills in the defaults and refuses
