@@ -340,15 +340,14 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Open sketches");
     const guide = await createPage(api, space.homePageId, "Open ledger", { type: "doc", content: [sketch("Ledger"), sketch("Imported ledger", null)] });
     must(await api.PUT("/spaces/{spaceKey}/anonymous-access", { params: { path: { spaceKey: space.key } }, body: { view: true } }));
-    must(await api.PUT("/org/anonymous-access", { body: { enabled: true, indexable: false } }));
+    must(await api.PUT("/site/anonymous-access", { body: { enabled: true, indexable: false } }));
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
     try {
-      const org = must(await api.GET("/auth/me")).organization!.slug;
       const reader = await context.newPage();
       const elsewhere = requestsElsewhere(reader);
       const pictures = (on: Page) => on.locator("[data-doc] [data-sketch] img");
 
-      await openUntil(reader, `/public/${org}/s/${space.key}/p/${guide.id}/open-ledger`, () => expect(pictures(reader)).toHaveCount(2, ONE_LOOK));
+      await openUntil(reader, `/public/s/${space.key}/p/${guide.id}/open-ledger`, () => expect(pictures(reader)).toHaveCount(2, ONE_LOOK));
       await expect(reader.getByRole("img", { name: "Sketch: Ledger" })).toBeVisible();
       const imported = reader.getByRole("img", { name: "Sketch: Imported ledger" });
       await expect(imported).toBeVisible();
@@ -365,7 +364,7 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
       await expect(page.locator('[data-sketch-state="drawing"]')).toHaveCount(0);
     } finally {
       await context.close();
-      must(await api.PUT("/org/anonymous-access", { body: { enabled: false, indexable: false } }));
+      must(await api.PUT("/site/anonymous-access", { body: { enabled: false, indexable: false } }));
     }
   });
 

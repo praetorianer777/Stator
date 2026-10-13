@@ -111,7 +111,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
       await openTitled(reader, made.path, plan.title);
     } finally {
       await context.close();
-      must(await api.PUT("/org/public-links", { body: { enabled: true } }));
+      must(await api.PUT("/site/public-links", { body: { enabled: true } }));
       await deleteSpace(api, key);
     }
   });

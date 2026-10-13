@@ -49,18 +49,20 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
       const org = page.locator("[data-anonymous-access]");
       await org.locator('[data-action="anonymous-access"]').click();
       await expect(org.getByRole("status")).toHaveText("Saved.");
-      await expect(org.locator("[data-public-address]")).toContainText(`/public/${team.org.slug}`);
+      await expect(org.locator("[data-public-address]")).toContainText(`${WEB_URL}/public`);
 
       await page.goto(`/s/${key}/settings?tab=permissions`);
       const open = page.locator("[data-space-anonymous-access]");
       await open.locator('[data-action="space-anonymous-access"]').click();
-      await expect(open.locator("[data-space-public-address]")).toContainText(`/public/${team.org.slug}/s/${key}`);
+      await expect(open.locator("[data-space-public-address]")).toContainText(`/public/s/${key}`);
       await expectAccessible(page);
 
       // The reader is not alice, so a replica may not have her switches yet.
       const reader = await context.newPage();
       const tree = reader.locator("[data-public-tree]");
+      // An address shared while the public pages named the organization still leads there.
       await openShowing(reader, `/public/${team.org.slug}/s/${key}`, tree.getByRole("link", { name: guide.title }));
+      await expect(reader).toHaveURL(`${WEB_URL}/public/s/${key}`);
       await expect(reader.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, nofollow");
       await expect(tree.getByRole("link", { name: secret.title })).toHaveCount(0);
       await expect(reader.locator("[data-rail], [data-sidebar]")).toHaveCount(0);
@@ -75,10 +77,10 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
       await reader.getByRole("link", { name: "the secret" }).click();
       await expect(reader.locator("[data-not-public]")).toBeVisible();
       const signIn = reader.locator("[data-not-public]").getByRole("link", { name: "Sign in to read it" });
-      await expect(signIn).toHaveAttribute("href", new RegExp(`^/login\\?next=.*&org=${team.org.slug}$`));
+      await expect(signIn).toHaveAttribute("href", new RegExp(`^/login\\?next=[^&]*$`));
 
       const hits = reader.locator("[data-public-hit]");
-      await openUntil(reader, `/public/${team.org.slug}/s/${key}`, async () => {
+      await openUntil(reader, `/public/s/${key}`, async () => {
         await reader.getByRole("searchbox", { name: "Search the public pages" }).fill(word);
         await reader.getByRole("button", { name: "Search" }).click();
         await expect(hits).toHaveCount(1, ONE_LOOK);
@@ -90,7 +92,7 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
       await expect(reader).toHaveURL(/\/login\?/);
     } finally {
       await context.close();
-      must(await api.PUT("/org/anonymous-access", { body: { enabled: false, indexable: false } }));
+      must(await api.PUT("/site/anonymous-access", { body: { enabled: false, indexable: false } }));
       await deleteSpace(api, key);
     }
   });

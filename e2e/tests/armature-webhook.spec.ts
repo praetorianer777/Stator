@@ -59,7 +59,7 @@ test.describe("Armature webhooks", { tag: ["@auth"] }, () => {
     await expect(status).toHaveAttribute("data-status-category", "todo");
 
     const sent = await stub(request, "POST", `${team.label}/webhooks`, {
-      url: `${apiFromStubURL()}/api/v1/armature/webhook/${team.org.slug}`,
+      url: `${apiFromStubURL()}/api/v1/armature/webhook`,
       secret: SECRET,
       topic: "issue.transitioned",
       payload: { key: "CP-3" },
@@ -71,7 +71,7 @@ test.describe("Armature webhooks", { tag: ["@auth"] }, () => {
 
     // A delivery signed with another secret is refused by the receiver.
     const forged = await stub(request, "POST", `${team.label}/webhooks`, {
-      url: `${apiFromStubURL()}/api/v1/armature/webhook/${team.org.slug}`,
+      url: `${apiFromStubURL()}/api/v1/armature/webhook`,
       secret: `${SECRET.slice(0, -1)}H`,
       topic: "issue.transitioned",
       payload: { key: "CP-3" },

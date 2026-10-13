@@ -179,7 +179,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
       await expect(bob.getByText(/Ask one of its administrators to add you under Permissions/)).toBeVisible();
       await expectAccessible(bob);
     } finally {
-      await api.PUT("/org/permissions/{permission}", { params: { path: { permission: "use" } }, body: { subjects: everyone } });
+      await api.PUT("/site/permissions/{permission}", { params: { path: { permission: "use" } }, body: { subjects: everyone } });
     }
   });
 

@@ -52,7 +52,7 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
       await openUntil(page, "/settings/transfer", () => expect(page.locator("[data-org-transfer]")).toBeVisible(ONE_LOOK));
       await expect(page.locator('[data-not-carried="passwords"]')).toBeVisible();
       // The organization keeps the exports of earlier runs; this one is the one not among them.
-      const earlier = new Set(must(await api.GET("/org/exports")).exports.map((each) => each.id));
+      const earlier = new Set(must(await api.GET("/site/exports")).exports.map((each) => each.id));
       await page.locator('[data-action="export-org"]').click();
       const row = page.locator("[data-org-export-row]").first();
       await expect(async () => {

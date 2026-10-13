@@ -16,10 +16,10 @@ let BOB_EMAIL = "";
 const guestsCard = (page: Page, key: string) => page.locator(`[data-space-guests="${key}"]`);
 
 /** Signs carol in to the organisation through Keycloak, in a browser of her own. */
-async function signInAsCarol(browser: Browser, org: string): Promise<{ context: BrowserContext; page: Page }> {
+async function signInAsCarol(browser: Browser): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
   const page = await context.newPage();
-  await startSSO(page, org);
+  await startSSO(page);
   await submitKeycloak(page, CAROL.username, CAROL.password);
   return { context, page };
 }
@@ -37,7 +37,7 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
   test.beforeEach(({ team }) => {
     BOB_EMAIL = team.people.bob.email;
   });
-  test("alice lets carol into one space, carol works there and sees nothing else, and alice takes her out", async ({ page, api, browser, team }, testInfo) => {
+  test("alice lets carol into one space, carol works there and sees nothing else, and alice takes her out", async ({ page, api, browser }, testInfo) => {
     const key = uniqueKey(testInfo);
     const otherKey = `F${key.slice(1)}`;
     const word = `guestword${Date.now().toString(36)}`;
@@ -60,7 +60,7 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
       await page.goto("/settings/sso");
       await expect(page.locator(`[data-member="${CAROL.email}"] [data-guest-space="${key}"]`)).toContainText("Contractor work");
 
-      carol = await signInAsCarol(browser, team.org.slug);
+      carol = await signInAsCarol(browser);
       const guest = carol.page;
       await expect(guest).toHaveURL(new RegExp(`/s/${key}$`));
       await openShowing(guest, `/s/${key}`, guest.locator("main").getByRole("heading", { level: 1, name: "Contractor work", exact: true }));

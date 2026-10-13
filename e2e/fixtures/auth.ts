@@ -18,16 +18,12 @@ export const USERS: Record<User, { username: string; password: string }> = {
   bob: { username: "bob", password: "bob password" },
 };
 
-/** The organisation the seed makes. */
-export const ORG_SLUG = "demo";
-
 /** The owner the server bootstraps, the one account that signs in with a password. */
 export const BOOTSTRAP_OWNER = { email: "admin@stator.test", password: "stator admin password" };
 
 /** What the login page offers, and what answers once someone is signed in. */
 export const LOGIN_PATH = "/login";
 export const ME_PATH = "/api/v1/auth/me";
-const ORG_FIELD = "Organization";
 const SSO_START = '[data-action="sso"]';
 const PASSWORD_SUBMIT = '[data-action="password-sign-in"]';
 
@@ -65,9 +61,8 @@ export function authAvailable(): Promise<boolean> {
  * Starts SSO from the login page, staying on it when a redirect brought the browser
  * there so its `next` is kept; the caller waits for the page the provider leads to.
  */
-export async function startSSO(page: Page, org: string = ORG_SLUG): Promise<void> {
+export async function startSSO(page: Page): Promise<void> {
   if (!page.url().startsWith(`${WEB_URL}${LOGIN_PATH}`)) await page.goto(LOGIN_PATH);
-  await page.getByLabel(ORG_FIELD, { exact: true }).fill(org);
   await page.locator(SSO_START).click(LEAVES_THE_PAGE);
 }
 
@@ -120,18 +115,18 @@ export async function saveSession(browser: Browser, user: User): Promise<void> {
  * session, in memory. Keycloak still knows them from the setup's sign-in, so it
  * usually sends the browser straight back; its form is filled when it asks.
  */
-export async function signInToOrg(browser: Browser, user: User, org: string): Promise<Exclude<Session, string>> {
+export async function signInToOrg(browser: Browser, user: User, _org: string): Promise<Exclude<Session, string>> {
   const context = await browser.newContext({ baseURL: WEB_URL, storageState: stateFile(user) });
   try {
     const page = await context.newPage();
-    await page.goto(`/api/v1/auth/oidc/${encodeURIComponent(org)}/start`);
+    await page.goto("/api/v1/auth/oidc/start");
     if (page.url().startsWith(KEYCLOAK_URL)) await submitKeycloak(page, USERS[user].username, USERS[user].password);
     await expect
       .poll(async () => {
         const me = await page.request.get(ME_PATH);
-        return me.ok() ? ((await me.json()) as { organization?: { slug?: string } }).organization?.slug : me.status();
+        return me.ok() ? Boolean(((await me.json()) as { organization?: object | null }).organization) : me.status();
       })
-      .toBe(org);
+      .toBe(true);
     return await context.storageState();
   } finally {
     await context.close();

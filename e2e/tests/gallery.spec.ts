@@ -116,7 +116,7 @@ test.describe("image galleries", { tag: ["@auth"] }, () => {
     await expect(shown(page).getByRole("list", { name: "Gallery of 2 pictures" })).toBeVisible();
   });
 
-  test("anybody reading the public space sees the gallery's pictures but not one of a page they may not read", async ({ api, browser, team }, testInfo) => {
+  test("anybody reading the public space sees the gallery's pictures but not one of a page they may not read", async ({ api, browser }, testInfo) => {
     test.slow();
     const { key, space, target, login, settings } = await screensPage(api, testInfo, made);
     const alice = must(await api.GET("/auth/me")).user;
@@ -129,16 +129,16 @@ test.describe("image galleries", { tag: ["@auth"] }, () => {
       paragraph("What changed on screen."),
       { type: "gallery", attrs: { columns: 3 }, content: [picture(login, "The new sign-in"), picture(hidden, "Not yet"), picture(settings, null)] },
     ]);
-    must(await api.PUT("/org/anonymous-access", { body: { enabled: true, indexable: false } }));
+    must(await api.PUT("/site/anonymous-access", { body: { enabled: true, indexable: false } }));
     must(await api.PUT("/spaces/{spaceKey}/anonymous-access", { params: { path: { spaceKey: key } }, body: { view: true } }));
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
     try {
       const reader = await context.newPage();
       const gallery = shown(reader).getByRole("list", { name: "Gallery of 2 pictures" });
       // The reader is not alice, so a replica may not have her page or her switches yet.
-      await openUntil(reader, `/public/${team.org.slug}/s/${key}/p/${target.id}/release-screens`, () => expect(gallery).toBeVisible(ONE_LOOK));
+      await openUntil(reader, `/public/s/${key}/p/${target.id}/release-screens`, () => expect(gallery).toBeVisible(ONE_LOOK));
       await expect(gallery).not.toContainText("Not yet");
-      const through = new RegExp(`/api/v1/public/${team.org.slug}/attachments/${login}\\?inline=1$`);
+      const through = new RegExp(`/api/v1/public/attachments/${login}\\?inline=1$`);
       await expect(gallery.locator("img").first()).toHaveAttribute("src", through);
       await gallery.getByRole("button", { name: "View picture larger, 2 of 2" }).click();
       await expect(position(reader)).toHaveText("2 of 2");
@@ -147,7 +147,7 @@ test.describe("image galleries", { tag: ["@auth"] }, () => {
       await expectAccessible(reader);
     } finally {
       await context.close();
-      must(await api.PUT("/org/anonymous-access", { body: { enabled: false, indexable: false } }));
+      must(await api.PUT("/site/anonymous-access", { body: { enabled: false, indexable: false } }));
     }
   });
 
