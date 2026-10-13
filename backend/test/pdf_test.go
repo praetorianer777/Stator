@@ -120,7 +120,9 @@ func (h *harness) renderTokens(t *testing.T, user uuid.UUID) int {
 // browser, as the reader reads it, with a token made for that print alone;
 // anybody prints what anybody may read; a page nobody may print is refused.
 func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
-	h := newHarness(t)
+	// The render service opens the print view through the stack's web and
+	// api, so what it prints must be in the stack's own database.
+	h := newStackHarness(t)
 	tap := h.printer(t)
 	api := newAPIServer(t, h, func(s *httpapi.Server) { s.Renderer = tap })
 	home := h.makeMember(t, "pdf-export")
@@ -129,9 +131,20 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 	inaID := h.addPerson(t, home.org, "member")
 	ina := api.as(t, inaID, home.org, slug)
 	ctx := context.Background()
+	var anonymous bool
+	if err := h.super.QueryRow(ctx, `SELECT anonymous_access FROM org WHERE id = $1`, home.org).Scan(&anonymous); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		h.cleanupExec(t, h.super, `UPDATE org SET anonymous_access = $2 WHERE id = $1`, home.org, anonymous)
+	})
 
-	docs := newTree(t, owner, "PDF", "Printed handbook")
-	other := newTree(t, owner, "FAR", "Far away")
+	pdfKey, farKey := uniqueKey("PDF"), uniqueKey("FAR")
+	docs := newTree(t, owner, pdfKey, "Printed handbook")
+	other := newTree(t, owner, farKey, "Far away")
+	t.Cleanup(func() {
+		h.cleanupExec(t, h.super, `DELETE FROM space WHERE id = ANY($1::uuid[])`, []string{docs.space, other.space})
+	})
 	guide := docs.add(docs.homeID, "Printed guide")
 	publishBody(t, owner, guide, map[string]any{"type": "doc", "content": []any{
 		map[string]any{"type": "heading", "attrs": map[string]any{"level": 1}, "content": []any{map[string]any{"type": "text", "text": "Setting up"}}},
@@ -170,7 +183,7 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 		defer func() { tap.during = nil }()
 		resp, data := owner.download(t, pagePath(guide, "/pdf"))
 		printed(t, resp, data, "Printed guide", "the guide's PDF")
-		if got := resp.Header.Get("Content-Disposition"); !strings.Contains(got, "attachment") || !strings.Contains(got, `PDF-printed-guide-`+time.Now().Format("2006-01-02")+`.pdf`) {
+		if got := resp.Header.Get("Content-Disposition"); !strings.Contains(got, "attachment") || !strings.Contains(got, pdfKey+`-printed-guide-`+time.Now().Format("2006-01-02")+`.pdf`) {
 			t.Errorf("Content-Disposition = %q, want a download named after the space, the page and the day", got)
 		}
 		if got := resp.Header.Get("Cache-Control"); got != "no-store" {
@@ -231,7 +244,7 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 		resp, data := api.withToken(whole).download(t, pagePath(guide, "/pdf"))
 		printed(t, resp, data, "Printed guide", "the script's PDF")
 		before := len(tap.asked)
-		_, limited := makeToken(t, owner, map[string]any{"name": "limited printer", "spaces": []string{"PDF"}})
+		_, limited := makeToken(t, owner, map[string]any{"name": "limited printer", "spaces": []string{pdfKey}})
 		want(t, api.withToken(limited).get(t, pagePath(guide, "/pdf")), http.StatusForbidden, "a limited token prints")
 		if len(tap.asked) != before {
 			t.Error("a limited token's print was asked for")
@@ -262,7 +275,7 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 	})
 
 	t.Run("anybody prints what anybody may read, and nothing else", func(t *testing.T) {
-		want(t, owner.put(t, "/api/v1/spaces/PDF/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open PDF")
+		want(t, owner.put(t, "/api/v1/spaces/"+pdfKey+"/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open PDF")
 		want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
 		h.settle(t)
 		anon := api.anonymous()

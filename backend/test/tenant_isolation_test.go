@@ -21,7 +21,7 @@ import (
 func TestTenantIsolation(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "alpha")
-	b := h.makeMember(t, "beta")
+	b := h.makeOtherOrganization(t, "beta")
 
 	for _, table := range []string{"org", "app_user", "org_member"} {
 		t.Run(table+" shows a tenant only its own rows", func(t *testing.T) {
@@ -104,7 +104,7 @@ func TestUnscopedAccessIsRefused(t *testing.T) {
 func TestRawSQLAsTheAppRoleCannotCrossTenants(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "gamma")
-	b := h.makeMember(t, "delta")
+	b := h.makeOtherOrganization(t, "delta")
 
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, os.Getenv(envPrimary))
@@ -187,7 +187,7 @@ func TestRawSQLAsTheAppRoleCannotCrossTenants(t *testing.T) {
 func TestTheAdminRoleSeesAcrossTenants(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "epsilon")
-	b := h.makeMember(t, "zeta")
+	b := h.makeOtherOrganization(t, "zeta")
 
 	var role string
 	var n int

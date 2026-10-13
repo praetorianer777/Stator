@@ -237,7 +237,10 @@ chosen by the same hash, so worktrees never collide. `make up` and
 anything outside the network, such as the browser suite. The integration suite
 runs in the Go toolchain container on the stack's network and reaches every
 service by name; it writes files to a bucket of its own, `stator-test`, beside
-the app's `stator-files`.
+the app's `stator-files`. Each of its tests runs in a database of its own,
+cloned from a template the suite migrates once and followed by the replica
+(`backend/test/database_test.go`), with one organization in it; only the
+tests of what `migrate` and `seed` left behind read the stack's own database.
 
 ### Kubernetes
 

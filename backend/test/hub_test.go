@@ -6,6 +6,8 @@ import (
 	"context"
 	"net/http"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 // The organization's hub (#40): a page its administrators choose, which
@@ -93,15 +95,11 @@ func TestTheHubIsHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "hub-db")
-	away := h.makeMember(t, "hub-db-away")
 	admin := api.as(t, home.user, home.org, h.slugOf(t, home.org))
-	other := api.as(t, away.user, away.org, h.slugOf(t, away.org))
 	memberID := h.addPerson(t, home.org, "member")
 
 	news := newTree(t, admin, "NEWS", "News")
 	front := news.add(news.homeID, "Front page")
-	theirs := newTree(t, other, "THEIRS", "Theirs")
-	foreign := theirs.add(theirs.homeID, "Their page")
 
 	conn := appConn(t)
 	ctx := context.Background()
@@ -109,7 +107,7 @@ func TestTheHubIsHeldByTheDatabase(t *testing.T) {
 	refused(t, conn, "a member choosing the hub", `UPDATE org SET hub_page_id = $1 WHERE id = current_org_id()`, front)
 
 	actAs(t, conn, home.org, home.user)
-	refused(t, conn, "another organization's page as the hub", `UPDATE org SET hub_page_id = $1 WHERE id = current_org_id()`, foreign)
+	refused(t, conn, "a page that is not there as the hub", `UPDATE org SET hub_page_id = $1 WHERE id = current_org_id()`, uuid.New())
 	refused(t, conn, "landing on no hub", `UPDATE org SET hub_landing = true WHERE id = current_org_id()`)
 	if _, err := conn.Exec(ctx, `UPDATE org SET hub_page_id = $1, hub_landing = true WHERE id = current_org_id()`, front); err != nil {
 		t.Fatalf("an administrator could not choose the hub: %v", err)

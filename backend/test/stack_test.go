@@ -144,7 +144,7 @@ func requireSecurityHeaders(t *testing.T, what string, resp *http.Response) {
 
 // The migrate container ran every embedded migration before the api started.
 func TestEveryMigrationIsApplied(t *testing.T) {
-	h := newHarness(t)
+	h := newStackHarness(t)
 
 	files, err := fs.Glob(migrations.FS, "*.sql")
 	if err != nil {
@@ -176,7 +176,7 @@ func TestEveryMigrationIsApplied(t *testing.T) {
 // The seed container ran once on the way up; running it again finds what it
 // made instead of making it twice.
 func TestTheSeedIsIdempotent(t *testing.T) {
-	h := newHarness(t)
+	h := newStackHarness(t)
 	ctx := context.Background()
 
 	demoOrgs := func() int {

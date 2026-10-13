@@ -378,6 +378,7 @@ func TestBlogWatchersHearOfNewPosts(t *testing.T) {
 func TestAWebhookTellsAPostFromAPage(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
+	h.runStackWorker(t)
 	home := h.makeMember(t, "blog-hook")
 	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
 	bin, address := hookBin(t)

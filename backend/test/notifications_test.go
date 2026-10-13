@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/mail"
 	"github.com/praetorianer777/stator/backend/internal/notify"
+	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
 
 const (
@@ -41,8 +42,7 @@ func testMailer(t *testing.T) mail.Mailer {
 	return mail.SMTPMailer{Addr: addr, From: "Stator <no-reply@stator.test>"}
 }
 
-// runWorker drains the outbox beside the stack's own worker until the test
-// ends. Either may deliver an event; what arrives must be the same.
+// runWorker drains the test's outbox with handler until the test ends.
 func (h *harness) runWorker(t *testing.T, handler events.Handler) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -50,6 +50,25 @@ func (h *harness) runWorker(t *testing.T, handler events.Handler) {
 	go func() {
 		defer close(done)
 		events.NewWorker(h.cluster, handler, discard()).WithIdle(workerIdle).Run(ctx)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		<-done
+	})
+}
+
+// runStackWorker runs what the stack's worker runs on the outbox, as
+// cmd/worker wires it: the stack's own works on the stack's database alone.
+func (h *harness) runStackWorker(t *testing.T) {
+	t.Helper()
+	hooks := h.webhooks(t)
+	fanOut := notify.NewFanOut(h.cluster, testMailer(t), testAppURL, discard())
+	h.runWorker(t, events.NewMux(events.Chain{hooks, fanOut}).Route(events.TopicArmatureLinks, h.linkSync(t)))
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		webhook.NewSender(hooks, discard()).Run(ctx)
 	}()
 	t.Cleanup(func() {
 		cancel()

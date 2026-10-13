@@ -383,7 +383,7 @@ func (h *harness) countRows(t *testing.T, sql string, args ...any) int {
 func TestRawSQLCannotReachAnotherTenantsGroupRoles(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "nu")
-	b := h.makeMember(t, "xi")
+	b := h.makeOtherOrganization(t, "xi")
 	ctx := context.Background()
 	for _, m := range []member{a, b} {
 		if _, err := h.super.Exec(ctx, `INSERT INTO oidc_provider (org_id, issuer, client_id) VALUES ($1, 'https://id.test', 'stator')`, m.org); err != nil {

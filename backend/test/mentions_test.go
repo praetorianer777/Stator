@@ -203,7 +203,13 @@ func TestMentionsAreEnforcedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "mention-rls")
-	other := h.makeMember(t, "mention-rls-other")
+	// An account the organization does not hold, as somebody waiting to be
+	// let in has.
+	var waitingID uuid.UUID
+	if err := h.super.QueryRow(context.Background(), `INSERT INTO app_user (email, name) VALUES ($1, 'Waiting') RETURNING id`,
+		"waiting-"+uuid.NewString()[:8]+"@example.test").Scan(&waitingID); err != nil {
+		t.Fatal(err)
+	}
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
 	annID, danID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
@@ -220,7 +226,7 @@ func TestMentionsAreEnforcedByTheDatabase(t *testing.T) {
 	t.Run("an event mentions only members", func(t *testing.T) {
 		actAs(t, conn, home.org, home.user)
 		denied(t, conn, "a mention of a stranger", event, home.org, home.user, `["`+uuid.NewString()+`"]`)
-		denied(t, conn, "a mention of another organization's member", event, home.org, home.user, `["`+other.user.String()+`"]`)
+		denied(t, conn, "a mention of somebody who is no member", event, home.org, home.user, `["`+waitingID.String()+`"]`)
 		denied(t, conn, "a mention that is no id", event, home.org, home.user, `["ann"]`)
 		denied(t, conn, "mentions that are no list", event, home.org, home.user, `{"id":"`+annID.String()+`"}`)
 		if _, err := conn.Exec(ctx, event, home.org, home.user, `["`+annID.String()+`","`+danID.String()+`"]`); err != nil {

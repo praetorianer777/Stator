@@ -210,9 +210,10 @@ func TestLabelsFollowTheirPage(t *testing.T) {
 	owner := api.as(t, home.user, home.org, slug)
 	annID, benID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
 	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
-	other := h.makeMember(t, "label-wall-b")
+	other := h.makeOutsider(t, "label-wall-b")
 
 	docs := newTree(t, owner, "LWALL", "Walled")
+	h.closeSpace(t, docs.space, annID, benID)
 	open := docs.add(docs.homeID, "Open plan", map[string]any{"body": textDoc("plans")})
 	closed := docs.add(docs.homeID, "Closed plan", map[string]any{"body": textDoc("plans")})
 	below := docs.add(closed, "Below the closed plan")
@@ -310,13 +311,13 @@ func TestLabelsFollowTheirPage(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reads and writes none of them", func(t *testing.T) {
+	t.Run("a member the space is closed to reads and writes none of them", func(t *testing.T) {
 		actAs(t, conn, other.org, other.user)
 		if n := count(`SELECT count(*) FROM page_label`); n != 0 {
-			t.Errorf("another organization reads %d labels", n)
+			t.Errorf("a member the space is closed to reads %d labels", n)
 		}
-		refused(t, conn, "a label on another organization's page", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'planted', $3)`, other.org, open, other.user)
-		refused(t, conn, "a label in another organization's name", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'planted', $3)`, home.org, open, other.user)
-		untouched(t, conn, "deleting another organization's labels", `DELETE FROM page_label`)
+		refused(t, conn, "a label on a page of the closed space", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'planted', $3)`, other.org, open, other.user)
+		refused(t, conn, "a label in ann's name", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'planted', $3)`, home.org, open, annID)
+		untouched(t, conn, "deleting the labels of the closed space", `DELETE FROM page_label`)
 	})
 }

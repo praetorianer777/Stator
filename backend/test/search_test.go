@@ -72,10 +72,13 @@ func TestSearchOverTheAPI(t *testing.T) {
 	owner := api.as(t, home.user, home.org, slug)
 	annID := h.addPerson(t, home.org, "member")
 	ann := api.as(t, annID, home.org, slug)
-	ben := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	benID := h.addPerson(t, home.org, "member")
+	ben := api.as(t, benID, home.org, slug)
 
 	ops := newTree(t, owner, "OPS", "Operations")
 	devSpace := newTree(t, owner, "DEV", "Development")
+	h.closeSpace(t, ops.space, annID, benID)
+	h.closeSpace(t, devSpace.space, annID, benID)
 	dev := &tree{t: t, c: ann, key: devSpace.key, homeID: devSpace.homeID}
 	runbook := ops.add(ops.homeID, "Deploy runbook", map[string]any{"body": textDoc("How we ship the service to production.")})
 	ops.add(runbook, "Rollback", map[string]any{"body": textDoc("If a deploy goes wrong, roll back first and ask questions later.")})
@@ -277,9 +280,9 @@ func TestSearchOverTheAPI(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization finds none of it", func(t *testing.T) {
-		away := h.makeMember(t, "search-away")
-		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+	t.Run("a member the spaces are closed to finds none of it", func(t *testing.T) {
+		away := h.makeOutsider(t, "search-away")
+		stranger := api.as(t, away.user, away.org, slug)
 		for _, q := range []string{"deploy", ""} {
 			if r := searchFor(t, stranger, url.Values{"q": {q}}); number(r.Body["total"]) != 0 {
 				t.Errorf("a stranger finds %s", r.Raw)
@@ -417,14 +420,15 @@ func TestQuickSearchAndRecentPagesOverTheAPI(t *testing.T) {
 }
 
 // The index is the database's: the words it holds are document.PlainText's,
-// and straight through SQL visits and the index stay inside their organization.
+// and straight through SQL visits and the index stay with who may view the page.
 func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "search-wall-a")
-	b := h.makeMember(t, "search-wall-b")
+	b := h.makeOutsider(t, "search-wall-b")
 	ownerA := api.as(t, a.user, a.org, h.slugOf(t, a.org))
 	docsA := newTree(t, ownerA, "WALL", "Walled")
+	h.closeSpace(t, docsA.space)
 	pageA := docsA.add(docsA.homeID, "Secret plan", map[string]any{"body": textDoc("hidden words")})
 	want(t, ownerA.post(t, pagePath(pageA, "/visit"), nil), http.StatusNoContent, "a visit in A")
 
@@ -456,7 +460,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 		}
 	})
 
-	t.Run("B reads none of A's visits or index", func(t *testing.T) {
+	t.Run("B, whom WALL is closed to, reads none of its visits or index", func(t *testing.T) {
 		actAs(t, conn, b.org, b.user)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_visit`).Scan(&n); err != nil || n != 0 {
@@ -474,6 +478,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	t.Run("a visit is its visitor's, and only of a page they may view", func(t *testing.T) {
 		slug := h.slugOf(t, a.org)
 		annID, benID := h.addPerson(t, a.org, "member"), h.addPerson(t, a.org, "member")
+		h.openSpaceTo(t, docsA.space, annID, benID)
 		ann, ben := api.as(t, annID, a.org, slug), api.as(t, benID, a.org, slug)
 		closed := docsA.add(docsA.homeID, "Closed plan", map[string]any{"body": textDoc("hidden words")})
 		want(t, ownerA.upload(t, pagePath(closed, "/attachments"), "closed-notes.txt", []byte("x")), http.StatusCreated, "a file on it")
@@ -525,6 +530,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	t.Run("the search functions return what row level security returns", func(t *testing.T) {
 		slug := h.slugOf(t, a.org)
 		annID, benID := h.addPerson(t, a.org, "member"), h.addPerson(t, a.org, "member")
+		h.openSpaceTo(t, docsA.space, annID, benID)
 		ann := api.as(t, annID, a.org, slug)
 		walled := docsA.add(docsA.homeID, "Walled hidden plan", map[string]any{"body": textDoc("hidden words")})
 		want(t, ownerA.upload(t, pagePath(walled, "/attachments"), "hidden-notes.txt", []byte("x")), http.StatusCreated, "a file on it")
@@ -566,7 +572,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 			{"the owner", func() { actAs(t, conn, a.org, a.user) }, 3},
 			{"ann, whom the restriction names", func() { actAs(t, conn, a.org, annID) }, 3},
 			{"ben, whom it does not", func() { actAs(t, conn, a.org, benID) }, 2},
-			{"somebody of another organization", func() { actAs(t, conn, b.org, b.user) }, 0},
+			{"a member WALL is closed to", func() { actAs(t, conn, b.org, b.user) }, 0},
 			{"an anonymous reader", func() { actAnonymously(t, conn, a.org) }, 0},
 		} {
 			who.act()
@@ -585,7 +591,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	t.Run("the index cannot be written, only derived", func(t *testing.T) {
 		actAs(t, conn, a.org, a.user)
 		refused(t, conn, "planting words", `UPDATE page SET search_vector = to_tsvector('planted') WHERE id = $1`, pageA)
-		refused(t, conn, "a visit for somebody outside the organization", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, b.user, pageA)
+		refused(t, conn, "a visit in somebody else's name", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, b.user, pageA)
 		if _, err := conn.Exec(ctx, `UPDATE page SET title = 'Renamed plan' WHERE id = $1`, pageA); err != nil {
 			t.Fatal(err)
 		}

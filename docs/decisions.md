@@ -44,6 +44,67 @@ provider that cannot be reached. `tests/test-ci.sh` fails a spec that uses
 `orgTest` or makes a second organization outside those two. The example
 space is aged by its key, `POST /api/v1/test/spaces/{key}/example-space/age`.
 
+## 2026-10-12: Each integration test gets a database of its own, cloned from a migrated template (#380)
+
+The integration suite kept its tests apart by giving every person a new
+organization, which one organization per instance (#380) takes away. The plan
+named two candidates and left the choice to a measurement:
+
+- **A database per test**, cloned from a template the suite migrates once
+  (`CREATE DATABASE ... TEMPLATE`), with the streaming replica following.
+- **People and spaces per test in one database**, as the browser suite does,
+  with the tests that change what belongs to the organization as a whole
+  marked serial and restoring it.
+
+Measured with `BenchmarkIsolation` (`backend/test/isolation_bench_test.go`),
+20 iterations each on the compose stack (Postgres 18, Ryzen 5 3600, the race
+detector on, as the suite runs), per test:
+
+| Candidate | Cost |
+| --- | ---: |
+| Migrating the template, once per run | 1.8 s |
+| Clone (`STRATEGY WAL_LOG`), replica caught up, pools opened, owner made | 245 ms |
+| The same with `STRATEGY FILE_COPY` (two checkpoints) | 9.3 s |
+| Dropping a clone (`WAL_LOG`) | 93 ms |
+| One database: pools opened, two people made | 88 ms |
+
+A clone costs about 160 ms more than making people in one database, well
+under the second the plan set as the bar, so every test gets a database of
+its own. The template is named after a digest of the migrations and reused
+until they change; a run drops what an earlier one left. On the same machine
+the whole suite took 404 s before (load average about 3) and 600 s after, in
+two runs in a row (load average 4 to 5); the tests under half a second, which
+do little but start, took a median 0.5 s longer each. The price is the
+standby: it replays every clone and every drop before the next test starts.
+
+- **Stronger than the alternative, and a smaller change.** Organization-wide
+  settings, audit, search, home and retention see only the test's own rows
+  without any test being serial or restoring anything, and space keys and
+  names need not be unique across tests. Each test still has exactly one
+  organization, made by its first `makeMember`.
+- **The outsider is somebody without the right.** The tests that used a
+  second organization as the outsider now use a member of the same
+  organization to whom the space is closed (`makeOutsider`, `closeSpace`),
+  and each keeps its raw SQL half. Where the database has no access policy
+  within an organization (theme rows, token rows, attachment tombstones) the
+  tenant wall is still all that refuses, so those checks keep a second
+  organization and go with the tenant wall's own tests in #380's PR 2.
+- **What reaches the stack runs on the stack's database.** The tests of what
+  `migrate` and `seed` left, the throwaway organizations, and the PDF test,
+  whose render service prints through the stack's web and api, use
+  `newStackHarness`; the PDF test adds its people to the seed's organization,
+  takes space keys no other run takes, and puts back what it changed.
+- **Cloned and dropped while a test waits.** Making the next test's clone
+  while the current one ran hid the cost, but its WAL held that test's
+  replica back by seconds on a busy machine, past the suite's waits.
+  Dropping a clone in the background did worse: replaying a drop on the
+  standby waits for its checkpointer, which during a restartpoint took
+  twenty seconds. So the next clone drops the ended tests' clones first and
+  waits for the standby once for both, where a minute is allowed.
+- **The outbox has no stack worker any more.** Tests that relied on the
+  stack's worker delivering their webhooks or draining their outbox run its
+  handlers in process (`runStackWorker`).
+
 ## 2026-10-12: An organization travels as one archive of its spaces' archives, into an organization without spaces (#383)
 
 One organization per instance (#380) refuses to upgrade an instance holding

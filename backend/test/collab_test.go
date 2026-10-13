@@ -535,8 +535,9 @@ func TestTheSharedDraftIsWalledByTheDatabase(t *testing.T) {
 	slug := h.slugOf(t, home.org)
 	ann := api.as(t, home.user, home.org, slug)
 	bobID := h.addPerson(t, home.org, "member")
-	other := h.makeMember(t, "collab-rls-other")
+	other := h.makeOutsider(t, "collab-rls-other")
 	docs := newTree(t, ann, "WALL", "Wall")
+	h.closeSpace(t, docs.space, bobID)
 	page := docs.add(docs.homeID, "Walled")
 	ws := ann.open(t, page)
 	room := ws.load()
@@ -570,10 +571,10 @@ func TestTheSharedDraftIsWalledByTheDatabase(t *testing.T) {
 		untouched(t, conn, "its updates", `DELETE FROM page_collab_update WHERE page_id = $1`, page)
 	})
 
-	t.Run("another organization sees nothing", func(t *testing.T) {
+	t.Run("a member the space is closed to sees nothing", func(t *testing.T) {
 		actAs(t, conn, other.org, other.user)
 		if n := count(`SELECT count(*) FROM page_collab_update`); n != 0 {
-			t.Errorf("another organization reads %d updates", n)
+			t.Errorf("a member the space is closed to reads %d updates", n)
 		}
 		denied(t, conn, "an update into it", insert, home.org, page, room.room, []byte{2}, other.user)
 	})

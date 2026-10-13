@@ -18,13 +18,14 @@ func TestTheOutlineWalkAnswersAsRowLevelSecurity(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "outline-walk-a")
-	b := h.makeMember(t, "outline-walk-b")
+	b := h.makeOutsider(t, "outline-walk-b")
 	slug := h.slugOf(t, a.org)
 	owner := api.as(t, a.user, a.org, slug)
 	annID, benID := h.addPerson(t, a.org, "member"), h.addPerson(t, a.org, "member")
 	ann := api.as(t, annID, a.org, slug)
 
 	docs := newTree(t, owner, "WALK", "Walk")
+	h.closeSpace(t, docs.space, annID, benID)
 	walled := docs.add(docs.homeID, "Walled")
 	below := docs.add(walled, "Below the wall")
 	inner := docs.add(below, "Inner wall")
@@ -45,6 +46,7 @@ func TestTheOutlineWalkAnswersAsRowLevelSecurity(t *testing.T) {
 	want(t, owner.put(t, "/api/v1/org/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
 	want(t, owner.put(t, "/api/v1/spaces/WALK/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open WALK")
 	shut := newTree(t, owner, "SHUTW", "Shut")
+	h.closeSpace(t, shut.space, annID, benID)
 	linked := shut.add(shut.homeID, "Linked")
 	shut.add(linked, "Below the link")
 	token := want(t, owner.post(t, pagePath(linked, "/public-links"), map[string]any{"label": "Outline"}), http.StatusCreated, "a link").Body["token"].(string)
@@ -85,7 +87,7 @@ func TestTheOutlineWalkAnswersAsRowLevelSecurity(t *testing.T) {
 			{"the owner", func() { actAs(t, conn, a.org, a.user) }, 18},
 			{"ann, whom both walls name", func() { actAs(t, conn, a.org, annID) }, 21},
 			{"ben, whom only the outer wall names", func() { actAs(t, conn, a.org, benID) }, 14},
-			{"somebody of another organization", func() { actAs(t, conn, b.org, b.user) }, 0},
+			{"a member both spaces are closed to", func() { actAs(t, conn, b.org, b.user) }, 0},
 			{"an anonymous reader", func() { actAnonymously(t, conn, a.org) }, 5},
 			{"an anonymous reader holding a link", func() { readThrough(t, conn, a.org, token) }, 6},
 		} {

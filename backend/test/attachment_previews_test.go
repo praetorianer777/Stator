@@ -173,9 +173,9 @@ func TestPreviewsShowPDFsAndConvertOfficeDocumentsOnce(t *testing.T) {
 			t.Errorf("answered %s", code)
 		}
 		want(t, reader.get(t, previewPath(uuid.NewString())), http.StatusNotFound, "a file that does not exist")
-		other := h.makeMember(t, "previews-other")
-		stranger := api.as(t, other.user, other.org, h.slugOf(t, other.org))
-		want(t, stranger.get(t, previewPath(planID)), http.StatusNotFound, "another organization's preview")
+		other := h.makeOutsider(t, "previews-other")
+		stranger := api.as(t, other.user, other.org, slug)
+		want(t, stranger.get(t, previewPath(planID)), http.StatusNotFound, "the preview of a file in a space closed to the caller")
 		want(t, api.anonymous().get(t, previewPath(planID)), http.StatusUnauthorized, "a preview without a session")
 	})
 
@@ -275,6 +275,7 @@ func TestPreviewsAreGuardedByTheDatabase(t *testing.T) {
 	annID, carlID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
 	ann := api.as(t, annID, home.org, slug)
 	docs := newTree(t, owner, "PRLS", "Guarded")
+	h.closeSpace(t, docs.space, annID, carlID)
 	open := docs.add(docs.homeID, "Open")
 	hidden := docs.add(docs.homeID, "Hidden")
 	want(t, restrict(t, ann, hidden, []any{user(annID)}, []any{user(annID)}), http.StatusOK, "ann hides a page")
@@ -307,14 +308,13 @@ func TestPreviewsAreGuardedByTheDatabase(t *testing.T) {
 		denied(t, conn, "a ready preview of no size", `INSERT INTO attachment_preview (attachment_id, org_id, state) VALUES ($1, $2, 'ready')`, hiddenFile, home.org)
 	})
 
-	t.Run("another organization reaches none of it", func(t *testing.T) {
-		other := h.makeMember(t, "previews-rls-other")
+	t.Run("a member the space is closed to reaches none of it", func(t *testing.T) {
+		other := h.makeOutsider(t, "previews-rls-other")
 		actAs(t, conn, other.org, other.user)
-		denied(t, conn, "a preview in another organization", insert, hiddenFile, home.org)
-		refused(t, conn, "a preview of another organization's file", insert, hiddenFile, other.org)
+		denied(t, conn, "a preview of a file they may not see", insert, hiddenFile, home.org)
 		var n int
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM attachment_preview`).Scan(&n); err != nil || n != 0 {
-			t.Errorf("another organization reads %d previews (%v)", n, err)
+			t.Errorf("a member the space is closed to reads %d previews (%v)", n, err)
 		}
 	})
 

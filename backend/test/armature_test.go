@@ -35,8 +35,8 @@ const (
 	armatureAppURL   = "http://stator.test"
 )
 
-// testSecretKey is the stack's STATOR_SECRET_KEY, so the stack's own worker
-// opens the tokens the suite stores, as it does when syncing page links.
+// testSecretKey is the stack's STATOR_SECRET_KEY, which the services the
+// suite builds seal and open the tokens it stores with.
 func testSecretKey(t *testing.T) []byte {
 	t.Helper()
 	key, err := base64.StdEncoding.DecodeString(os.Getenv("STATOR_TEST_SECRET_KEY"))
@@ -313,12 +313,12 @@ func TestACheckFindsARevokedToken(t *testing.T) {
 }
 
 // Straight through SQL as stator_app: a member reads and changes only their own
-// token, only administrators the connection, and nobody another organization's.
+// token, only administrators the connection, and no member somebody else's.
 func TestArmatureRowsAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-wall")
-	other := h.makeMember(t, "arm-wall-other")
+	other := h.makeOutsider(t, "arm-wall-other")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
 	bobID := h.addPerson(t, home.org, "member")
@@ -384,17 +384,14 @@ func TestArmatureRowsAreWalledByTheDatabase(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reaches none of it", func(t *testing.T) {
+	t.Run("a member without the right reaches none of the connection", func(t *testing.T) {
 		actAs(t, conn, other.org, other.user)
-		if n := count(`SELECT count(*) FROM armature_connection WHERE org_id = $1`, home.org); n != 0 {
-			t.Error("another organization reads the connection")
+		if n := count(`SELECT count(*) FROM armature_connection`); n != 0 {
+			t.Error("a member reads the connection")
 		}
-		if n := count(`SELECT count(*) FROM armature_endpoint()`); n != 0 {
-			t.Error("another organization learns where Armature is")
-		}
-		untouched(t, conn, "removing another organization's connection", `DELETE FROM armature_connection WHERE org_id = $1`, home.org)
-		denied(t, conn, "connecting another organization", `INSERT INTO armature_connection (org_id, base_url, org_slug) VALUES ($1, 'https://evil.example', 'evil')`, home.org)
-		denied(t, conn, "storing a token in another organization", `INSERT INTO armature_token (org_id, user_id, token, status) VALUES ($1, $2, '\x00', 'ok')`, home.org, other.user)
+		untouched(t, conn, "removing the connection", `DELETE FROM armature_connection`)
+		denied(t, conn, "connecting Armature anew", `INSERT INTO armature_connection (org_id, base_url, org_slug) VALUES ($1, 'https://evil.example', 'evil')`, home.org)
+		denied(t, conn, "storing a token for somebody else", `INSERT INTO armature_token (org_id, user_id, token, status) VALUES ($1, $2, '\x00', 'ok')`, home.org, bobID)
 	})
 }
 

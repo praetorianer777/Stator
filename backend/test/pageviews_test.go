@@ -334,7 +334,7 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "views-rls")
-	other := h.makeMember(t, "views-rls-other")
+	other := h.makeOutsider(t, "views-rls-other")
 	slug := h.slugOf(t, org.org)
 	owner := api.as(t, org.user, org.org, slug)
 	annID, benID := h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member")
@@ -343,6 +343,7 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
 	}}), http.StatusOK, "everyone reads PVS and ann edits it")
+	h.closeSpace(t, docs.space, annID, benID)
 	guide := docs.add(docs.homeID, "Guide")
 	secret := docs.add(docs.homeID, "Secret")
 	want(t, restrict(t, owner, secret, []any{user(org.user)}, nil), http.StatusOK, "only the owner reads Secret")
@@ -368,7 +369,6 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 		refused(t, conn, "a view counted for ann today", insert, org.org, guide, annID, 0)
 		refused(t, conn, "a view counted yesterday", insert, org.org, guide, benID, 1)
 		refused(t, conn, "a view of a page ben may not view", insert, org.org, secret, benID, 0)
-		refused(t, conn, "a view in another organization", insert, other.org, guide, benID, 0)
 		if _, err := conn.Exec(ctx, insert, org.org, guide, benID, 0); err != nil {
 			t.Fatalf("ben may not count his own view: %v", err)
 		}
@@ -428,14 +428,15 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 
 		actAs(t, conn, other.org, other.user)
 		if n := count(`SELECT count(*) FROM page_view_stats($1, 30)`, guide); n != 0 {
-			t.Errorf("another organization reads Guide's counts")
+			t.Errorf("a member the space is closed to reads Guide's counts")
 		}
 		if n := count(`SELECT count(*) FROM page_readers($1, NULL, NULL, 100)`, guide); n != 0 {
-			t.Errorf("another organization reads Guide's readers")
+			t.Errorf("a member the space is closed to reads Guide's readers")
 		}
 		if n := count(`SELECT count(*) FROM page_view`); n != 0 {
-			t.Errorf("another organization reads %d views", n)
+			t.Errorf("a member the space is closed to reads %d views", n)
 		}
+		refused(t, conn, "a view of a page in the closed space", insert, other.org, guide, other.user, 0)
 	})
 }
 
