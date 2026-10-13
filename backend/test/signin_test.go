@@ -21,11 +21,11 @@ import (
 
 const testSessionTTL = time.Hour
 
-// configureProvider points an organization at the test realm through the same
-// service the settings page uses, scoped to that organization.
+// configureProvider points an organization at the test realm as the operator
+// does, since the test's organization may have no administrator to do it.
 func configureProvider(t *testing.T, a *api, org tenant.Org, issuer string, createGroups bool) {
 	t.Helper()
-	_, _, err := a.sso.Save(tenant.WithOrg(context.Background(), org), oidc.Provider{
+	err := a.sso.Configure(context.Background(), org.ID, oidc.Provider{
 		Issuer: issuer, ClientID: statorClient, ClientSecret: statorSecret,
 		CreateGroups: createGroups, Enabled: true,
 	})
@@ -229,7 +229,7 @@ func TestSignInRefusals(t *testing.T) {
 
 	t.Run("a provider that is turned off is not used", func(t *testing.T) {
 		configureProvider(t, a, org, kc.issuer(), false)
-		if _, _, err := a.sso.Save(tenant.WithOrg(context.Background(), org), oidc.Provider{Issuer: kc.issuer(), ClientID: statorClient, Enabled: false}); err != nil {
+		if err := a.sso.Configure(context.Background(), org.ID, oidc.Provider{Issuer: kc.issuer(), ClientID: statorClient, Enabled: false}); err != nil {
 			t.Fatal(err)
 		}
 		if resp := start(org.Slug); resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != notConfigured {

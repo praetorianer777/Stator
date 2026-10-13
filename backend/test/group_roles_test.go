@@ -401,9 +401,11 @@ func TestRawSQLKeepsGroupRolesToWhatTheyMayGrant(t *testing.T) {
 		t.Fatalf("an unscoped connection sees %d mappings (%v)", n, err)
 	}
 
+	// Acting for the owner, since only an administrator reaches the mapping.
 	conn := h.appConn(t, a.org)
+	actAs(t, conn, a.org, a.user)
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM oidc_group_role`).Scan(&n); err != nil || n != 1 {
-		t.Fatalf("the organization sees %d mappings, want its one (%v)", n, err)
+		t.Fatalf("the owner sees %d mappings, want its one (%v)", n, err)
 	}
 	for name, attempt := range map[string]struct {
 		sql  string

@@ -199,8 +199,7 @@ func TestSignInUpsertsBySubjectAndSyncsOnlyProviderGroups(t *testing.T) {
 	a := h.startAPI(t, testSessionTTL)
 	org := h.makeOrg(t, "upsert")
 	ctx := context.Background()
-	orgCtx := tenant.WithOrg(ctx, org)
-	if _, _, err := a.sso.Save(orgCtx, oidc.Provider{Issuer: "https://id.upsert.test", ClientID: "stator", CreateGroups: true, Enabled: true}); err != nil {
+	if err := a.sso.Configure(ctx, org.ID, oidc.Provider{Issuer: "https://id.upsert.test", ClientID: "stator", CreateGroups: true, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
 	email := "carol-" + uuid.NewString()[:8] + "@stator.test"
