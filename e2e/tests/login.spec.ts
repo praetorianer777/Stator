@@ -1,6 +1,6 @@
 import { request, type Page } from "@playwright/test";
 import { LOGIN_PATH, ME_PATH, authTest as test, expect, signIn, signInWithPassword, startSSO, stateFile, submitKeycloak } from "../fixtures/auth";
-import { orgWithDeadProvider } from "../fixtures/db";
+import { deadenProvider } from "../fixtures/db";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -122,17 +122,17 @@ test.describe("sign-in", { tag: "@auth" }, () => {
       await expect(page.getByRole("alert")).toHaveText("That organization does not sign in with SSO. Check its name, or ask one of its administrators.");
     });
 
-    test("an organisation whose provider cannot be reached says so", async ({ page }, testInfo) => {
-      const org = await orgWithDeadProvider(testInfo);
+    test("an organisation whose provider cannot be reached says so", async ({ page }) => {
+      const revive = await deadenProvider();
       try {
-        await startSSO(page, org.slug);
+        await startSSO(page);
         await expect(page).toHaveURL(/\/login\?sso=unreachable/);
         await expect(page.getByRole("alert")).toHaveText(
           "Stator could not reach your organization's identity provider. Try again in a moment, and tell an administrator if it keeps failing.",
         );
         expect((await page.request.get(ME_PATH)).status()).toBe(401);
       } finally {
-        await org.remove();
+        await revive();
       }
     });
 

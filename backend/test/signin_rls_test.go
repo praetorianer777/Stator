@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -45,14 +46,13 @@ func (h *harness) signInRows(t *testing.T, m member) {
 	}
 }
 
-// Straight through SQL as stator_app: tenant tables show a tenant its own rows
-// only, and the tables that span tenants show the application nothing at all.
-func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
+// Straight through SQL as stator_app: the organization's sign-in tables show
+// nothing without a caller, and the tables that hold accounts' sessions and
+// identities show the application nothing at all, nor let it write them.
+func TestRawSQLCannotReachTheSignInTables(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "iota")
-	b := h.makeOtherOrganization(t, "kappa")
 	h.signInRows(t, a)
-	h.signInRows(t, b)
 
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, os.Getenv(envPrimary))
@@ -68,11 +68,11 @@ func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 		}
 		return n
 	}
-	tenantTables := []string{"groups", "group_member", "oidc_provider", "oidc_login", "org_join_request", "audit_log"}
+	orgTables := []string{"groups", "group_member", "oidc_provider", "oidc_login", "org_join_request", "audit_log"}
 	globalTables := []string{"user_session", "user_identity"}
 
-	t.Run("with no tenant set nothing is visible", func(t *testing.T) {
-		for _, table := range append(tenantTables, globalTables...) {
+	t.Run("with nobody set nothing is visible", func(t *testing.T) {
+		for _, table := range append(orgTables, globalTables...) {
 			if got := countOf(t, `SELECT count(*) FROM `+table); got != 0 {
 				t.Errorf("an unscoped connection sees %d rows in %s", got, table)
 			}
@@ -82,18 +82,15 @@ func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, a.org.String()); err != nil {
 		t.Fatal(err)
 	}
-	// Acting for A's owner, since only an administrator reads the audit log.
+	// Acting for the owner, since only an administrator reads the audit log.
 	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, db.UserVar, a.user.String()); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Run("scoped to one tenant only its own rows show", func(t *testing.T) {
-		for _, table := range tenantTables {
+	t.Run("acting for the owner only the organization's rows show", func(t *testing.T) {
+		for _, table := range orgTables {
 			if got := countOf(t, `SELECT count(*) FROM `+table); got != 1 {
-				t.Errorf("org A sees %d rows in %s, want its own 1", got, table)
-			}
-			if got := countOf(t, `SELECT count(*) FROM `+table+` WHERE org_id = $1`, b.org); got != 0 {
-				t.Errorf("org A sees org B's rows in %s", table)
+				t.Errorf("the owner sees %d rows in %s, want the 1 there is", got, table)
 			}
 		}
 		for _, table := range globalTables {
@@ -108,12 +105,7 @@ func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 		sql  string
 		args []any
 	}{
-		{"configuring another tenant's provider", `INSERT INTO oidc_provider (org_id, issuer, client_id) VALUES ($1, 'https://evil.test', 'x')`, []any{b.org}},
-		{"starting a sign-in for another tenant", `INSERT INTO oidc_login (state, org_id, nonce, code_verifier, expires_at) VALUES ('s', $1, 'n', 'v', now())`, []any{b.org}},
-		{"joining another tenant's group", `INSERT INTO group_member (org_id, group_id, user_id) SELECT $1, id, $2 FROM groups WHERE external_ref = 'staff' LIMIT 1`, []any{b.org, a.user}},
 		{"forging a session", `INSERT INTO user_session (user_id, token_hash, proof, expires_at) VALUES ($1, decode(repeat('00', 32), 'hex'), 'password', now() + interval '1 day')`, []any{a.user}},
-		{"asking to join on another's behalf", `INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, []any{b.org, a.user}},
-		{"writing another tenant's record", `INSERT INTO audit_log (org_id, action, target_type) VALUES ($1, 'member.admitted', 'user')`, []any{b.org}},
 		{"claiming an identity", `INSERT INTO user_identity (issuer, subject, user_id) VALUES ('https://evil.test', 'x', $1)`, []any{a.user}},
 	} {
 		t.Run(attempt.name+" is refused", func(t *testing.T) {
@@ -125,15 +117,8 @@ func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 		})
 	}
 
-	t.Run("another tenant's provider cannot be changed or read", func(t *testing.T) {
-		tag, err := conn.Exec(ctx, `UPDATE oidc_provider SET issuer = 'https://evil.test' WHERE org_id = $1`, b.org)
-		if err != nil || tag.RowsAffected() != 0 {
-			t.Fatalf("update = %v, %v", tag, err)
-		}
-		if got := countOf(t, `SELECT count(*) FROM oidc_provider WHERE org_id = $1 AND client_secret IS NOT NULL`, b.org); got != 0 {
-			t.Fatal("org B's sealed secret is readable from org A")
-		}
-		tag, err = conn.Exec(ctx, `DELETE FROM user_session`)
+	t.Run("sessions cannot be deleted", func(t *testing.T) {
+		tag, err := conn.Exec(ctx, `DELETE FROM user_session`)
 		if err != nil || tag.RowsAffected() != 0 {
 			t.Fatalf("the app role deleted %v sessions (%v)", tag, err)
 		}
@@ -141,28 +126,23 @@ func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 }
 
 // The admin role is exempt from the policies, so the trigger is what keeps a
-// group's members inside its organization there.
+// group's members to the organization's members there.
 func TestAGroupKeepsItsMembersInItsOrganization(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "lambda")
-	b := h.makeOtherOrganization(t, "mu")
 	h.signInRows(t, a)
-	h.signInRows(t, b)
+	var stranger uuid.UUID
+	if err := h.super.QueryRow(context.Background(), `INSERT INTO app_user (email, name) VALUES ('stranger-lambda@example.test', 'Stranger') RETURNING id`).Scan(&stranger); err != nil {
+		t.Fatal(err)
+	}
 
-	for name, row := range map[string][]any{
-		"a row naming one organization and another's group":        {a.org, a.user, b.org},
-		"somebody who is not a member of the group's organization": {b.org, a.user, b.org},
-	} {
-		t.Run(name, func(t *testing.T) {
-			_, err := h.cluster.WriteAdmin(context.Background(), func(ctx context.Context, tx db.DBTX) error {
-				_, err := tx.Exec(ctx, `
-					INSERT INTO group_member (org_id, group_id, user_id)
-					SELECT $1, id, $2 FROM groups WHERE org_id = $3`, row...)
-				return err
-			})
-			if !isCheckViolation(err) {
-				t.Fatalf("the admin role wrote it: %v", err)
-			}
-		})
+	_, err := h.cluster.WriteAdmin(context.Background(), func(ctx context.Context, tx db.DBTX) error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO group_member (org_id, group_id, user_id)
+			SELECT $1, id, $2 FROM groups WHERE org_id = $1`, a.org, stranger)
+		return err
+	})
+	if !isCheckViolation(err) {
+		t.Fatalf("the admin role put somebody who is not a member into a group: %v", err)
 	}
 }

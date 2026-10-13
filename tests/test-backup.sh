@@ -31,7 +31,7 @@ psql() { docker compose exec -T postgres-primary psql -U stator -v ON_ERROR_STOP
 
 cleanup() {
   psql -d stator -c "DROP DATABASE IF EXISTS ${RESTORE_DB} WITH (FORCE)" >/dev/null 2>&1
-  psql -d stator -c "DELETE FROM org WHERE slug = '${MARK}'" >/dev/null 2>&1
+  psql -d stator -c "DELETE FROM app_user WHERE email = '${MARK}@backup.test'" >/dev/null 2>&1
   s3 DELETE "stator-files/${MARK}/one.txt" >/dev/null 2>&1
   s3 DELETE "stator-files/${MARK}/two.bin" >/dev/null 2>&1
   rm -rf "$WORK"
@@ -65,11 +65,12 @@ fingerprint() { # archive
 echo "🧪 Backup round trip"
 docker compose build -q backup || { echo "The backup image did not build."; exit 1; }
 
-# The stack may hold no site at all, as in CI after the integration suite
-# removed its organizations; the test brings a row and files of its own.
+# The stack may hold no site at all, so the test brings a row and files of its
+# own. An account rather than an organization: an instance holds one, and the
+# stack may have it already.
 MARK="backup-test-$$"
-psql -d stator -c "INSERT INTO org (slug, name) VALUES ('${MARK}', 'Backup test')" >/dev/null \
-  || { echo "Could not add the test's organization."; exit 1; }
+psql -d stator -c "INSERT INTO app_user (email, name) VALUES ('${MARK}@backup.test', 'Backup test')" >/dev/null \
+  || { echo "Could not add the test's account."; exit 1; }
 printf 'a file of the site\n' > "$WORK/one.txt"
 head -c 70000 /dev/urandom > "$WORK/two.bin"
 s3 PUT "stator-files/${MARK}/one.txt" "$WORK/one.txt" >/dev/null && s3 PUT "stator-files/${MARK}/two.bin" "$WORK/two.bin" >/dev/null \
@@ -105,13 +106,13 @@ migrations() { tar -xOf "$1" manifest.json | sed -n '/"migrations"/,/]/p'; }
 [[ "$(migrations "$SITE")" == "$(migrations "$RESTORED")" ]] \
   && pass "the restored site has the same schema version" || fail "the schema versions differ"
 
-orgs=$(psql -d "$RESTORE_DB" -c "SELECT count(*) FROM org WHERE slug = '${MARK}'")
-app_orgs=$(docker compose exec -T -e PGPASSWORD="${APP_DB_PASSWORD:-stator_app}" postgres-primary \
-  psql -h 127.0.0.1 -U stator_app -d "$RESTORE_DB" -qAt -c "SELECT count(*) FROM org" 2>&1)
-if [[ "$orgs" == 1 && "$app_orgs" == 0 ]]; then
-  pass "row level security holds on the restored rows: the app role sees no organization without a tenant"
+accounts=$(psql -d "$RESTORE_DB" -c "SELECT count(*) FROM app_user WHERE email = '${MARK}@backup.test'")
+app_accounts=$(docker compose exec -T -e PGPASSWORD="${APP_DB_PASSWORD:-stator_app}" postgres-primary \
+  psql -h 127.0.0.1 -U stator_app -d "$RESTORE_DB" -qAt -c "SELECT count(*) FROM app_user" 2>&1)
+if [[ "$accounts" == 1 && "$app_accounts" == 0 ]]; then
+  pass "row level security holds on the restored rows: the app role sees no account without a tenant"
 else
-  fail "restored $orgs of the test's organization, and the app role saw [$app_orgs] organizations without a tenant"
+  fail "restored $accounts of the test's account, and the app role saw [$app_accounts] accounts without a tenant"
 fi
 
 # A refusal must change nothing; the marker shows the database was not replaced.

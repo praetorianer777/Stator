@@ -1,4 +1,3 @@
-import type { TestInfo } from "@playwright/test";
 import pg from "pg";
 import { superuserURL } from "./stack";
 
@@ -49,17 +48,19 @@ async function settle(client: pg.Client): Promise<void> {
  */
 export const DEAD_ISSUER = "http://127.0.0.1:9/realms/nowhere";
 
-/** An organisation of its own whose provider cannot be reached; call remove when done. */
-export async function orgWithDeadProvider(testInfo: TestInfo): Promise<{ slug: string; remove: () => Promise<void> }> {
-  const slug = `e2e-dead-${testInfo.workerIndex}-${Date.now().toString(36)}`;
-  await withDatabase(async (db) => {
-    const { rows } = await db.query<{ id: string }>("INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id", [slug, "Dead provider"]);
-    await db.query("INSERT INTO oidc_provider (org_id, issuer, client_id) VALUES ($1, $2, 'stator')", [rows[0]!.id, DEAD_ISSUER]);
+/**
+ * Points the organization's provider at DEAD_ISSUER; call the function it
+ * returns to point it back. Only for a spec of the instance phase.
+ */
+export async function deadenProvider(): Promise<() => Promise<void>> {
+  const issuer = await withDatabase(async (db) => {
+    const { rows } = await db.query<{ issuer: string }>("SELECT issuer FROM oidc_provider");
+    if (rows.length !== 1)
+      throw new Error(`The instance has ${rows.length} sign-in providers, not its one. Is the stack bootstrapped with STATOR_BOOTSTRAP_OIDC_ISSUER?`);
+    await db.query("UPDATE oidc_provider SET issuer = $1", [DEAD_ISSUER]);
+    return rows[0]!.issuer;
   });
-  return {
-    slug,
-    remove: () => withDatabase(async (db) => void (await db.query("DELETE FROM org WHERE slug = $1", [slug]))),
-  };
+  return () => withDatabase(async (db) => void (await db.query("UPDATE oidc_provider SET issuer = $1", [issuer])));
 }
 
 /**

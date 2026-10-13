@@ -101,27 +101,24 @@ func TestAnAdministratorAddsPeopleWhoSignInWithAPassword(t *testing.T) {
 		}
 	})
 
-	t.Run("an address with an account elsewhere joins and keeps its own password", func(t *testing.T) {
-		other := h.makeOrg(t, "elsewhere")
-		_ = other
+	t.Run("an address with an account but no membership joins and keeps its own password", func(t *testing.T) {
+		carol := "carol-" + suffix + "@stator.test"
+		h.forgetPerson(t, carol)
 		var before string
-		if err := h.super.QueryRow(ctx, `SELECT password_hash FROM app_user WHERE email = $1`, bob).Scan(&before); err != nil {
+		if err := h.super.QueryRow(ctx, `
+			INSERT INTO app_user (email, name, password_hash) SELECT $1, 'Carol', password_hash FROM app_user WHERE email = $2
+			RETURNING password_hash`, carol, bob).Scan(&before); err != nil {
 			t.Fatal(err)
 		}
-		second := h.makeOrg(t, "adders-two")
-		secondAdmin := newBrowser(t)
-		email := bootstrapAdmin(t, h, a, second)
-		if resp, body := postJSON(t, secondAdmin, a.URL+httpapi.APIPrefix+"/auth/login", map[string]string{"email": email, "password": adminPassword}); resp.StatusCode != http.StatusOK {
-			t.Fatalf("second admin login = %d %v", resp.StatusCode, body)
-		}
-		resp, body := postJSON(t, secondAdmin, users, map[string]string{"email": bob, "role": "member", "password": "a different password!"})
+		h.settle(t)
+		resp, body := postJSON(t, admin, users, map[string]string{"email": carol, "role": "member", "password": "a different password!"})
 		member, _ := body["member"].(map[string]any)
 		if resp.StatusCode != http.StatusCreated || member["newAccount"] != false || member["password"] != nil {
 			t.Fatalf("create = %d %v", resp.StatusCode, body)
 		}
 		var after string
-		if err := h.super.QueryRow(ctx, `SELECT password_hash FROM app_user WHERE email = $1`, bob).Scan(&after); err != nil || after != before {
-			t.Fatalf("another organization's administrator changed bob's password (%v)", err)
+		if err := h.super.QueryRow(ctx, `SELECT password_hash FROM app_user WHERE email = $1`, carol).Scan(&after); err != nil || after != before {
+			t.Fatalf("the administrator changed carol's password (%v)", err)
 		}
 	})
 

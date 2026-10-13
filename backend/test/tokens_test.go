@@ -39,10 +39,6 @@ func TestATokenActsAsItsOwnerUntilRevoked(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	m := h.makeMember(t, "token-owner")
-	other := h.makeOtherOrganization(t, "token-elsewhere")
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, other.org, m.user); err != nil {
-		t.Fatal(err)
-	}
 	browser := api.as(t, m.user, m.org, h.slugOf(t, m.org))
 
 	id, secret := makeToken(t, browser, map[string]any{"name": "deploy"})
@@ -80,7 +76,7 @@ func TestATokenActsAsItsOwnerUntilRevoked(t *testing.T) {
 	if code := errorCode(t, want(t, script.post(t, "/api/v1/tokens", map[string]any{"name": "child"}), http.StatusForbidden, "a token making a token")); code != "session_only" {
 		t.Errorf("a token making a token = %s", code)
 	}
-	if code := errorCode(t, want(t, script.post(t, "/api/v1/auth/switch-org", map[string]any{"slug": h.slugOf(t, other.org)}), http.StatusBadRequest, "a token switching")); code != "bad_request" {
+	if code := errorCode(t, want(t, script.post(t, "/api/v1/auth/switch-org", map[string]any{"slug": h.slugOf(t, m.org)}), http.StatusBadRequest, "a token switching")); code != "bad_request" {
 		t.Errorf("a token switching organizations = %s", code)
 	}
 

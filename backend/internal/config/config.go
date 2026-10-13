@@ -119,7 +119,7 @@ type Config struct {
 	// PDF export off.
 	Render    Render
 	Bootstrap Bootstrap
-	// TestEndpoints serves the throwaway organizations of the browser suite.
+	// TestEndpoints serves the people and resets of the browser suite.
 	TestEndpoints TestEndpoints
 	Mail          Mail
 	Armature      Armature
@@ -251,7 +251,7 @@ type BootstrapMember struct {
 	Role  string
 }
 
-// TestEndpoints make and remove throwaway organizations under /api/v1/test.
+// TestEndpoints make people and reset the organization under /api/v1/test.
 // Off, they answer 404 like any path that does not exist.
 type TestEndpoints struct {
 	Enabled bool
@@ -453,13 +453,13 @@ func Load() (Config, error) {
 	}
 	if c.TestEndpoints.Enabled {
 		if c.Env == EnvProduction {
-			l.problem("STATOR_TEST_ENDPOINTS is on in production, where it would let anybody with its token make and delete organizations. Turn it off.")
+			l.problem("STATOR_TEST_ENDPOINTS is on in production, where it would let anybody with its token make people and reset the organization. Turn it off.")
 		}
 		if len(c.TestEndpoints.Token) < MinTestTokenLength {
 			l.problem(fmt.Sprintf("STATOR_TEST_ENDPOINTS is on, so set STATOR_TEST_ENDPOINTS_TOKEN to a secret of at least %d characters.", MinTestTokenLength))
 		}
 		if c.Bootstrap.OIDCIssuer == "" {
-			l.problem("STATOR_TEST_ENDPOINTS is on, so set STATOR_BOOTSTRAP_OIDC_ISSUER and its client: every throwaway organization signs in through that provider.")
+			l.problem("STATOR_TEST_ENDPOINTS is on, so set STATOR_BOOTSTRAP_OIDC_ISSUER and its client: the reset puts the organization's provider back to it.")
 		}
 	}
 	if c.RetainAudit != 0 && c.RetainAudit < MinRetainAudit {

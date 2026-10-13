@@ -55,15 +55,11 @@ old=$(grep -rlw orgTest "$E2E/tests" "$E2E/fixtures" 2>/dev/null)
 [[ -z "$old" ]] && pass "no spec or fixture uses orgTest" \
   || fail "these still use orgTest, the throwaway organization per spec; use teamTest from fixtures/team.ts: $(paste -sd' ' <<< "$old")"
 
-# A second organization only where nothing else can stand in for it: an
-# archive is imported only into an organization without spaces, and a
-# provider that cannot be reached is tested in one of its own.
-SECOND_ORG_SPECS="login.spec.ts org-transfer.spec.ts"
-for spec in $(grep -rlwE 'withAnotherOrg|orgWithDeadProvider' "$E2E/tests" 2>/dev/null); do
-  name=$(basename "$spec")
-  grep -qw "$name" <<< "$SECOND_ORG_SPECS" && pass "$name makes a second organization, as allowed" \
-    || fail "$name makes a second organization; give it people and spaces of its own (fixtures/team.ts) instead"
-done
+# An instance holds one organization (#380), and the database refuses a
+# second, so nothing in the browser suite asks for one.
+second=$(grep -rlE 'withAnotherOrg|orgWithDeadProvider|/test/orgs|TEST_ORGS_PATH|INSERT INTO org\b' "$E2E/tests" "$E2E/fixtures" 2>/dev/null)
+[[ -z "$second" ]] && pass "no spec or fixture makes a second organization" \
+  || fail "these make a second organization, which an instance does not hold; give them people and spaces of their own (fixtures/team.ts): $(paste -sd' ' <<< "$second")"
 
 instance_specs=$(sed -n '/^export const INSTANCE_SPECS = \[/,/^\];/p' "$E2E/fixtures/projects.ts" | sed -n 's/^ *"\([a-z0-9-]*\)",$/\1/p')
 [[ -n "$instance_specs" ]] || fail "fixtures/projects.ts lists no INSTANCE_SPECS this test can read"

@@ -1,11 +1,9 @@
 import { writeFileSync } from "node:fs";
 import type { Download } from "@playwright/test";
-import { createStatorApi, must } from "../fixtures/api";
+import { must } from "../fixtures/api";
 import { authTest as test, expect } from "../fixtures/auth";
-import { withAnotherOrg } from "../fixtures/org";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
-import { WEB_URL } from "../fixtures/stack";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { unzip } from "../fixtures/zip";
 
@@ -27,14 +25,12 @@ interface OrgManifest {
   notCarried: Array<{ key: string }>;
 }
 
-// As the realm's alice and bob rather than people of the spec's own: the
-// archive goes into a second organization alice signs in to through the
-// provider, where she must find the draft she wrote here.
+// As the realm's alice and bob rather than people of the spec's own: only an
+// administrator of the organization exports it, and bob is a member.
 test.describe("organization export and import", { tag: ["@auth"] }, () => {
-  test("an administrator exports the organization, a member cannot, and a fresh organization takes the archive whole", async ({
+  test("an administrator exports the organization, a member cannot, and an organization with spaces takes no archive", async ({
     page,
     api,
-    browser,
     pageAs,
   }, testInfo) => {
     test.slow();
@@ -74,6 +70,7 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
       const inner = unzip(entries.get(entry!.archive)!);
       const spaceManifest = JSON.parse(inner.get("manifest.json")!.toString("utf8")) as { pages: string[] };
       expect(spaceManifest.pages).toContain(packing.id);
+      expect(inner.get(`pages/${packing.id}.json`)!.toString("utf8")).toContain("Pack lighter.");
       await expectAccessible(page);
 
       const bob = await pageAs("bob");
@@ -81,38 +78,15 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
       await expect(bob.getByText("Only an administrator of the organization exports or imports all of it", { exact: false })).toBeVisible();
       await expect(bob.locator('[data-action="export-org"]')).toHaveCount(0);
 
+      // The one organization has spaces, this spec's among them, so it takes
+      // no archive; a fresh instance taking one whole is proven by the
+      // integration suite (TestAnOrganizationTravelsToAFreshOneWhole).
       const saved = testInfo.outputPath("organization.zip");
       writeFileSync(saved, archive);
-      await withAnotherOrg(browser, "org-transfer-to", async (fresh) => {
-        const context = await browser.newContext({ baseURL: WEB_URL, storageState: fresh.sessions.alice });
-        try {
-          const there = await context.newPage();
-          await openUntil(there, "/settings/transfer", () => expect(there.locator("[data-org-import]")).toBeVisible(ONE_LOOK));
-          await there.locator("[data-org-import-file]").setInputFiles(saved);
-          await there.locator('[data-action="confirm-import-org"]').click();
-          await expect(there.locator("[data-org-import-done]")).toBeVisible(WORKED);
-          await expect(there.locator("[data-org-import-report]")).toBeVisible();
-          await expectAccessible(there);
-          await openUntil(there, `/s/${key}`, () => expect(there.getByRole("heading", { level: 1, name: "Moving handbook" })).toBeVisible(ONE_LOOK));
-          const thereApi = await createStatorApi(fresh.sessions.alice);
-          try {
-            const { pages } = must(await thereApi.GET("/spaces/{spaceKey}/outline", { params: { path: { spaceKey: key } } }));
-            const copy = pages.find((p) => p.title === "Packing");
-            expect(copy).toBeDefined();
-            const draft = must(await thereApi.GET("/pages/{pageID}/draft", { params: { path: { pageID: copy!.id } } }));
-            expect(JSON.stringify(draft)).toContain("Pack lighter.");
-          } finally {
-            await thereApi.dispose();
-          }
-
-          await there.goto("/settings/transfer");
-          await there.locator("[data-org-import-file]").setInputFiles(saved);
-          await there.locator('[data-action="confirm-import-org"]').click();
-          await expect(there.getByText("This organization has spaces already", { exact: false })).toBeVisible();
-        } finally {
-          await context.close();
-        }
-      });
+      await page.goto("/settings/transfer");
+      await page.locator("[data-org-import-file]").setInputFiles(saved);
+      await page.locator('[data-action="confirm-import-org"]').click();
+      await expect(page.getByText("This organization has spaces already", { exact: false })).toBeVisible();
     } finally {
       await deleteSpace(api, key);
     }

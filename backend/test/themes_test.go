@@ -20,8 +20,7 @@ func themeObject(org uuid.UUID, themeID, assetID string) string {
 	return theme.ObjectKey(org, uuid.MustParse(themeID), uuid.MustParse(assetID))
 }
 
-// A theme is its maker's, shared when they say so, chosen per person, and
-// walled by the tenant like everything else.
+// A theme is its maker's, shared when they say so, and chosen per person.
 func TestThemesOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
@@ -31,8 +30,6 @@ func TestThemesOverTheAPI(t *testing.T) {
 	owner := api.as(t, home.user, home.org, slug)
 	other := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
 	admin := api.as(t, h.addPerson(t, home.org, "admin"), home.org, slug)
-	away := h.makeOtherOrganization(t, "themes-away")
-	stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
 
 	spec := map[string]any{
 		"colors": map[string]any{"light": map[string]string{"accent": "#ff0066"}, "dark": map[string]string{"accent": "#00ffcc"}},
@@ -216,9 +213,6 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if _, err := h.super.Exec(context.Background(), `UPDATE org SET default_theme_id = $1 WHERE id = $2`, themeID, home.org); err == nil {
 			t.Fatal("SQL let a private theme be the default")
 		}
-		if _, err := h.super.Exec(context.Background(), `UPDATE org SET default_theme_id = $1 WHERE id = $2`, themeID, away.org); err == nil {
-			t.Fatal("SQL let another organization's theme be the default")
-		}
 
 		want(t, owner.patch(t, "/api/v1/themes/"+themeID, map[string]any{"shared": true}), http.StatusOK, "share")
 		if got := other.put(t, "/api/v1/themes/default", map[string]any{"themeId": themeID}); got.Status != http.StatusForbidden {
@@ -236,9 +230,6 @@ func TestThemesOverTheAPI(t *testing.T) {
 				t.Fatalf("a member does not see the organization's default: %s", seen.Raw)
 			}
 		}
-		if got := want(t, stranger.get(t, "/api/v1/themes/active"), http.StatusOK, "another organization"); got.Body["theme"] != nil {
-			t.Fatalf("another organization sees this one's default: %s", got.Raw)
-		}
 		want(t, other.put(t, "/api/v1/themes/active", map[string]any{"themeId": nil, "builtIn": true}), http.StatusOK, "keep the built-in")
 		if kept := want(t, other.get(t, "/api/v1/themes/active"), http.StatusOK, "built-in kept"); kept.Body["theme"] != nil || kept.Body["source"] != "" {
 			t.Fatalf("the built-in theme was not kept: %s", kept.Raw)
@@ -246,9 +237,6 @@ func TestThemesOverTheAPI(t *testing.T) {
 		// A print shows the organization's own, whatever its reader chose.
 		if org := want(t, other.get(t, "/api/v1/themes/default"), http.StatusOK, "the organization's theme"); obj(t, org, "theme")["id"] != themeID {
 			t.Fatalf("the organization's theme reads %s for a member who keeps the built-in", org.Raw)
-		}
-		if got := want(t, stranger.get(t, "/api/v1/themes/default"), http.StatusOK, "another organization's"); got.Body["theme"] != nil {
-			t.Fatalf("another organization reads this one's theme: %s", got.Raw)
 		}
 		want(t, other.put(t, "/api/v1/themes/active", map[string]any{"themeId": nil}), http.StatusOK, "back to the default")
 		if back := want(t, other.get(t, "/api/v1/themes/active"), http.StatusOK, "default again"); back.Body["source"] != "organization" {
