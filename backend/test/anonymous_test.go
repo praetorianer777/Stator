@@ -167,7 +167,7 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 				t.Errorf("%s with a session riding along = %d", what, got.Status)
 			}
 		}
-		other := h.makeMember(t, "public-other")
+		other := h.makeOtherOrganization(t, "public-other")
 		want(t, anon.get(t, publicPath(h.slugOf(t, other.org))), http.StatusNotFound, "a closed organization")
 		want(t, anon.get(t, publicPath("no-such-org-here")), http.StatusNotFound, "no organization")
 	})

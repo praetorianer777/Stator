@@ -170,7 +170,7 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 		status("CP-1")
 		good := delivery{ID: uuid.New(), Topic: "issue.updated", OrgID: armatureOrg, Payload: map[string]any{"key": "CP-1"}}
 		body := good.body(t)
-		other := h.makeMember(t, "arm-hooks-none")
+		other := h.makeOtherOrganization(t, "arm-hooks-none")
 		otherSlug := h.slugOf(t, other.org)
 		var answers []string
 		for _, tc := range []struct {

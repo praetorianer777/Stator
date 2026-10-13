@@ -257,13 +257,14 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stars-rls")
-	other := h.makeMember(t, "stars-rls-other")
+	other := h.makeOutsider(t, "stars-rls-other")
 	slug := h.slugOf(t, org.org)
 	owner := api.as(t, org.user, org.org, slug)
 	annID, benID := h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member")
 	ann, ben := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug)
 
 	docs := newTree(t, owner, "SRL", "Walls")
+	h.closeSpace(t, docs.space, annID, benID)
 	open := docs.add(docs.homeID, "Open")
 	closed := docs.add(docs.homeID, "Closed")
 	want(t, ann.put(t, pagePath(open, "/star"), nil), http.StatusNoContent, "ann stars Open")
@@ -349,19 +350,19 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reads and writes nothing of this one", func(t *testing.T) {
+	t.Run("a member the space is closed to reads and writes nothing of it", func(t *testing.T) {
 		actAs(t, conn, other.org, other.user)
 		if n := count(`SELECT count(*) FROM star`); n != 0 {
-			t.Errorf("another organization reads %d stars", n)
+			t.Errorf("a member the space is closed to reads %d stars", n)
 		}
 		if n := count(`SELECT count(*) FROM home_updates(false, NULL, NULL, 100)`); n != 0 {
-			t.Errorf("another organization reads %d updates", n)
+			t.Errorf("a member the space is closed to reads %d updates", n)
 		}
 		if n := count(`SELECT count(*) FROM home_edited(NULL, NULL, 100)`); n != 0 {
-			t.Errorf("another organization reads %d edits", n)
+			t.Errorf("a member the space is closed to reads %d edits", n)
 		}
-		denied(t, conn, "a star in the other organization", `INSERT INTO star (org_id, user_id, page_id) VALUES ($1, $2, $3)`, org.org, other.user, open)
-		untouched(t, conn, "removing the other organization's stars", `DELETE FROM star WHERE org_id = $1`, org.org)
+		denied(t, conn, "a star on a page of the closed space", `INSERT INTO star (org_id, user_id, page_id) VALUES ($1, $2, $3)`, org.org, other.user, open)
+		untouched(t, conn, "removing other people's stars", `DELETE FROM star WHERE org_id = $1`, org.org)
 	})
 }
 

@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	// claimTries is how often the test offers an event before giving up: the
-	// stack's own worker may take one first.
+	// claimTries is how often the test offers an event before giving up: a
+	// worker of the test's other than the one watched may take one first.
 	claimTries = 5
 	// claimWait is how long one offer waits for the suite's worker to take it.
 	claimWait = 5 * time.Second
@@ -28,7 +28,7 @@ const (
 // handler runs; it waits on nothing, so this is generous.
 var deleteBound = bound{deadline: 10 * time.Second, watchdog: 2 * time.Second}
 
-// errNotThisTest leaves another test's event to the stack's worker.
+// errNotThisTest leaves an event the test did not offer to another worker.
 var errNotThisTest = errors.New("not this test's event")
 
 // While a handler runs, the worker holds no lock on its event: a handler's
@@ -91,7 +91,7 @@ func TestOutboxWorkerHoldsNoLockWhileItHandles(t *testing.T) {
 		}
 	}
 	if handling == uuid.Nil {
-		t.Fatalf("the stack's worker took every one of %d events first", claimTries)
+		t.Fatalf("another worker took every one of %d events first", claimTries)
 	}
 
 	if report, err := h.execBounded(t, h.super, deleteBound, `DELETE FROM org WHERE id = $1`, m.org); err != nil {

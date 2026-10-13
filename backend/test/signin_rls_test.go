@@ -50,7 +50,7 @@ func (h *harness) signInRows(t *testing.T, m member) {
 func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "iota")
-	b := h.makeMember(t, "kappa")
+	b := h.makeOtherOrganization(t, "kappa")
 	h.signInRows(t, a)
 	h.signInRows(t, b)
 
@@ -145,7 +145,7 @@ func TestRawSQLCannotReachAnotherTenantsSignIn(t *testing.T) {
 func TestAGroupKeepsItsMembersInItsOrganization(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "lambda")
-	b := h.makeMember(t, "mu")
+	b := h.makeOtherOrganization(t, "mu")
 	h.signInRows(t, a)
 	h.signInRows(t, b)
 

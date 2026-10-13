@@ -335,13 +335,14 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stewards-rls")
-	other := h.makeMember(t, "stewards-rls-other")
+	other := h.makeOutsider(t, "stewards-rls-other")
 	slug := h.slugOf(t, org.org)
 	admin := api.as(t, org.user, org.org, slug)
 	annID, benID, carlID := h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member")
 	ben := api.as(t, benID, org.org, slug)
 
 	docs := newTree(t, admin, "SWL", "Walls")
+	h.closeSpace(t, docs.space, annID, benID, carlID)
 	open := docs.add(docs.homeID, "Open")
 	secret := docs.add(docs.homeID, "Secret")
 	sketch := obj(t, want(t, ben.post(t, "/api/v1/pages", map[string]any{"parentId": docs.homeID, "title": "Sketch"}), http.StatusCreated, "ben's unpublished page"), "page")["id"].(string)
@@ -384,7 +385,6 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 		denied(t, conn, "a backdated check", `INSERT INTO page_verification (org_id, page_id, verified_by, verified_at, expires_at) VALUES ($1, $2, $3, now() - interval '400 days', now() + interval '1 day')`, org.org, open, benID)
 		denied(t, conn, "the worker's notice", `UPDATE page_verification SET lapse_noticed_at = now() WHERE page_id = $1`, secret)
 		denied(t, conn, "a verification of an unpublished page", `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() + interval '1 day')`, org.org, sketch, benID)
-		denied(t, conn, "a row in another organization", `INSERT INTO page_owner (org_id, page_id, user_id, set_by) VALUES ($1, $2, $3, $3)`, other.org, open, benID)
 		if _, err := conn.Exec(ctx, `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() + interval '1 day')`, org.org, open, benID); err != nil {
 			t.Fatalf("ben cannot verify Open: %v", err)
 		}
@@ -398,10 +398,11 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reads nothing", func(t *testing.T) {
+	t.Run("a member the space is closed to reads nothing", func(t *testing.T) {
 		actAs(t, conn, other.org, other.user)
 		if n := count(`SELECT count(*) FROM page_owner`) + count(`SELECT count(*) FROM page_verification`); n != 0 {
-			t.Errorf("another organization reads %d rows", n)
+			t.Errorf("a member the space is closed to reads %d rows", n)
 		}
+		denied(t, conn, "naming themselves owner", `INSERT INTO page_owner (org_id, page_id, user_id, set_by) VALUES ($1, $2, $3, $3)`, other.org, open, other.user)
 	})
 }

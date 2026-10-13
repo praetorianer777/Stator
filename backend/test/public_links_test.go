@@ -171,7 +171,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 				t.Errorf("%s = %d %s", what, got.Status, got.Raw)
 			}
 		}
-		other := h.makeMember(t, "public-links-other")
+		other := h.makeOtherOrganization(t, "public-links-other")
 		if got := anon.get(t, linkPath(h.slugOf(t, other.org), token)); got.Status != http.StatusNotFound || errorCode(t, got) != "link_gone" {
 			t.Errorf("the token under another organization = %d %s", got.Status, got.Raw)
 		}

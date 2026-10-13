@@ -252,9 +252,10 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 	owner := api.as(t, home.user, home.org, slug)
 	annID, benID, carlID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
 	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
-	other := h.makeMember(t, "reaction-rls-other")
+	other := h.makeOutsider(t, "reaction-rls-other")
 
 	docs := newTree(t, owner, "RRAW", "Raw")
+	h.closeSpace(t, docs.space, annID, benID, carlID)
 	open := docs.add(docs.homeID, "Open")
 	secret := docs.add(docs.homeID, "Secret")
 	draft := obj(t, want(t, ann.post(t, "/api/v1/pages", map[string]any{"parentId": docs.homeID, "title": "Draft"}), http.StatusCreated, "ann's draft page"), "page")["id"].(string)
@@ -329,11 +330,13 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reads none and points none here", func(t *testing.T) {
+	t.Run("a member the space is closed to reads none and puts none on", func(t *testing.T) {
+		// Read only above opened it to everyone again.
+		h.closeSpace(t, docs.space)
 		actAs(t, conn, other.org, other.user)
 		if n := count(`SELECT count(*) FROM reaction`); n != 0 {
-			t.Errorf("another organization reads %d reactions", n)
+			t.Errorf("a member the space is closed to reads %d reactions", n)
 		}
-		denied(t, conn, "a reaction into this organization", onPage, home.org, open, other.user, "🙂")
+		denied(t, conn, "a reaction on a page of the closed space", onPage, home.org, open, other.user, "🙂")
 	})
 }

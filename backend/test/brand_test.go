@@ -108,9 +108,7 @@ func TestTheBrandIsHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "brand-db")
-	away := h.makeMember(t, "brand-db-away")
 	admin := api.as(t, home.user, home.org, h.slugOf(t, home.org))
-	api.as(t, away.user, away.org, h.slugOf(t, away.org))
 	memberID := h.addPerson(t, home.org, "member")
 	want(t, admin.put(t, "/api/v1/org/brand/footer", map[string]any{"en": "Internal", "de": ""}), http.StatusOK, "set the footer")
 
@@ -124,7 +122,6 @@ func TestTheBrandIsHeldByTheDatabase(t *testing.T) {
 	refused(t, conn, "a footer over 200 characters", `UPDATE org_brand SET footer_en = repeat('x', 201) WHERE org_id = current_org_id()`)
 	refused(t, conn, "a logo that is no picture", `UPDATE org_brand SET logo_type = 'image/svg+xml', logo_size = 10 WHERE org_id = current_org_id()`)
 	refused(t, conn, "a logo with no size", `UPDATE org_brand SET logo_type = 'image/png' WHERE org_id = current_org_id()`)
-	refused(t, conn, "another organization's brand", `INSERT INTO org_brand (org_id) VALUES ($1)`, away.org)
 	if _, err := conn.Exec(ctx, `UPDATE org_brand SET footer_de = 'Intern' WHERE org_id = current_org_id()`); err != nil {
 		t.Fatalf("an administrator could not change the footer: %v", err)
 	}

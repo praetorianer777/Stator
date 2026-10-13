@@ -35,7 +35,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 	owner := api.as(t, home.user, home.org, slug)
 	other := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
 	admin := api.as(t, h.addPerson(t, home.org, "admin"), home.org, slug)
-	away := h.makeMember(t, "themes-away")
+	away := h.makeOtherOrganization(t, "themes-away")
 	stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
 
 	spec := map[string]any{
@@ -309,7 +309,9 @@ func TestThemeRowsAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "theme-wall-a")
-	b := h.makeMember(t, "theme-wall-b")
+	// Theme rows have no access policy within an organization, so the tenant
+	// wall is all this proves until they get one.
+	b := h.makeOtherOrganization(t, "theme-wall-b")
 	owner := api.as(t, a.user, a.org, h.slugOf(t, a.org))
 
 	made := want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "Walled", "shared": true}), http.StatusCreated, "make a theme")

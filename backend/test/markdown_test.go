@@ -78,11 +78,12 @@ func TestMarkdownImportAndExport(t *testing.T) {
 	member := api.as(t, memberID, home.org, slug)
 	readerID := h.addPerson(t, home.org, "member")
 	reader := api.as(t, readerID, home.org, slug)
-	away := h.makeMember(t, "markdown-away")
-	stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+	away := h.makeOutsider(t, "markdown-away")
+	stranger := api.as(t, away.user, away.org, slug)
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "MD", "Markdown")
+	h.closeSpace(t, docs.space, memberID, readerID)
 	docs.c = member
 	picture := pngOf(t, 4, 3)
 

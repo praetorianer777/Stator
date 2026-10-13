@@ -52,11 +52,11 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 		t.Fatalf("package = %+v", pkg)
 	}
 
-	t.Run("another organization cannot export it", func(t *testing.T) {
-		away := h.makeMember(t, "porter-away")
+	t.Run("another member cannot export it while it is private", func(t *testing.T) {
+		away := h.makeOutsider(t, "porter-away")
 		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
 		if resp, _ := stranger.download(t, "/api/v1/themes/"+themeID+"/export"); resp.StatusCode != http.StatusNotFound {
-			t.Fatalf("a theme was exported across organizations: %d", resp.StatusCode)
+			t.Fatalf("somebody else's private theme was exported: %d", resp.StatusCode)
 		}
 	})
 

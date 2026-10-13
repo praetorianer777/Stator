@@ -67,6 +67,7 @@ func TestArchivePagesAndSpacesOverTheAPI(t *testing.T) {
 	ann, ben := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug)
 
 	docs := newTree(t, owner, "ARC", "Archive")
+	h.closeSpace(t, docs.space, annID, benID)
 	plans := docs.add(docs.homeID, "Plans of yesteryear")
 	old := docs.add(plans, "Old roadmap")
 	older := docs.add(old, "Older roadmap")
@@ -279,8 +280,8 @@ func TestArchivePagesAndSpacesOverTheAPI(t *testing.T) {
 			audit.ActionPageArchived, audit.ActionPageUnarchived, audit.ActionPageArchived, audit.ActionPageUnarchived)
 		sameList(t, "the space's archive acts", auditActions(t, h, org.org, "space", docs.spaceID(t)),
 			audit.ActionSpaceArchived, audit.ActionSpaceUnarchived)
-		away := h.makeMember(t, "archive-away")
-		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+		away := h.makeOutsider(t, "archive-away")
+		stranger := api.as(t, away.user, away.org, slug)
 		for what, got := range map[string]response{
 			"list":      stranger.get(t, "/api/v1/spaces/ARC/archived-pages"),
 			"archive":   stranger.put(t, pagePath(live, "/archive"), nil),

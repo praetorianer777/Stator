@@ -85,6 +85,7 @@ func TestSpaceShortcutsOverTheAPI(t *testing.T) {
 	ann := api.as(t, annID, org.org, slug)
 
 	docs := newTree(t, owner, "SHC", "Shortcuts")
+	h.closeSpace(t, docs.space, annID)
 	runbook := docs.add(docs.homeID, "Runbook")
 	secret := docs.add(docs.homeID, "Salaries")
 	old := docs.add(docs.homeID, "Old plans")
@@ -153,7 +154,7 @@ func TestSpaceShortcutsOverTheAPI(t *testing.T) {
 				t.Errorf("ann could %s: %d %s", what, r.Status, r.Raw)
 			}
 		}
-		away := h.makeMember(t, "shortcuts-away")
+		away := h.makeOutsider(t, "shortcuts-away")
 		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
 		for what, r := range map[string]response{
 			"list":   stranger.get(t, shortcutsPath("SHC")),

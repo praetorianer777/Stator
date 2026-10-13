@@ -300,8 +300,10 @@ func TestHistoryCompareAndRestoreOverTheAPI(t *testing.T) {
 	home := h.makeMember(t, "history")
 	slug := h.slugOf(t, home.org)
 	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	memberID := h.addPerson(t, home.org, "member")
+	member := api.as(t, memberID, home.org, slug)
 	docs := newTree(t, owner, "HIST", "History")
+	h.closeSpace(t, docs.space, memberID)
 
 	made := obj(t, want(t, member.post(t, "/api/v1/pages", map[string]any{"parentId": docs.homeID, "title": "Guide", "body": textDoc("Install it", "Run it"), "publish": true}), http.StatusCreated, "v1"), "page")
 	id := made["id"].(string)
@@ -409,8 +411,8 @@ func TestHistoryCompareAndRestoreOverTheAPI(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization reaches none of it", func(t *testing.T) {
-		away := h.makeMember(t, "history-away")
+	t.Run("a member the space is closed to reaches none of it", func(t *testing.T) {
+		away := h.makeOutsider(t, "history-away")
 		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
 		for what, got := range map[string]response{
 			"history": stranger.get(t, pagePath(id, "/versions")),
@@ -426,16 +428,18 @@ func TestHistoryCompareAndRestoreOverTheAPI(t *testing.T) {
 	})
 }
 
-// Straight through SQL as stator_app, versions and drafts stay inside their
-// organization, history cannot be rewritten, and numbers cannot skip.
+// Straight through SQL as stator_app, versions and drafts stay with who may
+// view their page, history cannot be rewritten, and numbers cannot skip.
 func TestVersionsAndDraftsAreGuardedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "version-wall-a")
-	b := h.makeMember(t, "version-wall-b")
-	ownerA := api.as(t, a.user, a.org, h.slugOf(t, a.org))
+	b := h.makeOutsider(t, "version-wall-b")
+	slug := h.slugOf(t, a.org)
+	ownerA := api.as(t, a.user, a.org, slug)
 	docsA := newTree(t, ownerA, "WALL", "Walled")
-	docsB := newTree(t, api.as(t, b.user, b.org, h.slugOf(t, b.org)), "WALL", "Theirs")
+	docsB := newTree(t, api.as(t, b.user, b.org, slug), "THEIRS", "Theirs")
+	h.closeSpace(t, docsA.space)
 	pageA := docsA.add(docsA.homeID, "Secret")
 	pageB := docsB.add(docsB.homeID, "Theirs")
 	want(t, ownerA.put(t, pagePath(pageA, "/draft"), map[string]any{"title": "Secret", "body": textDoc("draft"), "baseVersion": 1}), http.StatusOK, "a draft in A")
@@ -461,7 +465,7 @@ func TestVersionsAndDraftsAreGuardedByTheDatabase(t *testing.T) {
 	refused(t, conn, "deleting B's own history", `DELETE FROM page_version WHERE page_id = $1`, pageB)
 	refused(t, conn, "skipping a version number", `INSERT INTO page_version (org_id, page_id, number, title, body) VALUES ($1, $2, 3, 'Skipped', '{}')`, b.org, pageB)
 	refused(t, conn, "reusing a version number", `INSERT INTO page_version (org_id, page_id, number, title, body) VALUES ($1, $2, 1, 'Again', '{}')`, b.org, pageB)
-	refused(t, conn, "a draft of somebody not in the organization", `INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version) VALUES ($1, $2, $3, 'Planted', '{}', 1)`, b.org, pageB, a.user)
+	refused(t, conn, "a draft in somebody else's name", `INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version) VALUES ($1, $2, $3, 'Planted', '{}', 1)`, b.org, pageB, a.user)
 
 	if n := h.count(t, a.ctx, `SELECT count(*) FROM page_draft WHERE page_id = $1 AND title = 'Secret'`, pageA); n != 1 {
 		t.Errorf("A's draft is gone or changed: %d", n)

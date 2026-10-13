@@ -55,12 +55,12 @@ func TestTeamCalendarsOverTheAPI(t *testing.T) {
 	readerID := h.addPerson(t, org.org, "member")
 	ann, reader := api.as(t, annID, org.org, slug), api.as(t, readerID, org.org, slug)
 
-	newTree(t, owner, "CAL", "Calendars")
+	cal := newTree(t, owner, "CAL", "Calendars")
 	want(t, owner.put(t, "/api/v1/spaces/CAL/permissions", map[string]any{"grants": []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
 	}}), http.StatusOK, "everybody reads CAL, ann adds pages")
-	h.settle(t)
+	h.closeSpace(t, cal.space, annID, readerID)
 
 	var team string
 	t.Run("whoever may add pages adds a calendar, named once per space", func(t *testing.T) {
@@ -180,9 +180,9 @@ func TestTeamCalendarsOverTheAPI(t *testing.T) {
 		}
 	})
 
-	t.Run("another organization finds nothing", func(t *testing.T) {
-		away := h.makeMember(t, "calendars-away")
-		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+	t.Run("a member the space is closed to finds nothing", func(t *testing.T) {
+		away := h.makeOutsider(t, "calendars-away")
+		stranger := api.as(t, away.user, away.org, slug)
 		other := obj(t, want(t, owner.post(t, calendarsPath("CAL"), map[string]any{"name": "Ops"}), http.StatusCreated, "add Ops"), "calendar")["id"].(string)
 		want(t, stranger.get(t, calendarsPath("CAL")), http.StatusNotFound, "a stranger lists")
 		want(t, stranger.get(t, eventsPath(other, "2026-10-01T00:00:00Z", "2026-11-01T00:00:00Z")), http.StatusNotFound, "a stranger reads")
@@ -224,7 +224,7 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 	owner := api.as(t, org.user, org.org, slug)
 	annID := h.addPerson(t, org.org, "member")
 	readerID := h.addPerson(t, org.org, "member")
-	away := h.makeMember(t, "calendar-wall-away")
+	away := h.makeOutsider(t, "calendar-wall-away")
 
 	walled := newTree(t, owner, "CWL", "Walled calendars")
 	other := newTree(t, owner, "CWO", "Other calendars")
@@ -232,6 +232,7 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
 	}}), http.StatusOK, "everybody reads CWL, ann adds pages")
+	h.closeSpace(t, walled.space, annID, readerID)
 	team := obj(t, want(t, owner.post(t, calendarsPath("CWL"), map[string]any{"name": "Team"}), http.StatusCreated, "add Team"), "calendar")["id"].(string)
 	elsewhere := obj(t, want(t, owner.post(t, calendarsPath("CWO"), map[string]any{"name": "Elsewhere"}), http.StatusCreated, "add Elsewhere"), "calendar")["id"].(string)
 	want(t, owner.post(t, calendarPath(team, "/events"), allDay("Release", "event", "2026-10-15", "2026-10-15")), http.StatusCreated, "add the release")
@@ -263,7 +264,7 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 		untouched(t, conn, "a reader removes the calendar", `DELETE FROM calendar WHERE id = $1`, team)
 	})
 
-	t.Run("a stranger reads nothing", func(t *testing.T) {
+	t.Run("a member the space is closed to reads nothing", func(t *testing.T) {
 		actAs(t, conn, away.org, away.user)
 		if n := count(`SELECT count(*) FROM calendar WHERE id = $1`, team) + count(`SELECT count(*) FROM calendar_event WHERE calendar_id = $1`, team); n != 0 {
 			t.Errorf("a stranger reads %d rows", n)
