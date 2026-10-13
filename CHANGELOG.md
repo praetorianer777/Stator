@@ -1104,6 +1104,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The database now keeps themes, personal access tokens and file tombstones
+  to whoever the services keep them to (#395). Before, only the wall between
+  organizations held them, so straight through SQL any member could read or
+  change another member's private themes and tokens, choose a theme for
+  somebody else, or leave a tombstone that sent the file reaper after
+  another person's file. A theme is now its owner's, seen by everybody once
+  shared and tidied by an administrator then; a token is its owner's, listed
+  and revoked by an administrator too; and a tombstone names only a file or
+  preview whose row is gone.
 - Saving the footer line of the export brand now says when it is saved
   (#388). Nothing showed it before, so a reload right after the click could
   abort the save without anyone noticing.
