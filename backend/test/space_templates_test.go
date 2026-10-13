@@ -248,7 +248,7 @@ func TestATemplatesPermissionsHoldInTheDatabase(t *testing.T) {
 	spaceID, homeID := sp["id"].(string), sp["homePageId"].(string)
 
 	conn := appConn(t)
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	refused(t, conn, "granting everyone addPages", `INSERT INTO space_grant (org_id, space_id, permission, subject_type) VALUES ($1, $2, 'addPages', 'everyone')`, home.org, spaceID)
 	refused(t, conn, "granting themselves administer", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id) VALUES ($1, $2, 'administer', 'user', $3)`, home.org, spaceID, memberID)
 	untouched(t, conn, "taking view from everyone", `DELETE FROM space_grant WHERE space_id = $1`, spaceID)

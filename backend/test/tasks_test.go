@@ -465,14 +465,14 @@ func TestTasksAreHeldByTheDatabase(t *testing.T) {
 	insert := `INSERT INTO page_task (org_id, page_id, task_id, position, summary, assignee_id) VALUES ($1, $2, $3, 0, 'Forged', $4)`
 
 	t.Run("only an editor of a published page writes its tasks", func(t *testing.T) {
-		actAs(t, conn, org.org, ritaID)
+		actAs(t, conn, ritaID)
 		denied(t, conn, "a reader adds a task", insert, org.org, page, uuid.New(), nil)
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		denied(t, conn, "a task on an unpublished page", insert, org.org, sketch, uuid.New(), nil)
 		if _, err := conn.Exec(ctx, insert, org.org, page, uuid.New(), annID); err != nil {
 			t.Errorf("the owner may not write a task of their page: %v", err)
 		}
-		actAs(t, conn, org.org, carlID)
+		actAs(t, conn, carlID)
 		untouched(t, conn, "carl ticks the secret's tasks", `UPDATE page_task SET done = true WHERE page_id = $1`, secret)
 		untouched(t, conn, "carl deletes the secret's tasks", `DELETE FROM page_task WHERE page_id = $1`, secret)
 		var seen int
@@ -482,13 +482,13 @@ func TestTasksAreHeldByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a task is assigned only to somebody who may view the page", func(t *testing.T) {
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		denied(t, conn, "carl assigned on the secret", insert, org.org, secret, uuid.New(), carlID)
 		denied(t, conn, "carl given the secret's task", `UPDATE page_task SET assignee_id = $2 WHERE page_id = $1`, secret, carlID)
 	})
 
 	t.Run("who assigned, in which version and the reminder are the database's", func(t *testing.T) {
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		denied(t, conn, "the app notes a reminder", `UPDATE page_task SET due_noticed_at = now() WHERE page_id = $1`, secret)
 		denied(t, conn, "the app names who assigned", `UPDATE page_task SET assigned_by = $2 WHERE page_id = $1`, secret, annID)
 		denied(t, conn, "the app backdates a task done", `UPDATE page_task SET done_at = now() - interval '1 day' WHERE page_id = $1`, secret)
@@ -547,7 +547,7 @@ func TestTasksFollowASpaceLimitedToken(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	count := func(sql string, args ...any) int {
 		t.Helper()
 		var n int

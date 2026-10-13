@@ -404,11 +404,11 @@ func TestTheDatabaseKeepsOrgTransfersToAdministrators(t *testing.T) {
 	importSQL := `INSERT INTO org_import (id, org_id, requested_by, size_bytes) VALUES ($1, $2, $3, 10)`
 
 	conn := appConn(t)
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	refused(t, conn, "a member exporting the organization", exportSQL, uuid.New(), home.org, memberID)
 	refused(t, conn, "a member importing into the organization", importSQL, uuid.New(), home.org, memberID)
 
-	actAs(t, conn, home.org, adminID)
+	actAs(t, conn, adminID)
 	refused(t, conn, "an administrator exporting for somebody else", exportSQL, uuid.New(), home.org, memberID)
 	refused(t, conn, "an administrator importing for somebody else", importSQL, uuid.New(), home.org, memberID)
 	refused(t, conn, "an export queued as done",
@@ -445,7 +445,7 @@ func TestTheDatabaseKeepsOrgTransfersToAdministrators(t *testing.T) {
 	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM org_export WHERE id = $1) + (SELECT count(*) FROM org_import WHERE id = $2)`, export, imported).Scan(&seen); err != nil || seen != 2 {
 		t.Errorf("the administrator reads %d of the jobs: %v", seen, err)
 	}
-	actAs(t, conn, home.org, memberID)
+	actAs(t, conn, memberID)
 	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM org_export) + (SELECT count(*) FROM org_import)`).Scan(&seen); err != nil || seen != 0 {
 		t.Errorf("a member reads %d jobs: %v", seen, err)
 	}

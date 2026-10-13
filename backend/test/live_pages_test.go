@@ -270,34 +270,34 @@ func TestLivePagesAreHeldByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	actAs(t, conn, home.org, readerID)
+	actAs(t, conn, readerID)
 	refused(t, conn, "a reader taking a page off live", `UPDATE page SET mode = 'draft' WHERE id = $1`, notes)
 	untouched(t, conn, "a reader amending the open version", `UPDATE page_version SET body = '{"type":"doc","content":[]}' WHERE page_id = $1 AND number = 2`, notes)
-	refused(t, conn, "a reader naming themselves an editor", `INSERT INTO page_version_editor (org_id, page_id, number, user_id) VALUES (current_org_id(), $1, 2, current_actor_id())`, notes)
+	refused(t, conn, "a reader naming themselves an editor", `INSERT INTO page_version_editor (page_id, number, user_id) VALUES ($1, 2, current_actor_id())`, notes)
 	var pending int
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_pending_drafts($1)`, notes).Scan(&pending); err != nil {
 		t.Fatal(err)
 	}
 
-	actAs(t, conn, home.org, annID)
+	actAs(t, conn, annID)
 	refused(t, conn, "a draft of a live page", `
-		INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version)
-		VALUES (current_org_id(), $1, current_actor_id(), 'Notes', '{"type":"doc","content":[]}', 2)`, notes)
+		INSERT INTO page_draft (page_id, user_id, title, body, base_version)
+		VALUES ($1, current_actor_id(), 'Notes', '{"type":"doc","content":[]}', 2)`, notes)
 	refused(t, conn, "a version saved live on a page of drafts", `
-		INSERT INTO page_version (org_id, page_id, number, title, body, created_by, live)
-		VALUES (current_org_id(), $1, 2, 'Drafts', '{"type":"doc","content":[]}', current_actor_id(), true)`, drafts)
+		INSERT INTO page_version (page_id, number, title, body, created_by, live)
+		VALUES ($1, 2, 'Drafts', '{"type":"doc","content":[]}', current_actor_id(), true)`, drafts)
 	untouched(t, conn, "amending a closed version", `UPDATE page_version SET title = 'Rewritten' WHERE page_id = $1 AND number = 1`, notes)
 	untouched(t, conn, "amending a version of a page of drafts", `UPDATE page_version SET title = 'Rewritten' WHERE page_id = $1 AND number = 1`, drafts)
 	refused(t, conn, "rewriting a version's author", `UPDATE page_version SET created_by = current_actor_id() WHERE page_id = $1 AND number = 2`, notes)
 	refused(t, conn, "rewriting a version's comment", `UPDATE page_version SET comment = 'Rewritten' WHERE page_id = $1 AND number = 2`, notes)
-	refused(t, conn, "naming somebody else an editor", `INSERT INTO page_version_editor (org_id, page_id, number, user_id) VALUES (current_org_id(), $1, 2, $2)`, notes, home.user)
-	refused(t, conn, "naming oneself an editor of a closed version", `INSERT INTO page_version_editor (org_id, page_id, number, user_id) VALUES (current_org_id(), $1, 1, current_actor_id())`, notes)
+	refused(t, conn, "naming somebody else an editor", `INSERT INTO page_version_editor (page_id, number, user_id) VALUES ($1, 2, $2)`, notes, home.user)
+	refused(t, conn, "naming oneself an editor of a closed version", `INSERT INTO page_version_editor (page_id, number, user_id) VALUES ($1, 1, current_actor_id())`, notes)
 	refused(t, conn, "a live folder", `UPDATE page SET mode = 'live' WHERE id = $1`, box)
 	refused(t, conn, "deleting an editor of a version", `DELETE FROM page_version_editor WHERE page_id = $1`, notes)
 	if tag, err := conn.Exec(ctx, `UPDATE page_version SET body = '{"type":"doc","content":[]}' WHERE page_id = $1 AND number = 2`, notes); err != nil || tag.RowsAffected() != 1 {
 		t.Errorf("an editor could not amend the open version: %d rows, %v", tag.RowsAffected(), err)
 	}
-	if _, err := conn.Exec(ctx, `INSERT INTO page_version_editor (org_id, page_id, number, user_id) VALUES (current_org_id(), $1, 2, current_actor_id())`, notes); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO page_version_editor (page_id, number, user_id) VALUES ($1, 2, current_actor_id())`, notes); err != nil {
 		t.Errorf("an editor could not name themselves an editor of the open version: %v", err)
 	}
 	if _, err := h.super.Exec(ctx, `UPDATE page_version SET created_at = now() - live_version_span() - interval '1 minute' WHERE page_id = $1 AND number = 2`, notes); err != nil {
@@ -308,8 +308,8 @@ func TestLivePagesAreHeldByTheDatabase(t *testing.T) {
 	// Drafts of a page going live go with the switch, whoever's they are.
 	want(t, owner.put(t, pagePath(drafts, "/draft"), map[string]any{"title": "Drafts", "body": textDoc("Owner's"), "baseVersion": 1}), http.StatusOK, "the owner drafts")
 	if _, err := conn.Exec(ctx, `
-		INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version)
-		VALUES (current_org_id(), $1, current_actor_id(), 'Drafts', '{"type":"doc","content":[]}', 1)`, drafts); err != nil {
+		INSERT INTO page_draft (page_id, user_id, title, body, base_version)
+		VALUES ($1, current_actor_id(), 'Drafts', '{"type":"doc","content":[]}', 1)`, drafts); err != nil {
 		t.Fatalf("ann could not draft a page of drafts: %v", err)
 	}
 	var names []string

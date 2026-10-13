@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// Spaces and pages belong to an organization: nobody signed in is told to
-// sign in, and somebody without an organization to choose one.
-func TestSpaceAndPageRoutesNeedAnOrganization(t *testing.T) {
+// Spaces and pages are the members': nobody signed in is told to sign in,
+// and somebody signed in who is no member that they are not one yet.
+func TestSpaceAndPageRoutesNeedAMember(t *testing.T) {
 	s := newServer(t)
 	s.Auth = fakeAuth{"no-org": {UserID: uuid.New()}}
 	h := s.Routes(nil)
@@ -29,7 +29,7 @@ func TestSpaceAndPageRoutesNeedAnOrganization(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer no-org")
 		resp, body = serve(t, h, req)
 		if resp.StatusCode != http.StatusBadRequest || errorOf(t, body)["code"] != "no_organization" {
-			t.Errorf("%s %s with no organization = %d %v, want 400", op.method, op.path, resp.StatusCode, body)
+			t.Errorf("%s %s from a non-member = %d %v, want 400", op.method, op.path, resp.StatusCode, body)
 		}
 	}
 }

@@ -58,7 +58,7 @@ func anonymousAccess(ctx context.Context, tx db.DBTX, sp *Space) (*AnonymousAcce
 	out := AnonymousAccess{Personal: sp.Owner != nil}
 	err := tx.QueryRow(ctx, `
 		SELECT EXISTS (SELECT 1 FROM space_grant WHERE space_id = $1 AND subject_type = 'anonymous' AND permission = 'view'),
-		       (SELECT anonymous_access FROM org WHERE id = current_org_id())`, sp.ID).Scan(&out.View, &out.OrgEnabled)
+		       (SELECT anonymous_access FROM org)`, sp.ID).Scan(&out.View, &out.OrgEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("read whether anybody may read the space: %w", err)
 	}
@@ -86,8 +86,8 @@ func (s *Service) SetAnonymousAccess(ctx context.Context, actor perm.Actor, key 
 		}
 		if in.View {
 			_, err = tx.Exec(ctx, `
-				INSERT INTO space_grant (org_id, space_id, permission, subject_type)
-				VALUES (current_org_id(), $1, 'view', 'anonymous') ON CONFLICT DO NOTHING`, sp.ID)
+				INSERT INTO space_grant (space_id, permission, subject_type)
+				VALUES ($1, 'view', 'anonymous') ON CONFLICT DO NOTHING`, sp.ID)
 		} else {
 			_, err = tx.Exec(ctx, `DELETE FROM space_grant WHERE space_id = $1 AND subject_type = 'anonymous'`, sp.ID)
 		}

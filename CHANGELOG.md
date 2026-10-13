@@ -1066,6 +1066,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Outbound webhooks no longer send `orgId` (#380).** The envelope is now
+  `{id, topic, occurredAt, payload}`: an instance serves one organization, so
+  the field said nothing. A receiver that reads `orgId` to tell instances
+  apart should tell them by the address it gave each, or by its secret.
+- Nothing in the database reads an organization any more (#380): the
+  policies that kept each organization's rows to itself, and the filter by
+  organization inside every function, are gone, and who reaches what is
+  decided by the access policies alone, as before.
 - Signing in no longer asks for the organization (#380): an instance serves
   one, so the sign-in page offers SSO straight away and
   `GET /api/v1/auth/oidc/start` replaces `/auth/oidc/{orgSlug}/start`. The

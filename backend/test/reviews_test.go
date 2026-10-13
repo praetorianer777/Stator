@@ -426,28 +426,28 @@ func TestReviewsAreHeldByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	decision := `INSERT INTO page_review_decision (org_id, review_id, reviewer_id, decision) VALUES (current_org_id(), $1, $2, 'approve')`
-	nextVersion := `INSERT INTO page_version (org_id, page_id, number, title, body, created_by, review_id)
-		VALUES (current_org_id(), $1, 2, 'Around', '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb, current_actor_id(), $2)`
+	decision := `INSERT INTO page_review_decision (review_id, reviewer_id, decision) VALUES ($1, $2, 'approve')`
+	nextVersion := `INSERT INTO page_version (page_id, number, title, body, created_by, review_id)
+		VALUES ($1, 2, 'Around', '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb, current_actor_id(), $2)`
 
-	actAs(t, conn, home.org, annID)
+	actAs(t, conn, annID)
 	refused(t, conn, "the author approving her own draft", decision, reviewID, annID)
 	refused(t, conn, "a second pending review of a page", `
-		INSERT INTO page_review (org_id, page_id, author_id, base_version, title, body, required)
-		VALUES (current_org_id(), $1, current_actor_id(), 1, 'Again', '{}'::jsonb, 1)`, held)
+		INSERT INTO page_review (page_id, author_id, base_version, title, body, required)
+		VALUES ($1, current_actor_id(), 1, 'Again', '{}'::jsonb, 1)`, held)
 	refused(t, conn, "a review born published", `
-		INSERT INTO page_review (org_id, page_id, author_id, base_version, title, body, required, state, version, finished_at)
-		VALUES (current_org_id(), $1, current_actor_id(), 1, 'Done', '{}'::jsonb, 1, 'published', 2, now())`, quiet)
+		INSERT INTO page_review (page_id, author_id, base_version, title, body, required, state, version, finished_at)
+		VALUES ($1, current_actor_id(), 1, 'Done', '{}'::jsonb, 1, 'published', 2, now())`, quiet)
 	refused(t, conn, "a review published without its approvals", `
 		UPDATE page_review SET state = 'published', version = 2, finished_at = now() WHERE id = $1`, reviewID)
 	refused(t, conn, "a review skipped by its author", `
 		UPDATE page_review SET state = 'skipped', skip_reason = 'Mine', skipped_by = current_actor_id(), version = 2, finished_at = now() WHERE id = $1`, reviewID)
 
-	actAs(t, conn, home.org, daveID)
+	actAs(t, conn, daveID)
 	refused(t, conn, "somebody not named approving", decision, reviewID, daveID)
 	refused(t, conn, "an approval in somebody else's name", decision, reviewID, bobID)
 
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	refused(t, conn, "an editor publishing around the review", nextVersion, held, nil)
 	refused(t, conn, "an editor publishing the review in his own name", nextVersion, held, reviewID)
 	refused(t, conn, "a skip without a reason", `
@@ -455,60 +455,60 @@ func TestReviewsAreHeldByTheDatabase(t *testing.T) {
 	refused(t, conn, "a skip with no version behind it", `
 		UPDATE page_review SET state = 'skipped', skip_reason = 'Urgent', skipped_by = current_actor_id(), version = 2, finished_at = now() WHERE id = $1`, reviewID)
 	refused(t, conn, "a reviewer everyone", `
-		INSERT INTO review_rule_subject (org_id, rule_id, subject_type) VALUES (current_org_id(), $1, 'everyone')`, ruleID)
-	if _, err := conn.Exec(ctx, `INSERT INTO review_rule (org_id, space_id, required, updated_by) VALUES (current_org_id(), $1, 1, current_actor_id())`, spaceID); err != nil {
+		INSERT INTO review_rule_subject (rule_id, subject_type) VALUES ($1, 'everyone')`, ruleID)
+	if _, err := conn.Exec(ctx, `INSERT INTO review_rule (space_id, required, updated_by) VALUES ($1, 1, current_actor_id())`, spaceID); err != nil {
 		t.Errorf("the administrator could not hold the space: %v", err)
 	}
 	if _, err := conn.Exec(ctx, `DELETE FROM review_rule WHERE space_id = $1`, spaceID); err != nil {
 		t.Errorf("the administrator could not stop holding the space: %v", err)
 	}
 
-	actAs(t, conn, home.org, bobID)
+	actAs(t, conn, bobID)
 	refused(t, conn, "a reviewer withdrawing", `UPDATE page_review SET state = 'withdrawn', finished_at = now() WHERE id = $1`, reviewID)
 	if _, err := conn.Exec(ctx, decision, reviewID, bobID); err != nil {
 		t.Fatalf("bob could not approve: %v", err)
 	}
 	refused(t, conn, "a reviewer publishing in the author's name", `
-		INSERT INTO page_version (org_id, page_id, number, title, body, created_by, review_id)
-		VALUES (current_org_id(), $1, 2, 'Held', '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb, $2, $3)`, held, annID, reviewID)
+		INSERT INTO page_version (page_id, number, title, body, created_by, review_id)
+		VALUES ($1, 2, 'Held', '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb, $2, $3)`, held, annID, reviewID)
 	refused(t, conn, "a review sent back without asking for changes", `
 		UPDATE page_review SET state = 'changes_requested', finished_at = now() WHERE id = $1`, reviewID)
 	refused(t, conn, "a member holding the space", `
-		INSERT INTO review_rule (org_id, space_id, required) VALUES (current_org_id(), $1, 1)`, spaceID)
+		INSERT INTO review_rule (space_id, required) VALUES ($1, 1)`, spaceID)
 	refused(t, conn, "a member naming himself a reviewer", `
-		INSERT INTO review_rule_subject (org_id, rule_id, subject_type, user_id) VALUES (current_org_id(), $1, 'user', current_actor_id())`, ruleID)
+		INSERT INTO review_rule_subject (rule_id, subject_type, user_id) VALUES ($1, 'user', current_actor_id())`, ruleID)
 	untouched(t, conn, "a member removing the rule", `DELETE FROM review_rule WHERE id = $1`, ruleID)
 	untouched(t, conn, "a member changing the rule", `UPDATE review_rule SET required = 1 WHERE id = $1`, ruleID)
 
-	actAs(t, conn, home.org, carlID)
+	actAs(t, conn, carlID)
 	if _, err := conn.Exec(ctx, decision, reviewID, carlID); err != nil {
 		t.Errorf("carl, named by his group, could not approve: %v", err)
 	}
 
-	actAs(t, conn, home.org, daveID)
+	actAs(t, conn, daveID)
 	untouched(t, conn, "somebody changing bob's word", `UPDATE page_review_decision SET decision = 'changes', comment = 'No' WHERE reviewer_id = $1`, bobID)
 	refused(t, conn, "a reader confirming for somebody else", `
-		INSERT INTO page_read_confirmation (org_id, page_id, user_id, version) VALUES (current_org_id(), $1, $2, 1)`, asks, bobID)
+		INSERT INTO page_read_confirmation (page_id, user_id, version) VALUES ($1, $2, 1)`, asks, bobID)
 	refused(t, conn, "a reader confirming a page that does not ask", `
-		INSERT INTO page_read_confirmation (org_id, page_id, user_id, version) VALUES (current_org_id(), $1, current_actor_id(), 1)`, quiet)
+		INSERT INTO page_read_confirmation (page_id, user_id, version) VALUES ($1, current_actor_id(), 1)`, quiet)
 	refused(t, conn, "a reader confirming a version the page is not at", `
-		INSERT INTO page_read_confirmation (org_id, page_id, user_id, version) VALUES (current_org_id(), $1, current_actor_id(), 0)`, asks)
+		INSERT INTO page_read_confirmation (page_id, user_id, version) VALUES ($1, current_actor_id(), 0)`, asks)
 	refused(t, conn, "a reader asking", `
-		INSERT INTO page_read_ask (org_id, page_id, since, asked_by) VALUES (current_org_id(), $1, 1, current_actor_id())`, quiet)
+		INSERT INTO page_read_ask (page_id, since, asked_by) VALUES ($1, 1, current_actor_id())`, quiet)
 	untouched(t, conn, "a reader stopping the ask", `DELETE FROM page_read_ask WHERE page_id = $1`, asks)
 	if _, err := conn.Exec(ctx, `
-		INSERT INTO page_read_confirmation (org_id, page_id, user_id, version) VALUES (current_org_id(), $1, current_actor_id(), 1)`, asks); err != nil {
+		INSERT INTO page_read_confirmation (page_id, user_id, version) VALUES ($1, current_actor_id(), 1)`, asks); err != nil {
 		t.Errorf("dave could not confirm reading: %v", err)
 	}
 
-	actAs(t, conn, home.org, annID)
+	actAs(t, conn, annID)
 	untouched(t, conn, "somebody reading another's confirmation", `SELECT 1 FROM page_read_confirmation WHERE page_id = $1`, asks)
 	if _, err := conn.Exec(ctx, `UPDATE page_review SET state = 'withdrawn', finished_at = now() WHERE id = $1`, reviewID); err != nil {
 		t.Fatalf("ann could not withdraw her review: %v", err)
 	}
 	refused(t, conn, "a decided review made pending again", `UPDATE page_review SET state = 'pending', finished_at = NULL WHERE id = $1`, reviewID)
 
-	actAs(t, conn, home.org, bobID)
+	actAs(t, conn, bobID)
 	untouched(t, conn, "a decision on a review no longer pending", `UPDATE page_review_decision SET comment = 'Late' WHERE review_id = $1 AND reviewer_id = current_actor_id()`, reviewID)
 
 	// The page is free again once nothing waits, which the service shows too.

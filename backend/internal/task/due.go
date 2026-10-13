@@ -11,7 +11,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -87,14 +86,14 @@ func (w *DueWatch) Once(ctx context.Context) (int, error) {
 	}
 	noted := 0
 	for _, d := range found {
-		org := tenant.WithOrg(db.PinPrimary(ctx), tenant.Org{ID: d.orgID})
+		pinned := db.PinPrimary(ctx)
 		happened := false
-		_, err := w.db.WriteAdmin(org, func(ctx context.Context, tx db.DBTX) error {
+		_, err := w.db.WriteAdmin(pinned, func(ctx context.Context, tx db.DBTX) error {
 			var e events.TaskDue
 			// A second worker, or a task done or moved to another day meanwhile, finds no row.
 			err := tx.QueryRow(ctx, `
 				UPDATE page_task SET due_noticed_at = now()
-				WHERE org_id = current_org_id() AND id = $1 AND NOT done AND assignee_id IS NOT NULL
+				WHERE id = $1 AND NOT done AND assignee_id IS NOT NULL
 				  AND due_noticed_at IS NULL AND due_on <= task_today()
 				RETURNING page_id, task_id, assignee_id, to_char(due_on, 'YYYY-MM-DD')`, d.id).Scan(&e.PageID, &e.TaskID, &e.AssigneeID, &e.DueOn)
 			if errors.Is(err, pgx.ErrNoRows) {

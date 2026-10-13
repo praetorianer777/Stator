@@ -14,8 +14,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 )
 
-// Service reads the counts and the readers through SQL functions that keep to
-// current_org_id() and judge current_actor_id(), as the home lists do.
+// Service reads the counts and the readers through SQL functions that judge
+// current_actor_id(), as the home lists do.
 type Service struct {
 	db *db.Cluster
 }
@@ -29,8 +29,8 @@ const (
 	// CountQuery counts the actor's view of a page today; a second one that
 	// day finds its row and writes nothing.
 	CountQuery = `
-		INSERT INTO page_view (org_id, page_id, user_id, day)
-		VALUES (current_org_id(), $2, $1, page_view_today())
+		INSERT INTO page_view (page_id, user_id, day)
+		VALUES ($2, $1, page_view_today())
 		ON CONFLICT (org_id, page_id, user_id, day) DO NOTHING`
 )
 

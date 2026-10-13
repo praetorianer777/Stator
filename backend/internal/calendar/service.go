@@ -108,7 +108,7 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, key string, in C
 		// The id is made here: a row the statement writes is not yet one its
 		// own snapshot lets the policies see.
 		id := uuid.Must(uuid.NewV7())
-		if _, err := tx.Exec(ctx, `INSERT INTO calendar (org_id, id, space_id, name) VALUES (current_org_id(), $1, $2, $3)`, id, sp.ID, name); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO calendar (id, space_id, name) VALUES ($1, $2, $3)`, id, sp.ID, name); err != nil {
 			return refusal(err, "save the calendar")
 		}
 		out, _, err = load(ctx, tx, actor, id)
@@ -230,8 +230,8 @@ func (s *Service) CreateEvent(ctx context.Context, actor perm.Actor, calendarID 
 		}
 		id := uuid.Must(uuid.NewV7())
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO calendar_event (org_id, id, space_id, calendar_id, title, kind, all_day, starts_at, ends_at)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8)`,
+			INSERT INTO calendar_event (id, space_id, calendar_id, title, kind, all_day, starts_at, ends_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 			id, sp.ID, calendarID, clean.Title, string(clean.Kind), clean.AllDay, clean.Start, clean.End); err != nil {
 			return refusal(err, "save the event")
 		}

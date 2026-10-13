@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // An administrator adds people with a password, who then sign in without any
@@ -138,9 +137,6 @@ func TestAnAdministratorAddsPeopleWhoSignInWithAPassword(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer conn.Close(ctx)
-		if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, org.ID.String()); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := conn.Exec(ctx, `INSERT INTO app_user (email, name, password_hash) VALUES ($1, 'Sneaky', 'x')`, "sneaky-"+suffix+"@stator.test"); err == nil {
 			t.Fatal("the application role made a person")
 		}

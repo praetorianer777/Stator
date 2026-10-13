@@ -303,14 +303,14 @@ func (s *Service) Recent(ctx context.Context, actor perm.Actor, limit int) ([]Re
 // VisitQuery moves a page to the top of the actor's recent pages. One on top
 // since today began keeps its row untouched, so reloading it writes nothing.
 const VisitQuery = `
-	INSERT INTO page_visit (org_id, user_id, page_id)
-	SELECT current_org_id(), $1, $2
+	INSERT INTO page_visit (user_id, page_id)
+	SELECT $1, $2
 	WHERE NOT EXISTS (
 		SELECT 1 FROM page_visit r
-		WHERE r.org_id = current_org_id() AND r.user_id = $1 AND r.page_id = $2
+		WHERE r.user_id = $1 AND r.page_id = $2
 		  AND r.visited_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
 		  AND NOT EXISTS (SELECT 1 FROM page_visit w
-		                  WHERE w.org_id = current_org_id() AND w.user_id = $1 AND w.visited_at > r.visited_at))
+		                  WHERE w.user_id = $1 AND w.visited_at > r.visited_at))
 	ON CONFLICT (org_id, user_id, page_id) DO UPDATE SET visited_at = now()`
 
 // Visit notes that the actor opened a page and counts the view, refusing with

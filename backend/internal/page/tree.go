@@ -357,8 +357,8 @@ func (s *Service) Create(ctx context.Context, actor perm.Actor, in CreateInput) 
 		// the statement's own snapshot does not hold the row it writes.
 		id := uuid.Must(uuid.NewV7())
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by, kind, version)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, COALESCE($6::jsonb, '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb), $7, $7, $8, $9)`,
+			INSERT INTO page (id, space_id, parent_id, rank, title, body, created_by, updated_by, kind, version)
+			VALUES ($1, $2, $3, $4, $5, COALESCE($6::jsonb, '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb), $7, $7, $8, $9)`,
 			id, sp.ID, in.ParentID, r, title, nullJSON(in.Body), actor.UserID, kind, version); err != nil {
 			return fmt.Errorf("save the page: %w", err)
 		}

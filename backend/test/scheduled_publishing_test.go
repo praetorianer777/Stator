@@ -361,16 +361,16 @@ func TestSchedulesAreHeldByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	insert := `INSERT INTO page_schedule (org_id, page_id, user_id, publish_at) VALUES (current_org_id(), $1, $2, now() + interval '1 hour')`
+	insert := `INSERT INTO page_schedule (page_id, user_id, publish_at) VALUES ($1, $2, now() + interval '1 hour')`
 
-	actAs(t, conn, home.org, annID)
+	actAs(t, conn, annID)
 	refused(t, conn, "a schedule of somebody else's draft", insert, news, home.user)
 	refused(t, conn, "a schedule without a draft", insert, plain, annID)
 	refused(t, conn, "a schedule for a time past", `
-		INSERT INTO page_schedule (org_id, page_id, user_id, publish_at) VALUES (current_org_id(), $1, current_actor_id(), now() - interval '1 minute')`, news)
+		INSERT INTO page_schedule (page_id, user_id, publish_at) VALUES ($1, current_actor_id(), now() - interval '1 minute')`, news)
 	refused(t, conn, "a schedule born failed", `
-		INSERT INTO page_schedule (org_id, page_id, user_id, publish_at, failed_at, failure)
-		VALUES (current_org_id(), $1, current_actor_id(), now() + interval '1 hour', now(), 'gone')`, news)
+		INSERT INTO page_schedule (page_id, user_id, publish_at, failed_at, failure)
+		VALUES ($1, current_actor_id(), now() + interval '1 hour', now(), 'gone')`, news)
 	if _, err := conn.Exec(ctx, insert, news, annID); err != nil {
 		t.Fatalf("ann could not schedule her own draft: %v", err)
 	}
@@ -378,18 +378,18 @@ func TestSchedulesAreHeldByTheDatabase(t *testing.T) {
 	refused(t, conn, "a schedule moved into the past", `UPDATE page_schedule SET publish_at = now() - interval '1 minute' WHERE page_id = $1`, news)
 	refused(t, conn, "a schedule handed to somebody else", `UPDATE page_schedule SET user_id = $2 WHERE page_id = $1`, news, home.user)
 
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	refused(t, conn, "a second schedule of one page", insert, news, home.user)
 	untouched(t, conn, "an editor moving somebody else's schedule", `UPDATE page_schedule SET publish_at = now() + interval '2 hours' WHERE page_id = $1`, news)
 
-	actAs(t, conn, home.org, readerID)
+	actAs(t, conn, readerID)
 	untouched(t, conn, "a reader reading a schedule", `SELECT 1 FROM page_schedule WHERE page_id = $1`, news)
 	untouched(t, conn, "a reader calling a schedule off", `DELETE FROM page_schedule WHERE page_id = $1`, news)
 
 	// An author who lost edit still reads their own, and sets nothing.
 	want(t, restrict(t, owner, news, nil, []any{user(home.user)}), http.StatusOK, "editing is the owner's alone")
 	h.settle(t)
-	actAs(t, conn, home.org, annID)
+	actAs(t, conn, annID)
 	var mine int
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_schedule WHERE page_id = $1`, news).Scan(&mine); err != nil || mine != 1 {
 		t.Errorf("an author who lost edit reads %d of her schedules, %v", mine, err)
@@ -399,7 +399,7 @@ func TestSchedulesAreHeldByTheDatabase(t *testing.T) {
 		t.Errorf("the worker, acting for an author who lost edit, could not lock her schedule: %v", err)
 	}
 
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	if tag, err := conn.Exec(ctx, `DELETE FROM page_schedule WHERE page_id = $1`, news); err != nil || tag.RowsAffected() != 1 {
 		t.Errorf("an editor could not call ann's schedule off: %d rows, %v", tag.RowsAffected(), err)
 	}

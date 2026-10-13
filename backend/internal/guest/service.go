@@ -82,14 +82,14 @@ func (s *Service) Invite(ctx context.Context, actor perm.Actor, spaceKey string,
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role, guest_space_id)
-			VALUES (current_org_id(), $1, 'guest', $2)`, userID, sp.ID); err != nil {
+			INSERT INTO org_member (user_id, org_role, guest_space_id)
+			VALUES ($1, 'guest', $2)`, userID, sp.ID); err != nil {
 			return fmt.Errorf("make the guest's membership: %w", err)
 		}
 		for _, p := range in.Role.Permissions() {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
-				VALUES (current_org_id(), $1, $2, 'user', $3)`, sp.ID, string(p), userID); err != nil {
+				INSERT INTO space_grant (space_id, permission, subject_type, user_id)
+				VALUES ($1, $2, 'user', $3)`, sp.ID, string(p), userID); err != nil {
 				return fmt.Errorf("grant the guest %s: %w", p, err)
 			}
 		}
@@ -123,7 +123,7 @@ func (s *Service) Remove(ctx context.Context, actor perm.Actor, spaceKey string,
 			return err
 		}
 		tag, err := tx.Exec(ctx, `
-			DELETE FROM org_member WHERE org_id = current_org_id() AND user_id = $1
+			DELETE FROM org_member WHERE user_id = $1
 			  AND org_role = 'guest' AND guest_space_id = $2`, userID, sp.ID)
 		if err != nil {
 			return err
@@ -168,7 +168,7 @@ func notYetHere(ctx context.Context, tx db.DBTX, userID uuid.UUID, email string,
 	err := tx.QueryRow(ctx, `
 		SELECT m.org_role, m.guest_space_id, gs.name, gs.key FROM org_member m
 		LEFT JOIN space gs ON gs.id = m.guest_space_id
-		WHERE m.org_id = current_org_id() AND m.user_id = $1`, userID).Scan(&role, &inSpace, &named, &spaceKey)
+		WHERE m.user_id = $1`, userID).Scan(&role, &inSpace, &named, &spaceKey)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return nil
@@ -189,7 +189,7 @@ func list(ctx context.Context, tx db.DBTX, spaceID uuid.UUID, only *uuid.UUID) (
 		       ARRAY(SELECT g.permission FROM space_grant g
 		             WHERE g.org_id = m.org_id AND g.space_id = m.guest_space_id AND g.subject_type = 'user' AND g.user_id = m.user_id)
 		FROM org_member m JOIN app_user u ON u.id = m.user_id
-		WHERE m.org_id = current_org_id() AND m.org_role = 'guest' AND m.guest_space_id = $1
+		WHERE m.org_role = 'guest' AND m.guest_space_id = $1
 		  AND ($2::uuid IS NULL OR m.user_id = $2)
 		ORDER BY lower(u.name), u.email`, spaceID, only)
 	if err != nil {

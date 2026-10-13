@@ -17,7 +17,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 var (
@@ -289,8 +288,8 @@ func (s *Service) Get(ctx context.Context, actor perm.Actor, commentID uuid.UUID
 // add writes a comment in the actor's name and tells the outbox.
 func add(ctx context.Context, tx db.DBTX, actor perm.Actor, id, threadID, pageID uuid.UUID, body json.RawMessage, reply bool) error {
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO comment (org_id, id, thread_id, page_id, author_id, body)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5)`, id, threadID, pageID, actor.UserID, []byte(body)); err != nil {
+		INSERT INTO comment (id, thread_id, page_id, author_id, body)
+		VALUES ($1, $2, $3, $4, $5)`, id, threadID, pageID, actor.UserID, []byte(body)); err != nil {
 		return fmt.Errorf("add the comment: %w", err)
 	}
 	mentioned, err := toTell(ctx, tx, pageID, nil, body)
@@ -325,8 +324,8 @@ func (s *Service) Start(ctx context.Context, actor perm.Actor, pageID uuid.UUID,
 		}
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO comment_thread (org_id, page_id, kind, created_by)
-			VALUES (current_org_id(), $1, $2, $3) RETURNING id`, pageID, KindPage, actor.UserID).Scan(&id); err != nil {
+			INSERT INTO comment_thread (page_id, kind, created_by)
+			VALUES ($1, $2, $3) RETURNING id`, pageID, KindPage, actor.UserID).Scan(&id); err != nil {
 			return fmt.Errorf("start the thread: %w", err)
 		}
 		if err := add(ctx, tx, actor, id, id, pageID, body, false); err != nil {
@@ -461,11 +460,7 @@ func (s *Service) Delete(ctx context.Context, actor perm.Actor, commentID uuid.U
 		if mine {
 			return nil
 		}
-		org, err := tenant.MustFromContext(ctx)
-		if err != nil {
-			return err
-		}
-		return audit.Write(ctx, tx, org.ID, audit.Entry{
+		return audit.Write(ctx, tx, audit.Entry{
 			Action: audit.ActionCommentDeleted, TargetType: "comment", TargetID: &commentID, Actor: actor.UserID,
 			Data: map[string]any{"pageId": h.page, "threadId": h.thread, "authorId": h.author},
 		})

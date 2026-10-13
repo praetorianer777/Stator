@@ -94,10 +94,10 @@ func TestPersonalSpacesAreHeldByTheDatabase(t *testing.T) {
 	annID := h.addPerson(t, home.org, "member")
 	bobID := h.addPerson(t, home.org, "member")
 	conn := appConn(t)
-	actAs(t, conn, home.org, annID)
+	actAs(t, conn, annID)
 	ctx := context.Background()
 
-	insert := `INSERT INTO space (id, org_id, key, name, created_by, owner_id) VALUES ($1, current_org_id(), $2, 'Notes', $3, $4)`
+	insert := `INSERT INTO space (id, key, name, created_by, owner_id) VALUES ($1, $2, 'Notes', $3, $4)`
 	refused(t, conn, "an ordinary space by a member", insert, uuid.New(), "PLAIN", annID, nil)
 	refused(t, conn, "a personal space for somebody else", insert, uuid.New(), "BOBS", annID, bobID)
 	refused(t, conn, "a personal space made in somebody else's name", insert, uuid.New(), "BOBS", bobID, bobID)
@@ -117,7 +117,7 @@ func TestPersonalSpacesAreHeldByTheDatabase(t *testing.T) {
 	}
 	refused(t, conn, "handing the space to somebody else", `UPDATE space SET owner_id = $2 WHERE id = $1`, mine, bobID)
 
-	actAs(t, conn, home.org, bobID)
+	actAs(t, conn, bobID)
 	untouched(t, conn, "reading somebody else's personal space", `UPDATE space SET name = 'Mine now' WHERE id = $1`, mine)
 
 	t.Run("an owner's account going leaves an ordinary space nobody owns", func(t *testing.T) {

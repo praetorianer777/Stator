@@ -17,7 +17,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/home"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // titlesOf reads a list's items by their page title, or the space's name for
@@ -290,7 +289,7 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("somebody reads and changes only their own stars", func(t *testing.T) {
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		if n := count(`SELECT count(*) FROM star`); n != 1 {
 			t.Errorf("ann reads %d stars, want her own one", n)
 		}
@@ -306,7 +305,7 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("somebody who may no longer view a page reads nothing about it", func(t *testing.T) {
-		actAs(t, conn, org.org, benID)
+		actAs(t, conn, benID)
 		if n := count(`SELECT count(*) FROM star WHERE page_id = $1`, closed); n != 1 {
 			t.Fatalf("ben does not read his star on Closed")
 		}
@@ -315,7 +314,7 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 		}
 		want(t, restrict(t, owner, closed, []any{user(org.user)}, nil), http.StatusOK, "Closed is not ben's either")
 		h.settle(t)
-		actAs(t, conn, org.org, benID)
+		actAs(t, conn, benID)
 		if n := count(`SELECT count(*) FROM star WHERE page_id = $1`, closed); n != 0 {
 			t.Errorf("ben reads his star on a page he may no longer view")
 		}
@@ -334,7 +333,7 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("nobody moves a page up the updates without publishing it", func(t *testing.T) {
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		var before, after time.Time
 		if err := conn.QueryRow(ctx, `SELECT published_at FROM page WHERE id = $1`, open).Scan(&before); err != nil {
 			t.Fatal(err)
@@ -351,7 +350,7 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a member the space is closed to reads and writes nothing of it", func(t *testing.T) {
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		if n := count(`SELECT count(*) FROM star`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d stars", n)
 		}
@@ -422,7 +421,6 @@ func TestUpdatesReadAWindowNotTheWholeOrganization(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	for _, stmt := range []string{
-		`SELECT set_config('` + tenant.PostgresVar + `', '` + org.org.String() + `', true)`,
 		`SELECT set_config('` + db.UserVar + `', '` + annID.String() + `', true)`,
 		`SET LOCAL track_functions = 'all'`,
 		`LOAD 'auto_explain'`,

@@ -119,9 +119,9 @@ func TestAnEditedPictureIsItsFilesNextVersion(t *testing.T) {
 
 	t.Run("straight through SQL an edit names a picture's version of the same file and keeps its type, by an editor", func(t *testing.T) {
 		conn := appConn(t)
-		actAs(t, conn, home.org, readerID)
+		actAs(t, conn, readerID)
 		denied(t, conn, "a reader saving an edit", `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'shot.png', 'image/png', 2, 1)`, home.org, pageID)
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		for what, sql := range map[string]string{
 			"editing a version never made":  `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'shot.png', 'image/png', 2, 9)`,
 			"an edit of another type":       `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'SHOT.png', 'image/jpeg', 2, 1)`,

@@ -427,14 +427,14 @@ func TestBlogPostsAreHeldByTheDatabase(t *testing.T) {
 	if err := h.super.QueryRow(ctx, `SELECT id FROM space WHERE org_id = $1 AND key = 'BDBC'`, home.org).Scan(&closedID); err != nil {
 		t.Fatal(err)
 	}
-	insert := `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by, kind, version)
-		VALUES (current_org_id(), $1, $2, 'a', 'Raw', current_actor_id(), $3, $4)`
+	insert := `INSERT INTO page (space_id, parent_id, rank, title, created_by, kind, version)
+		VALUES ($1, $2, 'a', 'Raw', current_actor_id(), $3, $4)`
 
 	conn := appConn(t)
-	actAs(t, conn, home.org, readerID)
+	actAs(t, conn, readerID)
 	refused(t, conn, "a reader writing a post", insert, spaceID, nil, "post", 0)
 
-	actAs(t, conn, home.org, annID)
+	actAs(t, conn, annID)
 	refused(t, conn, "a post born published", insert, spaceID, nil, "post", 1)
 	refused(t, conn, "a post in the tree", insert, spaceID, tr.homeID, "post", 0)
 	refused(t, conn, "a page under a post", insert, spaceID, post, "page", 0)
@@ -457,13 +457,13 @@ func TestBlogPostsAreHeldByTheDatabase(t *testing.T) {
 		t.Errorf("ann backdated her post from %s to %s (%v)", before, after, err)
 	}
 
-	refused(t, conn, "a blog watch for somebody else", `INSERT INTO watch (org_id, user_id, kind, space_id) VALUES (current_org_id(), $1, 'blog', $2)`, readerID, spaceID)
-	refused(t, conn, "a blog watch on a closed space", `INSERT INTO watch (org_id, user_id, kind, space_id) VALUES (current_org_id(), current_actor_id(), 'blog', $1)`, closedID)
-	refused(t, conn, "a blog watch on a page", `INSERT INTO watch (org_id, user_id, kind, page_id) VALUES (current_org_id(), current_actor_id(), 'blog', $1)`, post)
-	if _, err := conn.Exec(ctx, `INSERT INTO watch (org_id, user_id, kind, space_id) VALUES (current_org_id(), current_actor_id(), 'blog', $1)`, spaceID); err != nil {
+	refused(t, conn, "a blog watch for somebody else", `INSERT INTO watch (user_id, kind, space_id) VALUES ($1, 'blog', $2)`, readerID, spaceID)
+	refused(t, conn, "a blog watch on a closed space", `INSERT INTO watch (user_id, kind, space_id) VALUES (current_actor_id(), 'blog', $1)`, closedID)
+	refused(t, conn, "a blog watch on a page", `INSERT INTO watch (user_id, kind, page_id) VALUES (current_actor_id(), 'blog', $1)`, post)
+	if _, err := conn.Exec(ctx, `INSERT INTO watch (user_id, kind, space_id) VALUES (current_actor_id(), 'blog', $1)`, spaceID); err != nil {
 		t.Errorf("ann could not watch the blog: %v", err)
 	}
-	if _, err := conn.Exec(ctx, `INSERT INTO watch (org_id, user_id, kind, space_id) VALUES (current_org_id(), current_actor_id(), 'space', $1)`, spaceID); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO watch (user_id, kind, space_id) VALUES (current_actor_id(), 'space', $1)`, spaceID); err != nil {
 		t.Errorf("ann could not watch the space beside its blog: %v", err)
 	}
 

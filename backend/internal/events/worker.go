@@ -23,7 +23,7 @@ const (
 	// DefaultIdle is how long the worker waits when nothing is waiting.
 	DefaultIdle = time.Second
 	// MaxAttempts is how often an event is tried before it is marked done
-	// with its last error, so one bad event cannot block a tenant.
+	// with its last error, so one bad event cannot block the others.
 	MaxAttempts = 10
 	// retryStep is how much longer each failed attempt waits than the last.
 	retryStep = 5 * time.Second

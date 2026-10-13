@@ -319,7 +319,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 
 	t.Run("the records are walled by the database", func(t *testing.T) {
 		conn := appConn(t)
-		actAs(t, conn, home.org, bobID)
+		actAs(t, conn, bobID)
 		var n int
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM armature_remote_link WHERE page_id = $1`, page).Scan(&n); err != nil || n != 4 {
 			t.Errorf("bob reads %d records of a page he may view (%v)", n, err)

@@ -14,7 +14,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/perm"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // State is where an import of several documents stands.
@@ -162,9 +161,9 @@ func (s *Service) Queue(ctx context.Context, actor perm.Actor, parentID uuid.UUI
 	if err != nil {
 		return nil, 0, err
 	}
-	org, ok := tenant.FromContext(ctx)
-	if !ok {
-		return nil, 0, errors.New("queue a Word import: no organization in the context")
+	org, err := s.site.Org(ctx)
+	if err != nil {
+		return nil, 0, err
 	}
 	id := uuid.Must(uuid.NewV7())
 	key := ObjectKey(org.ID, id)
@@ -174,8 +173,8 @@ func (s *Service) Queue(ctx context.Context, actor perm.Actor, parentID uuid.UUI
 	var out *Job
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO word_import (id, org_id, requested_by, parent_id, file_count, size_bytes, skipped)
-			VALUES ($1, current_org_id(), $2, $3, $4, $5, $6)`,
+			INSERT INTO word_import (id, requested_by, parent_id, file_count, size_bytes, skipped)
+			VALUES ($1, $2, $3, $4, $5, $6)`,
 			id, actor.UserID, parentID, len(b.docs), b.size, nonNil(b.skipped)); err != nil {
 			return err
 		}

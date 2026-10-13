@@ -219,8 +219,8 @@ func TestAPersonFollowsTheThemeArmatureShowsThem(t *testing.T) {
 		var halfID uuid.UUID
 		_, err := h.cluster.Write(db.WithUser(owner.ctx, home.user), func(ctx context.Context, tx db.DBTX) error {
 			return tx.QueryRow(ctx, `
-				INSERT INTO theme (org_id, owner_id, name, shared, spec, armature_theme_id, armature_updated_at)
-				VALUES (current_org_id(), $1, 'Half a copy', false, '{}', $2, $3) RETURNING id`,
+				INSERT INTO theme (owner_id, name, shared, spec, armature_theme_id, armature_updated_at)
+				VALUES ($1, 'Half a copy', false, '{}', $2, $3) RETURNING id`,
 				home.user, uuid.New(), theme.MirrorPending).Scan(&halfID)
 		})
 		if err != nil {

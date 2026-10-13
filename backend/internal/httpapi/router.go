@@ -23,6 +23,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/hub"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
@@ -43,7 +44,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/star"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
@@ -67,7 +67,7 @@ type Database interface {
 // Instance finds the one organization the instance serves; *instance.Resolver
 // is the real one.
 type Instance interface {
-	Org(ctx context.Context) (tenant.Org, error)
+	Org(ctx context.Context) (instance.Org, error)
 }
 
 // Server holds everything the handlers need.

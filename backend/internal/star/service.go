@@ -59,7 +59,7 @@ func (s *Service) StarSpace(ctx context.Context, actor perm.Actor, key string) (
 			return err
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO star (org_id, user_id, space_id) VALUES (current_org_id(), $1, $2)
+			INSERT INTO star (user_id, space_id) VALUES ($1, $2)
 			ON CONFLICT DO NOTHING`, actor.UserID, sp.ID)
 		return err
 	})

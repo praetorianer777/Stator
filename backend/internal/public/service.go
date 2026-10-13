@@ -15,9 +15,9 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 type Service struct {
@@ -28,7 +28,7 @@ func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
 
 // Site is the organization as an anonymous reader finds it; while it lets
 // nobody read without signing in, it is not found.
-func (s *Service) Site(ctx context.Context, org tenant.Org) (*Site, error) {
+func (s *Service) Site(ctx context.Context, org instance.Org) (*Site, error) {
 	var out Site
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
@@ -49,8 +49,8 @@ func (s *Service) Site(ctx context.Context, org tenant.Org) (*Site, error) {
 
 // Reading binds ctx to the organization as an anonymous reader, whom the
 // database holds to the spaces open to anybody whatever a query forgets.
-func Reading(ctx context.Context, org tenant.Org) context.Context {
-	return db.WithAnonymous(tenant.WithOrg(ctx, org))
+func Reading(ctx context.Context, org instance.Org) context.Context {
+	return db.WithAnonymous(ctx)
 }
 
 // A space or page an anonymous reader may read, asked again in the service
@@ -281,7 +281,7 @@ func (s *Service) Settings(ctx context.Context, actor perm.Actor) (*Settings, er
 }
 
 func read(ctx context.Context, tx db.DBTX, out *Settings) error {
-	if err := tx.QueryRow(ctx, `SELECT anonymous_access, anonymous_indexable FROM org WHERE id = current_org_id()`).
+	if err := tx.QueryRow(ctx, `SELECT anonymous_access, anonymous_indexable FROM org`).
 		Scan(&out.Enabled, &out.Indexable); err != nil {
 		return fmt.Errorf("read whether the organization is open to anybody: %w", err)
 	}
@@ -311,7 +311,7 @@ func (s *Service) SetSettings(ctx context.Context, actor perm.Actor, in Settings
 		if err := read(ctx, tx, &before); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE org SET anonymous_access = $1, anonymous_indexable = $2 WHERE id = current_org_id()`,
+		if _, err := tx.Exec(ctx, `UPDATE org SET anonymous_access = $1, anonymous_indexable = $2`,
 			in.Enabled, in.Indexable); err != nil {
 			return fmt.Errorf("open the organization to anybody: %w", err)
 		}

@@ -325,13 +325,14 @@ func TestThemeRowsAreWalledByTheDatabase(t *testing.T) {
 		}
 		return n
 	}
-	for _, table := range []string{"theme", "theme_asset", "user_theme"} {
-		if got := count(`SELECT count(*) FROM ` + table); got != 0 {
-			t.Errorf("an unscoped connection sees %d rows in %s", got, table)
-		}
+	if got := count(`SELECT count(*) FROM theme WHERE id = $1`, private); got != 0 {
+		t.Error("a connection naming nobody sees a private theme")
+	}
+	if got := count(`SELECT count(*) FROM theme_asset WHERE theme_id = $1`, private); got != 0 {
+		t.Error("a connection naming nobody sees the files of a private theme")
 	}
 
-	actAs(t, conn, b.org, b.user)
+	actAs(t, conn, b.user)
 	if got := count(`SELECT count(*) FROM theme WHERE id = $1`, private); got != 0 {
 		t.Error("a member sees another's private theme")
 	}
@@ -362,7 +363,7 @@ func TestThemeRowsAreWalledByTheDatabase(t *testing.T) {
 		t.Errorf("a member cannot choose a shared theme: %v", err)
 	}
 
-	actAs(t, conn, a.org, admin)
+	actAs(t, conn, admin)
 	untouched(t, conn, "an administrator renaming a private theme", `UPDATE theme SET name = 'Taken' WHERE id = $1`, private)
 	untouched(t, conn, "an administrator deleting a private theme's file", `DELETE FROM theme_asset WHERE theme_id = $1`, private)
 	if tag, err := conn.Exec(context.Background(), `UPDATE theme SET name = 'Tidied' WHERE id = $1`, shared); err != nil || tag.RowsAffected() != 1 {

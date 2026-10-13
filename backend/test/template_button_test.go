@@ -120,9 +120,9 @@ func TestTemplateButtonsOverTheAPI(t *testing.T) {
 		spaceID := docs.spaceID(t)
 		conn := appConn(t)
 		insert := `INSERT INTO page (id, org_id, space_id, parent_id, rank, title, created_by, updated_by) VALUES ($1, $2, $3, $4, 'zz', 'Forged', $5, $5)`
-		actAs(t, conn, org.org, carlID)
+		actAs(t, conn, carlID)
 		denied(t, conn, "a reader adds a page under plans", insert, uuid.Must(uuid.NewV7()), org.org, spaceID, plans, carlID)
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		if _, err := conn.Exec(context.Background(), insert, uuid.Must(uuid.NewV7()), org.org, spaceID, plans, annID); err != nil {
 			t.Errorf("ann cannot add a page under plans: %v", err)
 		}
@@ -228,14 +228,14 @@ func TestContributorsOverTheAPI(t *testing.T) {
 			return n
 		}
 		versions := `SELECT count(*) FROM page_version WHERE page_id = $1`
-		actAs(t, conn, org.org, carlID)
+		actAs(t, conn, carlID)
 		if n := count(versions, secret); n != 0 {
 			t.Errorf("carl reads %d versions of the secret", n)
 		}
 		if n := count(versions, guide); n != 5 {
 			t.Errorf("carl reads %d versions of the guide", n)
 		}
-		actAs(t, conn, org.org, benID)
+		actAs(t, conn, benID)
 		if n := count(versions, secret); n != 2 {
 			t.Errorf("ben reads %d versions of the secret", n)
 		}

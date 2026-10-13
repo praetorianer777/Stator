@@ -239,7 +239,7 @@ func saveLive(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, title 
 	}
 	var open, same bool
 	if err := tx.QueryRow(ctx, `
-		SELECT page_version_open(current_org_id(), p.id, p.version), p.title = $2 AND p.body = $3::jsonb
+		SELECT page_version_open(p.org_id, p.id, p.version), p.title = $2 AND p.body = $3::jsonb
 		FROM page p WHERE p.id = $1`, p.ID, title, body).Scan(&open, &same); err != nil {
 		return nil, fmt.Errorf("read the open version: %w", err)
 	}
@@ -301,8 +301,8 @@ func saveLive(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, title 
 // savedBy names the actor among a live version's editors and reads it back.
 func savedBy(ctx context.Context, tx db.DBTX, pageID uuid.UUID, number int, amended bool) (*LiveSaved, error) {
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_version_editor (org_id, page_id, number, user_id)
-		VALUES (current_org_id(), $1, $2, current_actor_id())
+		INSERT INTO page_version_editor (page_id, number, user_id)
+		VALUES ($1, $2, current_actor_id())
 		ON CONFLICT DO NOTHING`, pageID, number); err != nil {
 		return nil, fmt.Errorf("name the version's editor: %w", err)
 	}

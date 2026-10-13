@@ -352,7 +352,7 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 	conn := appConn(t)
 	ctx := context.Background()
 
-	actAs(t, conn, home.org, bobID)
+	actAs(t, conn, bobID)
 	refused(t, conn, "a member makes a template for every space",
 		`INSERT INTO page_template (org_id, name, body) VALUES ($1, 'Mine', $2)`, home.org, body)
 	refused(t, conn, "a member makes a template for a space they do not administer",
@@ -364,7 +364,7 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 		t.Errorf("the member sees %d templates (%v), want TSQL's alone", seen, err)
 	}
 
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	refused(t, conn, "a page holds a blank", `UPDATE page SET body = $2 WHERE id = $1`, page, body)
 	refused(t, conn, "a version holds a blank",
 		`INSERT INTO page_version (org_id, page_id, number, title, body, created_by) VALUES ($1, $2, 2, 'Raw', $3, $4)`, home.org, page, body, home.user)
@@ -413,7 +413,7 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 			t.Error("gwen is offered the organization's template")
 		}
 	}
-	actAs(t, conn, home.org, gwenID)
+	actAs(t, conn, gwenID)
 	count := func(who string, n int) {
 		t.Helper()
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_template WHERE id = ANY($1::uuid[])`, []string{spaceTpl, orgTpl, hiddenTpl}).Scan(&seen); err != nil || seen != n {
@@ -423,9 +423,9 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 	count("gwen", 1)
 	refused(t, conn, "gwen makes a template for TSQL",
 		`INSERT INTO page_template (org_id, space_id, name, body) VALUES ($1, $2, 'Guest', $3)`, home.org, spaceID, body)
-	actAs(t, conn, home.org, home.user)
+	actAs(t, conn, home.user)
 	count("the owner", 3)
-	actAnonymously(t, conn, home.org)
+	actAnonymously(t, conn)
 	count("an anonymous reader of TSQL", 0)
 	refused(t, conn, "an anonymous reader makes a template for TSQL",
 		`INSERT INTO page_template (org_id, space_id, name, body) VALUES ($1, $2, 'Anybody', $3)`, home.org, spaceID, body)

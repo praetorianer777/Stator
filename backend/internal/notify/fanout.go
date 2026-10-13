@@ -17,7 +17,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/mail"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // Subject is what one event tells people about: a page, and a thread, a
@@ -122,9 +121,9 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 	if !ok || e.OrgID == uuid.Nil {
 		return nil
 	}
-	org := tenant.WithOrg(db.PinPrimary(ctx), tenant.Org{ID: e.OrgID})
+	pinned := db.PinPrimary(ctx)
 	var plan *Plan
-	err := f.db.ReadAdmin(org, func(ctx context.Context, tx db.DBTX) error {
+	err := f.db.ReadAdmin(pinned, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		plan, err = planner(ctx, tx, e)
 		return err
@@ -133,7 +132,7 @@ func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 		return err
 	}
 	for _, t := range Pick(plan.Actor, plan.Tells) {
-		if err := f.deliver(db.WithUser(org, t.UserID), e.ID, plan, t); err != nil {
+		if err := f.deliver(db.WithUser(pinned, t.UserID), e.ID, plan, t); err != nil {
 			return fmt.Errorf("tell %s: %w", t.UserID, err)
 		}
 	}
@@ -151,7 +150,7 @@ func planPublished(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, erro
 		comment string
 		body    []byte
 	)
-	err := tx.QueryRow(ctx, `SELECT comment, body FROM page_version WHERE page_id = $1 AND number = $2 AND org_id = current_org_id()`,
+	err := tx.QueryRow(ctx, `SELECT comment, body FROM page_version WHERE page_id = $1 AND number = $2`,
 		in.PageID, in.Version).Scan(&comment, &body)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -200,7 +199,7 @@ func planAmended(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error)
 		return nil, nil
 	}
 	var body []byte
-	err := tx.QueryRow(ctx, `SELECT body FROM page_version WHERE page_id = $1 AND number = $2 AND org_id = current_org_id()`,
+	err := tx.QueryRow(ctx, `SELECT body FROM page_version WHERE page_id = $1 AND number = $2`,
 		in.PageID, in.Version).Scan(&body)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -227,7 +226,7 @@ func tellAssignedAndMentioned(ctx context.Context, tx db.DBTX, plan *Plan, pageI
 	// assigned the task to somebody else, or saw it done, tells nobody here.
 	rows, err := tx.Query(ctx, `
 		SELECT assignee_id, task_id, summary FROM page_task
-		WHERE org_id = current_org_id() AND page_id = $1 AND assigned_version = $2 AND NOT done AND assignee_id IS NOT NULL
+		WHERE page_id = $1 AND assigned_version = $2 AND NOT done AND assignee_id IS NOT NULL
 		  AND ($3::timestamptz IS NULL OR assigned_at = $3)
 		ORDER BY position`, pageID, version, at)
 	if err != nil {
@@ -268,7 +267,7 @@ func planVerificationLapsed(ctx context.Context, tx db.DBTX, e events.Event) (*P
 		SELECT o.user_id, COALESCE(perm_page_viewable(v.page_id, o.user_id), false), v.verified_by, v.version
 		FROM page_verification v
 		LEFT JOIN page_owner o ON o.org_id = v.org_id AND o.page_id = v.page_id
-		WHERE v.org_id = current_org_id() AND v.page_id = $1 AND v.expires_at <= now() AND v.expires_at = $2`,
+		WHERE v.page_id = $1 AND v.expires_at <= now() AND v.expires_at = $2`,
 		in.PageID, in.ExpiresAt).Scan(&owner, &ownerViews, &verifier, &version)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -301,7 +300,7 @@ func planTaskDue(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error)
 		SELECT t.summary, p.version FROM page_task t
 		JOIN page p ON p.org_id = t.org_id AND p.id = t.page_id
 		JOIN space s ON s.id = p.space_id
-		WHERE t.org_id = current_org_id() AND t.page_id = $1 AND t.task_id = $2 AND t.assignee_id = $3
+		WHERE t.page_id = $1 AND t.task_id = $2 AND t.assignee_id = $3
 		  AND t.due_on = $4::date AND NOT t.done AND p.archived_at IS NULL AND s.archived_at IS NULL`,
 		in.PageID, in.TaskID, in.AssigneeID, in.DueOn).Scan(&summary, &version)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -326,7 +325,7 @@ func planScheduleFailed(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	var version int
 	err := tx.QueryRow(ctx, `
 		SELECT p.version FROM page_schedule sc JOIN page p ON p.org_id = sc.org_id AND p.id = sc.page_id
-		WHERE sc.org_id = current_org_id() AND sc.page_id = $1 AND sc.user_id = $2
+		WHERE sc.page_id = $1 AND sc.user_id = $2
 		  AND sc.failed_at IS NOT NULL AND sc.publish_at = $3`,
 		in.PageID, in.AuthorID, in.PublishAt).Scan(&version)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -371,8 +370,8 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, plan *Plan, t T
 		}
 		var id uuid.UUID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO notification (org_id, user_id, event_id, kind, actor_id, page_id, thread_id, comment_id, version, excerpt, task_id)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			INSERT INTO notification (user_id, event_id, kind, actor_id, page_id, thread_id, comment_id, version, excerpt, task_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			ON CONFLICT (event_id, user_id) DO NOTHING
 			RETURNING id`,
 			t.UserID, eventID, t.Kind, nullable(plan.Actor), subject.PageID, subject.ThreadID,
@@ -387,7 +386,7 @@ func (f *FanOut) deliver(ctx context.Context, eventID uuid.UUID, plan *Plan, t T
 			return nil
 		}
 		if prefs.Digest != DigestOff {
-			_, err := tx.Exec(ctx, `INSERT INTO notification_digest (org_id, user_id, notification_id) VALUES (current_org_id(), $1, $2)`, t.UserID, id)
+			_, err := tx.Exec(ctx, `INSERT INTO notification_digest (user_id, notification_id) VALUES ($1, $2)`, t.UserID, id)
 			return err
 		}
 		var to string

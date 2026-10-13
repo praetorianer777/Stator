@@ -203,8 +203,8 @@ func (s *Service) SetRestrictions(ctx context.Context, actor perm.Actor, id uuid
 					SELECT 1 FROM wanted w WHERE w.kind = r.kind AND w.subject_type = r.subject_type
 					  AND w.user_id IS NOT DISTINCT FROM r.user_id AND w.group_id IS NOT DISTINCT FROM r.group_id)
 			)
-			INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id, group_id)
-			SELECT current_org_id(), $1, w.kind, w.subject_type, w.user_id, w.group_id FROM wanted w
+			INSERT INTO page_restriction (page_id, kind, subject_type, user_id, group_id)
+			SELECT $1, w.kind, w.subject_type, w.user_id, w.group_id FROM wanted w
 			WHERE NOT EXISTS (
 				SELECT 1 FROM page_restriction r WHERE r.page_id = $1 AND r.kind = w.kind AND r.subject_type = w.subject_type
 				  AND r.user_id IS NOT DISTINCT FROM w.user_id AND r.group_id IS NOT DISTINCT FROM w.group_id)

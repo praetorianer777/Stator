@@ -282,7 +282,7 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 	onComment := `INSERT INTO reaction (org_id, page_id, comment_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)`
 
 	t.Run("somebody off a view list reads none and adds none", func(t *testing.T) {
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		if n := count(`SELECT count(*) FROM reaction WHERE page_id = $1`, secret); n != 0 {
 			t.Errorf("carl reads %d reactions on Secret", n)
 		}
@@ -294,7 +294,7 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("nobody reacts or unreacts in somebody else's name", func(t *testing.T) {
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		denied(t, conn, "a reaction as ann", onPage, home.org, open, annID, "🙂")
 		untouched(t, conn, "taking ann's off", `DELETE FROM reaction WHERE user_id = $1`, annID)
 		denied(t, conn, "changing ann's emoji", `UPDATE reaction SET emoji = '👎' WHERE user_id = $1`, annID)
@@ -307,7 +307,7 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("an unpublished page, a deleted comment and a comment of another page take none", func(t *testing.T) {
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "a reaction on an unpublished page", onPage, home.org, draft, annID, "🙂")
 		denied(t, conn, "a reaction on a deleted comment", onComment, home.org, open, gone, annID, "🙂")
 		refused(t, conn, "a comment's reaction naming another page", onComment, home.org, open, elsewhere, annID, "🙂")
@@ -323,7 +323,7 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		}}), http.StatusOK, "RRAW is read only")
 		h.settle(t)
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "a reaction without addComments", onPage, home.org, open, annID, "🎉")
 		if n, err := conn.Exec(ctx, `DELETE FROM reaction WHERE user_id = $1 AND page_id = $2 AND comment_id IS NULL`, annID, open); err != nil || n.RowsAffected() != 1 {
 			t.Errorf("ann may not take her own off while she may view the page: %v", err)
@@ -333,7 +333,7 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 	t.Run("a member the space is closed to reads none and puts none on", func(t *testing.T) {
 		// Read only above opened it to everyone again.
 		h.closeSpace(t, docs.space)
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		if n := count(`SELECT count(*) FROM reaction`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d reactions", n)
 		}

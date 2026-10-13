@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // The service refusing is not proof. Straight through SQL as stator_app, for
@@ -54,7 +53,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("a transaction that names nobody sees no page", func(t *testing.T) {
-		if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false), set_config($3, '', false)`, tenant.PostgresVar, home.org.String(), db.UserVar); err != nil {
+		if _, err := conn.Exec(ctx, `SELECT set_config($1, '', false)`, db.UserVar); err != nil {
 			t.Fatal(err)
 		}
 		for _, table := range []string{"space", "page", "page_version", "page_restriction", "space_grant", "global_grant"} {
@@ -65,7 +64,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("somebody off a view list reads nothing below it", func(t *testing.T) {
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		for table, column := range map[string]string{"page": "id", "page_version": "page_id", "page_restriction": "page_id", "page_draft": "page_id", "attachment": "page_id"} {
 			if n := count(`SELECT count(*) FROM `+table+` WHERE `+column+` = ANY ($1)`, []string{top, low}); n != 0 {
 				t.Errorf("carl reads %d rows of %s", n, table)
@@ -83,7 +82,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("somebody off an edit list reads but cannot change", func(t *testing.T) {
-		actAs(t, conn, home.org, bobID)
+		actAs(t, conn, bobID)
 		if n := count(`SELECT count(*) FROM page WHERE id = $1`, low); n != 1 {
 			t.Fatalf("bob does not read Low: %d", n)
 		}
@@ -101,7 +100,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a reader cannot write, a member cannot administer", func(t *testing.T) {
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "a page in a read only space", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by) VALUES ($1, (SELECT space_id FROM page WHERE id = $2), $2, 'W', 'Planted', $3)`, home.org, readPage, annID)
 		denied(t, conn, "retitling in a read only space", `UPDATE page SET title = 'Taken' WHERE id = $1`, readPage)
 		denied(t, conn, "renaming a space", `UPDATE space SET name = 'Taken' WHERE key = 'RAW'`)
@@ -119,7 +118,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("an administrator passes every list", func(t *testing.T) {
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		if n := count(`SELECT count(*) FROM page WHERE id = ANY ($1)`, []string{top, low}); n != 2 {
 			t.Errorf("the owner reads %d of the restricted pages", n)
 		}
@@ -138,13 +137,13 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 		t.Cleanup(func() {
 			h.cleanupExec(t, h.super, `INSERT INTO global_grant (org_id, permission, subject_type) VALUES ($1, 'use', 'everyone')`, home.org)
 		})
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		for _, table := range []string{"space", "page"} {
 			if n := count(`SELECT count(*) FROM ` + table); n != 0 {
 				t.Errorf("a member without use reads %d rows of %s", n, table)
 			}
 		}
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		if n := count(`SELECT count(*) FROM space`); n != 2 {
 			t.Errorf("the owner without a use grant reads %d spaces", n)
 		}

@@ -53,8 +53,8 @@ func publish(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r relea
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_version (org_id, page_id, number, title, body, comment, notify_watchers, restored_from, created_by, live, review_id)
-		VALUES (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		INSERT INTO page_version (page_id, number, title, body, comment, notify_watchers, restored_from, created_by, live, review_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		p.ID, number, r.title, r.body, r.comment, r.notify, r.restoredFrom, actor.UserID, r.live, r.reviewID); err != nil {
 		return nil, fmt.Errorf("write version %d: %w", number, err)
 	}
@@ -203,8 +203,8 @@ func (s *Service) SaveDraft(ctx context.Context, actor perm.Actor, id uuid.UUID,
 			return &FieldError{Field: "baseVersion", Message: fmt.Sprintf("The page is at version %d, so a draft cannot start from version %d. Reload the page and edit again.", p.Version, in.BaseVersion)}
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO page_draft (page_id, user_id, title, body, base_version)
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (org_id, page_id, user_id) DO UPDATE
 			SET title = EXCLUDED.title, body = EXCLUDED.body, base_version = EXCLUDED.base_version`,
 			id, actor.UserID, title, in.Body, in.BaseVersion); err != nil {

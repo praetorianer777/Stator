@@ -182,8 +182,8 @@ func ipFrom(ctx context.Context) string {
 	return ip
 }
 
-// Write records an entry for an organization inside the caller's transaction.
-func Write(ctx context.Context, tx db.DBTX, orgID uuid.UUID, e Entry) error {
+// Write records an entry inside the caller's transaction.
+func Write(ctx context.Context, tx db.DBTX, e Entry) error {
 	if strings.TrimSpace(e.Action) == "" {
 		return errors.New("an audit entry needs an action")
 	}
@@ -203,9 +203,9 @@ func Write(ctx context.Context, tx db.DBTX, orgID uuid.UUID, e Entry) error {
 		ip = ipFrom(ctx)
 	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO audit_log (org_id, actor_user_id, action, target_type, target_id, data, ip)
-		VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')::inet)`,
-		orgID, actor, e.Action, e.TargetType, e.TargetID, data, ip)
+		INSERT INTO audit_log (actor_user_id, action, target_type, target_id, data, ip)
+		VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::inet)`,
+		actor, e.Action, e.TargetType, e.TargetID, data, ip)
 	return err
 }
 

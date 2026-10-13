@@ -14,7 +14,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const (
@@ -130,11 +129,11 @@ func (w *Watch) Once(ctx context.Context) (bool, error) {
 }
 
 func (w *Watch) run(ctx context.Context, c *claim) error {
-	org := tenant.WithOrg(db.WithUser(db.PinPrimary(ctx), c.requester.ID), tenant.Org{ID: c.org, Slug: c.slug})
+	pinned := db.WithUser(db.PinPrimary(ctx), c.requester.ID)
 	if c.leftover != nil {
 		// Left by a worker that died: gone before anything else, or the job
 		// waits for the next worker to try again.
-		if err := w.discard(org, c, *c.leftover); err != nil {
+		if err := w.discard(pinned, c, *c.leftover); err != nil {
 			return err
 		}
 	}
@@ -144,7 +143,7 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 	case c.attempts > MaxAttempts:
 		return w.store.finish(ctx, c, outcome{state: StateFailed, failure: FailureFailed})
 	}
-	run, cancel := context.WithTimeout(org, RunLimit)
+	run, cancel := context.WithTimeout(pinned, RunLimit)
 	defer cancel()
 	if c.kind == KindRenew {
 		return w.renew(ctx, run, c)
@@ -159,7 +158,7 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 	})
 	settle := context.WithoutCancel(ctx)
 	if errors.Is(err, ErrNotDiscarded) {
-		if again := w.discard(context.WithoutCancel(org), c, begun); again != nil {
+		if again := w.discard(context.WithoutCancel(pinned), c, begun); again != nil {
 			return errors.Join(err, again)
 		}
 	}

@@ -50,8 +50,8 @@ func (s *Service) StartInline(ctx context.Context, actor perm.Actor, pageID uuid
 		// The id is claimed before the bodies are compared, so a taken one
 		// is refused as such rather than as a changed page.
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO comment_thread (org_id, id, page_id, kind, created_by, quote)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)`, in.ThreadID, pageID, KindInline, actor.UserID, quote); err != nil {
+			INSERT INTO comment_thread (id, page_id, kind, created_by, quote)
+			VALUES ($1, $2, $3, $4, $5)`, in.ThreadID, pageID, KindInline, actor.UserID, quote); err != nil {
 			if isUnique(err) {
 				return ErrThreadTaken
 			}

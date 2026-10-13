@@ -27,7 +27,7 @@ func planReviewSubmitted(ctx context.Context, tx db.DBTX, e events.Event) (*Plan
 	)
 	err := tx.QueryRow(ctx, `
 		SELECT author_id, comment FROM page_review
-		WHERE org_id = current_org_id() AND id = $1 AND page_id = $2 AND state = 'pending'`,
+		WHERE id = $1 AND page_id = $2 AND state = 'pending'`,
 		in.ReviewID, in.PageID).Scan(&author, &comment)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -40,10 +40,10 @@ func planReviewSubmitted(ctx context.Context, tx db.DBTX, e events.Event) (*Plan
 	}
 	rows, err := tx.Query(ctx, `
 		SELECT s.user_id FROM page_review_subject s
-		WHERE s.org_id = current_org_id() AND s.review_id = $1 AND s.user_id IS NOT NULL
+		WHERE s.review_id = $1 AND s.user_id IS NOT NULL
 		UNION
 		SELECT gm.user_id FROM page_review_subject s JOIN group_member gm ON gm.group_id = s.group_id
-		WHERE s.org_id = current_org_id() AND s.review_id = $1
+		WHERE s.review_id = $1
 		ORDER BY 1`, in.ReviewID)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func planReviewDecided(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, 
 		SELECT r.author_id, CASE WHEN $3 = 'skipped' THEN COALESCE(r.skip_reason, '')
 		                         ELSE COALESCE((SELECT d.comment FROM page_review_decision d
 		                                        WHERE d.org_id = r.org_id AND d.review_id = r.id AND d.reviewer_id = $4), '') END
-		FROM page_review r WHERE r.org_id = current_org_id() AND r.id = $1 AND r.page_id = $2`,
+		FROM page_review r WHERE r.id = $1 AND r.page_id = $2`,
 		in.ReviewID, in.PageID, in.Outcome, in.ActorID).Scan(&author, &said)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

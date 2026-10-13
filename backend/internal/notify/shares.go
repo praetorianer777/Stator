@@ -23,7 +23,7 @@ func planShared(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) 
 		pageID, sharer uuid.UUID
 		message        string
 	)
-	err := tx.QueryRow(ctx, `SELECT page_id, sharer_id, message FROM page_share WHERE id = $1 AND org_id = current_org_id()`,
+	err := tx.QueryRow(ctx, `SELECT page_id, sharer_id, message FROM page_share WHERE id = $1`,
 		in.ShareID).Scan(&pageID, &sharer, &message)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -35,7 +35,7 @@ func planShared(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error) 
 	if sharer != in.ActorID || pageID != in.PageID {
 		return nil, nil
 	}
-	rows, err := tx.Query(ctx, `SELECT user_id FROM page_share_recipient WHERE share_id = $1 AND org_id = current_org_id() ORDER BY user_id`, in.ShareID)
+	rows, err := tx.Query(ctx, `SELECT user_id FROM page_share_recipient WHERE share_id = $1 ORDER BY user_id`, in.ShareID)
 	if err != nil {
 		return nil, err
 	}

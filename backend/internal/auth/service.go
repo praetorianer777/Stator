@@ -13,7 +13,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/instance"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // lastSeenEvery is how stale last_seen_at may get before a request refreshes
@@ -97,7 +96,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 
 	var orgID *uuid.UUID
 	var guest guestSpaceColumns
-	var org tenant.Org
+	var org instance.Org
 	err = s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
 			SELECT o.id, o.slug, o.name, m.org_role, gs.id, gs.key, gs.name
@@ -188,7 +187,7 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	// A membership row is required, not merely an org row: revoking somebody's
 	// membership locks them out of an open session at once.
 	if orgID != nil && memberRole != nil {
-		p.Org = &tenant.Org{ID: *orgID, Slug: *orgSlug}
+		p.Org = &instance.Org{ID: *orgID, Slug: *orgSlug}
 		p.OrgName = *orgName
 		p.Role = OrgRole(*memberRole)
 		p.GuestSpace = guest.ref()

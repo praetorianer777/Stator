@@ -13,9 +13,9 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // ErrPageNotFound answers a page the caller may not view or that is in the trash.
@@ -136,8 +136,8 @@ func (s *Service) CreateLink(ctx context.Context, actor perm.Actor, pageID uuid.
 			return &RefusedError{Reason: RefusalFull}
 		}
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO page_link (org_id, page_id, token_hash, label, created_by, expires_at)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5)
+			INSERT INTO page_link (page_id, token_hash, label, created_by, expires_at)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING id, created_at`, pageID, digest, label, actor.UserID, in.ExpiresAt).Scan(&out.ID, &out.CreatedAt); err != nil {
 			return overFull(err)
 		}
@@ -203,7 +203,7 @@ func (s *Service) LinkSettings(ctx context.Context, actor perm.Actor) (*LinkSett
 		if err := requireAdmin(ctx, tx, actor); err != nil {
 			return err
 		}
-		return tx.QueryRow(ctx, `SELECT public_links FROM org WHERE id = current_org_id()`).Scan(&out.Enabled)
+		return tx.QueryRow(ctx, `SELECT public_links FROM org`).Scan(&out.Enabled)
 	})
 	if err != nil {
 		return nil, err
@@ -219,13 +219,13 @@ func (s *Service) SetLinkSettings(ctx context.Context, actor perm.Actor, in Link
 			return err
 		}
 		var before bool
-		if err := tx.QueryRow(ctx, `SELECT public_links FROM org WHERE id = current_org_id()`).Scan(&before); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT public_links FROM org`).Scan(&before); err != nil {
 			return fmt.Errorf("read whether the organization allows public links: %w", err)
 		}
 		if before == in.Enabled {
 			return nil
 		}
-		if _, err := tx.Exec(ctx, `UPDATE org SET public_links = $1 WHERE id = current_org_id()`, in.Enabled); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE org SET public_links = $1`, in.Enabled); err != nil {
 			return fmt.Errorf("allow public links: %w", err)
 		}
 		return perm.Record(ctx, tx, actor, audit.ActionOrgPublicLinksSet, "org", nil, map[string]any{"enabled": in.Enabled})
@@ -238,7 +238,7 @@ func (s *Service) SetLinkSettings(ctx context.Context, actor perm.Actor, in Link
 
 // LinkSite is the organization while it allows links; otherwise every link
 // is gone, as one nobody holds.
-func (s *Service) LinkSite(ctx context.Context, org tenant.Org) (*Site, error) {
+func (s *Service) LinkSite(ctx context.Context, org instance.Org) (*Site, error) {
 	var out Site
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
@@ -259,8 +259,8 @@ func (s *Service) LinkSite(ctx context.Context, org tenant.Org) (*Site, error) {
 
 // ReadingLink binds ctx to the organization as an anonymous reader holding
 // the token, whom the database lets read the one page a live link opens.
-func ReadingLink(ctx context.Context, org tenant.Org, token string) context.Context {
-	return db.WithLink(tenant.WithOrg(ctx, org), auth.HashToken(token))
+func ReadingLink(ctx context.Context, org instance.Org, token string) context.Context {
+	return db.WithLink(ctx, auth.HashToken(token))
 }
 
 // LinkedPage is the page the reader's link opens, with the people it names

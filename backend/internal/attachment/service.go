@@ -208,8 +208,8 @@ func (s *Service) add(ctx context.Context, tx db.DBTX, actor perm.Actor, pageID 
 	}
 	var key string
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO attachment (id, org_id, page_id, uploaded_by, file_name, content_type, size_bytes, width, height, restored_from, edited_from)
-		VALUES ($1, current_org_id(), $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO attachment (id, page_id, uploaded_by, file_name, content_type, size_bytes, width, height, restored_from, edited_from)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING object_key`,
 		id, pageID, actor.UserID, v.name, v.contentType, len(v.data), v.width, v.height, v.restoredFrom, v.editedFrom).Scan(&key); err != nil {
 		return nil, fmt.Errorf("record the file: %w", err)

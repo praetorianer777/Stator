@@ -16,7 +16,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/stale"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // backdate says a page's latest version was published days ago, as the
@@ -278,7 +277,7 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 	const all = `SELECT count(*) FROM stale_pages($1, NULL, false, NULL, false, 180, NULL, NULL, 100)`
 
 	t.Run("somebody who administers no space reads nothing", func(t *testing.T) {
-		actAs(t, conn, org.org, benID)
+		actAs(t, conn, benID)
 		if n := count(all, nil); n != 0 {
 			t.Errorf("ben reads %d stale pages", n)
 		}
@@ -295,7 +294,7 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a space administrator reads their spaces and no other", func(t *testing.T) {
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		var title string
 		var viewed *time.Time
 		if err := conn.QueryRow(ctx, `SELECT title, viewed_at FROM stale_pages(NULL, NULL, false, NULL, false, 180, NULL, NULL, 100)`).Scan(&title, &viewed); err != nil || title != "Gone quiet" || viewed == nil {
@@ -315,7 +314,7 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 	t.Run("a home page is listed but never offered for archiving", func(t *testing.T) {
 		h.backdate(t, org.org, `id = $3`, 500, ops.homeID)
 		h.settle(t)
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		rows, err := conn.Query(ctx, `SELECT title, archivable FROM stale_pages(NULL, NULL, false, NULL, false, 180, NULL, NULL, 100)`)
 		if err != nil {
 			t.Fatal(err)
@@ -338,7 +337,7 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a member the spaces are closed to reads nothing of them", func(t *testing.T) {
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		if n := count(all, nil); n != 0 {
 			t.Errorf("a member the spaces are closed to reads %d stale pages", n)
 		}
@@ -419,7 +418,6 @@ func TestStaleReportReadsAWindowNotTheWholeOrganization(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	for _, stmt := range []string{
-		`SELECT set_config('` + tenant.PostgresVar + `', '` + org.org.String() + `', true)`,
 		`SELECT set_config('` + db.UserVar + `', '` + annID.String() + `', true)`,
 		`SET LOCAL track_functions = 'all'`,
 		`LOAD 'auto_explain'`,

@@ -24,7 +24,7 @@ func planCommentCreated(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	}
 	var body []byte
 	err := tx.QueryRow(ctx, `
-		SELECT body FROM comment WHERE id = $1 AND org_id = current_org_id() AND deleted_at IS NULL`,
+		SELECT body FROM comment WHERE id = $1 AND deleted_at IS NULL`,
 		in.CommentID).Scan(&body)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -44,7 +44,7 @@ func planCommentCreated(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	if in.Reply {
 		writers, err := people(ctx, tx, `
 			SELECT DISTINCT author_id FROM comment
-			WHERE thread_id = $1 AND org_id = current_org_id() AND author_id IS NOT NULL`, in.ThreadID)
+			WHERE thread_id = $1 AND author_id IS NOT NULL`, in.ThreadID)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +71,7 @@ func planCommentEdited(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, 
 	}
 	var body []byte
 	err := tx.QueryRow(ctx, `
-		SELECT body FROM comment WHERE id = $1 AND org_id = current_org_id() AND deleted_at IS NULL`,
+		SELECT body FROM comment WHERE id = $1 AND deleted_at IS NULL`,
 		in.CommentID).Scan(&body)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -80,7 +80,7 @@ func planCommentEdited(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, 
 		return nil, err
 	}
 	told, err := people(ctx, tx, `
-		SELECT user_id FROM notification WHERE comment_id = $1 AND org_id = current_org_id()`, in.CommentID)
+		SELECT user_id FROM notification WHERE comment_id = $1`, in.CommentID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func planThreadResolved(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	var quote string
 	err := tx.QueryRow(ctx, `
 		SELECT COALESCE(t.quote, '') FROM comment_thread t
-		WHERE t.id = $1 AND t.org_id = current_org_id()
+		WHERE t.id = $1
 		  AND EXISTS (SELECT 1 FROM comment c WHERE c.org_id = t.org_id AND c.thread_id = t.id AND c.deleted_at IS NULL)`,
 		in.ThreadID).Scan(&quote)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -121,7 +121,7 @@ func planThreadResolved(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	plan := &Plan{Actor: in.ActorID, Subject: Subject{PageID: in.PageID, ThreadID: &thread, Excerpt: Excerpt(quote)}}
 	writers, err := people(ctx, tx, `
 		SELECT DISTINCT author_id FROM comment
-		WHERE thread_id = $1 AND org_id = current_org_id() AND author_id IS NOT NULL`, in.ThreadID)
+		WHERE thread_id = $1 AND author_id IS NOT NULL`, in.ThreadID)
 	if err != nil {
 		return nil, err
 	}

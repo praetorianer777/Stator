@@ -252,7 +252,7 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 	insertEvent := `INSERT INTO calendar_event (org_id, space_id, calendar_id, title, kind, all_day, starts_at, ends_at) VALUES ($1, $2, $3, $4, 'event', $5, $6, $7)`
 
 	t.Run("a reader reads and changes nothing", func(t *testing.T) {
-		actAs(t, conn, org.org, readerID)
+		actAs(t, conn, readerID)
 		if n := count(`SELECT count(*) FROM calendar_event WHERE calendar_id = $1`, team); n != 1 {
 			t.Errorf("the reader reads %d events", n)
 		}
@@ -265,14 +265,14 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a member the space is closed to reads nothing", func(t *testing.T) {
-		actAs(t, conn, away.org, away.user)
+		actAs(t, conn, away.user)
 		if n := count(`SELECT count(*) FROM calendar WHERE id = $1`, team) + count(`SELECT count(*) FROM calendar_event WHERE calendar_id = $1`, team); n != 0 {
 			t.Errorf("a stranger reads %d rows", n)
 		}
 	})
 
 	t.Run("an editor keeps events to their shape, their calendar and their author", func(t *testing.T) {
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		if _, err := conn.Exec(ctx, insertEvent, org.org, spaceID, team, "Planning", false, "2026-10-16T09:00:00Z", "2026-10-16T10:00:00Z"); err != nil {
 			t.Fatalf("ann cannot add an event: %v", err)
 		}
@@ -307,14 +307,14 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 
 	t.Run("an archived space freezes its calendars", func(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/spaces/CWL/archive", nil), http.StatusOK, "archive CWL")
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "an event in an archived space", insertEvent, org.org, spaceID, team, "Late", true, "2026-10-17T00:00:00Z", "2026-10-17T00:00:00Z")
 		untouched(t, conn, "a retitle in an archived space", `UPDATE calendar_event SET title = 'Late' WHERE calendar_id = $1`, team)
 		want(t, owner.delete(t, "/api/v1/spaces/CWL/archive"), http.StatusOK, "unarchive CWL")
 	})
 
 	t.Run("the limit holds whatever path adds them", func(t *testing.T) {
-		actAs(t, conn, org.org, org.user)
+		actAs(t, conn, org.user)
 		refused(t, conn, "a space filled past its limit", `
 			INSERT INTO calendar (org_id, space_id, name)
 			SELECT $1, $2, 'Calendar ' || n FROM generate_series(1, calendar_max() + 1) AS n`, org.org, otherID)

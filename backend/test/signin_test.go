@@ -15,15 +15,15 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 const testSessionTTL = time.Hour
 
 // configureProvider points an organization at the test realm as the operator
 // does, since the test's organization may have no administrator to do it.
-func configureProvider(t *testing.T, a *api, org tenant.Org, issuer string, createGroups bool) {
+func configureProvider(t *testing.T, a *api, org instance.Org, issuer string, createGroups bool) {
 	t.Helper()
 	err := a.sso.Configure(context.Background(), org.ID, oidc.Provider{
 		Issuer: issuer, ClientID: statorClient, ClientSecret: statorSecret,
@@ -35,7 +35,7 @@ func configureProvider(t *testing.T, a *api, org tenant.Org, issuer string, crea
 }
 
 // providerGroups lists the provider groups a person is in within one organization.
-func (h *harness) providerGroups(t *testing.T, org tenant.Org, email string) []string {
+func (h *harness) providerGroups(t *testing.T, org instance.Org, email string) []string {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
 		SELECT g.external_ref FROM group_member m

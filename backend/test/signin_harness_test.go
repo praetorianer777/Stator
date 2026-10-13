@@ -29,7 +29,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/secret"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // envKeycloakAdminPassword overrides the stack's Keycloak administrator
@@ -103,13 +102,13 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 
 // makeOrg is the test's organization with nobody in it, made behind the
 // policies' back.
-func (h *harness) makeOrg(t *testing.T, slug string) tenant.Org {
+func (h *harness) makeOrg(t *testing.T, slug string) instance.Org {
 	t.Helper()
 	if h.org != nil {
 		t.Fatalf("the test already has its organization, %s; an instance holds one", h.org.Slug)
 	}
 	full := fmt.Sprintf("%s-%s", slug, uuid.NewString()[:8])
-	org := tenant.Org{Slug: full}
+	org := instance.Org{Slug: full}
 	if err := h.super.QueryRow(context.Background(), `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, full, slug).Scan(&org.ID); err != nil {
 		t.Fatalf("create org %s: %v", full, err)
 	}
@@ -348,7 +347,7 @@ func (k *keycloak) newPerson(t *testing.T, h *harness, username, password string
 
 // letIn makes the address a member of org ahead of its first sign-in, the
 // way the seed does, making the account if need be.
-func (h *harness) letIn(t *testing.T, org tenant.Org, email, role string) {
+func (h *harness) letIn(t *testing.T, org instance.Org, email, role string) {
 	t.Helper()
 	ctx := context.Background()
 	var id uuid.UUID

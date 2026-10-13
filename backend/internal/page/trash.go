@@ -14,7 +14,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 var (
@@ -247,13 +246,9 @@ func (s *Service) EmptyTrash(ctx context.Context, actor perm.Actor, spaceKey str
 
 // record notes an act on a page, or on a space's trash, in the audit log.
 func record(ctx context.Context, tx db.DBTX, actor perm.Actor, action string, target uuid.UUID, data map[string]any) error {
-	org, err := tenant.MustFromContext(ctx)
-	if err != nil {
-		return err
-	}
 	targetType := "page"
 	if action == audit.ActionTrashEmptied {
 		targetType = "space"
 	}
-	return audit.Write(ctx, tx, org.ID, audit.Entry{Action: action, TargetType: targetType, TargetID: &target, Actor: actor.UserID, Data: data})
+	return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: targetType, TargetID: &target, Actor: actor.UserID, Data: data})
 }

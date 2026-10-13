@@ -207,7 +207,7 @@ func TestAnAssistantWorksAsThePersonWhoseTokenItHolds(t *testing.T) {
 
 	t.Run("the database refuses bob the same, with no API in between", func(t *testing.T) {
 		conn := appConn(t)
-		actAs(t, conn, home.org, bobID)
+		actAs(t, conn, bobID)
 		var seen int
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM page WHERE id = $1`, secret).Scan(&seen); err != nil || seen != 0 {
 			t.Errorf("bob reads %d rows of Secret (%v)", seen, err)

@@ -242,18 +242,18 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 			return n
 		}
 		readSource := `SELECT count(*) FROM space_grant WHERE space_id = $1`
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		if count(readSource, sourceID) == 0 {
 			t.Fatal("ann reads none of SRC's grants, so carl's zero would prove nothing")
 		}
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		if n := count(readSource, sourceID); n != 0 {
 			t.Errorf("carl, who does not administer SRC, reads %d of its grants", n)
 		}
-		actAs(t, conn, home.org, bobID)
+		actAs(t, conn, bobID)
 		denied(t, conn, "bob granting in TGT", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, group_id)
 			VALUES ($1, $2, 'delete', 'group', $3)`, home.org, targetID, writers)
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "SRC's guest copied into TGT", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
 			VALUES ($1, $2, 'view', 'user', $3)`, home.org, targetID, gwenID)
 		denied(t, conn, "SRC's guest copied into ann's own space", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
@@ -273,7 +273,7 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 		}
 		// The organization's administrators hold every space anyway, and may
 		// close one down to themselves.
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		if _, err := conn.Exec(ctx, `DELETE FROM space_grant WHERE space_id = $1 AND permission = 'administer'`, targetID); err != nil {
 			t.Errorf("the owner may not take the last administrator: %v", err)
 		}

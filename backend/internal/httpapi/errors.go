@@ -37,7 +37,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/spaceio"
 	"github.com/praetorianer777/stator/backend/internal/task"
 	"github.com/praetorianer777/stator/backend/internal/template"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/watch"
@@ -439,7 +438,7 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, armature.ErrUnreachable):
 		return &APIError{Status: http.StatusBadGateway, Code: "armature_unreachable",
 			Message: "Armature did not answer. Try again in a moment, and tell an administrator if it keeps happening.", cause: err}
-	case errors.Is(err, tenant.ErrNoTenant):
+	case errors.Is(err, auth.ErrNotMember):
 		return &APIError{Status: http.StatusBadRequest, Code: "no_organization", Message: "You are not a member here yet. Ask an administrator to let you in."}
 	case errors.Is(err, objectstore.ErrUnavailable):
 		return &APIError{Status: http.StatusServiceUnavailable, Code: "storage_unavailable", Message: "Files cannot be stored on this server yet. Ask an administrator to set up file storage.", cause: err}

@@ -11,7 +11,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // Envelope is what a receiver gets, Armature's shape: the id is the event's,
@@ -19,7 +18,6 @@ import (
 type Envelope struct {
 	ID         uuid.UUID `json:"id"`
 	Topic      string    `json:"topic"`
-	OrgID      uuid.UUID `json:"orgId"`
 	OccurredAt time.Time `json:"occurredAt"`
 	Payload    any       `json:"payload"`
 }
@@ -102,7 +100,7 @@ const pingMessage = "Stator can reach this address."
 // owner through the database's own rules: what they may not view is
 // errWithheld, and no part of it is sent.
 func (s *Service) body(ctx context.Context, c claimed) ([]byte, error) {
-	env := Envelope{ID: c.eventID, Topic: c.topic, OrgID: c.orgID, OccurredAt: c.occurred.UTC()}
+	env := Envelope{ID: c.eventID, Topic: c.topic, OccurredAt: c.occurred.UTC()}
 	if c.topic == TopicPing {
 		env.Payload = Ping{Message: pingMessage}
 		return json.Marshal(env)
@@ -110,7 +108,7 @@ func (s *Service) body(ctx context.Context, c claimed) ([]byte, error) {
 	if c.owner == nil {
 		return nil, errWithheld
 	}
-	asOwner := db.PinPrimary(db.WithUser(tenant.WithOrg(ctx, tenant.Org{ID: c.orgID}), *c.owner))
+	asOwner := db.PinPrimary(db.WithUser(ctx, *c.owner))
 	err := s.db.Read(asOwner, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		env.Payload, err = s.payload(ctx, tx, c.topic, c.event)

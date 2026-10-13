@@ -224,7 +224,7 @@ func TestMentionsAreEnforcedByTheDatabase(t *testing.T) {
 	event := `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'mention.probe', jsonb_build_object('actorId', $2::text, 'mentioned', $3::jsonb))`
 
 	t.Run("an event mentions only members", func(t *testing.T) {
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		denied(t, conn, "a mention of a stranger", event, home.org, home.user, `["`+uuid.NewString()+`"]`)
 		denied(t, conn, "a mention of somebody who is no member", event, home.org, home.user, `["`+waitingID.String()+`"]`)
 		denied(t, conn, "a mention that is no id", event, home.org, home.user, `["ann"]`)
@@ -236,16 +236,16 @@ func TestMentionsAreEnforcedByTheDatabase(t *testing.T) {
 
 	t.Run("nobody is told of a mention on a page they may not view", func(t *testing.T) {
 		insert := `INSERT INTO notification (org_id, user_id, event_id, kind, page_id) VALUES ($1, $2, $3, 'mentioned', $4)`
-		actAs(t, conn, home.org, danID)
+		actAs(t, conn, danID)
 		denied(t, conn, "dan told of Secret", insert, home.org, danID, uuid.New(), secret)
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		denied(t, conn, "the owner writing ann's row", insert, home.org, annID, uuid.New(), secret)
 	})
 
 	t.Run("the picker's rule leaves out only the unpublished rule", func(t *testing.T) {
 		draft := obj(t, want(t, owner.post(t, "/api/v1/pages", map[string]any{"parentId": secret, "title": "Draft"}), http.StatusCreated, "a draft below Secret"), "page")["id"].(string)
 		h.settle(t)
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		var annViews, annLater, danLater bool
 		if err := conn.QueryRow(ctx, `SELECT perm_page_viewable($1, $2), perm_page_viewable_published($1, $2), perm_page_viewable_published($1, $3)`,
 			draft, annID, danID).Scan(&annViews, &annLater, &danLater); err != nil {

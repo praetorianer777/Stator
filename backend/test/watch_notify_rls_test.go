@@ -64,7 +64,7 @@ func TestWatchesAndNotificationsAreWalledByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("somebody reads and changes only their own watches", func(t *testing.T) {
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		if n := count(`SELECT count(*) FROM watch`); n != 2 {
 			t.Errorf("ann reads %d watches, want her own two", n)
 		}
@@ -84,7 +84,7 @@ func TestWatchesAndNotificationsAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("somebody reads and marks only their own notifications", func(t *testing.T) {
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		if n := count(`SELECT count(*) FROM notification WHERE user_id <> $1`, annID); n != 0 {
 			t.Errorf("ann reads %d of other people's notifications", n)
 		}
@@ -105,7 +105,7 @@ func TestWatchesAndNotificationsAreWalledByTheDatabase(t *testing.T) {
 	t.Run("somebody who may no longer view a page reads nothing about it", func(t *testing.T) {
 		want(t, restrict(t, owner, closed, []any{user(home.user)}, nil), http.StatusOK, "Closed is not ben's either")
 		h.settle(t)
-		actAs(t, conn, home.org, benID)
+		actAs(t, conn, benID)
 		if n := count(`SELECT count(*) FROM notification WHERE id = $1`, benClosedRow); n != 0 {
 			t.Errorf("ben reads his row about a page he may no longer view")
 		}
@@ -118,7 +118,7 @@ func TestWatchesAndNotificationsAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("an event is added only in one's own name and never read", func(t *testing.T) {
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "an event in ben's name", `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'page.published', jsonb_build_object('actorId', $2::text))`, home.org, benID)
 		refused(t, conn, "reading the outbox", `SELECT count(*) FROM outbox_event`)
 		refused(t, conn, "marking an event done", `UPDATE outbox_event SET processed_at = now()`)
@@ -128,7 +128,7 @@ func TestWatchesAndNotificationsAreWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a member the space is closed to reads and writes nothing of it", func(t *testing.T) {
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		for _, table := range []string{"watch", "watch_optout", "notification", "notification_preference", "notification_digest"} {
 			if n := count(`SELECT count(*) FROM ` + table); n != 0 {
 				t.Errorf("a member the space is closed to reads %d rows of %s", n, table)

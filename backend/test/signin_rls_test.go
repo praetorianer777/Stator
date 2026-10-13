@@ -15,7 +15,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 // signInRows gives one member every kind of row the sign-in tables hold,
@@ -46,9 +45,9 @@ func (h *harness) signInRows(t *testing.T, m member) {
 	}
 }
 
-// Straight through SQL as stator_app: the organization's sign-in tables show
-// nothing without a caller, and the tables that hold accounts' sessions and
-// identities show the application nothing at all, nor let it write them.
+// Straight through SQL as stator_app: the sign-in provider and the audit log
+// show nothing without a caller, and the tables that hold accounts' sessions
+// and identities show the application nothing at all, nor let it write them.
 func TestRawSQLCannotReachTheSignInTables(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "iota")
@@ -71,17 +70,14 @@ func TestRawSQLCannotReachTheSignInTables(t *testing.T) {
 	orgTables := []string{"groups", "group_member", "oidc_provider", "oidc_login", "org_join_request", "audit_log"}
 	globalTables := []string{"user_session", "user_identity"}
 
-	t.Run("with nobody set nothing is visible", func(t *testing.T) {
-		for _, table := range append(orgTables, globalTables...) {
+	t.Run("with nobody set nothing kept to administrators is visible", func(t *testing.T) {
+		for _, table := range append([]string{"oidc_provider", "audit_log"}, globalTables...) {
 			if got := countOf(t, `SELECT count(*) FROM `+table); got != 0 {
 				t.Errorf("an unscoped connection sees %d rows in %s", got, table)
 			}
 		}
 	})
 
-	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, tenant.PostgresVar, a.org.String()); err != nil {
-		t.Fatal(err)
-	}
 	// Acting for the owner, since only an administrator reads the audit log.
 	if _, err := conn.Exec(ctx, `SELECT set_config($1, $2, false)`, db.UserVar, a.user.String()); err != nil {
 		t.Fatal(err)
@@ -166,7 +162,7 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 		return n
 	}
 
-	actAs(t, conn, b.org, b.user)
+	actAs(t, conn, b.user)
 	if _, err := conn.Exec(ctx, `INSERT INTO oidc_provider (org_id, issuer, client_id) VALUES ($1, 'https://evil.test', 'stator')`, b.org); !isPolicyViolation(err) {
 		t.Errorf("a member set up the sign-in provider: %v", err)
 	}
@@ -197,11 +193,11 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("a member", func(t *testing.T) {
-		actAs(t, conn, b.org, b.user)
+		actAs(t, conn, b.user)
 		walledOff(t, "a member")
 	})
 	t.Run("an administrator with a token limited to spaces", func(t *testing.T) {
-		actAs(t, conn, a.org, a.user)
+		actAs(t, conn, a.user)
 		if _, err := conn.Exec(ctx, `SELECT set_config($1, '{}', false)`, db.TokenSpacesVar); err != nil {
 			t.Fatal(err)
 		}
@@ -221,7 +217,7 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("an administrator", func(t *testing.T) {
-		actAs(t, conn, a.org, a.user)
+		actAs(t, conn, a.user)
 		if got := count(`SELECT count(*) FROM oidc_provider`); got != 1 {
 			t.Errorf("an administrator sees %d sign-in providers, want the one", got)
 		}

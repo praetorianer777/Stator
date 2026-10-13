@@ -93,8 +93,8 @@ func PageWatching(ctx context.Context, tx db.DBTX, userID, pageID uuid.UUID) (Wa
 // watch it already, stopped watching it, or turned auto watch off.
 func Auto(ctx context.Context, tx db.DBTX, userID, pageID uuid.UUID) error {
 	_, err := tx.Exec(ctx, `
-		INSERT INTO watch (org_id, user_id, kind, page_id)
-		SELECT current_org_id(), $1, 'page', $2
+		INSERT INTO watch (user_id, kind, page_id)
+		SELECT $1, 'page', $2
 		WHERE COALESCE((SELECT auto_watch FROM notification_preference WHERE user_id = $1), true)
 		  AND NOT EXISTS (SELECT 1 FROM watch_optout WHERE user_id = $1 AND page_id = $2)
 		ON CONFLICT DO NOTHING`, userID, pageID)
@@ -114,7 +114,7 @@ func (s *Service) WatchPage(ctx context.Context, actor perm.Actor, pageID uuid.U
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO watch (org_id, user_id, kind, page_id) VALUES (current_org_id(), $1, $2, $3)
+			INSERT INTO watch (user_id, kind, page_id) VALUES ($1, $2, $3)
 			ON CONFLICT (org_id, user_id, page_id) WHERE page_id IS NOT NULL
 			DO UPDATE SET kind = EXCLUDED.kind, created_at = now()`, actor.UserID, kind, pageID); err != nil {
 			return err
@@ -140,7 +140,7 @@ func (s *Service) UnwatchPage(ctx context.Context, actor perm.Actor, pageID uuid
 			return err
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO watch_optout (org_id, user_id, page_id) VALUES (current_org_id(), $1, $2)
+			INSERT INTO watch_optout (user_id, page_id) VALUES ($1, $2)
 			ON CONFLICT DO NOTHING`, actor.UserID, pageID)
 		return err
 	})
@@ -197,7 +197,7 @@ func (s *Service) WatchSpace(ctx context.Context, actor perm.Actor, key string) 
 			return err
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO watch (org_id, user_id, kind, space_id) VALUES (current_org_id(), $1, 'space', $2)
+			INSERT INTO watch (user_id, kind, space_id) VALUES ($1, 'space', $2)
 			ON CONFLICT DO NOTHING`, actor.UserID, sp.ID)
 		return err
 	})
@@ -218,7 +218,7 @@ func (s *Service) WatchBlog(ctx context.Context, actor perm.Actor, key string) (
 			return err
 		}
 		_, err = tx.Exec(ctx, `
-			INSERT INTO watch (org_id, user_id, kind, space_id) VALUES (current_org_id(), $1, 'blog', $2)
+			INSERT INTO watch (user_id, kind, space_id) VALUES ($1, 'blog', $2)
 			ON CONFLICT DO NOTHING`, actor.UserID, sp.ID)
 		return err
 	})

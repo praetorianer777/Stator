@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // ErrBadSignature is any delivery that cannot be trusted, one sent to an old
@@ -73,7 +73,7 @@ type webhookTarget struct {
 
 // Webhook verifies one delivery to org and clears what it announces; a
 // replay of an event already acted on changes nothing.
-func (s *Service) Webhook(ctx context.Context, org tenant.Org, body []byte, signature string) error {
+func (s *Service) Webhook(ctx context.Context, org instance.Org, body []byte, signature string) error {
 	var target *webhookTarget
 	// As the admin role: nobody signs in, and the organization is only
 	// known once its secret has vouched for the body.

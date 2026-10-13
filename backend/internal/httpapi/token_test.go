@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // tokenServer knows a session, a token that may do anything and one that may
@@ -18,7 +18,7 @@ import (
 func tokenServer(t *testing.T) *Server {
 	t.Helper()
 	s := newServer(t)
-	org := &tenant.Org{ID: uuid.New(), Slug: "acme"}
+	org := &instance.Org{ID: uuid.New(), Slug: "acme"}
 	user := uuid.New()
 	session, full, reader, limited := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	s.Auth = fakeAuth{

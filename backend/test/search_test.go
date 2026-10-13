@@ -461,7 +461,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("B, whom WALL is closed to, reads none of its visits or index", func(t *testing.T) {
-		actAs(t, conn, b.org, b.user)
+		actAs(t, conn, b.user)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_visit`).Scan(&n); err != nil || n != 0 {
 			t.Errorf("B reads %d visits (%v)", n, err)
@@ -504,7 +504,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 			t.Errorf("ann finds %v", got)
 		}
 
-		actAs(t, conn, a.org, benID)
+		actAs(t, conn, benID)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_visit`).Scan(&n); err != nil || n != 1 {
 			t.Errorf("ben reads %d visits, want his own one (%v)", n, err)
@@ -518,7 +518,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 		untouched(t, conn, "deleting ann's visits from ben", `DELETE FROM page_visit WHERE user_id = $1`, annID)
 		refused(t, conn, "handing ben's visit to ann", `UPDATE page_visit SET user_id = $1 WHERE user_id = $2`, annID, benID)
 
-		actAs(t, conn, a.org, annID)
+		actAs(t, conn, annID)
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_visit WHERE page_id = $1`, closed).Scan(&n); err != nil || n != 1 {
 			t.Errorf("ann reads %d of her visits to the page (%v)", n, err)
 		}
@@ -569,11 +569,11 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 			act  func()
 			min  int
 		}{
-			{"the owner", func() { actAs(t, conn, a.org, a.user) }, 3},
-			{"ann, whom the restriction names", func() { actAs(t, conn, a.org, annID) }, 3},
-			{"ben, whom it does not", func() { actAs(t, conn, a.org, benID) }, 2},
-			{"a member WALL is closed to", func() { actAs(t, conn, b.org, b.user) }, 0},
-			{"an anonymous reader", func() { actAnonymously(t, conn, a.org) }, 0},
+			{"the owner", func() { actAs(t, conn, a.user) }, 3},
+			{"ann, whom the restriction names", func() { actAs(t, conn, annID) }, 3},
+			{"ben, whom it does not", func() { actAs(t, conn, benID) }, 2},
+			{"a member WALL is closed to", func() { actAs(t, conn, b.user) }, 0},
+			{"an anonymous reader", func() { actAnonymously(t, conn) }, 0},
 		} {
 			who.act()
 			for _, p := range pairs {
@@ -589,7 +589,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("the index cannot be written, only derived", func(t *testing.T) {
-		actAs(t, conn, a.org, a.user)
+		actAs(t, conn, a.user)
 		refused(t, conn, "planting words", `UPDATE page SET search_vector = to_tsvector('planted') WHERE id = $1`, pageA)
 		refused(t, conn, "a visit in somebody else's name", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, b.user, pageA)
 		if _, err := conn.Exec(ctx, `UPDATE page SET title = 'Renamed plan' WHERE id = $1`, pageA); err != nil {

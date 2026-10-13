@@ -341,7 +341,7 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	insert := `INSERT INTO comment (org_id, id, thread_id, page_id, author_id, body) VALUES ($1, $2, $3, $4, $5, '{"type":"doc"}')`
 
 	t.Run("somebody off a view list reads none of its comments", func(t *testing.T) {
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		for table, column := range map[string]string{"comment": "page_id", "comment_thread": "page_id"} {
 			if n := count(`SELECT count(*) FROM `+table+` WHERE `+column+` = $1`, secret); n != 0 {
 				t.Errorf("carl reads %d rows of %s on Secret", n, table)
@@ -356,7 +356,7 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("nobody writes in somebody else's name", func(t *testing.T) {
-		actAs(t, conn, home.org, carlID)
+		actAs(t, conn, carlID)
 		denied(t, conn, "a reply as ann", insert, home.org, uuid.New(), anns, open, annID)
 		denied(t, conn, "a thread as ann", `INSERT INTO comment_thread (org_id, page_id, kind, created_by) VALUES ($1, $2, 'page', $3)`, home.org, open, annID)
 		denied(t, conn, "rewriting ann's words", `UPDATE comment SET body = '{"type":"doc"}', edited_at = now() WHERE id = $1`, anns)
@@ -370,7 +370,7 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("the author changes and deletes their own, and says who deleted", func(t *testing.T) {
-		actAs(t, conn, home.org, benID)
+		actAs(t, conn, benID)
 		if _, err := conn.Exec(ctx, `UPDATE comment SET body = '{"type":"doc","content":[]}', edited_at = now() WHERE id = $1`, bens); err != nil {
 			t.Errorf("ben may not edit his own: %v", err)
 		}
@@ -387,13 +387,13 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		}}), http.StatusOK, "CRAW is read only")
 		h.settle(t)
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "a reply without addComments", insert, home.org, uuid.New(), anns, open, annID)
 		denied(t, conn, "editing her own without addComments", `UPDATE comment SET body = '{"type":"doc"}', edited_at = now() WHERE id = $1`, anns)
 		if _, err := conn.Exec(ctx, `UPDATE comment SET body = NULL, deleted_at = now(), deleted_by = $2 WHERE id = $1`, anns, annID); err != nil {
 			t.Errorf("ann may not delete her own while she may view the page: %v", err)
 		}
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		var others uuid.UUID
 		if err := conn.QueryRow(ctx, `SELECT id FROM comment WHERE page_id = $1 AND author_id = $2`, open, carlID).Scan(&others); err != nil {
 			t.Fatal(err)
@@ -484,19 +484,19 @@ func TestDeletingOthersCommentsTakesAdminister(t *testing.T) {
 		conn := appConn(t)
 		ctx := context.Background()
 		del := `UPDATE comment SET body = NULL, deleted_at = now(), deleted_by = $2 WHERE id = $1`
-		actAs(t, conn, home.org, benID)
+		actAs(t, conn, benID)
 		denied(t, conn, "ben deleting ann's comment", del, threads[2], benID)
 		denied(t, conn, "ben blanking ann's comment", `UPDATE comment SET body = NULL WHERE id = $1`, threads[2])
 		denied(t, conn, "ben emptying ann's comment", `UPDATE comment SET body = '{"type":"doc","content":[]}', edited_at = now() WHERE id = $1`, threads[2])
-		actAs(t, conn, home.org, danID)
+		actAs(t, conn, danID)
 		if _, err := conn.Exec(ctx, del, threads[3], danID); err != nil {
 			t.Errorf("dan, a space admin, may not delete ann's comment: %v", err)
 		}
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		if _, err := conn.Exec(ctx, del, threads[4], home.user); err != nil {
 			t.Errorf("the owner may not delete ann's comment: %v", err)
 		}
-		actAs(t, conn, home.org, annID)
+		actAs(t, conn, annID)
 		if _, err := conn.Exec(ctx, del, threads[5], annID); err != nil {
 			t.Errorf("ann may not delete her own: %v", err)
 		}

@@ -14,7 +14,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // Personal access tokens, adapted from Armature's. A token belongs to one
@@ -128,8 +128,8 @@ func (s *Service) CreateAPIToken(ctx context.Context, orgID, userID uuid.UUID, i
 	tok := APIToken{Name: in.Name, Scopes: in.Scopes, Spaces: in.Spaces, AllSpaces: len(in.Spaces) == 0, ExpiresAt: in.ExpiresAt, Secret: secret}
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, spaces_only)
-			VALUES (current_org_id(), $1, $2, $3, $4, $5, $6)
+			INSERT INTO api_token (user_id, name, token_hash, scopes, expires_at, spaces_only)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id, created_at`,
 			userID, tok.Name, digest, tok.Scopes, tok.ExpiresAt, !tok.AllSpaces,
 		).Scan(&tok.ID, &tok.CreatedAt); err != nil {
@@ -139,8 +139,8 @@ func (s *Service) CreateAPIToken(ctx context.Context, orgID, userID uuid.UUID, i
 			// The spaces are read under the maker's own permissions, so a key
 			// they cannot see inserts nothing and the count refuses it.
 			tag, err := tx.Exec(ctx, `
-				INSERT INTO api_token_space (org_id, token_id, space_id)
-				SELECT current_org_id(), $1, s.id FROM space s WHERE s.key = ANY ($2)`, tok.ID, tok.Spaces)
+				INSERT INTO api_token_space (token_id, space_id)
+				SELECT $1, s.id FROM space s WHERE s.key = ANY ($2)`, tok.ID, tok.Spaces)
 			if err != nil {
 				return fmt.Errorf("limit the token to its spaces: %w", err)
 			}
@@ -148,7 +148,7 @@ func (s *Service) CreateAPIToken(ctx context.Context, orgID, userID uuid.UUID, i
 				return ErrNoSuchSpace
 			}
 		}
-		return audit.Write(ctx, tx, orgID, audit.Entry{Action: audit.ActionTokenCreated, TargetType: "api_token", TargetID: &tok.ID, Actor: userID, IP: ip,
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionTokenCreated, TargetType: "api_token", TargetID: &tok.ID, Actor: userID, IP: ip,
 			Data: map[string]any{"name": tok.Name, "scopes": tok.Scopes, "spaces": tok.Spaces}})
 	})
 	if err != nil {
@@ -238,7 +238,7 @@ func (s *Service) revoke(ctx context.Context, orgID uuid.UUID, owner *uuid.UUID,
 		if err != nil {
 			return err
 		}
-		return audit.Write(ctx, tx, orgID, audit.Entry{Action: audit.ActionTokenRevoked, TargetType: "api_token", TargetID: &tokenID, Actor: actor, IP: ip,
+		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionTokenRevoked, TargetType: "api_token", TargetID: &tokenID, Actor: actor, IP: ip,
 			Data: map[string]any{"owner": holder}})
 	})
 }
@@ -290,7 +290,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 	}
 	p.TokenID = &tokenID
 	p.GuestSpace = guest.ref()
-	p.Org = &tenant.Org{ID: org.id, Slug: org.slug}
+	p.Org = &instance.Org{ID: org.id, Slug: org.slug}
 	p.OrgName = org.name
 	if lastUsed == nil || s.now().Sub(*lastUsed) > lastSeenEvery {
 		_, _ = s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {

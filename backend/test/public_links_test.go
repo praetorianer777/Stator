@@ -21,11 +21,11 @@ func linkPath(token string, rest ...string) string {
 	return publicPath("/links/", token) + strings.Join(rest, "")
 }
 
-// readThrough scopes a raw connection to an organization as an anonymous
-// reader holding a token, as the api's transactions for a link are.
-func readThrough(t *testing.T, conn *pgx.Conn, org uuid.UUID, token string) {
+// readThrough makes a raw connection an anonymous reader holding a token, as
+// the api's transactions for a link are.
+func readThrough(t *testing.T, conn *pgx.Conn, token string) {
 	t.Helper()
-	actAnonymously(t, conn, org)
+	actAnonymously(t, conn)
 	if _, err := conn.Exec(context.Background(), `SELECT set_config('app.page_link', $1, false)`, hex.EncodeToString(auth.HashToken(token))); err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +233,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 			}
 			return n
 		}
-		readThrough(t, conn, home.org, token)
+		readThrough(t, conn, token)
 		if n := count(`SELECT count(*) FROM page`); n != 1 {
 			t.Errorf("a reader holding the link reads %d pages, want the guide alone", n)
 		}
@@ -260,7 +260,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 		denied(t, conn, "a link made by nobody", `INSERT INTO page_link (org_id, page_id, token_hash) VALUES ($1, $2, sha256('x'))`, home.org, guide)
 		untouched(t, conn, "the link revoked by nobody", `UPDATE page_link SET revoked_at = now()`)
 
-		readThrough(t, conn, home.org, strings.Repeat("x", 43))
+		readThrough(t, conn, strings.Repeat("x", 43))
 		if n := count(`SELECT count(*) FROM page`); n != 0 {
 			t.Errorf("a token nobody holds reads %d pages", n)
 		}
@@ -272,7 +272,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 		}
 
 		// A member holding the digest is no anonymous reader, and is not widened by it.
-		actAs(t, conn, home.org, inaID)
+		actAs(t, conn, inaID)
 		if _, err := conn.Exec(ctx, `SELECT set_config('app.page_link', $1, false)`, hex.EncodeToString(auth.HashToken(token))); err != nil {
 			t.Fatal(err)
 		}
@@ -285,7 +285,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 		denied(t, conn, "ina makes a link", `INSERT INTO page_link (org_id, page_id, token_hash, created_by) VALUES ($1, $2, sha256('ina'), $3)`, home.org, guide, inaID)
 		untouched(t, conn, "ina revokes the link", `UPDATE page_link SET revoked_at = now(), revoked_by = $2 WHERE id = $1`, linkID, inaID)
 
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		denied(t, conn, "a link for the restricted page", `INSERT INTO page_link (org_id, page_id, token_hash, created_by) VALUES ($1, $2, sha256('secret'), $3)`, home.org, secret, home.user)
 		denied(t, conn, "a link for the draft", `INSERT INTO page_link (org_id, page_id, token_hash, created_by) VALUES ($1, $2, sha256('draft'), $3)`, home.org, draft, home.user)
 		denied(t, conn, "a link in somebody else's name", `INSERT INTO page_link (org_id, page_id, token_hash, created_by) VALUES ($1, $2, sha256('ina'), $3)`, home.org, guide, inaID)
@@ -308,7 +308,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 			t.Errorf("a link while links are off = %d %s", got.Status, got.Raw)
 		}
 		conn := appConn(t)
-		readThrough(t, conn, home.org, token)
+		readThrough(t, conn, token)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page`).Scan(&n); err != nil || n != 0 {
 			t.Errorf("while links are off a reader holding one reads %d pages (%v)", n, err)
@@ -337,9 +337,9 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 			t.Errorf("the revocation is recorded %d times (%v), want once", records, err)
 		}
 		conn := appConn(t)
-		actAs(t, conn, home.org, home.user)
+		actAs(t, conn, home.user)
 		refused(t, conn, "revoking a revoked link again", `UPDATE page_link SET revoked_at = NULL, revoked_by = $2 WHERE id = $1`, linkID, home.user)
-		readThrough(t, conn, home.org, token)
+		readThrough(t, conn, token)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page`).Scan(&n); err != nil || n != 0 {
 			t.Errorf("a revoked link reads %d pages (%v)", n, err)
@@ -357,7 +357,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 		// Written past the api, so the replica the reader is served from may lag.
 		waitFor(t, "the run out link to open nothing", func() bool { return anon.get(t, linkPath(briefToken)).Status == http.StatusNotFound })
 		conn := appConn(t)
-		readThrough(t, conn, home.org, briefToken)
+		readThrough(t, conn, briefToken)
 		var n int
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page`).Scan(&n); err != nil || n != 0 {
 			t.Errorf("a run out link reads %d pages (%v)", n, err)

@@ -12,8 +12,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 func cookieFrom(t *testing.T, resp *http.Response, name string) *http.Cookie {
@@ -110,7 +110,7 @@ func TestSignInFailuresAreNamedForThePage(t *testing.T) {
 
 func TestTheProviderSettingsAreForAdministratorsOnly(t *testing.T) {
 	s := newServer(t)
-	org := &tenant.Org{ID: uuid.New(), Slug: "acme"}
+	org := &instance.Org{ID: uuid.New(), Slug: "acme"}
 	s.Auth = fakeAuth{
 		"admin":  {UserID: uuid.New(), Org: org, Role: auth.RoleAdmin},
 		"member": {UserID: uuid.New(), Org: org, Role: auth.RoleMember},

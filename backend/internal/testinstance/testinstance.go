@@ -23,7 +23,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/seed"
-	"github.com/praetorianer777/stator/backend/internal/tenant"
 )
 
 var (
@@ -186,7 +185,7 @@ func (s *Service) DeletePerson(ctx context.Context, id uuid.UUID) error {
 // bootstrap left it, so no spec sees another's settings. People, spaces and
 // the audit log stay.
 func (s *Service) Reset(ctx context.Context) error {
-	var org tenant.Org
+	var org instance.Org
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		if org, err = instance.Find(ctx, tx); err != nil {

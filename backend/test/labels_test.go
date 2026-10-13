@@ -287,7 +287,7 @@ func TestLabelsFollowTheirPage(t *testing.T) {
 	}
 
 	t.Run("the database refuses what the service refuses", func(t *testing.T) {
-		actAs(t, conn, home.org, benID)
+		actAs(t, conn, benID)
 		if n := count(`SELECT count(*) FROM page_label WHERE page_id = ANY ($1)`, []string{closed, below, unpublished}); n != 0 {
 			t.Errorf("ben reads %d labels of pages he may not view", n)
 		}
@@ -312,7 +312,7 @@ func TestLabelsFollowTheirPage(t *testing.T) {
 	})
 
 	t.Run("a member the space is closed to reads and writes none of them", func(t *testing.T) {
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		if n := count(`SELECT count(*) FROM page_label`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d labels", n)
 		}

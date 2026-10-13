@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/praetorianer777/stator/backend/internal/tenant"
+	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // The reads for anybody are reads, need no session and are nobody's to
@@ -89,9 +89,9 @@ func TestALinksAnswerIsNeverCachedNorSentOn(t *testing.T) {
 }
 
 // fixedInstance is an instance whose organization is always the one given.
-type fixedInstance tenant.Org
+type fixedInstance instance.Org
 
-func (f fixedInstance) Org(context.Context) (tenant.Org, error) { return tenant.Org(f), nil }
+func (f fixedInstance) Org(context.Context) (instance.Org, error) { return instance.Org(f), nil }
 
 // concrete fills a template's parameters the way a real address would.
 func concrete(template string) string {

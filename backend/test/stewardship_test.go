@@ -364,7 +364,7 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 	}
 
 	t.Run("a reader writes neither", func(t *testing.T) {
-		actAs(t, conn, org.org, annID)
+		actAs(t, conn, annID)
 		denied(t, conn, "ann names herself owner", `INSERT INTO page_owner (org_id, page_id, user_id, set_by) VALUES ($1, $2, $3, $3)`, org.org, open, annID)
 		denied(t, conn, "ann verifies", `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() + interval '1 day')`, org.org, open, annID)
 		untouched(t, conn, "ann takes the owner of Secret away", `DELETE FROM page_owner WHERE page_id = $1`, secret)
@@ -376,7 +376,7 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("an editor writes in their own name, for somebody who may view the page", func(t *testing.T) {
-		actAs(t, conn, org.org, benID)
+		actAs(t, conn, benID)
 		denied(t, conn, "carl, who may not view Secret, as its owner", `UPDATE page_owner SET user_id = $2, set_by = $3 WHERE page_id = $1`, secret, carlID, benID)
 		denied(t, conn, "an owner named in ann's name", `INSERT INTO page_owner (org_id, page_id, user_id, set_by) VALUES ($1, $2, $3, $4)`, org.org, open, benID, annID)
 		denied(t, conn, "a verification in ann's name", `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() + interval '1 day')`, org.org, open, annID)
@@ -399,7 +399,7 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a member the space is closed to reads nothing", func(t *testing.T) {
-		actAs(t, conn, other.org, other.user)
+		actAs(t, conn, other.user)
 		if n := count(`SELECT count(*) FROM page_owner`) + count(`SELECT count(*) FROM page_verification`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d rows", n)
 		}
