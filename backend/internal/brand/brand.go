@@ -54,7 +54,12 @@ type Logo struct {
 	ContentType string `json:"contentType"`
 	Size        int    `json:"size"`
 	Version     int    `json:"version"`
+	key         string
 }
+
+// Key is where the picture is in the object store, as the row stores it: a
+// logo set before the organization left the schema keeps its old key.
+func (l *Logo) Key() string { return l.key }
 
 // Footer is the line an export prints at its foot, in each language.
 type Footer struct {
@@ -99,19 +104,42 @@ func Read(ctx context.Context, tx db.DBTX) (*Brand, error) {
 		kind    *string
 		size    *int
 		version int
+		key     *string
 	)
-	err := tx.QueryRow(ctx, `SELECT footer_en, footer_de, logo_type, logo_size, logo_version FROM org_brand`).
-		Scan(&out.Footer.En, &out.Footer.De, &kind, &size, &version)
+	err := tx.QueryRow(ctx, `SELECT footer_en, footer_de, logo_type, logo_size, logo_version, logo_key FROM brand`).
+		Scan(&out.Footer.En, &out.Footer.De, &kind, &size, &version, &key)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return &out, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read the brand: %w", err)
 	}
-	if kind != nil && size != nil {
-		out.Logo = &Logo{ContentType: *kind, Size: *size, Version: version}
-	}
+	out.Logo = logoOf(kind, size, version, key)
 	return &out, nil
+}
+
+func logoOf(kind *string, size *int, version int, key *string) *Logo {
+	if kind == nil || size == nil || key == nil {
+		return nil
+	}
+	return &Logo{ContentType: *kind, Size: *size, Version: version, key: *key}
+}
+
+// previousLogo is the key of the logo there is now, locked so a change
+// beside it waits, or "" without one.
+func previousLogo(ctx context.Context, tx db.DBTX) (string, error) {
+	var key *string
+	err := tx.QueryRow(ctx, `SELECT logo_key FROM brand FOR UPDATE`).Scan(&key)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("read the logo: %w", err)
+	}
+	if key == nil {
+		return "", nil
+	}
+	return *key, nil
 }
 
 // Get is the organization's brand.
@@ -153,8 +181,8 @@ func (s *Service) SetFooter(ctx context.Context, actor perm.Actor, in FooterInpu
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_brand (footer_en, footer_de, updated_by) VALUES ($1, $2, $3)
-			ON CONFLICT (org_id) DO UPDATE SET footer_en = $1, footer_de = $2, updated_by = $3, updated_at = now()`,
+			INSERT INTO brand (footer_en, footer_de, updated_by) VALUES ($1, $2, $3)
+			ON CONFLICT (singleton) DO UPDATE SET footer_en = $1, footer_de = $2, updated_by = $3, updated_at = now()`,
 			in.En, in.De, actor.UserID); err != nil {
 			return fmt.Errorf("save the footer: %w", err)
 		}
@@ -182,11 +210,6 @@ func sniffLogo(data []byte) (string, error) {
 	return "", ErrBadLogoType
 }
 
-// LogoKey is where one version of the logo is in the object store.
-func LogoKey(orgID uuid.UUID, version int) string {
-	return fmt.Sprintf("%sbrand/logo-%d", objectstore.OrgPrefix(orgID), version)
-}
-
 // SetLogo replaces the logo. The type is what the bytes say.
 func (s *Service) SetLogo(ctx context.Context, actor perm.Actor, body io.Reader) (*Brand, db.LSN, error) {
 	if objectstore.IsUnavailable(s.store) {
@@ -201,37 +224,36 @@ func (s *Service) SetLogo(ctx context.Context, actor perm.Actor, body io.Reader)
 		return nil, 0, err
 	}
 	var (
-		out   *Brand
-		old   *Logo
-		orgID uuid.UUID
+		out      *Brand
+		previous string
 	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if err := requireAdmin(ctx, tx, actor); err != nil {
 			return err
 		}
-		var version int
+		var err error
+		if previous, err = previousLogo(ctx, tx); err != nil {
+			return err
+		}
+		var key string
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO org_brand (logo_type, logo_size, logo_version, updated_by) VALUES ($1, $2, 1, $3)
-			ON CONFLICT (org_id) DO UPDATE SET logo_type = $1, logo_size = $2, logo_version = org_brand.logo_version + 1, updated_by = $3, updated_at = now()
-			RETURNING org_id, logo_version`, kind, len(data), actor.UserID).Scan(&orgID, &version); err != nil {
+			INSERT INTO brand (logo_type, logo_size, logo_version, updated_by) VALUES ($1, $2, 1, $3)
+			ON CONFLICT (singleton) DO UPDATE SET logo_type = $1, logo_size = $2, logo_version = brand.logo_version + 1, updated_by = $3, updated_at = now()
+			RETURNING logo_key`, kind, len(data), actor.UserID).Scan(&key); err != nil {
 			return fmt.Errorf("save the logo: %w", err)
 		}
-		if err := s.store.Put(ctx, LogoKey(orgID, version), bytes.NewReader(data), int64(len(data)), kind); err != nil {
+		if err := s.store.Put(ctx, key, bytes.NewReader(data), int64(len(data)), kind); err != nil {
 			return err
 		}
 		if err := perm.Record(ctx, tx, actor, audit.ActionOrgBrandSet, "org", nil, map[string]any{"part": "logo"}); err != nil {
 			return err
 		}
-		var err error
 		out, err = Read(ctx, tx)
-		if err == nil && version > 1 {
-			old = &Logo{Version: version - 1}
-		}
 		return err
 	})
-	if err == nil && old != nil {
+	if err == nil && previous != "" {
 		// The previous picture is no longer named by anything.
-		_ = s.store.Delete(ctx, LogoKey(orgID, old.Version))
+		_ = s.store.Delete(ctx, previous)
 	}
 	return out, lsn, err
 }
@@ -239,23 +261,22 @@ func (s *Service) SetLogo(ctx context.Context, actor perm.Actor, body io.Reader)
 // DeleteLogo takes the logo away; exports then carry the name alone.
 func (s *Service) DeleteLogo(ctx context.Context, actor perm.Actor) (*Brand, db.LSN, error) {
 	var (
-		out     *Brand
-		orgID   uuid.UUID
-		version int
-		had     bool
+		out      *Brand
+		previous string
 	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if err := requireAdmin(ctx, tx, actor); err != nil {
 			return err
 		}
-		err := tx.QueryRow(ctx, `
-			UPDATE org_brand SET logo_type = NULL, logo_size = NULL, updated_by = $1, updated_at = now()
-			WHERE logo_type IS NOT NULL RETURNING org_id, logo_version`, actor.UserID).Scan(&orgID, &version)
-		had = err == nil
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("take the logo away: %w", err)
+		var err error
+		if previous, err = previousLogo(ctx, tx); err != nil {
+			return err
 		}
-		if had {
+		if previous != "" {
+			if _, err := tx.Exec(ctx, `
+				UPDATE brand SET logo_type = NULL, logo_size = NULL, updated_by = $1, updated_at = now()`, actor.UserID); err != nil {
+				return fmt.Errorf("take the logo away: %w", err)
+			}
 			if err := perm.Record(ctx, tx, actor, audit.ActionOrgBrandSet, "org", nil, map[string]any{"part": "logo removed"}); err != nil {
 				return err
 			}
@@ -263,8 +284,8 @@ func (s *Service) DeleteLogo(ctx context.Context, actor perm.Actor) (*Brand, db.
 		out, err = Read(ctx, tx)
 		return err
 	})
-	if err == nil && had {
-		_ = s.store.Delete(ctx, LogoKey(orgID, version))
+	if err == nil && previous != "" {
+		_ = s.store.Delete(ctx, previous)
 	}
 	return out, lsn, err
 }
@@ -274,23 +295,12 @@ func (s *Service) DeleteLogo(ctx context.Context, actor perm.Actor) (*Brand, db.
 // organization to a reader who cannot read the organization's tables.
 func (s *Service) OpenLogo(ctx context.Context) (io.ReadCloser, *Logo, error) {
 	var logo *Logo
-	var orgID uuid.UUID
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var (
-			kind    *string
-			size    *int
-			version int
-		)
-		err := tx.QueryRow(ctx, `SELECT org_id, logo_type, logo_size, logo_version FROM org_brand`).Scan(&orgID, &kind, &size, &version)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
+		b, err := Read(ctx, tx)
 		if err != nil {
-			return fmt.Errorf("read the logo: %w", err)
+			return err
 		}
-		if kind != nil && size != nil {
-			logo = &Logo{ContentType: *kind, Size: *size, Version: version}
-		}
+		logo = b.Logo
 		return nil
 	})
 	if err != nil {
@@ -299,7 +309,7 @@ func (s *Service) OpenLogo(ctx context.Context) (io.ReadCloser, *Logo, error) {
 	if logo == nil {
 		return nil, nil, ErrNoLogo
 	}
-	body, err := s.store.Get(ctx, LogoKey(orgID, logo.Version))
+	body, err := s.store.Get(ctx, logo.key)
 	if err != nil {
 		return nil, nil, ErrNoLogo
 	}
@@ -326,27 +336,24 @@ func (s *Service) Export(ctx context.Context, language string) (*Export, error) 
 		footer Footer
 		logo   *Logo
 		accent *string
-		orgID  uuid.UUID
 	)
 	// As the application's own read, not the reader's: an anonymous reader
 	// cannot read the organization's row, and the brand is public to every
 	// export of the organization whoever asks.
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var kind *string
+		var kind, key *string
 		var size *int
 		var version int
 		err := tx.QueryRow(ctx, `
-			SELECT o.id, o.name, t.spec->'colors'->'light'->>'accent',
-			       COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''), b.logo_type, b.logo_size, COALESCE(b.logo_version, 0)
-			FROM org o
-			LEFT JOIN theme t ON t.id = o.default_theme_id AND t.org_id = o.id
-			LEFT JOIN org_brand b ON b.org_id = o.id`).Scan(&orgID, &out.Name, &accent, &footer.En, &footer.De, &kind, &size, &version)
+			SELECT s.name, t.spec->'colors'->'light'->>'accent',
+			       COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''), b.logo_type, b.logo_size, COALESCE(b.logo_version, 0), b.logo_key
+			FROM site s
+			LEFT JOIN theme t ON t.id = s.default_theme_id
+			LEFT JOIN brand b ON true`).Scan(&out.Name, &accent, &footer.En, &footer.De, &kind, &size, &version, &key)
 		if err != nil {
 			return err
 		}
-		if kind != nil && size != nil {
-			logo = &Logo{ContentType: *kind, Size: *size, Version: version}
-		}
+		logo = logoOf(kind, size, version, key)
 		return nil
 	})
 	if err != nil {
@@ -357,7 +364,7 @@ func (s *Service) Export(ctx context.Context, language string) (*Export, error) 
 		out.Accent = *accent
 	}
 	if logo != nil && !objectstore.IsUnavailable(s.store) {
-		if body, err := s.store.Get(ctx, LogoKey(orgID, logo.Version)); err == nil {
+		if body, err := s.store.Get(ctx, logo.key); err == nil {
 			out.Logo, _ = io.ReadAll(io.LimitReader(body, MaxLogoBytes+1))
 			_ = body.Close()
 			if len(out.Logo) > MaxLogoBytes {

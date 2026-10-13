@@ -202,7 +202,7 @@ func (j *Jobs) Queue(ctx context.Context, actor perm.Actor, lang string) (*Job, 
 			WITH queued AS (
 				INSERT INTO example_job (id, requested_by, language)
 				VALUES ($1, $2, $3)
-				ON CONFLICT (org_id) WHERE state IN ('queued', 'running') DO NOTHING
+				ON CONFLICT ((true)) WHERE state IN ('queued', 'running') DO NOTHING
 				RETURNING *)
 			SELECT j.id, j.kind, j.state, j.language, NULL::text, NULL::jsonb, j.failure, j.requested_at, j.started_at, j.finished_at, ''
 			FROM queued j`, uuid.Must(uuid.NewV7()), actor.UserID, lang))
@@ -286,7 +286,7 @@ func (j *Jobs) Renew(ctx context.Context, actor perm.Actor, lang string) (*Job, 
 			WITH queued AS (
 				INSERT INTO example_job (id, requested_by, language, kind, space_id)
 				VALUES ($1, $2, $3, 'renew', $4)
-				ON CONFLICT (org_id) WHERE state IN ('queued', 'running') DO NOTHING
+				ON CONFLICT ((true)) WHERE state IN ('queued', 'running') DO NOTHING
 				RETURNING *)
 			SELECT j.id, j.kind, j.state, j.language, NULL::text, NULL::jsonb, j.failure, j.requested_at, j.started_at, j.finished_at, ''
 			FROM queued j`, uuid.Must(uuid.NewV7()), actor.UserID, lang, e.SpaceID))

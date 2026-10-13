@@ -39,11 +39,11 @@ var errLeaseLost = errors.New("another worker took over the Word import")
 
 // claim is an import a worker took, with whom it acts for.
 type claim struct {
-	id, org, parent uuid.UUID
-	slug            string
-	requester       uuid.UUID
-	role            auth.Role
-	attempts        int
+	id, parent uuid.UUID
+	key        string
+	requester  uuid.UUID
+	role       auth.Role
+	attempts   int
 	// made is what an attempt before this one made and left.
 	made []uuid.UUID
 }
@@ -130,7 +130,7 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 	err := w.importAll(run, c, p)
 	switch {
 	case err == nil:
-		w.log.Info("Word documents imported", "org", c.org, "import", c.id, "pages", p.done, "took", time.Since(began).Round(time.Millisecond))
+		w.log.Info("Word documents imported", "import", c.id, "pages", p.done, "took", time.Since(began).Round(time.Millisecond))
 		w.discardUpload(settle, c)
 		return w.finish(settle, c, p, StateDone, "")
 	case errors.Is(err, errLeaseLost):
@@ -141,7 +141,7 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 		return w.finish(settle, c, p, StateQueued, "")
 	}
 	failure := failureOf(err)
-	w.log.Warn("a Word import stopped", "org", c.org, "import", c.id, "failure", failure, "error", err)
+	w.log.Warn("a Word import stopped", "import", c.id, "failure", failure, "error", err)
 	cleanup, stop := context.WithTimeout(context.WithoutCancel(pinned), CleanupLimit)
 	defer stop()
 	w.trash(cleanup, c, p.made)
@@ -170,7 +170,7 @@ func failureOf(err error) Failure {
 // importAll makes a page of each document and folder in order, recording
 // each as it is made; a document that cannot be read is reported and passed.
 func (w *Watch) importAll(ctx context.Context, c *claim, p *progress) error {
-	rc, err := w.svc.store.Get(ctx, ObjectKey(c.org, c.id))
+	rc, err := w.svc.store.Get(ctx, c.key)
 	if err != nil {
 		return fmt.Errorf("read the uploaded documents: %w", err)
 	}
@@ -294,21 +294,21 @@ func (s *Service) folder(ctx context.Context, actor perm.Actor, parent uuid.UUID
 func (w *Watch) trash(ctx context.Context, c *claim, ids []uuid.UUID) {
 	for _, id := range ids {
 		if _, err := w.svc.pages.Trash(ctx, c.actor(), id); err != nil && !errors.Is(err, page.ErrNotFound) {
-			w.log.Warn("a page a failed Word import made could not be trashed", "org", c.org, "import", c.id, "page", id, "error", err)
+			w.log.Warn("a page a failed Word import made could not be trashed", "import", c.id, "page", id, "error", err)
 		}
 	}
 }
 
 // discardUpload deletes the upload once nothing will read it again.
 func (w *Watch) discardUpload(ctx context.Context, c *claim) {
-	if err := w.svc.store.Delete(ctx, ObjectKey(c.org, c.id)); err != nil {
-		w.log.Warn("a Word import's upload could not be deleted", "org", c.org, "import", c.id, "error", err)
+	if err := w.svc.store.Delete(ctx, c.key); err != nil {
+		w.log.Warn("a Word import's upload could not be deleted", "import", c.id, "error", err)
 	}
 }
 
 // claim takes the next import waiting, or one whose worker died. Claiming
-// crosses organizations and recording is the worker's alone, both of which
-// the admin role is for.
+// reads everybody's imports and recording is the worker's alone, both of
+// which the admin role is for.
 func (w *Watch) claim(ctx context.Context) (*claim, error) {
 	var c *claim
 	_, err := w.svc.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -328,10 +328,10 @@ func (w *Watch) claim(ctx context.Context) (*claim, error) {
 			    started_at = COALESCE(j.started_at, now())
 			FROM next
 			WHERE j.id = next.id
-			RETURNING j.id, j.org_id, (SELECT slug FROM org WHERE id = j.org_id), j.requested_by,
-			          COALESCE((SELECT org_role FROM org_member m WHERE m.org_id = j.org_id AND m.user_id = j.requested_by), ''),
+			RETURNING j.id, j.object_key, j.requested_by,
+			          COALESCE((SELECT m.role FROM member m WHERE m.user_id = j.requested_by), ''),
 			          j.parent_id, j.attempts, j.made`, Lease.Seconds()).
-			Scan(&out.id, &out.org, &out.slug, &out.requester, &role, &out.parent, &out.attempts, &out.made)
+			Scan(&out.id, &out.key, &out.requester, &role, &out.parent, &out.attempts, &out.made)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}

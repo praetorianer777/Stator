@@ -70,21 +70,22 @@ func (w *ScheduleWatch) Run(ctx context.Context) {
 }
 
 type dueSchedule struct {
-	orgID, pageID, userID uuid.UUID
-	role                  string
+	pageID, userID uuid.UUID
+	role           string
 }
 
 // Once publishes, or records as refused, up to one batch of schedules whose
-// time came across every organization, and says how many. A time that passed
+// time came, and says how many. A time that passed
 // while no worker ran is due all the same, and goes out once.
 func (w *ScheduleWatch) Once(ctx context.Context) (int, error) {
 	var found []dueSchedule
-	// Finding them crosses tenants, which is what the admin role is for.
+	// Finding them reads past every person's rights, which is what the admin
+	// role is for.
 	err := w.db.ReadAdmin(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT sc.org_id, sc.page_id, sc.user_id, COALESCE(m.org_role, '')
+			SELECT sc.page_id, sc.user_id, COALESCE(m.role, '')
 			FROM page_schedule sc
-			LEFT JOIN org_member m ON m.org_id = sc.org_id AND m.user_id = sc.user_id
+			LEFT JOIN member m ON m.user_id = sc.user_id
 			WHERE sc.failed_at IS NULL AND sc.publish_at <= now()
 			ORDER BY sc.publish_at LIMIT $1`, scheduleBatch)
 		if err != nil {
@@ -92,7 +93,7 @@ func (w *ScheduleWatch) Once(ctx context.Context) (int, error) {
 		}
 		found, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (dueSchedule, error) {
 			var d dueSchedule
-			return d, row.Scan(&d.orgID, &d.pageID, &d.userID, &d.role)
+			return d, row.Scan(&d.pageID, &d.userID, &d.role)
 		})
 		return err
 	})

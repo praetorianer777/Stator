@@ -53,7 +53,7 @@ func (s *Service) Recipients(ctx context.Context, actor perm.Actor, pageID uuid.
 		}
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.name, u.email::text, perm_page_viewable($1, u.id)
-			FROM org_member m JOIN app_user u ON u.id = m.user_id
+			FROM member m JOIN app_user u ON u.id = m.user_id
 			WHERE perm_global_holds(u.id, 'use')
 			  AND (u.name ILIKE $2 OR u.name ILIKE '% ' || $2 OR u.email::text ILIKE $2)
 			ORDER BY lower(u.name), u.email LIMIT $3`, pageID, perm.LikePrefix(q), perm.PickerLimit(limit))
@@ -105,13 +105,13 @@ func (s *Service) Viewers(ctx context.Context, actor perm.Actor, pageID uuid.UUI
 		if err := tx.QueryRow(ctx, `
 			SELECT count(*) FILTER (WHERE perm_page_viewable($1, m.user_id))::int,
 			       count(*) FILTER (WHERE perm_global_holds(m.user_id, 'use'))::int
-			FROM org_member m`, pageID).Scan(&out.Total, &members); err != nil {
+			FROM member m`, pageID).Scan(&out.Total, &members); err != nil {
 			return err
 		}
 		out.Everyone = out.Total >= members
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.name, u.email::text
-			FROM org_member m JOIN app_user u ON u.id = m.user_id
+			FROM member m JOIN app_user u ON u.id = m.user_id
 			WHERE perm_page_viewable($1, u.id)
 			ORDER BY lower(u.name), u.email, u.id LIMIT $2 OFFSET $3`, pageID, limit, offset)
 		if err != nil {

@@ -8,12 +8,11 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 )
 
-// Seeded names. The slug is the organization's key until it goes from the
-// schema; nobody types or reads it.
+// Seeded names. Nobody types or reads the slug; it only answers the public
+// addresses of the time the site was an organization.
 const (
 	DemoOrgSlug = "demo"
 	DemoOrgName = "Demo"
@@ -24,31 +23,31 @@ type Result struct {
 	OrgCreated bool
 }
 
-// Run seeds the cluster through the admin role, since making an organization
+// Run seeds the cluster through the admin role, since making the site
 // precedes any member.
 func Run(ctx context.Context, cluster *db.Cluster) (Result, error) {
 	return Ensure(ctx, cluster, DemoOrgName)
 }
 
-// Ensure makes the instance's organization when there is none, and leaves an
-// existing one, whatever it is now called, as it is.
+// Ensure makes the instance's site when there is none, and leaves an existing
+// one, whatever it is now called, as it is.
 func Ensure(ctx context.Context, cluster *db.Cluster, name string) (Result, error) {
 	var res Result
 	_, err := cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `INSERT INTO org (slug, name) SELECT $1, $2 WHERE NOT EXISTS (SELECT FROM org)`, DemoOrgSlug, name)
+		tag, err := tx.Exec(ctx, `INSERT INTO site (slug, name) SELECT $1, $2 WHERE NOT EXISTS (SELECT FROM site)`, DemoOrgSlug, name)
 		res.OrgCreated = tag.RowsAffected() == 1
 		return err
 	})
 	return res, err
 }
 
-// Member is one address let into an organization ahead of its first sign-in.
+// Member is one address let in ahead of its first sign-in.
 type Member struct {
 	Email string
 	Role  auth.Role
 }
 
-// People is who an organization is seeded with: members named ahead of time,
+// People is who the site is seeded with: members named ahead of time,
 // and the identity provider they sign in through, when there is one.
 type People struct {
 	Members  []Member
@@ -56,7 +55,7 @@ type People struct {
 }
 
 // Bootstrapped is who STATOR_BOOTSTRAP_MEMBERS and STATOR_BOOTSTRAP_OIDC_*
-// name: the people of the organization seed or seed bootstrap makes.
+// name: the people of the site seed or seed bootstrap makes.
 func Bootstrapped(cfg config.Bootstrap) People {
 	var people People
 	for _, m := range cfg.Members {
@@ -81,9 +80,9 @@ type Populated struct {
 	ProviderExisting bool
 }
 
-// Populate lets the people into the organization and points it at the
-// provider, once: a provider already there is an administrator's to change.
-func Populate(ctx context.Context, accounts *auth.Service, sso *oidc.Service, org instance.Org, people People) (Populated, error) {
+// Populate lets the people in and points the site at the provider, once: a
+// provider already there is an administrator's to change.
+func Populate(ctx context.Context, accounts *auth.Service, sso *oidc.Service, people People) (Populated, error) {
 	var out Populated
 	for _, m := range people.Members {
 		added, err := accounts.EnsureMember(ctx, m.Email, m.Role)
@@ -97,7 +96,7 @@ func Populate(ctx context.Context, accounts *auth.Service, sso *oidc.Service, or
 	if people.Provider == nil {
 		return out, nil
 	}
-	created, err := sso.Bootstrap(ctx, org.ID, *people.Provider)
+	created, err := sso.Bootstrap(ctx, *people.Provider)
 	if err != nil {
 		return out, err
 	}

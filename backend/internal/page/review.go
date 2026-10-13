@@ -283,7 +283,7 @@ func readAskOf(ctx context.Context, tx db.DBTX, actor perm.Actor, pageID uuid.UU
 	var out review.ReadAsk
 	err := tx.QueryRow(ctx, `
 		SELECT a.since, (SELECT c.confirmed_at FROM page_read_confirmation c
-		                 WHERE c.org_id = a.org_id AND c.page_id = a.page_id AND c.user_id = $2 AND c.version >= a.since)
+		                 WHERE c.page_id = a.page_id AND c.user_id = $2 AND c.version >= a.since)
 		FROM page_read_ask a WHERE a.page_id = $1`, pageID, actor.UserID).Scan(&out.Since, &out.ConfirmedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return review.ReadAsk{}, nil
@@ -320,7 +320,7 @@ func goOut(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r *review
 	)
 	if err := tx.QueryRow(ctx, `
 		SELECT perm_page_editable(r.page_id, r.author_id),
-		       COALESCE((SELECT m.org_role FROM org_member m WHERE m.user_id = r.author_id), ''),
+		       COALESCE((SELECT m.role FROM member m WHERE m.user_id = r.author_id), ''),
 		       r.body, r.notify_watchers
 		FROM page_review r WHERE r.id = $1`, r.ID).Scan(&editable, &role, &body, &notify); err != nil {
 		return nil, err
@@ -513,7 +513,7 @@ func (s *Service) DecideReview(ctx context.Context, actor perm.Actor, pageID, id
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO page_review_decision (review_id, reviewer_id, decision, comment)
 			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (org_id, review_id, reviewer_id) DO UPDATE
+			ON CONFLICT (review_id, reviewer_id) DO UPDATE
 			SET decision = EXCLUDED.decision, comment = EXCLUDED.comment, decided_at = now()`,
 			id, actor.UserID, in.Decision, comment); err != nil {
 			return fmt.Errorf("record the decision: %w", err)
@@ -957,7 +957,7 @@ func (s *Service) ConfirmRead(ctx context.Context, actor perm.Actor, id uuid.UUI
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO page_read_confirmation (page_id, user_id, version)
 			VALUES ($1, $2, $3)
-			ON CONFLICT (org_id, page_id, user_id) DO UPDATE SET version = EXCLUDED.version, confirmed_at = now()`,
+			ON CONFLICT (page_id, user_id) DO UPDATE SET version = EXCLUDED.version, confirmed_at = now()`,
 			id, actor.UserID, p.Version); err != nil {
 			return fmt.Errorf("confirm reading the page: %w", err)
 		}
@@ -1010,7 +1010,7 @@ func (s *Service) ReadConfirmations(ctx context.Context, actor perm.Actor, id uu
 		}
 		rows, err = tx.Query(ctx, `
 			SELECT m.user_id, COALESCE(u.name, ''), COALESCE(u.email, ''), count(*) OVER ()
-			FROM org_member m JOIN app_user u ON u.id = m.user_id
+			FROM member m JOIN app_user u ON u.id = m.user_id
 			WHERE u.is_active AND perm_page_viewable($1, m.user_id)
 			  AND NOT EXISTS (SELECT 1 FROM page_read_confirmation c WHERE c.page_id = $1 AND c.user_id = m.user_id AND c.version >= $2)
 			ORDER BY lower(COALESCE(u.name, '')), m.user_id

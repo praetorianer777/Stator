@@ -25,10 +25,10 @@ func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
 func (s *Service) StarPage(ctx context.Context, actor perm.Actor, pageID uuid.UUID) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO star (org_id, user_id, page_id)
-			SELECT p.org_id, $1, p.id FROM page p
+			INSERT INTO star (user_id, page_id)
+			SELECT $1, p.id FROM page p
 			WHERE p.id = $2 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 1)+`
-			ON CONFLICT (org_id, user_id, page_id) WHERE page_id IS NOT NULL DO NOTHING`, actor.UserID, pageID)
+			ON CONFLICT (user_id, page_id) WHERE page_id IS NOT NULL DO NOTHING`, actor.UserID, pageID)
 		if err != nil {
 			return err
 		}

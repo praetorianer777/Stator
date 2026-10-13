@@ -90,7 +90,7 @@ type OrgExportJob struct {
 const selectOrgExport = `
 SELECT e.id, e.state, e.done_steps, e.total_steps, COALESCE(u.name, ''), e.requested_by = current_actor_id(),
        e.requested_at, e.started_at, e.finished_at, e.file_name, e.size_bytes, e.expires_at, e.failure, COALESCE(e.detail, ''), e.object_key
-FROM org_export e LEFT JOIN app_user u ON u.id = e.requested_by`
+FROM site_export e LEFT JOIN app_user u ON u.id = e.requested_by`
 
 func scanOrgExport(row pgx.Row) (*OrgExportJob, error) {
 	var (
@@ -126,7 +126,7 @@ type OrgImportJob struct {
 const selectOrgImport = `
 SELECT i.id, i.state, i.done_steps, i.total_steps, COALESCE(u.name, ''), i.report, i.failure, COALESCE(i.detail, ''),
        i.requested_at, i.started_at, i.finished_at, COALESCE(i.written_lsn::text, '')
-FROM org_import i LEFT JOIN app_user u ON u.id = i.requested_by`
+FROM site_import i LEFT JOIN app_user u ON u.id = i.requested_by`
 
 func scanOrgImport(row pgx.Row) (*OrgImportJob, error) {
 	var (
@@ -225,7 +225,7 @@ func (j *Jobs) QueueOrgExport(ctx context.Context, actor perm.Actor) (*OrgExport
 			return err
 		}
 		id := uuid.Must(uuid.NewV7())
-		if _, err := tx.Exec(ctx, `INSERT INTO org_export (id, requested_by) VALUES ($1, $2)`, id, actor.UserID); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO site_export (id, requested_by) VALUES ($1, $2)`, id, actor.UserID); err != nil {
 			return fmt.Errorf("queue the export: %w", err)
 		}
 		if err := perm.Record(ctx, tx, actor, audit.ActionOrgExported, "org", nil, map[string]any{"export": id.String()}); err != nil {
@@ -301,7 +301,7 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 			return err
 		}
 		var taken bool
-		if err := tx.QueryRow(ctx, `SELECT org_has_spaces()`).Scan(&taken); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT site_has_spaces()`).Scan(&taken); err != nil {
 			return err
 		}
 		if taken {
@@ -319,12 +319,8 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 	if _, err := readOrgManifest(zr); err != nil {
 		return nil, 0, err
 	}
-	org, err := j.site.Org(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
 	id := uuid.Must(uuid.NewV7())
-	objectKey := orgImportObjectKey(org.ID, id)
+	objectKey := jobKey(siteImportFolder, id)
 	if _, err := archive.Seek(0, io.SeekStart); err != nil {
 		return nil, 0, err
 	}
@@ -333,9 +329,14 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 	}
 	var out *OrgImportJob
 	lsn, err := j.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_import (id, requested_by, size_bytes) VALUES ($1, $2, $3)`, id, actor.UserID, size); err != nil {
+		var stored string
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO site_import (id, requested_by, size_bytes) VALUES ($1, $2, $3) RETURNING object_key`,
+			id, actor.UserID, size).Scan(&stored); err != nil {
 			return fmt.Errorf("queue the import: %w", err)
+		}
+		if err := sameKey(stored, objectKey); err != nil {
+			return err
 		}
 		var err error
 		out, err = scanOrgImport(tx.QueryRow(ctx, selectOrgImport+` WHERE i.id = $1`, id))
@@ -345,10 +346,6 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 		_ = j.store.Delete(context.WithoutCancel(ctx), objectKey)
 	}
 	return out, lsn, err
-}
-
-func orgImportObjectKey(org, id uuid.UUID) string {
-	return "org/" + org.String() + "/org-import/" + id.String()
 }
 
 // OrgImport is one import, for the organization's administrators.

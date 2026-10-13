@@ -184,7 +184,7 @@ func (s *Service) page(ctx context.Context, tx db.DBTX, id uuid.UUID) (*PageRef,
 	var p PageRef
 	err := tx.QueryRow(ctx, `
 		SELECT p.id, p.title, p.version, s.key, s.name, p.kind
-		FROM page p JOIN space s ON s.org_id = p.org_id AND s.id = p.space_id
+		FROM page p JOIN space s ON s.id = p.space_id
 		WHERE p.id = $1 AND p.version > 0`, id).Scan(&p.ID, &p.Title, &p.Version, &p.Space.Key, &p.Space.Name, &p.Kind)
 	if err != nil {
 		return nil, err

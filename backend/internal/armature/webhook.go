@@ -13,11 +13,10 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // ErrBadSignature is any delivery that cannot be trusted, one sent to an old
-// address naming another organization included.
+// address naming another site included.
 var ErrBadSignature = errors.New("the webhook signature does not match")
 
 // Sign is Armature's webhook.Sign: sha256= and the lower case hex HMAC-SHA256
@@ -34,7 +33,7 @@ func VerifySignature(body []byte, secret, header string) bool {
 }
 
 // absentSecret is signed against when there is no secret to check, so an
-// unknown organization costs the same work as a known one.
+// unconnected site costs the same work as a connected one.
 const absentSecret = WebhookSecretPrefix + "absent"
 
 // WebhookClears says which issue keys a delivery clears, and whether it
@@ -64,26 +63,27 @@ func WebhookClears(topic string, payload json.RawMessage) (keys []string, search
 	return keys, searches
 }
 
-// webhookTarget is what the receiver needs of the organization.
+// webhookTarget is what the receiver needs of the connection.
 type webhookTarget struct {
-	OrgID         uuid.UUID
+	// SiteID is what the secret was sealed with, and keys the cache.
+	SiteID        uuid.UUID
 	Sealed        []byte
 	ArmatureOrgID *uuid.UUID
 }
 
-// Webhook verifies one delivery to org and clears what it announces; a
-// replay of an event already acted on changes nothing.
-func (s *Service) Webhook(ctx context.Context, org instance.Org, body []byte, signature string) error {
+// Webhook verifies one delivery and clears what it announces; a replay of an
+// event already acted on changes nothing.
+func (s *Service) Webhook(ctx context.Context, body []byte, signature string) error {
 	var target *webhookTarget
-	// As the admin role: nobody signs in, and the organization is only
-	// known once its secret has vouched for the body.
+	// As the admin role: nobody signs in, and the sender is only known once
+	// the secret has vouched for the body.
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var t webhookTarget
 		err := tx.QueryRow(ctx, `
-			SELECT o.id, c.webhook_secret, c.armature_org_id
-			FROM org o JOIN armature_connection c ON c.org_id = o.id
-			WHERE o.id = $1 AND o.archived_at IS NULL AND c.webhook_secret IS NOT NULL`, org.ID,
-		).Scan(&t.OrgID, &t.Sealed, &t.ArmatureOrgID)
+			SELECT s.id, c.webhook_secret, c.armature_org_id
+			FROM site s CROSS JOIN armature_connection c
+			WHERE s.archived_at IS NULL AND c.webhook_secret IS NOT NULL`,
+		).Scan(&t.SiteID, &t.Sealed, &t.ArmatureOrgID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -98,8 +98,8 @@ func (s *Service) Webhook(ctx context.Context, org instance.Org, body []byte, si
 	}
 	secret := absentSecret
 	if target != nil {
-		if secret, err = s.OpenWebhookSecret(target.OrgID, target.Sealed); err != nil {
-			s.opts.Log.Warn("a sealed webhook secret could not be opened", "org_id", target.OrgID, "error", err)
+		if secret, err = s.OpenWebhookSecret(target.SiteID, target.Sealed); err != nil {
+			s.opts.Log.Warn("a sealed webhook secret could not be opened", "site_id", target.SiteID, "error", err)
 			secret = absentSecret
 			target = nil
 		}
@@ -110,7 +110,7 @@ func (s *Service) Webhook(ctx context.Context, org instance.Org, body []byte, si
 
 	var env WebhookEnvelope
 	if err := json.Unmarshal(body, &env); err != nil || env.ID == uuid.Nil {
-		s.opts.Log.Info("a signed webhook delivery is not Armature's envelope; ignored", "org_id", target.OrgID, "error", err)
+		s.opts.Log.Info("a signed webhook delivery is not Armature's envelope; ignored", "site_id", target.SiteID, "error", err)
 		return nil
 	}
 	if target.ArmatureOrgID != nil && env.OrgID != *target.ArmatureOrgID {
@@ -120,12 +120,12 @@ func (s *Service) Webhook(ctx context.Context, org instance.Org, body []byte, si
 	if len(keys) == 0 && !searches {
 		return nil
 	}
-	if !s.cache.FirstDelivery(ctx, target.OrgID, env.ID) {
+	if !s.cache.FirstDelivery(ctx, target.SiteID, env.ID) {
 		return nil
 	}
-	s.cache.ForgetIssues(ctx, target.OrgID, keys...)
+	s.cache.ForgetIssues(ctx, target.SiteID, keys...)
 	if searches {
-		s.cache.ForgetSearches(ctx, target.OrgID)
+		s.cache.ForgetSearches(ctx, target.SiteID)
 	}
 	return nil
 }

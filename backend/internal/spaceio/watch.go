@@ -50,16 +50,15 @@ type kind string
 const (
 	kindExport kind = "space_export"
 	kindImport kind = "space_import"
-	// kindOrgExport and kindOrgImport are a whole organization's.
-	kindOrgExport kind = "org_export"
-	kindOrgImport kind = "org_import"
+	// kindOrgExport and kindOrgImport carry the whole site.
+	kindOrgExport kind = "site_export"
+	kindOrgImport kind = "site_import"
 )
 
 // claim is a job a worker took, with whom it acts for.
 type claim struct {
 	kind     kind
-	id, org  uuid.UUID
-	slug     string
+	id       uuid.UUID
 	user     uuid.UUID
 	role     auth.Role
 	attempts int
@@ -164,12 +163,12 @@ func (w *Watch) expire(ctx context.Context) error {
 		_, err := tx.Exec(ctx, `
 			WITH gone AS (
 				UPDATE space_export SET state = 'expired' WHERE state = 'done' AND expires_at < now()
-				RETURNING org_id, object_key),
-			gone_orgs AS (
-				UPDATE org_export SET state = 'expired' WHERE state = 'done' AND expires_at < now()
-				RETURNING org_id, object_key)
-			INSERT INTO attachment_tombstone (object_key, org_id)
-			SELECT object_key, org_id FROM gone UNION ALL SELECT object_key, org_id FROM gone_orgs
+				RETURNING object_key),
+			gone_sites AS (
+				UPDATE site_export SET state = 'expired' WHERE state = 'done' AND expires_at < now()
+				RETURNING object_key)
+			INSERT INTO attachment_tombstone (object_key)
+			SELECT object_key FROM gone UNION ALL SELECT object_key FROM gone_sites
 			ON CONFLICT (object_key) DO NOTHING`)
 		return err
 	})
@@ -199,10 +198,10 @@ func (w *Watch) claim(ctx context.Context, k kind) (*claim, error) {
 			    started_at = COALESCE(j.started_at, now())
 			FROM next
 			WHERE j.id = next.id
-			RETURNING j.id, j.org_id, (SELECT slug FROM org WHERE id = j.org_id), j.requested_by,
-			          COALESCE((SELECT org_role FROM org_member m WHERE m.org_id = j.org_id AND m.user_id = j.requested_by), ''),
+			RETURNING j.id, j.requested_by,
+			          COALESCE((SELECT m.role FROM member m WHERE m.user_id = j.requested_by), ''),
 			          j.attempts, j.object_key, %[2]s`, k, extra), Lease.Seconds()).
-			Scan(&out.id, &out.org, &out.slug, &out.user, &role, &out.attempts, &out.object, &out.spaceID, &format, &out.key, &out.name, &out.size, &source)
+			Scan(&out.id, &out.user, &role, &out.attempts, &out.object, &out.spaceID, &format, &out.key, &out.name, &out.size, &source)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -310,7 +309,7 @@ func (w *Watch) runExport(ctx context.Context, c *claim) error {
 	settle := context.WithoutCancel(ctx)
 	switch {
 	case err == nil:
-		w.log.Info("space exported", "org", c.org, "job", c.id, "format", c.format, "bytes", size, "took", time.Since(began).Round(time.Millisecond))
+		w.log.Info("space exported", "job", c.id, "format", c.format, "bytes", size, "took", time.Since(began).Round(time.Millisecond))
 		return w.finishExport(settle, c, StateDone, "", name, size)
 	case errors.Is(err, errLeaseLost):
 		return err
@@ -324,7 +323,7 @@ func (w *Watch) runExport(ctx context.Context, c *claim) error {
 	case errors.Is(err, ErrTooLarge):
 		failure = FailureTooLarge
 	}
-	w.log.Warn("the space was not exported", "org", c.org, "job", c.id, "failure", failure, "error", err)
+	w.log.Warn("the space was not exported", "job", c.id, "failure", failure, "error", err)
 	return w.finishExport(settle, c, StateFailed, failure, "", 0)
 }
 
@@ -443,7 +442,7 @@ func (w *Watch) runImport(ctx context.Context, c *claim) error {
 	settle := context.WithoutCancel(ctx)
 	switch {
 	case err == nil:
-		w.log.Info("space imported", "org", c.org, "job", c.id, "space", im.key, "took", time.Since(began).Round(time.Millisecond))
+		w.log.Info("space imported", "job", c.id, "space", im.key, "took", time.Since(began).Round(time.Millisecond))
 		return w.finishImport(settle, c, StateDone, "", "", &im.spaceID, &im.report, written)
 	case errors.Is(err, errLeaseLost):
 		return err
@@ -451,7 +450,7 @@ func (w *Watch) runImport(ctx context.Context, c *claim) error {
 		return w.finishImport(settle, c, StateQueued, "", "", nil, nil, 0)
 	}
 	failure, detail := failureOf(err)
-	w.log.Warn("the space was not imported", "org", c.org, "job", c.id, "failure", failure, "error", err)
+	w.log.Warn("the space was not imported", "job", c.id, "failure", failure, "error", err)
 	return w.finishImport(settle, c, StateFailed, failure, detail, nil, nil, 0)
 }
 
@@ -509,7 +508,7 @@ func (w *Watch) importArchive(ctx context.Context, c *claim) (*importer, db.LSN,
 		}
 		src = exported
 	}
-	im := &importer{src: src, m: m, store: w.store, org: c.org, importer: c.user, spaceID: uuid.Must(uuid.NewV7()), from: c.source,
+	im := &importer{src: src, m: m, store: w.store, importer: c.user, spaceID: uuid.Must(uuid.NewV7()), from: c.source,
 		report: Report{People: []MissingPerson{}, Groups: []string{}, Dropped: []DroppedEntry{}, Lost: []wikiread.Loss{}}}
 	if exported != nil {
 		im.report.Lost, im.report.LostCount = exported.listed, exported.lostCount
@@ -551,7 +550,7 @@ func (w *Watch) importArchive(ctx context.Context, c *claim) (*importer, db.LSN,
 		return nil
 	})
 	if err != nil {
-		w.letGo(context.WithoutCancel(ctx), c.org, im.uploaded)
+		w.letGo(context.WithoutCancel(ctx), im.uploaded)
 		return nil, 0, err
 	}
 	return im, written, nil
@@ -574,18 +573,18 @@ func checkSpace(im *importer) error {
 
 // letGo leaves a tombstone for each object a failed import stored, which
 // the file reaper deletes.
-func (w *Watch) letGo(ctx context.Context, org uuid.UUID, keys []string) {
+func (w *Watch) letGo(ctx context.Context, keys []string) {
 	if len(keys) == 0 {
 		return
 	}
 	_, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO attachment_tombstone (object_key, org_id) SELECT k, $1 FROM unnest($2::text[]) AS k
-			ON CONFLICT (object_key) DO NOTHING`, org, keys)
+			INSERT INTO attachment_tombstone (object_key) SELECT k FROM unnest($1::text[]) AS k
+			ON CONFLICT (object_key) DO NOTHING`, keys)
 		return err
 	})
 	if err != nil {
-		w.log.Warn("the files of a failed import were not let go; they stay in storage", "org", org, "error", err)
+		w.log.Warn("the files of a failed import were not let go; they stay in storage", "error", err)
 	}
 }
 
@@ -637,7 +636,7 @@ func (w *Watch) finishImport(ctx context.Context, c *claim, state State, failure
 		}
 		if tag.RowsAffected() > 0 && state != StateQueued {
 			_, err = tx.Exec(ctx, `
-				INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2) ON CONFLICT (object_key) DO NOTHING`, c.object, c.org)
+				INSERT INTO attachment_tombstone (object_key) VALUES ($1) ON CONFLICT (object_key) DO NOTHING`, c.object)
 		}
 		return err
 	})

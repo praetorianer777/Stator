@@ -101,7 +101,7 @@ func syncTasks(ctx context.Context, tx db.DBTX, pageID uuid.UUID, strict bool) e
 		SELECT $1, t.task_id, t.position, t.summary, t.done, t.assignee_id, t.due_on::date
 		FROM unnest($2::uuid[], $3::int[], $4::text[], $5::bool[], $6::uuid[], $7::text[])
 		     AS t (task_id, position, summary, done, assignee_id, due_on)
-		ON CONFLICT (org_id, page_id, task_id) DO UPDATE
+		ON CONFLICT (page_id, task_id) DO UPDATE
 		SET position = EXCLUDED.position, summary = EXCLUDED.summary, done = EXCLUDED.done,
 		    assignee_id = EXCLUDED.assignee_id, due_on = EXCLUDED.due_on
 		WHERE (page_task.position, page_task.summary, page_task.done, page_task.assignee_id, page_task.due_on)

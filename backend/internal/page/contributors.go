@@ -84,7 +84,7 @@ func (s *Service) Contributors(ctx context.Context, actor perm.Actor, id uuid.UU
 				UNION
 				SELECT v.page_id, v.number, e.user_id, v.updated_at
 				FROM page_version_editor e JOIN counted c ON c.id = e.page_id
-				JOIN page_version v ON v.org_id = e.org_id AND v.page_id = e.page_id AND v.number = e.number
+				JOIN page_version v ON v.page_id = e.page_id AND v.number = e.number
 			)
 			SELECT u.id, u.name, COALESCE(u.avatar_url, ''), count(*)::int, max(x.at)
 			FROM edits x JOIN app_user u ON u.id = x.user_id

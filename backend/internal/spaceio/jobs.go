@@ -16,7 +16,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/attachment"
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
@@ -285,12 +284,10 @@ type Jobs struct {
 	// MaxOrgImportBytes an organization's.
 	MaxImportBytes    int64
 	MaxOrgImportBytes int64
-	// site names the organization whose prefix an upload waits under.
-	site *instance.Resolver
 }
 
 func NewJobs(cluster *db.Cluster, store objectstore.Store) *Jobs {
-	return &Jobs{db: cluster, store: store, site: instance.NewResolver(cluster), MaxImportBytes: DefaultMaxImportBytes, MaxOrgImportBytes: DefaultMaxOrgImportBytes}
+	return &Jobs{db: cluster, store: store, MaxImportBytes: DefaultMaxImportBytes, MaxOrgImportBytes: DefaultMaxOrgImportBytes}
 }
 
 // QueueExport asks the worker to export a space the caller administers, and
@@ -441,11 +438,7 @@ func (j *Jobs) QueueImport(ctx context.Context, actor perm.Actor, in ImportInput
 		return nil, 0, err
 	}
 	id := uuid.Must(uuid.NewV7())
-	org, err := j.site.Org(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-	objectKey := importObjectKey(org.ID, id)
+	objectKey := jobKey(spaceImportFolder, id)
 	if _, err := archive.Seek(0, io.SeekStart); err != nil {
 		return nil, 0, err
 	}
@@ -454,10 +447,14 @@ func (j *Jobs) QueueImport(ctx context.Context, actor perm.Actor, in ImportInput
 	}
 	var out *ImportJob
 	lsn, err := j.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, err := tx.Exec(ctx, `
+		var stored string
+		if err := tx.QueryRow(ctx, `
 			INSERT INTO space_import (id, requested_by, key, name, size_bytes, source)
-			VALUES ($1, $2, $3, $4, $5, $6)`, id, actor.UserID, key, name, size, string(from)); err != nil {
+			VALUES ($1, $2, $3, $4, $5, $6) RETURNING object_key`, id, actor.UserID, key, name, size, string(from)).Scan(&stored); err != nil {
 			return fmt.Errorf("queue the import: %w", err)
+		}
+		if err := sameKey(stored, objectKey); err != nil {
+			return err
 		}
 		var err error
 		out, err = scanImport(tx.QueryRow(ctx, selectImport+` WHERE i.id = $1`, id))
@@ -469,12 +466,8 @@ func (j *Jobs) QueueImport(ctx context.Context, actor perm.Actor, in ImportInput
 	return out, lsn, err
 }
 
-func importObjectKey(org, id uuid.UUID) string {
-	return "org/" + org.String() + "/space-import/" + id.String()
-}
-
-// keyFree refuses a key another space of the organization has, whether or
-// not the caller may see that space.
+// keyFree refuses a key another space has, whether or not the caller may
+// see that space.
 func (j *Jobs) keyFree(ctx context.Context, key string) error {
 	var taken bool
 	err := j.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {

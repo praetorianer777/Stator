@@ -239,7 +239,7 @@ func saveLive(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, title 
 	}
 	var open, same bool
 	if err := tx.QueryRow(ctx, `
-		SELECT page_version_open(p.org_id, p.id, p.version), p.title = $2 AND p.body = $3::jsonb
+		SELECT page_version_open(p.id, p.version), p.title = $2 AND p.body = $3::jsonb
 		FROM page p WHERE p.id = $1`, p.ID, title, body).Scan(&open, &same); err != nil {
 		return nil, fmt.Errorf("read the open version: %w", err)
 	}

@@ -16,7 +16,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 )
 
@@ -216,9 +215,8 @@ func authenticated(s *Server, guards ...func(http.Handler) http.Handler) http.Ha
 // nobody to it.
 func TestAuthenticationNamesAMemberToTheDatabase(t *testing.T) {
 	s := newServer(t)
-	orgID := uuid.New()
 	s.Auth = fakeAuth{
-		"in-org": {UserID: uuid.New(), Org: &instance.Org{ID: orgID, Slug: "acme"}},
+		"in-org": {UserID: uuid.New(), Role: auth.RoleMember},
 		"no-org": {UserID: uuid.New()},
 	}
 

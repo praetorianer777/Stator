@@ -62,9 +62,9 @@ func (s *Service) WithLogger(log *slog.Logger) *Service {
 const selectAttachment = `
 SELECT a.id, a.page_id, a.file_name, a.content_type, a.size_bytes, a.width, a.height,
        COALESCE(u.name, ''), a.created_at, a.version,
-       (SELECT count(*) FROM attachment v WHERE v.org_id = a.org_id AND v.page_id = a.page_id AND lower(v.file_name) = lower(a.file_name)),
+       (SELECT count(*) FROM attachment v WHERE v.page_id = a.page_id AND lower(v.file_name) = lower(a.file_name)),
        a.restored_from, a.edited_from, a.object_key,
-       (SELECT max(v.version) FROM attachment v WHERE v.org_id = a.org_id AND v.page_id = a.page_id AND lower(v.file_name) = lower(a.file_name))
+       (SELECT max(v.version) FROM attachment v WHERE v.page_id = a.page_id AND lower(v.file_name) = lower(a.file_name))
 FROM attachment a
 LEFT JOIN app_user u ON u.id = a.uploaded_by`
 
@@ -115,7 +115,7 @@ func (s *Service) List(ctx context.Context, actor perm.Actor, pageID uuid.UUID, 
 			return err
 		}
 		rows, err := tx.Query(ctx, selectAttachment+` WHERE a.page_id = $1
-			AND (NOT $2 OR NOT EXISTS (SELECT 1 FROM attachment n WHERE n.org_id = a.org_id AND n.page_id = a.page_id
+			AND (NOT $2 OR NOT EXISTS (SELECT 1 FROM attachment n WHERE n.page_id = a.page_id
 			                           AND lower(n.file_name) = lower(a.file_name) AND n.version > a.version))
 			ORDER BY a.created_at DESC, a.id DESC`, pageID, current)
 		if err != nil {
@@ -335,7 +335,7 @@ func (s *Service) LocateAnonymous(ctx context.Context, id uuid.UUID) (*Located, 
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		found, err = scan(tx.QueryRow(ctx, selectAttachment+`
-			JOIN page p ON p.org_id = a.org_id AND p.id = a.page_id
+			JOIN page p ON p.id = a.page_id
 			WHERE a.id = $1 AND p.trashed_at IS NULL AND p.version > 0 AND perm_page_viewable(p.id, NULL::uuid)`, id))
 		return err
 	})
@@ -355,7 +355,7 @@ func (s *Service) LocateLinked(ctx context.Context, id uuid.UUID) (*Located, err
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		found, err = scan(tx.QueryRow(ctx, selectAttachment+`
-			JOIN page p ON p.org_id = a.org_id AND p.id = a.page_id
+			JOIN page p ON p.id = a.page_id
 			WHERE a.id = $1 AND p.id = perm_link_page() AND p.trashed_at IS NULL AND p.version > 0 AND perm_page_viewable(p.id, NULL::uuid)`, id))
 		return err
 	})

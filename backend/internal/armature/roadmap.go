@@ -120,7 +120,7 @@ func (s *Service) Roadmap(ctx context.Context, in RoadmapInput) (Status, *Roadma
 		return status, nil, err
 	}
 	var cached Roadmap
-	if s.cache.Roadmap(ctx, v.OrgID, v.TokenID, in, &cached) {
+	if s.cache.Roadmap(ctx, v.SiteID, v.TokenID, in, &cached) {
 		return StatusOK, &cached, nil
 	}
 	var plan struct {
@@ -142,7 +142,7 @@ func (s *Service) Roadmap(ctx context.Context, in RoadmapInput) (Status, *Roadma
 	}
 	out := buildRoadmap(plan.Items, plan.Matched, in.GroupBy, v.Caller.BaseURL())
 	out.URL = SearchURL(v.Caller.BaseURL(), in.Query)
-	s.cache.PutRoadmap(ctx, v.OrgID, v.TokenID, in, out)
+	s.cache.PutRoadmap(ctx, v.SiteID, v.TokenID, in, out)
 	return StatusOK, out, nil
 }
 
@@ -312,11 +312,11 @@ func RoadmapField(tokenID uuid.UUID, in RoadmapInput) string {
 }
 
 // Roadmap reads a cached roadmap; see Issue.
-func (c *Cache) Roadmap(ctx context.Context, org, tokenID uuid.UUID, in RoadmapInput, out any) bool {
-	return c.getField(ctx, SearchKey(org), RoadmapField(tokenID, in), RoadmapCacheTTL, out)
+func (c *Cache) Roadmap(ctx context.Context, site, tokenID uuid.UUID, in RoadmapInput, out any) bool {
+	return c.getField(ctx, SearchKey(site), RoadmapField(tokenID, in), RoadmapCacheTTL, out)
 }
 
 // PutRoadmap stores a roadmap.
-func (c *Cache) PutRoadmap(ctx context.Context, org, tokenID uuid.UUID, in RoadmapInput, value any) {
-	c.putField(ctx, SearchKey(org), RoadmapField(tokenID, in), RoadmapCacheTTL, value)
+func (c *Cache) PutRoadmap(ctx context.Context, site, tokenID uuid.UUID, in RoadmapInput, value any) {
+	c.putField(ctx, SearchKey(site), RoadmapField(tokenID, in), RoadmapCacheTTL, value)
 }

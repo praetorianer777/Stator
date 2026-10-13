@@ -13,8 +13,6 @@ import (
 	"strings"
 	"sync"
 	"unicode"
-
-	"github.com/google/uuid"
 )
 
 // Store is where the bytes go. A domain knows nothing about S3 beyond this, so
@@ -28,12 +26,6 @@ type Store interface {
 	Delete(ctx context.Context, key string) error
 	// List names every object whose key starts with prefix.
 	List(ctx context.Context, prefix string) ([]string, error)
-}
-
-// OrgPrefix is where every object of one organization lives, so all of an
-// organization's files are found, and removed, by one listing.
-func OrgPrefix(org uuid.UUID) string {
-	return "org/" + org.String() + "/"
 }
 
 // DeletePrefix removes every object under prefix. An empty prefix is refused:

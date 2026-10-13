@@ -1,6 +1,6 @@
-// Package testinstance arranges the instance's one organization for the
-// browser suite: people of a spec's own, signed in without a provider, and
-// the organization's settings put back between the specs that change them.
+// Package testinstance arranges the instance's site for the browser suite:
+// people of a spec's own, signed in without a provider, and the site's
+// settings put back between the specs that change them.
 // The api serves it only when STATOR_TEST_ENDPOINTS is on, which no
 // production deployment sets.
 package testinstance
@@ -36,7 +36,7 @@ var (
 	// ErrGuestSpace is returned when a guest names no space it can be let
 	// into, or somebody else names one.
 	ErrGuestSpace = errors.New("a guest needs the key of an existing space, and nobody else takes one")
-	// ErrNoOrganization is returned before the seed has made the organization.
+	// ErrNoOrganization is returned before the seed has made the site.
 	ErrNoOrganization = errors.New("the organization does not exist yet; run the seed")
 )
 
@@ -63,9 +63,9 @@ type NewPerson struct {
 
 // Person is a test person as the endpoint returns them.
 type Person struct {
-	ID    uuid.UUID    `json:"id"`
-	Email string       `json:"email"`
-	Name  string       `json:"name"`
+	ID    uuid.UUID `json:"id"`
+	Email string    `json:"email"`
+	Name  string    `json:"name"`
 	Role  auth.Role `json:"role"`
 }
 
@@ -78,7 +78,7 @@ type Session struct {
 	LSN       db.LSN
 }
 
-// Service works on the instance's organization.
+// Service works on the instance's site.
 type Service struct {
 	db         *db.Cluster
 	sso        *oidc.Service
@@ -90,7 +90,7 @@ func NewService(cluster *db.Cluster, sso *oidc.Service, people seed.People, sess
 	return &Service{db: cluster, sso: sso, people: people, sessionTTL: sessionTTL}
 }
 
-// CreatePerson makes a person in the organization with the role asked for
+// CreatePerson makes a member with the role asked for
 // and opens a session for them, as a password sign-in would.
 func (s *Service) CreatePerson(ctx context.Context, in NewPerson) (*Session, error) {
 	switch in.Role {
@@ -120,14 +120,13 @@ func (s *Service) CreatePerson(ctx context.Context, in NewPerson) (*Session, err
 	}
 	out.ExpiresAt = time.Now().Add(s.sessionTTL)
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		orgID, err := s.orgID(ctx, tx)
-		if err != nil {
+		if err := s.exists(ctx, tx); err != nil {
 			return err
 		}
 		var space *uuid.UUID
 		if in.Role == auth.RoleGuest {
 			var id uuid.UUID
-			err := tx.QueryRow(ctx, `SELECT id FROM space WHERE org_id = $1 AND key = $2`, orgID, in.SpaceKey).Scan(&id)
+			err := tx.QueryRow(ctx, `SELECT id FROM space WHERE key = $1`, in.SpaceKey).Scan(&id)
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ErrGuestSpace
 			}
@@ -139,19 +138,20 @@ func (s *Service) CreatePerson(ctx context.Context, in NewPerson) (*Session, err
 		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, $2) RETURNING id`, out.Email, out.Name).Scan(&out.ID); err != nil {
 			return fmt.Errorf("make the person: %w", err)
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role, guest_space_id) VALUES ($1, $2, $3, $4)`,
-			orgID, out.ID, string(in.Role), space); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO member (user_id, role, guest_space_id) VALUES ($1, $2, $3)`,
+			out.ID, string(in.Role), space); err != nil {
 			return fmt.Errorf("make the membership: %w", err)
 		}
 		if space != nil {
 			for _, p := range guest.RoleViewer.Permissions() {
-				if _, err := tx.Exec(ctx, `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id) VALUES ($1, $2, $3, 'user', $4)`,
-					orgID, *space, string(p), out.ID); err != nil {
+				if _, err := tx.Exec(ctx, `INSERT INTO space_grant (space_id, permission, subject_type, user_id) VALUES ($1, $2, 'user', $3)`,
+					*space, string(p), out.ID); err != nil {
 					return fmt.Errorf("let the guest in: %w", err)
 				}
 			}
 		}
-		out.SessionID, out.Secret, err = auth.OpenSession(ctx, tx, out.ID, &orgID, auth.ProofPassword, out.ExpiresAt, "", "")
+		var err error
+		out.SessionID, out.Secret, err = auth.OpenSession(ctx, tx, out.ID, auth.ProofPassword, out.ExpiresAt, "", "")
 		return err
 	})
 	if err != nil {
@@ -181,28 +181,25 @@ func (s *Service) DeletePerson(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-// Reset puts back what belongs to the organization as a whole as the
-// bootstrap left it, so no spec sees another's settings. People, spaces and
-// the audit log stay.
+// Reset puts back what belongs to the site as a whole as the bootstrap left
+// it, so no spec sees another's settings. People, spaces and the audit log
+// stay.
 func (s *Service) Reset(ctx context.Context) error {
-	var org instance.Org
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		var err error
-		if org, err = instance.Find(ctx, tx); err != nil {
+		if err := s.exists(ctx, tx); err != nil {
 			return err
 		}
-		id := org.ID
 		for i, stmt := range resetStatements {
-			if _, err := tx.Exec(ctx, stmt, id); err != nil {
-				return fmt.Errorf("reset the organization, statement %d: %w", i+1, err)
+			if _, err := tx.Exec(ctx, stmt); err != nil {
+				return fmt.Errorf("reset the site, statement %d: %w", i+1, err)
 			}
 		}
 		for _, m := range s.people.Members {
 			if _, err := tx.Exec(ctx, `
-				UPDATE org_member SET org_role = $3, role_source = 'manual'
-				WHERE org_id = $1 AND user_id = (SELECT id FROM app_user WHERE email = $2)
-				  AND (org_role, role_source) IS DISTINCT FROM ($3, 'manual')`,
-				id, auth.NormalizeEmail(m.Email), string(m.Role)); err != nil {
+				UPDATE member SET role = $2, role_source = 'manual'
+				WHERE user_id = (SELECT id FROM app_user WHERE email = $1)
+				  AND (role, role_source) IS DISTINCT FROM ($2, 'manual')`,
+				auth.NormalizeEmail(m.Email), string(m.Role)); err != nil {
 				return fmt.Errorf("give %s their bootstrap role back: %w", m.Email, err)
 			}
 		}
@@ -211,27 +208,27 @@ func (s *Service) Reset(ctx context.Context) error {
 	if err != nil || s.people.Provider == nil {
 		return err
 	}
-	if err := s.sso.Configure(ctx, org.ID, *s.people.Provider); err != nil {
-		return fmt.Errorf("point the organization at the bootstrap provider again: %w", err)
+	if err := s.sso.Configure(ctx, *s.people.Provider); err != nil {
+		return fmt.Errorf("point the site at the bootstrap provider again: %w", err)
 	}
 	return nil
 }
 
-// resetStatements each take the organization's id. The hub and the default
-// theme are cleared before the pages and themes they could point at go.
+// resetStatements run in order: the hub and the default theme are cleared
+// before the pages and themes they could point at go.
 var resetStatements = []string{
-	`UPDATE org SET settings = '{}', anonymous_access = false, anonymous_indexable = false, public_links = true,
-	        hub_landing = false, hub_page_id = NULL, default_theme_id = NULL WHERE id = $1`,
-	`DELETE FROM global_grant WHERE org_id = $1`,
-	`INSERT INTO global_grant (org_id, permission, subject_type) VALUES ($1, 'use', 'everyone')`,
-	`DELETE FROM org_brand WHERE org_id = $1`,
-	`DELETE FROM oidc_group_role WHERE org_id = $1`,
-	`DELETE FROM armature_connection WHERE org_id = $1`,
-	`DELETE FROM webhook_endpoint WHERE org_id = $1`,
-	`DELETE FROM page_template WHERE org_id = $1 AND space_id IS NULL`,
-	`DELETE FROM example_job WHERE org_id = $1`,
-	`DELETE FROM space WHERE org_id = $1 AND example`,
-	`DELETE FROM org_join_request WHERE org_id = $1`,
+	`UPDATE site SET settings = '{}', anonymous_access = false, anonymous_indexable = false, public_links = true,
+	        hub_landing = false, hub_page_id = NULL, default_theme_id = NULL`,
+	`DELETE FROM global_grant`,
+	`INSERT INTO global_grant (permission, subject_type) VALUES ('use', 'everyone')`,
+	`DELETE FROM brand`,
+	`DELETE FROM oidc_group_role`,
+	`DELETE FROM armature_connection`,
+	`DELETE FROM webhook_endpoint`,
+	`DELETE FROM page_template WHERE space_id IS NULL`,
+	`DELETE FROM example_job`,
+	`DELETE FROM space WHERE example`,
+	`DELETE FROM join_request`,
 }
 
 // AgeExample makes the example space one made before its content had
@@ -239,16 +236,15 @@ var resetStatements = []string{
 // page to add.
 func (s *Service) AgeExample(ctx context.Context, spaceKey, drop string) error {
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		orgID, err := s.orgID(ctx, tx)
-		if err != nil {
+		if err := s.exists(ctx, tx); err != nil {
 			return err
 		}
 		var space, dropped uuid.UUID
-		err = tx.QueryRow(ctx, `
+		err := tx.QueryRow(ctx, `
 			SELECT s.id, p.page_id FROM space s
-			JOIN example_page p ON p.space_id = s.id AND p.name = $3 AND p.page_id IS NOT NULL
-			WHERE s.org_id = $1 AND s.key = $2 AND s.example`,
-			orgID, spaceKey, drop).Scan(&space, &dropped)
+			JOIN example_page p ON p.space_id = s.id AND p.name = $2 AND p.page_id IS NOT NULL
+			WHERE s.key = $1 AND s.example`,
+			spaceKey, drop).Scan(&space, &dropped)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNoExample
 		}
@@ -267,12 +263,12 @@ func (s *Service) AgeExample(ctx context.Context, spaceKey, drop string) error {
 	return err
 }
 
-func (s *Service) orgID(ctx context.Context, tx db.DBTX) (uuid.UUID, error) {
-	org, err := instance.Find(ctx, tx)
+func (s *Service) exists(ctx context.Context, tx db.DBTX) error {
+	_, err := instance.Find(ctx, tx)
 	if errors.Is(err, instance.ErrNone) {
-		return uuid.Nil, ErrNoOrganization
+		return ErrNoOrganization
 	}
-	return org.ID, err
+	return err
 }
 
 // localPart keeps what an address's local part takes, so any label works.

@@ -16,7 +16,6 @@ import (
 // Session is what a completed sign-in hands back to the HTTP layer.
 type Session struct {
 	UserID    uuid.UUID
-	OrgID     uuid.UUID
 	Secret    string
 	ExpiresAt time.Time
 	// Joined and Left are the provider groups the sign-in changed.
@@ -29,16 +28,16 @@ type Session struct {
 	LSN       db.LSN
 }
 
-// SignIn turns a verified identity into a session in orgID. Somebody who is not
-// a member is refused with ErrNotAMember, and their request to join is noted.
-func (s *Service) SignIn(ctx context.Context, orgID uuid.UUID, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
-	// Authenticating is not the same as being let in: an organization that let
+// SignIn turns a verified identity into a session. Somebody who is not a
+// member is refused with ErrNotAMember, and their request to join is noted.
+func (s *Service) SignIn(ctx context.Context, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
+	// Authenticating is not the same as being let in: a site that let
 	// anybody with an account at its provider in would have no membership at
 	// all, only a sign-in page. The refusal is remembered, though, so an
 	// administrator can let them in with a click instead of an invitation.
-	session, err := s.signIn(ctx, orgID, identity, ttl, userAgent, ip)
+	session, err := s.signIn(ctx, identity, ttl, userAgent, ip)
 	if errors.Is(err, ErrNotAMember) {
-		if noted := s.noteJoinRequest(ctx, orgID, identity); noted != nil {
+		if noted := s.noteJoinRequest(ctx, identity); noted != nil {
 			return nil, noted
 		}
 	}
@@ -47,15 +46,15 @@ func (s *Service) SignIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 
 // noteJoinRequest keeps the account and the request in their own transaction,
 // because the refusal that led here rolled the sign-in's back.
-func (s *Service) noteJoinRequest(ctx context.Context, orgID uuid.UUID, identity *Identity) error {
+func (s *Service) noteJoinRequest(ctx context.Context, identity *Identity) error {
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		userID, err := upsertUser(ctx, tx, identity)
 		if err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)
-			ON CONFLICT DO NOTHING`, orgID, userID); err != nil {
+			INSERT INTO join_request (user_id) VALUES ($1)
+			ON CONFLICT DO NOTHING`, userID); err != nil {
 			return fmt.Errorf("note the request to join: %w", err)
 		}
 		return nil
@@ -63,8 +62,8 @@ func (s *Service) noteJoinRequest(ctx context.Context, orgID uuid.UUID, identity
 	return err
 }
 
-func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
-	out := Session{OrgID: orgID, ExpiresAt: time.Now().Add(ttl)}
+func (s *Service) signIn(ctx context.Context, identity *Identity, ttl time.Duration, userAgent, ip string) (*Session, error) {
+	out := Session{ExpiresAt: time.Now().Add(ttl)}
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		userID, err := upsertUser(ctx, tx, identity)
 		if err != nil {
@@ -83,7 +82,7 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 		}
 
 		var create bool
-		err = tx.QueryRow(ctx, `SELECT create_groups FROM oidc_provider WHERE org_id = $1 AND enabled`, orgID).Scan(&create)
+		err = tx.QueryRow(ctx, `SELECT create_groups FROM oidc_provider WHERE enabled`).Scan(&create)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotConfigured
 		}
@@ -92,19 +91,19 @@ func (s *Service) signIn(ctx context.Context, orgID uuid.UUID, identity *Identit
 		}
 		// Before the groups, whose rows need a membership to hang off: a mapped
 		// group is an administrator's yes given in advance.
-		if out.Role, err = followMapping(ctx, tx, orgID, userID, identity.Groups); err != nil {
+		if out.Role, err = followMapping(ctx, tx, userID, identity.Groups); err != nil {
 			return err
 		}
 		// A guest is in no group, whatever the provider says: a group would
 		// carry them into every space it is granted.
 		if out.Role != auth.RoleGuest {
-			out.Joined, out.Left, err = syncGroups(ctx, tx, orgID, userID, identity.Groups, create)
+			out.Joined, out.Left, err = syncGroups(ctx, tx, userID, identity.Groups, create)
 			if err != nil {
 				return err
 			}
 		}
 
-		id, secret, err := auth.OpenSession(ctx, tx, userID, &orgID, auth.ProofOIDC, out.ExpiresAt, userAgent, ip)
+		id, secret, err := auth.OpenSession(ctx, tx, userID, auth.ProofOIDC, out.ExpiresAt, userAgent, ip)
 		out.SessionID, out.Secret = id, secret
 		return err
 	})
@@ -142,8 +141,8 @@ func upsertUser(ctx context.Context, tx db.DBTX, identity *Identity) (uuid.UUID,
 
 	// A first sign-in whose verified address already has an account, such as a
 	// bootstrap administrator's or one named ahead of time, is tied to it, and
-	// the provider names it from then on; session_reaches still bounds where
-	// that session may go.
+	// the provider names it from then on; membership still decides whether it
+	// gets in.
 	err = tx.QueryRow(ctx, `
 		INSERT INTO app_user (email, name) VALUES ($1, $2)
 		ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
@@ -161,14 +160,14 @@ func upsertUser(ctx context.Context, tx db.DBTX, identity *Identity) (uuid.UUID,
 
 // syncGroups makes somebody's provider groups exactly what the token said.
 // Groups kept by hand are left alone: the provider has no opinion about them.
-func syncGroups(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, claimed []string, create bool) (joined, left []string, err error) {
+func syncGroups(ctx context.Context, tx db.DBTX, userID uuid.UUID, claimed []string, create bool) (joined, left []string, err error) {
 	if create {
 		for _, ref := range claimed {
 			// No conflict target: a local group already holding the name is
 			// left as it is, and the claim simply matches nothing.
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO groups (org_id, name, source, external_ref) VALUES ($1, $2, 'oidc', $2)
-				ON CONFLICT DO NOTHING`, orgID, ref); err != nil {
+				INSERT INTO groups (name, source, external_ref) VALUES ($1, 'oidc', $1)
+				ON CONFLICT DO NOTHING`, ref); err != nil {
 				return nil, nil, fmt.Errorf("create the group %q the provider named: %w", ref, err)
 			}
 		}
@@ -176,13 +175,13 @@ func syncGroups(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, claime
 
 	known, err := refsToIDs(ctx, tx, `
 		SELECT external_ref, id FROM groups
-		WHERE org_id = $1 AND source = 'oidc' AND external_ref = ANY($2)`, orgID, claimed)
+		WHERE source = 'oidc' AND external_ref = ANY($1)`, claimed)
 	if err != nil {
 		return nil, nil, err
 	}
 	current, err := refsToIDs(ctx, tx, `
 		SELECT g.external_ref, g.id FROM group_member m JOIN groups g ON g.id = m.group_id
-		WHERE m.org_id = $1 AND m.user_id = $2 AND g.source = 'oidc'`, orgID, userID)
+		WHERE m.user_id = $1 AND g.source = 'oidc'`, userID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -201,8 +200,8 @@ func syncGroups(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, claime
 	}
 	for _, ref := range join {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO group_member (org_id, group_id, user_id) VALUES ($1, $2, $3)
-			ON CONFLICT DO NOTHING`, orgID, known[ref], userID); err != nil {
+			INSERT INTO group_member (group_id, user_id) VALUES ($1, $2)
+			ON CONFLICT DO NOTHING`, known[ref], userID); err != nil {
 			return nil, nil, fmt.Errorf("join the group %q: %w", ref, err)
 		}
 	}

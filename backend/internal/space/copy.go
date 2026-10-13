@@ -233,11 +233,11 @@ func copyGrants(ctx context.Context, tx db.DBTX, space uuid.UUID) ([]perm.CopyGr
 	rows, err := tx.Query(ctx, `
 		SELECT g.subject_type, COALESCE(g.user_id, g.group_id),
 		       CASE g.subject_type WHEN 'everyone' THEN $2 WHEN 'anonymous' THEN $3 ELSE COALESCE(u.name, gr.name, '') END,
-		       COALESCE(m.org_role = 'guest', false), g.permission
+		       COALESCE(m.role = 'guest', false), g.permission
 		FROM space_grant g
 		LEFT JOIN app_user u ON u.id = g.user_id
 		LEFT JOIN groups gr ON gr.id = g.group_id
-		LEFT JOIN org_member m ON m.org_id = g.org_id AND m.user_id = g.user_id
+		LEFT JOIN member m ON m.user_id = g.user_id
 		WHERE g.space_id = $1
 		ORDER BY CASE g.subject_type WHEN 'anonymous' THEN 0 WHEN 'everyone' THEN 1 WHEN 'group' THEN 2 ELSE 3 END,
 		         lower(COALESCE(u.name, gr.name, '')), COALESCE(g.user_id, g.group_id)`,

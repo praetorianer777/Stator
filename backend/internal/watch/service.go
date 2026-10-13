@@ -115,7 +115,7 @@ func (s *Service) WatchPage(ctx context.Context, actor perm.Actor, pageID uuid.U
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO watch (user_id, kind, page_id) VALUES ($1, $2, $3)
-			ON CONFLICT (org_id, user_id, page_id) WHERE page_id IS NOT NULL
+			ON CONFLICT (user_id, page_id) WHERE page_id IS NOT NULL
 			DO UPDATE SET kind = EXCLUDED.kind, created_at = now()`, actor.UserID, kind, pageID); err != nil {
 			return err
 		}

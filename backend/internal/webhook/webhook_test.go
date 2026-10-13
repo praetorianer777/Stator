@@ -157,8 +157,8 @@ func TestTheAuditLogKeepsOnlyTheHostOfAnAddress(t *testing.T) {
 }
 
 func TestASealedSecretOpensOnlyForItsEndpoint(t *testing.T) {
-	org, a, b := uuid.New(), uuid.New(), uuid.New()
-	if string(sealContext(org, a)) == string(sealContext(org, b)) || string(sealContext(org, a)) == string(sealContext(uuid.New(), a)) {
+	site, a, b := uuid.New(), uuid.New(), uuid.New()
+	if string(sealContext(site, a)) == string(sealContext(site, b)) || string(sealContext(site, a)) == string(sealContext(uuid.New(), a)) {
 		t.Fatal("two endpoints share a seal context")
 	}
 }
@@ -167,9 +167,9 @@ func TestASealedSecretOpensOnlyForItsEndpoint(t *testing.T) {
 // organization has nothing to say with (#380).
 func TestAPingEnvelopeIsArmaturesShape(t *testing.T) {
 	s := &Service{}
-	id, org := uuid.New(), uuid.New()
+	id, site := uuid.New(), uuid.New()
 	at := time.Date(2026, 10, 1, 8, 0, 0, 0, time.FixedZone("CEST", 2*60*60))
-	raw, err := s.body(t.Context(), claimed{eventID: id, orgID: org, topic: TopicPing, occurred: at})
+	raw, err := s.body(t.Context(), claimed{eventID: id, siteID: site, topic: TopicPing, occurred: at})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestAPingEnvelopeIsArmaturesShape(t *testing.T) {
 
 func TestAnEventWithoutAnOwnerIsWithheld(t *testing.T) {
 	s := &Service{}
-	_, err := s.body(t.Context(), claimed{eventID: uuid.New(), orgID: uuid.New(), topic: events.TopicPagePublished, event: json.RawMessage(`{}`)})
+	_, err := s.body(t.Context(), claimed{eventID: uuid.New(), siteID: uuid.New(), topic: events.TopicPagePublished, event: json.RawMessage(`{}`)})
 	if !errors.Is(err, errWithheld) {
 		t.Fatalf("an endpoint without an owner sent a payload: %v", err)
 	}

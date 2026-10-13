@@ -64,7 +64,6 @@ type orgImporter struct {
 	w        *Watch
 	m        *OrgManifest
 	outer    *archive
-	org      uuid.UUID
 	importer uuid.UUID
 	spaces   []*importer
 	// r holds every id the spaces' archives give, so a link or an include
@@ -123,7 +122,7 @@ func (w *Watch) importOrg(ctx context.Context, c *orgClaim) (db.LSN, error) {
 	if err != nil {
 		return 0, err
 	}
-	oi := &orgImporter{w: w, m: m, outer: openArchive(zr), org: c.org, importer: c.user, r: newRenames(),
+	oi := &orgImporter{w: w, m: m, outer: openArchive(zr), importer: c.user, r: newRenames(),
 		people: map[string]uuid.UUID{}, groups: map[string]uuid.UUID{}, themes: map[uuid.UUID]uuid.UUID{},
 		spaceIDs: map[uuid.UUID]uuid.UUID{}, seated: map[string]bool{}}
 	oi.report.settle()
@@ -149,7 +148,7 @@ func (w *Watch) importOrg(ctx context.Context, c *orgClaim) (db.LSN, error) {
 		if err != nil {
 			return 0, err
 		}
-		im := &importer{src: archiveSource{openArchive(nested)}, m: sm, store: w.store, org: c.org, importer: c.user,
+		im := &importer{src: archiveSource{openArchive(nested)}, m: sm, store: w.store, importer: c.user,
 			spaceID: uuid.Must(uuid.NewV7()), from: SourceArchive, whole: true, r: oi.r,
 			report: Report{People: []MissingPerson{}, Groups: []string{}, Dropped: []DroppedEntry{}, Lost: []wikiread.Loss{}}}
 		im.key, im.name = sm.Space.Key, sm.Space.Name
@@ -185,7 +184,7 @@ func (w *Watch) importOrg(ctx context.Context, c *orgClaim) (db.LSN, error) {
 			return err
 		}
 		tag, err := tx.Exec(ctx, `
-			UPDATE org_import SET state = 'done', report = $3, lease_until = NULL, done_steps = total_steps, finished_at = now()
+			UPDATE site_import SET state = 'done', report = $3, lease_until = NULL, done_steps = total_steps, finished_at = now()
 			WHERE id = $1 AND attempts = $2 AND state = 'running'`, c.id, c.attempts, report)
 		if err != nil {
 			return err
@@ -199,7 +198,7 @@ func (w *Watch) importOrg(ctx context.Context, c *orgClaim) (db.LSN, error) {
 		for _, im := range oi.spaces {
 			oi.uploaded = append(oi.uploaded, im.uploaded...)
 		}
-		w.letGo(context.WithoutCancel(ctx), c.org, oi.uploaded)
+		w.letGo(context.WithoutCancel(ctx), oi.uploaded)
 		return 0, err
 	}
 	return written, nil
@@ -256,7 +255,7 @@ func (w *Watch) openNested(outer *archive, name string, file *os.File) (*zip.Rea
 // spaces, the guests of each, and what hangs off all of them.
 func (oi *orgImporter) write(ctx context.Context, tx db.DBTX) error {
 	var taken bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM space WHERE org_id = $1)`, oi.org).Scan(&taken); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM space)`).Scan(&taken); err != nil {
 		return err
 	}
 	if taken {
@@ -346,8 +345,8 @@ func (oi *orgImporter) writePeople(ctx context.Context, tx db.DBTX) error {
 			source = "manual"
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role, role_source, created_at) VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (org_id, user_id) DO NOTHING`, oi.org, id, p.Role, source, p.JoinedAt); err != nil {
+			INSERT INTO member (user_id, role, role_source, created_at) VALUES ($1, $2, $3, $4)
+			ON CONFLICT (user_id) DO NOTHING`, id, p.Role, source, p.JoinedAt); err != nil {
 			return part("the membership of "+email, err)
 		}
 	}
@@ -366,12 +365,12 @@ func (oi *orgImporter) writeGroups(ctx context.Context, tx db.DBTX) error {
 			ref = nil
 		}
 		var id uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT id FROM groups WHERE org_id = $1 AND lower(name) = lower($2)`, oi.org, name).Scan(&id)
+		err := tx.QueryRow(ctx, `SELECT id FROM groups WHERE lower(name) = lower($1)`, name).Scan(&id)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
 			if err := tx.QueryRow(ctx, `
-				INSERT INTO groups (org_id, name, description, source, external_ref) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-				oi.org, name, g.Description, g.Source, ref).Scan(&id); err != nil {
+				INSERT INTO groups (name, description, source, external_ref) VALUES ($1, $2, $3, $4) RETURNING id`,
+				name, g.Description, g.Source, ref).Scan(&id); err != nil {
 				return part("the group "+name, err)
 			}
 		case err != nil:
@@ -385,7 +384,7 @@ func (oi *orgImporter) writeGroups(ctx context.Context, tx db.DBTX) error {
 				continue
 			}
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO group_member (org_id, group_id, user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, oi.org, id, *user); err != nil {
+				INSERT INTO group_member (group_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, *user); err != nil {
 				return part("the members of the group "+name, err)
 			}
 		}
@@ -413,8 +412,8 @@ func (oi *orgImporter) writeThemes(ctx context.Context, tx db.DBTX) error {
 		for n := 2; ; n++ {
 			var taken bool
 			if err := tx.QueryRow(ctx, `
-				SELECT EXISTS (SELECT 1 FROM theme WHERE org_id = $1 AND owner_id = $2 AND lower(name) = lower($3) AND armature_theme_id IS NULL)`,
-				oi.org, owner, name).Scan(&taken); err != nil {
+				SELECT EXISTS (SELECT 1 FROM theme WHERE owner_id = $1 AND lower(name) = lower($2) AND armature_theme_id IS NULL)`,
+				owner, name).Scan(&taken); err != nil {
 				return err
 			}
 			if !taken {
@@ -424,7 +423,7 @@ func (oi *orgImporter) writeThemes(ctx context.Context, tx db.DBTX) error {
 		}
 		id := uuid.Must(uuid.NewV7())
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO theme (id, org_id, owner_id, name, shared) VALUES ($1, $2, $3, $4, $5)`, id, oi.org, owner, name, t.Shared); err != nil {
+			INSERT INTO theme (id, owner_id, name, shared) VALUES ($1, $2, $3, $4)`, id, owner, name, t.Shared); err != nil {
 			return part("the theme "+name, err)
 		}
 		renamed := map[uuid.UUID]uuid.UUID{}
@@ -439,16 +438,16 @@ func (oi *orgImporter) writeThemes(ctx context.Context, tx db.DBTX) error {
 				return invalid("The archive's theme %q holds a file Stator does not accept: %s Export the organization again and import the new file.", t.Name, sentenceOf(err))
 			}
 			asset := uuid.Must(uuid.NewV7())
-			key := theme.ObjectKey(oi.org, id, asset)
+			var key string
+			if err := tx.QueryRow(ctx, `
+				INSERT INTO theme_asset (id, theme_id, name, content_type, size) VALUES ($1, $2, $3, $4, $5) RETURNING object_key`,
+				asset, id, fileName, contentType, len(data)).Scan(&key); err != nil {
+				return part("the theme "+name, err)
+			}
 			if err := oi.w.store.Put(ctx, key, bytes.NewReader(data), int64(len(data)), contentType); err != nil {
 				return err
 			}
 			oi.uploaded = append(oi.uploaded, key)
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO theme_asset (id, org_id, theme_id, name, content_type, size) VALUES ($1, $2, $3, $4, $5, $6)`,
-				asset, oi.org, id, fileName, contentType, len(data)); err != nil {
-				return part("the theme "+name, err)
-			}
 			renamed[file.ID], files[asset] = asset, true
 			oi.step()
 		}
@@ -518,8 +517,8 @@ func (oi *orgImporter) writeGuests(ctx context.Context, tx db.DBTX, key string, 
 			continue
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role, role_source, guest_space_id, created_at) VALUES ($1, $2, 'guest', 'manual', $3, $4)
-			ON CONFLICT (org_id, user_id) DO NOTHING`, oi.org, oi.people[g.Ref], space, g.JoinedAt); err != nil {
+			INSERT INTO member (user_id, role, role_source, guest_space_id, created_at) VALUES ($1, 'guest', 'manual', $2, $3)
+			ON CONFLICT (user_id) DO NOTHING`, oi.people[g.Ref], space, g.JoinedAt); err != nil {
 			return part("the guest "+g.Email, err)
 		}
 		oi.seated[g.Ref] = true
@@ -544,20 +543,19 @@ func (oi *orgImporter) writeSettings(ctx context.Context, tx db.DBTX) error {
 	}
 	name := strings.TrimSpace(oi.m.Organization.Name)
 	_, err := tx.Exec(ctx, `
-		UPDATE org SET name = COALESCE(NULLIF($2, ''), name), anonymous_access = $3, anonymous_indexable = $4, public_links = $5,
-		       hub_page_id = $6, hub_landing = $7, default_theme_id = $8
-		WHERE id = $1`, oi.org, name, set.AnonymousAccess, set.AnonymousIndexable, set.PublicLinks, hub, set.HubLanding && hub != nil, defaultTheme)
+		UPDATE site SET name = COALESCE(NULLIF($1, ''), name), anonymous_access = $2, anonymous_indexable = $3, public_links = $4,
+		       hub_page_id = $5, hub_landing = $6, default_theme_id = $7`,
+		name, set.AnonymousAccess, set.AnonymousIndexable, set.PublicLinks, hub, set.HubLanding && hub != nil, defaultTheme)
 	return part("the organization's settings", err)
 }
 
 // writeBrand gives the exports their footer lines and logo back.
 func (oi *orgImporter) writeBrand(ctx context.Context, tx db.DBTX) error {
 	b := oi.m.Brand
-	var version int
-	err := tx.QueryRow(ctx, `
-		INSERT INTO org_brand (org_id, footer_en, footer_de, updated_by) VALUES ($1, $2, $3, $4)
-		ON CONFLICT (org_id) DO UPDATE SET footer_en = EXCLUDED.footer_en, footer_de = EXCLUDED.footer_de, updated_by = EXCLUDED.updated_by
-		RETURNING logo_version`, oi.org, clip(b.FooterEn, brand.MaxFooterLength), clip(b.FooterDe, brand.MaxFooterLength), oi.importer).Scan(&version)
+	_, err := tx.Exec(ctx, `
+		INSERT INTO brand (footer_en, footer_de, updated_by) VALUES ($1, $2, $3)
+		ON CONFLICT (singleton) DO UPDATE SET footer_en = EXCLUDED.footer_en, footer_de = EXCLUDED.footer_de, updated_by = EXCLUDED.updated_by`,
+		clip(b.FooterEn, brand.MaxFooterLength), clip(b.FooterDe, brand.MaxFooterLength), oi.importer)
 	if err != nil {
 		return part("the brand", err)
 	}
@@ -572,14 +570,17 @@ func (oi *orgImporter) writeBrand(ctx context.Context, tx db.DBTX) error {
 	if !slices.Contains(logoTypes, kind) {
 		return invalid("The archive's logo is not a PNG, JPEG or WebP picture. Export the organization again and import the new file.")
 	}
-	version++
-	key := brand.LogoKey(oi.org, version)
+	var key string
+	if err := tx.QueryRow(ctx, `
+		UPDATE brand SET logo_type = $1, logo_size = $2, logo_version = logo_version + 1 RETURNING logo_key`,
+		kind, len(data)).Scan(&key); err != nil {
+		return part("the logo", err)
+	}
 	if err := oi.w.store.Put(ctx, key, bytes.NewReader(data), int64(len(data)), kind); err != nil {
 		return err
 	}
 	oi.uploaded = append(oi.uploaded, key)
-	_, err = tx.Exec(ctx, `UPDATE org_brand SET logo_type = $2, logo_size = $3, logo_version = $4 WHERE org_id = $1`, oi.org, kind, len(data), version)
-	return part("the logo", err)
+	return nil
 }
 
 // subject is a grant's subject here, or false when nobody here answers to it.
@@ -601,7 +602,7 @@ func (oi *orgImporter) subject(s Subject) (user, group *uuid.UUID, ok bool) {
 
 // writePermissions replaces what a new organization grants by the archive's.
 func (oi *orgImporter) writePermissions(ctx context.Context, tx db.DBTX) error {
-	if _, err := tx.Exec(ctx, `DELETE FROM global_grant WHERE org_id = $1`, oi.org); err != nil {
+	if _, err := tx.Exec(ctx, `DELETE FROM global_grant`); err != nil {
 		return err
 	}
 	for _, g := range oi.m.Permissions {
@@ -611,8 +612,8 @@ func (oi *orgImporter) writePermissions(ctx context.Context, tx db.DBTX) error {
 			continue
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO global_grant (org_id, permission, subject_type, user_id, group_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
-			oi.org, g.Permission, g.Subject.Type, user, group); err != nil {
+			INSERT INTO global_grant (permission, subject_type, user_id, group_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+			g.Permission, g.Subject.Type, user, group); err != nil {
 			return part("the organization's permissions", err)
 		}
 	}
@@ -628,9 +629,9 @@ func (oi *orgImporter) writeSignIn(ctx context.Context, tx db.DBTX) error {
 	}
 	if s.Issuer != "" {
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO oidc_provider (org_id, issuer, client_id, groups_claim, scopes, create_groups, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6, false) ON CONFLICT (org_id) DO NOTHING`,
-			oi.org, s.Issuer, s.ClientID, s.GroupsClaim, s.Scopes, s.CreateGroups)
+			INSERT INTO oidc_provider (issuer, client_id, groups_claim, scopes, create_groups, enabled)
+			VALUES ($1, $2, $3, $4, $5, false) ON CONFLICT (singleton) DO NOTHING`,
+			s.Issuer, s.ClientID, s.GroupsClaim, s.Scopes, s.CreateGroups)
 		if err != nil {
 			return part("the sign-in provider", err)
 		}
@@ -642,9 +643,12 @@ func (oi *orgImporter) writeSignIn(ctx context.Context, tx db.DBTX) error {
 		if !slices.Contains(providerRoles, r.Role) || strings.TrimSpace(r.Group) == "" {
 			continue
 		}
+		// A role belongs to the provider now; an older archive may carry
+		// roles without one, which would have nothing here to hang off.
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, $2, $3) ON CONFLICT (org_id, group_ref) DO NOTHING`,
-			oi.org, r.Group, r.Role); err != nil {
+			INSERT INTO oidc_group_role (group_ref, role) SELECT $1, $2 WHERE EXISTS (SELECT 1 FROM oidc_provider)
+			ON CONFLICT (group_ref) DO NOTHING`,
+			r.Group, r.Role); err != nil {
 			return part("the roles the provider's groups give", err)
 		}
 	}
@@ -659,8 +663,8 @@ func (oi *orgImporter) writeArmature(ctx context.Context, tx db.DBTX) error {
 		return nil
 	}
 	tag, err := tx.Exec(ctx, `
-		INSERT INTO armature_connection (org_id, base_url, org_slug, updated_by) VALUES ($1, $2, $3, $4) ON CONFLICT (org_id) DO NOTHING`,
-		oi.org, a.BaseURL, a.OrgSlug, oi.importer)
+		INSERT INTO armature_connection (base_url, org_slug, updated_by) VALUES ($1, $2, $3) ON CONFLICT (singleton) DO NOTHING`,
+		a.BaseURL, a.OrgSlug, oi.importer)
 	if err != nil {
 		return part("the Armature connection", err)
 	}
@@ -687,8 +691,8 @@ func (oi *orgImporter) writeTemplates(ctx context.Context, tx db.DBTX) error {
 			variables = json.RawMessage("[]")
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_template (org_id, space_id, name, description, title, body, variables)
-			VALUES ($1, NULL, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`, oi.org, t.Name, t.Description, t.Title, body, variables); err != nil {
+			INSERT INTO page_template (space_id, name, description, title, body, variables)
+			VALUES (NULL, $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, t.Name, t.Description, t.Title, body, variables); err != nil {
 			return part(fmt.Sprintf("the template %q", t.Name), err)
 		}
 		oi.report.Templates++
@@ -702,8 +706,8 @@ func (oi *orgImporter) writeWebhooks(ctx context.Context, tx db.DBTX) error {
 	for _, h := range oi.m.Webhooks {
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO webhook_endpoint (org_id, name, url, secret_sealed, topics, enabled) VALUES ($1, $2, $3, ''::bytea, $4, false)
-			RETURNING id`, oi.org, h.Name, h.URL, h.Topics).Scan(&id); err != nil {
+			INSERT INTO webhook_endpoint (name, url, secret_sealed, topics, enabled) VALUES ($1, $2, ''::bytea, $3, false)
+			RETURNING id`, h.Name, h.URL, h.Topics).Scan(&id); err != nil {
 			return part(fmt.Sprintf("the webhook %q", h.Name), err)
 		}
 		// Inserted, its owner is whoever acts; a change of owner afterwards
@@ -732,8 +736,8 @@ func (oi *orgImporter) writePreferences(ctx context.Context, tx db.DBTX) error {
 			email = json.RawMessage("{}")
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO notification_preference (org_id, user_id, in_app, email, digest, auto_watch) VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (org_id, user_id) DO NOTHING`, oi.org, *user, inApp, email, p.Digest, p.AutoWatch); err != nil {
+			INSERT INTO notification_preference (user_id, in_app, email, digest, auto_watch) VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (user_id) DO NOTHING`, *user, inApp, email, p.Digest, p.AutoWatch); err != nil {
 			return part("the notification settings", err)
 		}
 	}
@@ -755,8 +759,8 @@ func (oi *orgImporter) writePersonThemes(ctx context.Context, tx db.DBTX) error 
 			chosen = &id
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO user_theme (org_id, user_id, theme_id, follow_armature) VALUES ($1, $2, $3, $4) ON CONFLICT (org_id, user_id) DO NOTHING`,
-			oi.org, *user, chosen, p.FollowArmature && chosen == nil); err != nil {
+			INSERT INTO user_theme (user_id, theme_id, follow_armature) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO NOTHING`,
+			*user, chosen, p.FollowArmature && chosen == nil); err != nil {
 			return part("the themes people chose", err)
 		}
 	}
@@ -803,14 +807,14 @@ func (oi *orgImporter) writeAuditLog(ctx context.Context, tx db.DBTX) error {
 		}
 		batch.add(e, oi.person(e.Actor), ids)
 		if len(batch.action) >= auditBatch {
-			if err := batch.flush(ctx, tx, oi.org); err != nil {
+			if err := batch.flush(ctx, tx); err != nil {
 				return err
 			}
 			oi.report.AuditEntries += auditBatch
 		}
 	}
 	oi.report.AuditEntries += len(batch.action)
-	return batch.flush(ctx, tx, oi.org)
+	return batch.flush(ctx, tx)
 }
 
 // auditRows are audit entries gathered for one statement, as text a
@@ -839,15 +843,15 @@ func (b *auditRows) add(e AuditEntry, actor *uuid.UUID, ids map[uuid.UUID]uuid.U
 	b.target, b.data, b.at = append(b.target, target), append(b.data, data), append(b.at, e.At.UTC().Format("2006-01-02T15:04:05.999999Z07:00"))
 }
 
-func (b *auditRows) flush(ctx context.Context, tx db.DBTX, org uuid.UUID) error {
+func (b *auditRows) flush(ctx context.Context, tx db.DBTX) error {
 	if len(b.action) == 0 {
 		return nil
 	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO audit_log (org_id, actor_user_id, action, target_type, target_id, data, created_at)
+		INSERT INTO audit_log (actor_user_id, action, target_type, target_id, data, created_at)
 		SELECT $1, NULLIF(a, '')::uuid, act, tt, NULLIF(tid, '')::uuid, d::jsonb, at::timestamptz
-		FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[]) AS e(a, act, tt, tid, d, at)`,
-		org, b.actor, b.action, b.targetType, b.target, b.data, b.at)
+		FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[]) AS e(a, act, tt, tid, d, at)`,
+		b.actor, b.action, b.targetType, b.target, b.data, b.at)
 	*b = auditRows{}
 	return part("the audit log", err)
 }

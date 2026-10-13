@@ -45,12 +45,11 @@ func (s *Server) linkReader(next http.Handler) http.Handler {
 			respondError(w, r, public.ErrLinkGone)
 			return
 		}
-		org, err := s.Instance.Org(r.Context())
-		if err != nil {
+		if _, err := s.Instance.Site(r.Context()); err != nil {
 			respondError(w, r, err)
 			return
 		}
-		site, err := s.Public.LinkSite(r.Context(), org)
+		site, err := s.Public.LinkSite(r.Context())
 		if err != nil {
 			h.Set("X-Robots-Tag", "noindex, nofollow")
 			respondError(w, r, err)
@@ -59,7 +58,7 @@ func (s *Server) linkReader(next http.Handler) http.Handler {
 		if !site.Indexable {
 			h.Set("X-Robots-Tag", "noindex, nofollow")
 		}
-		ctx := public.ReadingLink(r.Context(), org, token)
+		ctx := public.ReadingLink(r.Context(), token)
 		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, ctxSiteKey{}, site)))
 	})
 }

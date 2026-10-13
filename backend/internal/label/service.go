@@ -99,8 +99,8 @@ func (s *Service) Add(ctx context.Context, actor perm.Actor, pageID uuid.UUID, r
 			return fieldError("name", ErrTooMany)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_label (org_id, page_id, name, created_by)
-			SELECT p.org_id, p.id, $2, $3 FROM page p WHERE p.id = $1
+			INSERT INTO page_label (page_id, name, created_by)
+			SELECT p.id, $2, $3 FROM page p WHERE p.id = $1
 			ON CONFLICT DO NOTHING`, pageID, name, actor.UserID); err != nil {
 			return fmt.Errorf("add the label: %w", err)
 		}
@@ -155,7 +155,7 @@ func (s *Service) Suggest(ctx context.Context, actor perm.Actor, typed, spaceKey
 		rows, err := tx.Query(ctx, `
 			SELECT l.name, count(*)::int
 			FROM page_label l
-			JOIN page p ON p.org_id = l.org_id AND p.id = l.page_id
+			JOIN page p ON p.id = l.page_id
 			JOIN space s ON s.id = p.space_id
 			WHERE l.name LIKE $2 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 1)+within+`
 			GROUP BY l.name
@@ -189,7 +189,7 @@ func (s *Service) Pages(ctx context.Context, actor perm.Actor, raw, spaceKey str
 	args := []any{actor.UserID, name}
 	where := `
 		FROM page_label l
-		JOIN page p ON p.org_id = l.org_id AND p.id = l.page_id
+		JOIN page p ON p.id = l.page_id
 		JOIN space s ON s.id = p.space_id
 		LEFT JOIN app_user u ON u.id = p.updated_by
 		WHERE l.name = $2 AND p.trashed_at IS NULL AND ` + perm.ViewablePage("p", 1)
@@ -210,7 +210,7 @@ func (s *Service) Pages(ctx context.Context, actor perm.Actor, raw, spaceKey str
 		n := len(args)
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.title, s.key, s.name, `+pathOf+`,
-			       ARRAY(SELECT o.name FROM page_label o WHERE o.org_id = p.org_id AND o.page_id = p.id ORDER BY o.name),
+			       ARRAY(SELECT o.name FROM page_label o WHERE o.page_id = p.id ORDER BY o.name),
 			       p.version = 0, COALESCE(u.name, ''), p.updated_at
 			`+where+`
 			ORDER BY lower(p.title), p.id
@@ -243,8 +243,8 @@ func (s *Service) PagesCopied(ctx context.Context, tx db.DBTX, copies map[uuid.U
 		olds, news = append(olds, from), append(news, to)
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_label (org_id, page_id, name, created_by)
-		SELECT l.org_id, m.new_id, l.name, current_actor_id()
+		INSERT INTO page_label (page_id, name, created_by)
+		SELECT m.new_id, l.name, current_actor_id()
 		FROM page_label l JOIN unnest($1::uuid[], $2::uuid[]) AS m (old_id, new_id) ON l.page_id = m.old_id`, olds, news); err != nil {
 		return fmt.Errorf("copy the labels: %w", err)
 	}

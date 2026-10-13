@@ -24,8 +24,7 @@ const (
 // orgClaim is an organization's export or import a worker took.
 type orgClaim struct {
 	kind     kind
-	id, org  uuid.UUID
-	slug     string
+	id       uuid.UUID
 	user     uuid.UUID
 	role     auth.Role
 	attempts int
@@ -59,10 +58,10 @@ func (w *Watch) claimOrg(ctx context.Context, k kind) (*orgClaim, error) {
 			    started_at = COALESCE(j.started_at, now())
 			FROM next
 			WHERE j.id = next.id
-			RETURNING j.id, j.org_id, (SELECT slug FROM org WHERE id = j.org_id), j.requested_by,
-			          COALESCE((SELECT org_role FROM org_member m WHERE m.org_id = j.org_id AND m.user_id = j.requested_by), ''),
+			RETURNING j.id, j.requested_by,
+			          COALESCE((SELECT m.role FROM member m WHERE m.user_id = j.requested_by), ''),
 			          j.attempts, j.object_key, %[2]s`, k, size), OrgLease.Seconds()).
-			Scan(&out.id, &out.org, &out.slug, &out.user, &role, &out.attempts, &out.object, &out.size)
+			Scan(&out.id, &out.user, &role, &out.attempts, &out.object, &out.size)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -107,7 +106,7 @@ func (w *Watch) runOrgExport(ctx context.Context, c *orgClaim) error {
 	settle := context.WithoutCancel(ctx)
 	switch {
 	case err == nil:
-		w.log.Info("organization exported", "org", c.org, "job", c.id, "bytes", size, "took", time.Since(began).Round(time.Millisecond))
+		w.log.Info("organization exported", "job", c.id, "bytes", size, "took", time.Since(began).Round(time.Millisecond))
 		return w.finishOrgExport(settle, c, StateDone, "", "", name, size)
 	case ctx.Err() != nil:
 		return w.finishOrgExport(settle, c, StateQueued, "", "", "", 0)
@@ -120,7 +119,7 @@ func (w *Watch) runOrgExport(ctx context.Context, c *orgClaim) error {
 	case errors.As(err, &big):
 		failure, detail = FailureTooLarge, big.Error()
 	}
-	w.log.Warn("the organization was not exported", "org", c.org, "job", c.id, "failure", failure, "error", err)
+	w.log.Warn("the organization was not exported", "job", c.id, "failure", failure, "error", err)
 	return w.finishOrgExport(settle, c, StateFailed, failure, detail, "", 0)
 }
 
@@ -144,7 +143,7 @@ func (w *Watch) finishOrgExport(ctx context.Context, c *orgClaim, state State, f
 	}
 	_, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			UPDATE org_export
+			UPDATE site_export
 			SET state = $3, failure = $4, detail = $5, file_name = $6, size_bytes = $7, expires_at = $8, lease_until = NULL,
 			    done_steps = CASE WHEN $3 = 'done' THEN total_steps ELSE done_steps END,
 			    finished_at = CASE WHEN $3 IN ('done', 'failed') THEN now() END
@@ -176,7 +175,7 @@ func (w *Watch) runOrgImport(ctx context.Context, c *orgClaim) error {
 	settle := context.WithoutCancel(ctx)
 	switch {
 	case err == nil:
-		w.log.Info("organization imported", "org", c.org, "job", c.id, "took", time.Since(began).Round(time.Millisecond))
+		w.log.Info("organization imported", "job", c.id, "took", time.Since(began).Round(time.Millisecond))
 		return w.finishOrgImport(settle, c, StateDone, "", "", written)
 	case errors.Is(err, errLeaseLost):
 		return err
@@ -184,7 +183,7 @@ func (w *Watch) runOrgImport(ctx context.Context, c *orgClaim) error {
 		return w.finishOrgImport(settle, c, StateQueued, "", "", 0)
 	}
 	failure, detail := orgFailureOf(err)
-	w.log.Warn("the organization was not imported", "org", c.org, "job", c.id, "failure", failure, "error", err)
+	w.log.Warn("the organization was not imported", "job", c.id, "failure", failure, "error", err)
 	return w.finishOrgImport(settle, c, StateFailed, failure, detail, 0)
 }
 
@@ -195,12 +194,12 @@ func (w *Watch) finishOrgImport(ctx context.Context, c *orgClaim, state State, f
 	_, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if state == StateDone {
 			if written != 0 {
-				if _, err := tx.Exec(ctx, `UPDATE org_import SET written_lsn = $2::pg_lsn WHERE id = $1`, c.id, written.String()); err != nil {
+				if _, err := tx.Exec(ctx, `UPDATE site_import SET written_lsn = $2::pg_lsn WHERE id = $1`, c.id, written.String()); err != nil {
 					return err
 				}
 			}
 			_, err := tx.Exec(ctx, `
-				INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2) ON CONFLICT (object_key) DO NOTHING`, c.object, c.org)
+				INSERT INTO attachment_tombstone (object_key) VALUES ($1) ON CONFLICT (object_key) DO NOTHING`, c.object)
 			return err
 		}
 		var (
@@ -214,7 +213,7 @@ func (w *Watch) finishOrgImport(ctx context.Context, c *orgClaim, state State, f
 			}
 		}
 		tag, err := tx.Exec(ctx, `
-			UPDATE org_import
+			UPDATE site_import
 			SET state = $3, failure = $4, detail = $5, lease_until = NULL,
 			    finished_at = CASE WHEN $3 = 'failed' THEN now() END
 			WHERE id = $1 AND state = 'running' AND attempts = $2`,
@@ -224,7 +223,7 @@ func (w *Watch) finishOrgImport(ctx context.Context, c *orgClaim, state State, f
 		}
 		if tag.RowsAffected() > 0 && state == StateFailed {
 			_, err = tx.Exec(ctx, `
-				INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2) ON CONFLICT (object_key) DO NOTHING`, c.object, c.org)
+				INSERT INTO attachment_tombstone (object_key) VALUES ($1) ON CONFLICT (object_key) DO NOTHING`, c.object)
 		}
 		return err
 	})

@@ -65,7 +65,7 @@ func read(ctx context.Context, tx db.DBTX, actor perm.Actor) (*Hub, error) {
 	)
 	err := tx.QueryRow(ctx, `
 		SELECT o.hub_landing, p.id, p.title, s.key
-		FROM org o
+		FROM site o
 		LEFT JOIN page p ON p.id = o.hub_page_id AND p.trashed_at IS NULL AND p.archived_at IS NULL AND `+perm.ViewablePage("p", 1)+`
 		LEFT JOIN space s ON s.id = p.space_id`, actor.UserID).Scan(&out.Landing, &id, &title, &spaceKey)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -121,7 +121,7 @@ func (s *Service) Set(ctx context.Context, actor perm.Actor, in HubInput) (*Hub,
 			}
 			data["title"] = title
 		}
-		if _, err := tx.Exec(ctx, `UPDATE org SET hub_page_id = $1, hub_landing = $2`, in.PageID, in.Landing); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE site SET hub_page_id = $1, hub_landing = $2`, in.PageID, in.Landing); err != nil {
 			return fmt.Errorf("choose the hub: %w", err)
 		}
 		if err := perm.Record(ctx, tx, actor, audit.ActionOrgHubSet, "page", in.PageID, data); err != nil {

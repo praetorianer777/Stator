@@ -32,7 +32,7 @@ SELECT t.id, t.task_id, p.id, p.title, s.key, s.name, t.summary, t.done, to_char
        t.assignee_id, COALESCE(au.name, ''), COALESCE(ab.name, ''), t.assigned_at, t.done_at,
        perm_page_editable(p.id, $1::uuid)
 FROM page_task t
-JOIN page p ON p.org_id = t.org_id AND p.id = t.page_id
+JOIN page p ON p.id = t.page_id
 JOIN space s ON s.id = p.space_id
 LEFT JOIN app_user au ON au.id = t.assignee_id
 LEFT JOIN app_user ab ON ab.id = t.assigned_by

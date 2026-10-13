@@ -151,7 +151,7 @@ func (s *Service) SetOwner(ctx context.Context, actor perm.Actor, id uuid.UUID, 
 		)
 		err = tx.QueryRow(ctx, `
 			SELECT COALESCE(NULLIF(u.name, ''), u.email::text), perm_page_viewable($1, u.id)
-			FROM org_member m JOIN app_user u ON u.id = m.user_id
+			FROM member m JOIN app_user u ON u.id = m.user_id
 			WHERE m.user_id = $2`, id, in.UserID).Scan(&name, &canView)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return &FieldError{Field: "userId", Message: "That person is not a member of this organization. Pick somebody from the list."}
@@ -170,7 +170,7 @@ func (s *Service) SetOwner(ctx context.Context, actor perm.Actor, id uuid.UUID, 
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO page_owner (page_id, user_id, set_by) VALUES ($1, $2, $3)
-			ON CONFLICT (org_id, page_id) DO UPDATE SET user_id = EXCLUDED.user_id, set_by = EXCLUDED.set_by`,
+			ON CONFLICT (page_id) DO UPDATE SET user_id = EXCLUDED.user_id, set_by = EXCLUDED.set_by`,
 			id, in.UserID, actor.UserID); err != nil {
 			return fmt.Errorf("name the page's owner: %w", err)
 		}
@@ -222,7 +222,7 @@ func (s *Service) Verify(ctx context.Context, actor perm.Actor, id uuid.UUID, in
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO page_verification (page_id, verified_by, expires_at)
 			VALUES ($1, $2, now() + make_interval(days => $3))
-			ON CONFLICT (org_id, page_id) DO UPDATE SET verified_by = EXCLUDED.verified_by, expires_at = EXCLUDED.expires_at`,
+			ON CONFLICT (page_id) DO UPDATE SET verified_by = EXCLUDED.verified_by, expires_at = EXCLUDED.expires_at`,
 			id, actor.UserID, days); err != nil {
 			return fmt.Errorf("verify the page: %w", err)
 		}

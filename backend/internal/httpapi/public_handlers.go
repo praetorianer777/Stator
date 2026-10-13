@@ -90,14 +90,14 @@ func (s *Server) handleOldPublicPath(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusPermanentRedirect)
 }
 
-// namesTheInstance says whether slug is the organization's, as an old public
-// address would have spelled it.
+// namesTheInstance says whether slug is the site's, as an old public address
+// would have spelled it.
 func (s *Server) namesTheInstance(r *http.Request, slug string) bool {
 	if s.Instance == nil {
 		return false
 	}
-	org, err := s.Instance.Org(r.Context())
-	return err == nil && strings.EqualFold(strings.TrimSpace(slug), org.Slug)
+	site, err := s.Instance.Site(r.Context())
+	return err == nil && strings.EqualFold(strings.TrimSpace(slug), site.Slug)
 }
 
 type ctxSiteKey struct{}
@@ -107,7 +107,7 @@ func siteFrom(r *http.Request) *public.Site {
 	return site
 }
 
-// anonymousReader refuses while the organization lets nobody read without
+// anonymousReader refuses while the site lets nobody read without
 // signing in, and reads as nobody from then on.
 func (s *Server) anonymousReader(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -115,12 +115,11 @@ func (s *Server) anonymousReader(next http.Handler) http.Handler {
 			respondError(w, r, public.ErrNotPublic)
 			return
 		}
-		org, err := s.Instance.Org(r.Context())
-		if err != nil {
+		if _, err := s.Instance.Site(r.Context()); err != nil {
 			respondError(w, r, err)
 			return
 		}
-		site, err := s.Public.Site(r.Context(), org)
+		site, err := s.Public.Site(r.Context())
 		if err != nil {
 			respondError(w, r, err)
 			return
@@ -128,7 +127,7 @@ func (s *Server) anonymousReader(next http.Handler) http.Handler {
 		if !site.Indexable {
 			w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 		}
-		ctx := public.Reading(r.Context(), org)
+		ctx := public.Reading(r.Context())
 		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, ctxSiteKey{}, site)))
 	})
 }

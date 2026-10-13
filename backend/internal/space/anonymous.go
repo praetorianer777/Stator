@@ -58,7 +58,7 @@ func anonymousAccess(ctx context.Context, tx db.DBTX, sp *Space) (*AnonymousAcce
 	out := AnonymousAccess{Personal: sp.Owner != nil}
 	err := tx.QueryRow(ctx, `
 		SELECT EXISTS (SELECT 1 FROM space_grant WHERE space_id = $1 AND subject_type = 'anonymous' AND permission = 'view'),
-		       (SELECT anonymous_access FROM org)`, sp.ID).Scan(&out.View, &out.OrgEnabled)
+		       (SELECT anonymous_access FROM site)`, sp.ID).Scan(&out.View, &out.OrgEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("read whether anybody may read the space: %w", err)
 	}

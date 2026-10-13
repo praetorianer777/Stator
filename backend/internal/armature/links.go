@@ -152,7 +152,7 @@ type pageState struct {
 // token. Run twice, the second run finds every link recorded and sends nothing.
 func (l *LinkSync) Handle(ctx context.Context, e events.Event) error {
 	var in events.ArmatureLinks
-	if err := json.Unmarshal(e.Payload, &in); err != nil || in.PageID == uuid.Nil || e.OrgID == uuid.Nil {
+	if err := json.Unmarshal(e.Payload, &in); err != nil || in.PageID == uuid.Nil {
 		return nil
 	}
 	pinned := db.PinPrimary(ctx)
@@ -289,7 +289,7 @@ func (r *linkRun) apply(ctx context.Context, step LinkStep) (retry error, err er
 	_, err = r.tx.Exec(ctx, `
 		INSERT INTO armature_remote_link (page_id, issue_key, remote_link_id, url, title, state, error, synced_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, 'synced', NULL, now(), now())
-		ON CONFLICT (org_id, page_id, issue_key) DO UPDATE SET
+		ON CONFLICT (page_id, issue_key) DO UPDATE SET
 		    remote_link_id = EXCLUDED.remote_link_id, url = EXCLUDED.url, title = EXCLUDED.title,
 		    state = 'synced', error = NULL, synced_at = now(), updated_at = now()`,
 		r.pageID, step.Key, answer.RemoteLink.ID, step.Want.URL, step.Want.Title)
@@ -366,7 +366,7 @@ func (r *linkRun) pending(ctx context.Context, steps []LinkStep) error {
 	_, err := r.tx.Exec(ctx, `
 		INSERT INTO armature_remote_link (page_id, issue_key, state, updated_at)
 		SELECT $1, k, 'pending', now() FROM unnest($2::text[]) AS k
-		ON CONFLICT (org_id, page_id, issue_key) DO UPDATE SET state = 'pending', error = NULL, updated_at = now()`,
+		ON CONFLICT (page_id, issue_key) DO UPDATE SET state = 'pending', error = NULL, updated_at = now()`,
 		r.pageID, keys)
 	return err
 }
@@ -377,7 +377,7 @@ func (r *linkRun) fail(ctx context.Context, step LinkStep, why string) error {
 	_, err := r.tx.Exec(ctx, `
 		INSERT INTO armature_remote_link (page_id, issue_key, state, error, updated_at)
 		VALUES ($1, $2, 'failed', $3, now())
-		ON CONFLICT (org_id, page_id, issue_key) DO UPDATE SET state = 'failed', error = EXCLUDED.error, updated_at = now()`,
+		ON CONFLICT (page_id, issue_key) DO UPDATE SET state = 'failed', error = EXCLUDED.error, updated_at = now()`,
 		r.pageID, step.Key, why)
 	return err
 }

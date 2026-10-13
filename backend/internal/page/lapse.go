@@ -62,31 +62,28 @@ func (w *LapseWatch) Run(ctx context.Context) {
 	}
 }
 
-// Once notes up to one batch of lapsed verifications across every
-// organization, each with an event for its owner, and says how many.
+// Once notes up to one batch of lapsed verifications, each with an event for
+// its owner, and says how many.
 func (w *LapseWatch) Once(ctx context.Context) (int, error) {
-	type due struct{ orgID, pageID uuid.UUID }
-	var found []due
-	// Finding them crosses tenants, which is what the admin role is for.
+	var found []uuid.UUID
+	// Finding them reads past every person's rights, which is what the admin
+	// role is for.
 	err := w.db.ReadAdmin(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT org_id, page_id FROM page_verification
+			SELECT page_id FROM page_verification
 			WHERE lapse_noticed_at IS NULL AND expires_at <= now()
 			ORDER BY expires_at LIMIT $1`, lapseBatch)
 		if err != nil {
 			return err
 		}
-		found, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (due, error) {
-			var d due
-			return d, row.Scan(&d.orgID, &d.pageID)
-		})
+		found, err = pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
 		return err
 	})
 	if err != nil {
 		return 0, err
 	}
 	noted := 0
-	for _, d := range found {
+	for _, pageID := range found {
 		pinned := db.PinPrimary(ctx)
 		happened := false
 		_, err := w.db.WriteAdmin(pinned, func(ctx context.Context, tx db.DBTX) error {
@@ -95,7 +92,7 @@ func (w *LapseWatch) Once(ctx context.Context) (int, error) {
 			err := tx.QueryRow(ctx, `
 				UPDATE page_verification SET lapse_noticed_at = now()
 				WHERE page_id = $1 AND lapse_noticed_at IS NULL AND expires_at <= now()
-				RETURNING expires_at`, d.pageID).Scan(&expires)
+				RETURNING expires_at`, pageID).Scan(&expires)
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil
 			}
@@ -103,10 +100,10 @@ func (w *LapseWatch) Once(ctx context.Context) (int, error) {
 				return err
 			}
 			happened = true
-			return events.Emit(ctx, tx, events.TopicVerificationLapsed, events.VerificationLapsed{PageID: d.pageID, ExpiresAt: expires})
+			return events.Emit(ctx, tx, events.TopicVerificationLapsed, events.VerificationLapsed{PageID: pageID, ExpiresAt: expires})
 		})
 		if err != nil {
-			w.log.Warn("a lapsed verification could not be noted", "page", d.pageID, "error", err)
+			w.log.Warn("a lapsed verification could not be noted", "page", pageID, "error", err)
 			continue
 		}
 		if happened {

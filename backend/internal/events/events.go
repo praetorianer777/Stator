@@ -48,7 +48,6 @@ var Topics = []string{TopicPagePublished, TopicPageAmended, TopicCommentCreated,
 // Event is one committed domain event.
 type Event struct {
 	ID        uuid.UUID
-	OrgID     uuid.UUID
 	Topic     string
 	Payload   json.RawMessage
 	CreatedAt time.Time

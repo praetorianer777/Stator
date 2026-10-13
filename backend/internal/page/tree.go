@@ -583,8 +583,8 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 			), fresh AS MATERIALIZED (
 				SELECT id AS old_id, uuidv7() AS new_id, parent_id, depth FROM below
 			), made AS (
-				INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, created_by, updated_by, kind)
-				SELECT f.new_id, p.org_id, $3,
+				INSERT INTO page (id, space_id, parent_id, rank, title, body, created_by, updated_by, kind)
+				SELECT f.new_id, $3,
 				       CASE WHEN f.depth = 0 THEN $4 ELSE up.new_id END,
 				       CASE WHEN f.depth = 0 THEN $5 ELSE p.rank END,
 				       CASE WHEN f.depth = 0 THEN COALESCE($6, p.title) ELSE p.title END,
@@ -624,8 +624,8 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 				UNION ALL
 				SELECT p.id FROM page p JOIN copied c ON p.parent_id = c.id
 			)
-			INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
-			SELECT p.org_id, p.id, 1, p.title, p.body, $2 FROM page p JOIN copied c ON c.id = p.id
+			INSERT INTO page_version (page_id, number, title, body, created_by)
+			SELECT p.id, 1, p.title, p.body, $2 FROM page p JOIN copied c ON c.id = p.id
 			WHERE p.kind = 'page'`, made, actor.UserID); err != nil {
 			return fmt.Errorf("publish the copy: %w", err)
 		}
@@ -642,8 +642,8 @@ func (s *Service) Copy(ctx context.Context, actor perm.Actor, id uuid.UUID, in C
 		// where it lands. Who else may edit is not copied: that is the word of
 		// the space's administrators about the original alone.
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id, group_id)
-			SELECT r.org_id, m.new_id, r.kind, r.subject_type, r.user_id, r.group_id
+			INSERT INTO page_restriction (page_id, kind, subject_type, user_id, group_id)
+			SELECT m.new_id, r.kind, r.subject_type, r.user_id, r.group_id
 			FROM page_restriction r JOIN unnest($1::uuid[], $2::uuid[]) AS m (old_id, new_id) ON r.page_id = m.old_id
 			WHERE r.kind <> 'editGrant'`, olds, news); err != nil {
 			return fmt.Errorf("copy the restrictions: %w", err)

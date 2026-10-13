@@ -53,7 +53,7 @@ func (s *Service) Search(ctx context.Context, query string, limit, offset int) (
 		return status, nil, err
 	}
 	var cached SearchResult
-	if s.cache.Search(ctx, v.OrgID, v.TokenID, query, limit, offset, &cached) {
+	if s.cache.Search(ctx, v.SiteID, v.TokenID, query, limit, offset, &cached) {
 		return StatusOK, &cached, nil
 	}
 	var answer struct {
@@ -78,6 +78,6 @@ func (s *Service) Search(ctx context.Context, query string, limit, offset int) (
 	for i := range result.Issues {
 		result.Issues[i].URL = IssueURL(v.Caller.BaseURL(), result.Issues[i].Key)
 	}
-	s.cache.PutSearch(ctx, v.OrgID, v.TokenID, query, limit, offset, result)
+	s.cache.PutSearch(ctx, v.SiteID, v.TokenID, query, limit, offset, result)
 	return StatusOK, result, nil
 }

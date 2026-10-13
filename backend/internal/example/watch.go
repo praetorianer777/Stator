@@ -34,8 +34,7 @@ var errLeaseLost = errors.New("another worker took over making the example space
 
 // claim is a job a worker took, with whom it acts for.
 type claim struct {
-	id, org   uuid.UUID
-	slug      string
+	id        uuid.UUID
 	kind      Kind
 	requester Person
 	role      auth.Role
@@ -168,7 +167,7 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 		if made != nil {
 			o.spaceID = &made.ID
 		}
-		w.log.Info("example space made", "org", c.org, "job", c.id, "took", time.Since(began).Round(time.Millisecond))
+		w.log.Info("example space made", "job", c.id, "took", time.Since(began).Round(time.Millisecond))
 		return w.store.finish(settle, c, o)
 	case errors.Is(err, errLeaseLost):
 		return err
@@ -177,7 +176,7 @@ func (w *Watch) run(ctx context.Context, c *claim) error {
 		return w.store.finish(settle, c, outcome{state: StateQueued})
 	}
 	failure := FailureOf(err)
-	w.log.Warn("the example space was not made", "org", c.org, "job", c.id, "failure", failure, "error", err)
+	w.log.Warn("the example space was not made", "job", c.id, "failure", failure, "error", err)
 	return w.store.finish(settle, c, outcome{state: StateFailed, failure: failure})
 }
 
@@ -201,7 +200,7 @@ func (w *Watch) renew(ctx, run context.Context, c *claim) error {
 	}
 	switch {
 	case err == nil:
-		w.log.Info("example space renewed", "org", c.org, "job", c.id, "from", e.Version, "to", Current(), "took", time.Since(began).Round(time.Millisecond))
+		w.log.Info("example space renewed", "job", c.id, "from", e.Version, "to", Current(), "took", time.Since(began).Round(time.Millisecond))
 		return w.store.finish(settle, c, outcome{state: StateDone, spaceID: c.target, written: written, report: report})
 	case errors.Is(err, errLeaseLost):
 		return err
@@ -209,7 +208,7 @@ func (w *Watch) renew(ctx, run context.Context, c *claim) error {
 		return w.store.finish(settle, c, outcome{state: StateQueued, spaceID: c.target})
 	}
 	failure := FailureOf(err)
-	w.log.Warn("the example space was not renewed", "org", c.org, "job", c.id, "failure", failure, "error", err)
+	w.log.Warn("the example space was not renewed", "job", c.id, "failure", failure, "error", err)
 	return w.store.finish(settle, c, outcome{state: StateFailed, spaceID: c.target, failure: failure})
 }
 
@@ -220,7 +219,7 @@ func (w *Watch) discard(ctx context.Context, c *claim, id uuid.UUID) error {
 	if err == nil {
 		return nil
 	}
-	w.log.Warn("the requester could not delete the half made example space, so the worker does", "org", c.org, "space", id, "error", err)
+	w.log.Warn("the requester could not delete the half made example space, so the worker does", "space", id, "error", err)
 	if again := w.store.discard(ctx, id); again != nil {
 		return errors.Join(err, again)
 	}
@@ -247,7 +246,7 @@ func (m makerOf) discard(ctx context.Context, actor perm.Actor, id uuid.UUID) er
 	return m.m.Discard(ctx, actor, id)
 }
 
-// dbStore keeps jobs in example_job. Claiming crosses organizations and
+// dbStore keeps jobs in example_job. Claiming reads everybody's jobs and
 // finishing is the worker's alone, both of which the admin role is for.
 type dbStore struct{ db *db.Cluster }
 
@@ -273,11 +272,11 @@ func (s *dbStore) claim(ctx context.Context) (*claim, error) {
 			    started_at = COALESCE(j.started_at, now())
 			FROM next
 			WHERE j.id = next.id
-			RETURNING j.id, j.org_id, (SELECT slug FROM org WHERE id = j.org_id), j.requested_by,
+			RETURNING j.id, j.requested_by,
 			          (SELECT name FROM app_user WHERE id = j.requested_by),
-			          COALESCE((SELECT org_role FROM org_member m WHERE m.org_id = j.org_id AND m.user_id = j.requested_by), ''),
+			          COALESCE((SELECT m.role FROM member m WHERE m.user_id = j.requested_by), ''),
 			          j.language, j.attempts, j.space_id, j.kind`, Lease.Seconds()).
-			Scan(&out.id, &out.org, &out.slug, &out.requester.ID, &out.requester.Name, &role, &out.language, &out.attempts, &on, &kind)
+			Scan(&out.id, &out.requester.ID, &out.requester.Name, &role, &out.language, &out.attempts, &on, &kind)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -352,11 +351,11 @@ func (s *dbStore) finish(ctx context.Context, c *claim, o outcome) error {
 func (s *dbStore) track(ctx context.Context, c *claim, spaceID uuid.UUID, t Tracked) error {
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO example_page (space_id, name, org_id, page_id, version, title)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO example_page (space_id, name, page_id, version, title)
+			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (space_id, name) DO UPDATE
 			SET page_id = EXCLUDED.page_id, version = EXCLUDED.version, title = EXCLUDED.title`,
-			spaceID, t.Name, c.org, t.PageID, t.Version, t.Title)
+			spaceID, t.Name, t.PageID, t.Version, t.Title)
 		return err
 	})
 	return err

@@ -194,7 +194,7 @@ type Service struct {
 	client *http.Client
 	opts   Options
 	now    func() time.Time
-	// site names the organization a secret is sealed for.
+	// site names the site a secret is sealed for.
 	site *instance.Resolver
 }
 
@@ -209,9 +209,9 @@ func NewService(cluster *db.Cluster, box *secret.Box, opts Options) *Service {
 }
 
 // sealContext binds a sealed secret to its endpoint, so a copy onto another
-// row or organization does not open.
-func sealContext(orgID, id uuid.UUID) []byte {
-	return []byte("webhook:" + orgID.String() + ":" + id.String())
+// row or site does not open.
+func sealContext(siteID, id uuid.UUID) []byte {
+	return []byte("webhook:" + siteID.String() + ":" + id.String())
 }
 
 func newSecret() (string, error) {
@@ -354,7 +354,7 @@ func (s *Service) Create(ctx context.Context, in WebhookInput) (*Webhook, db.LSN
 	if s.box == nil {
 		return nil, 0, ErrNoKey
 	}
-	org, err := s.site.Org(ctx)
+	site, err := s.site.Site(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -366,7 +366,7 @@ func (s *Service) Create(ctx context.Context, in WebhookInput) (*Webhook, db.LSN
 	if err != nil {
 		return nil, 0, err
 	}
-	sealed, err := s.box.Seal([]byte(plain), sealContext(org.ID, id))
+	sealed, err := s.box.Seal([]byte(plain), sealContext(site.ID, id))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -430,7 +430,7 @@ func (s *Service) RotateSecret(ctx context.Context, id uuid.UUID) (*Webhook, db.
 	if s.box == nil {
 		return nil, 0, ErrNoKey
 	}
-	org, err := s.site.Org(ctx)
+	site, err := s.site.Site(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -438,7 +438,7 @@ func (s *Service) RotateSecret(ctx context.Context, id uuid.UUID) (*Webhook, db.
 	if err != nil {
 		return nil, 0, err
 	}
-	sealed, err := s.box.Seal([]byte(plain), sealContext(org.ID, id))
+	sealed, err := s.box.Seal([]byte(plain), sealContext(site.ID, id))
 	if err != nil {
 		return nil, 0, err
 	}

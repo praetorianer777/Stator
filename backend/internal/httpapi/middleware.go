@@ -162,7 +162,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		switch {
 		case err == nil:
 			ctx := context.WithValue(r.Context(), ctxPrincipal, principal)
-			if principal.InOrg() {
+			if principal.IsMember() {
 				if principal.InSpacesOnly() {
 					ctx = db.WithUserInSpaces(ctx, principal.UserID, principal.TokenSpaces)
 				} else {
@@ -250,7 +250,7 @@ func requireOrg(next http.Handler) http.Handler {
 			respondError(w, r, ErrUnauthorized(""))
 			return
 		}
-		if !p.InOrg() {
+		if !p.IsMember() {
 			respondError(w, r, auth.ErrNotMember)
 			return
 		}

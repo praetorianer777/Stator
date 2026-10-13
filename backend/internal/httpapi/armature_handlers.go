@@ -385,9 +385,9 @@ func (s *Server) handleListArmatureLinks(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, r, http.StatusOK, map[string]any{"links": links})
 }
 
-// Webhooks (#33): Armature signs each delivery with the organization's
-// secret. An unknown organization, one without a secret and a wrong
-// signature get one answer, so the address never tells which exist.
+// Webhooks (#33): Armature signs each delivery with the site's secret. An old
+// address with another slug, a site without a secret and a wrong signature
+// get one answer, so the address never tells which exist.
 
 var errBadSignature = &APIError{Status: http.StatusUnauthorized, Code: "bad_signature",
 	Message: "The signature does not match. Check that the webhook secret in Armature is the one saved in Stator under Settings, Armature."}
@@ -400,14 +400,14 @@ func (s *Server) handleArmatureWebhook(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, errArmatureOff)
 		return
 	}
-	org, err := s.Instance.Org(r.Context())
+	site, err := s.Instance.Site(r.Context())
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
 	// Receivers set up before the address lost the organization's slug still
-	// post to the old one; any other slug never was this organization.
-	if slug := chi.URLParam(r, "orgSlug"); slug != "" && !strings.EqualFold(slug, org.Slug) {
+	// post to the old one; any other slug never was this site.
+	if slug := chi.URLParam(r, "orgSlug"); slug != "" && !strings.EqualFold(slug, site.Slug) {
 		respondError(w, r, errBadSignature)
 		return
 	}
@@ -421,7 +421,7 @@ func (s *Server) handleArmatureWebhook(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrBadRequest("The delivery could not be read. Armature sends it again by itself."))
 		return
 	}
-	err = s.Armature.Webhook(r.Context(), org, body, r.Header.Get(armature.SignatureHeader))
+	err = s.Armature.Webhook(r.Context(), body, r.Header.Get(armature.SignatureHeader))
 	if errors.Is(err, armature.ErrBadSignature) {
 		respondError(w, r, errBadSignature)
 		return

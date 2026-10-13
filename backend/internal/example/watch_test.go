@@ -173,7 +173,7 @@ func watchOf(store *fakeStore, maker *fakeMaker) *Watch {
 }
 
 func newClaim() *claim {
-	return &claim{id: uuid.New(), org: uuid.New(), requester: Person{ID: uuid.New(), Name: "Ada"}, role: auth.RoleAdmin, language: English, attempts: 1}
+	return &claim{id: uuid.New(), requester: Person{ID: uuid.New(), Name: "Ada"}, role: auth.RoleAdmin, language: English, attempts: 1}
 }
 
 func TestAMakingThatSucceedsIsDoneWithItsSpace(t *testing.T) {
@@ -305,7 +305,7 @@ func TestAWorkerThatLostItsJobLeavesIt(t *testing.T) {
 	}
 }
 
-// The making runs as the requester, in their organization, bounded.
+// The making runs as the requester, bounded.
 func TestTheMakingActsForTheRequester(t *testing.T) {
 	c := newClaim()
 	store := &fakeStore{claims: []*claim{c}}

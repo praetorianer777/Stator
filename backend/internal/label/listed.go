@@ -91,14 +91,14 @@ func (s *Service) Listed(ctx context.Context, actor perm.Actor, in ListInput) ([
 		}
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.title, s.key, s.name, `+pathOf+`,
-			       ARRAY(SELECT o.name FROM page_label o WHERE o.org_id = p.org_id AND o.page_id = p.id ORDER BY o.name),
+			       ARRAY(SELECT o.name FROM page_label o WHERE o.page_id = p.id ORDER BY o.name),
 			       false, COALESCE(u.name, ''), p.published_at
 			FROM page p
 			JOIN space s ON s.id = p.space_id
-			LEFT JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = p.version
+			LEFT JOIN page_version v ON v.page_id = p.id AND v.number = p.version
 			LEFT JOIN app_user u ON u.id = v.created_by
 			WHERE p.published_at IS NOT NULL AND p.trashed_at IS NULL AND p.archived_at IS NULL
-			  AND (SELECT count(*) FROM page_label l WHERE l.org_id = p.org_id AND l.page_id = p.id AND l.name = ANY($2)) >= $3
+			  AND (SELECT count(*) FROM page_label l WHERE l.page_id = p.id AND l.name = ANY($2)) >= $3
 			  AND `+perm.ViewablePage("p", 1)+within+`
 			ORDER BY `+order+`
 			LIMIT $4`, args...)

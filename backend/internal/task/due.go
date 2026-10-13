@@ -61,31 +61,28 @@ func (w *DueWatch) Run(ctx context.Context) {
 	}
 }
 
-// Once notes up to one batch of tasks whose day came, across every
-// organization, each with an event for its assignee, and says how many.
+// Once notes up to one batch of tasks whose day came, each with an event for
+// its assignee, and says how many.
 func (w *DueWatch) Once(ctx context.Context) (int, error) {
-	type due struct{ orgID, id uuid.UUID }
-	var found []due
-	// Finding them crosses tenants, which is what the admin role is for.
+	var found []uuid.UUID
+	// Finding them reads past every person's rights, which is what the admin
+	// role is for.
 	err := w.db.ReadAdmin(db.PinPrimary(ctx), func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT org_id, id FROM page_task
+			SELECT id FROM page_task
 			WHERE NOT done AND assignee_id IS NOT NULL AND due_noticed_at IS NULL AND due_on <= task_today()
 			ORDER BY due_on LIMIT $1`, dueBatch)
 		if err != nil {
 			return err
 		}
-		found, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (due, error) {
-			var d due
-			return d, row.Scan(&d.orgID, &d.id)
-		})
+		found, err = pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
 		return err
 	})
 	if err != nil {
 		return 0, err
 	}
 	noted := 0
-	for _, d := range found {
+	for _, id := range found {
 		pinned := db.PinPrimary(ctx)
 		happened := false
 		_, err := w.db.WriteAdmin(pinned, func(ctx context.Context, tx db.DBTX) error {
@@ -95,7 +92,7 @@ func (w *DueWatch) Once(ctx context.Context) (int, error) {
 				UPDATE page_task SET due_noticed_at = now()
 				WHERE id = $1 AND NOT done AND assignee_id IS NOT NULL
 				  AND due_noticed_at IS NULL AND due_on <= task_today()
-				RETURNING page_id, task_id, assignee_id, to_char(due_on, 'YYYY-MM-DD')`, d.id).Scan(&e.PageID, &e.TaskID, &e.AssigneeID, &e.DueOn)
+				RETURNING page_id, task_id, assignee_id, to_char(due_on, 'YYYY-MM-DD')`, id).Scan(&e.PageID, &e.TaskID, &e.AssigneeID, &e.DueOn)
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil
 			}
@@ -106,7 +103,7 @@ func (w *DueWatch) Once(ctx context.Context) (int, error) {
 			return events.Emit(ctx, tx, events.TopicTaskDue, e)
 		})
 		if err != nil {
-			w.log.Warn("a task that came due could not be noted", "task", d.id, "error", err)
+			w.log.Warn("a task that came due could not be noted", "task", id, "error", err)
 			continue
 		}
 		if happened {

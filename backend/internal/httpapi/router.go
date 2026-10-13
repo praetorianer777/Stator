@@ -64,18 +64,18 @@ type Database interface {
 	Stats() db.Stats
 }
 
-// Instance finds the one organization the instance serves; *instance.Resolver
-// is the real one.
+// Instance finds the one site the instance serves; *instance.Resolver is the
+// real one.
 type Instance interface {
-	Org(ctx context.Context) (instance.Org, error)
+	Site(ctx context.Context) (instance.Site, error)
 }
 
 // Server holds everything the handlers need.
 type Server struct {
 	DB   Database
 	Auth Authenticator
-	// Instance is the organization the reads for anybody, a provider's
-	// sign-in and Armature's deliveries are for; nil serves none of them.
+	// Instance is the site the reads for anybody, a provider's sign-in and
+	// Armature's deliveries are for; nil serves none of them.
 	Instance Instance
 	// Accounts signs people in and out; OIDC runs sign-in through a provider.
 	// Both nil answer every sign-in route that it is not set up.

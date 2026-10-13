@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 )
 
@@ -110,11 +109,10 @@ func TestSignInFailuresAreNamedForThePage(t *testing.T) {
 
 func TestTheProviderSettingsAreForAdministratorsOnly(t *testing.T) {
 	s := newServer(t)
-	org := &instance.Org{ID: uuid.New(), Slug: "acme"}
 	s.Auth = fakeAuth{
-		"admin":  {UserID: uuid.New(), Org: org, Role: auth.RoleAdmin},
-		"member": {UserID: uuid.New(), Org: org, Role: auth.RoleMember},
-		"no-org": {UserID: uuid.New(), Role: auth.RoleOwner},
+		"admin":  {UserID: uuid.New(), Role: auth.RoleAdmin},
+		"member": {UserID: uuid.New(), Role: auth.RoleMember},
+		"no-org": {UserID: uuid.New()},
 	}
 	get := func(credential string) (*http.Response, map[string]any) {
 		req := httptest.NewRequest(http.MethodGet, APIPrefix+"/oidc-provider", nil)

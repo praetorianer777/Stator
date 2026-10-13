@@ -33,7 +33,7 @@ func (s *Server) handleCreateAPIToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	token, lsn, err := s.Accounts.CreateAPIToken(r.Context(), p.Org.ID, p.UserID,
+	token, lsn, err := s.Accounts.CreateAPIToken(r.Context(), p.UserID,
 		auth.NewAPIToken{Name: req.Name, Scopes: req.Scopes, Spaces: req.Spaces, ExpiresAt: req.ExpiresAt}, clientIP(r))
 	noteWrite(r.Context(), lsn)
 	if err != nil {
@@ -67,7 +67,7 @@ func (s *Server) handleRevokeAPIToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	lsn, err := s.Accounts.RevokeAPIToken(r.Context(), p.Org.ID, p.UserID, id, clientIP(r))
+	lsn, err := s.Accounts.RevokeAPIToken(r.Context(), p.UserID, id, clientIP(r))
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)
@@ -100,7 +100,7 @@ func (s *Server) handleRevokeOrgAPIToken(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	lsn, err := s.Accounts.RevokeOrgAPIToken(r.Context(), p.Org.ID, p.UserID, id, clientIP(r))
+	lsn, err := s.Accounts.RevokeOrgAPIToken(r.Context(), p.UserID, id, clientIP(r))
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)

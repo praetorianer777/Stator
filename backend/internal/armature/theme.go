@@ -20,7 +20,7 @@ type ShownTheme struct {
 // unless fresh, else from Armature, bounded by ctx.
 func (s *Service) ShownTheme(ctx context.Context, v *Viewer, fresh bool) (*ShownTheme, error) {
 	var out ShownTheme
-	if !fresh && s.cache.Theme(ctx, v.OrgID, v.TokenID, &out) {
+	if !fresh && s.cache.Theme(ctx, v.SiteID, v.TokenID, &out) {
 		return &out, nil
 	}
 	var answer struct {
@@ -31,17 +31,17 @@ func (s *Service) ShownTheme(ctx context.Context, v *Viewer, fresh bool) (*Shown
 		return nil, err
 	}
 	out = ShownTheme{Theme: answer.Theme}
-	if cached := (ShownTheme{}); s.cache.Theme(ctx, v.OrgID, v.TokenID, &cached) && cached.Invalid != "" && answer.Theme.Same(cached.Theme) {
+	if cached := (ShownTheme{}); s.cache.Theme(ctx, v.SiteID, v.TokenID, &cached) && cached.Invalid != "" && answer.Theme.Same(cached.Theme) {
 		out.Invalid = cached.Invalid
 	}
-	s.cache.PutTheme(ctx, v.OrgID, v.TokenID, out)
+	s.cache.PutTheme(ctx, v.SiteID, v.TokenID, out)
 	return &out, nil
 }
 
 // RememberShownTheme keeps what was learned of the viewer's theme, such as
 // that it does not pass the checks.
 func (s *Service) RememberShownTheme(ctx context.Context, v *Viewer, shown *ShownTheme) {
-	s.cache.PutTheme(ctx, v.OrgID, v.TokenID, shown)
+	s.cache.PutTheme(ctx, v.SiteID, v.TokenID, shown)
 }
 
 // ExportTheme downloads an Armature theme as its armature-theme/1 file.

@@ -16,7 +16,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 )
 
@@ -68,6 +67,9 @@ type Asset struct {
 	ContentType string    `json:"contentType"`
 	Size        int64     `json:"size"`
 	CreatedAt   time.Time `json:"createdAt"`
+	// key is where the bytes are, as the row stores it: a file uploaded
+	// before the organization left the schema keeps its old key.
+	key string
 }
 
 // Input is a theme as the page sends it; nil leaves a field alone on an edit.
@@ -82,11 +84,10 @@ type Input struct {
 type Service struct {
 	db    *db.Cluster
 	store objectstore.Store
-	site  *instance.Resolver
 }
 
 func NewService(cluster *db.Cluster, store objectstore.Store) *Service {
-	return &Service{db: cluster, store: store, site: instance.NewResolver(cluster)}
+	return &Service{db: cluster, store: store}
 }
 
 // selectThemes reads themes with the reader's marks; $1 is the reader.
@@ -94,7 +95,7 @@ const selectThemes = `
 SELECT t.id, t.owner_id, COALESCE(u.name, ''), t.name, t.shared, t.spec, t.created_at, t.updated_at,
        (SELECT count(*) FROM user_theme ut WHERE ut.theme_id = t.id),
        EXISTS (SELECT 1 FROM user_theme ut WHERE ut.theme_id = t.id AND ut.user_id = $1),
-       EXISTS (SELECT 1 FROM org o WHERE o.id = t.org_id AND o.default_theme_id = t.id),
+       EXISTS (SELECT 1 FROM site WHERE default_theme_id = t.id),
        t.armature_theme_id, t.armature_updated_at
 FROM theme t
 LEFT JOIN app_user u ON u.id = t.owner_id`
@@ -143,7 +144,7 @@ func withAssets(ctx context.Context, tx db.DBTX, themes []*Theme) error {
 		byID[t.ID] = t
 	}
 	rows, err := tx.Query(ctx, `
-		SELECT theme_id, id, name, content_type, size, created_at FROM theme_asset
+		SELECT theme_id, id, name, content_type, size, created_at, object_key FROM theme_asset
 		WHERE theme_id = ANY($1) ORDER BY created_at`, ids)
 	if err != nil {
 		return err
@@ -154,7 +155,7 @@ func withAssets(ctx context.Context, tx db.DBTX, themes []*Theme) error {
 			themeID uuid.UUID
 			a       Asset
 		)
-		if err := rows.Scan(&themeID, &a.ID, &a.Name, &a.ContentType, &a.Size, &a.CreatedAt); err != nil {
+		if err := rows.Scan(&themeID, &a.ID, &a.Name, &a.ContentType, &a.Size, &a.CreatedAt, &a.key); err != nil {
 			return err
 		}
 		byID[themeID].Assets = append(byID[themeID].Assets, a)
@@ -260,7 +261,7 @@ func (s *Service) Active(ctx context.Context, reader uuid.UUID) (*Theme, Source,
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
 			var fallback *uuid.UUID
-			if err := tx.QueryRow(ctx, `SELECT default_theme_id FROM org`).Scan(&fallback); err != nil {
+			if err := tx.QueryRow(ctx, `SELECT default_theme_id FROM site`).Scan(&fallback); err != nil {
 				return err
 			}
 			if fallback == nil {
@@ -291,7 +292,7 @@ func (s *Service) Default(ctx context.Context, reader uuid.UUID) (*Theme, error)
 	var out *Theme
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var id *uuid.UUID
-		if err := tx.QueryRow(ctx, `SELECT default_theme_id FROM org`).Scan(&id); err != nil || id == nil {
+		if err := tx.QueryRow(ctx, `SELECT default_theme_id FROM site`).Scan(&id); err != nil || id == nil {
 			return err
 		}
 		var err error
@@ -331,7 +332,7 @@ func (s *Service) Choose(ctx context.Context, reader uuid.UUID, id *uuid.UUID, b
 		}
 		_, err = tx.Exec(ctx, `
 			INSERT INTO user_theme (user_id, theme_id, follow_armature) VALUES ($1, $2, false)
-			ON CONFLICT (org_id, user_id) DO UPDATE SET theme_id = EXCLUDED.theme_id, follow_armature = false`, reader, id)
+			ON CONFLICT (user_id) DO UPDATE SET theme_id = EXCLUDED.theme_id, follow_armature = false`, reader, id)
 		return err
 	})
 	if err == nil {
@@ -359,7 +360,7 @@ func (s *Service) Follow(ctx context.Context, reader uuid.UUID) (db.LSN, error) 
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO user_theme (user_id, theme_id, follow_armature) VALUES ($1, NULL, true)
-			ON CONFLICT (org_id, user_id) DO UPDATE SET theme_id = NULL, follow_armature = true`, reader)
+			ON CONFLICT (user_id) DO UPDATE SET theme_id = NULL, follow_armature = true`, reader)
 		return err
 	})
 }
@@ -442,21 +443,12 @@ func dropMirrors(ctx context.Context, tx db.DBTX, owner uuid.UUID, keep *uuid.UU
 		DELETE FROM theme_asset a USING theme t
 		WHERE a.theme_id = t.id AND t.owner_id = $1 AND t.armature_theme_id IS NOT NULL AND t.id IS DISTINCT FROM $2
 		  AND ($2::uuid IS NULL OR t.armature_updated_at <> $3)
-		RETURNING a.org_id, a.theme_id, a.id`, owner, keep, MirrorPending)
+		RETURNING a.object_key`, owner, keep, MirrorPending)
 	if err != nil {
 		return nil, err
 	}
-	var keys []string
-	for rows.Next() {
-		var orgID, themeID, assetID uuid.UUID
-		if err := rows.Scan(&orgID, &themeID, &assetID); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		keys = append(keys, ObjectKey(orgID, themeID, assetID))
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+	keys, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
 		return nil, err
 	}
 	_, err = tx.Exec(ctx, `
@@ -482,7 +474,7 @@ func mirroring(ctx context.Context) bool {
 func (s *Service) SetDefault(ctx context.Context, reader uuid.UUID, id *uuid.UUID) (*Theme, db.LSN, error) {
 	var out *Theme
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, err := tx.Exec(ctx, `UPDATE org SET default_theme_id = $1`, id); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE site SET default_theme_id = $1`, id); err != nil {
 			if isCheck(err) {
 				return ErrDefaultNotShared
 			}
@@ -503,14 +495,14 @@ func (s *Service) SetDefault(ctx context.Context, reader uuid.UUID, id *uuid.UUI
 	return out, lsn, err
 }
 
-// Administers says whether the reader may tidy what anybody in the current
+// Administers says whether the reader may tidy what anybody in the
 // organization shared, and name its default theme: its owners and admins.
 func (s *Service) Administers(ctx context.Context, reader uuid.UUID) (bool, error) {
 	var ok bool
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT EXISTS (SELECT 1 FROM org_member
-			               WHERE user_id = $1 AND org_role IN ('owner', 'admin'))`, reader).Scan(&ok)
+			SELECT EXISTS (SELECT 1 FROM member
+			               WHERE user_id = $1 AND role IN ('owner', 'admin'))`, reader).Scan(&ok)
 	})
 	return ok, err
 }
@@ -641,10 +633,6 @@ func (s *Service) Update(ctx context.Context, id, actor uuid.UUID, administers b
 // Delete removes a theme and its files. Everybody who chose it returns to the
 // built-in theme, by the cascade.
 func (s *Service) Delete(ctx context.Context, id, actor uuid.UUID, administers bool) (db.LSN, error) {
-	orgID, err := s.orgID(ctx)
-	if err != nil {
-		return 0, err
-	}
 	var keys []string
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		current, err := lockOwned(ctx, tx, id, actor, administers)
@@ -652,7 +640,7 @@ func (s *Service) Delete(ctx context.Context, id, actor uuid.UUID, administers b
 			return err
 		}
 		for _, a := range current.Assets {
-			keys = append(keys, ObjectKey(orgID, id, a.ID))
+			keys = append(keys, a.key)
 		}
 		_, err = tx.Exec(ctx, `DELETE FROM theme WHERE id = $1`, id)
 		return err
@@ -675,18 +663,6 @@ func (s *Service) dropObjects(ctx context.Context, keys []string) {
 	}
 }
 
-// orgID is the organization whose prefix the files live under, until their
-// keys are stored with them.
-func (s *Service) orgID(ctx context.Context) (uuid.UUID, error) {
-	org, err := s.site.Org(ctx)
-	return org.ID, err
-}
-
-// ObjectKey is the key of one theme file in the object store.
-func ObjectKey(orgID, themeID, assetID uuid.UUID) string {
-	return objectstore.OrgPrefix(orgID) + "theme/" + themeID.String() + "/" + assetID.String()
-}
-
 // UploadAsset puts a file on a theme. The type is what the bytes say.
 func (s *Service) UploadAsset(ctx context.Context, id, actor uuid.UUID, administers bool, name string, body io.Reader) (*Asset, db.LSN, error) {
 	if objectstore.IsUnavailable(s.store) {
@@ -701,10 +677,6 @@ func (s *Service) UploadAsset(ctx context.Context, id, actor uuid.UUID, administ
 		return nil, 0, err
 	}
 	name = objectstore.CleanName(name)
-	orgID, err := s.orgID(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
 	var out Asset
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		current, err := lockOwned(ctx, tx, id, actor, administers)
@@ -721,11 +693,11 @@ func (s *Service) UploadAsset(ctx context.Context, id, actor uuid.UUID, administ
 		out = Asset{ID: assetID, Name: name, ContentType: contentType, Size: int64(len(data))}
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO theme_asset (id, theme_id, name, content_type, size)
-			VALUES ($1, $2, $3, $4, $5) RETURNING created_at`,
-			assetID, id, name, contentType, len(data)).Scan(&out.CreatedAt); err != nil {
+			VALUES ($1, $2, $3, $4, $5) RETURNING created_at, object_key`,
+			assetID, id, name, contentType, len(data)).Scan(&out.CreatedAt, &out.key); err != nil {
 			return fmt.Errorf("record the file: %w", err)
 		}
-		return s.store.Put(ctx, ObjectKey(orgID, id, assetID), bytes.NewReader(data), int64(len(data)), contentType)
+		return s.store.Put(ctx, out.key, bytes.NewReader(data), int64(len(data)), contentType)
 	})
 	if err != nil {
 		return nil, 0, err
@@ -755,11 +727,7 @@ func (s *Service) OpenAsset(ctx context.Context, id, assetID, reader uuid.UUID) 
 	if err != nil {
 		return nil, nil, err
 	}
-	orgID, err := s.orgID(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	body, err := s.store.Get(ctx, ObjectKey(orgID, id, assetID))
+	body, err := s.store.Get(ctx, found.key)
 	if err != nil {
 		return nil, nil, ErrAssetNotFound
 	}
@@ -768,6 +736,7 @@ func (s *Service) OpenAsset(ctx context.Context, id, assetID, reader uuid.UUID) 
 
 // DeleteAsset takes a file off a theme, unless the theme still names it.
 func (s *Service) DeleteAsset(ctx context.Context, id, assetID, actor uuid.UUID, administers bool) (db.LSN, error) {
+	var key string
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		current, err := lockOwned(ctx, tx, id, actor, administers)
 		if err != nil {
@@ -781,15 +750,12 @@ func (s *Service) DeleteAsset(ctx context.Context, id, assetID, actor uuid.UUID,
 				return ErrAssetInUse
 			}
 		}
-		_, err = tx.Exec(ctx, `DELETE FROM theme_asset WHERE id = $1 AND theme_id = $2`, assetID, id)
-		return err
+		return tx.QueryRow(ctx, `DELETE FROM theme_asset WHERE id = $1 AND theme_id = $2 RETURNING object_key`, assetID, id).Scan(&key)
 	})
 	if err != nil {
 		return 0, err
 	}
-	if orgID, err := s.orgID(ctx); err == nil {
-		s.dropObjects(ctx, []string{ObjectKey(orgID, id, assetID)})
-	}
+	s.dropObjects(ctx, []string{key})
 	return lsn, nil
 }
 

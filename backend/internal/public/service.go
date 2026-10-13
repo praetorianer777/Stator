@@ -15,7 +15,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 )
@@ -26,30 +25,30 @@ type Service struct {
 
 func NewService(cluster *db.Cluster) *Service { return &Service{db: cluster} }
 
-// Site is the organization as an anonymous reader finds it; while it lets
-// nobody read without signing in, it is not found.
-func (s *Service) Site(ctx context.Context, org instance.Org) (*Site, error) {
+// Site is the site as an anonymous reader finds it; while it lets nobody
+// read without signing in, it is not found.
+func (s *Service) Site(ctx context.Context) (*Site, error) {
 	var out Site
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
 			SELECT o.id, o.name, o.anonymous_indexable, COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''),
 			       CASE WHEN b.logo_type IS NOT NULL THEN b.logo_version END
-			FROM org o LEFT JOIN org_brand b ON b.org_id = o.id
-			WHERE o.id = $1 AND o.anonymous_access AND o.archived_at IS NULL`, org.ID).
+			FROM site o LEFT JOIN brand b ON true
+			WHERE o.anonymous_access AND o.archived_at IS NULL`).
 			Scan(&out.ID, &out.Name, &out.Indexable, &out.Footer.En, &out.Footer.De, &out.LogoVersion)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotPublic
 	}
 	if err != nil {
-		return nil, fmt.Errorf("find the organization: %w", err)
+		return nil, fmt.Errorf("find the site: %w", err)
 	}
 	return &out, nil
 }
 
-// Reading binds ctx to the organization as an anonymous reader, whom the
-// database holds to the spaces open to anybody whatever a query forgets.
-func Reading(ctx context.Context, org instance.Org) context.Context {
+// Reading binds ctx to an anonymous reader, whom the database holds to the
+// spaces open to anybody whatever a query forgets.
+func Reading(ctx context.Context) context.Context {
 	return db.WithAnonymous(ctx)
 }
 
@@ -281,7 +280,7 @@ func (s *Service) Settings(ctx context.Context, actor perm.Actor) (*Settings, er
 }
 
 func read(ctx context.Context, tx db.DBTX, out *Settings) error {
-	if err := tx.QueryRow(ctx, `SELECT anonymous_access, anonymous_indexable FROM org`).
+	if err := tx.QueryRow(ctx, `SELECT anonymous_access, anonymous_indexable FROM site`).
 		Scan(&out.Enabled, &out.Indexable); err != nil {
 		return fmt.Errorf("read whether the organization is open to anybody: %w", err)
 	}
@@ -311,7 +310,7 @@ func (s *Service) SetSettings(ctx context.Context, actor perm.Actor, in Settings
 		if err := read(ctx, tx, &before); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE org SET anonymous_access = $1, anonymous_indexable = $2`,
+		if _, err := tx.Exec(ctx, `UPDATE site SET anonymous_access = $1, anonymous_indexable = $2`,
 			in.Enabled, in.Indexable); err != nil {
 			return fmt.Errorf("open the organization to anybody: %w", err)
 		}

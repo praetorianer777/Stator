@@ -240,7 +240,7 @@ func (s *Service) SavePreferences(ctx context.Context, actor perm.Actor, in Pref
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO notification_preference (user_id, in_app, email, digest, auto_watch)
 			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (org_id, user_id) DO UPDATE
+			ON CONFLICT (user_id) DO UPDATE
 			SET in_app = EXCLUDED.in_app, email = EXCLUDED.email, digest = EXCLUDED.digest,
 			    auto_watch = EXCLUDED.auto_watch, updated_at = now()`,
 			actor.UserID, inApp, email, in.Digest, in.AutoWatch); err != nil {

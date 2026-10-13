@@ -44,7 +44,7 @@ func (s *Service) Lookup(ctx context.Context, keys []string) (Status, []IssueRes
 	var missing []string
 	for _, key := range keys {
 		var cached *Issue
-		if s.cache.Issue(ctx, v.OrgID, v.TokenID, key, &cached) {
+		if s.cache.Issue(ctx, v.SiteID, v.TokenID, key, &cached) {
 			found[key] = cached
 			continue
 		}
@@ -57,7 +57,7 @@ func (s *Service) Lookup(ctx context.Context, keys []string) (Status, []IssueRes
 		}
 		for _, key := range missing {
 			found[key] = fetched[key]
-			s.cache.PutIssue(ctx, v.OrgID, v.TokenID, key, fetched[key])
+			s.cache.PutIssue(ctx, v.SiteID, v.TokenID, key, fetched[key])
 		}
 	}
 	out := make([]IssueResult, len(keys))
@@ -75,14 +75,14 @@ func (s *Service) Issue(ctx context.Context, key string) (Status, *Issue, error)
 		return status, nil, err
 	}
 	var issue *Issue
-	if s.cache.Issue(ctx, v.OrgID, v.TokenID, key, &issue) {
+	if s.cache.Issue(ctx, v.SiteID, v.TokenID, key, &issue) {
 		return StatusOK, issue, nil
 	}
 	issue, err = s.fetchIssue(ctx, v, key)
 	if err != nil {
 		return s.failed(ctx, v, err), nil, nil
 	}
-	s.cache.PutIssue(ctx, v.OrgID, v.TokenID, key, issue)
+	s.cache.PutIssue(ctx, v.SiteID, v.TokenID, key, issue)
 	return StatusOK, issue, nil
 }
 
@@ -96,7 +96,7 @@ func (s *Service) failed(ctx context.Context, v *Viewer, err error) Status {
 			s.opts.Log.Warn("a refused Armature token could not be marked", "token_id", v.TokenID, "error", err)
 		}
 	case StatusUnreachable:
-		s.opts.Log.Info("Armature did not answer a read", "org_id", v.OrgID, "error", err)
+		s.opts.Log.Info("Armature did not answer a read", "site_id", v.SiteID, "error", err)
 	}
 	return status
 }
@@ -202,7 +202,7 @@ func (s *Service) Projects(ctx context.Context) (Status, []Project, error) {
 // MetaCacheTTL, so the create dialog of #31 finds both in one entry.
 func (s *Service) meta(ctx context.Context, v *Viewer) (*meta, error) {
 	var m meta
-	if s.cache.Meta(ctx, v.OrgID, v.TokenID, &m) {
+	if s.cache.Meta(ctx, v.SiteID, v.TokenID, &m) {
 		return &m, nil
 	}
 	var projects struct {
@@ -250,6 +250,6 @@ func (s *Service) meta(ctx context.Context, v *Viewer) (*meta, error) {
 			m.IssueTypes = append(m.IssueTypes, t.IssueType)
 		}
 	}
-	s.cache.PutMeta(ctx, v.OrgID, v.TokenID, m)
+	s.cache.PutMeta(ctx, v.SiteID, v.TokenID, m)
 	return &m, nil
 }
