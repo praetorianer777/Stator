@@ -27,7 +27,7 @@ type orgClaim struct {
 	id, org  uuid.UUID
 	slug     string
 	user     uuid.UUID
-	role     auth.OrgRole
+	role     auth.Role
 	attempts int
 	size     int64
 	object   string
@@ -69,7 +69,7 @@ func (w *Watch) claimOrg(ctx context.Context, k kind) (*orgClaim, error) {
 		if err != nil {
 			return err
 		}
-		out.role = auth.OrgRole(role)
+		out.role = auth.Role(role)
 		c = &out
 		return nil
 	})

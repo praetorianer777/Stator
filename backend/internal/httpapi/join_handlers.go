@@ -11,7 +11,7 @@ import (
 
 type admitRequest struct {
 	// Role is the standing the person gets: member, or admin.
-	Role auth.OrgRole `json:"role"`
+	Role auth.Role `json:"role"`
 }
 
 func (s *Server) handleListJoinRequests(w http.ResponseWriter, r *http.Request) {

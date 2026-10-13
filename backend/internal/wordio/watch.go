@@ -42,7 +42,7 @@ type claim struct {
 	id, org, parent uuid.UUID
 	slug            string
 	requester       uuid.UUID
-	role            auth.OrgRole
+	role            auth.Role
 	attempts        int
 	// made is what an attempt before this one made and left.
 	made []uuid.UUID
@@ -338,7 +338,7 @@ func (w *Watch) claim(ctx context.Context) (*claim, error) {
 		if err != nil {
 			return err
 		}
-		out.role = auth.OrgRole(role)
+		out.role = auth.Role(role)
 		c = &out
 		return nil
 	})

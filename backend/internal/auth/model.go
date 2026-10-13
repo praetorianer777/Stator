@@ -7,22 +7,22 @@ import (
 	"github.com/google/uuid"
 )
 
-// OrgRole is a member's standing within one organization.
-type OrgRole string
+// Role is a member's standing on the site.
+type Role string
 
 const (
-	RoleOwner  OrgRole = "owner"
-	RoleAdmin  OrgRole = "admin"
-	RoleMember OrgRole = "member"
+	RoleOwner  Role = "owner"
+	RoleAdmin  Role = "admin"
+	RoleMember Role = "member"
 	// RoleGuest is somebody from outside, let into one space and nothing else.
-	RoleGuest OrgRole = "guest"
+	RoleGuest Role = "guest"
 )
 
-// OrgRoles lists every role, in the order the API documents them.
-var OrgRoles = []OrgRole{RoleOwner, RoleAdmin, RoleMember, RoleGuest}
+// Roles lists every role, in the order the API documents them.
+var Roles = []Role{RoleOwner, RoleAdmin, RoleMember, RoleGuest}
 
-// CanAdminister reports whether the role may change organization settings.
-func (r OrgRole) CanAdminister() bool { return r == RoleOwner || r == RoleAdmin }
+// CanAdminister reports whether the role may change the site's settings.
+func (r Role) CanAdminister() bool { return r == RoleOwner || r == RoleAdmin }
 
 // RoleSource says who decided a member's role.
 type RoleSource string
@@ -44,7 +44,7 @@ type Member struct {
 	UserID uuid.UUID `json:"userId"`
 	Email  string    `json:"email"`
 	Name   string    `json:"name"`
-	Role   OrgRole   `json:"role"`
+	Role   Role      `json:"role"`
 	// RoleSource says whether the role follows the identity provider's groups.
 	RoleSource RoleSource `json:"roleSource"`
 	JoinedAt   time.Time  `json:"joinedAt"`
@@ -90,8 +90,8 @@ type User struct {
 
 // Standing is the organization's name and the caller's place in it.
 type Standing struct {
-	Name string  `json:"name"`
-	Role OrgRole `json:"role"`
+	Name string `json:"name"`
+	Role Role   `json:"role"`
 	// GuestSpace is where a guest lands and all they reach; null for everybody else.
 	GuestSpace *SpaceRef `json:"guestSpace"`
 }
@@ -99,7 +99,7 @@ type Standing struct {
 // Admitted is somebody let in from the list of who waits, with their role.
 type Admitted struct {
 	UserID uuid.UUID `json:"userId"`
-	Role   OrgRole   `json:"role"`
+	Role   Role      `json:"role"`
 }
 
 // Proof is how a session was opened, which decides how far it reaches.

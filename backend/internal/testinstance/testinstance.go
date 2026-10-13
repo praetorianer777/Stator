@@ -57,7 +57,7 @@ const (
 type NewPerson struct {
 	Label    string
 	Name     string
-	Role     auth.OrgRole
+	Role     auth.Role
 	SpaceKey string
 }
 
@@ -66,7 +66,7 @@ type Person struct {
 	ID    uuid.UUID    `json:"id"`
 	Email string       `json:"email"`
 	Name  string       `json:"name"`
-	Role  auth.OrgRole `json:"role"`
+	Role  auth.Role `json:"role"`
 }
 
 // Session is a person with the session opened for them.

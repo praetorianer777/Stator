@@ -8,7 +8,7 @@ import (
 )
 
 func TestTheHighestMappedRoleWins(t *testing.T) {
-	mapping := map[string]auth.OrgRole{
+	mapping := map[string]auth.Role{
 		"engineering":           auth.RoleMember,
 		"marketing":             auth.RoleMember,
 		"stator-administrators": auth.RoleAdmin,
@@ -19,7 +19,7 @@ func TestTheHighestMappedRoleWins(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		claimed []string
-		role    auth.OrgRole
+		role    auth.Role
 		from    []string
 	}{
 		{"no groups", nil, "", nil},
@@ -48,12 +48,12 @@ func TestAnEmptyMappingGrantsNothing(t *testing.T) {
 }
 
 func TestASignInFollowsTheMapping(t *testing.T) {
-	manual := func(r auth.OrgRole) *standing { return &standing{Role: r, Source: auth.RoleSourceManual} }
-	provider := func(r auth.OrgRole) *standing { return &standing{Role: r, Source: auth.RoleSourceProvider} }
+	manual := func(r auth.Role) *standing { return &standing{Role: r, Source: auth.RoleSourceManual} }
+	provider := func(r auth.Role) *standing { return &standing{Role: r, Source: auth.RoleSourceProvider} }
 	for _, tc := range []struct {
 		name    string
 		current *standing
-		granted auth.OrgRole
+		granted auth.Role
 		want    *standing
 	}{
 		{"a stranger in no mapped group waits", nil, "", nil},

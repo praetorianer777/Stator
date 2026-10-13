@@ -61,7 +61,7 @@ type claim struct {
 	id, org  uuid.UUID
 	slug     string
 	user     uuid.UUID
-	role     auth.OrgRole
+	role     auth.Role
 	attempts int
 	// Exports: which space, how. Imports: what was asked, and the space an
 	// attempt before this one made and left.
@@ -209,7 +209,7 @@ func (w *Watch) claim(ctx context.Context, k kind) (*claim, error) {
 		if err != nil {
 			return err
 		}
-		out.role, out.format, out.source = auth.OrgRole(role), ExportFormat(format), ImportSource(source)
+		out.role, out.format, out.source = auth.Role(role), ExportFormat(format), ImportSource(source)
 		if k == kindImport {
 			out.leftover, out.spaceID = out.spaceID, nil
 		}

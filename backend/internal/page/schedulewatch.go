@@ -118,7 +118,7 @@ func (w *ScheduleWatch) Once(ctx context.Context) (int, error) {
 // transaction, is what lets any number of workers make it exactly once.
 func (w *ScheduleWatch) publish(ctx context.Context, d dueSchedule) (bool, error) {
 	pinned := db.PinPrimary(ctx)
-	actor := perm.Actor{UserID: d.userID, Role: auth.OrgRole(d.role)}
+	actor := perm.Actor{UserID: d.userID, Role: auth.Role(d.role)}
 	var (
 		refused   ScheduleFailure
 		published bool

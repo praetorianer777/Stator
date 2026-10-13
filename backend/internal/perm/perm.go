@@ -85,7 +85,7 @@ const (
 // request acts in.
 type Actor struct {
 	UserID uuid.UUID
-	Role   auth.OrgRole
+	Role   auth.Role
 }
 
 // ActorOf is the caller behind a request.
@@ -232,7 +232,7 @@ func LoadFacts(ctx context.Context, tx db.DBTX, actor Actor, space uuid.UUID) (F
 	if role == nil || (space != uuid.Nil && !reached) {
 		return Facts{}, nil
 	}
-	f := Facts{Member: true, Role: auth.OrgRole(*role), SpacesOnly: !whole}
+	f := Facts{Member: true, Role: auth.Role(*role), SpacesOnly: !whole}
 	for _, g := range global {
 		f.Global = append(f.Global, GlobalPermission(g))
 	}

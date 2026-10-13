@@ -38,7 +38,7 @@ type claim struct {
 	slug      string
 	kind      Kind
 	requester Person
-	role      auth.OrgRole
+	role      auth.Role
 	language  string
 	attempts  int
 	// leftover is the space an attempt before this one made and left.
@@ -284,7 +284,7 @@ func (s *dbStore) claim(ctx context.Context) (*claim, error) {
 		if err != nil {
 			return err
 		}
-		out.role, out.kind = auth.OrgRole(role), Kind(kind)
+		out.role, out.kind = auth.Role(role), Kind(kind)
 		if out.kind == KindRenew {
 			out.target = on
 		} else {

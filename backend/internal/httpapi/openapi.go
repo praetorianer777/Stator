@@ -1113,7 +1113,7 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["APIToken.scopes"] = scopes
 	b.FieldOverrides["OrgAPIToken.scopes"] = scopes
 	b.FieldOverrides["CreateTokenRequest.scopes"] = scopes
-	b.Enums[reflect.TypeOf(auth.OrgRole(""))] = enumStrings(auth.OrgRoles)
+	b.Enums[reflect.TypeOf(auth.Role(""))] = enumStrings(auth.Roles)
 	b.Enums[reflect.TypeOf(page.Kind(""))] = enumStrings(page.Kinds)
 	b.Enums[reflect.TypeOf(page.Width(""))] = enumStrings(page.Widths)
 	b.Enums[reflect.TypeOf(page.Mode(""))] = enumStrings(page.Modes)

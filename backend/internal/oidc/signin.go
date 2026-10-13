@@ -23,7 +23,7 @@ type Session struct {
 	Joined []string
 	Left   []string
 	// Role is the standing the sign-in left the person with.
-	Role auth.OrgRole
+	Role auth.Role
 	// SessionID and LSN let the caller's first reads see the sign-in's writes.
 	SessionID uuid.UUID
 	LSN       db.LSN

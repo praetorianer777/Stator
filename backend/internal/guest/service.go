@@ -160,7 +160,7 @@ func adminSpace(ctx context.Context, tx db.DBTX, actor perm.Actor, key string) (
 // instead, since a guest is made only by an invitation.
 func notYetHere(ctx context.Context, tx db.DBTX, userID uuid.UUID, email string, sp *space.Space) error {
 	var (
-		role     auth.OrgRole
+		role     auth.Role
 		inSpace  *uuid.UUID
 		named    *string
 		spaceKey *string

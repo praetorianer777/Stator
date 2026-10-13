@@ -28,7 +28,7 @@ type createMemberRequest struct {
 	// Name is what the person is called; blank takes the part of the address before the at sign.
 	Name string `json:"name"`
 	// Role is the standing the person gets: member, or admin.
-	Role auth.OrgRole `json:"role"`
+	Role auth.Role `json:"role"`
 	// Password is the person's first password, at least 12 characters. Blank has one made, which the answer shows once.
 	Password string `json:"password"`
 }
@@ -75,7 +75,7 @@ type setGroupRoleRequest struct {
 	// Group is a value of the provider's groups claim.
 	Group string `json:"group"`
 	// Role is what the group grants: member, or admin.
-	Role auth.OrgRole `json:"role"`
+	Role auth.Role `json:"role"`
 }
 
 func (s *Server) handleListGroupRoles(w http.ResponseWriter, r *http.Request) {

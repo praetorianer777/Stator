@@ -21,7 +21,7 @@ type GroupRole struct {
 	ID uuid.UUID `json:"id"`
 	// Group is a value of the groups claim, matched exactly as the provider sends it.
 	Group     string       `json:"group"`
-	Role      auth.OrgRole `json:"role"`
+	Role      auth.Role `json:"role"`
 	UpdatedAt time.Time    `json:"updatedAt"`
 }
 
@@ -29,12 +29,12 @@ type GroupRole struct {
 var ErrNoSuchGroupRole = errors.New("that group is not mapped to a role")
 
 // roleRank orders the roles a mapping may grant; a role it may not grant has none.
-var roleRank = map[auth.OrgRole]int{auth.RoleMember: 1, auth.RoleAdmin: 2}
+var roleRank = map[auth.Role]int{auth.RoleMember: 1, auth.RoleAdmin: 2}
 
 // grantedRole is the highest role the mapping grants for the groups claimed,
 // with the groups that grant it; an empty role when none of them is mapped.
-func grantedRole(mapping map[string]auth.OrgRole, claimed []string) (auth.OrgRole, []string) {
-	var best auth.OrgRole
+func grantedRole(mapping map[string]auth.Role, claimed []string) (auth.Role, []string) {
+	var best auth.Role
 	from := []string{}
 	for _, group := range claimed {
 		role, ok := mapping[group]
@@ -54,13 +54,13 @@ func grantedRole(mapping map[string]auth.OrgRole, claimed []string) (auth.OrgRol
 
 // standing is somebody's role in an organization and who decided it.
 type standing struct {
-	Role   auth.OrgRole
+	Role   auth.Role
 	Source auth.RoleSource
 }
 
 // nextStanding is what a sign-in makes of a membership, given the role the
 // mapping grants; nil means the person is not let in.
-func nextStanding(current *standing, granted auth.OrgRole) *standing {
+func nextStanding(current *standing, granted auth.Role) *standing {
 	switch {
 	case current == nil && granted == "":
 		// Nobody here said yes, and no mapped group says it in advance.
@@ -108,7 +108,7 @@ func (s *Service) GroupRoles(ctx context.Context) ([]GroupRole, error) {
 
 // SetGroupRole maps a group to a role, or changes the role it maps to. It
 // takes effect at each member's next sign-in, when their groups are known.
-func (s *Service) SetGroupRole(ctx context.Context, group string, role auth.OrgRole, actor uuid.UUID, ip string) (*GroupRole, db.LSN, error) {
+func (s *Service) SetGroupRole(ctx context.Context, group string, role auth.Role, actor uuid.UUID, ip string) (*GroupRole, db.LSN, error) {
 	group = strings.TrimSpace(group)
 	if group == "" {
 		return nil, 0, &ValidationError{Field: "group", Message: "Enter the group's name as the provider sends it in the groups claim."}
@@ -164,15 +164,15 @@ func (s *Service) RemoveGroupRole(ctx context.Context, id, actor uuid.UUID, ip s
 
 // followMapping settles a sign-in's membership by the mapping, inside the
 // sign-in's transaction, and records every role it changes.
-func followMapping(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, claimed []string) (auth.OrgRole, error) {
-	mapping := map[string]auth.OrgRole{}
+func followMapping(ctx context.Context, tx db.DBTX, orgID, userID uuid.UUID, claimed []string) (auth.Role, error) {
+	mapping := map[string]auth.Role{}
 	rows, err := tx.Query(ctx, `SELECT group_ref, org_role FROM oidc_group_role WHERE org_id = $1`, orgID)
 	if err != nil {
 		return "", fmt.Errorf("read the group roles: %w", err)
 	}
 	for rows.Next() {
 		var group string
-		var role auth.OrgRole
+		var role auth.Role
 		if err := rows.Scan(&group, &role); err != nil {
 			rows.Close()
 			return "", err

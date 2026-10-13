@@ -45,7 +45,7 @@ func Ensure(ctx context.Context, cluster *db.Cluster, name string) (Result, erro
 // Member is one address let into an organization ahead of its first sign-in.
 type Member struct {
 	Email string
-	Role  auth.OrgRole
+	Role  auth.Role
 }
 
 // People is who an organization is seeded with: members named ahead of time,
@@ -60,7 +60,7 @@ type People struct {
 func Bootstrapped(cfg config.Bootstrap) People {
 	var people People
 	for _, m := range cfg.Members {
-		people.Members = append(people.Members, Member{Email: m.Email, Role: auth.OrgRole(m.Role)})
+		people.Members = append(people.Members, Member{Email: m.Email, Role: auth.Role(m.Role)})
 	}
 	if cfg.OIDCIssuer != "" {
 		people.Provider = &oidc.Provider{

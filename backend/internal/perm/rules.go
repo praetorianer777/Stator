@@ -16,7 +16,7 @@ import (
 type Facts struct {
 	// Member is false for somebody who is not in the organization at all.
 	Member bool
-	Role   auth.OrgRole
+	Role   auth.Role
 	// Global and Space are the grants as stored, before any implication.
 	Global []GlobalPermission
 	Space  []SpacePermission

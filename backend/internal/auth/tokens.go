@@ -14,11 +14,10 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // Personal access tokens, adapted from Armature's. A token belongs to one
-// person in one organization and acts as them there, never more.
+// person and acts as them, never more.
 
 // MaxTokenNameLength bounds a token's name, which is only a reminder.
 const MaxTokenNameLength = 100
@@ -115,9 +114,9 @@ func (s *Service) validateNewToken(in *NewAPIToken) error {
 	return nil
 }
 
-// CreateAPIToken makes a token for the caller in the organization the context
-// names. It runs under row level security like any other tenant data.
-func (s *Service) CreateAPIToken(ctx context.Context, orgID, userID uuid.UUID, in NewAPIToken, ip string) (*APIToken, db.LSN, error) {
+// CreateAPIToken makes a token for the caller. It runs under row level
+// security like any other row.
+func (s *Service) CreateAPIToken(ctx context.Context, userID uuid.UUID, in NewAPIToken, ip string) (*APIToken, db.LSN, error) {
 	if err := s.validateNewToken(&in); err != nil {
 		return nil, 0, err
 	}
@@ -168,7 +167,7 @@ func scanToken(row pgx.Row, extra ...any) (APIToken, error) {
 	return t, err
 }
 
-// ListAPITokens returns the caller's tokens in the organization, newest first
+// ListAPITokens returns the caller's tokens, newest first
 // and without their secrets.
 func (s *Service) ListAPITokens(ctx context.Context, userID uuid.UUID) ([]APIToken, error) {
 	out := []APIToken{}
@@ -190,7 +189,7 @@ func (s *Service) ListAPITokens(ctx context.Context, userID uuid.UUID) ([]APITok
 	return out, err
 }
 
-// ListOrgAPITokens returns every token in the organization, for an administrator.
+// ListOrgAPITokens returns every token on the site, for an administrator.
 func (s *Service) ListOrgAPITokens(ctx context.Context) ([]OrgAPIToken, error) {
 	out := []OrgAPIToken{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -217,16 +216,16 @@ func (s *Service) ListOrgAPITokens(ctx context.Context) ([]OrgAPIToken, error) {
 }
 
 // RevokeAPIToken deletes one of the caller's own tokens.
-func (s *Service) RevokeAPIToken(ctx context.Context, orgID, userID, tokenID uuid.UUID, ip string) (db.LSN, error) {
-	return s.revoke(ctx, orgID, &userID, userID, tokenID, ip)
+func (s *Service) RevokeAPIToken(ctx context.Context, userID, tokenID uuid.UUID, ip string) (db.LSN, error) {
+	return s.revoke(ctx, &userID, userID, tokenID, ip)
 }
 
-// RevokeOrgAPIToken deletes anybody's token in the organization, for an administrator.
-func (s *Service) RevokeOrgAPIToken(ctx context.Context, orgID, actor, tokenID uuid.UUID, ip string) (db.LSN, error) {
-	return s.revoke(ctx, orgID, nil, actor, tokenID, ip)
+// RevokeOrgAPIToken deletes anybody's token, for an administrator.
+func (s *Service) RevokeOrgAPIToken(ctx context.Context, actor, tokenID uuid.UUID, ip string) (db.LSN, error) {
+	return s.revoke(ctx, nil, actor, tokenID, ip)
 }
 
-func (s *Service) revoke(ctx context.Context, orgID uuid.UUID, owner *uuid.UUID, actor, tokenID uuid.UUID, ip string) (db.LSN, error) {
+func (s *Service) revoke(ctx context.Context, owner *uuid.UUID, actor, tokenID uuid.UUID, ip string) (db.LSN, error) {
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var holder uuid.UUID
 		err := tx.QueryRow(ctx, `
@@ -243,18 +242,18 @@ func (s *Service) revoke(ctx context.Context, orgID uuid.UUID, owner *uuid.UUID,
 	})
 }
 
-// apiTokenPrincipalSQL resolves a token to its owner in its organization. The
-// membership is joined, not left joined: a token outlives no membership.
+// apiTokenPrincipalSQL resolves a token to its owner. The membership is
+// joined, not left joined: a token outlives no membership.
 const apiTokenPrincipalSQL = `
 SELECT t.id, t.scopes, t.last_used_at, t.spaces_only,
        ARRAY(SELECT ts.space_id FROM api_token_space ts WHERE ts.token_id = t.id ORDER BY ts.space_id),
        u.id, u.email::text, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.show_in_readers, u.is_active,
-       o.id, o.slug, o.name, m.org_role, gs.id, gs.key, gs.name
+       o.name, m.role, gs.id, gs.key, gs.name
 FROM api_token t
 JOIN app_user u ON u.id = t.user_id
-JOIN org o ON o.id = t.org_id AND o.archived_at IS NULL
-JOIN org_member m ON m.org_id = t.org_id AND m.user_id = t.user_id
-LEFT JOIN space gs ON gs.org_id = m.org_id AND gs.id = m.guest_space_id
+JOIN site o ON o.archived_at IS NULL
+JOIN member m ON m.user_id = t.user_id
+LEFT JOIN space gs ON gs.id = m.guest_space_id
 WHERE t.token_hash = $1 AND (t.expires_at IS NULL OR t.expires_at > now())`
 
 func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Principal, error) {
@@ -267,16 +266,12 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 		lastUsed *time.Time
 		active   bool
 		guest    guestSpaceColumns
-		org      struct {
-			id         uuid.UUID
-			slug, name string
-		}
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, apiTokenPrincipalSQL, HashToken(secret)).Scan(
 			&tokenID, &p.Scopes, &lastUsed, &p.SpacesOnly, &p.TokenSpaces,
 			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.ShowInReaders, &active,
-			&org.id, &org.slug, &org.name, &p.Role, &guest.id, &guest.key, &guest.name,
+			&p.SiteName, &p.Role, &guest.id, &guest.key, &guest.name,
 		)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -290,8 +285,6 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 	}
 	p.TokenID = &tokenID
 	p.GuestSpace = guest.ref()
-	p.Org = &instance.Org{ID: org.id, Slug: org.slug}
-	p.OrgName = org.name
 	if lastUsed == nil || s.now().Sub(*lastUsed) > lastSeenEvery {
 		_, _ = s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 			_, err := tx.Exec(ctx, `UPDATE api_token SET last_used_at = now() WHERE id = $1`, tokenID)

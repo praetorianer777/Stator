@@ -112,7 +112,7 @@ type AccessRight struct {
 // AccessReport is what one person may do to one page, and why.
 type AccessReport struct {
 	Person     Person          `json:"person"`
-	Role       auth.OrgRole    `json:"role"`
+	Role       auth.Role    `json:"role"`
 	RoleSource auth.RoleSource `json:"roleSource"`
 	Rights     []AccessRight   `json:"rights"`
 }

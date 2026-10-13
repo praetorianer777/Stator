@@ -336,7 +336,7 @@ func goOut(ctx context.Context, tx db.DBTX, actor perm.Actor, p *Page, r *review
 	if err := actAs(ctx, tx, author); err != nil {
 		return nil, err
 	}
-	entry, err := publish(ctx, tx, perm.Actor{UserID: author, Role: auth.OrgRole(role)}, p,
+	entry, err := publish(ctx, tx, perm.Actor{UserID: author, Role: auth.Role(role)}, p,
 		release{title: r.Title, body: body, comment: r.Comment, notify: notify, reviewID: &r.ID})
 	if err != nil {
 		return nil, err
