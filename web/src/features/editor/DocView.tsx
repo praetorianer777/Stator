@@ -238,8 +238,8 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
   const block = usePassages() ? path.join(".") : undefined;
   // What a generated block lists is asked for as its reader, which somebody
   // who is not signed in is not, so they read what it lists in words.
-  const org = usePublicReading();
-  const live = org ? null : copy;
+  const reading = usePublicReading();
+  const live = reading ? null : copy;
   switch (node.type) {
     case "paragraph":
       return <p data-block={block}>{inline(node.content)}</p>;
@@ -426,10 +426,10 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
       );
     case INCLUDE_NODE: {
       const id = includeId(node.attrs?.pageId);
-      if (id && org) {
+      if (id && reading) {
         return (
           <p className="doc-block doc-block-summary" data-include-link="">
-            <a href={publicPagePath(org, id)}>{t.publicReading.included}</a>
+            <a href={publicPagePath(id)}>{t.publicReading.included}</a>
           </p>
         );
       }
@@ -439,7 +439,7 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     // else follows the address itself.
     case LINK_CARD_NODE: {
       const url = webAddress(node.attrs?.url);
-      if (url && org) {
+      if (url && reading) {
         return (
           <p className="doc-block">
             <a href={url} rel="noopener noreferrer nofollow" target="_blank">
@@ -754,8 +754,8 @@ function marked(content: ReactNode, marks: DocNode["marks"]): ReactNode {
 
 /** A link to an address of this site, which leads somebody who is not signed in to the public page or to signing in. */
 function SiteLink({ href, children }: { href: string; children: ReactNode }) {
-  const org = usePublicReading();
-  return <a href={org ? publicHref(org, href) : href}>{children}</a>;
+  const reading = usePublicReading();
+  return <a href={reading ? publicHref(href) : href}>{children}</a>;
 }
 
 /** The page's files, with an upload for whoever may edit it; a comparison of versions says only that it is there. */

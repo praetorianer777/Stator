@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useMe } from "@/api/auth";
 import {
   useAnonymousAccess,
   usePublicLinkSettings,
@@ -21,11 +20,9 @@ function absolute(path: string): string {
 
 /** The organization's switch for reading without signing in, and whether search engines are asked in; each change is saved at once. */
 export function OrgAnonymousAccess() {
-  const { data: me } = useMe();
   const { data, error, refetch } = useAnonymousAccess();
   const save = useSetAnonymousAccess();
   const [notice, setNotice] = useState("");
-  const slug = me?.organization?.slug;
 
   function change(next: AnonymousAccessSettings) {
     setNotice("");
@@ -60,9 +57,9 @@ export function OrgAnonymousAccess() {
             />
             <span aria-hidden="true">{t.anonymousAccess.indexable}</span>
           </span>
-          {data.enabled && slug && (
+          {data.enabled && (
             <p className="text-sm text-ink-muted" data-public-address="">
-              {t.anonymousAccess.address(absolute(publicSitePath(slug)))}
+              {t.anonymousAccess.address(absolute(publicSitePath()))}
             </p>
           )}
         </div>
@@ -111,11 +108,9 @@ export function OrgPublicLinks() {
 
 /** Whether anybody may read a space without signing in, for its administrators; saved at once. */
 export function SpaceAnonymousAccess({ space }: { space: Space }) {
-  const { data: me } = useMe();
   const allowed = space.can.administer;
   const { data, error, refetch } = useSpaceAnonymousAccess(space.key, allowed);
   const save = useSetSpaceAnonymousAccess(space.key);
-  const slug = me?.organization?.slug;
   if (!allowed) return null;
   return (
     <section className="space-y-3 border-t border-border pt-4" data-space-anonymous-access="">
@@ -139,9 +134,9 @@ export function SpaceAnonymousAccess({ space }: { space: Space }) {
               <span aria-hidden="true">{t.anonymousAccess.spaceToggle}</span>
             </span>
             {data.view && !data.orgEnabled && <p className="text-sm text-warning">{t.anonymousAccess.orgOff}</p>}
-            {data.view && data.orgEnabled && slug && (
+            {data.view && data.orgEnabled && (
               <p className="text-sm text-ink-muted" data-space-public-address="">
-                {t.anonymousAccess.spaceAddress(absolute(publicSpacePath(slug, space.key)))}
+                {t.anonymousAccess.spaceAddress(absolute(publicSpacePath(space.key)))}
               </p>
             )}
           </>

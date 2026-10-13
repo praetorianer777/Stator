@@ -127,7 +127,7 @@ export const de: Messages = {
     title: "Armature",
     intro:
       "Verbinden Sie die Armature-Instanz, in der Ihre Organisation ihre Arbeit verfolgt. Seiten zeigen dann ihre Vorgänge, und jede Person sieht, was Armature ihr zeigt.",
-    notAdmin: "Nur ein Administrator dieser Organisation kann Armature verbinden.",
+    notAdmin: "Nur ein Administrator kann Armature verbinden.",
     baseUrl: "Armature-Adresse",
     baseUrlHint: "Wo Armature geöffnet wird, etwa https://armature.example.com.",
     orgSlug: "Armature-Organisation",
@@ -147,6 +147,8 @@ export const de: Messages = {
       "Fügen Sie das Geheimnis, das Armature einmal anzeigt, in das Feld unten ein und speichern Sie.",
     ],
     webhookUrl: "Webhook-Adresse",
+    webhookUrlHint:
+      "Ein Endpunkt mit der älteren Adresse, die auf einen Kurznamen endete, funktioniert weiter. Ändern Sie sie auf diese, wenn Sie ihn das nächste Mal bearbeiten.",
     topics: "Themen",
     copy: "Adresse kopieren",
     copied: "Adresse kopiert.",
@@ -436,8 +438,7 @@ export const de: Messages = {
   },
   tokens: {
     title: "Persönliche Zugriffstokens",
-    intro:
-      "Mit einem Token kann ein Skript oder ein anderes Werkzeug die API in dieser Organisation in Ihrem Namen aufrufen. Behandeln Sie es wie ein Passwort.",
+    intro: "Mit einem Token kann ein Skript oder ein anderes Werkzeug die API in Ihrem Namen aufrufen. Behandeln Sie es wie ein Passwort.",
     newTitle: "Token erstellen",
     create: "Token erstellen",
     name: "Name des Tokens",
@@ -484,16 +485,12 @@ export const de: Messages = {
     mcpReadOnly:
       "Mit einem Token, das nur liest, werden dem Assistenten nur die lesenden Werkzeuge angeboten: Er kann Seiten suchen und lesen, aber keine ändern.",
     mcpSpaces:
-      "Mit einem Token, das auf Bereiche beschränkt ist, sieht der Assistent nur diese Bereiche, und die Werkzeuge für die ganze Organisation werden ihm nicht angeboten.",
+      "Mit einem Token, das auf Bereiche beschränkt ist, sieht der Assistent nur diese Bereiche, und die Werkzeuge, die alles hier betreffen, werden ihm nicht angeboten.",
     mcpTokenPlaceholder: "<Ihr Token>",
   },
   login: {
     title: "Anmelden",
-    subtitle: "Melden Sie sich über den Identitätsanbieter Ihrer Organisation an.",
-    organization: "Organisation",
-    organizationPlaceholder: "ihr-team",
-    organizationHint: "Der Kurzname, den Ihre Organisation in Stator verwendet.",
-    organizationMissing: "Geben Sie zuerst den Kurznamen Ihrer Organisation ein.",
+    subtitle: "Melden Sie sich über Ihren Identitätsanbieter an.",
     sso: "Mit SSO anmelden",
     passwordTitle: "Anmeldung für Administratoren",
     passwordHint: "Für den lokalen Administrator, der mit dem Server eingerichtet wurde. Alle anderen melden sich mit SSO an.",
@@ -502,16 +499,17 @@ export const de: Messages = {
     submit: "Mit Passwort anmelden",
     waitingTitle: "Ihre Anfrage wartet",
     waitingBody:
-      "Ihr Identitätsanbieter kennt Sie, aber in dieser Organisation hat Sie noch niemand zugelassen. Ihre Anfrage wartet auf einen Administrator; melden Sie sich erneut an, sobald Sie zugelassen sind.",
+      "Ihr Identitätsanbieter kennt Sie, aber hier hat Sie noch niemand zugelassen. Ihre Anfrage wartet auf einen Administrator; melden Sie sich erneut an, sobald Sie zugelassen sind.",
     failures: {
       expired: "Diese Anmeldung hat zu lange gedauert oder wurde schon verwendet. Beginnen Sie sie neu.",
-      not_configured: "Diese Organisation meldet sich nicht mit SSO an. Prüfen Sie ihren Namen, oder fragen Sie einen ihrer Administratoren.",
+      not_configured:
+        "Die Anmeldung mit SSO ist hier noch nicht eingerichtet. Melden Sie sich mit Passwort an, oder bitten Sie einen Administrator, sie einzurichten.",
       no_email: "Ihr Identitätsanbieter hat keine E-Mail-Adresse gesendet. Bitten Sie seinen Administrator, den E-Mail-Claim für Stator freizugeben.",
       unverified_email: "Ihr Identitätsanbieter hat Ihre E-Mail-Adresse nicht bestätigt. Bestätigen Sie sie dort und melden Sie sich dann erneut an.",
-      inactive: "Dieses Konto wurde deaktiviert. Bitten Sie einen Administrator Ihrer Organisation, es wieder zu aktivieren.",
+      inactive: "Dieses Konto wurde deaktiviert. Bitten Sie einen Administrator, es wieder zu aktivieren.",
       denied: "Ihr Identitätsanbieter hat Sie nicht hereingelassen. Versuchen Sie es noch einmal, oder fragen Sie seinen Administrator.",
       unreachable:
-        "Stator hat den Identitätsanbieter Ihrer Organisation nicht erreicht. Versuchen Sie es gleich noch einmal, und sagen Sie einem Administrator Bescheid, wenn es weiter scheitert.",
+        "Stator hat Ihren Identitätsanbieter nicht erreicht. Versuchen Sie es gleich noch einmal, und sagen Sie einem Administrator Bescheid, wenn es weiter scheitert.",
       failed:
         "Die Anmeldung über Ihren Identitätsanbieter hat nicht geklappt. Versuchen Sie es noch einmal, und sagen Sie einem Administrator Bescheid, wenn es weiter scheitert.",
     },
@@ -534,7 +532,7 @@ export const de: Messages = {
     save: "Speichern",
     setUp: "Single Sign-on einrichten",
     saved: "Gespeichert.",
-    notAdmin: "Nur ein Administrator dieser Organisation kann ändern, wie sich ihre Mitglieder anmelden.",
+    notAdmin: "Nur ein Administrator kann ändern, wie sich Mitglieder anmelden.",
     waitingTitle: "Warten auf Zulassung",
     waitingIntro: "Diese Personen haben sich über den Identitätsanbieter angemeldet, sind aber noch keine Mitglieder.",
     asked: (email: string, when: string) => `${email}, angefragt ${when}`,
@@ -2639,10 +2637,10 @@ export const de: Messages = {
     notSpaceAdmin: "Nur ein Administrator dieses Bereichs kann sehen und ändern, wer darin was tun darf.",
     noAccessTitle: (org: string) => `Sie haben keinen Zugang zu ${org}`,
     noAccessBody:
-      "Sie sind angemeldet, aber niemand hat Ihnen bisher erlaubt, Stator in dieser Organisation zu nutzen. Bitten Sie einen ihrer Administratoren, Sie unter Berechtigungen hinzuzufügen, und versuchen Sie es dann noch einmal.",
+      "Sie sind angemeldet, aber niemand hat Ihnen bisher erlaubt, Stator hier zu nutzen. Bitten Sie einen Administrator, Sie unter Berechtigungen hinzuzufügen, und versuchen Sie es dann noch einmal.",
     noAccessRetry: "Erneut versuchen",
     noAccessSignOut: "Abmelden",
-    thisOrganization: "dieser Organisation",
+    thisOrganization: "der Organisation",
   },
   permissionCopy: {
     open: "Aus einem anderen Bereich kopieren",
@@ -2793,8 +2791,8 @@ export const de: Messages = {
         ? "Besitzt die Organisation und hat damit jede Berechtigung in jedem Bereich und passiert jede Liste."
         : "Administriert die Organisation und hat damit jede Berechtigung in jedem Bereich und passiert jede Liste.",
     fromProvider: "Diese Rolle kommt aus den Gruppen des Identitätsanbieters.",
-    useYes: "Darf Stator in dieser Organisation nutzen.",
-    useNo: "Darf Stator in dieser Organisation nicht nutzen. Ein Administrator der Organisation kann das unter Berechtigungen gewähren.",
+    useYes: "Darf Stator nutzen.",
+    useNo: "Darf Stator nicht nutzen. Ein Administrator kann das unter Berechtigungen gewähren.",
     spaceYes: (permission: string) => `Hat in diesem Bereich die Berechtigung ${permission}.`,
     spaceNo: (permission: string) =>
       `Hat in diesem Bereich die Berechtigung ${permission} nicht. Gewähren Sie sie der Person oder einer ihrer Gruppen in den Berechtigungen des Bereichs.`,
@@ -3073,10 +3071,10 @@ export const de: Messages = {
   },
   audit: {
     title: "Audit-Log",
-    intro: "Wer in dieser Organisation was geändert hat: Mitglieder und Anmeldung, Tokens, Bereiche, Berechtigungen, endgültige Löschungen und Exporte.",
+    intro: "Wer hier was geändert hat: Mitglieder und Anmeldung, Tokens, Bereiche, Berechtigungen, endgültige Löschungen und Exporte.",
     keptDays: (days: number) => `Jeder Eintrag wird ${days} Tage aufbewahrt.`,
     keptForever: "Einträge werden aufbewahrt, bis die Organisation gelöscht wird.",
-    notAdmin: "Nur Administratoren dieser Organisation lesen ihr Audit-Log. Fragen Sie eine dieser Personen, wenn Sie wissen müssen, wer etwas geändert hat.",
+    notAdmin: "Nur Administratoren lesen das Audit-Log. Fragen Sie eine dieser Personen, wenn Sie wissen müssen, wer etwas geändert hat.",
     export: "Als CSV exportieren",
     filters: "Audit-Log filtern",
     action: "Aktion",
@@ -3259,7 +3257,7 @@ export const de: Messages = {
   webhooks: {
     title: "Webhooks",
     intro: "Wohin Stator meldet, was mit Seiten und Kommentaren geschieht, signiert, damit der Empfänger erkennt, dass es von hier kommt.",
-    notAdmin: "Nur Administratoren dieser Organisation verwalten ihre Webhooks. Bitten Sie eine von ihnen, die benötigte Adresse hinzuzufügen.",
+    notAdmin: "Nur Administratoren verwalten die Webhooks. Bitten Sie eine von ihnen, die benötigte Adresse hinzuzufügen.",
     newTitle: "Webhook hinzufügen",
     name: "Name",
     namePlaceholder: "Team-Chat",
@@ -3288,7 +3286,7 @@ export const de: Messages = {
     copied: "Geheimnis kopiert.",
     copyFailed: "Das Kopieren hat nicht geklappt. Markieren Sie das Geheimnis und kopieren Sie es selbst.",
     done: "Fertig",
-    list: "Webhooks dieser Organisation",
+    list: "Webhooks",
     empty: "Noch keine Webhooks",
     emptyBody: "Fügen Sie oben einen hinzu, um ein anderes System zu benachrichtigen, wenn sich Seiten und Kommentare ändern.",
     columnName: "Webhook",

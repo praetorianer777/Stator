@@ -13,13 +13,13 @@ export function pageWordHref(pageId: string): string {
 }
 
 /** Where a page anybody may read is made into a Word document. */
-export function publicWordHref(org: string, pageId: string): string {
-  return `${API_BASE}/public/${encodeURIComponent(org)}/pages/${encodeURIComponent(pageId)}/docx`;
+export function publicWordHref(pageId: string): string {
+  return `${API_BASE}/public/pages/${encodeURIComponent(pageId)}/docx`;
 }
 
 /** Where the page a public link opens is made into a Word document, for whoever holds the link. */
-export function linkedWordHref(org: string, token: string): string {
-  return `${API_BASE}/public/${encodeURIComponent(org)}/links/${encodeURIComponent(token)}/docx`;
+export function linkedWordHref(token: string): string {
+  return `${API_BASE}/public/links/${encodeURIComponent(token)}/docx`;
 }
 
 /** An import of several Word documents, which the worker runs while the page follows it. */

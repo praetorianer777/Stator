@@ -74,7 +74,7 @@ export function useAccess() {
 export function useOrgPermissions() {
   return useQuery({
     queryKey: orgPermissionsQueryKey,
-    queryFn: async (): Promise<GlobalGrant[]> => (await api.GET("/org/permissions")).data!.permissions,
+    queryFn: async (): Promise<GlobalGrant[]> => (await api.GET("/site/permissions")).data!.permissions,
   });
 }
 
@@ -82,7 +82,7 @@ export function useSetOrgPermission() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ permission, subjects }: { permission: GlobalPermission; subjects: SubjectRef[] }): Promise<GlobalGrant> =>
-      (await api.PUT("/org/permissions/{permission}", { params: { path: { permission } }, body: { subjects } })).data!.permission,
+      (await api.PUT("/site/permissions/{permission}", { params: { path: { permission } }, body: { subjects } })).data!.permission,
     onSuccess: (saved) => {
       queryClient.setQueryData<GlobalGrant[]>(orgPermissionsQueryKey, (before) => before?.map((each) => (each.permission === saved.permission ? saved : each)));
       return queryClient.invalidateQueries({ queryKey: accessQueryKey });

@@ -154,7 +154,7 @@ describe("the share dialog", () => {
         [`GET /pages/${pageId}/public-links`]: () => ({ status: 200, body: { publicLinks: { links: made ? [link] : [], max: 5, refusal: null } } }),
         [`POST /pages/${pageId}/public-links`]: () => {
           made = true;
-          return { status: 201, body: { link, token: "t0k3n", path: "/public/demo/link/t0k3n" } };
+          return { status: 201, body: { link, token: "t0k3n", path: "/public/link/t0k3n" } };
         },
       },
     });
@@ -165,7 +165,7 @@ describe("the share dialog", () => {
     await userEvent.selectOptions(within(section).getByRole("combobox", { name: "Runs out" }), "7");
     await userEvent.click(within(section).getByRole("button", { name: "Make a public link" }));
     const address = await within(section).findByRole("textbox", { name: "Public link" });
-    expect((address as HTMLInputElement).value).toBe(`${window.location.origin}/public/demo/link/t0k3n`);
+    expect((address as HTMLInputElement).value).toBe(`${window.location.origin}/public/link/t0k3n`);
     const body = sent.find((each) => each.method === "POST" && each.path === `/pages/${pageId}/public-links`)?.body as { label: string; expiresAt: string };
     expect(body.label).toBe("Auditors");
     const days = (Date.parse(body.expiresAt) - Date.now()) / DAY_MS;

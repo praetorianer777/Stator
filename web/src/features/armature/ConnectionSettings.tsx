@@ -152,7 +152,14 @@ function Webhook({ connection }: { connection: ArmatureConnection }) {
           <li key={step}>{step}</li>
         ))}
       </ol>
-      <Field label={t.armature.webhookUrl} value={connection.webhookUrl} readOnly className="font-mono text-xs" onFocus={(event) => event.target.select()} />
+      <Field
+        label={t.armature.webhookUrl}
+        value={connection.webhookUrl}
+        readOnly
+        className="font-mono text-xs"
+        hint={t.armature.webhookUrlHint}
+        onFocus={(event) => event.target.select()}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" icon={<Icon.Copy />} onClick={copy} data-action="copy-webhook-url">
           {t.armature.copy}

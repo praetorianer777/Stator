@@ -204,7 +204,7 @@ describe("the latest blog posts block", () => {
   it("says in words what it lists where nobody is signed in, and asks for nothing", () => {
     const sent = stubApi({});
     render(
-      <PublicReadingContext value="demo">
+      <PublicReadingContext value={true}>
         <DocView doc={{ type: "doc", content: [{ type: "blogPosts", attrs: { space: "NEWS", limit: 5 } }] }} />
       </PublicReadingContext>,
     );

@@ -212,7 +212,7 @@ describe("where the lightbox opens", () => {
     render(
       <main>
         <h1>Plan</h1>
-        <PublicReadingContext value="acme">
+        <PublicReadingContext value={true}>
           <PublicLinkContext value="t0k3n">
             <DocView doc={doc} />
           </PublicLinkContext>
@@ -224,17 +224,17 @@ describe("where the lightbox opens", () => {
     let dialog = screen.getByRole("dialog", { name: "The harbour at dawn" });
     expect(within(dialog).getByRole("img", { name: "The harbour at dawn" })).toHaveAttribute(
       "src",
-      `/api/v1/public/acme/links/t0k3n/attachments/${picture}?inline=1`,
+      `/api/v1/public/links/t0k3n/attachments/${picture}?inline=1`,
     );
     expect(within(dialog).getByRole("link", { name: "Download The harbour at dawn" })).toHaveAttribute(
       "href",
-      `/api/v1/public/acme/links/t0k3n/attachments/${picture}`,
+      `/api/v1/public/links/t0k3n/attachments/${picture}`,
     );
     await user.keyboard("{Escape}");
 
     await user.click(screen.getByRole("button", { name: "Play tour.webm" }));
     dialog = screen.getByRole("dialog", { name: "tour.webm" });
-    expect(dialog.querySelector("video")).toHaveAttribute("src", `/api/v1/public/acme/links/t0k3n/attachments/${clip}?inline=1`);
+    expect(dialog.querySelector("video")).toHaveAttribute("src", `/api/v1/public/links/t0k3n/attachments/${clip}?inline=1`);
     expect(await axeViolations()).toEqual([]);
   });
 });

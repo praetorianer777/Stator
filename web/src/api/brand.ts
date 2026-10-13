@@ -11,7 +11,7 @@ export const brandQueryKey = ["org", "brand"] as const;
 
 export const brandQuery = {
   queryKey: brandQueryKey,
-  queryFn: async (): Promise<Brand> => (await api.GET("/org/brand")).data!.brand,
+  queryFn: async (): Promise<Brand> => (await api.GET("/site/brand")).data!.brand,
   staleTime: BRAND_STALE_MS,
 } as const;
 
@@ -21,7 +21,7 @@ export function useBrand() {
 
 /** Where the logo is fetched from; the version changes with each upload, so a browser may keep each. */
 export function brandLogoHref(brand: Brand): string | null {
-  return brand.logo ? `${API_BASE}/org/brand/logo?v=${brand.logo.version}` : null;
+  return brand.logo ? `${API_BASE}/site/brand/logo?v=${brand.logo.version}` : null;
 }
 
 function useBrandMutation<V>(run: (variables: V) => Promise<Brand>) {
@@ -30,7 +30,7 @@ function useBrandMutation<V>(run: (variables: V) => Promise<Brand>) {
 }
 
 export function useSetBrandFooter() {
-  return useBrandMutation(async (body: BrandFooter) => (await api.PUT("/org/brand/footer", { body })).data!.brand);
+  return useBrandMutation(async (body: BrandFooter) => (await api.PUT("/site/brand/footer", { body })).data!.brand);
 }
 
 // A multipart body in the generated types is an object of strings; the one
@@ -42,9 +42,9 @@ function fileForm(file: File): { file: string } {
 }
 
 export function useSetBrandLogo() {
-  return useBrandMutation(async (file: File) => (await api.PUT("/org/brand/logo", { body: fileForm(file) })).data!.brand);
+  return useBrandMutation(async (file: File) => (await api.PUT("/site/brand/logo", { body: fileForm(file) })).data!.brand);
 }
 
 export function useRemoveBrandLogo() {
-  return useBrandMutation(async (_: void) => (await api.DELETE("/org/brand/logo")).data!.brand);
+  return useBrandMutation(async (_: void) => (await api.DELETE("/site/brand/logo")).data!.brand);
 }

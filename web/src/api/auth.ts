@@ -8,9 +8,9 @@ import type { components } from "./schema";
 
 type Wire = components["schemas"];
 
-/** Who is signed in, where they act now, and where else they may. */
+/** Who is signed in, and their standing in the organization. */
 export type Me = Wire["MeResponse"];
-export type OrgRole = Wire["CurrentOrg"]["role"];
+export type OrgRole = Wire["Standing"]["role"];
 export type Provider = Wire["Provider"];
 export type ProviderView = Wire["ProviderView"];
 export type SaveProviderInput = Wire["SaveOIDCProviderRequest"];
@@ -67,9 +67,9 @@ export function administers(role: OrgRole | undefined): boolean {
   return role === "owner" || role === "admin";
 }
 
-/** Where the browser goes to sign in through an organization's provider; a navigation, since it follows redirects. */
-export function ssoStartURL(orgSlug: string, next?: string): string {
-  const start = `${API_BASE}/auth/oidc/${encodeURIComponent(orgSlug.trim().toLowerCase())}/start`;
+/** Where the browser goes to sign in through the identity provider; a navigation, since it follows redirects. */
+export function ssoStartURL(next?: string): string {
+  const start = `${API_BASE}/auth/oidc/start`;
   return next ? `${start}?next=${encodeURIComponent(next)}` : start;
 }
 

@@ -21,7 +21,7 @@ import { orgPermissionsRoute } from "./permissions";
 import { pageHistoryRoute } from "./page-history";
 import { printLinkRoute, printPageRoute, printPublicPageRoute } from "./print";
 import { profileRoute } from "./profile";
-import { publicLinkRoute, publicRoutes } from "./public";
+import { oldPublicRoute, publicLinkRoute, publicRoutes } from "./public";
 import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
 import { spaceDecisionsRoute } from "./decisions";
 import { spaceBlogRoute } from "./blog";
@@ -42,6 +42,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   publicRoutes,
   publicLinkRoute,
+  oldPublicRoute,
   printPageRoute,
   printPublicPageRoute,
   printLinkRoute,

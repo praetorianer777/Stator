@@ -106,7 +106,7 @@ describe("a gallery in a page", () => {
     return render(
       <main>
         <h1>Plan</h1>
-        <PublicReadingContext value="acme">
+        <PublicReadingContext value={true}>
           <KnownAttachmentsContext value={known}>
             <DocView doc={doc} />
           </KnownAttachmentsContext>
@@ -123,7 +123,7 @@ describe("a gallery in a page", () => {
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
     expect(within(list).queryByText("A pier of another page")).toBeNull();
     expect(within(list).getByText("The harbour").tagName).toBe("FIGCAPTION");
-    expect(list.querySelector("img")).toHaveAttribute("src", `/api/v1/public/acme/attachments/${harbourId}?inline=1`);
+    expect(list.querySelector("img")).toHaveAttribute("src", `/api/v1/public/attachments/${harbourId}?inline=1`);
     expect(list.querySelector("img")).toHaveAttribute("loading", "lazy");
 
     await user.click(screen.getByRole("button", { name: "View picture larger, 2 of 2" }));
@@ -131,7 +131,7 @@ describe("a gallery in a page", () => {
     expect(within(dialog).getByText("2 of 2")).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
     expect(dialog).toHaveAccessibleName("The harbour");
-    expect(within(dialog).getByRole("img", { name: "The harbour" })).toHaveAttribute("src", `/api/v1/public/acme/attachments/${harbourId}?inline=1`);
+    expect(within(dialog).getByRole("img", { name: "The harbour" })).toHaveAttribute("src", `/api/v1/public/attachments/${harbourId}?inline=1`);
     await user.click(within(dialog).getByRole("button", { name: "Previous" }));
     expect(dialog).toHaveAccessibleName("Picture");
     expect(await axeViolations({ popupOpen: true })).toEqual([]);

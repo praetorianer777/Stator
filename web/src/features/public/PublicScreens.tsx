@@ -33,8 +33,8 @@ import { Highlight } from "@/features/search/Highlight";
 
 const updatedAt = localDateFormat({ dateStyle: "medium" });
 
-const PUBLIC_PAGE = new RegExp(`^${PUBLIC_PATH}/[^/]+/(?:s/[^/]+/)?p/([0-9a-f-]{36})`);
-const PUBLIC_SPACE = new RegExp(`^${PUBLIC_PATH}/[^/]+/s/([A-Za-z0-9]+)/?$`);
+const PUBLIC_PAGE = new RegExp(`^${PUBLIC_PATH}/(?:s/[^/]+/)?p/([0-9a-f-]{36})`);
+const PUBLIC_SPACE = new RegExp(`^${PUBLIC_PATH}/s/([A-Za-z0-9]+)/?$`);
 
 /** The address inside the app of what a public address shows, which signing in leads back to. */
 export function privateAddress(pathname: string, search: string, page?: PublicPage): string {
@@ -65,27 +65,27 @@ function useRobots(indexable: boolean | undefined) {
  * The frame of every public page: the organization's name, a search and the
  * way to sign in, and nothing that leads into the app without it.
  */
-export function PublicShell({ org, children }: { org: string; children: ReactNode }) {
-  const site = usePublicSite(org);
+export function PublicShell({ children }: { children: ReactNode }) {
+  const site = usePublicSite();
   const navigate = useNavigate();
   const location = useRouterState({ select: (state) => state.location });
   const pageId = PUBLIC_PAGE.exec(location.pathname)?.[1];
-  const page = useQuery({ ...publicPageQuery(org, pageId ?? ""), enabled: Boolean(pageId) });
+  const page = useQuery({ ...publicPageQuery(pageId ?? ""), enabled: Boolean(pageId) });
   const [q, setQ] = useState("");
   useRobots(site.data?.site.indexable);
 
   function search(event: FormEvent) {
     event.preventDefault();
-    if (q.trim()) void navigate({ to: "/public/$org/search", params: { org }, search: { q: q.trim() } });
+    if (q.trim()) void navigate({ to: "/public/search", search: { q: q.trim() } });
   }
 
   const next = privateAddress(location.pathname, location.searchStr, page.data);
   return (
-    <PublicReadingContext value={org}>
-      <div className="min-h-full bg-backdrop" data-public-site={org}>
+    <PublicReadingContext value={true}>
+      <div className="min-h-full bg-backdrop" data-public-site="">
         <header className="border-b border-border bg-surface">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-            <Link to="/public/$org" params={{ org }} className="mr-auto font-semibold text-ink no-underline" data-public-home="">
+            <Link to="/public" className="mr-auto font-semibold text-ink no-underline" data-public-home="">
               {site.data?.site.name ?? APP_NAME}
             </Link>
             {site.data && (
@@ -105,13 +105,13 @@ export function PublicShell({ org, children }: { org: string; children: ReactNod
                 </form>
               </search>
             )}
-            <ButtonLink href={signInPath(next, org)} size="sm" variant="primary" data-action="public-sign-in">
+            <ButtonLink href={signInPath(next)} size="sm" variant="primary" data-action="public-sign-in">
               {t.publicReading.signIn}
             </ButtonLink>
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-6">
-          {site.error ? <Failed error={site.error} org={org} next={next} retry={() => void site.refetch()} /> : site.data ? children : <Skeleton />}
+          {site.error ? <Failed error={site.error} next={next} retry={() => void site.refetch()} /> : site.data ? children : <Skeleton />}
         </main>
       </div>
     </PublicReadingContext>
@@ -119,7 +119,7 @@ export function PublicShell({ org, children }: { org: string; children: ReactNod
 }
 
 /** What somebody who is not signed in is told in place of what is not public. */
-export function NotPublic({ org, next }: { org: string; next: string }) {
+export function NotPublic({ next }: { next: string }) {
   return (
     <div data-not-public="">
       <EmptyState
@@ -127,7 +127,7 @@ export function NotPublic({ org, next }: { org: string; next: string }) {
         title={t.publicReading.notPublicTitle}
         description={t.publicReading.notPublicBody}
         action={
-          <ButtonLink href={signInPath(next, org)} variant="primary">
+          <ButtonLink href={signInPath(next)} variant="primary">
             {t.publicReading.signInToRead}
           </ButtonLink>
         }
@@ -136,8 +136,8 @@ export function NotPublic({ org, next }: { org: string; next: string }) {
   );
 }
 
-function Failed({ error, org, next, retry }: { error: unknown; org: string; next: string; retry: () => void }) {
-  if (isNotPublic(error)) return <NotPublic org={org} next={next} />;
+function Failed({ error, next, retry }: { error: unknown; next: string; retry: () => void }) {
+  if (isNotPublic(error)) return <NotPublic next={next} />;
   return <ErrorBanner onRetry={retry}>{t.publicReading.failed}</ErrorBanner>;
 }
 
@@ -145,17 +145,17 @@ function Failed({ error, org, next, retry }: { error: unknown; org: string; next
  * The one page a public link opens: the organization's name, the page and
  * the way to sign in, and no tree, search or other page of the app.
  */
-export function PublicLinkScreen({ org, token }: { org: string; token: string }) {
-  const linked = useLinkedPage(org, token);
+export function PublicLinkScreen({ token }: { token: string }) {
+  const linked = useLinkedPage(token);
   useRobots(linked.error ? false : linked.data?.site.indexable);
   return (
-    <PublicReadingContext value={org}>
+    <PublicReadingContext value={true}>
       <PublicLinkContext value={token}>
-        <div className="min-h-full bg-backdrop" data-public-link={org}>
+        <div className="min-h-full bg-backdrop" data-public-link="">
           <header className="border-b border-border bg-surface">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
               <span className="mr-auto font-semibold text-ink">{linked.data?.site.name ?? APP_NAME}</span>
-              <ButtonLink href={signInPath("/", org)} size="sm" variant="primary" data-action="public-sign-in">
+              <ButtonLink href={signInPath("/")} size="sm" variant="primary" data-action="public-sign-in">
                 {t.publicReading.signIn}
               </ButtonLink>
             </div>
@@ -170,7 +170,7 @@ export function PublicLinkScreen({ org, token }: { org: string; token: string })
                 <ErrorBanner onRetry={() => void linked.refetch()}>{t.publicReading.failed}</ErrorBanner>
               )
             ) : linked.data ? (
-              <LinkedArticle org={org} token={token} page={linked.data.page} />
+              <LinkedArticle token={token} page={linked.data.page} />
             ) : (
               <Skeleton />
             )}
@@ -210,13 +210,13 @@ function ExportButtons({ pdf, docx, title }: { pdf: string; docx: string; title:
   );
 }
 
-function LinkedArticle({ org, token, page }: { org: string; token: string; page: LinkedPage }) {
+function LinkedArticle({ token, page }: { token: string; page: LinkedPage }) {
   return (
     <article {...pageSheet(page.appearance.width)} data-public-page={page.id}>
       {page.appearance.cover && (
         <div className="page-cover">
           <img
-            src={linkedAttachmentUrl(org, token, page.appearance.cover.attachmentId, true)}
+            src={linkedAttachmentUrl(token, page.appearance.cover.attachmentId, true)}
             alt=""
             style={{ objectPosition: coverPosition(page.appearance.cover) }}
           />
@@ -230,7 +230,7 @@ function LinkedArticle({ org, token, page }: { org: string; token: string; page:
           </>
         }
         meta={<span>{t.publicReading.updated(updatedAt.format(new Date(page.updatedAt)))}</span>}
-        actions={page.kind !== "folder" && <ExportButtons pdf={linkedPdfHref(org, token)} docx={linkedWordHref(org, token)} title={page.title} />}
+        actions={page.kind !== "folder" && <ExportButtons pdf={linkedPdfHref(token)} docx={linkedWordHref(token)} title={page.title} />}
       />
       <DocView doc={page.body as DocNode} />
     </article>
@@ -238,8 +238,8 @@ function LinkedArticle({ org, token, page }: { org: string; token: string; page:
 }
 
 /** The organization's public spaces. */
-export function PublicSiteScreen({ org }: { org: string }) {
-  const site = usePublicSite(org);
+export function PublicSiteScreen() {
+  const site = usePublicSite();
   if (!site.data) return null;
   return (
     <div className="mx-auto max-w-3xl" data-public-spaces="">
@@ -251,7 +251,7 @@ export function PublicSiteScreen({ org }: { org: string }) {
         <ul className="space-y-2">
           {site.data.spaces.map((space) => (
             <li key={space.key} className="rounded-control border border-border bg-surface p-3" data-public-space={space.key}>
-              <Link to="/public/$org/s/$spaceKey" params={{ org, spaceKey: space.key }} className="font-medium">
+              <Link to="/public/s/$spaceKey" params={{ spaceKey: space.key }} className="font-medium">
                 {space.name}
               </Link>
               {space.description && <p className="mt-1 text-sm text-ink-muted">{space.description}</p>}
@@ -264,31 +264,31 @@ export function PublicSiteScreen({ org }: { org: string }) {
 }
 
 /** A public space: its home page beside its tree. */
-export function PublicSpaceScreen({ org, spaceKey }: { org: string; spaceKey: string }) {
-  const space = usePublicSpace(org, spaceKey);
-  if (space.error) return <Failed error={space.error} org={org} next={`/s/${spaceKey.toUpperCase()}`} retry={() => void space.refetch()} />;
+export function PublicSpaceScreen({ spaceKey }: { spaceKey: string }) {
+  const space = usePublicSpace(spaceKey);
+  if (space.error) return <Failed error={space.error} next={`/s/${spaceKey.toUpperCase()}`} retry={() => void space.refetch()} />;
   if (!space.data) return <Skeleton />;
   return (
-    <WithTree org={org} pages={space.data.pages} current={space.data.space.homePageId}>
-      <PageArticle org={org} pageId={space.data.space.homePageId} />
+    <WithTree pages={space.data.pages} current={space.data.space.homePageId}>
+      <PageArticle pageId={space.data.space.homePageId} />
     </WithTree>
   );
 }
 
 /** A public page beside its space's tree. */
-export function PublicPageScreen({ org, pageId }: { org: string; pageId: string }) {
-  const page = usePublicPage(org, pageId);
-  const space = usePublicSpace(org, page.data?.space.key ?? "");
-  if (page.error) return <Failed error={page.error} org={org} next="/" retry={() => void page.refetch()} />;
+export function PublicPageScreen({ pageId }: { pageId: string }) {
+  const page = usePublicPage(pageId);
+  const space = usePublicSpace(page.data?.space.key ?? "");
+  if (page.error) return <Failed error={page.error} next="/" retry={() => void page.refetch()} />;
   if (!page.data) return <Skeleton />;
   return (
-    <WithTree org={org} pages={space.data?.pages ?? []} current={pageId}>
-      <PageArticle org={org} pageId={pageId} />
+    <WithTree pages={space.data?.pages ?? []} current={pageId}>
+      <PageArticle pageId={pageId} />
     </WithTree>
   );
 }
 
-function WithTree({ org, pages, current, children }: { org: string; pages: PublicTreePage[]; current: string; children: ReactNode }) {
+function WithTree({ pages, current, children }: { pages: PublicTreePage[]; current: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-6 md:flex-row">
       {pages.length > 0 && (
@@ -296,7 +296,7 @@ function WithTree({ org, pages, current, children }: { org: string; pages: Publi
           <ul className="space-y-0.5 text-sm">
             {pages.map((page) => (
               <li key={page.id} style={{ paddingLeft: `${page.depth * 0.75}rem` }}>
-                <TreeLink org={org} page={page} current={page.id === current} />
+                <TreeLink page={page} current={page.id === current} />
               </li>
             ))}
           </ul>
@@ -307,7 +307,7 @@ function WithTree({ org, pages, current, children }: { org: string; pages: Publi
   );
 }
 
-function TreeLink({ org, page, current }: { org: string; page: PublicTreePage; current: boolean }) {
+function TreeLink({ page, current }: { page: PublicTreePage; current: boolean }) {
   const className = cx(
     "block truncate rounded-control px-2 py-1 no-underline",
     current ? "bg-surface-raised font-medium text-ink" : "text-ink-muted hover:text-ink",
@@ -319,34 +319,30 @@ function TreeLink({ org, page, current }: { org: string; page: PublicTreePage; c
     </>
   );
   return (
-    <a href={pageHref(org, page)} className={className} aria-current={current ? "page" : undefined} data-public-tree-page={page.title}>
+    <a href={pageHref(page)} className={className} aria-current={current ? "page" : undefined} data-public-tree-page={page.title}>
       {label}
     </a>
   );
 }
 
-function pageHref(org: string, page: { id: string; title: string }, spaceKey?: string): string {
-  return publicPagePath(org, page.id, spaceKey, pageSlug(page.title));
+function pageHref(page: { id: string; title: string }, spaceKey?: string): string {
+  return publicPagePath(page.id, spaceKey, pageSlug(page.title));
 }
 
-function PageArticle({ org, pageId }: { org: string; pageId: string }) {
-  const { data: page } = usePublicPage(org, pageId);
+function PageArticle({ pageId }: { pageId: string }) {
+  const { data: page } = usePublicPage(pageId);
   if (!page) return <Skeleton />;
   const crumbs = [
-    { label: page.space.name, render: (label: ReactNode) => <a href={publicSpacePath(org, page.space.key)}>{label}</a> },
+    { label: page.space.name, render: (label: ReactNode) => <a href={publicSpacePath(page.space.key)}>{label}</a> },
     ...page.ancestors
       .filter((ancestor) => ancestor.id !== page.space.homePageId)
-      .map((ancestor) => ({ label: ancestor.title, render: (label: ReactNode) => <a href={pageHref(org, ancestor, page.space.key)}>{label}</a> })),
+      .map((ancestor) => ({ label: ancestor.title, render: (label: ReactNode) => <a href={pageHref(ancestor, page.space.key)}>{label}</a> })),
   ];
   return (
     <article {...pageSheet(page.appearance.width)} data-public-page={page.id}>
       {page.appearance.cover && (
         <div className="page-cover">
-          <img
-            src={publicAttachmentUrl(org, page.appearance.cover.attachmentId, true)}
-            alt=""
-            style={{ objectPosition: coverPosition(page.appearance.cover) }}
-          />
+          <img src={publicAttachmentUrl(page.appearance.cover.attachmentId, true)} alt="" style={{ objectPosition: coverPosition(page.appearance.cover) }} />
         </div>
       )}
       <PageHeader
@@ -358,21 +354,21 @@ function PageArticle({ org, pageId }: { org: string; pageId: string }) {
           </>
         }
         meta={<span>{t.publicReading.updated(updatedAt.format(new Date(page.updatedAt)))}</span>}
-        actions={page.kind !== "folder" && <ExportButtons pdf={publicPdfHref(org, page.id)} docx={publicWordHref(org, page.id)} title={page.title} />}
+        actions={page.kind !== "folder" && <ExportButtons pdf={publicPdfHref(page.id)} docx={publicWordHref(page.id)} title={page.title} />}
       />
-      {page.kind === "folder" ? <FolderChildren org={org} page={page} /> : <DocView doc={page.body as DocNode} />}
+      {page.kind === "folder" ? <FolderChildren page={page} /> : <DocView doc={page.body as DocNode} />}
     </article>
   );
 }
 
-function FolderChildren({ org, page }: { org: string; page: PublicPage }) {
+function FolderChildren({ page }: { page: PublicPage }) {
   if (page.children.length === 0) return <p className="text-sm text-ink-muted">{t.publicReading.noChildren}</p>;
   return (
     <nav aria-label={t.publicReading.children}>
       <ul className="list-disc space-y-1 pl-5">
         {page.children.map((child) => (
           <li key={child.id}>
-            <a href={pageHref(org, child, page.space.key)}>{child.title}</a>
+            <a href={pageHref(child, page.space.key)}>{child.title}</a>
           </li>
         ))}
       </ul>
@@ -381,25 +377,25 @@ function FolderChildren({ org, page }: { org: string; page: PublicPage }) {
 }
 
 /** A page by its id alone, as an included page links to it: once found, its full address. */
-export function PublicPageLookup({ org, pageId }: { org: string; pageId: string }) {
-  const page = usePublicPage(org, pageId);
+export function PublicPageLookup({ pageId }: { pageId: string }) {
+  const page = usePublicPage(pageId);
   const navigate = useNavigate();
   useEffect(() => {
     if (!page.data) return;
     const { space, title, home } = page.data;
-    if (home) void navigate({ to: "/public/$org/s/$spaceKey", params: { org, spaceKey: space.key }, replace: true });
-    else void navigate({ to: "/public/$org/s/$spaceKey/p/$pageId/$slug", params: { org, spaceKey: space.key, pageId, slug: pageSlug(title) }, replace: true });
-  }, [page.data, navigate, org, pageId]);
-  if (page.error) return <Failed error={page.error} org={org} next="/" retry={() => void page.refetch()} />;
+    if (home) void navigate({ to: "/public/s/$spaceKey", params: { spaceKey: space.key }, replace: true });
+    else void navigate({ to: "/public/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId, slug: pageSlug(title) }, replace: true });
+  }, [page.data, navigate, pageId]);
+  if (page.error) return <Failed error={page.error} next="/" retry={() => void page.refetch()} />;
   return <Skeleton />;
 }
 
 /** The public pages whose words match, a window at a time. */
-export function PublicSearchScreen({ org, q, page }: { org: string; q: string; page: number }) {
-  const found = usePublicSearch(org, q, page);
+export function PublicSearchScreen({ q, page }: { q: string; page: number }) {
+  const found = usePublicSearch(q, page);
   return (
     <div className="mx-auto max-w-3xl" data-public-results="">
-      <Breadcrumbs crumbs={[{ label: t.publicReading.allSpaces, render: (label) => <a href={publicSitePath(org)}>{label}</a> }]} className="mb-2" />
+      <Breadcrumbs crumbs={[{ label: t.publicReading.allSpaces, render: (label) => <a href={publicSitePath()}>{label}</a> }]} className="mb-2" />
       <PageHeader title={t.publicReading.searchTitle(q)} />
       {found.error && <ErrorBanner onRetry={() => void found.refetch()}>{found.error.message}</ErrorBanner>}
       {!found.data && !found.error && q.trim() !== "" && <Skeleton />}
@@ -407,7 +403,7 @@ export function PublicSearchScreen({ org, q, page }: { org: string; q: string; p
       <ul className="space-y-4">
         {found.data?.hits.map((hit) => (
           <li key={hit.page.id} data-public-hit={hit.page.title}>
-            <a href={pageHref(org, hit.page, hit.page.spaceKey)} className="font-medium">
+            <a href={pageHref(hit.page, hit.page.spaceKey)} className="font-medium">
               <Highlight segments={hit.title} />
             </a>
             <p className="text-xs text-ink-subtle">{hit.page.spaceName}</p>
@@ -419,12 +415,12 @@ export function PublicSearchScreen({ org, q, page }: { org: string; q: string; p
       </ul>
       <div className="mt-6 flex gap-3">
         {page > 1 && (
-          <Link to="/public/$org/search" params={{ org }} search={{ q, page: page - 1 }}>
+          <Link to="/public/search" search={{ q, page: page - 1 }}>
             {t.publicReading.earlier}
           </Link>
         )}
         {found.data?.more && (
-          <Link to="/public/$org/search" params={{ org }} search={{ q, page: page + 1 }}>
+          <Link to="/public/search" search={{ q, page: page + 1 }}>
             {t.publicReading.more}
           </Link>
         )}

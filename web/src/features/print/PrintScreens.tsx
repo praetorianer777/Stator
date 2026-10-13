@@ -167,11 +167,11 @@ export function PrintPageScreen({ pageId }: { pageId: string }) {
 }
 
 /** A page anybody may read, as anybody reads it. */
-export function PrintPublicPageScreen({ org, pageId }: { org: string; pageId: string }) {
-  const page = usePublicPage(org, pageId);
-  const site = usePublicSite(org);
+export function PrintPublicPageScreen({ pageId }: { pageId: string }) {
+  const page = usePublicPage(pageId);
+  const site = usePublicSite();
   const brand = useBrandPicture(
-    publicLogoHref(org, site.data?.site.logoVersion ?? null),
+    publicLogoHref(site.data?.site.logoVersion ?? null),
     footerLine(site.data?.site.footer ?? { en: "", de: "" }),
     Boolean(site.data),
   );
@@ -189,12 +189,12 @@ export function PrintPublicPageScreen({ org, pageId }: { org: string; pageId: st
   const cover = p.appearance.cover;
   return (
     <PrintFrame meta={meta}>
-      <PublicReadingContext value={org}>
+      <PublicReadingContext value={true}>
         <PrintArticle
           page={{
             title: p.title,
             icon: p.appearance.icon,
-            cover: cover && { url: publicAttachmentUrl(org, cover.attachmentId, true), style: { objectPosition: coverPosition(cover) } },
+            cover: cover && { url: publicAttachmentUrl(cover.attachmentId, true), style: { objectPosition: coverPosition(cover) } },
             byline: t.pdf.header([p.space.name, meta.footer]),
           }}
         >
@@ -206,10 +206,10 @@ export function PrintPublicPageScreen({ org, pageId }: { org: string; pageId: st
 }
 
 /** The page a public link opens, as the link shows it: nothing of its space. */
-export function PrintLinkedPageScreen({ org, token }: { org: string; token: string }) {
-  const linked = useLinkedPage(org, token);
+export function PrintLinkedPageScreen({ token }: { token: string }) {
+  const linked = useLinkedPage(token);
   const site = linked.data?.site;
-  const brand = useBrandPicture(publicLogoHref(org, site?.logoVersion ?? null, token), footerLine(site?.footer ?? { en: "", de: "" }), Boolean(site));
+  const brand = useBrandPicture(publicLogoHref(site?.logoVersion ?? null, token), footerLine(site?.footer ?? { en: "", de: "" }), Boolean(site));
   if (linked.error) return <PrintFrame failed={linked.error.message} />;
   if (!linked.data || !site || !brand) return <PrintFrame />;
   const { page } = linked.data;
@@ -217,13 +217,13 @@ export function PrintLinkedPageScreen({ org, token }: { org: string; token: stri
   const cover = page.appearance.cover;
   return (
     <PrintFrame meta={meta}>
-      <PublicReadingContext value={org}>
+      <PublicReadingContext value={true}>
         <PublicLinkContext value={token}>
           <PrintArticle
             page={{
               title: page.title,
               icon: page.appearance.icon,
-              cover: cover && { url: linkedAttachmentUrl(org, token, cover.attachmentId, true), style: { objectPosition: coverPosition(cover) } },
+              cover: cover && { url: linkedAttachmentUrl(token, cover.attachmentId, true), style: { objectPosition: coverPosition(cover) } },
               byline: meta.footer,
             }}
           >

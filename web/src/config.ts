@@ -56,9 +56,6 @@ export const LOGIN_PATH = "/login";
 /** Who is signed in changes only by signing in or out, so the answer is kept a minute. */
 export const ME_STALE_MS = 60_000;
 
-/** Where the organization last typed on the sign-in page is kept, so it is there next time. */
-export const LAST_ORG_KEY = "stator.last-org";
-
 /** Where this browser remembers the interface language the profile chose, so a reload starts in it. */
 export const LANGUAGE_STORAGE_KEY = "stator.language";
 
@@ -681,13 +678,15 @@ export const VERIFY_TERM_DAYS = [30, 90, 180, 365] as const;
 /** The term offered first, as the API's own default. */
 export const VERIFY_DEFAULT_DAYS = 90;
 
-/** Where the pages anybody may read without signing in live, followed by the organization's slug. */
+/** Where the pages anybody may read without signing in live. */
 export const PUBLIC_PATH = "/public";
+/** What the API answers an old public address naming this organization with: the same read at its new address. */
+export const HTTP_PERMANENT_REDIRECT = 308;
 /** A public answer is the same for everybody and may be a minute old, as the API lets caches keep it. */
 export const PUBLIC_STALE_MS = 60_000;
 /** Hits a public search shows at a time. */
 export const PUBLIC_SEARCH_LIMIT = 20;
-/** The part of a public address a link's token follows, after the organization, as the API makes it. */
+/** The part of a public address a link's token follows, as the API makes it. */
 export const PUBLIC_LINK_SEGMENT = "link";
 /** The lifetimes a public link is offered, in days; it may also work until it is revoked. */
 export const PUBLIC_LINK_EXPIRY_DAYS = [1, 7, 30, 90] as const;

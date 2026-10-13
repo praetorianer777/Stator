@@ -1,11 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE, PUBLIC_SEARCH_LIMIT, PUBLIC_STALE_MS } from "@/config";
+import { API_BASE, HTTP_PERMANENT_REDIRECT, PUBLIC_SEARCH_LIMIT, PUBLIC_STALE_MS } from "@/config";
 import { ApiError, api } from "./client";
 import type { components } from "./schema";
 
 type Wire = components["schemas"];
 
-/** An organization as somebody who is not signed in finds it. */
+/** The organization as somebody who is not signed in finds it. */
 export type PublicSite = Wire["PublicSite"];
 export type PublicSpace = Wire["PublicSpace"];
 export type PublicTreePage = Wire["PublicTreePage"];
@@ -21,59 +21,68 @@ export function isNotPublic(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
-export function publicSiteQuery(org: string) {
+export function publicSiteQuery() {
   return {
-    queryKey: ["public", org, "site"] as const,
-    queryFn: async () => (await api.GET("/public/{orgSlug}", { params: { path: { orgSlug: org } } })).data!,
+    queryKey: ["public", "site"] as const,
+    queryFn: async () => (await api.GET("/public")).data!,
     staleTime: PUBLIC_STALE_MS,
   };
 }
 
-export function usePublicSite(org: string) {
-  return useQuery(publicSiteQuery(org));
+export function usePublicSite() {
+  return useQuery(publicSiteQuery());
 }
 
-export function publicSpaceQuery(org: string, spaceKey: string) {
+export function publicSpaceQuery(spaceKey: string) {
   return {
-    queryKey: ["public", org, "space", spaceKey.toUpperCase()] as const,
-    queryFn: async () => (await api.GET("/public/{orgSlug}/spaces/{spaceKey}", { params: { path: { orgSlug: org, spaceKey } } })).data!,
+    queryKey: ["public", "space", spaceKey.toUpperCase()] as const,
+    queryFn: async () => (await api.GET("/public/spaces/{spaceKey}", { params: { path: { spaceKey } } })).data!,
     staleTime: PUBLIC_STALE_MS,
   };
 }
 
 /** A space's tree; an empty key, while the page that names it loads, asks nothing. */
-export function usePublicSpace(org: string, spaceKey: string) {
-  return useQuery({ ...publicSpaceQuery(org, spaceKey), enabled: spaceKey !== "" });
+export function usePublicSpace(spaceKey: string) {
+  return useQuery({ ...publicSpaceQuery(spaceKey), enabled: spaceKey !== "" });
 }
 
-export function publicPageQuery(org: string, pageId: string) {
+export function publicPageQuery(pageId: string) {
   return {
-    queryKey: ["public", org, "page", pageId] as const,
-    queryFn: async (): Promise<PublicPage> =>
-      (await api.GET("/public/{orgSlug}/pages/{pageID}", { params: { path: { orgSlug: org, pageID: pageId } } })).data!.page,
+    queryKey: ["public", "page", pageId] as const,
+    queryFn: async (): Promise<PublicPage> => (await api.GET("/public/pages/{pageID}", { params: { path: { pageID: pageId } } })).data!.page,
     staleTime: PUBLIC_STALE_MS,
   };
 }
 
-export function usePublicPage(org: string, pageId: string) {
-  return useQuery(publicPageQuery(org, pageId));
+export function usePublicPage(pageId: string) {
+  return useQuery(publicPageQuery(pageId));
 }
 
-export function usePublicSearch(org: string, q: string, page: number) {
+export function usePublicSearch(q: string, page: number) {
   const offset = (page - 1) * PUBLIC_SEARCH_LIMIT;
   return useQuery({
-    queryKey: ["public", org, "search", q, page] as const,
-    queryFn: async () =>
-      (await api.GET("/public/{orgSlug}/search", { params: { path: { orgSlug: org }, query: { q, limit: PUBLIC_SEARCH_LIMIT, offset } } })).data!,
+    queryKey: ["public", "search", q, page] as const,
+    queryFn: async () => (await api.GET("/public/search", { params: { query: { q, limit: PUBLIC_SEARCH_LIMIT, offset } } })).data!,
     enabled: q.trim() !== "",
     placeholderData: keepPreviousData,
     staleTime: PUBLIC_STALE_MS,
   });
 }
 
+/** Whether an old public address's slug is this organization's: the API sends such an address on, and refuses any other. */
+export async function namesTheSite(slug: string): Promise<boolean> {
+  try {
+    const address = new URL(`${API_BASE}/public/${encodeURIComponent(slug)}`, window.location.origin);
+    const answer = await fetch(new Request(address, { redirect: "manual" }));
+    return answer.type === "opaqueredirect" || answer.status === HTTP_PERMANENT_REDIRECT;
+  } catch {
+    return false;
+  }
+}
+
 /** Where a file of a public page downloads from, or shows in place. */
-export function publicAttachmentUrl(org: string, id: string, inline = false): string {
-  return `${API_BASE}/public/${encodeURIComponent(org)}/attachments/${encodeURIComponent(id)}${inline ? "?inline=1" : ""}`;
+export function publicAttachmentUrl(id: string, inline = false): string {
+  return `${API_BASE}/public/attachments/${encodeURIComponent(id)}${inline ? "?inline=1" : ""}`;
 }
 
 export const anonymousAccessQueryKey = ["org", "anonymous-access"] as const;
@@ -81,7 +90,7 @@ export const anonymousAccessQueryKey = ["org", "anonymous-access"] as const;
 export function useAnonymousAccess() {
   return useQuery({
     queryKey: anonymousAccessQueryKey,
-    queryFn: async (): Promise<AnonymousAccessSettings> => (await api.GET("/org/anonymous-access")).data!.anonymousAccess,
+    queryFn: async (): Promise<AnonymousAccessSettings> => (await api.GET("/site/anonymous-access")).data!.anonymousAccess,
   });
 }
 
@@ -89,7 +98,7 @@ export function useSetAnonymousAccess() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (body: AnonymousAccessSettings): Promise<AnonymousAccessSettings> =>
-      (await api.PUT("/org/anonymous-access", { body })).data!.anonymousAccess,
+      (await api.PUT("/site/anonymous-access", { body })).data!.anonymousAccess,
     onSuccess: (saved) => {
       queryClient.setQueryData(anonymousAccessQueryKey, saved);
       return queryClient.invalidateQueries({ queryKey: ["space-anonymous-access"] });
@@ -129,17 +138,17 @@ export type PublicLinkRefusal = NonNullable<PagePublicLinks["refusal"]>;
 export type PublicLinkSettings = Wire["PublicLinkSettings"];
 
 /** A page through a link, and the organization it is read in; refused as gone once the link no longer opens it. */
-export function useLinkedPage(org: string, token: string) {
+export function useLinkedPage(token: string) {
   return useQuery({
-    queryKey: ["public", org, "link", token] as const,
-    queryFn: async () => (await api.GET("/public/{orgSlug}/links/{token}", { params: { path: { orgSlug: org, token } } })).data!,
+    queryKey: ["public", "link", token] as const,
+    queryFn: async () => (await api.GET("/public/links/{token}", { params: { path: { token } } })).data!,
     retry: false,
   });
 }
 
 /** Where a file of the page a link opens downloads from, or shows in place. */
-export function linkedAttachmentUrl(org: string, token: string, id: string, inline = false): string {
-  return `${API_BASE}/public/${encodeURIComponent(org)}/links/${encodeURIComponent(token)}/attachments/${encodeURIComponent(id)}${inline ? "?inline=1" : ""}`;
+export function linkedAttachmentUrl(token: string, id: string, inline = false): string {
+  return `${API_BASE}/public/links/${encodeURIComponent(token)}/attachments/${encodeURIComponent(id)}${inline ? "?inline=1" : ""}`;
 }
 
 export function pageLinksQueryKey(pageId: string) {
@@ -179,14 +188,14 @@ export const publicLinkSettingsQueryKey = ["org", "public-links"] as const;
 export function usePublicLinkSettings() {
   return useQuery({
     queryKey: publicLinkSettingsQueryKey,
-    queryFn: async (): Promise<PublicLinkSettings> => (await api.GET("/org/public-links")).data!.publicLinks,
+    queryFn: async (): Promise<PublicLinkSettings> => (await api.GET("/site/public-links")).data!.publicLinks,
   });
 }
 
 export function useSetPublicLinkSettings() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (body: PublicLinkSettings): Promise<PublicLinkSettings> => (await api.PUT("/org/public-links", { body })).data!.publicLinks,
+    mutationFn: async (body: PublicLinkSettings): Promise<PublicLinkSettings> => (await api.PUT("/site/public-links", { body })).data!.publicLinks,
     onSuccess: (saved) => {
       queryClient.setQueryData(publicLinkSettingsQueryKey, saved);
       return queryClient.invalidateQueries({ queryKey: ["page-public-links"] });

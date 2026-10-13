@@ -304,15 +304,15 @@ describe("the print view", () => {
   it("prints the page a public link opens with nothing of its space", async () => {
     const token = "a".repeat(43);
     stubApi({
-      [`GET /public/demo/links/${token}`]: {
+      [`GET /public/links/${token}`]: {
         status: 200,
         body: {
-          site: { slug: "demo", name: "Demo", indexable: false },
+          site: { name: "Demo", indexable: false },
           page: { id: pageId, title: "Guide", kind: "page", appearance: guide().appearance, body: guide().body, version: 4, updatedAt: "2026-10-01T08:00:00Z" },
         },
       },
     });
-    await renderPrint(`/print/public/demo/link/${token}`);
+    await renderPrint(`/print/public/link/${token}`);
     expect(await screen.findByRole("heading", { level: 1, name: "Guide" })).toBeVisible();
     expect(document.querySelector<HTMLElement>("[data-print-meta]")!.dataset.header).toBe("Demo");
     await waitFor(() => expect(document.documentElement.hasAttribute(PRINT_READY_ATTRIBUTE)).toBe(true));
