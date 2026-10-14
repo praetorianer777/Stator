@@ -15,14 +15,14 @@ import (
 )
 
 const (
-	// OrgRunLimit bounds one export or import of a whole organization.
-	OrgRunLimit = 4 * time.Hour
-	// OrgLease is how long a worker holds an organization's job, past every run.
-	OrgLease = OrgRunLimit + 5*time.Minute
+	// SiteRunLimit bounds one export or import of a whole organization.
+	SiteRunLimit = 4 * time.Hour
+	// SiteLease is how long a worker holds an organization's job, past every run.
+	SiteLease = SiteRunLimit + 5*time.Minute
 )
 
-// orgClaim is an organization's export or import a worker took.
-type orgClaim struct {
+// siteClaim is an organization's export or import a worker took.
+type siteClaim struct {
 	kind     kind
 	id       uuid.UUID
 	user     uuid.UUID
@@ -32,20 +32,20 @@ type orgClaim struct {
 	object   string
 }
 
-func (c *orgClaim) actor() perm.Actor { return perm.Actor{UserID: c.user, Role: c.role} }
+func (c *siteClaim) actor() perm.Actor { return perm.Actor{UserID: c.user, Role: c.role} }
 
-func (c *orgClaim) acting(ctx context.Context) context.Context {
+func (c *siteClaim) acting(ctx context.Context) context.Context {
 	return db.WithUser(db.PinPrimary(ctx), c.user)
 }
 
-func (w *Watch) claimOrg(ctx context.Context, k kind) (*orgClaim, error) {
-	var c *orgClaim
+func (w *Watch) claimSite(ctx context.Context, k kind) (*siteClaim, error) {
+	var c *siteClaim
 	size := `0::bigint`
-	if k == kindOrgImport {
+	if k == kindSiteImport {
 		size = `j.size_bytes`
 	}
 	_, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		out := orgClaim{kind: k}
+		out := siteClaim{kind: k}
 		var role string
 		// Materialized for the reason claim gives.
 		err := tx.QueryRow(ctx, fmt.Sprintf(`
@@ -60,7 +60,7 @@ func (w *Watch) claimOrg(ctx context.Context, k kind) (*orgClaim, error) {
 			WHERE j.id = next.id
 			RETURNING j.id, j.requested_by,
 			          COALESCE((SELECT m.role FROM member m WHERE m.user_id = j.requested_by), ''),
-			          j.attempts, j.object_key, %[2]s`, k, size), OrgLease.Seconds()).
+			          j.attempts, j.object_key, %[2]s`, k, size), SiteLease.Seconds()).
 			Scan(&out.id, &out.user, &role, &out.attempts, &out.object, &out.size)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
@@ -76,43 +76,43 @@ func (w *Watch) claimOrg(ctx context.Context, k kind) (*orgClaim, error) {
 }
 
 // mayMove asks, as the requester, whether they still administer the organization.
-func (w *Watch) mayMove(ctx context.Context, c *orgClaim) (bool, error) {
+func (w *Watch) mayMove(ctx context.Context, c *siteClaim) (bool, error) {
 	if c.role == "" {
 		return false, nil
 	}
 	allowed := false
 	err := w.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
-		allowed = perm.Allowed(ctx, tx, c.actor(), perm.MoveOrg, uuid.Nil)
+		allowed = perm.Allowed(ctx, tx, c.actor(), perm.MoveSite, uuid.Nil)
 		return nil
 	})
 	return allowed, err
 }
 
-func (w *Watch) runOrgExport(ctx context.Context, c *orgClaim) error {
+func (w *Watch) runSiteExport(ctx context.Context, c *siteClaim) error {
 	if c.attempts > MaxAttempts {
-		return w.finishOrgExport(ctx, c, StateFailed, FailureFailed, "", "", 0)
+		return w.finishSiteExport(ctx, c, StateFailed, FailureFailed, "", "", 0)
 	}
-	run, cancel := context.WithTimeout(c.acting(ctx), OrgRunLimit)
+	run, cancel := context.WithTimeout(c.acting(ctx), SiteRunLimit)
 	defer cancel()
 	allowed, err := w.mayMove(run, c)
 	if err != nil {
 		return err
 	}
 	if !allowed {
-		return w.finishOrgExport(ctx, c, StateFailed, FailureForbidden, "", "", 0)
+		return w.finishSiteExport(ctx, c, StateFailed, FailureForbidden, "", "", 0)
 	}
 	began := time.Now()
-	name, size, err := w.exportOrg(run, c)
+	name, size, err := w.exportSite(run, c)
 	settle := context.WithoutCancel(ctx)
 	switch {
 	case err == nil:
 		w.log.Info("organization exported", "job", c.id, "bytes", size, "took", time.Since(began).Round(time.Millisecond))
-		return w.finishOrgExport(settle, c, StateDone, "", "", name, size)
+		return w.finishSiteExport(settle, c, StateDone, "", "", name, size)
 	case ctx.Err() != nil:
-		return w.finishOrgExport(settle, c, StateQueued, "", "", "", 0)
+		return w.finishSiteExport(settle, c, StateQueued, "", "", "", 0)
 	}
 	failure, detail := FailureFailed, ""
-	var big *orgSpaceTooLarge
+	var big *siteSpaceTooLarge
 	switch {
 	case isDenied(err):
 		failure = FailureForbidden
@@ -120,10 +120,10 @@ func (w *Watch) runOrgExport(ctx context.Context, c *orgClaim) error {
 		failure, detail = FailureTooLarge, big.Error()
 	}
 	w.log.Warn("the organization was not exported", "job", c.id, "failure", failure, "error", err)
-	return w.finishOrgExport(settle, c, StateFailed, failure, detail, "", 0)
+	return w.finishSiteExport(settle, c, StateFailed, failure, detail, "", 0)
 }
 
-func (w *Watch) finishOrgExport(ctx context.Context, c *orgClaim, state State, failure Failure, detail, name string, size int64) error {
+func (w *Watch) finishSiteExport(ctx context.Context, c *siteClaim, state State, failure Failure, detail, name string, size int64) error {
 	var (
 		f       *Failure
 		d       *string
@@ -157,40 +157,40 @@ func (w *Watch) finishOrgExport(ctx context.Context, c *orgClaim, state State, f
 	return err
 }
 
-func (w *Watch) runOrgImport(ctx context.Context, c *orgClaim) error {
+func (w *Watch) runSiteImport(ctx context.Context, c *siteClaim) error {
 	if c.attempts > MaxAttempts {
-		return w.finishOrgImport(ctx, c, StateFailed, FailureFailed, "", 0)
+		return w.finishSiteImport(ctx, c, StateFailed, FailureFailed, "", 0)
 	}
-	run, cancel := context.WithTimeout(c.acting(ctx), OrgRunLimit)
+	run, cancel := context.WithTimeout(c.acting(ctx), SiteRunLimit)
 	defer cancel()
 	allowed, err := w.mayMove(run, c)
 	if err != nil {
 		return err
 	}
 	if !allowed {
-		return w.finishOrgImport(ctx, c, StateFailed, FailureForbidden, "", 0)
+		return w.finishSiteImport(ctx, c, StateFailed, FailureForbidden, "", 0)
 	}
 	began := time.Now()
-	written, err := w.importOrg(run, c)
+	written, err := w.importSite(run, c)
 	settle := context.WithoutCancel(ctx)
 	switch {
 	case err == nil:
 		w.log.Info("organization imported", "job", c.id, "took", time.Since(began).Round(time.Millisecond))
-		return w.finishOrgImport(settle, c, StateDone, "", "", written)
+		return w.finishSiteImport(settle, c, StateDone, "", "", written)
 	case errors.Is(err, errLeaseLost):
 		return err
 	case ctx.Err() != nil:
-		return w.finishOrgImport(settle, c, StateQueued, "", "", 0)
+		return w.finishSiteImport(settle, c, StateQueued, "", "", 0)
 	}
-	failure, detail := orgFailureOf(err)
+	failure, detail := siteFailureOf(err)
 	w.log.Warn("the organization was not imported", "job", c.id, "failure", failure, "error", err)
-	return w.finishOrgImport(settle, c, StateFailed, failure, detail, 0)
+	return w.finishSiteImport(settle, c, StateFailed, failure, detail, 0)
 }
 
-// finishOrgImport ends an import that failed or was put back; one that
+// finishSiteImport ends an import that failed or was put back; one that
 // succeeded is marked done in its own transaction and here only records
 // where its writes ended. Either way the uploaded archive is let go.
-func (w *Watch) finishOrgImport(ctx context.Context, c *orgClaim, state State, failure Failure, detail string, written db.LSN) error {
+func (w *Watch) finishSiteImport(ctx context.Context, c *siteClaim, state State, failure Failure, detail string, written db.LSN) error {
 	_, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if state == StateDone {
 			if written != 0 {

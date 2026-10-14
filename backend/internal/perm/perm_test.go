@@ -43,8 +43,8 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"an organization admin reviews every space's stale pages", admin, ReviewStale, true},
 		{"a member of an open space does not keep its templates", member(openSpace...), KeepTemplates, false},
 		{"an administrator of the space keeps its templates", member(SpaceAdminister), KeepTemplates, true},
-		{"an administrator of a space does not keep the organization's templates", member(SpaceAdminister), KeepOrgTemplates, false},
-		{"an organization admin keeps the organization's templates", admin, KeepOrgTemplates, true},
+		{"an administrator of a space does not keep the organization's templates", member(SpaceAdminister), KeepSiteTemplates, false},
+		{"an organization admin keeps the organization's templates", admin, KeepSiteTemplates, true},
 		{"a member of an open space does not change its shortcuts", member(openSpace...), ManageShortcuts, false},
 		{"an administrator of the space changes its shortcuts", member(SpaceAdminister), ManageShortcuts, true},
 		{"an organization admin changes every space's shortcuts", admin, ManageShortcuts, true},
@@ -73,8 +73,8 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"admins create the example space", admin, CreateExampleSpace, true},
 		{"owners create the example space", owner, CreateExampleSpace, true},
 		{"a member granted createSpace makes no example space", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateExampleSpace, false},
-		{"admins move the organization", admin, MoveOrg, true},
-		{"a member granted createSpace moves no organization", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, MoveOrg, false},
+		{"admins move the organization", admin, MoveSite, true},
+		{"a member granted createSpace moves no organization", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, MoveSite, false},
 		{"an unknown action is refused", admin, Action("space.unknown"), false},
 	} {
 		if got := Decide(tt.facts, tt.action); got != tt.want {
@@ -84,8 +84,8 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 }
 
 func TestGlobalAdministerFollowsTheRoles(t *testing.T) {
-	granted := Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, AdministerOrg}}
-	if granted.HoldsGlobal(AdministerOrg) {
+	granted := Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, AdministerSite}}
+	if granted.HoldsGlobal(AdministerSite) {
 		t.Error("a member holds administer through a grant")
 	}
 	if !(Facts{Member: true, Role: auth.RoleAdmin}).GlobalCan().Administer {
@@ -228,7 +228,7 @@ func TestASaveMayNotLockItsSaverOut(t *testing.T) {
 }
 
 func TestRefusalsAreSentences(t *testing.T) {
-	for _, a := range []Action{CreateSpace, CreatePersonalSpace, CreateExampleSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, EditCalendars, CopyPermissionsFrom, ArrangePages, GrantEdit, MoveOrg, Action("x")} {
+	for _, a := range []Action{CreateSpace, CreatePersonalSpace, CreateExampleSpace, ViewSpace, AdministerSpace, DeleteSpace, EditPages, DeletePages, AddComments, PurgeTrash, InspectAccess, ReviewStale, ListReaders, ManageShortcuts, EditCalendars, CopyPermissionsFrom, ArrangePages, GrantEdit, MoveSite, Action("x")} {
 		err := error(&DeniedError{Action: a})
 		if !errors.Is(err, ErrDenied) {
 			t.Errorf("the refusal of %s does not wrap ErrDenied", a)
@@ -275,7 +275,7 @@ func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
 		{"an admin's token creates no space", admin, CreateSpace, false},
 		{"a creator's token creates no space", creator, CreateSpace, false},
 		{"an admin's token creates no example space", admin, CreateExampleSpace, false},
-		{"an admin's token moves no organization", admin, MoveOrg, false},
+		{"an admin's token moves no organization", admin, MoveSite, false},
 		{"a member's token edits where the member may", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator}, Space: openSpace, SpacesOnly: true}, EditPages, true},
 		{"a space it does not reach comes as no facts at all", Facts{}, ViewSpace, false},
 	} {
@@ -283,10 +283,10 @@ func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
 			t.Errorf("%s: %s = %v, want %v", tt.name, tt.action, got, tt.want)
 		}
 	}
-	if admin.OrgAdmin() || admin.GlobalCan().Administer || admin.GlobalCan().CreateSpace || !admin.GlobalCan().Use {
+	if admin.SiteAdmin() || admin.GlobalCan().Administer || admin.GlobalCan().CreateSpace || !admin.GlobalCan().Use {
 		t.Errorf("an admin's limited token = %+v, want use and nothing more", admin.GlobalCan())
 	}
-	if !(Facts{Member: true, Role: auth.RoleAdmin}).OrgAdmin() {
+	if !(Facts{Member: true, Role: auth.RoleAdmin}).SiteAdmin() {
 		t.Error("an admin without a limited token stopped administering the organization")
 	}
 	if Decide(admin, CreatePersonalSpace) {
@@ -326,7 +326,7 @@ func TestAGuestHoldsTheirGrantsAndNothingOfTheOrganization(t *testing.T) {
 	if got := guest(SpaceView).GlobalCan(); got != (GlobalCan{Use: true}) {
 		t.Errorf("a guest is offered %+v across the organization, want use alone", got)
 	}
-	if guest(SpaceView).OrgAdmin() {
+	if guest(SpaceView).SiteAdmin() {
 		t.Error("a guest administers the organization")
 	}
 }

@@ -261,17 +261,25 @@ func TestNothingReadsTheTenant(t *testing.T) {
 }
 
 // The tables named after the organization took the site's name with the
-// schema change, and nothing in the catalog keeps the old ones.
-func TestNoTableIsNamedAfterTheOrganization(t *testing.T) {
+// schema change, and 00770 renamed the indexes and constraints that still
+// said org. Armature's organization is Armature's and keeps its name.
+func TestNothingIsNamedAfterTheOrganization(t *testing.T) {
 	h := newHarness(t)
 	rows, err := h.super.Query(context.Background(), `
-		SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-		WHERE n.nspname = 'public' AND c.relname ~ '^org(_|$)'
-		UNION ALL
-		SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-		WHERE n.nspname = 'public' AND p.proname ~ '^org(_|$)'
-		UNION ALL
-		SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND policyname ~ '^org(_|$)'
+		SELECT named.kind || ' ' || named.name FROM (
+			SELECT 'relation' AS kind, c.relname AS name FROM pg_class c
+			WHERE c.relnamespace = 'public'::regnamespace
+			UNION ALL
+			SELECT 'constraint', conname FROM pg_constraint WHERE connamespace = 'public'::regnamespace
+			UNION ALL
+			SELECT 'function', proname FROM pg_proc WHERE pronamespace = 'public'::regnamespace
+			UNION ALL
+			SELECT 'policy', policyname FROM pg_policies WHERE schemaname = 'public'
+			UNION ALL
+			SELECT 'trigger', t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+			WHERE c.relnamespace = 'public'::regnamespace AND NOT t.tgisinternal
+		) named
+		WHERE named.name ~ '(^|_)org(_|$)' AND named.name !~ '^armature_'
 		ORDER BY 1`)
 	if err != nil {
 		t.Fatal(err)

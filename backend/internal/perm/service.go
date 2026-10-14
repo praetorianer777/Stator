@@ -63,7 +63,7 @@ func requireAdmin(ctx context.Context, tx db.DBTX, actor Actor) error {
 	if err != nil {
 		return err
 	}
-	if !f.OrgAdmin() {
+	if !f.SiteAdmin() {
 		return &DeniedError{}
 	}
 	return nil
@@ -90,7 +90,7 @@ func (s *Service) GlobalGrants(ctx context.Context, actor Actor) ([]GlobalGrant,
 }
 
 func globalGrant(ctx context.Context, tx db.DBTX, p GlobalPermission) (GlobalGrant, error) {
-	if p == AdministerOrg {
+	if p == AdministerSite {
 		rows, err := tx.Query(ctx, `
 			SELECT 'user', u.id, u.name FROM member m JOIN app_user u ON u.id = m.user_id
 			WHERE m.role IN ('owner', 'admin')
@@ -134,7 +134,7 @@ func (s *Service) SetGlobalGrant(ctx context.Context, actor Actor, permission Gl
 	if !slices.Contains(GlobalPermissions, permission) {
 		return nil, 0, ErrUnknownPermission
 	}
-	if permission == AdministerOrg {
+	if permission == AdministerSite {
 		return nil, 0, ErrFixed
 	}
 	var out GlobalGrant

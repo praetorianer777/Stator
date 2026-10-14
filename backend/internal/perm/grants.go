@@ -38,12 +38,12 @@ const (
 	UseStator GlobalPermission = "use"
 	// CreateSpaces is making new spaces.
 	CreateSpaces GlobalPermission = "createSpace"
-	// AdministerOrg is the organization's settings, people and permissions.
-	AdministerOrg GlobalPermission = "administer"
+	// AdministerSite is the organization's settings, people and permissions.
+	AdministerSite GlobalPermission = "administer"
 )
 
 // GlobalPermissions lists every GlobalPermission, for the API document.
-var GlobalPermissions = []GlobalPermission{UseStator, CreateSpaces, AdministerOrg}
+var GlobalPermissions = []GlobalPermission{UseStator, CreateSpaces, AdministerSite}
 
 // GlobalGrant is one global permission and whom it is granted to.
 type GlobalGrant struct {

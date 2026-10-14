@@ -354,8 +354,8 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 		t.Errorf("the import's record reads %s, after %v", data, imported)
 	}
 
-	orgExport := obj(t, want(t, owner.post(t, "/api/v1/site/exports", nil), http.StatusAccepted, "export the organization"), "export")
-	if data := once(audit.ActionOrgExported, me, nil); !strings.Contains(data, orgExport["id"].(string)) {
+	siteExport := obj(t, want(t, owner.post(t, "/api/v1/site/exports", nil), http.StatusAccepted, "export the organization"), "export")
+	if data := once(audit.ActionOrgExported, me, nil); !strings.Contains(data, siteExport["id"].(string)) {
 		t.Errorf("the organization's export reads %s", data)
 	}
 

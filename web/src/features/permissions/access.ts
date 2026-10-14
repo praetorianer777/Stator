@@ -5,7 +5,7 @@ import { useAccess } from "@/api/permissions";
 // an administrator's menu does not flicker on every visit.
 
 /** Whether the caller administers the organization. */
-export function useCanAdministerOrg(): boolean {
+export function useCanAdministerSite(): boolean {
   const { data: access } = useAccess();
   const { data: me } = useMe();
   return access?.administer ?? administers(me?.organization?.role);

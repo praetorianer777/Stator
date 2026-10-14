@@ -15,10 +15,10 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 )
 
-// orgSnapshot is everything of an organization that is not a space, read in
+// siteSnapshot is everything of an organization that is not a space, read in
 // one transaction; each space is read in a transaction of its own after it.
-type orgSnapshot struct {
-	m        *OrgManifest
+type siteSnapshot struct {
+	m        *SiteManifest
 	spaces   []uuid.UUID
 	logoKey  string
 	themeKey map[uuid.UUID]string
@@ -47,13 +47,13 @@ var notCarried = []Omission{
 	{Key: "address", What: "The organization's address (its slug)", Why: "The organization keeps the address of the Stator it lands in."},
 }
 
-// readOrg reads the organization's own data, as the worker's role, and every
+// readSite reads the organization's own data, as the worker's role, and every
 // count the archive's list of what it leaves out names.
-func readOrg(ctx context.Context, tx db.DBTX, exporter uuid.UUID) (*orgSnapshot, error) {
-	s := &orgSnapshot{themeKey: map[uuid.UUID]string{}}
-	m := &OrgManifest{Format: OrgFormat, Version: OrgVersion, ExportedBy: exporter.String(),
-		People: []OrgPerson{}, Groups: []OrgGroup{}, Permissions: []Grant{}, Themes: []OrgTheme{}, PersonThemes: []PersonTheme{},
-		Templates: []Template{}, Webhooks: []OrgWebhook{}, Preferences: []OrgPreference{}, Spaces: []OrgSpace{}}
+func readSite(ctx context.Context, tx db.DBTX, exporter uuid.UUID) (*siteSnapshot, error) {
+	s := &siteSnapshot{themeKey: map[uuid.UUID]string{}}
+	m := &SiteManifest{Format: SiteFormat, Version: SiteVersion, ExportedBy: exporter.String(),
+		People: []SitePerson{}, Groups: []SiteGroup{}, Permissions: []Grant{}, Themes: []SiteTheme{}, PersonThemes: []PersonTheme{},
+		Templates: []Template{}, Webhooks: []SiteWebhook{}, Preferences: []SitePreference{}, Spaces: []SiteSpace{}}
 	s.m = m
 	if err := tx.QueryRow(ctx, `
 		SELECT now(), name, slug::text, created_at, anonymous_access, anonymous_indexable, public_links, hub_page_id, hub_landing, default_theme_id
@@ -84,7 +84,7 @@ func readOrg(ctx context.Context, tx db.DBTX, exporter uuid.UUID) (*orgSnapshot,
 	return s, nil
 }
 
-func (s *orgSnapshot) readPeople(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readPeople(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
 		SELECT u.id, u.name, u.email::text, u.timezone, u.locale, u.is_active, u.show_in_readers, m.role, m.role_source,
 		       COALESCE(s.key, ''), m.created_at
@@ -93,9 +93,9 @@ func (s *orgSnapshot) readPeople(ctx context.Context, tx db.DBTX) error {
 	if err != nil {
 		return err
 	}
-	s.m.People, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (OrgPerson, error) {
+	s.m.People, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (SitePerson, error) {
 		var (
-			p  OrgPerson
+			p  SitePerson
 			id uuid.UUID
 		)
 		err := row.Scan(&id, &p.Name, &p.Email, &p.Timezone, &p.Locale, &p.Active, &p.ShowInReaders, &p.Role, &p.RoleSource, &p.GuestSpace, &p.JoinedAt)
@@ -103,12 +103,12 @@ func (s *orgSnapshot) readPeople(ctx context.Context, tx db.DBTX) error {
 		return p, err
 	})
 	if s.m.People == nil {
-		s.m.People = []OrgPerson{}
+		s.m.People = []SitePerson{}
 	}
 	return err
 }
 
-func (s *orgSnapshot) readGroups(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readGroups(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
 		SELECT g.id, g.name, g.description, g.source, g.external_ref,
 		       COALESCE(array_agg(m.user_id ORDER BY m.user_id) FILTER (WHERE m.user_id IS NOT NULL), '{}')
@@ -117,9 +117,9 @@ func (s *orgSnapshot) readGroups(ctx context.Context, tx db.DBTX) error {
 	if err != nil {
 		return err
 	}
-	s.m.Groups, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (OrgGroup, error) {
+	s.m.Groups, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (SiteGroup, error) {
 		var (
-			g       OrgGroup
+			g       SiteGroup
 			id      uuid.UUID
 			members []uuid.UUID
 		)
@@ -131,12 +131,12 @@ func (s *orgSnapshot) readGroups(ctx context.Context, tx db.DBTX) error {
 		return g, err
 	})
 	if s.m.Groups == nil {
-		s.m.Groups = []OrgGroup{}
+		s.m.Groups = []SiteGroup{}
 	}
 	return err
 }
 
-func (s *orgSnapshot) readPermissions(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readPermissions(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
 		SELECT permission, subject_type, user_id, group_id FROM global_grant
 		ORDER BY permission, subject_type, user_id, group_id`)
@@ -158,14 +158,14 @@ func (s *orgSnapshot) readPermissions(ctx context.Context, tx db.DBTX) error {
 	return err
 }
 
-func (s *orgSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
-	var p OrgSignIn
+func (s *siteSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
+	var p SiteSignIn
 	err := tx.QueryRow(ctx, `
 		SELECT issuer, client_id, groups_claim, scopes, create_groups, enabled FROM oidc_provider`).
 		Scan(&p.Issuer, &p.ClientID, &p.GroupsClaim, &p.Scopes, &p.CreateGroups, &p.Enabled)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		p = OrgSignIn{}
+		p = SiteSignIn{}
 	case err != nil:
 		return err
 	}
@@ -173,15 +173,15 @@ func (s *orgSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
 	if err != nil {
 		return err
 	}
-	p.GroupRoles, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (OrgGroupRole, error) {
-		var r OrgGroupRole
+	p.GroupRoles, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (SiteGroupRole, error) {
+		var r SiteGroupRole
 		return r, row.Scan(&r.Group, &r.Role)
 	})
 	if err != nil {
 		return err
 	}
 	if p.GroupRoles == nil {
-		p.GroupRoles = []OrgGroupRole{}
+		p.GroupRoles = []SiteGroupRole{}
 	}
 	if p.Issuer != "" || len(p.GroupRoles) > 0 {
 		s.m.SignIn = &p
@@ -189,8 +189,8 @@ func (s *orgSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
 	return nil
 }
 
-func (s *orgSnapshot) readArmature(ctx context.Context, tx db.DBTX) error {
-	var a OrgArmature
+func (s *siteSnapshot) readArmature(ctx context.Context, tx db.DBTX) error {
+	var a SiteArmature
 	err := tx.QueryRow(ctx, `SELECT base_url, org_slug FROM armature_connection`).Scan(&a.BaseURL, &a.OrgSlug)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -202,7 +202,7 @@ func (s *orgSnapshot) readArmature(ctx context.Context, tx db.DBTX) error {
 	return nil
 }
 
-func (s *orgSnapshot) readBrand(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readBrand(ctx context.Context, tx db.DBTX) error {
 	var (
 		kind *string
 		size *int64
@@ -217,7 +217,7 @@ func (s *orgSnapshot) readBrand(ctx context.Context, tx db.DBTX) error {
 		return err
 	}
 	if kind != nil && size != nil && key != nil {
-		s.m.Brand.Logo = &OrgLogo{ContentType: *kind, Size: *size}
+		s.m.Brand.Logo = &SiteLogo{ContentType: *kind, Size: *size}
 		s.logoKey = *key
 	}
 	return nil
@@ -225,28 +225,28 @@ func (s *orgSnapshot) readBrand(ctx context.Context, tx db.DBTX) error {
 
 // readThemes reads the organization's themes and their files; a theme
 // mirrored from Armature is its owner's copy of Armature's and stays behind.
-func (s *orgSnapshot) readThemes(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readThemes(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
 		SELECT id, name, owner_id, shared, spec FROM theme WHERE armature_theme_id IS NULL ORDER BY lower(name), id`)
 	if err != nil {
 		return err
 	}
-	s.m.Themes, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (OrgTheme, error) {
+	s.m.Themes, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (SiteTheme, error) {
 		var (
-			t     OrgTheme
+			t     SiteTheme
 			owner uuid.UUID
 		)
 		err := row.Scan(&t.ID, &t.Name, &owner, &t.Shared, &t.Spec)
-		t.Owner, t.Files = owner.String(), []OrgThemeFile{}
+		t.Owner, t.Files = owner.String(), []SiteThemeFile{}
 		return t, err
 	})
 	if err != nil {
 		return err
 	}
 	if s.m.Themes == nil {
-		s.m.Themes = []OrgTheme{}
+		s.m.Themes = []SiteTheme{}
 	}
-	byID := map[uuid.UUID]*OrgTheme{}
+	byID := map[uuid.UUID]*SiteTheme{}
 	for i := range s.m.Themes {
 		byID[s.m.Themes[i].ID] = &s.m.Themes[i]
 	}
@@ -256,7 +256,7 @@ func (s *orgSnapshot) readThemes(ctx context.Context, tx db.DBTX) error {
 	}
 	for rows.Next() {
 		var (
-			f       OrgThemeFile
+			f       SiteThemeFile
 			themeID uuid.UUID
 			key     string
 		)
@@ -295,7 +295,7 @@ func (s *orgSnapshot) readThemes(ctx context.Context, tx db.DBTX) error {
 	return err
 }
 
-func (s *orgSnapshot) readTemplates(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readTemplates(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
 		SELECT name, description, title, body, variables FROM page_template WHERE space_id IS NULL ORDER BY lower(name), id`)
 	if err != nil {
@@ -311,15 +311,15 @@ func (s *orgSnapshot) readTemplates(ctx context.Context, tx db.DBTX) error {
 	return err
 }
 
-func (s *orgSnapshot) readWebhooks(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readWebhooks(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
 		SELECT name, url, topics, enabled, owner_id FROM webhook_endpoint ORDER BY lower(name), id`)
 	if err != nil {
 		return err
 	}
-	s.m.Webhooks, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (OrgWebhook, error) {
+	s.m.Webhooks, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (SiteWebhook, error) {
 		var (
-			h     OrgWebhook
+			h     SiteWebhook
 			owner *uuid.UUID
 		)
 		err := row.Scan(&h.Name, &h.URL, &h.Topics, &h.Enabled, &owner)
@@ -327,20 +327,20 @@ func (s *orgSnapshot) readWebhooks(ctx context.Context, tx db.DBTX) error {
 		return h, err
 	})
 	if s.m.Webhooks == nil {
-		s.m.Webhooks = []OrgWebhook{}
+		s.m.Webhooks = []SiteWebhook{}
 	}
 	return err
 }
 
-func (s *orgSnapshot) readPreferences(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readPreferences(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
 		SELECT user_id, in_app, email, digest, auto_watch FROM notification_preference ORDER BY user_id`)
 	if err != nil {
 		return err
 	}
-	s.m.Preferences, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (OrgPreference, error) {
+	s.m.Preferences, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (SitePreference, error) {
 		var (
-			p    OrgPreference
+			p    SitePreference
 			user uuid.UUID
 		)
 		err := row.Scan(&user, &p.InApp, &p.Email, &p.Digest, &p.AutoWatch)
@@ -348,14 +348,14 @@ func (s *orgSnapshot) readPreferences(ctx context.Context, tx db.DBTX) error {
 		return p, err
 	})
 	if s.m.Preferences == nil {
-		s.m.Preferences = []OrgPreference{}
+		s.m.Preferences = []SitePreference{}
 	}
 	return err
 }
 
 // readSpaces lists the spaces, and counts their pages and files for the
 // progress, which the snapshots of the spaces then write one by one.
-func (s *orgSnapshot) readSpaces(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readSpaces(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `SELECT id FROM space ORDER BY key`)
 	if err != nil {
 		return err
@@ -371,7 +371,7 @@ func (s *orgSnapshot) readSpaces(ctx context.Context, tx db.DBTX) error {
 
 // readNotCarried counts what the archive leaves out where a count tells the
 // administrator how much to give again.
-func (s *orgSnapshot) readNotCarried(ctx context.Context, tx db.DBTX) error {
+func (s *siteSnapshot) readNotCarried(ctx context.Context, tx db.DBTX) error {
 	counts := map[string]string{
 		"tokens":           `SELECT count(*) FROM api_token WHERE NOT for_render`,
 		"armatureAccounts": `SELECT count(*) FROM armature_token`,
@@ -393,21 +393,21 @@ func (s *orgSnapshot) readNotCarried(ctx context.Context, tx db.DBTX) error {
 	return nil
 }
 
-// exportOrg writes the organization's archive and stores it, answering its
+// exportSite writes the organization's archive and stores it, answering its
 // name and size; each space is written as its own archive inside it.
-func (w *Watch) exportOrg(ctx context.Context, c *orgClaim) (string, int64, error) {
+func (w *Watch) exportSite(ctx context.Context, c *siteClaim) (string, int64, error) {
 	f, done, err := w.tempFile()
 	if err != nil {
 		return "", 0, err
 	}
 	defer done()
 	zw := zip.NewWriter(f)
-	p := newProgress(w, kindOrgExport, c.id, c.attempts)
+	p := newProgress(w, kindSiteExport, c.id, c.attempts)
 	step := p.step(ctx)
-	var snap *orgSnapshot
+	var snap *siteSnapshot
 	err = w.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		if snap, err = readOrg(ctx, tx, c.user); err != nil {
+		if snap, err = readSite(ctx, tx, c.user); err != nil {
 			return err
 		}
 		return writeAudit(ctx, tx, zw, snap.m)
@@ -417,7 +417,7 @@ func (w *Watch) exportOrg(ctx context.Context, c *orgClaim) (string, int64, erro
 	}
 	p.setTotal(ctx, snap.total+len(snap.themeKey))
 	for _, id := range snap.spaces {
-		space, err := w.exportOrgSpace(ctx, zw, c, id, step)
+		space, err := w.exportSiteSpace(ctx, zw, c, id, step)
 		if err != nil {
 			return "", 0, err
 		}
@@ -449,12 +449,12 @@ func (w *Watch) exportOrg(ctx context.Context, c *orgClaim) (string, int64, erro
 		return "", 0, err
 	}
 	p.flush(ctx, true)
-	return orgDownloadName(snap.m.Organization.Slug, snap.m.ExportedAt), size, nil
+	return siteDownloadName(snap.m.Organization.Slug, snap.m.ExportedAt), size, nil
 }
 
-// exportOrgSpace writes one space's archive to a file of its own and stores
+// exportSiteSpace writes one space's archive to a file of its own and stores
 // it in the organization's whole, so it reads as a space's archive alone.
-func (w *Watch) exportOrgSpace(ctx context.Context, outer *zip.Writer, c *orgClaim, id uuid.UUID, step func()) (*OrgSpace, error) {
+func (w *Watch) exportSiteSpace(ctx context.Context, outer *zip.Writer, c *siteClaim, id uuid.UUID, step func()) (*SiteSpace, error) {
 	f, done, err := w.tempFile()
 	if err != nil {
 		return nil, err
@@ -471,7 +471,7 @@ func (w *Watch) exportOrgSpace(ctx context.Context, outer *zip.Writer, c *orgCla
 			return err
 		}
 		if err := snap.tooMany(); err != nil {
-			return &orgSpaceTooLarge{key: snap.space.Key, err: err}
+			return &siteSpaceTooLarge{key: snap.space.Key, err: err}
 		}
 		counts, err = snap.writeArchive(ctx, tx, zw, step)
 		return err
@@ -494,7 +494,7 @@ func (w *Watch) exportOrgSpace(ctx context.Context, outer *zip.Writer, c *orgCla
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return nil, err
 	}
-	path := orgSpacePath(snap.space.Key)
+	path := siteSpacePath(snap.space.Key)
 	// Stored, not compressed: the import opens it in place, and its pages
 	// are compressed inside it already.
 	out, err := outer.CreateHeader(&zip.FileHeader{Name: path, Method: zip.Store, Modified: time.Now()})
@@ -504,31 +504,31 @@ func (w *Watch) exportOrgSpace(ctx context.Context, outer *zip.Writer, c *orgCla
 	if _, err := io.Copy(out, f); err != nil {
 		return nil, err
 	}
-	return &OrgSpace{Key: snap.space.Key, Name: snap.space.Name, Archive: path, Counts: counts}, nil
+	return &SiteSpace{Key: snap.space.Key, Name: snap.space.Name, Archive: path, Counts: counts}, nil
 }
 
-// orgSpaceTooLarge names the space an organization's export cannot hold.
-type orgSpaceTooLarge struct {
+// siteSpaceTooLarge names the space an organization's export cannot hold.
+type siteSpaceTooLarge struct {
 	key string
 	err error
 }
 
-func (e *orgSpaceTooLarge) Error() string {
+func (e *siteSpaceTooLarge) Error() string {
 	return fmt.Sprintf("The space %s holds more than one archive may (%d pages, %d files). Move some of its pages to another space, then export the organization again.", e.key, MaxPages, MaxFiles)
 }
 
-func (e *orgSpaceTooLarge) Unwrap() error { return e.err }
+func (e *siteSpaceTooLarge) Unwrap() error { return e.err }
 
 // writeOwnFiles copies the logo's and the themes' bytes into the archive.
-func (s *orgSnapshot) writeOwnFiles(ctx context.Context, w *Watch, zw *zip.Writer, step func()) error {
+func (s *siteSnapshot) writeOwnFiles(ctx context.Context, w *Watch, zw *zip.Writer, step func()) error {
 	if s.m.Brand.Logo != nil {
-		if err := copyObject(ctx, w.store, s.logoKey, zw, orgLogoPath, File{Name: "logo", Size: s.m.Brand.Logo.Size, CreatedAt: s.m.ExportedAt}); err != nil {
+		if err := copyObject(ctx, w.store, s.logoKey, zw, siteLogoPath, File{Name: "logo", Size: s.m.Brand.Logo.Size, CreatedAt: s.m.ExportedAt}); err != nil {
 			return err
 		}
 	}
 	for _, t := range s.m.Themes {
 		for _, f := range t.Files {
-			if err := copyObject(ctx, w.store, s.themeKey[f.ID], zw, orgThemeFilePath(f.ID), File{Name: f.Name, Size: f.Size, CreatedAt: s.m.ExportedAt}); err != nil {
+			if err := copyObject(ctx, w.store, s.themeKey[f.ID], zw, siteThemeFilePath(f.ID), File{Name: f.Name, Size: f.Size, CreatedAt: s.m.ExportedAt}); err != nil {
 				return err
 			}
 			step()
@@ -538,8 +538,8 @@ func (s *orgSnapshot) writeOwnFiles(ctx context.Context, w *Watch, zw *zip.Write
 }
 
 // writeAudit writes the organization's audit log, oldest first, a line each.
-func writeAudit(ctx context.Context, tx db.DBTX, zw *zip.Writer, m *OrgManifest) error {
-	out, err := zw.CreateHeader(&zip.FileHeader{Name: orgAuditPath, Method: zip.Deflate})
+func writeAudit(ctx context.Context, tx db.DBTX, zw *zip.Writer, m *SiteManifest) error {
+	out, err := zw.CreateHeader(&zip.FileHeader{Name: siteAuditPath, Method: zip.Deflate})
 	if err != nil {
 		return err
 	}

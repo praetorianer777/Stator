@@ -1,7 +1,7 @@
 import { createRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/ui";
 import { TEMPLATE_EDIT_PATH, TEMPLATE_NEW_PATH, TEMPLATES_PATH } from "@/config";
-import { useCanAdministerOrg } from "@/features/permissions/access";
+import { useCanAdministerSite } from "@/features/permissions/access";
 import { TemplateList } from "@/features/templates/TemplateList";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
@@ -11,7 +11,7 @@ export const templatesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: TEMPLATES_PATH,
   component: function TemplatesRoute() {
-    const canEdit = useCanAdministerOrg();
+    const canEdit = useCanAdministerSite();
     return (
       <div className="mx-auto max-w-4xl" data-templates-page="">
         <PageHeader crumbs={[{ label: t.settings.title }]} title={t.templates.title} />

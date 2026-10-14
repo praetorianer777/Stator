@@ -2,27 +2,27 @@ import { useRef, useState, type FormEvent } from "react";
 import { formatSize } from "@/api/attachments";
 import { ApiError } from "@/api/client";
 import {
-  orgExportHref,
-  useCreateOrgExport,
-  useImportOrg,
-  useOrgExports,
-  useOrgImports,
-  type OrgExport,
-  type OrgImport,
-  type OrgImportReport,
-} from "@/api/orgTransfers";
+  siteExportHref,
+  useCreateSiteExport,
+  useImportSite,
+  useSiteExports,
+  useSiteImports,
+  type SiteExport,
+  type SiteImport,
+  type SiteImportReport,
+} from "@/api/siteTransfers";
 import { transferOpen } from "@/api/spaceTransfers";
 import { Button, ButtonLink, Card, ErrorBanner, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { language, t } from "@/i18n";
 
 /** Where an administrator exports the whole organization as one archive, and fills a fresh one from such an archive. */
-export function OrgTransferSettings() {
+export function SiteTransferSettings() {
   return (
-    <div className="mx-auto max-w-3xl space-y-8" data-org-transfer="">
-      <PageHeader crumb={t.settings.title} title={t.orgTransfer.title} />
-      <OrgExportSection />
-      <OrgImportSection />
+    <div className="mx-auto max-w-3xl space-y-8" data-site-transfer="">
+      <PageHeader crumb={t.settings.title} title={t.siteTransfer.title} />
+      <SiteExportSection />
+      <SiteImportSection />
       <NotCarried />
     </div>
   );
@@ -36,21 +36,21 @@ function percentOf(progress: { done: number; total: number }): number {
   return progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 }
 
-function OrgExportSection() {
-  const exports = useOrgExports();
-  const create = useCreateOrgExport();
+function SiteExportSection() {
+  const exports = useSiteExports();
+  const create = useCreateSiteExport();
   const underWay = create.isPending || (exports.data?.some(transferOpen) ?? false);
   return (
-    <section aria-labelledby="org-export-title" className="space-y-4" data-org-export="">
-      <SectionTitle id="org-export-title">{t.orgTransfer.exportTitle}</SectionTitle>
-      <p className="text-sm text-ink-muted">{t.orgTransfer.exportIntro}</p>
+    <section aria-labelledby="site-export-title" className="space-y-4" data-site-export="">
+      <SectionTitle id="site-export-title">{t.siteTransfer.exportTitle}</SectionTitle>
+      <p className="text-sm text-ink-muted">{t.siteTransfer.exportIntro}</p>
       {create.error && <ErrorBanner>{create.error.message}</ErrorBanner>}
-      <Button icon={<Icon.Download />} loading={create.isPending} disabled={underWay} onClick={() => create.mutate()} data-action="export-org">
-        {underWay ? t.orgTransfer.exporting : t.orgTransfer.export}
+      <Button icon={<Icon.Download />} loading={create.isPending} disabled={underWay} onClick={() => create.mutate()} data-action="export-site">
+        {underWay ? t.siteTransfer.exporting : t.siteTransfer.export}
       </Button>
       {exports.isLoading && <Skeleton lines={2} />}
       {exports.error && <ErrorBanner onRetry={() => void exports.refetch()}>{exports.error.message}</ErrorBanner>}
-      {exports.data && exports.data.length === 0 && <p className="text-sm text-ink-muted">{t.orgTransfer.noExports}</p>}
+      {exports.data && exports.data.length === 0 && <p className="text-sm text-ink-muted">{t.siteTransfer.noExports}</p>}
       <ul className="space-y-2">
         {exports.data?.map((job) => (
           <ExportRow key={job.id} job={job} />
@@ -60,14 +60,14 @@ function OrgExportSection() {
   );
 }
 
-function ExportRow({ job }: { job: OrgExport }) {
+function ExportRow({ job }: { job: SiteExport }) {
   const when = dateTime();
   const percent = percentOf(job.progress);
   return (
-    <li data-org-export-row={job.state} data-export-id={job.id}>
+    <li data-site-export-row={job.state} data-export-id={job.id}>
       <Card className="flex flex-wrap items-center justify-between gap-3 p-3">
         <div className="min-w-0 space-y-1">
-          <p className="text-sm font-medium text-ink">{t.orgTransfer.archive}</p>
+          <p className="text-sm font-medium text-ink">{t.siteTransfer.archive}</p>
           <p className="text-xs text-ink-muted">{t.spaceTransfer.askedBy(job.requestedBy, when.format(new Date(job.requestedAt)))}</p>
           {transferOpen(job) && (
             <>
@@ -85,11 +85,11 @@ function ExportRow({ job }: { job: OrgExport }) {
         </div>
         {job.state === "done" && (
           <ButtonLink
-            href={orgExportHref(job.id)}
+            href={siteExportHref(job.id)}
             variant="secondary"
             icon={<Icon.Download />}
             download={job.fileName ?? undefined}
-            data-action="download-org-export"
+            data-action="download-site-export"
           >
             {t.spaceTransfer.download}
           </ButtonLink>
@@ -99,11 +99,11 @@ function ExportRow({ job }: { job: OrgExport }) {
   );
 }
 
-function OrgImportSection() {
+function SiteImportSection() {
   const [file, setFile] = useState<File | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const upload = useImportOrg();
-  const imports = useOrgImports();
+  const upload = useImportSite();
+  const imports = useSiteImports();
   const fields = upload.error instanceof ApiError ? upload.error.fields : {};
   const latest = imports.data?.[0];
 
@@ -114,9 +114,9 @@ function OrgImportSection() {
 
   const error = upload.error && !fields.file ? upload.error.message : undefined;
   return (
-    <section aria-labelledby="org-import-title" className="space-y-4" data-org-import="">
-      <SectionTitle id="org-import-title">{t.orgTransfer.importTitle}</SectionTitle>
-      <p className="text-sm text-ink-muted">{t.orgTransfer.importIntro}</p>
+    <section aria-labelledby="site-import-title" className="space-y-4" data-site-import="">
+      <SectionTitle id="site-import-title">{t.siteTransfer.importTitle}</SectionTitle>
+      <p className="text-sm text-ink-muted">{t.siteTransfer.importIntro}</p>
       <form onSubmit={submit} className="space-y-4" noValidate>
         {error && <ErrorBanner>{error}</ErrorBanner>}
         <input
@@ -127,13 +127,13 @@ function OrgImportSection() {
           tabIndex={-1}
           aria-hidden="true"
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          data-org-import-file=""
+          data-site-import-file=""
         />
         <div className="space-y-1">
-          <Button type="button" variant="secondary" icon={<Icon.File />} onClick={() => input.current?.click()} data-action="choose-org-archive">
+          <Button type="button" variant="secondary" icon={<Icon.File />} onClick={() => input.current?.click()} data-action="choose-site-archive">
             {t.spaceTransfer.chooseArchive}
           </Button>
-          <p className="text-sm text-ink" aria-live="polite" data-chosen-org-archive={file?.name ?? ""}>
+          <p className="text-sm text-ink" aria-live="polite" data-chosen-site-archive={file?.name ?? ""}>
             {file ? file.name : <span className="text-ink-muted">{t.spaceTransfer.noArchive}</span>}
           </p>
           {fields.file && <p className="text-sm text-danger">{fields.file}</p>}
@@ -146,8 +146,8 @@ function OrgImportSection() {
             aria-label={t.spaceTransfer.sending(Math.round(upload.progress * 100))}
           />
         )}
-        <Button type="submit" icon={<Icon.Upload />} loading={upload.isPending} disabled={!file} data-action="confirm-import-org">
-          {t.orgTransfer.importOrg}
+        <Button type="submit" icon={<Icon.Upload />} loading={upload.isPending} disabled={!file} data-action="confirm-import-site">
+          {t.siteTransfer.importSite}
         </Button>
       </form>
       {imports.error && <ErrorBanner onRetry={() => void imports.refetch()}>{imports.error.message}</ErrorBanner>}
@@ -156,11 +156,11 @@ function OrgImportSection() {
   );
 }
 
-function ImportState({ job }: { job: OrgImport }) {
+function ImportState({ job }: { job: SiteImport }) {
   const percent = percentOf(job.progress);
   return (
-    <div className="space-y-3" data-org-import-state={job.state}>
-      <p className="text-xs text-ink-muted">{t.orgTransfer.importedBy(job.requestedBy, dateTime().format(new Date(job.requestedAt)))}</p>
+    <div className="space-y-3" data-site-import-state={job.state}>
+      <p className="text-xs text-ink-muted">{t.siteTransfer.importedBy(job.requestedBy, dateTime().format(new Date(job.requestedAt)))}</p>
       {transferOpen(job) && (
         <div className="space-y-2">
           <p className="text-sm text-ink" role="status">
@@ -172,8 +172,8 @@ function ImportState({ job }: { job: OrgImport }) {
       {job.state === "failed" && job.message && <ErrorBanner>{job.message}</ErrorBanner>}
       {job.state === "done" && (
         <>
-          <p className="text-sm text-ink" role="status" data-org-import-done="">
-            {t.orgTransfer.imported}
+          <p className="text-sm text-ink" role="status" data-site-import-done="">
+            {t.siteTransfer.imported}
           </p>
           {job.report && <ImportReport report={job.report} />}
         </>
@@ -182,8 +182,8 @@ function ImportState({ job }: { job: OrgImport }) {
   );
 }
 
-function ImportReport({ report }: { report: OrgImportReport }) {
-  const r = t.orgTransfer.report;
+function ImportReport({ report }: { report: SiteImportReport }) {
+  const r = t.siteTransfer.report;
   const rows: Array<[string, number]> = [
     [r.spaces, report.spaces],
     [r.pages, report.pages],
@@ -201,7 +201,7 @@ function ImportReport({ report }: { report: OrgImportReport }) {
   ];
   const sr = t.spaceTransfer.report;
   return (
-    <Card className="space-y-4 p-4" data-org-import-report="">
+    <Card className="space-y-4 p-4" data-site-import-report="">
       <SectionTitle>{r.title}</SectionTitle>
       <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 text-sm">
         {rows.map(([label, n]) => (
@@ -212,7 +212,7 @@ function ImportReport({ report }: { report: OrgImportReport }) {
         ))}
       </dl>
       {(report.kept.length > 0 || report.webhooks > 0 || report.reattributed > 0 || report.droppedReactions > 0) && (
-        <ul className="list-disc pl-5 text-sm text-ink-muted" data-org-import-notes="">
+        <ul className="list-disc pl-5 text-sm text-ink-muted" data-site-import-notes="">
           {report.kept.map((k) => (
             <li key={k}>{r.kept[k] ?? k}</li>
           ))}
@@ -222,9 +222,9 @@ function ImportReport({ report }: { report: OrgImportReport }) {
         </ul>
       )}
       {report.dropped.length > 0 && (
-        <section aria-labelledby="org-import-dropped" className="space-y-1">
-          <SectionTitle id="org-import-dropped">{sr.dropped}</SectionTitle>
-          <ul className="list-disc pl-5 text-sm" data-org-import-dropped="">
+        <section aria-labelledby="site-import-dropped" className="space-y-1">
+          <SectionTitle id="site-import-dropped">{sr.dropped}</SectionTitle>
+          <ul className="list-disc pl-5 text-sm" data-site-import-dropped="">
             {report.dropped.map((d) => (
               <li key={`${d.page}/${d.permission}/${d.subject}`}>
                 {d.page ? sr.droppedOnPage(sr.listNames[d.permission] ?? d.permission, d.subject, d.page) : `${d.permission}: ${d.subject}`}
@@ -240,11 +240,11 @@ function ImportReport({ report }: { report: OrgImportReport }) {
 /** What an organization's archive leaves out, before anybody exports one, so nobody is surprised where it lands. */
 function NotCarried() {
   return (
-    <section aria-labelledby="org-not-carried" className="space-y-2" data-org-not-carried="">
-      <SectionTitle id="org-not-carried">{t.orgTransfer.notCarriedTitle}</SectionTitle>
-      <p className="text-sm text-ink-muted">{t.orgTransfer.notCarriedHint}</p>
+    <section aria-labelledby="site-not-carried" className="space-y-2" data-site-not-carried="">
+      <SectionTitle id="site-not-carried">{t.siteTransfer.notCarriedTitle}</SectionTitle>
+      <p className="text-sm text-ink-muted">{t.siteTransfer.notCarriedHint}</p>
       <ul className="list-disc space-y-1 pl-5 text-sm">
-        {Object.entries(t.orgTransfer.notCarried).map(([key, o]) => (
+        {Object.entries(t.siteTransfer.notCarried).map(([key, o]) => (
           <li key={key} data-not-carried={key}>
             <span className="font-medium text-ink">{o.what}.</span> <span className="text-ink-muted">{o.why}</span>
           </li>

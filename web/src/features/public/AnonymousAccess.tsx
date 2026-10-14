@@ -19,7 +19,7 @@ function absolute(path: string): string {
 }
 
 /** The organization's switch for reading without signing in, and whether search engines are asked in; each change is saved at once. */
-export function OrgAnonymousAccess() {
+export function SiteAnonymousAccess() {
   const { data, error, refetch } = useAnonymousAccess();
   const save = useSetAnonymousAccess();
   const [notice, setNotice] = useState("");
@@ -73,7 +73,7 @@ export function OrgAnonymousAccess() {
 }
 
 /** The organization's switch for public links to single pages, apart from its open spaces; saved at once. */
-export function OrgPublicLinks() {
+export function SitePublicLinks() {
   const { data, error, refetch } = usePublicLinkSettings();
   const save = useSetPublicLinkSettings();
   const [notice, setNotice] = useState("");
@@ -133,7 +133,7 @@ export function SpaceAnonymousAccess({ space }: { space: Space }) {
               />
               <span aria-hidden="true">{t.anonymousAccess.spaceToggle}</span>
             </span>
-            {data.view && !data.orgEnabled && <p className="text-sm text-warning">{t.anonymousAccess.orgOff}</p>}
+            {data.view && !data.orgEnabled && <p className="text-sm text-warning">{t.anonymousAccess.siteOff}</p>}
             {data.view && data.orgEnabled && (
               <p className="text-sm text-ink-muted" data-space-public-address="">
                 {t.anonymousAccess.spaceAddress(absolute(publicSpacePath(space.key)))}

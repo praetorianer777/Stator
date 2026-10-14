@@ -36,29 +36,54 @@ Keycloak / any OIDC provider <── login ──┘
 - Configuration: environment variables only, prefix `STATOR_`.
 - Observability: `log/slog`, Prometheus metrics, OpenTelemetry traces.
 
-### Multi-tenancy
+### Row level security
 
-An instance holds one organization (#380), whose settings are the one row
-of `site`; its key (`site_one_row`) refuses a second. The schema names no
-organization: no table carries an `org_id`, and no policy or function reads
-one. Every table
-forces row level security, with a permissive policy that admits every row
-and restrictive access policies that decide who reaches which. The
-application connects as `stator_app`, which cannot bypass RLS; migrations
-run as `stator_admin`. Each transaction of a request names the person it
-acts for, read by
-`current_actor_id()`, and restrictive policies hold `stator_app` to that
-person's space permissions and page restrictions (see `docs/decisions.md`).
-A guest, a member with the role `guest` and the one space they were invited
-to, is held by the same functions to that space and to the people in it,
-whatever a query forgets to ask.
-A reader who is not signed in is a principal of its own: a transaction that
-sets `app.anonymous` and names nobody. The same functions give it view of
-the spaces the organization opened to anybody and nothing else, and a
-policy on every table keeps it to reading spaces, pages and files and to
-writing nothing. Holding a public link's token, the same reader also views
-the one page a live link opens, through the digest the transaction sets in
-`app.page_link`.
+An instance serves one organization (#380), whose settings are the one row
+of `site`; its key (`site_one_row`) refuses a second. Another organization
+runs another instance, with its own database and bucket. The schema names
+no organization, so row level security decides only which person reaches
+which rows.
+
+- **Two roles.** The api and the worker connect as `stator_app`, which
+  cannot bypass row level security. Migrations, the seed and what runs
+  before anybody is known (sign-in, the webhook receiver's secret, the
+  worker's claims) use `stator_admin`. Every table forces row level
+  security, so the owner is bound too, and has a `<table>_admin_bypass`
+  policy for `stator_admin`; `user_identity` and `user_session` are read by
+  `stator_admin` alone.
+- **Permissive `_app` policies, restrictive access policies.** Each table
+  has a permissive `<table>_app` policy for `stator_app` that admits every
+  row (`site` admits reading and updating its row, `app_user` the people who
+  are members). Restrictive policies alone admit nothing; the access
+  policies are all `AS RESTRICTIVE` and narrow what the `_app` policy lets
+  through: viewers, editors, a row's own person, guests, anonymous readers
+  and public links. `TestEveryTableForcesRowSecurity` fails a table missing
+  either the bypass or the `_app` policy.
+- **Who the transaction acts for.** `db.WithUser` sets `app.user_id`, read
+  by `current_actor_id()`, and, when they apply, `app.token_spaces` for a
+  token limited to some spaces, `app.anonymous` for a reader who is not
+  signed in and `app.page_link` for the digest of a public link's token.
+  Naming nobody binds `stator_app` to nothing.
+- **The rules are `perm_*` functions.** The policies and the services call
+  the same functions (`perm_space_holds`, `perm_page_viewable` and the rest),
+  so both answer alike. Those that read the tables they guard are `SECURITY
+  DEFINER`, since a policy on `page` that read `page` would recurse, and
+  each of those pins `search_path = public, pg_temp`, so neither a caller's
+  path nor a restore's empty one changes what a name in its body means. The
+  few that only combine others stay plain SQL, which Postgres can inline
+  into the policies that call them.
+- **Guests, anonymous readers and links.** A guest, a member with the role
+  `guest` and the one space they were invited to, is held by the same
+  functions to that space and to the people in it, whatever a query forgets
+  to ask. An anonymous reader is given view of the spaces the organization
+  opened to anybody and nothing else, and a policy on every table keeps it
+  to reading spaces, pages and files and to writing nothing. Holding a
+  public link's token, the same reader also views the one page a live link
+  opens.
+
+Every guard is proven twice in the integration suite: refused through the
+api, and refused when the same statement runs straight through SQL as
+`stator_app` (see `docs/decisions.md`).
 
 ### Reads, writes and replicas
 
@@ -93,7 +118,7 @@ process, which is only right for a single api process. `/readyz` and
 | Package | Responsibility |
 |---|---|
 | `auth` | sessions, argon2 passwords, personal access tokens |
-| `oidc` | OIDC relying party per organisation, group sync |
+| `oidc` | the instance's OIDC relying party, group sync |
 | `perm` | global, space and page permissions, and the plan of copying one space's permissions onto another |
 | `guest` | guests: people from outside invited into one space, and taken out again |
 | `public` | reading without signing in: the organization's switches, the spaces, pages and files anybody may read, and the public links that open one page each, with nobody named in them |
@@ -162,7 +187,7 @@ process, which is only right for a single api process. `/readyz` and
 - The pages anybody may read are at `/public`, outside the app's shell and
   its sign-in guard, read through `/api/v1/public`; the document view draws
   them with every link and file through those reads. The addresses before
-  #380 named the organization, `/public/{org}/...`: the api answers its old
+  #380 named the organization, `/public/{siteSlug}/...`: the api answers its old
   reads with `308` to the new ones when the slug is the instance's, and the
   web client sends an old page address on once the api has said so.
 - The render service prints a page from `/print/p/{id}`,

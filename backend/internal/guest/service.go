@@ -143,7 +143,7 @@ func adminSpace(ctx context.Context, tx db.DBTX, actor perm.Actor, key string) (
 	if err != nil {
 		return nil, err
 	}
-	if !f.OrgAdmin() {
+	if !f.SiteAdmin() {
 		return nil, &perm.DeniedError{}
 	}
 	sp, err := space.Load(ctx, tx, actor, space.ByKey, key)

@@ -5,7 +5,7 @@ import { usePage } from "@/api/pages";
 import { linkedAttachmentUrl, publicAttachmentUrl, useLinkedPage, usePublicPage, usePublicSite } from "@/api/public";
 import { useDefaultTheme, type Theme } from "@/api/themes";
 import { usePageAttachmentIds } from "@/features/attachments/hooks";
-import { footerLine, publicLogoHref, useBrandPicture, useOrgPrintBrand } from "./brandMeta";
+import { footerLine, publicLogoHref, useBrandPicture, useSitePrintBrand } from "./brandMeta";
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocView } from "@/features/editor/DocView";
@@ -131,7 +131,7 @@ export function PrintPageScreen({ pageId }: { pageId: string }) {
   const { data, error } = usePage(pageId);
   const me = useMe();
   const theme = useDefaultTheme();
-  const brand = useOrgPrintBrand();
+  const brand = useSitePrintBrand();
   const attachmentIds = usePageAttachmentIds(pageId);
   useTheme(theme.isPending ? undefined : (theme.data ?? null));
   if (error) return <PrintFrame failed={error.message} />;

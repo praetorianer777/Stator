@@ -370,7 +370,7 @@ type member struct {
 func (h *harness) makeMember(t *testing.T, slug string) member {
 	t.Helper()
 	if h.site == nil && h.stack {
-		o := instance.Site{Slug: seed.DemoOrgSlug}
+		o := instance.Site{Slug: seed.DemoSiteSlug}
 		if err := h.super.QueryRow(context.Background(), `SELECT id FROM site WHERE slug = $1`, o.Slug).Scan(&o.ID); err != nil {
 			t.Fatalf("find the seed's site on the stack: %v", err)
 		}

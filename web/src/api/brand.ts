@@ -7,7 +7,7 @@ import type { components } from "./schema";
 export type Brand = components["schemas"]["Brand"];
 export type BrandFooter = components["schemas"]["FooterInput"];
 
-export const brandQueryKey = ["org", "brand"] as const;
+export const brandQueryKey = ["site", "brand"] as const;
 
 export const brandQuery = {
   queryKey: brandQueryKey,

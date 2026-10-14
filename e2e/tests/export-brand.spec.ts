@@ -22,12 +22,12 @@ test.describe("the brand of the exports", { tag: ["@auth", "@desktop"] }, () => 
     await page.reload();
     await expect(page.getByLabel("Footer line in English")).toHaveValue("Internal use only");
     await expect(page.getByLabel("Footer line in German")).toHaveValue("Nur für den internen Gebrauch");
-    await expect(page.locator("[data-sidebar] [data-org-logo]")).toBeVisible();
+    await expect(page.locator("[data-sidebar] [data-site-logo]")).toBeVisible();
     await expect(page.locator("[data-sidebar] [data-logo-mark]")).toHaveCount(0);
 
     const bob = await pageAs("bob");
     await bob.goto("/spaces");
-    await expect(bob.locator("[data-sidebar] [data-org-logo]")).toBeVisible();
+    await expect(bob.locator("[data-sidebar] [data-site-logo]")).toBeVisible();
     await bob.goto("/settings/brand");
     await expect(bob.getByText("Only an administrator of the organization changes the brand", { exact: false })).toBeVisible();
 

@@ -45,7 +45,7 @@ export function Sidebar({ narrow, drawerOpen, onCloseDrawer }: { narrow: boolean
           aria-label={t.nav.whereYouAre}
         >
           <div className="flex h-12 items-center gap-2 border-b border-border px-3">
-            <OrgMark />
+            <SiteMark />
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{APP_NAME}</span>
           </div>
 
@@ -135,7 +135,7 @@ function SidebarDrawer({ onClose, children }: { onClose: () => void; children: R
 }
 
 /** The organization's own logo where it has one, else the mark. */
-function OrgMark() {
+function SiteMark() {
   const { data: brand } = useBrand();
   const href = brand ? brandLogoHref(brand) : null;
   if (!href) return <LogoMark className="shrink-0 rounded-control" />;
@@ -146,7 +146,7 @@ function OrgMark() {
       height={BRAND_LOGO_HEIGHT_PX}
       style={{ height: BRAND_LOGO_HEIGHT_PX }}
       className="max-w-24 shrink-0 rounded-control object-contain"
-      data-org-logo
+      data-site-logo
     />
   );
 }

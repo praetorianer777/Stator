@@ -23,7 +23,7 @@ What Stator needs and Armature does not offer yet is listed at the end.
 
 | Range | Owner | Holds |
 |---|---|---|
-| 00160 to 00162 | connecting (#27) | `armature_connection` (one row per organization: base URL, Armature organization slug and id, the webhook secret sealed), `armature_token` (one row per member: the token sealed, its row id, whom it acts as, its status, when it was checked), their policies |
+| 00160 to 00162 | connecting (#27) | `armature_connection` (one row: base URL, Armature organization slug and id, the webhook secret sealed), `armature_token` (one row per member: the token sealed, its row id, whom it acts as, its status, when it was checked), their policies |
 | 00163 | smart links (#28) | `page_plain_blocks` learns `armatureIssue` and `armatureIssueBlock`, both as their key, so search finds a page by the issues it names |
 | 00164 to 00166 | issue block, list block, create (#29, #30, #31) | nothing is planned; kept for what building them finds |
 | 00167 to 00169 | link sync (#32) | `armature_remote_link`, and the outbox policy for `armature.links` |
@@ -153,7 +153,7 @@ it, never reads an answer given to the old one.
   Armature organization are refused. `connected` counts the members with a
   stored token.
 - **The admin screen** (Organization, Armature) shows `webhookUrl`,
-  `{STATOR_APP_URL}/api/v1/armature/webhook/{orgSlug}`, the topics to
+  `{STATOR_APP_URL}/api/v1/armature/webhook`, the topics to
   subscribe it to (`webhookTopics`), and the steps in Armature: Settings,
   Webhooks, add an endpoint with that address and those topics, and paste the
   secret it shows here.
@@ -501,16 +501,19 @@ Uses `GET /armature/issues/{issueKey}` from #28.
 
 | Operation | Needs | Answers |
 |---|---|---|
-| `POST /armature/webhook/{orgSlug}` | the signature | 204; 401 `bad_signature`; 413 `too_large` |
+| `POST /armature/webhook` | the signature | 204; 401 `bad_signature`; 413 `too_large` |
+| `POST /armature/webhook/{siteSlug}` (deprecated alias) | the signature | as above; any slug but the instance's is 401 `bad_signature` |
 
-- **Why the slug is in the path.** The receiver has to find the secret before
-  it can trust anything in the body, and the organization's slug is what the
-  sign-in path already uses. The admin screen shows the whole address.
+- **The address.** As built in #33 the path named the organization's slug, so
+  the receiver could find its secret before trusting the body. Since #380 an
+  instance serves one organization and the address names none; the old one
+  stays as an alias for receivers configured in Armature before. The admin
+  screen shows the whole address.
 - **Verification.** The body is read whole, up to `armature.WebhookMaxBytes`,
-  1 MiB; a longer one is 413 `too_large`. An organization that does not
-  exist, or has no connection or no secret, is 401 `bad_signature` like a
-  wrong signature, with the same sentence, so the address never tells which
-  organizations use Armature. The header
+  1 MiB; a longer one is 413 `too_large`. No connection, no secret, or a slug
+  on the old address that is not the instance's is 401 `bad_signature` like
+  a wrong signature, with the same sentence, so the address tells nobody
+  whether Armature is connected. The header
   `X-Armature-Signature-256` must be `sha256=` and the lower case hex
   HMAC-SHA256 of the raw body under the secret, compared in constant time, as
   Armature's `webhook.Sign` makes it; otherwise 401 `bad_signature`. Then the
@@ -537,10 +540,10 @@ Uses `GET /armature/issues/{issueKey}` from #28.
   in the organization: any change may change any query's rows.
 - Without Valkey there is nothing to clear; a delivery is still verified and
   answered 204.
-- **As built in #33.** `armature.Service.Webhook` reads the organization's
-  sealed secret by slug as the admin role, since no tenant is known before
-  the signature vouches for the body, and checks a stand-in secret when there
-  is none, so an unknown organization takes the same work as a known one.
+- **As built in #33.** `armature.Service.Webhook` reads the sealed
+  secret as the admin role, since nobody is known before the signature
+  vouches for the body, and checks a stand-in secret when there is none, so
+  a missing secret takes the same work as a stored one.
   `armature.Sign` and `armature.VerifySignature` are Armature's `webhook.Sign`
   and `webhook.Verify`; `armature.WebhookClears` names what a topic clears.
   Keys in a payload are read in any case, and one that is not a key is

@@ -1,28 +1,28 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMe } from "@/api/auth";
-import { subjectKey, subjectRef, useOrgPermissions, useSetOrgPermission, type GlobalGrant, type Subject } from "@/api/permissions";
+import { subjectKey, subjectRef, useSitePermissions, useSetSitePermission, type GlobalGrant, type Subject } from "@/api/permissions";
 import { Button, Card, ErrorBanner, PageHeader, Skeleton } from "@/components/ui";
-import { OrgAnonymousAccess, OrgPublicLinks } from "@/features/public/AnonymousAccess";
+import { SiteAnonymousAccess, SitePublicLinks } from "@/features/public/AnonymousAccess";
 import { t } from "@/i18n";
 import { SubjectList } from "./SubjectList";
 import { SubjectPicker } from "./SubjectPicker";
 
 /** The organization's global permissions, one card each; a card's changes wait for its own save. */
-export function OrgPermissions() {
-  const { data, error, refetch, isLoading } = useOrgPermissions();
+export function SitePermissions() {
+  const { data, error, refetch, isLoading } = useSitePermissions();
   return (
-    <div className="mx-auto max-w-3xl" data-org-permissions>
-      <PageHeader crumb={t.settings.title} title={t.permissions.orgTitle} />
-      <p className="mb-4 text-sm text-ink-muted">{t.permissions.orgIntro}</p>
+    <div className="mx-auto max-w-3xl" data-site-permissions>
+      <PageHeader crumb={t.settings.title} title={t.permissions.siteTitle} />
+      <p className="mb-4 text-sm text-ink-muted">{t.permissions.siteIntro}</p>
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
       <div className="space-y-4">
         {(data ?? []).map((grant) => (
           <GrantCard key={grant.permission} grant={grant} />
         ))}
-        <OrgAnonymousAccess />
-        <OrgPublicLinks />
+        <SiteAnonymousAccess />
+        <SitePublicLinks />
       </div>
     </div>
   );
@@ -32,7 +32,7 @@ const keys = (subjects: Subject[]) => subjects.map(subjectKey).join(",");
 
 function GrantCard({ grant }: { grant: GlobalGrant }) {
   const { data: me } = useMe();
-  const save = useSetOrgPermission();
+  const save = useSetSitePermission();
   const [subjects, setSubjects] = useState<Subject[]>(grant.subjects);
   const [notice, setNotice] = useState("");
   const name = t.permissions.globalNames[grant.permission];

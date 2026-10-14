@@ -19,7 +19,7 @@ async function bytesOf(download: Download): Promise<Buffer> {
 
 const words = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
-interface OrgManifest {
+interface SiteManifest {
   format: string;
   spaces: Array<{ key: string; archive: string }>;
   notCarried: Array<{ key: string }>;
@@ -45,24 +45,24 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
         }),
       );
 
-      await openUntil(page, "/settings/transfer", () => expect(page.locator("[data-org-transfer]")).toBeVisible(ONE_LOOK));
+      await openUntil(page, "/settings/transfer", () => expect(page.locator("[data-site-transfer]")).toBeVisible(ONE_LOOK));
       await expect(page.locator('[data-not-carried="passwords"]')).toBeVisible();
       // The organization keeps the exports of earlier runs; this one is the one not among them.
       const earlier = new Set(must(await api.GET("/site/exports")).exports.map((each) => each.id));
-      await page.locator('[data-action="export-org"]').click();
-      const row = page.locator("[data-org-export-row]").first();
+      await page.locator('[data-action="export-site"]').click();
+      const row = page.locator("[data-site-export-row]").first();
       await expect(async () => {
         expect(earlier.has((await row.getAttribute("data-export-id")) ?? "")).toBe(false);
       }).toPass(WORKED);
-      await expect(row).toHaveAttribute("data-org-export-row", "done", WORKED);
-      const link = row.locator('[data-action="download-org-export"]');
+      await expect(row).toHaveAttribute("data-site-export-row", "done", WORKED);
+      const link = row.locator('[data-action="download-site-export"]');
       const downloading = page.waitForEvent("download");
       await link.click();
       const file = await downloading;
       expect(file.suggestedFilename()).toMatch(/-organization-\d{4}-\d{2}-\d{2}\.zip$/);
       const archive = await bytesOf(file);
       const entries = unzip(archive);
-      const manifest = JSON.parse(entries.get("manifest.json")!.toString("utf8")) as OrgManifest;
+      const manifest = JSON.parse(entries.get("manifest.json")!.toString("utf8")) as SiteManifest;
       expect(manifest.format).toBe("stator.organization");
       expect(manifest.notCarried.map((o) => o.key)).toContain("passwords");
       const entry = manifest.spaces.find((s) => s.key === key);
@@ -76,7 +76,7 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
       const bob = await pageAs("bob");
       await bob.goto("/settings/transfer");
       await expect(bob.getByText("Only an administrator of the organization exports or imports all of it", { exact: false })).toBeVisible();
-      await expect(bob.locator('[data-action="export-org"]')).toHaveCount(0);
+      await expect(bob.locator('[data-action="export-site"]')).toHaveCount(0);
 
       // The one organization has spaces, this spec's among them, so it takes
       // no archive; a fresh instance taking one whole is proven by the
@@ -84,8 +84,8 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
       const saved = testInfo.outputPath("organization.zip");
       writeFileSync(saved, archive);
       await page.goto("/settings/transfer");
-      await page.locator("[data-org-import-file]").setInputFiles(saved);
-      await page.locator('[data-action="confirm-import-org"]').click();
+      await page.locator("[data-site-import-file]").setInputFiles(saved);
+      await page.locator('[data-action="confirm-import-site"]').click();
       await expect(page.getByText("This organization has spaces already", { exact: false })).toBeVisible();
     } finally {
       await deleteSpace(api, key);
@@ -95,8 +95,8 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
     test(`the export and import settings are accessible in the ${scheme} scheme`, async ({ page }) => {
       await startInScheme(page, scheme);
-      await openUntil(page, "/settings/transfer", () => expect(page.locator("[data-org-transfer]")).toBeVisible(ONE_LOOK));
-      await expect(page.locator('[data-action="choose-org-archive"]')).toBeVisible();
+      await openUntil(page, "/settings/transfer", () => expect(page.locator("[data-site-transfer]")).toBeVisible(ONE_LOOK));
+      await expect(page.locator('[data-action="choose-site-archive"]')).toBeVisible();
       await expectAccessible(page);
     });
   }

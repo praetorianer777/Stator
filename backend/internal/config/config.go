@@ -41,9 +41,9 @@ const (
 	DefaultS3Bucket        = "stator-files"
 	DefaultS3Region        = "us-east-1"
 	DefaultMailFrom        = "Stator <no-reply@stator.localhost>"
-	// DefaultBootstrapOrgName is seed.DemoOrgName, which a test holds it to.
-	DefaultBootstrapOrgName = "Demo"
-	DefaultSessionTTL       = 720 * time.Hour
+	// DefaultBootstrapSiteName is seed.DemoSiteName, which a test holds it to.
+	DefaultBootstrapSiteName = "Demo"
+	DefaultSessionTTL        = 720 * time.Hour
 	// DefaultRetainAudit and MinRetainAudit are audit.DefaultRetention and
 	// audit.MinRetention, which a test holds the two to.
 	DefaultRetainAudit = 365 * 24 * time.Hour
@@ -69,8 +69,8 @@ const (
 	DefaultSpaceTransferCheck       = 2 * time.Second
 	DefaultSpaceExportTTL           = 24 * time.Hour
 	DefaultSpaceImportLimit   int64 = 200 << 20
-	// DefaultOrgImportLimit is spaceio.DefaultMaxOrgImportBytes.
-	DefaultOrgImportLimit int64 = 2 << 30
+	// DefaultSiteImportLimit is spaceio.DefaultMaxSiteImportBytes.
+	DefaultSiteImportLimit int64 = 2 << 30
 	// DefaultWordImportCheck is wordio.DefaultWatchInterval, which a test
 	// holds the two to.
 	DefaultWordImportCheck = 2 * time.Second
@@ -144,9 +144,9 @@ type Config struct {
 	SpaceTransferCheck time.Duration
 	SpaceExportTTL     time.Duration
 	// SpaceImportLimit is the largest archive a space import takes, in bytes,
-	// and OrgImportLimit the largest an organization's import takes.
+	// and SiteImportLimit the largest an organization's import takes.
 	SpaceImportLimit int64
-	OrgImportLimit   int64
+	SiteImportLimit  int64
 	// WordImportCheck is how often the worker looks for Word documents to
 	// import, while their importer waits for them.
 	WordImportCheck time.Duration
@@ -226,9 +226,9 @@ type Armature struct {
 // Bootstrap is what cmd/seed sets up in the demo organization: a first local
 // administrator, and an identity provider when it has none yet.
 type Bootstrap struct {
-	// OrgName names the organization when the bootstrap makes it; one made
+	// SiteName names the organization when the bootstrap makes it; one made
 	// before keeps its name.
-	OrgName string
+	SiteName string
 
 	AdminEmail    string
 	AdminPassword string
@@ -356,7 +356,7 @@ func Load() (Config, error) {
 			MaxSize:     l.size("STATOR_RENDER_MAX_SIZE", DefaultRenderMaxSize),
 		},
 		Bootstrap: Bootstrap{
-			OrgName:    l.str("STATOR_BOOTSTRAP_ORG_NAME", DefaultBootstrapOrgName),
+			SiteName:   l.str("STATOR_BOOTSTRAP_ORG_NAME", DefaultBootstrapSiteName),
 			AdminEmail: l.str("STATOR_BOOTSTRAP_ADMIN_EMAIL", ""),
 			// Not trimmed: a password is exactly what was typed.
 			AdminPassword:    os.Getenv("STATOR_BOOTSTRAP_ADMIN_PASSWORD"),
@@ -382,7 +382,7 @@ func Load() (Config, error) {
 		SpaceTransferCheck: l.duration("STATOR_SPACE_TRANSFER_CHECK_INTERVAL", DefaultSpaceTransferCheck),
 		SpaceExportTTL:     l.duration("STATOR_SPACE_EXPORT_TTL", DefaultSpaceExportTTL),
 		SpaceImportLimit:   l.size("STATOR_SPACE_IMPORT_LIMIT", DefaultSpaceImportLimit),
-		OrgImportLimit:     l.size("STATOR_ORG_IMPORT_LIMIT", DefaultOrgImportLimit),
+		SiteImportLimit:    l.size("STATOR_ORG_IMPORT_LIMIT", DefaultSiteImportLimit),
 		WordImportCheck:    l.duration("STATOR_WORD_IMPORT_CHECK_INTERVAL", DefaultWordImportCheck),
 	}
 	c.Auth.OIDCRedirectURL = l.str("STATOR_OIDC_REDIRECT_URL", c.AppBaseURL+OIDCCallbackPath)
@@ -432,7 +432,7 @@ func Load() (Config, error) {
 	if strings.TrimSpace(os.Getenv(retiredBootstrapSlug)) != "" {
 		l.problem(retiredBootstrapSlug + " is no longer read, since an instance serves one organization and no address names it. Remove the setting; STATOR_BOOTSTRAP_ORG_NAME still names the organization.")
 	}
-	if c.Bootstrap.OrgName == "" {
+	if c.Bootstrap.SiteName == "" {
 		l.problem("STATOR_BOOTSTRAP_ORG_NAME is empty; give the organization a name.")
 	}
 	if (c.Bootstrap.AdminEmail == "") != (c.Bootstrap.AdminPassword == "") {
@@ -485,7 +485,7 @@ func Load() (Config, error) {
 	if c.SpaceImportLimit <= 0 {
 		l.problem("STATOR_SPACE_IMPORT_LIMIT must be a size above zero, such as 200MB.")
 	}
-	if c.OrgImportLimit <= 0 {
+	if c.SiteImportLimit <= 0 {
 		l.problem("STATOR_ORG_IMPORT_LIMIT must be a size above zero, such as 2GB.")
 	}
 	if c.WordImportCheck < time.Second {

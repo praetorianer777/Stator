@@ -15,7 +15,7 @@ import { Button, EmptyState, ErrorBanner, PageHeader, Segmented, Skeleton } from
 import { Icon } from "@/components/icons";
 import { EXAMPLE_SPACE_GIVE_UP_MS, EXAMPLE_SPACE_SLOW_MS } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
-import { useCanAdministerOrg } from "@/features/permissions/access";
+import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
 
 /** The example space by its name, linked, with a word when it is archived. */
@@ -96,7 +96,7 @@ function Progress({ note, failure, error }: { note?: string; failure?: string; e
 
 /** The spaces overview's offer of the example space, to administrators while there is none. */
 export function ExampleSpaceButton() {
-  const admin = useCanAdministerOrg();
+  const admin = useCanAdministerSite();
   const { query, make, run, found, underWay, failure, note } = useMakeExample(admin);
   if (found) return <ExistingExample space={found} />;
   if (query.data?.space && !underWay) return <ExampleRenewal />;
@@ -113,7 +113,7 @@ export function ExampleSpaceButton() {
 
 /** The organization settings' page for the example space. */
 export function ExampleSpaceSettings() {
-  const admin = useCanAdministerOrg();
+  const admin = useCanAdministerSite();
   const { query, make, run, found, underWay, failure, note } = useMakeExample(admin);
   if (!admin) {
     return (
@@ -165,7 +165,7 @@ function ReportList({ spaceKey, heading, pages, attr }: { spaceKey: string; head
  * renews it, follows the worker doing so, and says what it added and kept.
  */
 export function ExampleRenewal({ choose = false, spaceId }: { choose?: boolean; spaceId?: string }) {
-  const admin = useCanAdministerOrg();
+  const admin = useCanAdministerSite();
   const queryClient = useQueryClient();
   const query = useExampleSpace(admin);
   const renew = useRenewExampleSpace();

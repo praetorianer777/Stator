@@ -292,7 +292,7 @@ func requireAdmin(ctx context.Context, tx db.DBTX, actor perm.Actor) error {
 	if err != nil {
 		return err
 	}
-	if !f.OrgAdmin() {
+	if !f.SiteAdmin() {
 		return ErrNotAdmin
 	}
 	return nil

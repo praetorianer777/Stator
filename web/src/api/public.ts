@@ -85,7 +85,7 @@ export function publicAttachmentUrl(id: string, inline = false): string {
   return `${API_BASE}/public/attachments/${encodeURIComponent(id)}${inline ? "?inline=1" : ""}`;
 }
 
-export const anonymousAccessQueryKey = ["org", "anonymous-access"] as const;
+export const anonymousAccessQueryKey = ["site", "anonymous-access"] as const;
 
 export function useAnonymousAccess() {
   return useQuery({
@@ -183,7 +183,7 @@ export function useRevokePageLink(pageId: string) {
   });
 }
 
-export const publicLinkSettingsQueryKey = ["org", "public-links"] as const;
+export const publicLinkSettingsQueryKey = ["site", "public-links"] as const;
 
 export function usePublicLinkSettings() {
   return useQuery({

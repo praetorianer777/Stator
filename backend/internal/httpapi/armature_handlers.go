@@ -407,7 +407,7 @@ func (s *Server) handleArmatureWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	// Receivers set up before the address lost the organization's slug still
 	// post to the old one; any other slug never was this site.
-	if slug := chi.URLParam(r, "orgSlug"); slug != "" && !strings.EqualFold(slug, site.Slug) {
+	if slug := chi.URLParam(r, "siteSlug"); slug != "" && !strings.EqualFold(slug, site.Slug) {
 		respondError(w, r, errBadSignature)
 		return
 	}

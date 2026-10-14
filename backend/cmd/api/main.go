@@ -296,13 +296,13 @@ func run() error {
 	return nil
 }
 
-// resolveInstance finds the site before anybody asks and refuses a
-// database holding several; one the seed has not made yet is found later.
+// resolveInstance finds the site before anybody asks; one the seed has not
+// made yet is found later.
 func resolveInstance(ctx context.Context, cluster *db.Cluster, log *slog.Logger) (*instance.Resolver, error) {
 	site := instance.NewResolver(cluster)
 	switch _, err := site.Site(ctx); {
-	case errors.Is(err, instance.ErrNone):
-		log.Warn("the instance has no organization yet; run seed bootstrap to make it")
+	case errors.Is(err, instance.ErrNotBootstrapped):
+		log.Warn(instance.ErrNotBootstrapped.Error())
 	case err != nil:
 		return nil, err
 	}
@@ -435,6 +435,6 @@ func renderer(cfg config.Render, log *slog.Logger) render.Renderer {
 func spaceTransfers(cluster *db.Cluster, store objectstore.Store, cfg config.Config) *spaceio.Jobs {
 	jobs := spaceio.NewJobs(cluster, store)
 	jobs.MaxImportBytes = cfg.SpaceImportLimit
-	jobs.MaxOrgImportBytes = cfg.OrgImportLimit
+	jobs.MaxSiteImportBytes = cfg.SiteImportLimit
 	return jobs
 }

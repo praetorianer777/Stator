@@ -353,12 +353,12 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &bigArchive) {
 		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: bigArchive.Error()}
 	}
-	var bigOrgArchive *spaceio.OrgTooLargeError
-	if errors.As(err, &bigOrgArchive) {
-		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: bigOrgArchive.Error()}
+	var bigSiteArchive *spaceio.SiteTooLargeError
+	if errors.As(err, &bigSiteArchive) {
+		return &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large", Message: bigSiteArchive.Error()}
 	}
-	if errors.Is(err, spaceio.ErrOrgNotEmpty) {
-		return &APIError{Status: http.StatusConflict, Code: "org_not_empty", Message: spaceio.ErrOrgNotEmpty.Error()}
+	if errors.Is(err, spaceio.ErrSiteNotEmpty) {
+		return &APIError{Status: http.StatusConflict, Code: "org_not_empty", Message: spaceio.ErrSiteNotEmpty.Error()}
 	}
 	var badDoc *document.InvalidError
 	if errors.As(err, &badDoc) {
@@ -385,12 +385,9 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, auth.ErrUserInactive):
 		return &APIError{Status: http.StatusForbidden, Code: "account_inactive",
 			Message: "This account has been deactivated. Ask an administrator of your organization to turn it back on."}
-	case errors.Is(err, instance.ErrNone):
+	case errors.Is(err, instance.ErrNotBootstrapped):
 		return &APIError{Status: http.StatusServiceUnavailable, Code: "not_bootstrapped",
 			Message: "Stator is not set up yet. Ask its operator to run seed bootstrap.", cause: err}
-	case errors.Is(err, instance.ErrSeveral):
-		return &APIError{Status: http.StatusServiceUnavailable, Code: "several_organizations",
-			Message: "Stator cannot tell which organization it serves. Ask its operator to read the api's log.", cause: err}
 	case errors.Is(err, auth.ErrBadLocale):
 		return ErrValidation(map[string]string{"locale": "Choose English, German, or the language of your browser."})
 	case errors.Is(err, auth.ErrNoSuchRequest):

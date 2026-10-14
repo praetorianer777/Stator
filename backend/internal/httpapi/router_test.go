@@ -253,14 +253,14 @@ func TestAuthenticationNamesAMemberToTheDatabase(t *testing.T) {
 		t.Errorf("anonymous past requireAuth = %d %v", resp.StatusCode, body)
 	}
 
-	resp, body = serve(t, authenticated(s, requireOrg), get("no-org"))
+	resp, body = serve(t, authenticated(s, requireMember), get("no-org"))
 	if resp.StatusCode != http.StatusBadRequest || errorOf(t, body)["code"] != "no_organization" {
-		t.Errorf("no organization past requireOrg = %d %v", resp.StatusCode, body)
+		t.Errorf("no organization past requireMember = %d %v", resp.StatusCode, body)
 	}
 
-	resp, _ = serve(t, authenticated(s, requireOrg), get("in-org"))
+	resp, _ = serve(t, authenticated(s, requireMember), get("in-org"))
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("a member past requireOrg = %d", resp.StatusCode)
+		t.Errorf("a member past requireMember = %d", resp.StatusCode)
 	}
 }
 

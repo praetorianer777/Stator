@@ -19,7 +19,7 @@ import (
 
 func TestTheDefaultsAreTheConfigurations(t *testing.T) {
 	if DefaultWatchInterval != config.DefaultSpaceTransferCheck || DefaultExportTTL != config.DefaultSpaceExportTTL || DefaultMaxImportBytes != config.DefaultSpaceImportLimit ||
-		DefaultMaxOrgImportBytes != config.DefaultOrgImportLimit {
+		DefaultMaxSiteImportBytes != config.DefaultSiteImportLimit {
 		t.Fatalf("spaceio's defaults %s, %s, %d and config's %s, %s, %d disagree", DefaultWatchInterval, DefaultExportTTL, DefaultMaxImportBytes,
 			config.DefaultSpaceTransferCheck, config.DefaultSpaceExportTTL, config.DefaultSpaceImportLimit)
 	}
@@ -124,24 +124,24 @@ func TestAManifestIsOursAndNotNewer(t *testing.T) {
 // An organization's archive is ours, not newer, and holds a bounded number
 // of spaces; a space's archive given in its place is told apart.
 func TestAnOrganizationManifestIsOursAndNotNewer(t *testing.T) {
-	ok := func() *OrgManifest { return &OrgManifest{Format: OrgFormat, Version: OrgVersion} }
-	if err := CheckOrgManifest(ok()); err != nil {
+	ok := func() *SiteManifest { return &SiteManifest{Format: SiteFormat, Version: SiteVersion} }
+	if err := CheckSiteManifest(ok()); err != nil {
 		t.Fatalf("a manifest of ours is refused: %v", err)
 	}
-	for name, change := range map[string]func(*OrgManifest){
-		"a space's archive": func(m *OrgManifest) { m.Format = Format },
-		"a newer one":       func(m *OrgManifest) { m.Version = OrgVersion + 1 },
-		"too many spaces":   func(m *OrgManifest) { m.Spaces = make([]OrgSpace, MaxOrgSpaces+1) },
+	for name, change := range map[string]func(*SiteManifest){
+		"a space's archive": func(m *SiteManifest) { m.Format = Format },
+		"a newer one":       func(m *SiteManifest) { m.Version = SiteVersion + 1 },
+		"too many spaces":   func(m *SiteManifest) { m.Spaces = make([]SiteSpace, MaxSiteSpaces+1) },
 	} {
 		m := ok()
 		change(m)
 		var inv *InvalidError
-		if err := CheckOrgManifest(m); !errors.As(err, &inv) || !strings.HasSuffix(inv.Message, ".") {
+		if err := CheckSiteManifest(m); !errors.As(err, &inv) || !strings.HasSuffix(inv.Message, ".") {
 			t.Errorf("%s: answered %v, want a sentence", name, err)
 		}
 	}
 	data, _ := json.Marshal(manifest())
-	_, err := readOrgManifest(zipOf(t, map[string]string{manifestPath: string(data)}))
+	_, err := readSiteManifest(zipOf(t, map[string]string{manifestPath: string(data)}))
 	var inv *InvalidError
 	if !errors.As(err, &inv) || !strings.Contains(inv.Message, "organization") {
 		t.Errorf("a space's archive is refused as %v", err)

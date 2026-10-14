@@ -50,9 +50,9 @@ type kind string
 const (
 	kindExport kind = "space_export"
 	kindImport kind = "space_import"
-	// kindOrgExport and kindOrgImport carry the whole site.
-	kindOrgExport kind = "site_export"
-	kindOrgImport kind = "site_import"
+	// kindSiteExport and kindSiteImport carry the whole site.
+	kindSiteExport kind = "site_export"
+	kindSiteImport kind = "site_import"
 )
 
 // claim is a job a worker took, with whom it acts for.
@@ -140,18 +140,18 @@ func (w *Watch) Once(ctx context.Context) (bool, error) {
 		}
 		return true, w.runImport(ctx, c)
 	}
-	for _, k := range []kind{kindOrgExport, kindOrgImport} {
-		c, err := w.claimOrg(ctx, k)
+	for _, k := range []kind{kindSiteExport, kindSiteImport} {
+		c, err := w.claimSite(ctx, k)
 		if err != nil {
 			return false, err
 		}
 		if c == nil {
 			continue
 		}
-		if k == kindOrgExport {
-			return true, w.runOrgExport(ctx, c)
+		if k == kindSiteExport {
+			return true, w.runSiteExport(ctx, c)
 		}
-		return true, w.runOrgImport(ctx, c)
+		return true, w.runSiteImport(ctx, c)
 	}
 	return false, nil
 }

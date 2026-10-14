@@ -27,7 +27,7 @@ account menu and give it to the client as a bearer:
 ```
 
 The tokens page shows the same settings with this deployment's address. A
-token acts in the one organization it was made in. A signed-in session
+token acts as the person who made it. A signed-in session
 reaches the endpoint as it reaches every route, but a client holds a token.
 There is no OAuth flow, as in Armature.
 

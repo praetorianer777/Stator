@@ -7,7 +7,7 @@ import type { components } from "./schema";
 export type Hub = components["schemas"]["Hub"];
 export type HubChoice = components["schemas"]["HubInput"];
 
-export const hubQueryKey = ["org", "hub"] as const;
+export const hubQueryKey = ["site", "hub"] as const;
 
 export const hubQuery = {
   queryKey: hubQueryKey,

@@ -32,7 +32,7 @@ func isPublicPath(r *http.Request) bool {
 }
 
 // oldPublicPaths are the reads for anybody as their addresses ran after
-// /public/{orgSlug} before #380, with the operation id each answers under.
+// /public/{siteSlug} before #380, with the operation id each answers under.
 var oldPublicPaths = []struct{ path, id string }{
 	{"", "publicSiteWithSlug"},
 	{"/spaces/{spaceKey}", "publicSpaceWithSlug"},
@@ -53,7 +53,7 @@ var oldPublicPaths = []struct{ path, id string }{
 func oldPublicOperations() []operation {
 	out := make([]operation, 0, len(oldPublicPaths))
 	for _, old := range oldPublicPaths {
-		out = append(out, operation{method: "GET", path: "/public/{orgSlug}" + old.path, handler: "handleOldPublicPath", id: old.id,
+		out = append(out, operation{method: "GET", path: "/public/{siteSlug}" + old.path, handler: "handleOldPublicPath", id: old.id,
 			tag: "public", public: true, redirect: true, deprecated: true,
 			summary:   "The address GET /public" + old.path + " had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
 			responses: map[int]any{404: errorEnvelope{}}})
@@ -70,7 +70,7 @@ func (s *Server) handleOldPublicPath(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 	}
-	if !s.namesTheInstance(r, chi.URLParam(r, "orgSlug")) {
+	if !s.namesTheInstance(r, chi.URLParam(r, "siteSlug")) {
 		w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 		if link {
 			respondError(w, r, public.ErrLinkGone)

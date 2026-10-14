@@ -31,7 +31,7 @@ export function TemplateList({ spaceKey, canEdit }: { spaceKey?: string; canEdit
     <section aria-labelledby="templates-list" className="space-y-3" data-template-list={scope}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="templates-list" className="text-sm font-semibold text-ink">
-          {spaceKey ? t.templates.spaceList : t.templates.orgList}
+          {spaceKey ? t.templates.spaceList : t.templates.siteList}
         </h2>
         {canEdit && (
           <Link to={TEMPLATE_NEW_PATH} search={spaceKey ? { space: spaceKey } : {}} className={linkButton} data-action="new-template">
@@ -40,8 +40,8 @@ export function TemplateList({ spaceKey, canEdit }: { spaceKey?: string; canEdit
           </Link>
         )}
       </div>
-      <p className="text-sm text-ink-muted">{spaceKey ? t.templates.spaceIntro : t.templates.orgIntro}</p>
-      {!canEdit && <p className="text-sm text-ink-muted">{spaceKey ? t.templates.spaceNotAdmin : t.templates.orgNotAdmin}</p>}
+      <p className="text-sm text-ink-muted">{spaceKey ? t.templates.spaceIntro : t.templates.siteIntro}</p>
+      {!canEdit && <p className="text-sm text-ink-muted">{spaceKey ? t.templates.spaceNotAdmin : t.templates.siteNotAdmin}</p>}
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
       <p role="status" className="text-sm text-ink-muted empty:hidden" data-templates-notice>
         {notice}

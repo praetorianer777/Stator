@@ -1066,6 +1066,21 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- What still said organization without meaning one is named after the site
+  (#380). Migration 00770 renames the indexes and constraints the schema
+  change left with `org` in their names; anything that refers to them by
+  name, such as a monitoring query, has to follow. In the API document the
+  schemas `OrgAPIToken`, `OrgExport`, `OrgImport`, `OrgImportReport` and
+  `OrgOmission` are now `SiteAPIToken`, `SiteExport`, `SiteImport`,
+  `SiteImportReport` and `SiteOmission`, the operations of the
+  organization's tokens, exports and imports are `listSiteAPITokens`,
+  `createSiteExport` and so on, the latter under the tag `transfer`, and
+  the old public and webhook paths name their parameter `siteSlug`; the
+  paths and the JSON are unchanged, so only generated clients notice.
+  Audit entries keep their `org.*` actions, and archives their format. The
+  api no longer answers `several_organizations`, which the database rules
+  out. `docs/decisions.md` records the decision, and
+  `docs/architecture.md` describes row level security as it is now.
 - **Outbound webhooks no longer send `orgId` (#380).** The envelope is now
   `{id, topic, occurredAt, payload}`: an instance serves one organization, so
   the field said nothing. A receiver that reads `orgId` to tell instances

@@ -105,7 +105,7 @@ func (s *Service) Set(ctx context.Context, actor perm.Actor, in HubInput) (*Hub,
 		if err != nil {
 			return err
 		}
-		if !f.OrgAdmin() {
+		if !f.SiteAdmin() {
 			return ErrNotAdmin
 		}
 		data := map[string]any{"landing": in.Landing}

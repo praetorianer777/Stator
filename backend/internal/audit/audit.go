@@ -14,7 +14,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 )
 
-// Actions recorded so far.
+// Actions recorded so far. Those of the organization as a whole keep their
+// org. prefix after #380: rows, archives and API filters already carry it.
 const (
 	ActionMemberAdmitted = "member.admitted"
 	// ActionMemberCreated is a person an administrator added with a password.

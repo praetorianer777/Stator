@@ -213,7 +213,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Get("/auth/oidc/callback", s.handleOIDCCallback)
 		r.Post("/armature/webhook", s.handleArmatureWebhook)
 		// The address before #380, which receivers set up in Armature still use.
-		r.Post("/armature/webhook/{orgSlug}", s.handleArmatureWebhook)
+		r.Post("/armature/webhook/{siteSlug}", s.handleArmatureWebhook)
 		r.Group(func(r chi.Router) {
 			r.Use(s.anonymousReader)
 			r.Get("/public", s.handlePublicSite)
@@ -236,7 +236,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		// The addresses before #380 named the organization; the fixed paths
 		// above win over a slug of the same name.
 		for _, old := range oldPublicPaths {
-			r.Get("/public/{orgSlug}"+old.path, s.handleOldPublicPath)
+			r.Get("/public/{siteSlug}"+old.path, s.handleOldPublicPath)
 		}
 		mountPending(r, true)
 
@@ -260,8 +260,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/users/requests", s.handleListJoinRequests)
 			r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)
 			r.Delete("/users/requests/{userID}", s.handleDeclineJoinRequest)
-			r.Get("/site/tokens", s.handleListOrgAPITokens)
-			r.Delete("/site/tokens/{tokenID}", s.handleRevokeOrgAPIToken)
+			r.Get("/site/tokens", s.handleListSiteAPITokens)
+			r.Delete("/site/tokens/{tokenID}", s.handleRevokeSiteAPIToken)
 			r.Get("/site/permissions", s.handleListGlobalPermissions)
 			r.Put("/site/permissions/{permission}", s.handleSetGlobalPermission)
 			r.Put("/site/hub", s.handleSetHub)
@@ -275,20 +275,20 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/spaces/{spaceKey}/guests", s.handleListGuests)
 			r.Post("/spaces/{spaceKey}/guests", s.handleInviteGuest)
 			r.Delete("/spaces/{spaceKey}/guests/{userID}", s.handleRemoveGuest)
-			r.Post("/site/exports", s.handleCreateOrgExport)
-			r.Get("/site/exports", s.handleListOrgExports)
-			r.Get("/site/exports/{exportID}/file", s.handleDownloadOrgExport)
-			r.Post("/site/imports", s.handleCreateOrgImport)
-			r.Get("/site/imports", s.handleListOrgImports)
-			r.Get("/site/imports/{importID}", s.handleGetOrgImport)
+			r.Post("/site/exports", s.handleCreateSiteExport)
+			r.Get("/site/exports", s.handleListSiteExports)
+			r.Get("/site/exports/{exportID}/file", s.handleDownloadSiteExport)
+			r.Post("/site/imports", s.handleCreateSiteImport)
+			r.Get("/site/imports", s.handleListSiteImports)
+			r.Get("/site/imports/{importID}", s.handleGetSiteImport)
 		})
 
 		// What the caller may do is theirs to read even without use, so the
 		// client can say why everything else is refused.
-		r.With(requireOrg).Get("/access/me", s.handleMyAccess)
+		r.With(requireMember).Get("/access/me", s.handleMyAccess)
 
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg, s.requireUse, requireWholeInstance)
+			r.Use(requireMember, s.requireUse, requireWholeInstance)
 			r.Get("/tokens", s.handleListAPITokens)
 			// Making one is for a session only, so a leaked token cannot mint a
 			// longer lived one and outlive its own revocation.
@@ -300,7 +300,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		// signed in. The fixed paths come first so "active" is never an id.
 		r.With(requireAuth).Get("/themes/examples", s.handleThemeExamples)
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg, s.requireUse)
+			r.Use(requireMember, s.requireUse)
 			r.Get("/themes", s.handleListThemes)
 			r.Post("/themes", s.handleCreateTheme)
 			r.Get("/themes/active", s.handleActiveTheme)
@@ -318,7 +318,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		})
 
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg, s.requireUse, requireAdmin)
+			r.Use(requireMember, s.requireUse, requireAdmin)
 			r.Get("/armature/connection", s.handleGetArmatureConnection)
 			r.Put("/armature/connection", s.handleSaveArmatureConnection)
 			r.Delete("/armature/connection", s.handleRemoveArmatureConnection)
@@ -335,7 +335,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", s.handleRedeliverWebhook)
 		})
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg, s.requireUse)
+			r.Use(requireMember, s.requireUse)
 			r.Get("/armature/account", s.handleGetArmatureAccount)
 			r.Put("/armature/account/token", s.handleConnectArmatureAccount)
 			r.Post("/armature/account/check", s.handleCheckArmatureAccount)
@@ -366,7 +366,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		}
 
 		r.Group(func(r chi.Router) {
-			r.Use(requireOrg, s.requireUse)
+			r.Use(requireMember, s.requireUse)
 			r.Get("/people", s.handleListPeople)
 			r.Get("/groups", s.handleListGroups)
 			r.Get("/spaces", s.handleListSpaces)

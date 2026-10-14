@@ -27,6 +27,13 @@ again.
 The refused migration changes nothing, so the database is as it was before
 the upgrade. Go back to the release you ran before, and then:
 
+Steps 1 to 3 run on that older release, whose schema still has the table
+`org`, a column `org_id` on every table and `user_session.proof_org_id`. The
+SQL in step 3 is written for that schema and does not run on the new one,
+which has none of them: there the organization's settings are the one row of
+`site`, and the database refuses a second. Steps 4 and 5 run on the new
+release, which imports the archives the older one exported.
+
 1. Take a backup (`docs/backup-and-restore.md`), in case a step below goes
    wrong.
 2. In every organization, an administrator exports it under Settings,

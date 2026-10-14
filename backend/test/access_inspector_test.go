@@ -126,7 +126,7 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 			t.Errorf("bob's view of ann's unpublished page is decided by %+v", d)
 		}
 		lowOwner := inspect(ann, low, home.user)
-		if lowOwner.Role != "owner" || lowOwner.Rights[1].Steps[1].Kind != perm.StepOrgAdmin || !lowOwner.Rights[1].Steps[2].Bypassed {
+		if lowOwner.Role != "owner" || lowOwner.Rights[1].Steps[1].Kind != perm.StepSiteAdmin || !lowOwner.Rights[1].Steps[2].Bypassed {
 			t.Errorf("the owner edits Low through %+v", lowOwner.Rights[1].Steps)
 		}
 		if again := inspect(owner, low, carlID); again.Rights[0].Allowed {

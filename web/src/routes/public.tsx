@@ -98,9 +98,9 @@ export const publicLinkRoute = createRoute({
 // found otherwise. The fixed paths above win over it.
 export const oldPublicRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/public/$org/$",
+  path: "/public/$siteSlug/$",
   beforeLoad: async ({ params, location }) => {
-    if (await namesTheSite(params.org)) {
+    if (await namesTheSite(params.siteSlug)) {
       const rest = params._splat ? `/${params._splat}` : "";
       throw redirect({ href: `${PUBLIC_PATH}${rest}${location.searchStr}${location.hash ? `#${location.hash}` : ""}`, replace: true });
     }

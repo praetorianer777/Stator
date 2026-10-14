@@ -14,12 +14,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 )
 
-var (
-	// ErrNone is answered before the bootstrap has made the site.
-	ErrNone = errors.New("this instance has no organization yet; run seed bootstrap to make it")
-	// ErrSeveral is answered for a database the upgrade should have refused.
-	ErrSeveral = errors.New("this database holds more than one organization, and Stator serves one per instance; export every organization, delete all but one, then start Stator again")
-)
+// ErrNotBootstrapped is answered before the bootstrap has made the site.
+var ErrNotBootstrapped = errors.New("this instance is not set up yet; run seed bootstrap to set it up")
 
 // Site names the instance's site. Its id is what secrets sealed before the
 // organization left the schema were sealed with, and still are; the slug is
@@ -29,32 +25,17 @@ type Site struct {
 	Slug string
 }
 
-// Find reads the site through tx, which must see every row.
+// Find reads the site through tx, which must be able to see it. The site's
+// key holds it to one row.
 func Find(ctx context.Context, tx db.DBTX) (Site, error) {
-	rows, err := tx.Query(ctx, `SELECT id, slug::text FROM site LIMIT 2`)
-	if err != nil {
+	var site Site
+	if err := tx.QueryRow(ctx, `SELECT id, slug::text FROM site`).Scan(&site.ID, &site.Slug); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Site{}, ErrNotBootstrapped
+		}
 		return Site{}, fmt.Errorf("find the site: %w", err)
 	}
-	defer rows.Close()
-	var found []Site
-	for rows.Next() {
-		var site Site
-		if err := rows.Scan(&site.ID, &site.Slug); err != nil {
-			return Site{}, err
-		}
-		found = append(found, site)
-	}
-	if err := rows.Err(); err != nil {
-		return Site{}, err
-	}
-	switch len(found) {
-	case 0:
-		return Site{}, ErrNone
-	case 1:
-		return found[0], nil
-	default:
-		return Site{}, ErrSeveral
-	}
+	return site, nil
 }
 
 // ID reads the site's id through tx, for what is sealed with it. tx must be
@@ -63,7 +44,7 @@ func ID(ctx context.Context, tx db.DBTX) (uuid.UUID, error) {
 	var id uuid.UUID
 	if err := tx.QueryRow(ctx, `SELECT id FROM site`).Scan(&id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return uuid.Nil, ErrNone
+			return uuid.Nil, ErrNotBootstrapped
 		}
 		return uuid.Nil, fmt.Errorf("read the site: %w", err)
 	}

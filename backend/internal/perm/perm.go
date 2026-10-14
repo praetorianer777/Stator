@@ -54,9 +54,9 @@ const (
 	ListReaders Action = "page.readers"
 	// KeepTemplates makes, changes and deletes the space's own templates.
 	KeepTemplates Action = "space.templates"
-	// KeepOrgTemplates makes, changes and deletes the templates every space
+	// KeepSiteTemplates makes, changes and deletes the templates every space
 	// of the organization offers.
-	KeepOrgTemplates Action = "org.templates"
+	KeepSiteTemplates Action = "org.templates"
 	// ManageShortcuts adds, orders and removes the links pinned above the
 	// space's page tree.
 	ManageShortcuts Action = "space.shortcuts"
@@ -76,9 +76,9 @@ const (
 	KeepReviewRules Action = "space.reviewRules"
 	// SkipReview publishes a pending review without its approvals.
 	SkipReview Action = "page.skipReview"
-	// MoveOrg exports the whole organization as one archive and imports one,
+	// MoveSite exports the whole organization as one archive and imports one,
 	// which only its administrators do.
-	MoveOrg Action = "org.move"
+	MoveSite Action = "site.move"
 )
 
 // Actor is who asks: a person and their standing in the organization the
@@ -144,7 +144,7 @@ func (e *DeniedError) Error() string {
 		return "Only people who may edit this page see who read it. Ask one of its editors, or an administrator of the space, for access."
 	case KeepTemplates:
 		return "Only an administrator of this space can change its templates. Ask one of them."
-	case KeepOrgTemplates:
+	case KeepSiteTemplates:
 		return "Only an administrator of the organization can change the templates every space offers. Ask one of them, or make the template in a space you administer."
 	case ManageShortcuts:
 		return "Only an administrator of this space can change its shortcuts. Ask one of them to add, move or remove a shortcut."
@@ -160,7 +160,7 @@ func (e *DeniedError) Error() string {
 		return "Only an administrator of this space chooses who reviews its pages. Ask one of them to set or remove the rule."
 	case SkipReview:
 		return "Only an administrator of this space can publish a draft without its review. Ask the reviewers to decide, or ask an administrator."
-	case MoveOrg:
+	case MoveSite:
 		return "Only an administrator of the organization exports or imports all of it. Ask one of them to do it."
 	}
 	return "You do not have permission to do that. Ask an administrator of the organization."

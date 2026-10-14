@@ -12,7 +12,7 @@ import { ArchivePanel } from "@/features/archive/ArchivePanel";
 import { SpaceArchive } from "@/features/archive/SpaceArchive";
 import { TemplateList } from "@/features/templates/TemplateList";
 import { ShortcutsPanel } from "@/features/shortcuts/ShortcutsPanel";
-import { useCanAdministerOrg } from "@/features/permissions/access";
+import { useCanAdministerSite } from "@/features/permissions/access";
 import { SpaceExportPanel } from "./SpaceExport";
 import { SpaceGuests } from "./SpaceGuests";
 import { SpaceReviews } from "@/features/reviews/SpaceReviews";
@@ -25,7 +25,7 @@ const SETTINGS_PANEL_ID = "space-settings-panel";
 /** A space's details, who may do what in it, and deleting it; changing anything is an administrator's. */
 export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab: SettingsTab; onTab: (tab: SettingsTab) => void }) {
   const { data: space, error, refetch } = useSpace(spaceKey);
-  const orgAdmin = useCanAdministerOrg();
+  const orgAdmin = useCanAdministerSite();
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (!space) return <Skeleton />;
   // Guests are let into team spaces, by the organization's administrators.

@@ -2,6 +2,10 @@ Stator {{ .Chart.AppVersion }} is installed as {{ .Release.Name }}.
 
   {{ include "stator.appURL" . }}
 
+It serves one organization. An upgrade of a database that holds several is
+refused by the migrate Job, which changes nothing and names them; split the
+instance first as docs/organization-transfer.md says.
+
 Writes go to {{ include "stator.dbHost" . }}.
 {{- with include "stator.replicaHosts" . }}
 Reads go to {{ . }} when the replica a read reaches has caught up, otherwise to the primary.

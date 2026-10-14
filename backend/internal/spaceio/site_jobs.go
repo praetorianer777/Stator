@@ -24,13 +24,13 @@ import (
 // spaces already.
 const FailureNotEmpty Failure = "not_empty"
 
-// OrgExportFailures and OrgImportFailures are every failure, for the API's description.
+// SiteExportFailures and SiteImportFailures are every failure, for the API's description.
 var (
-	OrgExportFailures = []Failure{FailureForbidden, FailureTooLarge, FailureFailed}
-	OrgImportFailures = []Failure{FailureForbidden, FailureNotEmpty, FailureInvalid, FailureTooLarge, FailureFailed}
+	SiteExportFailures = []Failure{FailureForbidden, FailureTooLarge, FailureFailed}
+	SiteImportFailures = []Failure{FailureForbidden, FailureNotEmpty, FailureInvalid, FailureTooLarge, FailureFailed}
 )
 
-func orgExportMessage(f Failure, detail string) string {
+func siteExportMessage(f Failure, detail string) string {
 	switch f {
 	case FailureForbidden:
 		return "Only administrators of the organization export it, and you no longer are one. Ask one of them to export it."
@@ -43,12 +43,12 @@ func orgExportMessage(f Failure, detail string) string {
 	return "Exporting the organization failed. Export it again; if it fails once more, ask whoever runs Stator to look at the worker's log."
 }
 
-func orgImportMessage(f Failure, detail string) string {
+func siteImportMessage(f Failure, detail string) string {
 	switch f {
 	case FailureForbidden:
 		return "Only administrators of the organization import an archive into it, and you no longer are one. Ask one of them to import it."
 	case FailureNotEmpty:
-		return ErrOrgNotEmpty.Error()
+		return ErrSiteNotEmpty.Error()
 	case FailureInvalid, FailureTooLarge:
 		if detail != "" {
 			return detail
@@ -58,19 +58,19 @@ func orgImportMessage(f Failure, detail string) string {
 	return "Importing the organization failed, and nothing of it was kept. Import it again; if it fails once more, ask whoever runs Stator to look at the worker's log."
 }
 
-// OrgNotEmptyError refuses an organization import into an organization with
+// SiteNotEmptyError refuses an organization import into an organization with
 // spaces, in a sentence.
-type OrgNotEmptyError struct{}
+type SiteNotEmptyError struct{}
 
-func (OrgNotEmptyError) Error() string {
+func (SiteNotEmptyError) Error() string {
 	return "This organization has spaces already, and an organization's archive is imported only into one without any. Import it into a fresh Stator, or delete every space here first."
 }
 
-// ErrOrgNotEmpty is the one OrgNotEmptyError.
-var ErrOrgNotEmpty error = OrgNotEmptyError{}
+// ErrSiteNotEmpty is the one SiteNotEmptyError.
+var ErrSiteNotEmpty error = SiteNotEmptyError{}
 
-// OrgExportJob is one export of the organization, as its administrators follow it.
-type OrgExportJob struct {
+// SiteExportJob is one export of the organization, as its administrators follow it.
+type SiteExportJob struct {
 	ID          uuid.UUID  `json:"id"`
 	State       State      `json:"state"`
 	Progress    Progress   `json:"progress"`
@@ -87,14 +87,14 @@ type OrgExportJob struct {
 	key         string
 }
 
-const selectOrgExport = `
+const selectSiteExport = `
 SELECT e.id, e.state, e.done_steps, e.total_steps, COALESCE(u.name, ''), e.requested_by = current_actor_id(),
        e.requested_at, e.started_at, e.finished_at, e.file_name, e.size_bytes, e.expires_at, e.failure, COALESCE(e.detail, ''), e.object_key
 FROM site_export e LEFT JOIN app_user u ON u.id = e.requested_by`
 
-func scanOrgExport(row pgx.Row) (*OrgExportJob, error) {
+func scanSiteExport(row pgx.Row) (*SiteExportJob, error) {
 	var (
-		j      OrgExportJob
+		j      SiteExportJob
 		detail string
 	)
 	if err := row.Scan(&j.ID, &j.State, &j.Progress.Done, &j.Progress.Total, &j.RequestedBy, &j.Mine,
@@ -102,35 +102,35 @@ func scanOrgExport(row pgx.Row) (*OrgExportJob, error) {
 		return nil, err
 	}
 	if j.Failure != nil {
-		m := orgExportMessage(*j.Failure, detail)
+		m := siteExportMessage(*j.Failure, detail)
 		j.Message = &m
 	}
 	return &j, nil
 }
 
-// OrgImportJob is one import of an organization's archive.
-type OrgImportJob struct {
-	ID          uuid.UUID  `json:"id"`
-	State       State      `json:"state"`
-	Progress    Progress   `json:"progress"`
-	RequestedBy string     `json:"requestedBy"`
-	Report      *OrgReport `json:"report"`
-	Failure     *Failure   `json:"failure"`
-	Message     *string    `json:"message"`
-	RequestedAt time.Time  `json:"requestedAt"`
-	StartedAt   *time.Time `json:"startedAt"`
-	FinishedAt  *time.Time `json:"finishedAt"`
-	Written     db.LSN     `json:"-"`
+// SiteImportJob is one import of an organization's archive.
+type SiteImportJob struct {
+	ID          uuid.UUID   `json:"id"`
+	State       State       `json:"state"`
+	Progress    Progress    `json:"progress"`
+	RequestedBy string      `json:"requestedBy"`
+	Report      *SiteReport `json:"report"`
+	Failure     *Failure    `json:"failure"`
+	Message     *string     `json:"message"`
+	RequestedAt time.Time   `json:"requestedAt"`
+	StartedAt   *time.Time  `json:"startedAt"`
+	FinishedAt  *time.Time  `json:"finishedAt"`
+	Written     db.LSN      `json:"-"`
 }
 
-const selectOrgImport = `
+const selectSiteImport = `
 SELECT i.id, i.state, i.done_steps, i.total_steps, COALESCE(u.name, ''), i.report, i.failure, COALESCE(i.detail, ''),
        i.requested_at, i.started_at, i.finished_at, COALESCE(i.written_lsn::text, '')
 FROM site_import i LEFT JOIN app_user u ON u.id = i.requested_by`
 
-func scanOrgImport(row pgx.Row) (*OrgImportJob, error) {
+func scanSiteImport(row pgx.Row) (*SiteImportJob, error) {
 	var (
-		j       OrgImportJob
+		j       SiteImportJob
 		report  []byte
 		detail  string
 		written string
@@ -140,14 +140,14 @@ func scanOrgImport(row pgx.Row) (*OrgImportJob, error) {
 		return nil, err
 	}
 	if report != nil {
-		j.Report = &OrgReport{}
+		j.Report = &SiteReport{}
 		if err := json.Unmarshal(report, j.Report); err != nil {
 			return nil, err
 		}
 		j.Report.settle()
 	}
 	if j.Failure != nil {
-		m := orgImportMessage(*j.Failure, detail)
+		m := siteImportMessage(*j.Failure, detail)
 		j.Message = &m
 	}
 	if written != "" {
@@ -160,8 +160,8 @@ func scanOrgImport(row pgx.Row) (*OrgImportJob, error) {
 	return &j, nil
 }
 
-// OrgReport is what an organization's import brought across, and what not.
-type OrgReport struct {
+// SiteReport is what an organization's import brought across, and what not.
+type SiteReport struct {
 	Spaces    int `json:"spaces"`
 	Pages     int `json:"pages"`
 	Versions  int `json:"versions"`
@@ -190,7 +190,7 @@ type OrgReport struct {
 	NotCarried []Omission `json:"notCarried"`
 }
 
-func (r *OrgReport) settle() {
+func (r *SiteReport) settle() {
 	if r.Kept == nil {
 		r.Kept = []string{}
 	}
@@ -202,26 +202,26 @@ func (r *OrgReport) settle() {
 	}
 }
 
-// orgDownloadName is the name an organization's archive downloads as.
-func orgDownloadName(slug string, at time.Time) string {
+// siteDownloadName is the name an organization's archive downloads as.
+func siteDownloadName(slug string, at time.Time) string {
 	return fmt.Sprintf("%s-organization-%s.zip", slug, at.UTC().Format("2006-01-02"))
 }
 
-// OrgTooLargeError refuses an organization archive over the limit, naming it.
-type OrgTooLargeError struct{ Limit int64 }
+// SiteTooLargeError refuses an organization archive over the limit, naming it.
+type SiteTooLargeError struct{ Limit int64 }
 
-func (e *OrgTooLargeError) Error() string {
+func (e *SiteTooLargeError) Error() string {
 	return fmt.Sprintf("This archive is over %s, the most one import takes. Ask whoever runs Stator to raise STATOR_ORG_IMPORT_LIMIT.", attachment.Size(e.Limit))
 }
 
-// QueueOrgExport asks the worker to export the caller's organization.
-func (j *Jobs) QueueOrgExport(ctx context.Context, actor perm.Actor) (*OrgExportJob, db.LSN, error) {
+// QueueSiteExport asks the worker to export the caller's organization.
+func (j *Jobs) QueueSiteExport(ctx context.Context, actor perm.Actor) (*SiteExportJob, db.LSN, error) {
 	if objectstore.IsUnavailable(j.store) {
 		return nil, 0, objectstore.ErrUnavailable
 	}
-	var out *OrgExportJob
+	var out *SiteExportJob
 	lsn, err := j.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if err := perm.Check(ctx, tx, actor, perm.MoveOrg, uuid.Nil); err != nil {
+		if err := perm.Check(ctx, tx, actor, perm.MoveSite, uuid.Nil); err != nil {
 			return err
 		}
 		id := uuid.Must(uuid.NewV7())
@@ -232,23 +232,23 @@ func (j *Jobs) QueueOrgExport(ctx context.Context, actor perm.Actor) (*OrgExport
 			return err
 		}
 		var err error
-		out, err = scanOrgExport(tx.QueryRow(ctx, selectOrgExport+` WHERE e.id = $1`, id))
+		out, err = scanSiteExport(tx.QueryRow(ctx, selectSiteExport+` WHERE e.id = $1`, id))
 		return err
 	})
 	return out, lsn, err
 }
 
-// OrgExports are the organization's latest exports, for its administrators.
-func (j *Jobs) OrgExports(ctx context.Context, actor perm.Actor, limit int) ([]OrgExportJob, error) {
-	out := []OrgExportJob{}
+// SiteExports are the organization's latest exports, for its administrators.
+func (j *Jobs) SiteExports(ctx context.Context, actor perm.Actor, limit int) ([]SiteExportJob, error) {
+	out := []SiteExportJob{}
 	err := j.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectOrgExport+` ORDER BY e.requested_at DESC, e.id DESC LIMIT $1`, limit)
+		rows, err := tx.Query(ctx, selectSiteExport+` ORDER BY e.requested_at DESC, e.id DESC LIMIT $1`, limit)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
-			one, err := scanOrgExport(rows)
+			one, err := scanSiteExport(rows)
 			if err != nil {
 				return err
 			}
@@ -259,12 +259,12 @@ func (j *Jobs) OrgExports(ctx context.Context, actor perm.Actor, limit int) ([]O
 	return out, err
 }
 
-// DownloadOrgExport opens an organization's archive for its administrators.
-func (j *Jobs) DownloadOrgExport(ctx context.Context, actor perm.Actor, id uuid.UUID) (*OrgExportJob, io.ReadCloser, error) {
-	var found *OrgExportJob
+// DownloadSiteExport opens an organization's archive for its administrators.
+func (j *Jobs) DownloadSiteExport(ctx context.Context, actor perm.Actor, id uuid.UUID) (*SiteExportJob, io.ReadCloser, error) {
+	var found *SiteExportJob
 	err := j.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		found, err = scanOrgExport(tx.QueryRow(ctx, selectOrgExport+` WHERE e.id = $1`, id))
+		found, err = scanSiteExport(tx.QueryRow(ctx, selectSiteExport+` WHERE e.id = $1`, id))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrJobNotFound
 		}
@@ -286,18 +286,18 @@ func (j *Jobs) DownloadOrgExport(ctx context.Context, actor perm.Actor, id uuid.
 	return found, body, err
 }
 
-// QueueOrgImport checks an uploaded archive is an organization's archive of
+// QueueSiteImport checks an uploaded archive is an organization's archive of
 // ours, and that the organization has no space yet, stores it, and asks the
 // worker to import it.
-func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os.File, size int64) (*OrgImportJob, db.LSN, error) {
+func (j *Jobs) QueueSiteImport(ctx context.Context, actor perm.Actor, archive *os.File, size int64) (*SiteImportJob, db.LSN, error) {
 	if objectstore.IsUnavailable(j.store) {
 		return nil, 0, objectstore.ErrUnavailable
 	}
-	if size > j.MaxOrgImportBytes {
-		return nil, 0, &OrgTooLargeError{Limit: j.MaxOrgImportBytes}
+	if size > j.MaxSiteImportBytes {
+		return nil, 0, &SiteTooLargeError{Limit: j.MaxSiteImportBytes}
 	}
 	err := j.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if err := perm.Check(ctx, tx, actor, perm.MoveOrg, uuid.Nil); err != nil {
+		if err := perm.Check(ctx, tx, actor, perm.MoveSite, uuid.Nil); err != nil {
 			return err
 		}
 		var taken bool
@@ -305,7 +305,7 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 			return err
 		}
 		if taken {
-			return ErrOrgNotEmpty
+			return ErrSiteNotEmpty
 		}
 		return nil
 	})
@@ -316,7 +316,7 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 	if err != nil {
 		return nil, 0, invalid("This file is no zip. Export the organization from its settings in Stator, then import that file.")
 	}
-	if _, err := readOrgManifest(zr); err != nil {
+	if _, err := readSiteManifest(zr); err != nil {
 		return nil, 0, err
 	}
 	id := uuid.Must(uuid.NewV7())
@@ -327,7 +327,7 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 	if err := j.store.Put(ctx, objectKey, archive, size, "application/zip"); err != nil {
 		return nil, 0, err
 	}
-	var out *OrgImportJob
+	var out *SiteImportJob
 	lsn, err := j.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var stored string
 		if err := tx.QueryRow(ctx, `
@@ -339,7 +339,7 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 			return err
 		}
 		var err error
-		out, err = scanOrgImport(tx.QueryRow(ctx, selectOrgImport+` WHERE i.id = $1`, id))
+		out, err = scanSiteImport(tx.QueryRow(ctx, selectSiteImport+` WHERE i.id = $1`, id))
 		return err
 	})
 	if err != nil {
@@ -348,12 +348,12 @@ func (j *Jobs) QueueOrgImport(ctx context.Context, actor perm.Actor, archive *os
 	return out, lsn, err
 }
 
-// OrgImport is one import, for the organization's administrators.
-func (j *Jobs) OrgImport(ctx context.Context, actor perm.Actor, id uuid.UUID) (*OrgImportJob, error) {
-	var out *OrgImportJob
+// SiteImport is one import, for the organization's administrators.
+func (j *Jobs) SiteImport(ctx context.Context, actor perm.Actor, id uuid.UUID) (*SiteImportJob, error) {
+	var out *SiteImportJob
 	err := j.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		out, err = scanOrgImport(tx.QueryRow(ctx, selectOrgImport+` WHERE i.id = $1`, id))
+		out, err = scanSiteImport(tx.QueryRow(ctx, selectSiteImport+` WHERE i.id = $1`, id))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrJobNotFound
 		}
@@ -362,17 +362,17 @@ func (j *Jobs) OrgImport(ctx context.Context, actor perm.Actor, id uuid.UUID) (*
 	return out, err
 }
 
-// OrgImports are the organization's latest imports.
-func (j *Jobs) OrgImports(ctx context.Context, actor perm.Actor, limit int) ([]OrgImportJob, error) {
-	out := []OrgImportJob{}
+// SiteImports are the organization's latest imports.
+func (j *Jobs) SiteImports(ctx context.Context, actor perm.Actor, limit int) ([]SiteImportJob, error) {
+	out := []SiteImportJob{}
 	err := j.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, selectOrgImport+` ORDER BY i.requested_at DESC, i.id DESC LIMIT $1`, limit)
+		rows, err := tx.Query(ctx, selectSiteImport+` ORDER BY i.requested_at DESC, i.id DESC LIMIT $1`, limit)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
-			one, err := scanOrgImport(rows)
+			one, err := scanSiteImport(rows)
 			if err != nil {
 				return err
 			}

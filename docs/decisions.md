@@ -3,7 +3,78 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-14: One organization per instance (#380)
+
+An instance serves one organization, and nothing in Stator chooses,
+switches or isolates organizations any more. This supersedes "Multi-tenant
+by organisation, enforced by the database" (2026-09-29), and completes what
+"One organization per instance, and the upgrade refuses several"
+(2026-10-13) began. The schema has no `org_id`, no `current_org_id()` and no
+`app.org_id`; the organization's settings are the one row of `site`, held to
+one by its key; addresses, sign-in and the API name no organization. What
+keeps one person from another's rows is the access policies, as before (see
+`docs/architecture.md`, Row level security).
+
+- **The upgrade path.** An instance holding several organizations is split
+  on the release it runs: export every organization (Settings, Export and
+  import), delete all but one, then upgrade, and import each other archive
+  into a fresh instance of its own. Migration `00740_one_organization.sql`
+  refuses to run while there are several, names them and changes nothing,
+  so no instance reaches the new code holding more than one.
+  `docs/organization-transfer.md` gives the steps, and the SQL for the
+  release before the upgrade.
+- **`site.slug` stays.** The slug is no longer typed or shown anywhere, but
+  three things still need it: the public addresses shared before #380
+  (`/public/{siteSlug}/...`), which redirect only when the slug is this
+  instance's; the Armature webhook alias `/armature/webhook/{siteSlug}`,
+  which Armature receivers configured before still post to; and the
+  organization archive's manifest, which names where it came from. The
+  site's `id` stays too, as the context every secret sealed before the
+  schema change was sealed with.
+- **Code says site, people read organization.** Go, SQL and TypeScript
+  name the row and what belongs to the instance as a whole `site`, as the
+  tables and the `/site/*` routes do: `perm.AdministerSite`,
+  `perm.MoveSite`, `Facts.SiteAdmin`, `seed.DemoSiteSlug`,
+  `spaceio.SiteManifest` and the `site_*.go` files that export and import
+  it, the OpenAPI schemas `SiteAPIToken`, `SiteExport` and `SiteImport`, and
+  the web client's `useCanAdministerSite`, `SitePermissions` and
+  `features/siteTransfer`. What people read keeps saying organization,
+  since that is who uses the instance. The api no longer has an answer for
+  a database holding several organizations, which the site's key rules out;
+  before the bootstrap it says the instance is not set up yet.
+- **Values others hold keep their names.** JSON fields, enum values and
+  stored strings stay as they are: the access step `orgAdmin`, the space's
+  `orgEnabled`, the archive format `stator.organization` and its manifest's
+  `organization`, and `orgSlug` where it names Armature's organization,
+  which is Armature's and stays. Renaming them would break clients and the
+  archives an older release exported, which are how a split instance moves.
+  Settings an operator already wrote keep theirs for the same reason, and
+  still name the organization: `STATOR_BOOTSTRAP_ORG_NAME`,
+  `STATOR_ORG_IMPORT_LIMIT`, the chart's `bootstrap.org.name` and
+  `spaceTransfers.orgImportLimit`.
+- **Audit entries keep `org.*`.** The actions `org.exported`,
+  `org.imported`, `org.permission_set`, `org.hub_set`, `org.brand_set`,
+  `org.anonymous_access_set` and `org.public_links_set`, and the target
+  `org`, are not migrated. An audit log is a record, and rewriting its rows
+  in place is what it should never see; archives exported before carry the
+  same strings into `audit.jsonl`, and API clients filter by them. They
+  still name what they did: something to the organization as a whole. The
+  audit page labels them as before.
+- **Catalog names follow.** `00770_names_without_the_organization.sql`
+  renames the eight indexes and four constraints the schema change rebuilt
+  under their old `org` names; a rename takes a moment's lock and moves no
+  row. `TestNothingIsNamedAfterTheOrganization` fails any relation,
+  constraint, function, policy or trigger named after the organization
+  except Armature's, and `tests/test-ci.sh` fails `current_org_id`,
+  `app.org_id` or a `/{orgSlug}` path anywhere but the migrations, the
+  changelog, this record, the plan, the catalog test that hunts them and
+  Armature's own API document. The old public addresses and the webhook
+  alias spell their parameter `{siteSlug}`.
+
 ## 2026-10-13: One organization per instance, and the upgrade refuses several (#380)
+
+**Completed on 2026-10-14** by "One organization per instance (#380)": the
+trigger and `org` below became the one-row table `site`, held by its key.
 
 A Stator instance serves one organization; whoever needs a second runs a
 second instance. Stator is run by one team on one installation, and every
@@ -3845,6 +3916,11 @@ every page, and following one is refused with that reason.
 
 ## 2026-10-01: The webhook receiver tells nobody which organizations exist
 
+**Amended on 2026-10-14** by "One organization per instance (#380)":
+Armature posts to `POST /armature/webhook`, and the address with a slug
+stays as an alias for receivers configured before, answering a slug other
+than the instance's as it answers a wrong signature. The rest holds.
+
 `POST /armature/webhook/{orgSlug}` needs no sign-in, so anybody can post to
 it with any slug. An organization that does not exist, one that has not
 connected Armature or saved no secret, a wrong signature and a body naming
@@ -4563,13 +4639,16 @@ organization, and a space's home is one of its own pages. A foreign key is
 checked past row level security, which is why every one of them names the
 organization too.
 
-## 2026-09-29: Each browser spec file gets a throwaway organization
+## 2026-09-29: Each browser spec file gets a throwaway organization (superseded on 2026-10-13, #380)
 
 **Amended on 2026-10-12** by "The browser specs share the one organization
 (#380)": specs keep apart by people and spaces of their own, and the
 throwaway organizations are left only to the two specs that need a second
-one. What follows about the endpoints' token, their absence from the API
-document and the object keys still holds.
+one. **Superseded on 2026-10-13**: the database refuses a second
+organization, so `POST /test/orgs` and `DELETE /test/orgs/{slug}` are gone.
+What follows about the test endpoints' token and their absence from the API
+document still holds for the endpoints that replaced them; new object keys
+no longer start with the organization.
 
 Specs that change what an organization shows, such as its default theme or
 who uses which theme, cannot share `demo` with specs that judge the built-in
@@ -4621,6 +4700,10 @@ the groups an organization keeps. Until then an open session keeps the role
 it had.
 
 ## 2026-09-29: A personal access token is its owner in one organization
+
+**Amended on 2026-10-14** by "One organization per instance (#380)": there
+is one organization, so a token reaches what its owner reaches on the
+instance, and leaving removes it by the foreign key onto `member`.
 
 A script calls the API with a token sent as a bearer, as in Armature: the
 prefix `stator_pat_` and 32 random bytes in base64url, of which only the
@@ -4695,6 +4778,11 @@ the gate runs exactly one of each.
 
 ## 2026-09-29: An administrator lets each person in, and a session stays home
 
+**Amended on 2026-10-14** by "One organization per instance (#380)": the
+first half holds. The second, a session that reaches only the organizations
+trusting its issuer, went with the second organization: `session_reaches`,
+`session_stays_home` and the session's organization columns are dropped.
+
 Signing in through the organization's provider is not the same as being let
 in, as in Armature. Somebody the provider vouches for who is not a member gets
 no session: the sign-in is refused, their account and a request to join are
@@ -4745,7 +4833,12 @@ End-to-end tests run in `./run-tests.sh` before every push and in CI, not only
 nightly. Ports and compose project names derive from the checkout path, so
 parallel worktrees can run the gate at the same time.
 
-## 2026-09-29: Multi-tenant by organisation, enforced by the database
+## 2026-09-29: Multi-tenant by organisation, enforced by the database (superseded on 2026-10-14 by One organization per instance, #380)
+
+**Superseded.** An instance serves one organization, and separate instances
+keep organizations apart. What stays of this entry is its second half: every
+table forces row level security, and guards are proven with raw SQL, not only
+through the service.
 
 Like Armature, every table is scoped to an organisation through row-level
 security. A missing `WHERE` clause cannot leak data between organisations,
