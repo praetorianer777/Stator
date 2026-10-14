@@ -52,7 +52,7 @@ func (s *Service) RecentlyUpdated(ctx context.Context, actor perm.Actor, spaceKe
 			SELECT p.id, p.title, s.key, s.name, p.published_at, COALESCE(u.name, '')
 			FROM page p
 			JOIN space s ON s.id = p.space_id
-			LEFT JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = p.version
+			LEFT JOIN page_version v ON v.page_id = p.id AND v.number = p.version
 			LEFT JOIN app_user u ON u.id = v.created_by
 			WHERE p.published_at IS NOT NULL AND`+live+` AND p.archived_at IS NULL AND p.kind <> 'folder'
 			  AND `+perm.ViewablePage("p", 1)+within+`

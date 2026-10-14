@@ -37,9 +37,9 @@ func watcherNames(t *testing.T, c *client, page string) map[string]string {
 }
 
 // namedPerson adds a member with a name of their own, so lists by name can be read.
-func (h *harness) namedPerson(t *testing.T, org uuid.UUID, name string) uuid.UUID {
+func (h *harness) namedPerson(t *testing.T, name string) uuid.UUID {
 	t.Helper()
-	id := h.addPerson(t, org, "member")
+	id := h.addPerson(t, "member")
 	if _, err := h.super.Exec(context.Background(), `UPDATE app_user SET name = $2 WHERE id = $1`, id, name); err != nil {
 		t.Fatal(err)
 	}
@@ -53,10 +53,9 @@ func TestWatchingOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "watching")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID := h.namedPerson(t, home.org, "Ann Watcher"), h.namedPerson(t, home.org, "Ben Watcher")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID := h.namedPerson(t, "Ann Watcher"), h.namedPerson(t, "Ben Watcher")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "WAT", "Watched")

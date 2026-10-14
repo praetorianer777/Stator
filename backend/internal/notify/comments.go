@@ -109,7 +109,7 @@ func planThreadResolved(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	err := tx.QueryRow(ctx, `
 		SELECT COALESCE(t.quote, '') FROM comment_thread t
 		WHERE t.id = $1
-		  AND EXISTS (SELECT 1 FROM comment c WHERE c.org_id = t.org_id AND c.thread_id = t.id AND c.deleted_at IS NULL)`,
+		  AND EXISTS (SELECT 1 FROM comment c WHERE c.thread_id = t.id AND c.deleted_at IS NULL)`,
 		in.ThreadID).Scan(&quote)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

@@ -31,14 +31,13 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "token-spaces")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 
 	near := newTree(t, owner, "NEAR", "Near")
 	far := newTree(t, owner, "FAR", "Far")
 	nearPage := near.add(near.homeID, "Near zebra")
 	farPage := far.add(far.homeID, "Far zebra")
-	h.backdate(t, home.org, "id = ANY ($3::uuid[])", 400, []string{nearPage, farPage})
+	h.backdate(t, "id = ANY ($2::uuid[])", 400, []string{nearPage, farPage})
 	nearID := obj(t, want(t, owner.get(t, "/api/v1/spaces/NEAR"), http.StatusOK, "NEAR"), "space")["id"].(string)
 	farID := obj(t, want(t, owner.get(t, "/api/v1/spaces/FAR"), http.StatusOK, "FAR"), "space")["id"].(string)
 
@@ -74,8 +73,7 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 			}
 		}
 		var audited string
-		if err := h.super.QueryRow(context.Background(), `SELECT data->>'spaces' FROM audit_log WHERE org_id = $1 AND target_id = $2 AND action = 'token.created'`,
-			home.org, tokenID).Scan(&audited); err != nil || audited != `["NEAR"]` {
+		if err := h.super.QueryRow(context.Background(), `SELECT data->>'spaces' FROM audit_log WHERE target_id = $1 AND action = 'token.created'`, tokenID).Scan(&audited); err != nil || audited != `["NEAR"]` {
 			t.Errorf("the audit entry names %q (%v), want NEAR", audited, err)
 		}
 	})
@@ -152,7 +150,7 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 	})
 
 	// After the stale report, which a visit would take Far zebra out of.
-	bobID := h.addPerson(t, home.org, "member")
+	bobID := h.addPerson(t, "member")
 	t.Run("page views and shares keep to its space", func(t *testing.T) {
 		want(t, owner.post(t, pagePath(farPage, "/visit"), nil), http.StatusNoContent, "the owner opens Far zebra")
 		want(t, owner.post(t, pagePath(farPage, "/share"), map[string]any{"recipients": []any{user(bobID)}, "message": "Look."}), http.StatusCreated, "the owner shares Far zebra")
@@ -245,18 +243,18 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 		if count(`SELECT count(*) FROM page_view_stats($1, 30)`, nearPage) != 1 {
 			t.Error("the token does not read the counts of a page in its space")
 		}
-		denied(t, conn, "a view of Far zebra", `INSERT INTO page_view (org_id, page_id, user_id, day) VALUES ($1, $2, $3, page_view_today())`, home.org, farPage, home.user)
+		denied(t, conn, "a view of Far zebra", `INSERT INTO page_view (page_id, user_id, day) VALUES ($1, $2, page_view_today())`, farPage, home.user)
 		if count(`SELECT count(*) FROM page WHERE id = $1`, nearPage) != 1 {
 			t.Error("the token does not read its own space")
 		}
 		untouched(t, conn, "retitling a page of FAR", `UPDATE page SET title = 'Taken' WHERE id = $1`, farPage)
-		denied(t, conn, "a page in FAR", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by)
-			VALUES ($1, $2, $3, 'W', 'Planted', $4)`, home.org, farID, far.homeID, home.user)
+		denied(t, conn, "a page in FAR", `INSERT INTO page (space_id, parent_id, rank, title, created_by)
+			VALUES ($1, $2, 'W', 'Planted', $3)`, farID, far.homeID, home.user)
 		denied(t, conn, "trashing a page of FAR through the database's own function", `SELECT page_trash($1)`, farPage)
-		denied(t, conn, "a new space", `INSERT INTO space (org_id, key, name, created_by) VALUES ($1, 'SQL', 'Sql', $2)`, home.org, home.user)
-		denied(t, conn, "widening its own token", `INSERT INTO api_token_space (org_id, token_id, space_id)
-			SELECT $1, $2, id FROM space WHERE key = 'NEAR'`, home.org, tokenID)
-		denied(t, conn, "an organization grant", `INSERT INTO global_grant (org_id, permission, subject_type) VALUES ($1, 'createSpace', 'everyone')`, home.org)
+		denied(t, conn, "a new space", `INSERT INTO space (key, name, created_by) VALUES ('SQL', 'Sql', $1)`, home.user)
+		denied(t, conn, "widening its own token", `INSERT INTO api_token_space (token_id, space_id)
+			SELECT $1, id FROM space WHERE key = 'NEAR'`, tokenID)
+		denied(t, conn, "an organization grant", `INSERT INTO global_grant (permission, subject_type) VALUES ('createSpace', 'everyone')`)
 		if _, err := conn.Exec(ctx, `SELECT set_config($1, '', false)`, db.TokenSpacesVar); err != nil {
 			t.Fatal(err)
 		}

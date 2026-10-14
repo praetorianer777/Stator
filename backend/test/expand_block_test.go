@@ -29,7 +29,7 @@ func TestAnExpandBlockKeepsItsTitleAndContentAndSearchReadsBoth(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "expand")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	docs := newTree(t, owner, "EXP", "Expand")
 	page := docs.add(docs.homeID, "Runbook", map[string]any{"body": expandDoc(map[string]any{"title": "Rollback quokka"}, "Revert the wombat release")})

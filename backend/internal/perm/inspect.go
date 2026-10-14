@@ -112,7 +112,7 @@ type AccessRight struct {
 // AccessReport is what one person may do to one page, and why.
 type AccessReport struct {
 	Person     Person          `json:"person"`
-	Role       auth.OrgRole    `json:"role"`
+	Role       auth.Role       `json:"role"`
 	RoleSource auth.RoleSource `json:"roleSource"`
 	Rights     []AccessRight   `json:"rights"`
 }
@@ -301,8 +301,8 @@ func (f InspectFacts) lists(kind ListKind) []AccessStep {
 func Inspect(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (*AccessReport, error) {
 	report := &AccessReport{}
 	err := tx.QueryRow(ctx, `
-		SELECT u.id, u.name, u.email::text, m.org_role, m.role_source
-		FROM org_member m JOIN app_user u ON u.id = m.user_id
+		SELECT u.id, u.name, u.email::text, m.role, m.role_source
+		FROM member m JOIN app_user u ON u.id = m.user_id
 		WHERE m.user_id = $1`, person).Scan(
 		&report.Person.ID, &report.Person.Name, &report.Person.Email, &report.Role, &report.RoleSource)
 	if errors.Is(err, pgx.ErrNoRows) {

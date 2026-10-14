@@ -66,9 +66,9 @@ func stubControl(t *testing.T, method, path string, body any) {
 }
 
 // cachedIssue reads what the cache holds for a token row and a key, and whether it holds anything.
-func cachedIssue(t *testing.T, h *harness, org, tokenID uuid.UUID, key string) (map[string]any, bool) {
+func cachedIssue(t *testing.T, h *harness, tokenID uuid.UUID, key string) (map[string]any, bool) {
 	t.Helper()
-	raw, err := h.valkey(t).HGet(context.Background(), armature.IssueKey(org, key), tokenID.String()).Bytes()
+	raw, err := h.valkey(t).HGet(context.Background(), armature.IssueKey(h.site.ID, key), tokenID.String()).Bytes()
 	if err != nil {
 		return nil, false
 	}
@@ -81,10 +81,10 @@ func cachedIssue(t *testing.T, h *harness, org, tokenID uuid.UUID, key string) (
 	return entry.Value, true
 }
 
-func tokenRowOf(t *testing.T, h *harness, org, user uuid.UUID) uuid.UUID {
+func tokenRowOf(t *testing.T, h *harness, user uuid.UUID) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
-	if err := h.super.QueryRow(context.Background(), `SELECT id FROM armature_token WHERE org_id = $1 AND user_id = $2`, org, user).Scan(&id); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT id FROM armature_token WHERE user_id = $1`, user).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	return id
@@ -94,11 +94,11 @@ func TestSmartLinksShowEachViewerTheIssuesArmatureShowsThem(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-links")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	bobID := h.addPerson(t, home.org, "member")
-	bob := api.as(t, bobID, home.org, slug)
-	carol := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	slug := h.site.Slug
+	owner := api.as(t, home.user)
+	bobID := h.addPerson(t, "member")
+	bob := api.as(t, bobID)
+	carol := api.as(t, h.addPerson(t, "member"))
 	base := armatureURL(t)
 
 	if status, issues, _ := lookup(t, bob, "CP-1"); status != "not_configured" || len(issues) != 0 {
@@ -166,11 +166,11 @@ func TestSmartLinksShowEachViewerTheIssuesArmatureShowsThem(t *testing.T) {
 	})
 
 	t.Run("the cache keeps each viewer's answer, a hidden issue as null", func(t *testing.T) {
-		bobRow, ownerRow := tokenRowOf(t, h, home.org, bobID), tokenRowOf(t, h, home.org, home.user)
-		if got, ok := cachedIssue(t, h, home.org, bobRow, "SEC-1"); !ok || got != nil {
+		bobRow, ownerRow := tokenRowOf(t, h, bobID), tokenRowOf(t, h, home.user)
+		if got, ok := cachedIssue(t, h, bobRow, "SEC-1"); !ok || got != nil {
 			t.Errorf("bob's SEC-1 is cached as %v, %v", got, ok)
 		}
-		if got, ok := cachedIssue(t, h, home.org, ownerRow, "SEC-1"); !ok || got["summary"] != "Patch the disclosed vulnerability" {
+		if got, ok := cachedIssue(t, h, ownerRow, "SEC-1"); !ok || got["summary"] != "Patch the disclosed vulnerability" {
 			t.Errorf("the owner's SEC-1 is cached as %v, %v", got, ok)
 		}
 
@@ -186,7 +186,7 @@ func TestSmartLinksShowEachViewerTheIssuesArmatureShowsThem(t *testing.T) {
 			t.Errorf("the single read does not share the lookup's cache: %s", one.Raw)
 		}
 
-		armature.NewCache(h.valkey(t), discard()).ForgetIssues(context.Background(), home.org, "SEC-1", "CP-1")
+		armature.NewCache(h.valkey(t), discard()).ForgetIssues(context.Background(), h.site.ID, "SEC-1", "CP-1")
 		_, mine, _ = lookup(t, bob, "SEC-1", "CP-1")
 		_, theirs, _ = lookup(t, owner, "SEC-1")
 		if issueOf(mine[0]) != nil || issueOf(mine[1])["summary"] != "Renamed in Armature" || issueOf(theirs[0])["summary"] != "Renamed in Armature" {
@@ -247,7 +247,7 @@ func TestSmartLinksShowEachViewerTheIssuesArmatureShowsThem(t *testing.T) {
 
 	t.Run("a token Armature refuses is marked and not sent again", func(t *testing.T) {
 		box, _ := secret.New(testSecretKey(t))
-		bound := append(append([]byte("armature.token:"), home.org[:]...), bobID[:]...)
+		bound := append(append([]byte("armature.token:"), h.site.ID[:]...), bobID[:]...)
 		revoked, _ := box.Seal([]byte("armature_pat_revoked"), bound)
 		if _, err := h.super.Exec(context.Background(), `UPDATE armature_token SET token = $2 WHERE user_id = $1`, bobID, revoked); err != nil {
 			t.Fatal(err)
@@ -268,7 +268,7 @@ func TestSmartLinksShowEachViewerTheIssuesArmatureShowsThem(t *testing.T) {
 	t.Run("the SSRF guard refuses an address inside the network, and the read says unreachable", func(t *testing.T) {
 		if _, err := h.super.Exec(context.Background(), `
 			ALTER TABLE armature_connection DISABLE TRIGGER armature_connection_moved;
-			UPDATE armature_connection SET base_url = 'http://10.11.12.13' WHERE org_id = '`+home.org.String()+`';
+			UPDATE armature_connection SET base_url = 'http://10.11.12.13';
 			ALTER TABLE armature_connection ENABLE TRIGGER armature_connection_moved;`); err != nil {
 			t.Fatal(err)
 		}
@@ -292,7 +292,7 @@ func TestAPageIsFoundByTheIssuesItNames(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-search")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "ISS", "Issues")
 	body := map[string]any{"type": "doc", "content": []any{
 		map[string]any{"type": "paragraph", "content": []any{

@@ -24,7 +24,7 @@ func TestAPageKeepsDiagramsAsTheirText(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "diagram")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	docs := newTree(t, owner, "ARCH", "Architecture")
 	source := "flowchart LR\n  api[Wombatgateway] --> db[(Postgres)]\n\n  api -.-> cache"

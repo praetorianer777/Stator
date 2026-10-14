@@ -35,17 +35,17 @@ func TestAPersonFollowsTheThemeArmatureShowsThem(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-theme")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	bobID := h.addPerson(t, home.org, "member")
-	bob := api.as(t, bobID, home.org, slug)
+	slug := h.site.Slug
+	owner := api.as(t, home.user)
+	bobID := h.addPerson(t, "member")
+	bob := api.as(t, bobID)
 	t.Cleanup(func() { stubControl(t, http.MethodDelete, slug, nil) })
 	setTheme := func(person, key string, broken bool) {
 		t.Helper()
 		stubControl(t, http.MethodPut, slug+"/people/"+person+"/theme", map[string]any{"theme": key, "broken": broken})
 	}
 	mirrors := func(user uuid.UUID) int {
-		return h.countRows(t, `SELECT count(*) FROM theme WHERE org_id = $1 AND owner_id = $2 AND armature_theme_id IS NOT NULL`, home.org, user)
+		return h.countRows(t, `SELECT count(*) FROM theme WHERE owner_id = $1 AND armature_theme_id IS NOT NULL`, user)
 	}
 
 	if f := themeFollow(t, owner); f["following"] != false || f["status"] != "not_configured" {
@@ -141,8 +141,8 @@ func TestAPersonFollowsTheThemeArmatureShowsThem(t *testing.T) {
 		themeFollow(t, owner)
 		stubControl(t, http.MethodPut, slug+"/people/alice/theme-delay", map[string]any{"ms": 3000})
 		defer stubControl(t, http.MethodPut, slug+"/people/alice/theme-delay", map[string]any{"ms": 0})
-		tokenID := tokenRowOf(t, h, home.org, home.user)
-		if err := h.valkey(t).Del(context.Background(), armature.ThemeKey(home.org, tokenID)).Err(); err != nil {
+		tokenID := tokenRowOf(t, h, home.user)
+		if err := h.valkey(t).Del(context.Background(), armature.ThemeKey(h.site.ID, tokenID)).Err(); err != nil {
 			t.Fatal(err)
 		}
 		started := time.Now()
@@ -227,7 +227,7 @@ func TestAPersonFollowsTheThemeArmatureShowsThem(t *testing.T) {
 			t.Fatal(err)
 		}
 		halfLeft := func() int {
-			return h.countRows(t, `SELECT count(*) FROM theme WHERE org_id = $1 AND id = $2`, home.org, halfID)
+			return h.countRows(t, `SELECT count(*) FROM theme WHERE id = $1`, halfID)
 		}
 
 		if seen, _ := activeTheme(t, owner); seen == nil || seen["id"] != complete["id"] {

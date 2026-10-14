@@ -68,20 +68,20 @@ FROM %s p
 JOIN space s ON s.id = p.space_id
 LEFT JOIN app_user vu ON vu.id = p.changed_by
 WHERE p.trashed_at IS NULL AND p.version > 0`
-	pagesAtVersion = `(SELECT p.id, p.org_id, p.space_id, p.title, p.body, p.version, p.archived_at, p.trashed_at,
+	pagesAtVersion = `(SELECT p.id, p.space_id, p.title, p.body, p.version, p.archived_at, p.trashed_at,
 	        v.created_at AS changed_at, v.created_by AS changed_by
-	 FROM page p JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = p.version)`
+	 FROM page p JOIN page_version v ON v.page_id = p.id AND v.number = p.version)`
 	attachmentHits = `
 SELECT 'attachment', a.id, NULL::uuid, p.id, p.title, a.file_name, NULL::jsonb, s.key, s.name, a.created_at, COALESCE(au.name, ''), ` + archivedOf + `, %s
 FROM attachment a
-JOIN page p ON p.org_id = a.org_id AND p.id = a.page_id
+JOIN page p ON p.id = a.page_id
 JOIN space s ON s.id = p.space_id
 LEFT JOIN app_user au ON au.id = a.uploaded_by
 WHERE p.trashed_at IS NULL AND p.version > 0`
 	commentHits = `
 SELECT 'comment', NULL::uuid, c.id, p.id, p.title, p.title, c.body, s.key, s.name, COALESCE(c.edited_at, c.created_at), COALESCE(cu.name, ''), ` + archivedOf + `, %s
 FROM comment c
-JOIN page p ON p.org_id = c.org_id AND p.id = c.page_id
+JOIN page p ON p.id = c.page_id
 JOIN space s ON s.id = p.space_id
 LEFT JOIN app_user cu ON cu.id = c.author_id
 WHERE p.trashed_at IS NULL AND p.version > 0 AND c.deleted_at IS NULL`
@@ -129,7 +129,7 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 		comments = append(comments, `FALSE`)
 	}
 	if len(q.Labels) > 0 {
-		pages = append(pages, `EXISTS (SELECT 1 FROM page_label pl WHERE pl.org_id = p.org_id AND pl.page_id = p.id AND pl.name = ANY(`+bind(q.Labels)+`))`)
+		pages = append(pages, `EXISTS (SELECT 1 FROM page_label pl WHERE pl.page_id = p.id AND pl.name = ANY(`+bind(q.Labels)+`))`)
 	}
 	if len(q.Spaces) > 0 {
 		keys := bind(q.Spaces)
@@ -139,7 +139,7 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 	}
 	if len(q.Authors) > 0 {
 		authors := bind(q.Authors)
-		pages = append(pages, `EXISTS (SELECT 1 FROM page_version pa WHERE pa.org_id = p.org_id AND pa.page_id = p.id AND pa.created_by = ANY(`+authors+`))`)
+		pages = append(pages, `EXISTS (SELECT 1 FROM page_version pa WHERE pa.page_id = p.id AND pa.created_by = ANY(`+authors+`))`)
 		files = append(files, `a.uploaded_by = ANY(`+authors+`)`)
 		comments = append(comments, `c.author_id = ANY(`+authors+`)`)
 	}
@@ -279,7 +279,7 @@ func (s *Service) Recent(ctx context.Context, actor perm.Actor, limit int) ([]Re
 		rows, err := tx.Query(ctx, `
 			SELECT p.id, p.title, s.key, s.name, `+pathOf+`, r.visited_at
 			FROM page_visit r
-			JOIN page p ON p.org_id = r.org_id AND p.id = r.page_id
+			JOIN page p ON p.id = r.page_id
 			JOIN space s ON s.id = p.space_id
 			WHERE r.user_id = $1 AND p.trashed_at IS NULL AND `+perm.ViewablePage("p", 1)+`
 			ORDER BY r.visited_at DESC, p.id
@@ -311,7 +311,7 @@ const VisitQuery = `
 		  AND r.visited_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
 		  AND NOT EXISTS (SELECT 1 FROM page_visit w
 		                  WHERE w.user_id = $1 AND w.visited_at > r.visited_at))
-	ON CONFLICT (org_id, user_id, page_id) DO UPDATE SET visited_at = now()`
+	ON CONFLICT (user_id, page_id) DO UPDATE SET visited_at = now()`
 
 // Visit notes that the actor opened a page and counts the view, refusing with
 // page.ErrNotFound one they may not view; a reload the same day writes nothing.

@@ -161,7 +161,7 @@ func (s *Service) SchedulePublish(ctx context.Context, actor perm.Actor, id uuid
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO page_schedule (page_id, user_id, publish_at, comment, notify_watchers)
 			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (org_id, page_id) DO UPDATE
+			ON CONFLICT (page_id) DO UPDATE
 			SET publish_at = EXCLUDED.publish_at, comment = EXCLUDED.comment, notify_watchers = EXCLUDED.notify_watchers,
 			    failed_at = NULL, failure = NULL`,
 			id, actor.UserID, in.PublishAt, comment, in.NotifyWatchers); err != nil {

@@ -34,11 +34,11 @@ func spaceKeys(t *testing.T, c *client, query string) []string {
 	return out
 }
 
-func auditActions(t *testing.T, h *harness, org any, targetType string, target string) []string {
+func auditActions(t *testing.T, h *harness, targetType string, target string) []string {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
-		SELECT action FROM audit_log WHERE org_id = $1 AND target_type = $2 AND target_id = $3 AND action LIKE '%archived'
-		ORDER BY created_at, id`, org, targetType, target)
+		SELECT action FROM audit_log WHERE target_type = $1 AND target_id = $2 AND action LIKE '%archived'
+		ORDER BY created_at, id`, targetType, target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,10 +61,9 @@ func TestArchivePagesAndSpacesOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "archive")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID := h.namedPerson(t, org.org, "Ann Editor"), h.namedPerson(t, org.org, "Ben Reader")
-	ann, ben := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID, benID := h.namedPerson(t, "Ann Editor"), h.namedPerson(t, "Ben Reader")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 
 	docs := newTree(t, owner, "ARC", "Archive")
 	h.closeSpace(t, docs.space, annID, benID)
@@ -276,12 +275,12 @@ func TestArchivePagesAndSpacesOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("each act is in the audit log once, and strangers reach nothing", func(t *testing.T) {
-		sameList(t, "Plans's archive acts", auditActions(t, h, org.org, "page", plans),
+		sameList(t, "Plans's archive acts", auditActions(t, h, "page", plans),
 			audit.ActionPageArchived, audit.ActionPageUnarchived, audit.ActionPageArchived, audit.ActionPageUnarchived)
-		sameList(t, "the space's archive acts", auditActions(t, h, org.org, "space", docs.spaceID(t)),
+		sameList(t, "the space's archive acts", auditActions(t, h, "space", docs.spaceID(t)),
 			audit.ActionSpaceArchived, audit.ActionSpaceUnarchived)
 		away := h.makeOutsider(t, "archive-away")
-		stranger := api.as(t, away.user, away.org, slug)
+		stranger := api.as(t, away.user)
 		for what, got := range map[string]response{
 			"list":      stranger.get(t, "/api/v1/spaces/ARC/archived-pages"),
 			"archive":   stranger.put(t, pagePath(live, "/archive"), nil),
@@ -309,9 +308,8 @@ func TestArchivingIsEnforcedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "archive-wall")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID := h.addPerson(t, org.org, "member")
+	owner := api.as(t, org.user)
+	annID := h.addPerson(t, "member")
 
 	docs := newTree(t, owner, "AWL", "Walled archive")
 	plans := docs.add(docs.homeID, "Plans")
@@ -332,22 +330,22 @@ func TestArchivingIsEnforcedByTheDatabase(t *testing.T) {
 			denied(t, conn, "a new title", `UPDATE page SET title = 'Changed' WHERE id = $1`, old)
 			denied(t, conn, "a move out", `UPDATE page SET parent_id = $2 WHERE id = $1`, old, docs.homeID)
 			denied(t, conn, "a move in", `UPDATE page SET parent_id = $2 WHERE id = $1`, live, old)
-			denied(t, conn, "a page added below", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by, updated_by)
-				SELECT org_id, space_id, id, 'm', 'Newer', $2, $2 FROM page WHERE id = $1`, old, person)
-			denied(t, conn, "a version", `INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
-				SELECT org_id, id, version + 1, title, body, $2 FROM page WHERE id = $1`, old, person)
-			denied(t, conn, "a draft", `INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version)
-				SELECT org_id, id, $2, title, body, version FROM page WHERE id = $1`, old, person)
-			denied(t, conn, "a label", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'stale', $3)`, org.org, old, person)
-			denied(t, conn, "a comment", `INSERT INTO comment_thread (org_id, page_id, kind, created_by) VALUES ($1, $2, 'page', $3)`, org.org, old, person)
-			denied(t, conn, "a reaction", `INSERT INTO reaction (org_id, page_id, user_id, emoji) VALUES ($1, $2, $3, '👍')`, org.org, old, person)
-			denied(t, conn, "a restriction", `INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id) VALUES ($1, $2, 'edit', 'user', $3)`, org.org, old, person)
+			denied(t, conn, "a page added below", `INSERT INTO page (space_id, parent_id, rank, title, created_by, updated_by)
+				SELECT space_id, id, 'm', 'Newer', $2, $2 FROM page WHERE id = $1`, old, person)
+			denied(t, conn, "a version", `INSERT INTO page_version (page_id, number, title, body, created_by)
+				SELECT id, version + 1, title, body, $2 FROM page WHERE id = $1`, old, person)
+			denied(t, conn, "a draft", `INSERT INTO page_draft (page_id, user_id, title, body, base_version)
+				SELECT id, $2, title, body, version FROM page WHERE id = $1`, old, person)
+			denied(t, conn, "a label", `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'stale', $2)`, old, person)
+			denied(t, conn, "a comment", `INSERT INTO comment_thread (page_id, kind, created_by) VALUES ($1, 'page', $2)`, old, person)
+			denied(t, conn, "a reaction", `INSERT INTO reaction (page_id, user_id, emoji) VALUES ($1, $2, '👍')`, old, person)
+			denied(t, conn, "a restriction", `INSERT INTO page_restriction (page_id, kind, subject_type, user_id) VALUES ($1, 'edit', 'user', $2)`, old, person)
 			denied(t, conn, "the trash", `SELECT page_trash($1)`, old)
 			denied(t, conn, "a place among the pages below", `SELECT page_place(ARRAY[$1::uuid], $2, ARRAY['m'])`, live, old)
 			denied(t, conn, "the marks taken off", `UPDATE page SET archived_at = NULL, archived_by = NULL, archive_id = NULL WHERE id = $1`, old)
 			denied(t, conn, "the marks put on", `UPDATE page SET archived_at = now(), archive_id = id WHERE id = $1`, live)
-			denied(t, conn, "a page born archived", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by, updated_by, archived_at, archive_id)
-				SELECT org_id, space_id, id, 'z', 'Born old', $2, $2, now(), id FROM page WHERE id = $1`, live, person)
+			denied(t, conn, "a page born archived", `INSERT INTO page (space_id, parent_id, rank, title, created_by, updated_by, archived_at, archive_id)
+				SELECT space_id, id, 'z', 'Born old', $2, $2, now(), id FROM page WHERE id = $1`, live, person)
 			denied(t, conn, "unarchiving a page inside the item", `SELECT page_unarchive($1)`, old)
 		})
 	}
@@ -384,8 +382,8 @@ func TestArchivingIsEnforcedByTheDatabase(t *testing.T) {
 		for name, person := range map[string]uuid.UUID{"ann": annID, "the owner": org.user} {
 			actAs(t, conn, person)
 			denied(t, conn, name+" edits Live", `UPDATE page SET title = 'Changed' WHERE id = $1`, live)
-			denied(t, conn, name+" adds a page", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by, updated_by)
-				SELECT org_id, space_id, id, 'm', 'Newer', $2, $2 FROM page WHERE id = $1`, live, person)
+			denied(t, conn, name+" adds a page", `INSERT INTO page (space_id, parent_id, rank, title, created_by, updated_by)
+				SELECT space_id, id, 'm', 'Newer', $2, $2 FROM page WHERE id = $1`, live, person)
 			denied(t, conn, name+" archives Live", `SELECT page_archive($1)`, live)
 		}
 		actAs(t, conn, org.user)

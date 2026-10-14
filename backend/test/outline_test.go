@@ -19,10 +19,9 @@ func TestTheOutlineWalkAnswersAsRowLevelSecurity(t *testing.T) {
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "outline-walk-a")
 	b := h.makeOutsider(t, "outline-walk-b")
-	slug := h.slugOf(t, a.org)
-	owner := api.as(t, a.user, a.org, slug)
-	annID, benID := h.addPerson(t, a.org, "member"), h.addPerson(t, a.org, "member")
-	ann := api.as(t, annID, a.org, slug)
+	owner := api.as(t, a.user)
+	annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann := api.as(t, annID)
 
 	docs := newTree(t, owner, "WALK", "Walk")
 	h.closeSpace(t, docs.space, annID, benID)

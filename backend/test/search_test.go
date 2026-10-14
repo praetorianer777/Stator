@@ -68,12 +68,11 @@ func TestSearchOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "search")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.addPerson(t, home.org, "member")
-	ann := api.as(t, annID, home.org, slug)
-	benID := h.addPerson(t, home.org, "member")
-	ben := api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID := h.addPerson(t, "member")
+	ann := api.as(t, annID)
+	benID := h.addPerson(t, "member")
+	ben := api.as(t, benID)
 
 	ops := newTree(t, owner, "OPS", "Operations")
 	devSpace := newTree(t, owner, "DEV", "Development")
@@ -282,7 +281,7 @@ func TestSearchOverTheAPI(t *testing.T) {
 
 	t.Run("a member the spaces are closed to finds none of it", func(t *testing.T) {
 		away := h.makeOutsider(t, "search-away")
-		stranger := api.as(t, away.user, away.org, slug)
+		stranger := api.as(t, away.user)
 		for _, q := range []string{"deploy", ""} {
 			if r := searchFor(t, stranger, url.Values{"q": {q}}); number(r.Body["total"]) != 0 {
 				t.Errorf("a stranger finds %s", r.Raw)
@@ -353,9 +352,8 @@ func TestQuickSearchAndRecentPagesOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "quick")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	ann := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	ann := api.as(t, h.addPerson(t, "member"))
 	docs := newTree(t, owner, "DOCS", "Docs")
 	other := newTree(t, owner, "MISC", "Misc")
 	guide := docs.add(docs.homeID, "Release guide", map[string]any{"body": textDoc("Nothing about releasing here.")})
@@ -426,7 +424,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "search-wall-a")
 	b := h.makeOutsider(t, "search-wall-b")
-	ownerA := api.as(t, a.user, a.org, h.slugOf(t, a.org))
+	ownerA := api.as(t, a.user)
 	docsA := newTree(t, ownerA, "WALL", "Walled")
 	h.closeSpace(t, docsA.space)
 	pageA := docsA.add(docsA.homeID, "Secret plan", map[string]any{"body": textDoc("hidden words")})
@@ -469,17 +467,16 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page WHERE search_vector @@ websearch_to_tsquery('stator_search', 'hidden')`).Scan(&n); err != nil || n != 0 {
 			t.Errorf("B finds %d of A's pages (%v)", n, err)
 		}
-		refused(t, conn, "a visit of A's page, as A", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, a.user, pageA)
-		refused(t, conn, "a visit of A's page, as B", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, b.org, b.user, pageA)
+		refused(t, conn, "a visit of A's page, as A", `INSERT INTO page_visit (user_id, page_id) VALUES ($1, $2)`, a.user, pageA)
+		refused(t, conn, "a visit of A's page, as B", `INSERT INTO page_visit (user_id, page_id) VALUES ($1, $2)`, b.user, pageA)
 		untouched(t, conn, "A's visits from B", `UPDATE page_visit SET visited_at = now() WHERE page_id = $1`, pageA)
 		untouched(t, conn, "deleting A's visits from B", `DELETE FROM page_visit WHERE page_id = $1`, pageA)
 	})
 
 	t.Run("a visit is its visitor's, and only of a page they may view", func(t *testing.T) {
-		slug := h.slugOf(t, a.org)
-		annID, benID := h.addPerson(t, a.org, "member"), h.addPerson(t, a.org, "member")
+		annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
 		h.openSpaceTo(t, docsA.space, annID, benID)
-		ann, ben := api.as(t, annID, a.org, slug), api.as(t, benID, a.org, slug)
+		ann, ben := api.as(t, annID), api.as(t, benID)
 		closed := docsA.add(docsA.homeID, "Closed plan", map[string]any{"body": textDoc("hidden words")})
 		want(t, ownerA.upload(t, pagePath(closed, "/attachments"), "closed-notes.txt", []byte("x")), http.StatusCreated, "a file on it")
 		want(t, restrict(t, ownerA, closed, []any{user(annID)}, nil), http.StatusOK, "restrict the page to ann")
@@ -512,8 +509,8 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM attachment WHERE page_id = $1`, closed).Scan(&n); err != nil || n != 0 {
 			t.Errorf("ben reads %d files of the restricted page (%v)", n, err)
 		}
-		refused(t, conn, "a visit of a page ben may not view", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, benID, closed)
-		refused(t, conn, "a visit in ann's name", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, annID, pageA)
+		refused(t, conn, "a visit of a page ben may not view", `INSERT INTO page_visit (user_id, page_id) VALUES ($1, $2)`, benID, closed)
+		refused(t, conn, "a visit in ann's name", `INSERT INTO page_visit (user_id, page_id) VALUES ($1, $2)`, annID, pageA)
 		untouched(t, conn, "ann's visits from ben", `UPDATE page_visit SET visited_at = now() WHERE user_id = $1`, annID)
 		untouched(t, conn, "deleting ann's visits from ben", `DELETE FROM page_visit WHERE user_id = $1`, annID)
 		refused(t, conn, "handing ben's visit to ann", `UPDATE page_visit SET user_id = $1 WHERE user_id = $2`, annID, benID)
@@ -528,10 +525,9 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	// check a space at a time where no page can answer otherwise; whoever asks,
 	// they must return exactly the rows row level security would.
 	t.Run("the search functions return what row level security returns", func(t *testing.T) {
-		slug := h.slugOf(t, a.org)
-		annID, benID := h.addPerson(t, a.org, "member"), h.addPerson(t, a.org, "member")
+		annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
 		h.openSpaceTo(t, docsA.space, annID, benID)
-		ann := api.as(t, annID, a.org, slug)
+		ann := api.as(t, annID)
 		walled := docsA.add(docsA.homeID, "Walled hidden plan", map[string]any{"body": textDoc("hidden words")})
 		want(t, ownerA.upload(t, pagePath(walled, "/attachments"), "hidden-notes.txt", []byte("x")), http.StatusCreated, "a file on it")
 		want(t, ownerA.post(t, pagePath(walled, "/comments"), map[string]any{"body": commentDoc("hidden remark")}), http.StatusCreated, "a comment on it")
@@ -591,7 +587,7 @@ func TestSearchIsGuardedByTheDatabase(t *testing.T) {
 	t.Run("the index cannot be written, only derived", func(t *testing.T) {
 		actAs(t, conn, a.user)
 		refused(t, conn, "planting words", `UPDATE page SET search_vector = to_tsvector('planted') WHERE id = $1`, pageA)
-		refused(t, conn, "a visit in somebody else's name", `INSERT INTO page_visit (org_id, user_id, page_id) VALUES ($1, $2, $3)`, a.org, b.user, pageA)
+		refused(t, conn, "a visit in somebody else's name", `INSERT INTO page_visit (user_id, page_id) VALUES ($1, $2)`, b.user, pageA)
 		if _, err := conn.Exec(ctx, `UPDATE page SET title = 'Renamed plan' WHERE id = $1`, pageA); err != nil {
 			t.Fatal(err)
 		}

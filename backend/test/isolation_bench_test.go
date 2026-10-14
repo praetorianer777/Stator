@@ -159,7 +159,7 @@ func benchPerson(b *testing.B, cluster *db.Cluster, org uuid.UUID) uuid.UUID {
 	ctx := context.Background()
 	_, err := cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		if org == uuid.Nil {
-			if err := tx.QueryRow(ctx, `INSERT INTO org (slug, name) VALUES ($1, 'Bench') RETURNING id`, "bench-"+uuid.NewString()[:8]).Scan(&org); err != nil {
+			if err := tx.QueryRow(ctx, `INSERT INTO site (slug, name) VALUES ($1, 'Bench') RETURNING id`, "bench-"+uuid.NewString()[:8]).Scan(&org); err != nil {
 				return err
 			}
 		}
@@ -167,7 +167,7 @@ func benchPerson(b *testing.B, cluster *db.Cluster, org uuid.UUID) uuid.UUID {
 		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, 'Bench') RETURNING id`, uuid.NewString()+"@example.test").Scan(&user); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'owner')`, org, user)
+		_, err := tx.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, 'owner')`, org, user)
 		return err
 	})
 	if err != nil {

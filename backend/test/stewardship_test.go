@@ -42,10 +42,10 @@ func (h *harness) lapse(t *testing.T, pageID string) {
 	h.settle(t)
 }
 
-func pageActions(t *testing.T, h *harness, org uuid.UUID, pageID string) []string {
+func pageActions(t *testing.T, h *harness, pageID string) []string {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
-		SELECT action FROM audit_log WHERE org_id = $1 AND target_type = 'page' AND target_id = $2 ORDER BY created_at, id`, org, pageID)
+		SELECT action FROM audit_log WHERE target_type = 'page' AND target_id = $1 ORDER BY created_at, id`, pageID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,10 +67,9 @@ func TestOwnersAndVerificationOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stewards")
-	slug := h.slugOf(t, org.org)
-	admin := api.as(t, org.user, org.org, slug)
-	annID, benID, carlID := h.namedPerson(t, org.org, "Ann Reader"), h.namedPerson(t, org.org, "Ben Editor"), h.namedPerson(t, org.org, "Carl Outsider")
-	ann, ben := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug)
+	admin := api.as(t, org.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Reader"), h.namedPerson(t, "Ben Editor"), h.namedPerson(t, "Carl Outsider")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	nobody := api.anonymous()
 
 	docs := newTree(t, admin, "STW", "Stewards")
@@ -191,7 +190,7 @@ func TestOwnersAndVerificationOverTheAPI(t *testing.T) {
 		if p["owner"] != nil || p["verification"] != nil {
 			t.Errorf("the page still shows %v and %v", p["owner"], p["verification"])
 		}
-		got := pageActions(t, h, org.org, runbook)
+		got := pageActions(t, h, runbook)
 		wanted := []string{
 			audit.ActionPageRestrictionsSet,
 			audit.ActionPageOwnerSet, audit.ActionPageOwnerSet, audit.ActionPageOwnerSet,
@@ -199,8 +198,7 @@ func TestOwnersAndVerificationOverTheAPI(t *testing.T) {
 			audit.ActionPageUnverified, audit.ActionPageOwnerRemoved,
 		}
 		sameList(t, "the runbook's audit log", got, wanted...)
-		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = $2 AND actor_user_id = $3 AND data->>'owner' = $4`,
-			org.org, audit.ActionPageOwnerSet, benID, annID.String()); n != 2 {
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = $1 AND actor_user_id = $2 AND data->>'owner' = $3`, audit.ActionPageOwnerSet, benID, annID.String()); n != 2 {
 			t.Errorf("%d entries say ben named ann", n)
 		}
 		facets := obj(t, want(t, admin.get(t, "/api/v1/audit/facets"), http.StatusOK, "the log's facets"), "facets")
@@ -227,10 +225,9 @@ func TestAVerificationThatRunsOutTellsTheOwner(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "lapses")
-	slug := h.slugOf(t, org.org)
-	admin := api.as(t, org.user, org.org, slug)
-	annID, benID := h.namedPerson(t, org.org, "Ann Owner"), h.namedPerson(t, org.org, "Ben Verifier")
-	ann, ben := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug)
+	admin := api.as(t, org.user)
+	annID, benID := h.namedPerson(t, "Ann Owner"), h.namedPerson(t, "Ben Verifier")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	h.runWorker(t, notify.NewFanOut(h.cluster, testMailer(t), testAppURL, discard()))
 	watch := page.NewLapseWatch(h.cluster, discard(), time.Hour)
 	ctx := context.Background()
@@ -250,8 +247,7 @@ func TestAVerificationThatRunsOutTellsTheOwner(t *testing.T) {
 		return out
 	}
 	lapsedEvents := func() int {
-		return h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2 AND payload->>'pageId' = $3`,
-			org.org, events.TopicVerificationLapsed, guide)
+		return h.countRows(t, `SELECT count(*) FROM outbox_event WHERE topic = $1 AND payload->>'pageId' = $2`, events.TopicVerificationLapsed, guide)
 	}
 
 	t.Run("the page says it ran out at once, and the owner is told once", func(t *testing.T) {
@@ -266,7 +262,7 @@ func TestAVerificationThatRunsOutTellsTheOwner(t *testing.T) {
 		if _, err := watch.Once(ctx); err != nil {
 			t.Fatal(err)
 		}
-		h.drained(t, org.org)
+		h.drained(t)
 		if n := lapsedEvents(); n != 1 {
 			t.Errorf("the lapse was noted %d times", n)
 		}
@@ -306,7 +302,7 @@ func TestAVerificationThatRunsOutTellsTheOwner(t *testing.T) {
 		if _, err := watch.Once(ctx); err != nil {
 			t.Fatal(err)
 		}
-		h.drained(t, org.org)
+		h.drained(t)
 		if n := lapsedEvents(); n != 2 {
 			t.Errorf("%d lapses were noted, want 2", n)
 		}
@@ -336,10 +332,9 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stewards-rls")
 	other := h.makeOutsider(t, "stewards-rls-other")
-	slug := h.slugOf(t, org.org)
-	admin := api.as(t, org.user, org.org, slug)
-	annID, benID, carlID := h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member")
-	ben := api.as(t, benID, org.org, slug)
+	admin := api.as(t, org.user)
+	annID, benID, carlID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ben := api.as(t, benID)
 
 	docs := newTree(t, admin, "SWL", "Walls")
 	h.closeSpace(t, docs.space, annID, benID, carlID)
@@ -365,8 +360,8 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 
 	t.Run("a reader writes neither", func(t *testing.T) {
 		actAs(t, conn, annID)
-		denied(t, conn, "ann names herself owner", `INSERT INTO page_owner (org_id, page_id, user_id, set_by) VALUES ($1, $2, $3, $3)`, org.org, open, annID)
-		denied(t, conn, "ann verifies", `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() + interval '1 day')`, org.org, open, annID)
+		denied(t, conn, "ann names herself owner", `INSERT INTO page_owner (page_id, user_id, set_by) VALUES ($1, $2, $2)`, open, annID)
+		denied(t, conn, "ann verifies", `INSERT INTO page_verification (page_id, verified_by, expires_at) VALUES ($1, $2, now() + interval '1 day')`, open, annID)
 		untouched(t, conn, "ann takes the owner of Secret away", `DELETE FROM page_owner WHERE page_id = $1`, secret)
 		untouched(t, conn, "ann takes the verification of Secret away", `DELETE FROM page_verification WHERE page_id = $1`, secret)
 		untouched(t, conn, "ann renews Secret's verification", `UPDATE page_verification SET expires_at = now() + interval '2 days' WHERE page_id = $1`, secret)
@@ -378,14 +373,14 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 	t.Run("an editor writes in their own name, for somebody who may view the page", func(t *testing.T) {
 		actAs(t, conn, benID)
 		denied(t, conn, "carl, who may not view Secret, as its owner", `UPDATE page_owner SET user_id = $2, set_by = $3 WHERE page_id = $1`, secret, carlID, benID)
-		denied(t, conn, "an owner named in ann's name", `INSERT INTO page_owner (org_id, page_id, user_id, set_by) VALUES ($1, $2, $3, $4)`, org.org, open, benID, annID)
-		denied(t, conn, "a verification in ann's name", `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() + interval '1 day')`, org.org, open, annID)
-		denied(t, conn, "a term longer than allowed", `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() + interval '731 days')`, org.org, open, benID)
-		denied(t, conn, "a term already over", `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() - interval '1 day')`, org.org, open, benID)
-		denied(t, conn, "a backdated check", `INSERT INTO page_verification (org_id, page_id, verified_by, verified_at, expires_at) VALUES ($1, $2, $3, now() - interval '400 days', now() + interval '1 day')`, org.org, open, benID)
+		denied(t, conn, "an owner named in ann's name", `INSERT INTO page_owner (page_id, user_id, set_by) VALUES ($1, $2, $3)`, open, benID, annID)
+		denied(t, conn, "a verification in ann's name", `INSERT INTO page_verification (page_id, verified_by, expires_at) VALUES ($1, $2, now() + interval '1 day')`, open, annID)
+		denied(t, conn, "a term longer than allowed", `INSERT INTO page_verification (page_id, verified_by, expires_at) VALUES ($1, $2, now() + interval '731 days')`, open, benID)
+		denied(t, conn, "a term already over", `INSERT INTO page_verification (page_id, verified_by, expires_at) VALUES ($1, $2, now() - interval '1 day')`, open, benID)
+		denied(t, conn, "a backdated check", `INSERT INTO page_verification (page_id, verified_by, verified_at, expires_at) VALUES ($1, $2, now() - interval '400 days', now() + interval '1 day')`, open, benID)
 		denied(t, conn, "the worker's notice", `UPDATE page_verification SET lapse_noticed_at = now() WHERE page_id = $1`, secret)
-		denied(t, conn, "a verification of an unpublished page", `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() + interval '1 day')`, org.org, sketch, benID)
-		if _, err := conn.Exec(ctx, `INSERT INTO page_verification (org_id, page_id, verified_by, expires_at) VALUES ($1, $2, $3, now() + interval '1 day')`, org.org, open, benID); err != nil {
+		denied(t, conn, "a verification of an unpublished page", `INSERT INTO page_verification (page_id, verified_by, expires_at) VALUES ($1, $2, now() + interval '1 day')`, sketch, benID)
+		if _, err := conn.Exec(ctx, `INSERT INTO page_verification (page_id, verified_by, expires_at) VALUES ($1, $2, now() + interval '1 day')`, open, benID); err != nil {
 			t.Fatalf("ben cannot verify Open: %v", err)
 		}
 		var version int
@@ -393,7 +388,7 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 		if err := conn.QueryRow(ctx, `SELECT version, verified_at > now() - interval '1 minute' FROM page_verification WHERE page_id = $1`, open).Scan(&version, &fresh); err != nil || version != 1 || !fresh {
 			t.Errorf("ben's check is of version %d, stamped now %v (%v)", version, fresh, err)
 		}
-		if _, err := conn.Exec(ctx, `INSERT INTO page_owner (org_id, page_id, user_id, set_by) VALUES ($1, $2, $3, $4)`, org.org, open, annID, benID); err != nil {
+		if _, err := conn.Exec(ctx, `INSERT INTO page_owner (page_id, user_id, set_by) VALUES ($1, $2, $3)`, open, annID, benID); err != nil {
 			t.Errorf("ben cannot name ann, who reads Open: %v", err)
 		}
 	})
@@ -403,6 +398,6 @@ func TestStewardshipIsWalledByTheDatabase(t *testing.T) {
 		if n := count(`SELECT count(*) FROM page_owner`) + count(`SELECT count(*) FROM page_verification`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d rows", n)
 		}
-		denied(t, conn, "naming themselves owner", `INSERT INTO page_owner (org_id, page_id, user_id, set_by) VALUES ($1, $2, $3, $3)`, other.org, open, other.user)
+		denied(t, conn, "naming themselves owner", `INSERT INTO page_owner (page_id, user_id, set_by) VALUES ($1, $2, $2)`, open, other.user)
 	})
 }

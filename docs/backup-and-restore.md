@@ -114,6 +114,12 @@ archive's, at the schema it was taken with. Run the release the archive was
 taken with against it, split it as `docs/organization-transfer.md` says
 (export every organization, delete all but one), then upgrade.
 
+An archive of one organization taken before the schema stopped naming it
+(migration 00760) restores like any older archive: the last step drops the
+organization from every table and names the tables after the site. Files
+keep the keys they were stored under, which the rows go on naming, so the
+bucket the archive brings back needs no change.
+
 ## Checking a restore
 
 `make test-backup` is the check CI runs on every change: it backs up the

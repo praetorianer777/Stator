@@ -28,11 +28,10 @@ func TestSpacesOverTheAPI(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	home := h.makeMember(t, "spaces")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	member := api.as(t, h.addPerson(t, "member"))
 	away := h.makeOutsider(t, "spaces-away")
-	stranger := api.as(t, away.user, away.org, slug)
+	stranger := api.as(t, away.user)
 
 	made := want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": " docs ", "name": " Handbook ", "description": "How we work."}), http.StatusCreated, "make a space")
 	sp := obj(t, made, "space")
@@ -179,7 +178,7 @@ func TestSpacesOverTheAPI(t *testing.T) {
 			t.Errorf("its home page is still there: %d", got.Status)
 		}
 		var left int
-		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM page WHERE org_id = $1`, home.org).Scan(&left); err != nil || left != 0 {
+		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM page`).Scan(&left); err != nil || left != 0 {
 			t.Errorf("%d pages are left behind (%v)", left, err)
 		}
 	})
@@ -187,8 +186,8 @@ func TestSpacesOverTheAPI(t *testing.T) {
 	t.Run("the audit log says who made, changed and deleted it", func(t *testing.T) {
 		rows, err := h.super.Query(context.Background(), `
 			SELECT action FROM audit_log
-			WHERE org_id = $1 AND target_type = 'space' AND target_id = $2 AND actor_user_id = $3
-			ORDER BY created_at, action`, home.org, sp["id"], home.user)
+			WHERE target_type = 'space' AND target_id = $1 AND actor_user_id = $2
+			ORDER BY created_at, action`, sp["id"], home.user)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -250,9 +249,8 @@ func TestSpaceRowsAreWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "space-wall-a")
 	b := h.makeOutsider(t, "space-wall-b")
-	slug := h.slugOf(t, a.org)
-	ownerA := api.as(t, a.user, a.org, slug)
-	ownerB := api.as(t, b.user, b.org, slug)
+	ownerA := api.as(t, a.user)
+	ownerB := api.as(t, b.user)
 
 	spA := obj(t, want(t, ownerA.post(t, "/api/v1/spaces", map[string]any{"key": "WALL", "name": "Walled"}), http.StatusCreated, "space in A"), "space")
 	spA2 := obj(t, want(t, ownerA.post(t, "/api/v1/spaces", map[string]any{"key": "OTHER", "name": "Other"}), http.StatusCreated, "second space in A"), "space")
@@ -289,17 +287,17 @@ func TestSpaceRowsAreWalledByTheDatabase(t *testing.T) {
 	untouched(t, conn, "renaming A's space", `UPDATE space SET name = 'Taken' WHERE id = $1`, spaceA)
 	untouched(t, conn, "retitling A's home page", `UPDATE page SET title = 'Taken' WHERE id = $1`, homeA)
 	untouched(t, conn, "deleting A's space", `DELETE FROM space WHERE id = $1`, spaceA)
-	refused(t, conn, "planting a page in A", `INSERT INTO page (org_id, space_id, parent_id, rank, title) VALUES ($1, $2, $3, 'W', 'Planted')`, a.org, spaceA, homeA)
-	refused(t, conn, "hanging B's page under A's home", `INSERT INTO page (org_id, space_id, parent_id, rank, title) VALUES ($1, $2, $3, 'W', 'Planted')`, b.org, spaceB, homeA)
-	refused(t, conn, "putting B's page in A's space", `INSERT INTO page (org_id, space_id, parent_id, rank, title) VALUES ($1, $2, $3, 'W', 'Planted')`, b.org, spaceA, homeB)
+	refused(t, conn, "planting a page in A", `INSERT INTO page (space_id, parent_id, rank, title) VALUES ($1, $2, 'W', 'Planted')`, spaceA, homeA)
+	refused(t, conn, "hanging B's page under A's home", `INSERT INTO page (space_id, parent_id, rank, title) VALUES ($1, $2, 'W', 'Planted')`, spaceB, homeA)
+	refused(t, conn, "putting B's page in A's space", `INSERT INTO page (space_id, parent_id, rank, title) VALUES ($1, $2, 'W', 'Planted')`, spaceA, homeB)
 	refused(t, conn, "making A's page B's home", `UPDATE space SET home_page_id = $2 WHERE id = $1`, spaceB, homeA)
 
 	actAs(t, conn, a.user)
-	refused(t, conn, "a second root in a space", `INSERT INTO page (org_id, space_id, rank, title) VALUES ($1, $2, 'W', 'Second root')`, a.org, spaceA)
-	refused(t, conn, "a parent in another space", `INSERT INTO page (org_id, space_id, parent_id, rank, title) VALUES ($1, $2, $3, 'W', 'Astray')`, a.org, spaceA, homeA2)
+	refused(t, conn, "a second root in a space", `INSERT INTO page (space_id, rank, title) VALUES ($1, 'W', 'Second root')`, spaceA)
+	refused(t, conn, "a parent in another space", `INSERT INTO page (space_id, parent_id, rank, title) VALUES ($1, $2, 'W', 'Astray')`, spaceA, homeA2)
 	refused(t, conn, "another space's page as the home", `UPDATE space SET home_page_id = $2 WHERE id = $1`, spaceA, homeA2)
 	refused(t, conn, "deleting a home page", `DELETE FROM page WHERE id = $1`, homeA)
-	refused(t, conn, "a key that is not one", `INSERT INTO space (org_id, key, name) VALUES ($1, 'bad key', 'Bad')`, a.org)
+	refused(t, conn, "a key that is not one", `INSERT INTO space (key, name) VALUES ('bad key', 'Bad')`)
 
 	var title string
 	if err := h.super.QueryRow(context.Background(), `SELECT title FROM page WHERE id = $1`, homeA).Scan(&title); err != nil || title != "Walled" {

@@ -57,9 +57,15 @@ old=$(grep -rlw orgTest "$E2E/tests" "$E2E/fixtures" 2>/dev/null)
 
 # An instance holds one organization (#380), and the database refuses a
 # second, so nothing in the browser suite asks for one.
-second=$(grep -rlE 'withAnotherOrg|orgWithDeadProvider|/test/orgs|TEST_ORGS_PATH|INSERT INTO org\b' "$E2E/tests" "$E2E/fixtures" 2>/dev/null)
+second=$(grep -rlE 'withAnotherOrg|orgWithDeadProvider|/test/orgs|TEST_ORGS_PATH|INSERT INTO (org|site)\b' "$E2E/tests" "$E2E/fixtures" 2>/dev/null)
 [[ -z "$second" ]] && pass "no spec or fixture makes a second organization" \
   || fail "these make a second organization, which an instance does not hold; give them people and spaces of their own (fixtures/team.ts): $(paste -sd' ' <<< "$second")"
+
+# The schema names no organization any more (00760), so SQL in a spec that
+# does fails only when that spec runs; this says so before.
+named=$(grep -rlE '\borg_id\b|\b(FROM|JOIN|INTO|UPDATE) org(_member|_brand|_join_request)?\b' "$E2E/tests" "$E2E/fixtures" 2>/dev/null)
+[[ -z "$named" ]] && pass "no spec or fixture writes SQL for the organization's old columns and tables" \
+  || fail "these name org_id or a table the site took over (site, member, brand, join_request): $(paste -sd' ' <<< "$named")"
 
 instance_specs=$(sed -n '/^export const INSTANCE_SPECS = \[/,/^\];/p' "$E2E/fixtures/projects.ts" | sed -n 's/^ *"\([a-z0-9-]*\)",$/\1/p')
 [[ -n "$instance_specs" ]] || fail "fixtures/projects.ts lists no INSTANCE_SPECS this test can read"

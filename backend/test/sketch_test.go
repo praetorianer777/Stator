@@ -56,7 +56,7 @@ func TestAPageKeepsSketchesAsTheirScene(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "sketch")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	docs := newTree(t, owner, "SKT", "Sketches")
 	page := docs.add(docs.homeID, "Flows", map[string]any{"body": docOf(sketchNode(sketchScene, sketchDrawing, "Wallaby routing"))})

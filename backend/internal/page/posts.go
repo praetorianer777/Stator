@@ -173,7 +173,7 @@ func (s *Service) Posts(ctx context.Context, actor perm.Actor, in PostsInput) ([
 			       left(COALESCE(page_plain_text(p.body), ''), $8), p.icon
 			FROM page p
 			JOIN space s ON s.id = p.space_id
-			LEFT JOIN page_version v ON v.org_id = p.org_id AND v.page_id = p.id AND v.number = 1
+			LEFT JOIN page_version v ON v.page_id = p.id AND v.number = 1
 			LEFT JOIN app_user u ON u.id = v.created_by
 			WHERE p.kind = 'post' AND p.posted_at IS NOT NULL AND`+live+` AND p.archived_at IS NULL
 			  AND CASE WHEN $2::uuid IS NULL THEN s.archived_at IS NULL ELSE p.space_id = $2 END

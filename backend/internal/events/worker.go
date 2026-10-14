@@ -135,7 +135,7 @@ func (w *Worker) Once(ctx context.Context) (int, error) {
 
 // claim leases a batch in a transaction of its own. Holding the rows' locks
 // while the handlers run instead deadlocks unseen by Postgres: a handler's
-// write can wait on a delete of the organization, which waits on those locks.
+// write can wait on another transaction, which waits on those locks.
 func (w *Worker) claim(ctx context.Context) ([]claim, error) {
 	var batch []claim
 	_, err := w.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -150,7 +150,7 @@ func (w *Worker) claim(ctx context.Context) ([]claim, error) {
 			    FOR UPDATE SKIP LOCKED
 			) due
 			WHERE e.id = due.id
-			RETURNING e.id, e.org_id, e.topic, e.payload, e.created_at, COALESCE(e.trace_parent, ''), e.attempts`,
+			RETURNING e.id, e.topic, e.payload, e.created_at, COALESCE(e.trace_parent, ''), e.attempts`,
 			w.batch, ClaimLease.Seconds())
 		if err != nil {
 			return err
@@ -158,7 +158,7 @@ func (w *Worker) claim(ctx context.Context) ([]claim, error) {
 		defer rows.Close()
 		for rows.Next() {
 			var c claim
-			if err := rows.Scan(&c.ID, &c.OrgID, &c.Topic, &c.Payload, &c.CreatedAt, &c.Trace, &c.attempts); err != nil {
+			if err := rows.Scan(&c.ID, &c.Topic, &c.Payload, &c.CreatedAt, &c.Trace, &c.attempts); err != nil {
 				return err
 			}
 			batch = append(batch, c)

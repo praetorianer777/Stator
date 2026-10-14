@@ -50,13 +50,9 @@ func (s *Service) Export(ctx context.Context, id, reader uuid.UUID) (*Package, e
 	if err != nil {
 		return nil, err
 	}
-	orgID, err := s.orgID(ctx)
-	if err != nil {
-		return nil, err
-	}
 	out := &Package{Format: PackageFormat, Name: t.Name, Spec: t.Spec, Assets: []PackagedAsset{}}
 	for _, a := range t.Assets {
-		body, err := s.store.Get(ctx, ObjectKey(orgID, id, a.ID))
+		body, err := s.store.Get(ctx, a.key)
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", a.Name, ErrAssetNotFound)
 		}

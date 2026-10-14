@@ -15,10 +15,9 @@ func TestPagesBelowFollowWhatTheReaderMayView(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "below")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 
 	docs := newTree(t, owner, "BELOW", "Handbook")
 	guide := docs.add(docs.homeID, "Guide")

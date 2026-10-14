@@ -14,7 +14,7 @@ import (
 func MentionablePeople(ctx context.Context, tx db.DBTX, pageID uuid.UUID, q string, limit int) ([]Mentionable, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT u.id, u.name, u.email::text, perm_page_viewable_published($1, u.id)
-		FROM org_member m JOIN app_user u ON u.id = m.user_id
+		FROM member m JOIN app_user u ON u.id = m.user_id
 		WHERE perm_global_holds(u.id, 'use')
 		  AND (u.name ILIKE $2 OR u.name ILIKE '% ' || $2 OR u.email::text ILIKE $2)
 		ORDER BY lower(u.name), u.email LIMIT $3`, pageID, LikePrefix(q), PickerLimit(limit))

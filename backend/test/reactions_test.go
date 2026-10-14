@@ -55,10 +55,9 @@ func TestReactionsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "reactions")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID := h.namedPerson(t, home.org, "Ann Reactor"), h.namedPerson(t, home.org, "Ben Reactor"), h.namedPerson(t, home.org, "Carl Outsider")
-	ann, ben, carl := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, carlID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Reactor"), h.namedPerson(t, "Ben Reactor"), h.namedPerson(t, "Carl Outsider")
+	ann, ben, carl := api.as(t, annID), api.as(t, benID), api.as(t, carlID)
 
 	docs := newTree(t, owner, "REACT", "React")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("The plan.")})
@@ -107,8 +106,8 @@ func TestReactionsOverTheAPI(t *testing.T) {
 	t.Run("the tooltip names the first people and the count says how many", func(t *testing.T) {
 		var everybody []*client
 		for i := 0; i < reaction.MaxPeople+1; i++ {
-			id := h.addPerson(t, home.org, "member")
-			everybody = append(everybody, api.as(t, id, home.org, slug))
+			id := h.addPerson(t, "member")
+			everybody = append(everybody, api.as(t, id))
 		}
 		h.settle(t)
 		for _, c := range everybody {
@@ -248,10 +247,9 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "reaction-rls")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	other := h.makeOutsider(t, "reaction-rls-other")
 
 	docs := newTree(t, owner, "RRAW", "Raw")
@@ -278,8 +276,8 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 		}
 		return n
 	}
-	onPage := `INSERT INTO reaction (org_id, page_id, user_id, emoji) VALUES ($1, $2, $3, $4)`
-	onComment := `INSERT INTO reaction (org_id, page_id, comment_id, user_id, emoji) VALUES ($1, $2, $3, $4, $5)`
+	onPage := `INSERT INTO reaction (page_id, user_id, emoji) VALUES ($1, $2, $3)`
+	onComment := `INSERT INTO reaction (page_id, comment_id, user_id, emoji) VALUES ($1, $2, $3, $4)`
 
 	t.Run("somebody off a view list reads none and adds none", func(t *testing.T) {
 		actAs(t, conn, carlID)
@@ -289,16 +287,16 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 		if n := count(`SELECT count(*) FROM reaction WHERE page_id = $1`, open); n != 1 {
 			t.Errorf("carl reads %d reactions on Open, want 1", n)
 		}
-		denied(t, conn, "a reaction on a hidden page", onPage, home.org, secret, carlID, "🙂")
+		denied(t, conn, "a reaction on a hidden page", onPage, secret, carlID, "🙂")
 		untouched(t, conn, "taking ben's off a hidden page", `DELETE FROM reaction WHERE page_id = $1`, secret)
 	})
 
 	t.Run("nobody reacts or unreacts in somebody else's name", func(t *testing.T) {
 		actAs(t, conn, carlID)
-		denied(t, conn, "a reaction as ann", onPage, home.org, open, annID, "🙂")
+		denied(t, conn, "a reaction as ann", onPage, open, annID, "🙂")
 		untouched(t, conn, "taking ann's off", `DELETE FROM reaction WHERE user_id = $1`, annID)
 		denied(t, conn, "changing ann's emoji", `UPDATE reaction SET emoji = '👎' WHERE user_id = $1`, annID)
-		if _, err := conn.Exec(ctx, onPage, home.org, open, carlID, "🙂"); err != nil {
+		if _, err := conn.Exec(ctx, onPage, open, carlID, "🙂"); err != nil {
 			t.Errorf("carl may not react in his own name: %v", err)
 		}
 		if n, err := conn.Exec(ctx, `DELETE FROM reaction WHERE user_id = $1`, carlID); err != nil || n.RowsAffected() != 1 {
@@ -308,14 +306,14 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 
 	t.Run("an unpublished page, a deleted comment and a comment of another page take none", func(t *testing.T) {
 		actAs(t, conn, annID)
-		denied(t, conn, "a reaction on an unpublished page", onPage, home.org, draft, annID, "🙂")
-		denied(t, conn, "a reaction on a deleted comment", onComment, home.org, open, gone, annID, "🙂")
-		refused(t, conn, "a comment's reaction naming another page", onComment, home.org, open, elsewhere, annID, "🙂")
-		if _, err := conn.Exec(ctx, onComment, home.org, open, anns, annID, "🙂"); err != nil {
+		denied(t, conn, "a reaction on an unpublished page", onPage, draft, annID, "🙂")
+		denied(t, conn, "a reaction on a deleted comment", onComment, open, gone, annID, "🙂")
+		refused(t, conn, "a comment's reaction naming another page", onComment, open, elsewhere, annID, "🙂")
+		if _, err := conn.Exec(ctx, onComment, open, anns, annID, "🙂"); err != nil {
 			t.Errorf("ann may not react to her own comment: %v", err)
 		}
-		refused(t, conn, "the same reaction twice", onComment, home.org, open, anns, annID, "🙂")
-		denied(t, conn, "a word for an emoji", onPage, home.org, open, annID, "yes")
+		refused(t, conn, "the same reaction twice", onComment, open, anns, annID, "🙂")
+		denied(t, conn, "a word for an emoji", onPage, open, annID, "yes")
 	})
 
 	t.Run("without addComments nothing is added, and one's own still comes off", func(t *testing.T) {
@@ -324,7 +322,7 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 		}}), http.StatusOK, "RRAW is read only")
 		h.settle(t)
 		actAs(t, conn, annID)
-		denied(t, conn, "a reaction without addComments", onPage, home.org, open, annID, "🎉")
+		denied(t, conn, "a reaction without addComments", onPage, open, annID, "🎉")
 		if n, err := conn.Exec(ctx, `DELETE FROM reaction WHERE user_id = $1 AND page_id = $2 AND comment_id IS NULL`, annID, open); err != nil || n.RowsAffected() != 1 {
 			t.Errorf("ann may not take her own off while she may view the page: %v", err)
 		}
@@ -337,6 +335,6 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 		if n := count(`SELECT count(*) FROM reaction`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d reactions", n)
 		}
-		denied(t, conn, "a reaction on a page of the closed space", onPage, home.org, open, other.user, "🙂")
+		denied(t, conn, "a reaction on a page of the closed space", onPage, open, other.user, "🙂")
 	})
 }

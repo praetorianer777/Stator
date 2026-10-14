@@ -25,8 +25,8 @@ export interface Person {
 export interface Team {
   /** The spec's name and a random suffix, as a stub tenant or anything else of the spec's own. */
   label: string;
-  /** The one organization, for rows written in SQL and the public addresses from before they stopped naming it. */
-  org: { id: string; slug: string };
+  /** The site, for the public addresses from before they stopped naming its slug. */
+  site: { slug: string };
   people: Record<User, Person>;
 }
 
@@ -64,12 +64,11 @@ export async function removePerson(id: string): Promise<void> {
   }
 }
 
-// The api names the organization nowhere any more, so it is read where it is
-// kept; the oldest is the seed's, which the api serves.
-async function organization(): Promise<Team["org"]> {
+// The api names the slug nowhere any more, so it is read where it is kept.
+async function site(): Promise<Team["site"]> {
   return withDatabase(async (db) => {
-    const { rows } = await db.query<Team["org"]>("SELECT id, slug::text AS slug FROM org ORDER BY created_at LIMIT 1");
-    if (!rows[0]) throw new Error("The stack has no organization. Did the seed run?");
+    const { rows } = await db.query<Team["site"]>("SELECT slug::text AS slug FROM site");
+    if (!rows[0]) throw new Error("The stack has no site. Did the seed run?");
     return rows[0];
   });
 }
@@ -89,7 +88,7 @@ async function makeTeam(spec: string): Promise<Team> {
     for (const person of people) await removePerson(person.id).catch(() => {});
     throw failed.reason;
   }
-  return { label, org: await organization(), people: Object.fromEntries(users.map((user, i) => [user, people[i]!])) as Team["people"] };
+  return { label, site: await site(), people: Object.fromEntries(users.map((user, i) => [user, people[i]!])) as Team["people"] };
 }
 
 interface TeamPool {

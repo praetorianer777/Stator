@@ -47,8 +47,8 @@ func (s *Service) PagesCopied(ctx context.Context, tx db.DBTX, copies map[uuid.U
 		}
 		var key, contentType string
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO attachment (id, org_id, page_id, uploaded_by, file_name, content_type, size_bytes, width, height, created_at)
-			SELECT $2, org_id, $3, uploaded_by, file_name, content_type, size_bytes, width, height, created_at
+			INSERT INTO attachment (id, page_id, uploaded_by, file_name, content_type, size_bytes, width, height, created_at)
+			SELECT $2, $3, uploaded_by, file_name, content_type, size_bytes, width, height, created_at
 			FROM attachment WHERE id = $1
 			RETURNING object_key, content_type`, f.ID, id, copies[f.PageID]).Scan(&key, &contentType); err != nil {
 			return fmt.Errorf("copy the file: %w", err)

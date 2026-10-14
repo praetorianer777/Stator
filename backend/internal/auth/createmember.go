@@ -40,7 +40,7 @@ var (
 type NewMember struct {
 	Email    string
 	Name     string
-	Role     OrgRole
+	Role     Role
 	Password string
 }
 
@@ -50,7 +50,7 @@ type CreatedMember struct {
 	UserID uuid.UUID `json:"userId"`
 	Email  string    `json:"email"`
 	Name   string    `json:"name"`
-	Role   OrgRole   `json:"role"`
+	Role   Role      `json:"role"`
 	// NewAccount is false when the address already had an account elsewhere,
 	// which keeps its own password: the person signs in as they always did.
 	NewAccount bool   `json:"newAccount"`
@@ -110,8 +110,8 @@ func (s *Service) CreateMember(ctx context.Context, in NewMember, actor uuid.UUI
 			name = existingName
 		}
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO org_member (user_id, org_role) VALUES ($1, $2)
-			ON CONFLICT (org_id, user_id) DO NOTHING`, userID, string(in.Role))
+			INSERT INTO member (user_id, role) VALUES ($1, $2)
+			ON CONFLICT (user_id) DO NOTHING`, userID, string(in.Role))
 		if err != nil {
 			return fmt.Errorf("create the membership: %w", err)
 		}

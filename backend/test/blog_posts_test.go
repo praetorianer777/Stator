@@ -86,11 +86,10 @@ func TestBlogPostsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "blog")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.namedPerson(t, home.org, "Ann Writer")
-	benID := h.addPerson(t, home.org, "member")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID := h.namedPerson(t, "Ann Writer")
+	benID := h.addPerson(t, "member")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 
 	news := newTree(t, owner, "BLOG", "News")
 	other := newTree(t, owner, "BLOGX", "Elsewhere")
@@ -304,11 +303,10 @@ func TestBlogWatchersHearOfNewPosts(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "blog-watch")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.namedPerson(t, home.org, "Ann Poster")
-	benID, catID, danID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, ben, cat, dan := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, catID, home.org, slug), api.as(t, danID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID := h.namedPerson(t, "Ann Poster")
+	benID, catID, danID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, ben, cat, dan := api.as(t, annID), api.as(t, benID), api.as(t, catID), api.as(t, danID)
 	h.runWorker(t, notify.NewFanOut(h.cluster, nil, testAppURL, discard()))
 	newTree(t, owner, "BW", "Watched")
 
@@ -340,7 +338,7 @@ func TestBlogWatchersHearOfNewPosts(t *testing.T) {
 	secret := writePost(t, ann, "BW", "Secret", "Not for you", map[string]any{"publish": false})["id"].(string)
 	want(t, restrict(t, ann, secret, []any{user(annID)}, nil), http.StatusOK, "keep it to ann")
 	publishDraft(t, ann, secret, "Secret", "Not for you", true)
-	h.drained(t, home.org)
+	h.drained(t)
 
 	heard := func(c *client) string {
 		var out []string
@@ -364,12 +362,11 @@ func TestBlogWatchersHearOfNewPosts(t *testing.T) {
 		t.Error("the blog still says ben watches it")
 	}
 	writePost(t, ann, "BW", "Later", "Nobody listens")
-	h.drained(t, home.org)
+	h.drained(t)
 	if got := heard(ben); got != "posted:Hello" {
 		t.Errorf("after he stopped, ben heard %q", got)
 	}
-	if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2 AND payload->>'pageId' = $3 AND (payload->>'first')::boolean`,
-		home.org, events.TopicPagePublished, first); n != 1 {
+	if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE topic = $1 AND payload->>'pageId' = $2 AND (payload->>'first')::boolean`, events.TopicPagePublished, first); n != 1 {
 		t.Errorf("the first publish of a post was announced %d times", n)
 	}
 }
@@ -380,7 +377,7 @@ func TestAWebhookTellsAPostFromAPage(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runStackWorker(t)
 	home := h.makeMember(t, "blog-hook")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	bin, address := hookBin(t)
 	makeHook(t, owner, "Posts", address, events.TopicPagePublished)
 	tr := newTree(t, owner, "BHOOK", "Hooked")
@@ -403,11 +400,10 @@ func TestBlogPostsAreHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "blog-db")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.addPerson(t, home.org, "member")
-	readerID := h.addPerson(t, home.org, "member")
-	ann := api.as(t, annID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID := h.addPerson(t, "member")
+	readerID := h.addPerson(t, "member")
+	ann := api.as(t, annID)
 
 	tr := newTree(t, owner, "BDB", "Guarded")
 	newTree(t, owner, "BDBC", "Closed")
@@ -421,10 +417,10 @@ func TestBlogPostsAreHeldByTheDatabase(t *testing.T) {
 
 	var spaceID, closedID uuid.UUID
 	ctx := context.Background()
-	if err := h.super.QueryRow(ctx, `SELECT id FROM space WHERE org_id = $1 AND key = 'BDB'`, home.org).Scan(&spaceID); err != nil {
+	if err := h.super.QueryRow(ctx, `SELECT id FROM space WHERE key = 'BDB'`).Scan(&spaceID); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.super.QueryRow(ctx, `SELECT id FROM space WHERE org_id = $1 AND key = 'BDBC'`, home.org).Scan(&closedID); err != nil {
+	if err := h.super.QueryRow(ctx, `SELECT id FROM space WHERE key = 'BDBC'`).Scan(&closedID); err != nil {
 		t.Fatal(err)
 	}
 	insert := `INSERT INTO page (space_id, parent_id, rank, title, created_by, kind, version)

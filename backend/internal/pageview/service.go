@@ -31,7 +31,7 @@ const (
 	CountQuery = `
 		INSERT INTO page_view (page_id, user_id, day)
 		VALUES ($2, $1, page_view_today())
-		ON CONFLICT (org_id, page_id, user_id, day) DO NOTHING`
+		ON CONFLICT (page_id, user_id, day) DO NOTHING`
 )
 
 // Count notes the actor's view of a page they may view, inside the caller's

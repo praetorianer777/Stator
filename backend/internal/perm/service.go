@@ -92,8 +92,8 @@ func (s *Service) GlobalGrants(ctx context.Context, actor Actor) ([]GlobalGrant,
 func globalGrant(ctx context.Context, tx db.DBTX, p GlobalPermission) (GlobalGrant, error) {
 	if p == AdministerOrg {
 		rows, err := tx.Query(ctx, `
-			SELECT 'user', u.id, u.name FROM org_member m JOIN app_user u ON u.id = m.user_id
-			WHERE m.org_role IN ('owner', 'admin')
+			SELECT 'user', u.id, u.name FROM member m JOIN app_user u ON u.id = m.user_id
+			WHERE m.role IN ('owner', 'admin')
 			ORDER BY lower(u.name), u.id`)
 		if err != nil {
 			return GlobalGrant{}, err
@@ -225,7 +225,7 @@ func resolve(ctx context.Context, tx db.DBTX, field string, ref SubjectRef, ever
 	)
 	if ref.Type == SubjectUser {
 		err = tx.QueryRow(ctx, `
-			SELECT u.name FROM org_member m JOIN app_user u ON u.id = m.user_id
+			SELECT u.name FROM member m JOIN app_user u ON u.id = m.user_id
 			WHERE m.user_id = $1`, *ref.ID).Scan(&name)
 	} else {
 		err = tx.QueryRow(ctx, `SELECT name FROM groups WHERE id = $1`, *ref.ID).Scan(&name)
@@ -277,7 +277,7 @@ func (s *Service) People(ctx context.Context, actor Actor, q string, limit int) 
 	out := []Person{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT u.id, u.name, u.email::text FROM org_member m JOIN app_user u ON u.id = m.user_id
+			SELECT u.id, u.name, u.email::text FROM member m JOIN app_user u ON u.id = m.user_id
 			WHERE (u.name ILIKE $1 OR u.name ILIKE '% ' || $1 OR u.email::text ILIKE $1)
 			ORDER BY lower(u.name), u.email LIMIT $2`, LikePrefix(q), PickerLimit(limit))
 		if err != nil {

@@ -1,5 +1,5 @@
 // Package auth handles identity: argon2 passwords, opaque session tokens,
-// personal access tokens, and the organization a request is acting within.
+// personal access tokens, and the standing a caller has on the site.
 package auth
 
 import (
@@ -7,8 +7,6 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-
-	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // ErrInvalidToken is an unknown, expired or revoked credential. The caller is
@@ -22,9 +20,6 @@ var ErrNotMember = errors.New("not a member of this instance")
 // Principal is the caller a credential resolved to.
 type Principal struct {
 	UserID uuid.UUID
-	// Org is the organization the caller is acting in; nil for a person who is
-	// no member.
-	Org *instance.Org
 
 	Email     string
 	Name      string
@@ -34,10 +29,11 @@ type Principal struct {
 	Locale Locale
 	// ShowInReaders says the person's name appears among a page's readers.
 	ShowInReaders bool
-	// OrgName is Org's display name, empty when Org is nil.
-	OrgName string
-	// Role is the caller's standing in Org, empty when Org is nil.
-	Role OrgRole
+	// SiteName is the site's display name, empty for a person who is no member.
+	SiteName string
+	// Role is the caller's standing on the site, empty for a person who is no
+	// member.
+	Role Role
 	// SessionID names the sign-in this request rides on, and keys its
 	// read-your-writes position; nil for a caller without a session.
 	SessionID *uuid.UUID
@@ -50,14 +46,14 @@ type Principal struct {
 	// do whatever its owner may.
 	Scopes []string
 	// SpacesOnly marks a token that reaches only TokenSpaces, which may by
-	// now be none, and never the organization as a whole.
+	// now be none, and never the site as a whole.
 	SpacesOnly  bool
 	TokenSpaces []uuid.UUID
 	// GuestSpace is the one space a guest reaches; nil for everybody else.
 	GuestSpace *SpaceRef
 }
 
-// Guest reports whether the caller is a guest of one space in their organization.
+// Guest reports whether the caller is a guest of one space.
 func (p *Principal) Guest() bool { return p != nil && p.Role == RoleGuest }
 
 // InSpacesOnly reports whether the caller came with a token limited to spaces.
@@ -75,11 +71,11 @@ func (p *Principal) HasScope(scope string) bool {
 // ReadOnly reports whether the caller came with a token made only to read.
 func (p *Principal) ReadOnly() bool { return p.HasScope(ScopeRead) }
 
-// InOrg reports whether the caller has chosen an organization to act in.
-func (p *Principal) InOrg() bool { return p != nil && p.Org != nil && p.Org.ID != uuid.Nil }
+// IsMember reports whether the caller is a member of the site, a guest included.
+func (p *Principal) IsMember() bool { return p != nil && p.Role != "" }
 
 // CanAdminister reports whether the caller may change the settings of the
-// organization they are acting in, which a token limited to spaces may not.
+// site, which a token limited to spaces may not.
 func (p *Principal) CanAdminister() bool {
-	return p.InOrg() && p.Role.CanAdminister() && !p.InSpacesOnly()
+	return p.IsMember() && p.Role.CanAdminister() && !p.InSpacesOnly()
 }

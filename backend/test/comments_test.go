@@ -68,10 +68,9 @@ func TestCommentsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "comments")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID := h.namedPerson(t, home.org, "Ann Commenter"), h.namedPerson(t, home.org, "Ben Commenter"), h.namedPerson(t, home.org, "Carl Outsider")
-	ann, ben, carl := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, carlID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Commenter"), h.namedPerson(t, "Ben Commenter"), h.namedPerson(t, "Carl Outsider")
+	ann, ben, carl := api.as(t, annID), api.as(t, benID), api.as(t, carlID)
 
 	docs := newTree(t, owner, "TALK", "Talk")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("The plan.")})
@@ -237,7 +236,7 @@ func TestCommentsOverTheAPI(t *testing.T) {
 		second := threads[1]
 		secondID := second["id"].(string)
 		want(t, owner.delete(t, "/api/v1/comments/"+secondID), http.StatusNoContent, "the owner deletes ben's thread")
-		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'comment.deleted' AND target_id = $2 AND actor_user_id = $3`, home.org, secondID, home.user); n != 1 {
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = 'comment.deleted' AND target_id = $1 AND actor_user_id = $2`, secondID, home.user); n != 1 {
 			t.Errorf("the moderator's delete was audited %d times", n)
 		}
 		if got := threadsOf(t, carl, plan, ""); len(got) != 1 || got[0]["id"] == secondID {
@@ -247,7 +246,7 @@ func TestCommentsOverTheAPI(t *testing.T) {
 		want(t, reply(t, carl, secondID, "Hello?"), http.StatusNotFound, "a reply to a deleted thread")
 		mine := commentsIn(threads[0])
 		want(t, carl.delete(t, "/api/v1/comments/"+mine[len(mine)-1]["id"].(string)), http.StatusNoContent, "carl deletes his own")
-		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'comment.deleted' AND actor_user_id = $2`, home.org, carlID); n != 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = 'comment.deleted' AND actor_user_id = $1`, carlID); n != 0 {
 			t.Errorf("deleting one's own was audited %d times", n)
 		}
 	})
@@ -312,10 +311,9 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "comment-rls")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 
 	docs := newTree(t, owner, "CRAW", "Raw")
 	open := docs.add(docs.homeID, "Open")
@@ -338,7 +336,7 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 		}
 		return n
 	}
-	insert := `INSERT INTO comment (org_id, id, thread_id, page_id, author_id, body) VALUES ($1, $2, $3, $4, $5, '{"type":"doc"}')`
+	insert := `INSERT INTO comment (id, thread_id, page_id, author_id, body) VALUES ($1, $2, $3, $4, '{"type":"doc"}')`
 
 	t.Run("somebody off a view list reads none of its comments", func(t *testing.T) {
 		actAs(t, conn, carlID)
@@ -351,20 +349,20 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 			t.Errorf("carl reads %d comments on Open, want 2", n)
 		}
 		untouched(t, conn, "deleting a hidden comment", `UPDATE comment SET body = NULL, deleted_at = now(), deleted_by = $2 WHERE id = $1`, hidden, carlID)
-		denied(t, conn, "replying on a hidden page", insert, home.org, uuid.New(), hidden, secret, carlID)
-		denied(t, conn, "a thread on a hidden page", `INSERT INTO comment_thread (org_id, page_id, kind, created_by) VALUES ($1, $2, 'page', $3)`, home.org, secret, carlID)
+		denied(t, conn, "replying on a hidden page", insert, uuid.New(), hidden, secret, carlID)
+		denied(t, conn, "a thread on a hidden page", `INSERT INTO comment_thread (page_id, kind, created_by) VALUES ($1, 'page', $2)`, secret, carlID)
 	})
 
 	t.Run("nobody writes in somebody else's name", func(t *testing.T) {
 		actAs(t, conn, carlID)
-		denied(t, conn, "a reply as ann", insert, home.org, uuid.New(), anns, open, annID)
-		denied(t, conn, "a thread as ann", `INSERT INTO comment_thread (org_id, page_id, kind, created_by) VALUES ($1, $2, 'page', $3)`, home.org, open, annID)
+		denied(t, conn, "a reply as ann", insert, uuid.New(), anns, open, annID)
+		denied(t, conn, "a thread as ann", `INSERT INTO comment_thread (page_id, kind, created_by) VALUES ($1, 'page', $2)`, open, annID)
 		denied(t, conn, "rewriting ann's words", `UPDATE comment SET body = '{"type":"doc"}', edited_at = now() WHERE id = $1`, anns)
 		denied(t, conn, "deleting ann's comment", `UPDATE comment SET body = NULL, deleted_at = now(), deleted_by = $2 WHERE id = $1`, anns, carlID)
 		denied(t, conn, "taking ann's comment as his", `UPDATE comment SET author_id = $2 WHERE id = $1`, anns, carlID)
 		denied(t, conn, "deleting outright", `DELETE FROM comment WHERE id = $1`, anns)
-		denied(t, conn, "a comment on an unpublished page", insert, home.org, uuid.New(), anns, draft, carlID)
-		if _, err := conn.Exec(ctx, insert, home.org, uuid.New(), anns, open, carlID); err != nil {
+		denied(t, conn, "a comment on an unpublished page", insert, uuid.New(), anns, draft, carlID)
+		if _, err := conn.Exec(ctx, insert, uuid.New(), anns, open, carlID); err != nil {
 			t.Errorf("carl may not reply in his own name: %v", err)
 		}
 	})
@@ -388,7 +386,7 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 		}}), http.StatusOK, "CRAW is read only")
 		h.settle(t)
 		actAs(t, conn, annID)
-		denied(t, conn, "a reply without addComments", insert, home.org, uuid.New(), anns, open, annID)
+		denied(t, conn, "a reply without addComments", insert, uuid.New(), anns, open, annID)
 		denied(t, conn, "editing her own without addComments", `UPDATE comment SET body = '{"type":"doc"}', edited_at = now() WHERE id = $1`, anns)
 		if _, err := conn.Exec(ctx, `UPDATE comment SET body = NULL, deleted_at = now(), deleted_by = $2 WHERE id = $1`, anns, annID); err != nil {
 			t.Errorf("ann may not delete her own while she may view the page: %v", err)
@@ -407,9 +405,9 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 		var n int
 		err := h.super.QueryRow(ctx, `
 			WITH made AS (
-				INSERT INTO notification (org_id, user_id, event_id, kind, page_id, thread_id, comment_id)
-				VALUES ($1, $2, $3, 'commented', $4, $5, $5) RETURNING 1)
-			SELECT count(*) FROM made`, home.org, carlID, uuid.New(), open, bens).Scan(&n)
+				INSERT INTO notification (user_id, event_id, kind, page_id, thread_id, comment_id)
+				VALUES ($1, $2, 'commented', $3, $4, $4) RETURNING 1)
+			SELECT count(*) FROM made`, carlID, uuid.New(), open, bens).Scan(&n)
 		if err != nil || n != 0 {
 			t.Errorf("a notification about a deleted comment was written: %d %v", n, err)
 		}
@@ -422,10 +420,9 @@ func TestDeletingOthersCommentsTakesAdminister(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "comment-moderation")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, danID := h.namedPerson(t, home.org, "Ann Author"), h.namedPerson(t, home.org, "Ben Member"), h.namedPerson(t, home.org, "Dan Admin")
-	ann, ben, dan := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, danID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, danID := h.namedPerson(t, "Ann Author"), h.namedPerson(t, "Ben Member"), h.namedPerson(t, "Dan Admin")
+	ann, ben, dan := api.as(t, annID), api.as(t, benID), api.as(t, danID)
 
 	docs := newTree(t, owner, "CMOD", "Moderation")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("The plan.")})
@@ -454,7 +451,7 @@ func TestDeletingOthersCommentsTakesAdminister(t *testing.T) {
 	}
 	audited := func(id string, actor uuid.UUID) int {
 		t.Helper()
-		return h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'comment.deleted' AND target_id = $2 AND actor_user_id = $3`, home.org, id, actor)
+		return h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = 'comment.deleted' AND target_id = $1 AND actor_user_id = $2`, id, actor)
 	}
 
 	t.Run("through the API", func(t *testing.T) {
@@ -514,23 +511,22 @@ func TestCommentNotifications(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runWorker(t, notify.NewFanOut(h.cluster, nil, testAppURL, discard()))
 	home := h.makeMember(t, "comment-notify")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID, danID := h.namedPerson(t, home.org, "Ann Talker"), h.namedPerson(t, home.org, "Ben Talker"), h.namedPerson(t, home.org, "Carl Watcher"), h.namedPerson(t, home.org, "Dan Outsider")
-	ann, ben, carl, dan := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, carlID, home.org, slug), api.as(t, danID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID, danID := h.namedPerson(t, "Ann Talker"), h.namedPerson(t, "Ben Talker"), h.namedPerson(t, "Carl Watcher"), h.namedPerson(t, "Dan Outsider")
+	ann, ben, carl, dan := api.as(t, annID), api.as(t, benID), api.as(t, carlID), api.as(t, danID)
 
 	docs := newTree(t, owner, "CNOT", "Comment notes")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("The plan.")})
 	want(t, watchPage(t, carl, plan, false), http.StatusOK, "carl watches Plan")
 	want(t, watchPage(t, dan, plan, false), http.StatusOK, "dan watches Plan")
 	want(t, restrict(t, owner, plan, []any{user(home.user), user(annID), user(benID), user(carlID)}, nil), http.StatusOK, "Plan is not for dan")
-	h.drained(t, home.org)
+	h.drained(t)
 	for name, c := range map[string]*client{"ann": ann, "ben": ben, "carl": carl, "dan": dan, "the owner": owner} {
 		want(t, c.post(t, "/api/v1/notifications/read", map[string]any{"all": true}), http.StatusNoContent, name+" starts with nothing unread")
 	}
 
 	thread := startThread(t, ann, plan, "Friday or Monday?")
-	h.drained(t, home.org)
+	h.drained(t)
 	t.Run("a new thread tells the page's watchers who may view it", func(t *testing.T) {
 		got := notificationsOf(t, carl, "?unread=true")
 		if len(got) != 1 || got[0]["kind"] != "commented" || got[0]["threadId"] != thread["id"] || got[0]["commentId"] != thread["id"] ||
@@ -542,7 +538,7 @@ func TestCommentNotifications(t *testing.T) {
 				t.Errorf("%s was told %v", name, got)
 			}
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM notification WHERE org_id = $1 AND user_id = $2`, home.org, danID); n != 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM notification WHERE user_id = $1`, danID); n != 0 {
 			t.Errorf("dan has %d rows about a page he may not view", n)
 		}
 	})
@@ -550,7 +546,7 @@ func TestCommentNotifications(t *testing.T) {
 	var benReply string
 	t.Run("a reply tells everybody who wrote in the thread, and watchers once", func(t *testing.T) {
 		benReply = obj(t, want(t, reply(t, ben, thread["id"].(string), "Monday."), http.StatusCreated, "ben replies"), "comment")["id"].(string)
-		h.drained(t, home.org)
+		h.drained(t)
 		got := notificationsOf(t, ann, "?unread=true")
 		if len(got) != 1 || got[0]["kind"] != "replied" || got[0]["commentId"] != benReply || got[0]["threadId"] != thread["id"] || got[0]["excerpt"] != "Monday." {
 			t.Errorf("ann was told %v", got)
@@ -560,7 +556,7 @@ func TestCommentNotifications(t *testing.T) {
 		}
 		want(t, watchPage(t, ann, plan, false), http.StatusOK, "ann watches Plan too")
 		want(t, reply(t, carl, thread["id"].(string), "Agreed."), http.StatusCreated, "carl replies")
-		h.drained(t, home.org)
+		h.drained(t)
 		got = notificationsOf(t, ann, "?unread=true")
 		if len(got) != 2 || got[0]["kind"] != "replied" {
 			t.Errorf("ann, who wrote in it and watches, was told %v", got)
@@ -583,7 +579,7 @@ func TestCommentNotifications(t *testing.T) {
 				}
 			}
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM notification WHERE org_id = $1 AND comment_id = $2`, home.org, benReply); n != 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM notification WHERE comment_id = $1`, benReply); n != 0 {
 			t.Errorf("%d rows about the deleted reply remain", n)
 		}
 	})

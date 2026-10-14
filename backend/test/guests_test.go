@@ -35,11 +35,10 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "guests")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	inaID := h.namedPerson(t, home.org, "Ina Insider")
-	oscarID := h.namedPerson(t, home.org, "Oscar Outsider")
-	ina, oscar := api.as(t, inaID, home.org, slug), api.as(t, oscarID, home.org, slug)
+	owner := api.as(t, home.user)
+	inaID := h.namedPerson(t, "Ina Insider")
+	oscarID := h.namedPerson(t, "Oscar Outsider")
+	ina, oscar := api.as(t, inaID), api.as(t, oscarID)
 
 	join := newTree(t, owner, "JOIN", "Joint work")
 	other := newTree(t, owner, "OTHR", "Other work")
@@ -53,10 +52,10 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 	want(t, owner.post(t, pagePath(otherPage, "/comments"), map[string]any{"body": commentDoc("Zebra comment.")}), http.StatusCreated, "comment on Other zebra")
 	want(t, owner.post(t, calendarsPath("OTHR"), map[string]any{"name": "Other team"}), http.StatusCreated, "a calendar of OTHR")
 	var groupID uuid.UUID
-	if err := h.super.QueryRow(context.Background(), `INSERT INTO groups (org_id, name) VALUES ($1, 'Staff') RETURNING id`, home.org).Scan(&groupID); err != nil {
+	if err := h.super.QueryRow(context.Background(), `INSERT INTO groups (name) VALUES ('Staff') RETURNING id`).Scan(&groupID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO group_member (org_id, group_id, user_id) VALUES ($1, $2, $3)`, home.org, groupID, oscarID); err != nil {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO group_member (group_id, user_id) VALUES ($1, $2)`, groupID, oscarID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -84,7 +83,7 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 		t.Fatalf("the invitation answered %v", made)
 	}
 	h.settle(t)
-	gwen := api.as(t, guestID, home.org, slug)
+	gwen := api.as(t, guestID)
 
 	t.Run("administrators see the guest, marked as one", func(t *testing.T) {
 		guests := list(t, want(t, owner.get(t, invitations), http.StatusOK, "the space's guests"), "guests")
@@ -108,8 +107,8 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 		}
 		var role, space string
 		if err := h.super.QueryRow(context.Background(), `
-			SELECT data->>'role', data->>'space' FROM audit_log WHERE org_id = $1 AND target_id = $2 AND action = 'member.guest_invited'`,
-			home.org, guestID).Scan(&role, &space); err != nil || role != "editor" || space != "JOIN" {
+			SELECT data->>'role', data->>'space' FROM audit_log WHERE target_id = $1 AND action = 'member.guest_invited'`,
+			guestID).Scan(&role, &space); err != nil || role != "editor" || space != "JOIN" {
 			t.Errorf("the audit log has %q in %q (%v)", role, space, err)
 		}
 	})
@@ -214,7 +213,7 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 		var told []string
 		if err := h.super.QueryRow(context.Background(), `
 			SELECT COALESCE(array_agg(m), '{}') FROM outbox_event e, jsonb_array_elements_text(e.payload -> 'mentioned') AS m
-			WHERE e.org_id = $1 AND e.payload ->> 'pageId' = $2`, home.org, mine).Scan(&told); err != nil {
+			WHERE e.payload ->> 'pageId' = $1`, mine).Scan(&told); err != nil {
 			t.Fatal(err)
 		}
 		if slices.Contains(told, oscarID.String()) || !slices.Contains(told, inaID.String()) {
@@ -279,7 +278,7 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, strangerID) })
-		if _, err := h.super.Exec(ctx, `INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, home.org, strangerID); err != nil {
+		if _, err := h.super.Exec(ctx, `INSERT INTO join_request (user_id) VALUES ($1)`, strangerID); err != nil {
 			t.Fatal(err)
 		}
 		otherID := other.spaceID(t)
@@ -292,10 +291,10 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 			"OTHR's calendars":            `SELECT count(*) FROM calendar c JOIN space s ON s.id = c.space_id WHERE s.key = 'OTHR'`,
 			"Other zebra in search":       `SELECT count(*) FROM page WHERE search_vector @@ websearch_to_tsquery('simple', 'zebra') AND id = '` + otherPage + `'`,
 			"Oscar":                       `SELECT count(*) FROM app_user WHERE id = '` + oscarID.String() + `'`,
-			"Oscar's membership":          `SELECT count(*) FROM org_member WHERE user_id = '` + oscarID.String() + `'`,
+			"Oscar's membership":          `SELECT count(*) FROM member WHERE user_id = '` + oscarID.String() + `'`,
 			"the groups":                  `SELECT count(*) FROM groups`,
 			"the group members":           `SELECT count(*) FROM group_member`,
-			"the requests to join":        `SELECT count(*) FROM org_join_request`,
+			"the requests to join":        `SELECT count(*) FROM join_request`,
 			"OTHR in the home feed":       `SELECT count(*) FROM home_edited(NULL, NULL, 100) WHERE page_id = '` + otherPage + `'`,
 		}
 		actAs(t, conn, home.user)
@@ -314,49 +313,49 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 			"Join zebra":      `SELECT count(*) FROM page WHERE id = '` + joinPage + `'`,
 			"Ina":             `SELECT count(*) FROM app_user WHERE id = '` + inaID.String() + `'`,
 			"themselves":      `SELECT count(*) FROM app_user WHERE id = '` + guestID.String() + `'`,
-			"the owner":       `SELECT count(*) FROM org_member WHERE user_id = '` + home.user.String() + `'`,
+			"the owner":       `SELECT count(*) FROM member WHERE user_id = '` + home.user.String() + `'`,
 			"their own space": `SELECT count(*) FROM space WHERE key = 'JOIN'`,
 		} {
 			if count(sql) != 1 {
 				t.Errorf("the guest does not read %s", what)
 			}
 		}
-		denied(t, conn, "a page in OTHR", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by)
-			VALUES ($1, $2, $3, 'W', 'Planted', $4)`, home.org, otherID, other.homeID, guestID)
+		denied(t, conn, "a page in OTHR", `INSERT INTO page (space_id, parent_id, rank, title, created_by)
+			VALUES ($1, $2, 'W', 'Planted', $3)`, otherID, other.homeID, guestID)
 		untouched(t, conn, "retitling Other zebra", `UPDATE page SET title = 'Taken' WHERE id = $1`, otherPage)
-		denied(t, conn, "a space of their own", `INSERT INTO space (org_id, key, name, created_by, owner_id) VALUES ($1, 'GWEN', 'Gwen', $2, $2)`, home.org, guestID)
-		denied(t, conn, "a team space", `INSERT INTO space (org_id, key, name, created_by) VALUES ($1, 'GWENS', 'Gwens', $2)`, home.org, guestID)
-		denied(t, conn, "a token", `INSERT INTO api_token (org_id, user_id, name, token_hash) VALUES ($1, $2, 'planted', $3)`, home.org, guestID, []byte(uuid.NewString()))
-		denied(t, conn, "a grant of OTHR to themselves", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
-			VALUES ($1, $2, 'view', 'user', $3)`, home.org, otherID, guestID)
-		denied(t, conn, "a mention of Oscar", `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'page.published', $2)`,
-			home.org, map[string]any{"actorId": guestID, "pageId": joinPage, "mentioned": []uuid.UUID{oscarID}})
+		denied(t, conn, "a space of their own", `INSERT INTO space (key, name, created_by, owner_id) VALUES ('GWEN', 'Gwen', $1, $1)`, guestID)
+		denied(t, conn, "a team space", `INSERT INTO space (key, name, created_by) VALUES ('GWENS', 'Gwens', $1)`, guestID)
+		denied(t, conn, "a token", `INSERT INTO api_token (user_id, name, token_hash) VALUES ($1, 'planted', $2)`, guestID, []byte(uuid.NewString()))
+		denied(t, conn, "a grant of OTHR to themselves", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
+			VALUES ($1, 'view', 'user', $2)`, otherID, guestID)
+		denied(t, conn, "a mention of Oscar", `INSERT INTO outbox_event (topic, payload) VALUES ('page.published', $1)`,
+			map[string]any{"actorId": guestID, "pageId": joinPage, "mentioned": []uuid.UUID{oscarID}})
 		tx, err := conn.Begin(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'page.published', $2)`,
-			home.org, map[string]any{"actorId": guestID, "pageId": joinPage, "mentioned": []uuid.UUID{inaID}}); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO outbox_event (topic, payload) VALUES ('page.published', $1)`,
+			map[string]any{"actorId": guestID, "pageId": joinPage, "mentioned": []uuid.UUID{inaID}}); err != nil {
 			t.Errorf("a mention of Ina was refused: %v", err)
 		}
 		_ = tx.Rollback(ctx)
 
 		// The owner administers everything, and still cannot widen a guest.
 		actAs(t, conn, home.user)
-		denied(t, conn, "granting OTHR to the guest", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
-			SELECT $1, id, 'view', 'user', $2 FROM space WHERE key = 'OTHR'`, home.org, guestID)
-		denied(t, conn, "the guest administering JOIN", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
-			SELECT $1, id, 'administer', 'user', $2 FROM space WHERE key = 'JOIN'`, home.org, guestID)
-		denied(t, conn, "the guest in a group", `INSERT INTO group_member (org_id, group_id, user_id) VALUES ($1, $2, $3)`, home.org, groupID, guestID)
-		denied(t, conn, "the guest made a member", `UPDATE org_member SET org_role = 'member', guest_space_id = NULL WHERE user_id = $1`, guestID)
-		denied(t, conn, "the guest moved to OTHR", `UPDATE org_member SET guest_space_id = (SELECT id FROM space WHERE key = 'OTHR') WHERE user_id = $1`, guestID)
-		denied(t, conn, "a guest without a space", `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'guest')`, home.org, uuid.New())
+		denied(t, conn, "granting OTHR to the guest", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
+			SELECT id, 'view', 'user', $1 FROM space WHERE key = 'OTHR'`, guestID)
+		denied(t, conn, "the guest administering JOIN", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
+			SELECT id, 'administer', 'user', $1 FROM space WHERE key = 'JOIN'`, guestID)
+		denied(t, conn, "the guest in a group", `INSERT INTO group_member (group_id, user_id) VALUES ($1, $2)`, groupID, guestID)
+		denied(t, conn, "the guest made a member", `UPDATE member SET role = 'member', guest_space_id = NULL WHERE user_id = $1`, guestID)
+		denied(t, conn, "the guest moved to OTHR", `UPDATE member SET guest_space_id = (SELECT id FROM space WHERE key = 'OTHR') WHERE user_id = $1`, guestID)
+		denied(t, conn, "a guest without a space", `INSERT INTO member (user_id, role) VALUES ($1, 'guest')`, uuid.New())
 
 		// A member is not an administrator, and makes or removes no guest.
 		actAs(t, conn, oscarID)
-		denied(t, conn, "a member making a guest", `INSERT INTO org_member (org_id, user_id, org_role, guest_space_id)
-			SELECT $1, $2, 'guest', id FROM space WHERE key = 'OTHR'`, home.org, inaID)
-		untouched(t, conn, "a member removing the guest", `DELETE FROM org_member WHERE user_id = $1`, guestID)
+		denied(t, conn, "a member making a guest", `INSERT INTO member (user_id, role, guest_space_id)
+			SELECT $1, 'guest', id FROM space WHERE key = 'OTHR'`, inaID)
+		untouched(t, conn, "a member removing the guest", `DELETE FROM member WHERE user_id = $1`, guestID)
 	})
 
 	t.Run("removing the guest ends their reach at once", func(t *testing.T) {
@@ -370,8 +369,8 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 		}
 		var role string
 		if err := h.super.QueryRow(context.Background(), `
-			SELECT data->>'role' FROM audit_log WHERE org_id = $1 AND target_id = $2 AND action = 'member.removed'`,
-			home.org, guestID).Scan(&role); err != nil || role != "guest" {
+			SELECT data->>'role' FROM audit_log WHERE target_id = $1 AND action = 'member.removed'`,
+			guestID).Scan(&role); err != nil || role != "guest" {
 			t.Errorf("the audit log has %q (%v)", role, err)
 		}
 		if n := h.count(t, home.ctx, `SELECT count(*) FROM space_grant WHERE user_id = $1`, guestID); n != 0 {
@@ -385,8 +384,7 @@ func TestAGuestGoesWithTheirSpace(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "guest-space")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 	newTree(t, owner, "GONE", "Going")
 	email := fmt.Sprintf("gus-%s@example.test", uuid.NewString()[:8])
 	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, email) })
@@ -395,7 +393,7 @@ func TestAGuestGoesWithTheirSpace(t *testing.T) {
 		t.Errorf("gus is %v", made)
 	}
 	want(t, owner.delete(t, "/api/v1/spaces/GONE"), http.StatusNoContent, "delete GONE")
-	if n := h.count(t, home.ctx, `SELECT count(*) FROM org_member WHERE user_id = $1`, uuid.MustParse(made["userId"].(string))); n != 0 {
+	if n := h.count(t, home.ctx, `SELECT count(*) FROM member WHERE user_id = $1`, uuid.MustParse(made["userId"].(string))); n != 0 {
 		t.Errorf("the guest outlived their space: %d memberships", n)
 	}
 }
@@ -408,14 +406,14 @@ func TestAGuestSignsInAsAGuestWhateverTheirGroups(t *testing.T) {
 	kc := newKeycloak(t)
 	kc.reachable(t)
 	a := h.startAPI(t, testSessionTTL)
-	org := h.makeOrg(t, "guest-sso")
-	configureProvider(t, a, org, kc.issuer(), true)
+	h.emptySite(t, "guest-sso")
+	configureProvider(t, a, kc.issuer(), true)
 	ctx := context.Background()
 	var spaceID, userID uuid.UUID
-	if err := h.super.QueryRow(ctx, `INSERT INTO space (org_id, key, name) VALUES ($1, 'VISIT', 'Visit') RETURNING id`, org.ID).Scan(&spaceID); err != nil {
+	if err := h.super.QueryRow(ctx, `INSERT INTO space (key, name) VALUES ('VISIT', 'Visit') RETURNING id`).Scan(&spaceID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, 'stator-administrators', 'admin')`, org.ID); err != nil {
+	if _, err := h.super.Exec(ctx, `INSERT INTO oidc_group_role (group_ref, role) VALUES ('stator-administrators', 'admin')`); err != nil {
 		t.Fatal(err)
 	}
 	if err := h.super.QueryRow(ctx, `
@@ -423,7 +421,7 @@ func TestAGuestSignsInAsAGuestWhateverTheirGroups(t *testing.T) {
 		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email RETURNING id`).Scan(&userID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role, guest_space_id) VALUES ($1, $2, 'guest', $3)`, org.ID, userID, spaceID); err != nil {
+	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role, guest_space_id) VALUES ($1, 'guest', $2)`, userID, spaceID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -437,7 +435,7 @@ func TestAGuestSignsInAsAGuestWhateverTheirGroups(t *testing.T) {
 	if space, _ := current["guestSpace"].(map[string]any); space["key"] != "VISIT" {
 		t.Errorf("the guest lands in %v, want VISIT", current["guestSpace"])
 	}
-	if got := h.providerGroups(t, org, "alice@stator.test"); len(got) != 0 {
+	if got := h.providerGroups(t, "alice@stator.test"); len(got) != 0 {
 		t.Errorf("the guest joined the provider's groups %q", got)
 	}
 }

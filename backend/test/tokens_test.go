@@ -39,7 +39,7 @@ func TestATokenActsAsItsOwnerUntilRevoked(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	m := h.makeMember(t, "token-owner")
-	browser := api.as(t, m.user, m.org, h.slugOf(t, m.org))
+	browser := api.as(t, m.user)
 
 	id, secret := makeToken(t, browser, map[string]any{"name": "deploy"})
 
@@ -82,7 +82,7 @@ func TestATokenActsAsItsOwnerUntilRevoked(t *testing.T) {
 	want(t, browser.delete(t, "/api/v1/tokens/not-an-id"), http.StatusBadRequest, "revoke nonsense")
 
 	var audited int
-	if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE org_id = $1 AND target_id = $2 AND action IN ('token.created', 'token.revoked')`, m.org, id).Scan(&audited); err != nil || audited != 2 {
+	if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE target_id = $1 AND action IN ('token.created', 'token.revoked')`, id).Scan(&audited); err != nil || audited != 2 {
 		t.Errorf("making and revoking the token left %d audit entries (%v), want 2", audited, err)
 	}
 }
@@ -91,7 +91,7 @@ func TestANewTokenIsRefusedWhatItCannotBe(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	m := h.makeMember(t, "token-refusals")
-	browser := api.as(t, m.user, m.org, h.slugOf(t, m.org))
+	browser := api.as(t, m.user)
 
 	for field, body := range map[string]map[string]any{
 		"name":      {"name": "  "},
@@ -114,7 +114,7 @@ func TestAReadTokenReadsAndChangesNothing(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	m := h.makeMember(t, "token-reader")
-	browser := api.as(t, m.user, m.org, h.slugOf(t, m.org))
+	browser := api.as(t, m.user)
 	id, secret := makeToken(t, browser, map[string]any{"name": "reporting", "scopes": []string{"read"}})
 	script := api.withToken(secret)
 
@@ -145,7 +145,7 @@ func TestAnExpiredTokenIsRefused(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	m := h.makeMember(t, "token-expiry")
-	browser := api.as(t, m.user, m.org, h.slugOf(t, m.org))
+	browser := api.as(t, m.user)
 	id, secret := makeToken(t, browser, map[string]any{"name": "short lived", "expiresAt": time.Now().Add(time.Hour).UTC().Format(time.RFC3339)})
 	script := api.withToken(secret)
 	want(t, script.get(t, "/api/v1/auth/me"), http.StatusOK, "before it expires")
@@ -164,10 +164,9 @@ func TestAdministratorsSeeAndRevokeEveryToken(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	owner := h.makeMember(t, "token-admin")
-	slug := h.slugOf(t, owner.org)
-	memberID := h.addPerson(t, owner.org, "member")
-	admin := api.as(t, owner.user, owner.org, slug)
-	member := api.as(t, memberID, owner.org, slug)
+	memberID := h.addPerson(t, "member")
+	admin := api.as(t, owner.user)
+	member := api.as(t, memberID)
 
 	id, secret := makeToken(t, member, map[string]any{"name": "member's script"})
 	all := list(t, want(t, admin.get(t, "/api/v1/site/tokens"), http.StatusOK, "the organization's tokens"), "tokens")
@@ -184,7 +183,7 @@ func TestAdministratorsSeeAndRevokeEveryToken(t *testing.T) {
 
 	// Leaving the organization takes a person's tokens there with them.
 	_, kept := makeToken(t, member, map[string]any{"name": "outlives nothing"})
-	if _, err := h.super.Exec(context.Background(), `DELETE FROM org_member WHERE org_id = $1 AND user_id = $2`, owner.org, memberID); err != nil {
+	if _, err := h.super.Exec(context.Background(), `DELETE FROM member WHERE user_id = $1`, memberID); err != nil {
 		t.Fatal(err)
 	}
 	want(t, api.withToken(kept).get(t, "/api/v1/auth/me"), http.StatusUnauthorized, "a token of somebody who left")
@@ -203,11 +202,10 @@ func TestTokenRowsAreWalledByTheDatabase(t *testing.T) {
 	a := h.makeMember(t, "token-wall-a")
 	b := h.makeOutsider(t, "token-wall-b")
 	c := h.makeOutsider(t, "token-wall-c")
-	slug := h.slugOf(t, a.org)
-	holder := api.as(t, b.user, b.org, slug)
+	holder := api.as(t, b.user)
 	newTree(t, holder, "TOKWALL", "Token wall")
 	idB, _ := makeToken(t, holder, map[string]any{"name": "b's", "spaces": []string{"TOKWALL"}})
-	idC, _ := makeToken(t, api.as(t, c.user, c.org, slug), map[string]any{"name": "c's"})
+	idC, _ := makeToken(t, api.as(t, c.user), map[string]any{"name": "c's"})
 
 	conn := appConn(t)
 	count := func(sql string, args ...any) int {
@@ -237,13 +235,13 @@ func TestTokenRowsAreWalledByTheDatabase(t *testing.T) {
 	untouched(t, conn, "dropping another token's spaces", `DELETE FROM api_token_space WHERE token_id = $1`, idB)
 	refused(t, conn, "handing one's token to another", `UPDATE api_token SET user_id = $2 WHERE id = $1`, idC, b.user)
 	_, digest, _ := auth.GenerateAPIToken()
-	if _, err := conn.Exec(context.Background(), `INSERT INTO api_token (org_id, user_id, name, token_hash) VALUES ($1, $2, 'planted', $3)`, a.org, b.user, digest); !isPolicyViolation(err) {
+	if _, err := conn.Exec(context.Background(), `INSERT INTO api_token (user_id, name, token_hash) VALUES ($1, 'planted', $2)`, b.user, digest); !isPolicyViolation(err) {
 		t.Errorf("a member planted a token for another: %v", err)
 	}
 	// Even of their own, a member cannot make one that carries a scope
 	// nobody enforces, nor keep the secret in the clear.
-	refused(t, conn, "a scope nobody enforces", `INSERT INTO api_token (org_id, user_id, name, token_hash, scopes) VALUES ($1, $2, 'root', $3, '{admin}')`, a.org, c.user, digest)
-	refused(t, conn, "a secret in the clear", `INSERT INTO api_token (org_id, user_id, name, token_hash) VALUES ($1, $2, 'clear', 'stator_pat_in_the_clear')`, a.org, c.user)
+	refused(t, conn, "a scope nobody enforces", `INSERT INTO api_token (user_id, name, token_hash, scopes) VALUES ($1, 'root', $2, '{admin}')`, c.user, digest)
+	refused(t, conn, "a secret in the clear", `INSERT INTO api_token (user_id, name, token_hash) VALUES ($1, 'clear', 'stator_pat_in_the_clear')`, c.user)
 
 	if got := h.count(t, b.ctx, `SELECT count(*) FROM api_token t JOIN api_token_space s ON s.token_id = t.id WHERE t.id = $1 AND t.expires_at IS NULL`, idB); got != 1 {
 		t.Error("B's token is not as B left it")

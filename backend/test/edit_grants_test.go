@@ -43,11 +43,10 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "edit-grants")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, bobID, carlID, daveID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, bob, carl, dave := api.as(t, annID, home.org, slug), api.as(t, bobID, home.org, slug), api.as(t, carlID, home.org, slug), api.as(t, daveID, home.org, slug)
-	team := h.makeGroup(t, home.org, "Readers team", carlID)
+	owner := api.as(t, home.user)
+	annID, bobID, carlID, daveID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, bob, carl, dave := api.as(t, annID), api.as(t, bobID), api.as(t, carlID), api.as(t, daveID)
+	team := h.makeGroup(t, "Readers team", carlID)
 
 	docs := newTree(t, owner, "GRANT", "Grants")
 	top := docs.add(docs.homeID, "Top")
@@ -65,7 +64,7 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 	elsewhere := other.add(other.homeID, "Elsewhere")
 	gwenID := invite(t, h, owner, "GRANT", "viewer")
 	halID := invite(t, h, owner, "ELSEWHERE", "editor")
-	gwen, hal := api.as(t, gwenID, home.org, slug), api.as(t, halID, home.org, slug)
+	gwen, hal := api.as(t, gwenID), api.as(t, halID)
 
 	want(t, restrictWith(t, ann, top, nil, nil, []any{user(bobID), user(gwenID)}), http.StatusOK, "ann lets bob and gwen edit Top")
 	want(t, restrictWith(t, ann, locked, nil, []any{user(annID)}, nil), http.StatusOK, "ann locks Locked")
@@ -187,8 +186,8 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 	t.Run("every change of who else may edit is audited", func(t *testing.T) {
 		var n int
 		if err := h.super.QueryRow(context.Background(), `
-			SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'page.restrictions_set' AND target_id = $2
-			  AND jsonb_array_length(data -> 'editGrant') = 2`, home.org, top).Scan(&n); err != nil {
+			SELECT count(*) FROM audit_log WHERE action = 'page.restrictions_set' AND target_id = $1
+			  AND jsonb_array_length(data -> 'editGrant') = 2`, top).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		if n == 0 {
@@ -232,18 +231,18 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 				t.Errorf("%s: retitling let through %v, want %v", tt.who, got, tt.want)
 			}
 		}
-		if !lets(bobID, `INSERT INTO page_version (org_id, page_id, number, title, body, created_by) SELECT org_id, id, version + 1, title, body, $2 FROM page WHERE id = $1`, low, bobID) {
+		if !lets(bobID, `INSERT INTO page_version (page_id, number, title, body, created_by) SELECT id, version + 1, title, body, $2 FROM page WHERE id = $1`, low, bobID) {
 			t.Error("bob may not publish a version of Low")
 		}
-		if !lets(bobID, `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'sql.txt', 1)`, home.org, low) {
+		if !lets(bobID, `INSERT INTO attachment (page_id, file_name, size_bytes) VALUES ($1, 'sql.txt', 1)`, low) {
 			t.Error("bob may not attach to Low")
 		}
 		actAs(t, conn, bobID)
-		denied(t, conn, "bob adds a page under Top", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by) VALUES ($1, (SELECT space_id FROM page WHERE id = $2), $2, 'W', 'Planted', $3)`, home.org, top, bobID)
+		denied(t, conn, "bob adds a page under Top", `INSERT INTO page (space_id, parent_id, rank, title, created_by) VALUES ((SELECT space_id FROM page WHERE id = $1), $1, 'W', 'Planted', $2)`, top, bobID)
 		denied(t, conn, "bob moves Low with the database's own function", `SELECT page_place(ARRAY[$1::uuid], $2, ARRAY['W'])`, low, top)
 		denied(t, conn, "bob reorders Low", `UPDATE page SET rank = 'zz' WHERE id = $1`, low)
 		denied(t, conn, "bob trashes Low", `SELECT page_trash($1)`, low)
-		denied(t, conn, "bob publishes Sibling", `INSERT INTO page_version (org_id, page_id, number, title, body, created_by) VALUES ($1, $2, 9, 'Bob''s', '{}', $3)`, home.org, sibling, bobID)
+		denied(t, conn, "bob publishes Sibling", `INSERT INTO page_version (page_id, number, title, body, created_by) VALUES ($1, 9, 'Bob''s', '{}', $2)`, sibling, bobID)
 		untouched(t, conn, "bob retitles Hidden", retitle, hidden)
 		var editable bool
 		if err := conn.QueryRow(ctx, `SELECT perm_page_editable($1, $2)`, hidden, bobID).Scan(&editable); err != nil || editable {
@@ -252,16 +251,16 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 	})
 
 	t.Run("only the space's administrators change who else may edit", func(t *testing.T) {
-		grantRow := `INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id) VALUES ($1, $2, 'editGrant', 'user', $3)`
+		grantRow := `INSERT INTO page_restriction (page_id, kind, subject_type, user_id) VALUES ($1, 'editGrant', 'user', $2)`
 		actAs(t, conn, carlID)
-		denied(t, conn, "carl, a reader, puts himself on Sibling's list", grantRow, home.org, sibling, carlID)
+		denied(t, conn, "carl, a reader, puts himself on Sibling's list", grantRow, sibling, carlID)
 		actAs(t, conn, bobID)
-		denied(t, conn, "bob, who edits Top through it, puts carl on its list", grantRow, home.org, top, carlID)
+		denied(t, conn, "bob, who edits Top through it, puts carl on its list", grantRow, top, carlID)
 		untouched(t, conn, "bob takes gwen off Top's list", `DELETE FROM page_restriction WHERE page_id = $1 AND kind = 'editGrant' AND user_id = $2`, top, gwenID)
 		actAs(t, conn, daveID)
-		denied(t, conn, "dave, who adds pages, puts himself on Sibling's list", grantRow, home.org, sibling, carlID)
+		denied(t, conn, "dave, who adds pages, puts himself on Sibling's list", grantRow, sibling, carlID)
 		untouched(t, conn, "dave lifts Top's list", `DELETE FROM page_restriction WHERE page_id = $1 AND kind = 'editGrant'`, top)
-		if _, err := h.super.Exec(ctx, `INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id) VALUES ($1, $2, 'edit', 'user', $3)`, home.org, sibling, daveID); err != nil {
+		if _, err := h.super.Exec(ctx, `INSERT INTO page_restriction (page_id, kind, subject_type, user_id) VALUES ($1, 'edit', 'user', $2)`, sibling, daveID); err != nil {
 			t.Fatal(err)
 		}
 		h.settle(t)
@@ -269,18 +268,18 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 			h.cleanupExec(t, h.super, `DELETE FROM page_restriction WHERE page_id = $1 AND kind = 'edit'`, sibling)
 		})
 		denied(t, conn, "dave turns his edit entry into a grant", `UPDATE page_restriction SET kind = 'editGrant' WHERE page_id = $1 AND kind = 'edit'`, sibling)
-		if !lets(annID, grantRow, home.org, sibling, carlID) {
+		if !lets(annID, grantRow, sibling, carlID) {
 			t.Error("ann, who administers the space, may not let carl edit Sibling")
 		}
 		actAs(t, conn, annID)
-		denied(t, conn, "ann lets hal, a guest of another space, edit Sibling", grantRow, home.org, sibling, halID)
+		denied(t, conn, "ann lets hal, a guest of another space, edit Sibling", grantRow, sibling, halID)
 	})
 
 	t.Run("the service and the database agree", func(t *testing.T) {
 		people := map[string]uuid.UUID{"ann": annID, "bob": bobID, "carl": carlID, "dave": daveID, "gwen": gwenID, "hal": halID}
 		pages := map[string]string{"Top": top, "Low": low, "Sibling": sibling, "Locked": locked, "Locked low": lockedLow, "Hidden": hidden}
 		for name, id := range people {
-			caller := api.as(t, id, home.org, slug)
+			caller := api.as(t, id)
 			for title, page := range pages {
 				r := caller.get(t, "/api/v1/pages/"+page)
 				service := r.Status == http.StatusOK && obj(t, r, "page")["can"].(map[string]any)["edit"] == true

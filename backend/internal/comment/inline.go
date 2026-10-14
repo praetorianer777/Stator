@@ -123,7 +123,7 @@ func SettleAnchors(ctx context.Context, tx db.DBTX, pageID uuid.UUID, body json.
 	rows, err := tx.Query(ctx, `
 		SELECT t.id, t.quote FROM comment_thread t
 		WHERE t.page_id = $1 AND t.kind = 'inline' AND t.detached_at IS NULL
-		  AND EXISTS (SELECT 1 FROM comment c WHERE c.org_id = t.org_id AND c.thread_id = t.id AND c.deleted_at IS NULL)`, pageID)
+		  AND EXISTS (SELECT 1 FROM comment c WHERE c.thread_id = t.id AND c.deleted_at IS NULL)`, pageID)
 	if err != nil {
 		return nil, fmt.Errorf("read the inline threads: %w", err)
 	}

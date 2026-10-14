@@ -63,11 +63,11 @@ func TestIssuesAreFiledFromASelectionAsTheCaller(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-create")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	bobID := h.addPerson(t, home.org, "member")
-	bob := api.as(t, bobID, home.org, slug)
-	carol := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	slug := h.site.Slug
+	owner := api.as(t, home.user)
+	bobID := h.addPerson(t, "member")
+	bob := api.as(t, bobID)
+	carol := api.as(t, h.addPerson(t, "member"))
 	docs := newTree(t, owner, "CRT", "Reviews")
 	page := docs.add(docs.homeID, "Review notes")
 	const items = "/api/v1/armature/issues"
@@ -118,7 +118,7 @@ func TestIssuesAreFiledFromASelectionAsTheCaller(t *testing.T) {
 				t.Errorf("the description %s lacks %s", description, part)
 			}
 		}
-		if _, cached := cachedIssue(t, h, home.org, tokenRowOf(t, h, home.org, bobID), "CP-6"); !cached {
+		if _, cached := cachedIssue(t, h, tokenRowOf(t, h, bobID), "CP-6"); !cached {
 			t.Error("the new issue is not in bob's cache, so its chip waits on Armature")
 		}
 		if again := stubIssue(t, slug, "CP-7"); again["reporter"].(map[string]any)["name"] != "Alice" {
@@ -179,7 +179,7 @@ func TestIssuesAreFiledFromASelectionAsTheCaller(t *testing.T) {
 
 	t.Run("a token Armature no longer takes is marked and never sent again", func(t *testing.T) {
 		box, _ := secret.New(testSecretKey(t))
-		bound := append(append([]byte("armature.token:"), home.org[:]...), bobID[:]...)
+		bound := append(append([]byte("armature.token:"), h.site.ID[:]...), bobID[:]...)
 		revoked, _ := box.Seal([]byte("armature_pat_revoked"), bound)
 		if _, err := h.super.Exec(context.Background(), `UPDATE armature_token SET token = $2 WHERE user_id = $1`, bobID, revoked); err != nil {
 			t.Fatal(err)

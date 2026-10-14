@@ -7,8 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
@@ -42,14 +40,10 @@ func readHTMLBrand(ctx context.Context, tx db.DBTX) (*htmlBrand, error) {
 	if out.footer == "" {
 		out.footer = strings.TrimSpace(b.Footer.De)
 	}
-	var (
-		light, dark *string
-		orgID       uuid.UUID
-	)
-	// The id comes from the row, for the logo's key.
+	var light, dark *string
 	if err := tx.QueryRow(ctx, `
-		SELECT o.id, o.name, t.spec->'colors'->'light'->>'accent', t.spec->'colors'->'dark'->>'accent'
-		FROM org o LEFT JOIN theme t ON t.id = o.default_theme_id AND t.org_id = o.id`).Scan(&orgID, &out.name, &light, &dark); err != nil {
+		SELECT s.name, t.spec->'colors'->'light'->>'accent', t.spec->'colors'->'dark'->>'accent'
+		FROM site s LEFT JOIN theme t ON t.id = s.default_theme_id`).Scan(&out.name, &light, &dark); err != nil {
 		return nil, fmt.Errorf("read the organization for the export: %w", err)
 	}
 	if light != nil && accentHex.MatchString(*light) {
@@ -60,7 +54,7 @@ func readHTMLBrand(ctx context.Context, tx db.DBTX) (*htmlBrand, error) {
 	}
 	if b.Logo != nil {
 		if ext, ok := logoExtensions[b.Logo.ContentType]; ok {
-			out.logoKey, out.logoExt = brand.LogoKey(orgID, b.Logo.Version), ext
+			out.logoKey, out.logoExt = b.Logo.Key(), ext
 		}
 	}
 	return out, nil

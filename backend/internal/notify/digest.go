@@ -72,29 +72,29 @@ func (d *Digester) Run(ctx context.Context) {
 }
 
 // Once sends every bundle that is due and says how many went. Finding them
-// crosses organizations; each is read and cleared acting for its person.
+// reads every person's queue; each is read and cleared acting for its person.
 func (d *Digester) Once(ctx context.Context) (int, error) {
 	type waiting struct {
-		org, user uuid.UUID
-		digest    Digest
-		oldest    time.Time
+		user   uuid.UUID
+		digest Digest
+		oldest time.Time
 	}
 	var found []waiting
 	err := d.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
-			SELECT q.org_id, q.user_id, COALESCE(p.digest, 'off'), min(n.created_at)
+			SELECT q.user_id, COALESCE(p.digest, 'off'), min(n.created_at)
 			FROM notification_digest q
-			JOIN notification n ON n.org_id = q.org_id AND n.id = q.notification_id
-			LEFT JOIN notification_preference p ON p.org_id = q.org_id AND p.user_id = q.user_id
-			GROUP BY q.org_id, q.user_id, p.digest
-			ORDER BY q.org_id, q.user_id`)
+			JOIN notification n ON n.id = q.notification_id
+			LEFT JOIN notification_preference p ON p.user_id = q.user_id
+			GROUP BY q.user_id, p.digest
+			ORDER BY q.user_id`)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
 			var w waiting
-			if err := rows.Scan(&w.org, &w.user, &w.digest, &w.oldest); err != nil {
+			if err := rows.Scan(&w.user, &w.digest, &w.oldest); err != nil {
 				return err
 			}
 			found = append(found, w)

@@ -66,10 +66,9 @@ func TestTemplatesWithVariablesOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "template-vars")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, bobID, doraID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, bob, dora := api.as(t, annID, home.org, slug), api.as(t, bobID, home.org, slug), api.as(t, doraID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, bobID, doraID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, bob, dora := api.as(t, annID), api.as(t, bobID), api.as(t, doraID)
 
 	kick := newTree(t, owner, "KICK", "Kickoffs")
 	hide := newTree(t, owner, "HIDE", "Hidden")
@@ -283,7 +282,7 @@ func TestTemplatesWithVariablesOverTheAPI(t *testing.T) {
 				t.Errorf("refused on another field than %s: %s", field, got.Raw)
 			}
 		}
-		strangerID := h.addPerson(t, home.org, "member")
+		strangerID := h.addPerson(t, "member")
 		want(t, owner.delete(t, "/api/v1/users/"+strangerID.String()), http.StatusNoContent, "the stranger leaves")
 		got := make(map[string]any{"values": map[string]any{"customer": "x", "owner": strangerID.String()}})
 		if got.Status != http.StatusUnprocessableEntity || fieldsOf(t, got)["values.owner"] == nil {
@@ -305,7 +304,7 @@ func TestTemplatesWithVariablesOverTheAPI(t *testing.T) {
 			t.Errorf("KICK holds %d pages", n)
 		}
 		var audited int
-		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE org_id = $1 AND target_id = $2`, home.org, tplID).Scan(&audited); err != nil || audited != 3 {
+		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM audit_log WHERE target_id = $1`, tplID).Scan(&audited); err != nil || audited != 3 {
 			t.Errorf("%d audit entries (%v), want made, changed and deleted", audited, err)
 		}
 	})
@@ -334,9 +333,8 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "template-sql")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	bobID := h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	bobID := h.addPerson(t, "member")
 	docs := newTree(t, owner, "TSQL", "Templates in SQL")
 	hide := newTree(t, owner, "TSQH", "Hidden")
 	want(t, owner.put(t, "/api/v1/spaces/TSQH/permissions", map[string]any{"grants": []any{map[string]any{"subject": user(home.user), "permissions": []any{"administer"}}}}), http.StatusOK, "TSQH is the owner's")
@@ -354,9 +352,9 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 
 	actAs(t, conn, bobID)
 	refused(t, conn, "a member makes a template for every space",
-		`INSERT INTO page_template (org_id, name, body) VALUES ($1, 'Mine', $2)`, home.org, body)
+		`INSERT INTO page_template (name, body) VALUES ('Mine', $1)`, body)
 	refused(t, conn, "a member makes a template for a space they do not administer",
-		`INSERT INTO page_template (org_id, space_id, name, body) VALUES ($1, $2, 'Mine', $3)`, home.org, spaceID, body)
+		`INSERT INTO page_template (space_id, name, body) VALUES ($1, 'Mine', $2)`, spaceID, body)
 	untouched(t, conn, "a member changes a space's template", `UPDATE page_template SET name = 'Taken' WHERE id = $1`, spaceTpl)
 	untouched(t, conn, "a member deletes a space's template", `DELETE FROM page_template WHERE id = $1`, spaceTpl)
 	var seen int
@@ -367,9 +365,9 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 	actAs(t, conn, home.user)
 	refused(t, conn, "a page holds a blank", `UPDATE page SET body = $2 WHERE id = $1`, page, body)
 	refused(t, conn, "a version holds a blank",
-		`INSERT INTO page_version (org_id, page_id, number, title, body, created_by) VALUES ($1, $2, 2, 'Raw', $3, $4)`, home.org, page, body, home.user)
+		`INSERT INTO page_version (page_id, number, title, body, created_by) VALUES ($1, 2, 'Raw', $2, $3)`, page, body, home.user)
 	refused(t, conn, "a draft holds a blank",
-		`INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version) VALUES ($1, $2, $3, 'Raw', $4, 1)`, home.org, page, home.user, body)
+		`INSERT INTO page_draft (page_id, user_id, title, body, base_version) VALUES ($1, $2, 'Raw', $3, 1)`, page, home.user, body)
 	refused(t, conn, "a template moves to another space", `UPDATE page_template SET space_id = $2 WHERE id = $1`, spaceTpl, hideID)
 	if _, err := conn.Exec(ctx, `UPDATE page_template SET name = 'Renamed', created_by = $2 WHERE id = $1`, spaceTpl, bobID); err != nil {
 		t.Fatalf("the owner renames a template: %v", err)
@@ -384,13 +382,13 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	refused(t, conn, "a token limited to a space makes a template for every space",
-		`INSERT INTO page_template (org_id, name, body) VALUES ($1, 'Token', $2)`, home.org, body)
+		`INSERT INTO page_template (name, body) VALUES ('Token', $1)`, body)
 	refused(t, conn, "a token limited to a space makes a template for another",
-		`INSERT INTO page_template (org_id, space_id, name, body) VALUES ($1, $2, 'Token', $3)`, home.org, hideID, body)
+		`INSERT INTO page_template (space_id, name, body) VALUES ($1, 'Token', $2)`, hideID, body)
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM page_template WHERE id = $1`, hiddenTpl).Scan(&seen); err != nil || seen != 0 {
 		t.Errorf("a token limited to TSQL sees TSQH's template (%d, %v)", seen, err)
 	}
-	if _, err := conn.Exec(ctx, `INSERT INTO page_template (org_id, space_id, name, body) VALUES ($1, $2, 'Token', $3)`, home.org, spaceID, body); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO page_template (space_id, name, body) VALUES ($1, 'Token', $2)`, spaceID, body); err != nil {
 		t.Errorf("a token limited to TSQL makes a template for it: %v", err)
 	}
 	if _, err := conn.Exec(ctx, `SELECT set_config($1, '', false)`, db.TokenSpacesVar); err != nil {
@@ -407,7 +405,7 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 	want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true}), http.StatusOK, "open the organization")
 	want(t, owner.put(t, "/api/v1/spaces/TSQL/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open TSQL")
 	h.settle(t)
-	gwenAPI := api.as(t, gwenID, home.org, slug)
+	gwenAPI := api.as(t, gwenID)
 	for _, each := range list(t, want(t, gwenAPI.get(t, "/api/v1/templates?space=TSQL"), http.StatusOK, "gwen lists TSQL's"), "templates") {
 		if key := each.(map[string]any)["key"]; key == orgTpl {
 			t.Error("gwen is offered the organization's template")
@@ -422,11 +420,11 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 	}
 	count("gwen", 1)
 	refused(t, conn, "gwen makes a template for TSQL",
-		`INSERT INTO page_template (org_id, space_id, name, body) VALUES ($1, $2, 'Guest', $3)`, home.org, spaceID, body)
+		`INSERT INTO page_template (space_id, name, body) VALUES ($1, 'Guest', $2)`, spaceID, body)
 	actAs(t, conn, home.user)
 	count("the owner", 3)
 	actAnonymously(t, conn)
 	count("an anonymous reader of TSQL", 0)
 	refused(t, conn, "an anonymous reader makes a template for TSQL",
-		`INSERT INTO page_template (org_id, space_id, name, body) VALUES ($1, $2, 'Anybody', $3)`, home.org, spaceID, body)
+		`INSERT INTO page_template (space_id, name, body) VALUES ($1, 'Anybody', $2)`, spaceID, body)
 }

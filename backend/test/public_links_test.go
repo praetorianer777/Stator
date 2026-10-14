@@ -39,10 +39,9 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "public-links")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	inaID := h.namedPerson(t, home.org, "Ina Insider")
-	ina := api.as(t, inaID, home.org, slug)
+	owner := api.as(t, home.user)
+	inaID := h.namedPerson(t, "Ina Insider")
+	ina := api.as(t, inaID)
 	anon := api.anonymous()
 	ctx := context.Background()
 
@@ -94,7 +93,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 		if raw := want(t, owner.get(t, pagePath(guide, "/public-links")), http.StatusOK, "again").Raw; containsText(raw, token) {
 			t.Error("the list carries the token")
 		}
-		if data := h.recordedOnce(t, home.org, "page.public_link_created", &home.user, guide); !strings.Contains(data, linkID) || strings.Contains(data, token) {
+		if data := h.recordedOnce(t, "page.public_link_created", &home.user, guide); !strings.Contains(data, linkID) || strings.Contains(data, token) {
 			t.Errorf("the link's record reads %s", data)
 		}
 	})
@@ -257,7 +256,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 			}
 		}
 		untouched(t, conn, "retitling the guide", `UPDATE page SET title = 'Taken' WHERE id = $1`, guide)
-		denied(t, conn, "a link made by nobody", `INSERT INTO page_link (org_id, page_id, token_hash) VALUES ($1, $2, sha256('x'))`, home.org, guide)
+		denied(t, conn, "a link made by nobody", `INSERT INTO page_link (page_id, token_hash) VALUES ($1, sha256('x'))`, guide)
 		untouched(t, conn, "the link revoked by nobody", `UPDATE page_link SET revoked_at = now()`)
 
 		readThrough(t, conn, strings.Repeat("x", 43))
@@ -282,13 +281,13 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 		if n := count(`SELECT count(*) FROM page_link`); n != 0 {
 			t.Errorf("ina, who may not edit the guide, reads %d of its links", n)
 		}
-		denied(t, conn, "ina makes a link", `INSERT INTO page_link (org_id, page_id, token_hash, created_by) VALUES ($1, $2, sha256('ina'), $3)`, home.org, guide, inaID)
+		denied(t, conn, "ina makes a link", `INSERT INTO page_link (page_id, token_hash, created_by) VALUES ($1, sha256('ina'), $2)`, guide, inaID)
 		untouched(t, conn, "ina revokes the link", `UPDATE page_link SET revoked_at = now(), revoked_by = $2 WHERE id = $1`, linkID, inaID)
 
 		actAs(t, conn, home.user)
-		denied(t, conn, "a link for the restricted page", `INSERT INTO page_link (org_id, page_id, token_hash, created_by) VALUES ($1, $2, sha256('secret'), $3)`, home.org, secret, home.user)
-		denied(t, conn, "a link for the draft", `INSERT INTO page_link (org_id, page_id, token_hash, created_by) VALUES ($1, $2, sha256('draft'), $3)`, home.org, draft, home.user)
-		denied(t, conn, "a link in somebody else's name", `INSERT INTO page_link (org_id, page_id, token_hash, created_by) VALUES ($1, $2, sha256('ina'), $3)`, home.org, guide, inaID)
+		denied(t, conn, "a link for the restricted page", `INSERT INTO page_link (page_id, token_hash, created_by) VALUES ($1, sha256('secret'), $2)`, secret, home.user)
+		denied(t, conn, "a link for the draft", `INSERT INTO page_link (page_id, token_hash, created_by) VALUES ($1, sha256('draft'), $2)`, draft, home.user)
+		denied(t, conn, "a link in somebody else's name", `INSERT INTO page_link (page_id, token_hash, created_by) VALUES ($1, sha256('ina'), $2)`, guide, inaID)
 		refused(t, conn, "changing which page a link opens", `UPDATE page_link SET page_id = $2 WHERE id = $1`, linkID, beside)
 		refused(t, conn, "deleting a link", `DELETE FROM page_link WHERE id = $1`, linkID)
 	})
@@ -313,7 +312,7 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 		if err := conn.QueryRow(ctx, `SELECT count(*) FROM page`).Scan(&n); err != nil || n != 0 {
 			t.Errorf("while links are off a reader holding one reads %d pages (%v)", n, err)
 		}
-		if data := h.recordedOnce(t, home.org, "org.public_links_set", &home.user, nil); !strings.Contains(data, `"enabled": false`) {
+		if data := h.recordedOnce(t, "org.public_links_set", &home.user, nil); !strings.Contains(data, `"enabled": false`) {
 			t.Errorf("the switch's record reads %s", data)
 		}
 		want(t, owner.put(t, "/api/v1/site/public-links", map[string]any{"enabled": true}), http.StatusOK, "turn links on")
@@ -332,8 +331,8 @@ func TestAPublicLinkOpensOnePageToAnybodyUntilItEnds(t *testing.T) {
 			t.Errorf("the revoked row is gone or unmarked: %v %v", by, err)
 		}
 		var records int
-		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'page.public_link_revoked'
-			AND actor_user_id = $2 AND target_id = $3 AND data->>'link' = $4`, home.org, home.user, guide, linkID).Scan(&records); err != nil || records != 1 {
+		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE action = 'page.public_link_revoked'
+			AND actor_user_id = $1 AND target_id = $2 AND data->>'link' = $3`, home.user, guide, linkID).Scan(&records); err != nil || records != 1 {
 			t.Errorf("the revocation is recorded %d times (%v), want once", records, err)
 		}
 		conn := appConn(t)

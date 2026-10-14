@@ -205,14 +205,14 @@ func cookieJarClient() *http.Client {
 	return &http.Client{Jar: jar}
 }
 
-// as opens a session for a member in their organization, the row a sign-in
-// writes, and hands its cookie to a browser of their own.
-func (a *apiServer) as(t *testing.T, user, org uuid.UUID, slug string) *client {
+// as opens a session for a member, the row a sign-in writes, and hands its
+// cookie to a browser of their own.
+func (a *apiServer) as(t *testing.T, user uuid.UUID) *client {
 	t.Helper()
 	var token string
 	_, err := a.h.cluster.WriteAdmin(context.Background(), func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		_, token, err = auth.OpenSession(ctx, tx, user, &org, auth.ProofPassword, time.Now().Add(time.Hour), "", "")
+		_, token, err = auth.OpenSession(ctx, tx, user, auth.ProofPassword, time.Now().Add(time.Hour), "", "")
 		return err
 	})
 	if err != nil {
@@ -376,9 +376,9 @@ func errorCode(t *testing.T, r response) string {
 	return code
 }
 
-// addPerson makes somebody else a member of an organization, behind the
-// policies' back like makeMember.
-func (h *harness) addPerson(t *testing.T, org uuid.UUID, role string) uuid.UUID {
+// addPerson makes somebody else a member of the site, behind the policies'
+// back like makeMember.
+func (h *harness) addPerson(t *testing.T, role string) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
 	var id uuid.UUID
@@ -386,20 +386,10 @@ func (h *harness) addPerson(t *testing.T, org uuid.UUID, role string) uuid.UUID 
 	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, $2) RETURNING id`, email, "A "+role).Scan(&id); err != nil {
 		t.Fatalf("create a %s: %v", role, err)
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, org, id, role); err != nil {
+	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, $2)`, id, role); err != nil {
 		t.Fatalf("make the %s a member: %v", role, err)
 	}
 	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, id) })
 	h.settle(t)
 	return id
-}
-
-// slugOf is an organization's slug, which a principal carries.
-func (h *harness) slugOf(t *testing.T, org uuid.UUID) string {
-	t.Helper()
-	var slug string
-	if err := h.super.QueryRow(context.Background(), `SELECT slug FROM org WHERE id = $1`, org).Scan(&slug); err != nil {
-		t.Fatal(err)
-	}
-	return slug
 }

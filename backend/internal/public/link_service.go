@@ -13,7 +13,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 )
@@ -203,7 +202,7 @@ func (s *Service) LinkSettings(ctx context.Context, actor perm.Actor) (*LinkSett
 		if err := requireAdmin(ctx, tx, actor); err != nil {
 			return err
 		}
-		return tx.QueryRow(ctx, `SELECT public_links FROM org`).Scan(&out.Enabled)
+		return tx.QueryRow(ctx, `SELECT public_links FROM site`).Scan(&out.Enabled)
 	})
 	if err != nil {
 		return nil, err
@@ -219,13 +218,13 @@ func (s *Service) SetLinkSettings(ctx context.Context, actor perm.Actor, in Link
 			return err
 		}
 		var before bool
-		if err := tx.QueryRow(ctx, `SELECT public_links FROM org`).Scan(&before); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT public_links FROM site`).Scan(&before); err != nil {
 			return fmt.Errorf("read whether the organization allows public links: %w", err)
 		}
 		if before == in.Enabled {
 			return nil
 		}
-		if _, err := tx.Exec(ctx, `UPDATE org SET public_links = $1`, in.Enabled); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE site SET public_links = $1`, in.Enabled); err != nil {
 			return fmt.Errorf("allow public links: %w", err)
 		}
 		return perm.Record(ctx, tx, actor, audit.ActionOrgPublicLinksSet, "org", nil, map[string]any{"enabled": in.Enabled})
@@ -236,30 +235,30 @@ func (s *Service) SetLinkSettings(ctx context.Context, actor perm.Actor, in Link
 	return &in, lsn, nil
 }
 
-// LinkSite is the organization while it allows links; otherwise every link
-// is gone, as one nobody holds.
-func (s *Service) LinkSite(ctx context.Context, org instance.Org) (*Site, error) {
+// LinkSite is the site while it allows links; otherwise every link is gone,
+// as one nobody holds.
+func (s *Service) LinkSite(ctx context.Context) (*Site, error) {
 	var out Site
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
 			SELECT o.id, o.name, o.anonymous_indexable, COALESCE(b.footer_en, ''), COALESCE(b.footer_de, ''),
 			       CASE WHEN b.logo_type IS NOT NULL THEN b.logo_version END
-			FROM org o LEFT JOIN org_brand b ON b.org_id = o.id
-			WHERE o.id = $1 AND o.public_links AND o.archived_at IS NULL`, org.ID).
+			FROM site o LEFT JOIN brand b ON true
+			WHERE o.public_links AND o.archived_at IS NULL`).
 			Scan(&out.ID, &out.Name, &out.Indexable, &out.Footer.En, &out.Footer.De, &out.LogoVersion)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrLinkGone
 	}
 	if err != nil {
-		return nil, fmt.Errorf("find the organization: %w", err)
+		return nil, fmt.Errorf("find the site: %w", err)
 	}
 	return &out, nil
 }
 
-// ReadingLink binds ctx to the organization as an anonymous reader holding
-// the token, whom the database lets read the one page a live link opens.
-func ReadingLink(ctx context.Context, org instance.Org, token string) context.Context {
+// ReadingLink binds ctx to an anonymous reader holding the token, whom the
+// database lets read the one page a live link opens.
+func ReadingLink(ctx context.Context, token string) context.Context {
 	return db.WithLink(ctx, auth.HashToken(token))
 }
 

@@ -15,7 +15,6 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 )
 
@@ -23,9 +22,9 @@ const testSessionTTL = time.Hour
 
 // configureProvider points an organization at the test realm as the operator
 // does, since the test's organization may have no administrator to do it.
-func configureProvider(t *testing.T, a *api, org instance.Org, issuer string, createGroups bool) {
+func configureProvider(t *testing.T, a *api, issuer string, createGroups bool) {
 	t.Helper()
-	err := a.sso.Configure(context.Background(), org.ID, oidc.Provider{
+	err := a.sso.Configure(context.Background(), oidc.Provider{
 		Issuer: issuer, ClientID: statorClient, ClientSecret: statorSecret,
 		CreateGroups: createGroups, Enabled: true,
 	})
@@ -35,14 +34,14 @@ func configureProvider(t *testing.T, a *api, org instance.Org, issuer string, cr
 }
 
 // providerGroups lists the provider groups a person is in within one organization.
-func (h *harness) providerGroups(t *testing.T, org instance.Org, email string) []string {
+func (h *harness) providerGroups(t *testing.T, email string) []string {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
 		SELECT g.external_ref FROM group_member m
 		JOIN groups g ON g.id = m.group_id
 		JOIN app_user u ON u.id = m.user_id
-		WHERE m.org_id = $1 AND u.email = $2 AND g.source = 'oidc'
-		ORDER BY 1`, org.ID, email)
+		WHERE u.email = $1 AND g.source = 'oidc'
+		ORDER BY 1`, email)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,14 +64,14 @@ func TestSignInThroughKeycloak(t *testing.T) {
 	kc := newKeycloak(t)
 	kc.reachable(t)
 	a := h.startAPI(t, testSessionTTL)
-	org := h.makeOrg(t, "wonderland")
-	configureProvider(t, a, org, kc.issuer(), true)
-	h.letIn(t, org, "alice@stator.test", "member")
+	site := h.emptySite(t, "wonderland")
+	configureProvider(t, a, kc.issuer(), true)
+	h.letIn(t, "alice@stator.test", "member")
 	ctx := context.Background()
 
 	t.Run("the client secret is sealed at rest", func(t *testing.T) {
 		var stored []byte
-		if err := h.super.QueryRow(ctx, `SELECT client_secret FROM oidc_provider WHERE org_id = $1`, org.ID).Scan(&stored); err != nil {
+		if err := h.super.QueryRow(ctx, `SELECT client_secret FROM oidc_provider`).Scan(&stored); err != nil {
 			t.Fatal(err)
 		}
 		if len(stored) == 0 || bytes.Contains(stored, []byte(statorSecret)) {
@@ -98,7 +97,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 			t.Errorf("user = %v", user)
 		}
 		if current["name"] == nil || current["role"] != string(auth.RoleMember) {
-			t.Errorf("organization = %v, want %s as a member", current, org.Slug)
+			t.Errorf("organization = %v, want %s as a member", current, site.Slug)
 		}
 		userID, _ = user["id"].(string)
 		if err := h.super.QueryRow(ctx, `SELECT subject FROM user_identity WHERE issuer = $1 AND user_id = $2`, kc.issuer(), userID).Scan(&subject); err != nil || subject == "" {
@@ -107,7 +106,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 	})
 
 	t.Run("her groups are created and joined", func(t *testing.T) {
-		if got := h.providerGroups(t, org, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-administrators"}) {
+		if got := h.providerGroups(t, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-administrators"}) {
 			t.Fatalf("groups = %q", got)
 		}
 	})
@@ -146,7 +145,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 
 		again := newBrowser(t)
 		again.signIn(t, a, "alice", alicePassword, "")
-		if got := h.providerGroups(t, org, "alice@stator.test"); !slices.Equal(got, []string{"stator-administrators"}) {
+		if got := h.providerGroups(t, "alice@stator.test"); !slices.Equal(got, []string{"stator-administrators"}) {
 			t.Fatalf("groups after leaving engineering = %q", got)
 		}
 		var accounts int
@@ -157,7 +156,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 		kc.setMembership(t, "alice", "engineering", true)
 		again = newBrowser(t)
 		again.signIn(t, a, "alice", alicePassword, "")
-		if got := h.providerGroups(t, org, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-administrators"}) {
+		if got := h.providerGroups(t, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-administrators"}) {
 			t.Fatalf("groups after rejoining engineering = %q", got)
 		}
 	})
@@ -185,21 +184,21 @@ func TestOnlyExistingGroupsAreJoinedWhenCreationIsOff(t *testing.T) {
 	kc := newKeycloak(t)
 	kc.reachable(t)
 	a := h.startAPI(t, testSessionTTL)
-	org := h.makeOrg(t, "builders")
-	configureProvider(t, a, org, kc.issuer(), false)
-	h.letIn(t, org, "bob@stator.test", "member")
+	h.emptySite(t, "builders")
+	configureProvider(t, a, kc.issuer(), false)
+	h.letIn(t, "bob@stator.test", "member")
 
 	newBrowser(t).signIn(t, a, "bob", bobPassword, "")
-	if got := h.providerGroups(t, org, "bob@stator.test"); len(got) != 0 {
+	if got := h.providerGroups(t, "bob@stator.test"); len(got) != 0 {
 		t.Fatalf("groups = %q, want none while no group is mapped", got)
 	}
 
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO groups (org_id, name, source, external_ref) VALUES ($1, 'Marketing team', 'oidc', 'marketing')`, org.ID); err != nil {
+		INSERT INTO groups (name, source, external_ref) VALUES ('Marketing team', 'oidc', 'marketing')`); err != nil {
 		t.Fatal(err)
 	}
 	newBrowser(t).signIn(t, a, "bob", bobPassword, "")
-	if got := h.providerGroups(t, org, "bob@stator.test"); !slices.Equal(got, []string{"marketing"}) {
+	if got := h.providerGroups(t, "bob@stator.test"); !slices.Equal(got, []string{"marketing"}) {
 		t.Fatalf("groups = %q, want the mapped one", got)
 	}
 }
@@ -218,7 +217,7 @@ func TestSignInRefusals(t *testing.T) {
 
 	notConfigured := "http://" + appHost + "/login?sso=not_configured"
 	// One organization, its provider set again by each case in turn.
-	org := h.makeOrg(t, "refusals")
+	h.emptySite(t, "refusals")
 	t.Run("an organization without a provider says so", func(t *testing.T) {
 		if resp := start(); resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != notConfigured {
 			t.Errorf("start = %s to %q, want the sign-in page saying so", resp.Status, resp.Header.Get("Location"))
@@ -226,8 +225,8 @@ func TestSignInRefusals(t *testing.T) {
 	})
 
 	t.Run("a provider that is turned off is not used", func(t *testing.T) {
-		configureProvider(t, a, org, kc.issuer(), false)
-		if err := a.sso.Configure(context.Background(), org.ID, oidc.Provider{Issuer: kc.issuer(), ClientID: statorClient, Enabled: false}); err != nil {
+		configureProvider(t, a, kc.issuer(), false)
+		if err := a.sso.Configure(context.Background(), oidc.Provider{Issuer: kc.issuer(), ClientID: statorClient, Enabled: false}); err != nil {
 			t.Fatal(err)
 		}
 		if resp := start(); resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != notConfigured {
@@ -236,21 +235,20 @@ func TestSignInRefusals(t *testing.T) {
 	})
 
 	t.Run("a provider that cannot be reached is named as the reason", func(t *testing.T) {
-		configureProvider(t, a, org, "http://nowhere.invalid/realms/none", false)
+		configureProvider(t, a, "http://nowhere.invalid/realms/none", false)
 		if resp := start(); resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != "http://"+appHost+"/login?sso=unreachable" {
 			t.Errorf("start with an unreachable provider = %s to %q", resp.Status, resp.Header.Get("Location"))
 		}
 	})
 
 	t.Run("an expired sign-in is refused at the callback", func(t *testing.T) {
-		configureProvider(t, a, org, kc.issuer(), false)
+		configureProvider(t, a, kc.issuer(), false)
 		if resp := start(); resp.StatusCode != http.StatusFound || !strings.HasPrefix(resp.Header.Get("Location"), kc.issuer()) {
 			t.Fatalf("start = %s to %q", resp.Status, resp.Header.Get("Location"))
 		}
 		var state string
 		if err := h.super.QueryRow(context.Background(), `
-			UPDATE oidc_login SET expires_at = now() - interval '1 second'
-			WHERE org_id = $1 RETURNING state`, org.ID).Scan(&state); err != nil {
+			UPDATE oidc_login SET expires_at = now() - interval '1 second' RETURNING state`).Scan(&state); err != nil {
 			t.Fatal(err)
 		}
 		b := newBrowser(t)

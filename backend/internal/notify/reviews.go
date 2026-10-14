@@ -73,7 +73,7 @@ func planReviewDecided(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, 
 	err := tx.QueryRow(ctx, `
 		SELECT r.author_id, CASE WHEN $3 = 'skipped' THEN COALESCE(r.skip_reason, '')
 		                         ELSE COALESCE((SELECT d.comment FROM page_review_decision d
-		                                        WHERE d.org_id = r.org_id AND d.review_id = r.id AND d.reviewer_id = $4), '') END
+		                                        WHERE d.review_id = r.id AND d.reviewer_id = $4), '') END
 		FROM page_review r WHERE r.id = $1 AND r.page_id = $2`,
 		in.ReviewID, in.PageID, in.Outcome, in.ActorID).Scan(&author, &said)
 	if errors.Is(err, pgx.ErrNoRows) {

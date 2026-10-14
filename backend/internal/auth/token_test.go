@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
-	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 func TestGenerateTokenIsUniqueAndHashed(t *testing.T) {
@@ -161,33 +159,31 @@ func TestATokenNamesItsSpacesOnceEach(t *testing.T) {
 	}
 }
 
-func TestATokenLimitedToSpacesAdministersNoOrganization(t *testing.T) {
-	org := &instance.Org{ID: uuid.New(), Slug: "acme"}
+func TestATokenLimitedToSpacesAdministersNoSite(t *testing.T) {
 	id := uuid.New()
-	limited := &Principal{Org: org, Role: RoleOwner, TokenID: &id, SpacesOnly: true}
+	limited := &Principal{Role: RoleOwner, TokenID: &id, SpacesOnly: true}
 	if !limited.InSpacesOnly() || limited.CanAdminister() {
-		t.Error("an owner's token limited to spaces administers the organization")
+		t.Error("an owner's token limited to spaces administers the site")
 	}
-	if (&Principal{Org: org, Role: RoleOwner, TokenID: &id}).InSpacesOnly() {
+	if (&Principal{Role: RoleOwner, TokenID: &id}).InSpacesOnly() {
 		t.Error("a token without spaces is limited")
 	}
-	if (&Principal{Org: org, Role: RoleOwner, SessionID: &id, SpacesOnly: true}).InSpacesOnly() {
+	if (&Principal{Role: RoleOwner, SessionID: &id, SpacesOnly: true}).InSpacesOnly() {
 		t.Error("a session is limited to spaces")
 	}
 }
 
 func TestOnlyOwnersAndAdminsAdminister(t *testing.T) {
-	org := &instance.Org{ID: uuid.New(), Slug: "acme"}
-	for role, want := range map[OrgRole]bool{RoleOwner: true, RoleAdmin: true, RoleMember: false, "": false} {
-		if got := (&Principal{Org: org, Role: role}).CanAdminister(); got != want {
+	for role, want := range map[Role]bool{RoleOwner: true, RoleAdmin: true, RoleMember: false, RoleGuest: false, "": false} {
+		if got := (&Principal{Role: role}).CanAdminister(); got != want {
 			t.Errorf("%q administers = %v, want %v", role, got, want)
 		}
 	}
-	if (&Principal{Role: RoleOwner}).CanAdminister() {
-		t.Error("an owner outside any organization administers nothing")
+	if (&Principal{UserID: uuid.New()}).IsMember() {
+		t.Error("somebody without a role is a member")
 	}
 	var nobody *Principal
-	if nobody.CanAdminister() || nobody.InOrg() {
+	if nobody.CanAdminister() || nobody.IsMember() {
 		t.Error("an anonymous caller administers nothing")
 	}
 }

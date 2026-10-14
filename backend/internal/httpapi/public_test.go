@@ -88,10 +88,10 @@ func TestALinksAnswerIsNeverCachedNorSentOn(t *testing.T) {
 	}
 }
 
-// fixedInstance is an instance whose organization is always the one given.
-type fixedInstance instance.Org
+// fixedInstance is an instance whose site is always the one given.
+type fixedInstance instance.Site
 
-func (f fixedInstance) Org(context.Context) (instance.Org, error) { return instance.Org(f), nil }
+func (f fixedInstance) Site(context.Context) (instance.Site, error) { return instance.Site(f), nil }
 
 // concrete fills a template's parameters the way a real address would.
 func concrete(template string) string {

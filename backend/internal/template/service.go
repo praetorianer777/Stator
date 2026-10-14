@@ -90,7 +90,7 @@ func (in Input) clean() (Input, error) {
 
 const columns = `t.id, t.space_id, COALESCE(s.key, ''), t.name, t.description, t.title, t.body, t.variables`
 
-const from = ` FROM page_template t LEFT JOIN space s ON s.org_id = t.org_id AND s.id = t.space_id`
+const from = ` FROM page_template t LEFT JOIN space s ON s.id = t.space_id`
 
 func scan(row pgx.Row) (Template, error) {
 	var (

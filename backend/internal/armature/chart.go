@@ -123,7 +123,7 @@ func (s *Service) Chart(ctx context.Context, in ChartInput) (Status, *Chart, err
 		return status, nil, err
 	}
 	var cached Chart
-	if s.cache.Chart(ctx, v.OrgID, v.TokenID, in, &cached) {
+	if s.cache.Chart(ctx, v.SiteID, v.TokenID, in, &cached) {
 		return StatusOK, &cached, nil
 	}
 	params := url.Values{"q": {in.Query}}
@@ -178,7 +178,7 @@ func (s *Service) Chart(ctx context.Context, in ChartInput) (Status, *Chart, err
 	if err != nil {
 		return s.failed(ctx, v, err), nil, nil
 	}
-	s.cache.PutChart(ctx, v.OrgID, v.TokenID, in, out)
+	s.cache.PutChart(ctx, v.SiteID, v.TokenID, in, out)
 	return StatusOK, out, nil
 }
 
@@ -190,11 +190,11 @@ func ChartField(tokenID uuid.UUID, in ChartInput) string {
 }
 
 // Chart reads a cached chart; see Issue.
-func (c *Cache) Chart(ctx context.Context, org, tokenID uuid.UUID, in ChartInput, out any) bool {
-	return c.getField(ctx, SearchKey(org), ChartField(tokenID, in), ChartCacheTTL, out)
+func (c *Cache) Chart(ctx context.Context, site, tokenID uuid.UUID, in ChartInput, out any) bool {
+	return c.getField(ctx, SearchKey(site), ChartField(tokenID, in), ChartCacheTTL, out)
 }
 
 // PutChart stores a chart.
-func (c *Cache) PutChart(ctx context.Context, org, tokenID uuid.UUID, in ChartInput, value any) {
-	c.putField(ctx, SearchKey(org), ChartField(tokenID, in), ChartCacheTTL, value)
+func (c *Cache) PutChart(ctx context.Context, site, tokenID uuid.UUID, in ChartInput, value any) {
+	c.putField(ctx, SearchKey(site), ChartField(tokenID, in), ChartCacheTTL, value)
 }

@@ -119,12 +119,11 @@ func TestWordDocumentsAreImported(t *testing.T) {
 	h := newHarness(t)
 	api, watch := wordAPI(t, h)
 	home := h.makeMember(t, "word-import")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	member := api.as(t, memberID, home.org, slug)
-	readerID := h.addPerson(t, home.org, "member")
-	reader := api.as(t, readerID, home.org, slug)
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
+	member := api.as(t, memberID)
+	readerID := h.addPerson(t, "member")
+	reader := api.as(t, readerID)
 
 	docs := newTree(t, owner, "WORD", "Word")
 	picture := pngOf(t, 6, 4)
@@ -249,7 +248,7 @@ func TestWordDocumentsAreImported(t *testing.T) {
 			t.Errorf("an import by nobody: %d", got.Status)
 		}
 		away := h.makeOutsider(t, "word-away")
-		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+		stranger := api.as(t, away.user)
 		if got := stranger.importFiles(t, http.MethodPost, pagePath(readPage, "/word-imports"), doc); got.Status != http.StatusNotFound {
 			t.Errorf("an import by somebody the space is closed to: %d", got.Status)
 		}
@@ -269,7 +268,7 @@ func TestWordDocumentsAreImported(t *testing.T) {
 
 // queueWordImport stores an upload and queues its import straight in the
 // database, as the request would have, for what a request no longer allows.
-func queueWordImport(t *testing.T, h *harness, org, requester uuid.UUID, parent string, extra string, args []any, docs map[string][]byte) uuid.UUID {
+func queueWordImport(t *testing.T, h *harness, requester uuid.UUID, parent string, extra string, args []any, docs map[string][]byte) uuid.UUID {
 	t.Helper()
 	id := uuid.New()
 	var buf bytes.Buffer
@@ -282,11 +281,11 @@ func queueWordImport(t *testing.T, h *harness, org, requester uuid.UUID, parent 
 		_, _ = w.Write(data)
 	}
 	_ = z.Close()
-	if err := h.appStore(t).Put(context.Background(), wordio.ObjectKey(org, id), bytes.NewReader(buf.Bytes()), int64(buf.Len()), "application/zip"); err != nil {
+	if err := h.appStore(t).Put(context.Background(), wordio.ObjectKey(id), bytes.NewReader(buf.Bytes()), int64(buf.Len()), "application/zip"); err != nil {
 		t.Fatal(err)
 	}
-	all := append([]any{id, org, requester, parent, len(docs), buf.Len()}, args...)
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO word_import (id, org_id, requested_by, parent_id, file_count, size_bytes`+extra, all...); err != nil {
+	all := append([]any{id, requester, parent, len(docs), buf.Len()}, args...)
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO word_import (id, requested_by, parent_id, file_count, size_bytes`+extra, all...); err != nil {
 		t.Fatal(err)
 	}
 	// Planted as the superuser, the row is nobody's own write, so the
@@ -302,10 +301,9 @@ func TestAWordImportThatCannotFinishLeavesNothing(t *testing.T) {
 	h := newHarness(t)
 	api, watch := wordAPI(t, h)
 	home := h.makeMember(t, "word-fail")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	member := api.as(t, memberID, home.org, slug)
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
+	member := api.as(t, memberID)
 	ctx := context.Background()
 
 	t.Run("a requester who may no longer add pages", func(t *testing.T) {
@@ -315,7 +313,7 @@ func TestAWordImportThatCannotFinishLeavesNothing(t *testing.T) {
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		}}), http.StatusOK, "WORDFAIL is read only")
 		h.settle(t)
-		id := queueWordImport(t, h, home.org, memberID, parent, `) VALUES ($1, $2, $3, $4, $5, $6)`, nil,
+		id := queueWordImport(t, h, memberID, parent, `) VALUES ($1, $2, $3, $4, $5)`, nil,
 			map[string][]byte{"a.docx": wordDoc(t, "A", nil, wPara("a"))})
 		job := followWordImport(t, member, watch, id.String())
 		if job["state"] != "failed" || job["failure"] != "forbidden" || !strings.Contains(fmt.Sprint(job["message"]), "Ask an administrator") {
@@ -325,7 +323,7 @@ func TestAWordImportThatCannotFinishLeavesNothing(t *testing.T) {
 		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM page WHERE parent_id = $1 AND trashed_at IS NULL`, parent).Scan(&live); err != nil || live != 0 {
 			t.Errorf("the failed import left %d pages: %v", live, err)
 		}
-		if rc, err := h.appStore(t).Get(ctx, wordio.ObjectKey(home.org, id)); err == nil {
+		if rc, err := h.appStore(t).Get(ctx, wordio.ObjectKey(id)); err == nil {
 			_ = rc.Close()
 			t.Errorf("the failed import's upload is still stored")
 		}
@@ -335,8 +333,8 @@ func TestAWordImportThatCannotFinishLeavesNothing(t *testing.T) {
 		docs := newTree(t, owner, "WORDDIED", "Died")
 		docs.c = member
 		leftover := docs.add(docs.homeID, "Half made")
-		id := queueWordImport(t, h, home.org, memberID, docs.homeID,
-			`, state, attempts, lease_until, made) VALUES ($1, $2, $3, $4, $5, $6, 'running', 1, now() - interval '1 minute', $7)`,
+		id := queueWordImport(t, h, memberID, docs.homeID,
+			`, state, attempts, lease_until, made) VALUES ($1, $2, $3, $4, $5, 'running', 1, now() - interval '1 minute', $6)`,
 			[]any{[]uuid.UUID{uuid.MustParse(leftover)}},
 			map[string][]byte{"again.docx": wordDoc(t, "Again", nil, wPara("again"))})
 		job := followWordImport(t, member, watch, id.String())
@@ -362,10 +360,9 @@ func TestTheDatabaseKeepsWordImportsTheirImporters(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "word-sql")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	readerID := h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
+	readerID := h.addPerson(t, "member")
 	open := newTree(t, owner, "WORDSQL", "Open")
 	reading := newTree(t, owner, "WORDRO", "Read only")
 	want(t, owner.put(t, "/api/v1/spaces/WORDRO/permissions", map[string]any{"grants": []any{
@@ -373,19 +370,19 @@ func TestTheDatabaseKeepsWordImportsTheirImporters(t *testing.T) {
 	}}), http.StatusOK, "WORDRO is read only")
 	h.settle(t)
 	ctx := context.Background()
-	insert := `INSERT INTO word_import (id, org_id, requested_by, parent_id, file_count, size_bytes) VALUES ($1, $2, $3, $4, 1, 10)`
+	insert := `INSERT INTO word_import (id, requested_by, parent_id, file_count, size_bytes) VALUES ($1, $2, $3, 1, 10)`
 
 	conn := appConn(t)
 	actAs(t, conn, readerID)
-	refused(t, conn, "a member queuing an import where they may only read", insert, uuid.New(), home.org, readerID, reading.homeID)
+	refused(t, conn, "a member queuing an import where they may only read", insert, uuid.New(), readerID, reading.homeID)
 	actAs(t, conn, memberID)
-	refused(t, conn, "a member queuing an import for somebody else", insert, uuid.New(), home.org, readerID, open.homeID)
+	refused(t, conn, "a member queuing an import for somebody else", insert, uuid.New(), readerID, open.homeID)
 	refused(t, conn, "a member queuing an import already done",
-		`INSERT INTO word_import (id, org_id, requested_by, parent_id, file_count, size_bytes, state) VALUES ($1, $2, $3, $4, 1, 10, 'done')`, uuid.New(), home.org, memberID, open.homeID)
+		`INSERT INTO word_import (id, requested_by, parent_id, file_count, size_bytes, state) VALUES ($1, $2, $3, 1, 10, 'done')`, uuid.New(), memberID, open.homeID)
 	refused(t, conn, "a member queuing an import of no documents",
-		`INSERT INTO word_import (id, org_id, requested_by, parent_id, file_count, size_bytes) VALUES ($1, $2, $3, $4, 0, 10)`, uuid.New(), home.org, memberID, open.homeID)
+		`INSERT INTO word_import (id, requested_by, parent_id, file_count, size_bytes) VALUES ($1, $2, $3, 0, 10)`, uuid.New(), memberID, open.homeID)
 	job := uuid.New()
-	if _, err := conn.Exec(ctx, insert, job, home.org, memberID, open.homeID); err != nil {
+	if _, err := conn.Exec(ctx, insert, job, memberID, open.homeID); err != nil {
 		t.Fatalf("a member who may add pages cannot queue an import through SQL: %v", err)
 	}
 	for what, sql := range map[string]string{

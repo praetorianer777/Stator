@@ -41,8 +41,8 @@ func TestANewPersonWaitsUntilAnAdministratorLetsThemIn(t *testing.T) {
 	kc := newKeycloak(t)
 	kc.reachable(t)
 	a := h.startAPI(t, testSessionTTL)
-	org := h.makeOrg(t, "doorway")
-	configureProvider(t, a, org, kc.issuer(), true)
+	h.emptySite(t, "doorway")
+	configureProvider(t, a, kc.issuer(), true)
 	ctx := context.Background()
 
 	suffix := uuid.NewString()[:8]
@@ -67,11 +67,11 @@ func TestANewPersonWaitsUntilAnAdministratorLetsThemIn(t *testing.T) {
 	t.Run("straight through SQL there is a request and nothing else", func(t *testing.T) {
 		var requests, members, sessions, groups int
 		if err := h.super.QueryRow(ctx, `
-			SELECT (SELECT count(*) FROM org_join_request r WHERE r.org_id = $1 AND r.user_id = u.id),
-			       (SELECT count(*) FROM org_member m WHERE m.user_id = u.id),
+			SELECT (SELECT count(*) FROM join_request r WHERE r.user_id = u.id),
+			       (SELECT count(*) FROM member m WHERE m.user_id = u.id),
 			       (SELECT count(*) FROM user_session s WHERE s.user_id = u.id),
 			       (SELECT count(*) FROM group_member g WHERE g.user_id = u.id)
-			FROM app_user u WHERE u.email = $2`, org.ID, carol).Scan(&requests, &members, &sessions, &groups); err != nil {
+			FROM app_user u WHERE u.email = $1`, carol).Scan(&requests, &members, &sessions, &groups); err != nil {
 			t.Fatal(err)
 		}
 		if requests != 1 || members != 0 || sessions != 0 || groups != 0 {
@@ -94,7 +94,7 @@ func TestANewPersonWaitsUntilAnAdministratorLetsThemIn(t *testing.T) {
 	newBrowser(t).signIn(t, a, "dave-"+suffix, password, "")
 
 	admin := newBrowser(t)
-	email := bootstrapAdmin(t, h, a, org)
+	email := bootstrapAdmin(t, h, a)
 	if resp, body := postJSON(t, admin, a.URL+httpapi.APIPrefix+"/auth/login", map[string]string{"email": email, "password": adminPassword}); resp.StatusCode != http.StatusOK {
 		t.Fatalf("admin login = %d %v", resp.StatusCode, body)
 	}
@@ -147,7 +147,7 @@ func TestANewPersonWaitsUntilAnAdministratorLetsThemIn(t *testing.T) {
 			t.Fatalf("still waiting: %v", emails)
 		}
 		var members int
-		_ = h.super.QueryRow(ctx, `SELECT count(*) FROM org_member WHERE user_id = $1`, daveID).Scan(&members)
+		_ = h.super.QueryRow(ctx, `SELECT count(*) FROM member WHERE user_id = $1`, daveID).Scan(&members)
 		if members != 0 {
 			t.Fatal("a person turned away became a member")
 		}
@@ -164,8 +164,8 @@ func TestANewPersonWaitsUntilAnAdministratorLetsThemIn(t *testing.T) {
 			var n int
 			if err := h.super.QueryRow(ctx, `
 				SELECT count(*) FROM audit_log
-				WHERE org_id = $1 AND action = $2 AND target_type = 'user' AND target_id = $3 AND actor_user_id = $4`,
-				org.ID, action, target, adminID).Scan(&n); err != nil || n != 1 {
+				WHERE action = $1 AND target_type = 'user' AND target_id = $2 AND actor_user_id = $3`,
+				action, target, adminID).Scan(&n); err != nil || n != 1 {
 				t.Errorf("%s for %s recorded %d times (%v)", action, target, n, err)
 			}
 		}

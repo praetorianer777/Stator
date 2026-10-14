@@ -182,7 +182,7 @@ func TestTheSeedIsIdempotent(t *testing.T) {
 	demoOrgs := func() int {
 		t.Helper()
 		var n int
-		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org WHERE slug = $1`, seed.DemoOrgSlug).Scan(&n); err != nil {
+		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM site WHERE slug = $1`, seed.DemoOrgSlug).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
@@ -232,12 +232,12 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 	}
 
 	var org, owners int
-	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org WHERE name = 'Bootstrapped'`).Scan(&org); err != nil || org != 1 {
+	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM site WHERE name = 'Bootstrapped'`).Scan(&org); err != nil || org != 1 {
 		t.Fatalf("organizations: %d (%v), want the one the bootstrap made", org, err)
 	}
 	if err := h.super.QueryRow(ctx, `
-		SELECT count(*) FROM org_member m JOIN app_user u ON u.id = m.user_id
-		WHERE u.email = $1 AND m.org_role = 'owner'`, email).Scan(&owners); err != nil || owners != 1 {
+		SELECT count(*) FROM member m JOIN app_user u ON u.id = m.user_id
+		WHERE u.email = $1 AND m.role = 'owner'`, email).Scan(&owners); err != nil || owners != 1 {
 		t.Fatalf("owners named %s: %d (%v), want 1", email, owners, err)
 	}
 	if _, err := accounts.EnsureAdmin(ctx, email, "Administrator", "second password 2"); err != nil {
@@ -248,7 +248,7 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 	if err != nil || res.OrgCreated {
 		t.Fatalf("bootstrapping under another name = %+v, %v; want the organization there left alone", res, err)
 	}
-	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org`).Scan(&org); err != nil || org != 1 {
+	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM site`).Scan(&org); err != nil || org != 1 {
 		t.Fatalf("organizations after bootstrapping again: %d (%v), want 1", org, err)
 	}
 }
@@ -270,20 +270,20 @@ func TestANewOrganizationGetsItsGrantWhereTheOwnerIsBoundByRowLevelSecurity(t *t
 		`CREATE ROLE rls_bound_owner NOLOGIN NOSUPERUSER NOBYPASSRLS`,
 		`GRANT USAGE ON SCHEMA public TO rls_bound_owner`,
 		`GRANT INSERT, SELECT ON global_grant TO rls_bound_owner`,
-		`ALTER FUNCTION org_default_grants() OWNER TO rls_bound_owner`,
+		`ALTER FUNCTION site_default_grants() OWNER TO rls_bound_owner`,
 	} {
 		if _, err := tx.Exec(ctx, q); err != nil {
 			t.Fatalf("%s: %v", q, err)
 		}
 	}
 	slug := "rls-" + strings.ToLower(strconv.FormatInt(time.Now().UnixNano(), 36))
-	if _, err := tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ($1, 'Bound')`, slug); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO site (slug, name) VALUES ($1, 'Bound')`, slug); err != nil {
 		t.Fatalf("making an organization where the owner is bound by row level security: %v", err)
 	}
 	var grants int
 	if err := tx.QueryRow(ctx, `
-		SELECT count(*) FROM global_grant g JOIN org o ON o.id = g.org_id
-		WHERE o.slug = $1 AND g.permission = 'use' AND g.subject_type = 'everyone'`, slug).Scan(&grants); err != nil || grants != 1 {
+		SELECT count(*) FROM global_grant g
+		WHERE g.permission = 'use' AND g.subject_type = 'everyone'`).Scan(&grants); err != nil || grants != 1 {
 		t.Fatalf("grants of the new organization: %d (%v), want 1", grants, err)
 	}
 }

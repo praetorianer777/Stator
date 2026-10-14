@@ -15,7 +15,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/secret"
@@ -78,14 +77,10 @@ func run() error {
 			return err
 		}
 	}
-	org, err := instance.NewResolver(cluster).Org(ctx)
-	if err != nil {
-		return err
-	}
 	// Named ahead of time, so they sign in through the provider without
 	// waiting for anybody to let them in.
 	sso := oidc.NewService(cluster, box, cfg.Auth.OIDCRedirectURL)
-	done, err := seed.Populate(ctx, accounts, sso, org, seed.Bootstrapped(cfg.Bootstrap))
+	done, err := seed.Populate(ctx, accounts, sso, seed.Bootstrapped(cfg.Bootstrap))
 	if err != nil {
 		return err
 	}

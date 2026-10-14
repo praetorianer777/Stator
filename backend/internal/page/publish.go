@@ -116,7 +116,7 @@ SELECT v.number, v.title, v.comment, u.id, COALESCE(u.name, ''), v.created_at, v
                                          WHERE d.review_id = r.id AND d.decision = 'approve'), '[]'::jsonb),
                  'skippedByName', COALESCE(su.name, ''), 'skipReason', COALESCE(r.skip_reason, ''))
         FROM page_review r LEFT JOIN app_user su ON su.id = r.skipped_by
-        WHERE r.org_id = v.org_id AND r.id = v.review_id)
+        WHERE r.id = v.review_id)
 FROM page_version v
 LEFT JOIN app_user u ON u.id = v.created_by`
 
@@ -205,7 +205,7 @@ func (s *Service) SaveDraft(ctx context.Context, actor perm.Actor, id uuid.UUID,
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO page_draft (page_id, user_id, title, body, base_version)
 			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (org_id, page_id, user_id) DO UPDATE
+			ON CONFLICT (page_id, user_id) DO UPDATE
 			SET title = EXCLUDED.title, body = EXCLUDED.body, base_version = EXCLUDED.base_version`,
 			id, actor.UserID, title, in.Body, in.BaseVersion); err != nil {
 			return fmt.Errorf("save the draft: %w", err)

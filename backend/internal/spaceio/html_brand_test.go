@@ -28,7 +28,7 @@ func TestOnlyAPictureABrowserShowsIsAHeaderLogo(t *testing.T) {
 	if b.logoPath() != "" {
 		t.Error("no brand has a logo")
 	}
-	b = &htmlBrand{logoKey: "org/x/brand/logo-1", logoExt: "webp"}
+	b = &htmlBrand{logoKey: "brand/logo-1", logoExt: "webp"}
 	if b.logoPath() != "files/brand/logo.webp" {
 		t.Errorf("the logo is at %q", b.logoPath())
 	}

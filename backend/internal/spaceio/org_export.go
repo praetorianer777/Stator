@@ -12,15 +12,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
 // orgSnapshot is everything of an organization that is not a space, read in
 // one transaction; each space is read in a transaction of its own after it.
 type orgSnapshot struct {
-	org      uuid.UUID
 	m        *OrgManifest
 	spaces   []uuid.UUID
 	logoKey  string
@@ -52,15 +49,15 @@ var notCarried = []Omission{
 
 // readOrg reads the organization's own data, as the worker's role, and every
 // count the archive's list of what it leaves out names.
-func readOrg(ctx context.Context, tx db.DBTX, org, exporter uuid.UUID) (*orgSnapshot, error) {
-	s := &orgSnapshot{org: org, themeKey: map[uuid.UUID]string{}}
+func readOrg(ctx context.Context, tx db.DBTX, exporter uuid.UUID) (*orgSnapshot, error) {
+	s := &orgSnapshot{themeKey: map[uuid.UUID]string{}}
 	m := &OrgManifest{Format: OrgFormat, Version: OrgVersion, ExportedBy: exporter.String(),
 		People: []OrgPerson{}, Groups: []OrgGroup{}, Permissions: []Grant{}, Themes: []OrgTheme{}, PersonThemes: []PersonTheme{},
 		Templates: []Template{}, Webhooks: []OrgWebhook{}, Preferences: []OrgPreference{}, Spaces: []OrgSpace{}}
 	s.m = m
 	if err := tx.QueryRow(ctx, `
 		SELECT now(), name, slug::text, created_at, anonymous_access, anonymous_indexable, public_links, hub_page_id, hub_landing, default_theme_id
-		FROM org WHERE id = $1`, org).Scan(&m.ExportedAt, &m.Organization.Name, &m.Organization.Slug, &m.Organization.CreatedAt,
+		FROM site`).Scan(&m.ExportedAt, &m.Organization.Name, &m.Organization.Slug, &m.Organization.CreatedAt,
 		&m.Settings.AnonymousAccess, &m.Settings.AnonymousIndexable, &m.Settings.PublicLinks, &m.Settings.HubPage, &m.Settings.HubLanding,
 		&m.Settings.DefaultTheme); err != nil {
 		return nil, fmt.Errorf("read the organization: %w", err)
@@ -89,10 +86,10 @@ func readOrg(ctx context.Context, tx db.DBTX, org, exporter uuid.UUID) (*orgSnap
 
 func (s *orgSnapshot) readPeople(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
-		SELECT u.id, u.name, u.email::text, u.timezone, u.locale, u.is_active, u.show_in_readers, m.org_role, m.role_source,
+		SELECT u.id, u.name, u.email::text, u.timezone, u.locale, u.is_active, u.show_in_readers, m.role, m.role_source,
 		       COALESCE(s.key, ''), m.created_at
-		FROM org_member m JOIN app_user u ON u.id = m.user_id LEFT JOIN space s ON s.id = m.guest_space_id
-		WHERE m.org_id = $1 ORDER BY lower(u.email::text), u.id`, s.org)
+		FROM member m JOIN app_user u ON u.id = m.user_id LEFT JOIN space s ON s.id = m.guest_space_id
+		ORDER BY lower(u.email::text), u.id`)
 	if err != nil {
 		return err
 	}
@@ -116,7 +113,7 @@ func (s *orgSnapshot) readGroups(ctx context.Context, tx db.DBTX) error {
 		SELECT g.id, g.name, g.description, g.source, g.external_ref,
 		       COALESCE(array_agg(m.user_id ORDER BY m.user_id) FILTER (WHERE m.user_id IS NOT NULL), '{}')
 		FROM groups g LEFT JOIN group_member m ON m.group_id = g.id
-		WHERE g.org_id = $1 GROUP BY g.id ORDER BY lower(g.name), g.id`, s.org)
+		GROUP BY g.id ORDER BY lower(g.name), g.id`)
 	if err != nil {
 		return err
 	}
@@ -141,8 +138,8 @@ func (s *orgSnapshot) readGroups(ctx context.Context, tx db.DBTX) error {
 
 func (s *orgSnapshot) readPermissions(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
-		SELECT permission, subject_type, user_id, group_id FROM global_grant WHERE org_id = $1
-		ORDER BY permission, subject_type, user_id, group_id`, s.org)
+		SELECT permission, subject_type, user_id, group_id FROM global_grant
+		ORDER BY permission, subject_type, user_id, group_id`)
 	if err != nil {
 		return err
 	}
@@ -164,7 +161,7 @@ func (s *orgSnapshot) readPermissions(ctx context.Context, tx db.DBTX) error {
 func (s *orgSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
 	var p OrgSignIn
 	err := tx.QueryRow(ctx, `
-		SELECT issuer, client_id, groups_claim, scopes, create_groups, enabled FROM oidc_provider WHERE org_id = $1`, s.org).
+		SELECT issuer, client_id, groups_claim, scopes, create_groups, enabled FROM oidc_provider`).
 		Scan(&p.Issuer, &p.ClientID, &p.GroupsClaim, &p.Scopes, &p.CreateGroups, &p.Enabled)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -172,7 +169,7 @@ func (s *orgSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
 	case err != nil:
 		return err
 	}
-	rows, err := tx.Query(ctx, `SELECT group_ref, org_role FROM oidc_group_role WHERE org_id = $1 ORDER BY group_ref`, s.org)
+	rows, err := tx.Query(ctx, `SELECT group_ref, role FROM oidc_group_role ORDER BY group_ref`)
 	if err != nil {
 		return err
 	}
@@ -194,7 +191,7 @@ func (s *orgSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
 
 func (s *orgSnapshot) readArmature(ctx context.Context, tx db.DBTX) error {
 	var a OrgArmature
-	err := tx.QueryRow(ctx, `SELECT base_url, org_slug FROM armature_connection WHERE org_id = $1`, s.org).Scan(&a.BaseURL, &a.OrgSlug)
+	err := tx.QueryRow(ctx, `SELECT base_url, org_slug FROM armature_connection`).Scan(&a.BaseURL, &a.OrgSlug)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return nil
@@ -207,21 +204,21 @@ func (s *orgSnapshot) readArmature(ctx context.Context, tx db.DBTX) error {
 
 func (s *orgSnapshot) readBrand(ctx context.Context, tx db.DBTX) error {
 	var (
-		kind    *string
-		size    *int64
-		version int
+		kind *string
+		size *int64
+		key  *string
 	)
-	err := tx.QueryRow(ctx, `SELECT footer_en, footer_de, logo_type, logo_size, logo_version FROM org_brand WHERE org_id = $1`, s.org).
-		Scan(&s.m.Brand.FooterEn, &s.m.Brand.FooterDe, &kind, &size, &version)
+	err := tx.QueryRow(ctx, `SELECT footer_en, footer_de, logo_type, logo_size, logo_key FROM brand`).
+		Scan(&s.m.Brand.FooterEn, &s.m.Brand.FooterDe, &kind, &size, &key)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return nil
 	case err != nil:
 		return err
 	}
-	if kind != nil && size != nil {
+	if kind != nil && size != nil && key != nil {
 		s.m.Brand.Logo = &OrgLogo{ContentType: *kind, Size: *size}
-		s.logoKey = brand.LogoKey(s.org, version)
+		s.logoKey = *key
 	}
 	return nil
 }
@@ -230,7 +227,7 @@ func (s *orgSnapshot) readBrand(ctx context.Context, tx db.DBTX) error {
 // mirrored from Armature is its owner's copy of Armature's and stays behind.
 func (s *orgSnapshot) readThemes(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
-		SELECT id, name, owner_id, shared, spec FROM theme WHERE org_id = $1 AND armature_theme_id IS NULL ORDER BY lower(name), id`, s.org)
+		SELECT id, name, owner_id, shared, spec FROM theme WHERE armature_theme_id IS NULL ORDER BY lower(name), id`)
 	if err != nil {
 		return err
 	}
@@ -253,7 +250,7 @@ func (s *orgSnapshot) readThemes(ctx context.Context, tx db.DBTX) error {
 	for i := range s.m.Themes {
 		byID[s.m.Themes[i].ID] = &s.m.Themes[i]
 	}
-	rows, err = tx.Query(ctx, `SELECT id, theme_id, name, content_type, size FROM theme_asset WHERE org_id = $1 ORDER BY theme_id, created_at, id`, s.org)
+	rows, err = tx.Query(ctx, `SELECT id, theme_id, name, content_type, size, object_key FROM theme_asset ORDER BY theme_id, created_at, id`)
 	if err != nil {
 		return err
 	}
@@ -261,14 +258,15 @@ func (s *orgSnapshot) readThemes(ctx context.Context, tx db.DBTX) error {
 		var (
 			f       OrgThemeFile
 			themeID uuid.UUID
+			key     string
 		)
-		if err := rows.Scan(&f.ID, &themeID, &f.Name, &f.ContentType, &f.Size); err != nil {
+		if err := rows.Scan(&f.ID, &themeID, &f.Name, &f.ContentType, &f.Size, &key); err != nil {
 			rows.Close()
 			return err
 		}
 		if t := byID[themeID]; t != nil {
 			t.Files = append(t.Files, f)
-			s.themeKey[f.ID] = theme.ObjectKey(s.org, themeID, f.ID)
+			s.themeKey[f.ID] = key
 		}
 	}
 	rows.Close()
@@ -277,8 +275,8 @@ func (s *orgSnapshot) readThemes(ctx context.Context, tx db.DBTX) error {
 	}
 	rows, err = tx.Query(ctx, `
 		SELECT user_id, theme_id, follow_armature FROM user_theme u
-		WHERE org_id = $1 AND (theme_id IS NULL OR EXISTS (SELECT 1 FROM theme t WHERE t.id = u.theme_id AND t.armature_theme_id IS NULL))
-		ORDER BY user_id`, s.org)
+		WHERE (theme_id IS NULL OR EXISTS (SELECT 1 FROM theme t WHERE t.id = u.theme_id AND t.armature_theme_id IS NULL))
+		ORDER BY user_id`)
 	if err != nil {
 		return err
 	}
@@ -299,7 +297,7 @@ func (s *orgSnapshot) readThemes(ctx context.Context, tx db.DBTX) error {
 
 func (s *orgSnapshot) readTemplates(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
-		SELECT name, description, title, body, variables FROM page_template WHERE org_id = $1 AND space_id IS NULL ORDER BY lower(name), id`, s.org)
+		SELECT name, description, title, body, variables FROM page_template WHERE space_id IS NULL ORDER BY lower(name), id`)
 	if err != nil {
 		return err
 	}
@@ -315,7 +313,7 @@ func (s *orgSnapshot) readTemplates(ctx context.Context, tx db.DBTX) error {
 
 func (s *orgSnapshot) readWebhooks(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
-		SELECT name, url, topics, enabled, owner_id FROM webhook_endpoint WHERE org_id = $1 ORDER BY lower(name), id`, s.org)
+		SELECT name, url, topics, enabled, owner_id FROM webhook_endpoint ORDER BY lower(name), id`)
 	if err != nil {
 		return err
 	}
@@ -336,7 +334,7 @@ func (s *orgSnapshot) readWebhooks(ctx context.Context, tx db.DBTX) error {
 
 func (s *orgSnapshot) readPreferences(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
-		SELECT user_id, in_app, email, digest, auto_watch FROM notification_preference WHERE org_id = $1 ORDER BY user_id`, s.org)
+		SELECT user_id, in_app, email, digest, auto_watch FROM notification_preference ORDER BY user_id`)
 	if err != nil {
 		return err
 	}
@@ -358,7 +356,7 @@ func (s *orgSnapshot) readPreferences(ctx context.Context, tx db.DBTX) error {
 // readSpaces lists the spaces, and counts their pages and files for the
 // progress, which the snapshots of the spaces then write one by one.
 func (s *orgSnapshot) readSpaces(ctx context.Context, tx db.DBTX) error {
-	rows, err := tx.Query(ctx, `SELECT id FROM space WHERE org_id = $1 ORDER BY key`, s.org)
+	rows, err := tx.Query(ctx, `SELECT id FROM space ORDER BY key`)
 	if err != nil {
 		return err
 	}
@@ -366,26 +364,26 @@ func (s *orgSnapshot) readSpaces(ctx context.Context, tx db.DBTX) error {
 		return err
 	}
 	return tx.QueryRow(ctx, `
-		SELECT (SELECT count(*) FROM page WHERE org_id = $1 AND trashed_at IS NULL)
-		     + (SELECT count(*) FROM attachment a JOIN page p ON p.id = a.page_id WHERE a.org_id = $1 AND p.trashed_at IS NULL)`,
-		s.org).Scan(&s.total)
+		SELECT (SELECT count(*) FROM page WHERE trashed_at IS NULL)
+		     + (SELECT count(*) FROM attachment a JOIN page p ON p.id = a.page_id WHERE p.trashed_at IS NULL)`).
+		Scan(&s.total)
 }
 
 // readNotCarried counts what the archive leaves out where a count tells the
 // administrator how much to give again.
 func (s *orgSnapshot) readNotCarried(ctx context.Context, tx db.DBTX) error {
 	counts := map[string]string{
-		"tokens":           `SELECT count(*) FROM api_token WHERE org_id = $1 AND NOT for_render`,
-		"armatureAccounts": `SELECT count(*) FROM armature_token WHERE org_id = $1`,
-		"webhookSecrets":   `SELECT count(*) FROM webhook_endpoint WHERE org_id = $1`,
-		"joinRequests":     `SELECT count(*) FROM org_join_request WHERE org_id = $1`,
-		"links":            `SELECT (SELECT count(*) FROM page_share WHERE org_id = $1) + (SELECT count(*) FROM page_link WHERE org_id = $1)`,
+		"tokens":           `SELECT count(*) FROM api_token WHERE NOT for_render`,
+		"armatureAccounts": `SELECT count(*) FROM armature_token`,
+		"webhookSecrets":   `SELECT count(*) FROM webhook_endpoint`,
+		"joinRequests":     `SELECT count(*) FROM join_request`,
+		"links":            `SELECT (SELECT count(*) FROM page_share) + (SELECT count(*) FROM page_link)`,
 	}
 	s.m.NotCarried = make([]Omission, 0, len(notCarried))
 	for _, o := range notCarried {
 		if sql, ok := counts[o.Key]; ok {
 			var n int
-			if err := tx.QueryRow(ctx, sql, s.org).Scan(&n); err != nil {
+			if err := tx.QueryRow(ctx, sql).Scan(&n); err != nil {
 				return fmt.Errorf("count %s: %w", o.What, err)
 			}
 			o.Count = &n
@@ -409,10 +407,10 @@ func (w *Watch) exportOrg(ctx context.Context, c *orgClaim) (string, int64, erro
 	var snap *orgSnapshot
 	err = w.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		if snap, err = readOrg(ctx, tx, c.org, c.user); err != nil {
+		if snap, err = readOrg(ctx, tx, c.user); err != nil {
 			return err
 		}
-		return writeAudit(ctx, tx, zw, c.org, snap.m)
+		return writeAudit(ctx, tx, zw, snap.m)
 	})
 	if err != nil {
 		return "", 0, err
@@ -540,13 +538,13 @@ func (s *orgSnapshot) writeOwnFiles(ctx context.Context, w *Watch, zw *zip.Write
 }
 
 // writeAudit writes the organization's audit log, oldest first, a line each.
-func writeAudit(ctx context.Context, tx db.DBTX, zw *zip.Writer, org uuid.UUID, m *OrgManifest) error {
+func writeAudit(ctx context.Context, tx db.DBTX, zw *zip.Writer, m *OrgManifest) error {
 	out, err := zw.CreateHeader(&zip.FileHeader{Name: orgAuditPath, Method: zip.Deflate})
 	if err != nil {
 		return err
 	}
 	rows, err := tx.Query(ctx, `
-		SELECT actor_user_id, action, target_type, target_id, data, created_at FROM audit_log WHERE org_id = $1 ORDER BY created_at, id`, org)
+		SELECT actor_user_id, action, target_type, target_id, data, created_at FROM audit_log ORDER BY created_at, id`)
 	if err != nil {
 		return err
 	}

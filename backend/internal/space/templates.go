@@ -98,8 +98,8 @@ func seedPages(ctx context.Context, tx db.DBTX, actor perm.Actor, sp, parent uui
 // sees the space should see what it starts with.
 func publishFirst(ctx context.Context, tx db.DBTX, id uuid.UUID) error {
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
-		SELECT org_id, id, 1, title, body, created_by FROM page WHERE id = $1`, id); err != nil {
+		INSERT INTO page_version (page_id, number, title, body, created_by)
+		SELECT id, 1, title, body, created_by FROM page WHERE id = $1`, id); err != nil {
 		return err
 	}
 	_, err := tx.Exec(ctx, `UPDATE page SET version = 1 WHERE id = $1`, id)

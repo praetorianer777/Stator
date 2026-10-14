@@ -13,7 +13,7 @@ var GuestConstraints = []string{
 	"space_grant_guest_one_space",
 	"space_grant_guest_not_administrator",
 	"group_member_not_guest",
-	"org_member_guest_fixed",
+	"member_guest_fixed",
 	"page_edit_grant_guest_one_space",
 }
 

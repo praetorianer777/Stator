@@ -115,7 +115,7 @@ func (s *Service) PropertiesReport(ctx context.Context, actor perm.Actor, in Rep
 			SELECT p.id, p.title, s.key, p.updated_at, p.body
 			FROM page p JOIN space s ON s.id = p.space_id
 			WHERE p.trashed_at IS NULL AND p.archived_at IS NULL AND p.version > 0
-			  AND (SELECT count(*) FROM page_label l WHERE l.org_id = p.org_id AND l.page_id = p.id AND l.name = ANY($2)) = cardinality($2::text[])
+			  AND (SELECT count(*) FROM page_label l WHERE l.page_id = p.id AND l.name = ANY($2)) = cardinality($2::text[])
 			  AND `+perm.ViewablePage("p", 1)+within+`
 			ORDER BY lower(p.title), p.id
 			LIMIT $3`, args...)

@@ -18,15 +18,15 @@ const FACET_PLANTED = '#audit-action option[value="space.updated"]';
 // The changes are written straight into the record, a second apart: making
 // sixty through the API would only be slower at saying the same thing.
 /** A space alice made, and changes to it beyond one page of the log. */
-async function busySpace(api: StatorApi, orgId: string, key: string, name: string): Promise<{ id: string; name: string }> {
+async function busySpace(api: StatorApi, key: string, name: string): Promise<{ id: string; name: string }> {
   const space = await createSpace(api, key, name);
   const me = (await api.GET("/auth/me")).data!.user;
   await withDatabase(async (db) => {
     await db.query(
-      `INSERT INTO audit_log (org_id, actor_user_id, action, target_type, target_id, data, created_at)
-       SELECT $1, $2, 'space.updated', 'space', $3, jsonb_build_object('key', $4::text, 'name', $5::text), now() - make_interval(secs => n)
-       FROM generate_series(1, $6::int) AS n`,
-      [orgId, me.id, space.id, key, name, PAGE_SIZE + SPILL],
+      `INSERT INTO audit_log (actor_user_id, action, target_type, target_id, data, created_at)
+       SELECT $1, 'space.updated', 'space', $2, jsonb_build_object('key', $3::text, 'name', $4::text), now() - make_interval(secs => n)
+       FROM generate_series(1, $5::int) AS n`,
+      [me.id, space.id, key, name, PAGE_SIZE + SPILL],
     );
   });
   return { id: space.id, name };
@@ -70,10 +70,10 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
   });
 
-  test("an administrator opens it, narrows it to one space's changes and pages through them", async ({ page, api, team }, testInfo) => {
+  test("an administrator opens it, narrows it to one space's changes and pages through them", async ({ page, api }, testInfo) => {
     const key = uniqueKey(testInfo);
     made.push(key);
-    const space = await busySpace(api, team.org.id, key, uniqueName(testInfo, "Busy"));
+    const space = await busySpace(api, key, uniqueName(testInfo, "Busy"));
 
     await openUntil(page, "/", async () => {
       await page.locator('[data-action="account"]').click();
@@ -135,10 +135,10 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     await expect(bob.locator('[role="menu"] [data-action="audit-log"]')).toHaveCount(0);
   });
 
-  test("it is narrowed and paged from the keyboard", { tag: ["@desktop"] }, async ({ page, api, team }, testInfo) => {
+  test("it is narrowed and paged from the keyboard", { tag: ["@desktop"] }, async ({ page, api }, testInfo) => {
     const key = uniqueKey(testInfo);
     made.push(key);
-    const space = await busySpace(api, team.org.id, key, uniqueName(testInfo, "Keys"));
+    const space = await busySpace(api, key, uniqueName(testInfo, "Keys"));
     await openLog(page, space.name);
 
     await page.getByLabel("Action").focus();
@@ -153,20 +153,20 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
-    test(`it passes axe in ${scheme}`, async ({ page, api, team }, testInfo) => {
+    test(`it passes axe in ${scheme}`, async ({ page, api }, testInfo) => {
       const key = uniqueKey(testInfo);
       made.push(key);
-      const space = await busySpace(api, team.org.id, key, uniqueName(testInfo, `Axe ${scheme}`));
+      const space = await busySpace(api, key, uniqueName(testInfo, `Axe ${scheme}`));
       await startInScheme(page, scheme);
       await openLog(page, space.name);
       await expectAccessible(page);
     });
   }
 
-  test("on a phone the filters stack and the page never scrolls sideways", { tag: ["@mobile"] }, async ({ page, api, team }, testInfo) => {
+  test("on a phone the filters stack and the page never scrolls sideways", { tag: ["@mobile"] }, async ({ page, api }, testInfo) => {
     const key = uniqueKey(testInfo);
     made.push(key);
-    const space = await busySpace(api, team.org.id, key, uniqueName(testInfo, "Phone"));
+    const space = await busySpace(api, key, uniqueName(testInfo, "Phone"));
     await openLog(page, space.name);
     await expect(page.getByLabel("Action")).toBeVisible();
     await expect(page.getByLabel("From")).toBeVisible();

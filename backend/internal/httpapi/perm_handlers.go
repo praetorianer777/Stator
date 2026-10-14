@@ -21,7 +21,7 @@ var errNoAccess = &APIError{Status: http.StatusForbidden, Code: "no_access",
 func (s *Server) requireUse(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := PrincipalFrom(r.Context())
-		if s.Perms != nil && p.InOrg() && !p.CanAdminister() {
+		if s.Perms != nil && p.IsMember() && !p.CanAdminister() {
 			can, err := s.Perms.Mine(r.Context(), actorFrom(r))
 			if err != nil {
 				respondError(w, r, err)

@@ -87,10 +87,9 @@ func TestScheduledPublishingOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "scheduling")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID := h.namedPerson(t, home.org, "Ann Planner"), h.namedPerson(t, home.org, "Ben Reader")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID := h.namedPerson(t, "Ann Planner"), h.namedPerson(t, "Ben Reader")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	h.runWorker(t, notify.NewFanOut(h.cluster, nil, testAppURL, discard()))
 	watch := page.NewScheduleWatch(h.cluster, discard(), time.Hour)
 
@@ -167,9 +166,8 @@ func TestScheduledPublishingOverTheAPI(t *testing.T) {
 		if after["draft"] != nil || after["schedule"] != nil {
 			t.Errorf("ann's draft or schedule outlived the publish: %v %v", after["draft"], after["schedule"])
 		}
-		h.drained(t, home.org)
-		if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2 AND payload->>'pageId' = $3`,
-			home.org, events.TopicPagePublished, news); n != 2 {
+		h.drained(t)
+		if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE topic = $1 AND payload->>'pageId' = $2`, events.TopicPagePublished, news); n != 2 {
 			t.Errorf("%d publishes of the page were announced, want the first and the scheduled one", n)
 		}
 		var heard []map[string]any
@@ -213,7 +211,7 @@ func TestScheduledPublishingOverTheAPI(t *testing.T) {
 		h.comeDue(t, news, time.Second)
 		h.taken(t, watch, news)
 		h.taken(t, watch, news)
-		h.drained(t, home.org)
+		h.drained(t)
 
 		s := scheduleOn(t, ann, news)
 		if s == nil || s["failure"] != "conflict" || s["failedAt"] == nil {
@@ -225,7 +223,7 @@ func TestScheduledPublishingOverTheAPI(t *testing.T) {
 		if n := failuresOf(ann); n != 1 {
 			t.Errorf("ann was told %d times", n)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2`, home.org, events.TopicScheduleFailed); n != 1 {
+		if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE topic = $1`, events.TopicScheduleFailed); n != 1 {
 			t.Errorf("the failure was recorded %d times", n)
 		}
 
@@ -242,7 +240,7 @@ func TestScheduledPublishingOverTheAPI(t *testing.T) {
 		want(t, restrict(t, owner, news, nil, []any{user(home.user)}), http.StatusOK, "editing is the owner's alone")
 		h.comeDue(t, news, time.Second)
 		h.taken(t, watch, news)
-		h.drained(t, home.org)
+		h.drained(t)
 		if s := scheduleOn(t, ann, news); s == nil || s["failure"] != "forbidden" {
 			t.Errorf("the schedule of an author who lost edit reads %v", s)
 		}
@@ -299,7 +297,7 @@ func TestAScheduledPublishGoesOutOnceAcrossWorkers(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "schedule-once")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	docs := newTree(t, owner, "ONCE", "Once")
 	var pages []string
@@ -346,11 +344,10 @@ func TestSchedulesAreHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "schedule-db")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.addPerson(t, home.org, "member")
-	readerID := h.addPerson(t, home.org, "member")
-	ann := api.as(t, annID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID := h.addPerson(t, "member")
+	readerID := h.addPerson(t, "member")
+	ann := api.as(t, annID)
 
 	docs := newTree(t, owner, "SCHEDB", "Schedules")
 	news := docs.add(docs.homeID, "News")

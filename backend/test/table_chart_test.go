@@ -31,7 +31,7 @@ func TestAChartFromATableIsKeptWithItsTable(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "table-chart")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "CHRT", "Charts")
 
 	chart := map[string]any{"type": "tableChart", "attrs": map[string]any{"chart": "bar", "showTable": true}, "content": []any{

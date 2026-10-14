@@ -27,10 +27,10 @@ func TestAChartCountsWhatEachReaderMaySee(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-chart")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	bob := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
-	carol := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	slug := h.site.Slug
+	owner := api.as(t, home.user)
+	bob := api.as(t, h.addPerson(t, "member"))
+	carol := api.as(t, h.addPerson(t, "member"))
 
 	chart := func(c *client, path string) (string, map[string]any) {
 		t.Helper()

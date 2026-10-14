@@ -138,7 +138,6 @@ type importer struct {
 	src      source
 	m        *Manifest
 	store    objectstore.Store
-	org      uuid.UUID
 	importer uuid.UUID
 	key      string
 	name     string
@@ -304,8 +303,8 @@ func (im *importer) mapPeople(ctx context.Context, tx db.DBTX) error {
 	}
 	rows, err := tx.Query(ctx, `
 		SELECT u.id, lower(u.email::text) FROM app_user u
-		JOIN org_member m ON m.user_id = u.id AND m.org_id = $1 AND m.org_role <> 'guest'
-		WHERE lower(u.email::text) = ANY($2)`, im.org, emails)
+		JOIN member m ON m.user_id = u.id AND m.role <> 'guest'
+		WHERE lower(u.email::text) = ANY($1)`, emails)
 	if err != nil {
 		return err
 	}
@@ -350,8 +349,8 @@ func (im *importer) mapPeople(ctx context.Context, tx db.DBTX) error {
 		names = append(names, strings.ToLower(g.Name))
 	}
 	rows, err = tx.Query(ctx, `
-		SELECT DISTINCT ON (lower(name)) id, lower(name) FROM groups WHERE org_id = $1 AND lower(name) = ANY($2)
-		ORDER BY lower(name), id`, im.org, names)
+		SELECT DISTINCT ON (lower(name)) id, lower(name) FROM groups WHERE lower(name) = ANY($1)
+		ORDER BY lower(name), id`, names)
 	if err != nil {
 		return err
 	}
@@ -518,8 +517,8 @@ func (im *importer) write(ctx context.Context, tx db.DBTX) error {
 func (im *importer) writeSpace(ctx context.Context, tx db.DBTX, description string) error {
 	if !im.whole {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO space (id, org_id, key, name, description, created_by)
-			VALUES ($1, $2, $3, $4, $5, $6)`, im.spaceID, im.org, im.key, im.name, description, im.importer)
+			INSERT INTO space (id, key, name, description, created_by)
+			VALUES ($1, $2, $3, $4, $5)`, im.spaceID, im.key, im.name, description, im.importer)
 		return err
 	}
 	sp := im.m.Space
@@ -530,9 +529,9 @@ func (im *importer) writeSpace(ctx context.Context, tx db.DBTX, description stri
 		archivedAt, archivedBy = sp.ArchivedAt, im.person(sp.ArchivedBy)
 	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO space (id, org_id, key, name, description, created_by, created_at, owner_id, archived_at, archived_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		im.spaceID, im.org, im.key, im.name, description, maker, sp.CreatedAt, im.person(sp.Owner), archivedAt, archivedBy)
+		INSERT INTO space (id, key, name, description, created_by, created_at, owner_id, archived_at, archived_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		im.spaceID, im.key, im.name, description, maker, sp.CreatedAt, im.person(sp.Owner), archivedAt, archivedBy)
 	return err
 }
 
@@ -562,8 +561,8 @@ func (im *importer) writeGrants(ctx context.Context, tx db.DBTX) error {
 			continue
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id, group_id)
-			VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`, im.org, im.spaceID, g.Permission, typ, user, group); err != nil {
+			INSERT INTO space_grant (space_id, permission, subject_type, user_id, group_id)
+			VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, im.spaceID, g.Permission, typ, user, group); err != nil {
 			return err
 		}
 	}
@@ -572,13 +571,13 @@ func (im *importer) writeGrants(ctx context.Context, tx db.DBTX) error {
 
 func (im *importer) writeCalendar(ctx context.Context, tx db.DBTX, c Calendar) error {
 	id := im.r.calendars[c.ID]
-	if _, err := tx.Exec(ctx, `INSERT INTO calendar (org_id, id, space_id, name) VALUES ($1, $2, $3, $4)`, im.org, id, im.spaceID, c.Name); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO calendar (id, space_id, name) VALUES ($1, $2, $3)`, id, im.spaceID, c.Name); err != nil {
 		return err
 	}
 	for _, e := range c.Events {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO calendar_event (org_id, space_id, calendar_id, title, kind, all_day, starts_at, ends_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, im.org, im.spaceID, id, e.Title, e.Kind, e.AllDay, e.StartsAt, e.EndsAt); err != nil {
+			INSERT INTO calendar_event (space_id, calendar_id, title, kind, all_day, starts_at, ends_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`, im.spaceID, id, e.Title, e.Kind, e.AllDay, e.StartsAt, e.EndsAt); err != nil {
 			return err
 		}
 	}
@@ -598,8 +597,8 @@ func (im *importer) writeTemplate(ctx context.Context, tx db.DBTX, t Template) e
 		variables = json.RawMessage("[]")
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO page_template (org_id, space_id, name, description, title, body, variables)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`, im.org, im.spaceID, t.Name, t.Description, t.Title, body, variables)
+		INSERT INTO page_template (space_id, name, description, title, body, variables)
+		VALUES ($1, $2, $3, $4, $5, $6)`, im.spaceID, t.Name, t.Description, t.Title, body, variables)
 	return err
 }
 
@@ -658,10 +657,10 @@ func (im *importer) writePage(ctx context.Context, tx db.DBTX, p *ArchivePage) e
 		postedAt = p.PostedAt
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO page (id, org_id, space_id, parent_id, rank, title, body, version, kind, mode, icon, width,
+		INSERT INTO page (id, space_id, parent_id, rank, title, body, version, kind, mode, icon, width,
 		                  created_by, created_at, updated_by, posted_at, archived_at, archived_by, archive_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $13, $15, $16, $17, $18)`,
-		id, im.org, im.spaceID, parent, p.Rank, strings.TrimSpace(p.Title), body, version, p.Kind, p.Mode, p.Icon, p.Width,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $12, $14, $15, $16, $17)`,
+		id, im.spaceID, parent, p.Rank, strings.TrimSpace(p.Title), body, version, p.Kind, p.Mode, p.Icon, p.Width,
 		createdBy, p.CreatedAt, postedAt, archivedAt, archivedBy, archiveRoot); err != nil {
 		return err
 	}
@@ -682,9 +681,9 @@ func (im *importer) writePage(ctx context.Context, tx db.DBTX, p *ArchivePage) e
 		author, original := im.by(v.CreatedBy)
 		lastBy = author
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_version (org_id, page_id, number, title, body, comment, restored_from, live, created_by, created_at, updated_at, original_author)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-			im.org, id, v.Number, strings.TrimSpace(v.Title), vbody, clip(v.Comment, page.MaxCommentLength), v.RestoredFrom, v.Live, author, v.CreatedAt, v.UpdatedAt, original); err != nil {
+			INSERT INTO page_version (page_id, number, title, body, comment, restored_from, live, created_by, created_at, updated_at, original_author)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+			id, v.Number, strings.TrimSpace(v.Title), vbody, clip(v.Comment, page.MaxCommentLength), v.RestoredFrom, v.Live, author, v.CreatedAt, v.UpdatedAt, original); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE page SET version = $2 WHERE id = $1`, id, v.Number); err != nil {
@@ -711,8 +710,8 @@ func (im *importer) writePage(ctx context.Context, tx db.DBTX, p *ArchivePage) e
 	for _, l := range p.Labels {
 		by, _ := im.by(l.CreatedBy)
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_label (org_id, page_id, name, created_by, created_at) VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT DO NOTHING`, im.org, id, l.Name, by, l.CreatedAt); err != nil {
+			INSERT INTO page_label (page_id, name, created_by, created_at) VALUES ($1, $2, $3, $4)
+			ON CONFLICT DO NOTHING`, id, l.Name, by, l.CreatedAt); err != nil {
 			return err
 		}
 	}
@@ -755,9 +754,9 @@ func (im *importer) writeDrafts(ctx context.Context, tx db.DBTX, p *ArchivePage,
 			title = strings.TrimSpace(p.Title)
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
-			im.org, id, *who, clip(title, page.MaxTitleLength), body, max(d.BaseVersion, 0), d.UpdatedAt); err != nil {
+			INSERT INTO page_draft (page_id, user_id, title, body, base_version, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`,
+			id, *who, clip(title, page.MaxTitleLength), body, max(d.BaseVersion, 0), d.UpdatedAt); err != nil {
 			return err
 		}
 		im.report.Drafts++
@@ -791,19 +790,20 @@ func (im *importer) writeFile(ctx context.Context, tx db.DBTX, pageID uuid.UUID,
 	if f.Width == nil && f.Height == nil {
 		f.Width, f.Height = attachment.Measure(contentType, data)
 	}
-	key := "org/" + im.org.String() + "/page/" + pageID.String() + "/" + id.String()
+	by, original := im.by(f.UploadedBy)
+	var key string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO attachment (id, page_id, uploaded_by, file_name, content_type, size_bytes, width, height, created_at,
+		                        restored_from, edited_from, original_author)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		RETURNING object_key`,
+		id, pageID, by, name, contentType, int64(len(data)), f.Width, f.Height, f.CreatedAt, f.RestoredFrom, f.EditedFrom, original).Scan(&key); err != nil {
+		return err
+	}
 	if err := im.store.Put(ctx, key, bytes.NewReader(data), int64(len(data)), contentType); err != nil {
 		return err
 	}
 	im.uploaded = append(im.uploaded, key)
-	by, original := im.by(f.UploadedBy)
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO attachment (id, org_id, page_id, uploaded_by, file_name, content_type, size_bytes, width, height, created_at,
-		                        restored_from, edited_from, original_author)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-		id, im.org, pageID, by, name, contentType, int64(len(data)), f.Width, f.Height, f.CreatedAt, f.RestoredFrom, f.EditedFrom, original); err != nil {
-		return err
-	}
 	im.report.Files++
 	im.step()
 	return nil
@@ -817,8 +817,8 @@ func (im *importer) writeRestrictions(ctx context.Context, tx db.DBTX, p *Archiv
 			continue
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id, group_id)
-			VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`, im.org, id, r.Kind, typ, user, group); err != nil {
+			INSERT INTO page_restriction (page_id, kind, subject_type, user_id, group_id)
+			VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, id, r.Kind, typ, user, group); err != nil {
 			return err
 		}
 	}
@@ -832,9 +832,9 @@ func (im *importer) writeThreads(ctx context.Context, tx db.DBTX, p *ArchivePage
 		}
 		by, _ := im.by(t.CreatedBy)
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO comment_thread (org_id, id, page_id, kind, created_by, created_at, quote, detached_at, resolved_at, resolved_by)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-			im.org, im.r.threads[t.ID], id, t.Kind, by, t.CreatedAt, t.Quote, t.DetachedAt, t.ResolvedAt, im.resolver(t)); err != nil {
+			INSERT INTO comment_thread (id, page_id, kind, created_by, created_at, quote, detached_at, resolved_at, resolved_by)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			im.r.threads[t.ID], id, t.Kind, by, t.CreatedAt, t.Quote, t.DetachedAt, t.ResolvedAt, im.resolver(t)); err != nil {
 			return err
 		}
 		for _, c := range t.Comments {
@@ -850,9 +850,9 @@ func (im *importer) writeThreads(ctx context.Context, tx db.DBTX, p *ArchivePage
 			}
 			author, original := im.by(c.Author)
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO comment (org_id, id, thread_id, page_id, author_id, body, created_at, edited_at, deleted_at, deleted_by, original_author)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-				im.org, im.commentID(c.ID), im.r.threads[t.ID], id, author, body, c.CreatedAt, c.EditedAt, c.DeletedAt, im.deleter(c), original); err != nil {
+				INSERT INTO comment (id, thread_id, page_id, author_id, body, created_at, edited_at, deleted_at, deleted_by, original_author)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+				im.commentID(c.ID), im.r.threads[t.ID], id, author, body, c.CreatedAt, c.EditedAt, c.DeletedAt, im.deleter(c), original); err != nil {
 				return err
 			}
 			im.report.Comments++
@@ -916,8 +916,8 @@ func (im *importer) writeReactions(ctx context.Context, tx db.DBTX, p *ArchivePa
 			on = &c
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO reaction (org_id, page_id, comment_id, user_id, emoji, created_at) VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT DO NOTHING`, im.org, id, on, *who, r.Emoji, r.CreatedAt); err != nil {
+			INSERT INTO reaction (page_id, comment_id, user_id, emoji, created_at) VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT DO NOTHING`, id, on, *who, r.Emoji, r.CreatedAt); err != nil {
 			return err
 		}
 	}

@@ -61,7 +61,7 @@ var errWithheld = errors.New("withheld")
 // Handle is the outbox's half: every enabled endpoint subscribed to the
 // topic gets a delivery due now. A second run for the same event adds none.
 func (s *Service) Handle(ctx context.Context, e events.Event) error {
-	if e.OrgID == uuid.Nil || !slices.Contains(Topics, e.Topic) {
+	if !slices.Contains(Topics, e.Topic) {
 		return nil
 	}
 	occurred := e.CreatedAt
@@ -75,8 +75,8 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 	ctx = db.WithUser(ctx, uuid.Nil)
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, event, occurred_at, next_attempt_at)
-			SELECT org_id, id, $1, $2, $3, $4, now() FROM webhook_endpoint
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, next_attempt_at)
+			SELECT id, $1, $2, $3, $4, now() FROM webhook_endpoint
 			WHERE enabled AND ($2 = ANY (topics) OR $5 = ANY (topics))
 			ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`,
 			e.ID, e.Topic, payload, occurred, TopicAny)
@@ -85,9 +85,9 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 	return err
 }
 
-// SendDue posts every delivery whose time has come, across organizations,
-// and says how many were tried. Each is leased first, so senders in several
-// workers never post one twice.
+// SendDue posts every delivery whose time has come, and says how many were
+// tried. Each is leased first, so senders in several workers never post one
+// twice.
 func (s *Service) SendDue(ctx context.Context) (int, error) {
 	tried := 0
 	for {
@@ -186,8 +186,8 @@ func (s *Service) Redeliver(ctx context.Context, webhookID, deliveryID uuid.UUID
 	system := asSystem(ctx)
 	lsn, err := s.db.WriteAdmin(system, func(ctx context.Context, tx db.DBTX) error {
 		err := tx.QueryRow(ctx, `
-			INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, event, occurred_at, attempt, manual, next_attempt_at)
-			SELECT d.org_id, d.endpoint_id, d.event_id, d.topic, d.event, d.occurred_at,
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, attempt, manual, next_attempt_at)
+			SELECT d.endpoint_id, d.event_id, d.topic, d.event, d.occurred_at,
 			       (SELECT max(attempt) FROM webhook_delivery x WHERE x.endpoint_id = d.endpoint_id AND x.event_id = d.event_id) + 1,
 			       true, now() + make_interval(secs => $2)
 			FROM webhook_delivery d WHERE d.id = $1
@@ -223,17 +223,18 @@ func asSystem(ctx context.Context) context.Context {
 	return db.PinPrimary(db.WithUser(ctx, uuid.Nil))
 }
 
-// claimed is a delivery about to be attempted, with its endpoint.
+// claimed is a delivery about to be attempted, with its endpoint. siteID is
+// what the endpoint's secret was sealed with.
 type claimed struct {
-	orgID, endpointID, eventID uuid.UUID
-	url, topic                 string
-	sealed                     []byte
-	enabled, manual            bool
-	owner                      *uuid.UUID
-	event                      json.RawMessage
-	occurred                   time.Time
-	attempt                    int
-	state                      DeliveryState
+	siteID, endpointID, eventID uuid.UUID
+	url, topic                  string
+	sealed                      []byte
+	enabled, manual             bool
+	owner                       *uuid.UUID
+	event                       json.RawMessage
+	occurred                    time.Time
+	attempt                     int
+	state                       DeliveryState
 }
 
 // outcome is how one attempt went.
@@ -252,11 +253,11 @@ func (s *Service) attempt(ctx context.Context, id uuid.UUID) (*WebhookDelivery, 
 	var c claimed
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
-			SELECT d.org_id, d.endpoint_id, d.event_id, e.url, d.topic, e.secret_sealed, e.enabled, d.manual, e.owner_id,
+			SELECT (SELECT id FROM site), d.endpoint_id, d.event_id, e.url, d.topic, e.secret_sealed, e.enabled, d.manual, e.owner_id,
 			       d.event, d.occurred_at, d.attempt, d.state
-			FROM webhook_delivery d JOIN webhook_endpoint e ON e.org_id = d.org_id AND e.id = d.endpoint_id
+			FROM webhook_delivery d JOIN webhook_endpoint e ON e.id = d.endpoint_id
 			WHERE d.id = $1`, id).
-			Scan(&c.orgID, &c.endpointID, &c.eventID, &c.url, &c.topic, &c.sealed, &c.enabled, &c.manual, &c.owner,
+			Scan(&c.siteID, &c.endpointID, &c.eventID, &c.url, &c.topic, &c.sealed, &c.enabled, &c.manual, &c.owner,
 				&c.event, &c.occurred, &c.attempt, &c.state)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -289,7 +290,7 @@ func (s *Service) send(ctx context.Context, id uuid.UUID, c claimed) outcome {
 		s.opts.Log.Warn("a webhook payload could not be read", "delivery", id, "error", err)
 		return outcome{state: StateFailed, why: whyUnreached, counts: true}
 	}
-	plain, err := s.box.Open(c.sealed, sealContext(c.orgID, c.endpointID))
+	plain, err := s.box.Open(c.sealed, sealContext(c.siteID, c.endpointID))
 	if err != nil {
 		s.opts.Log.Warn("a webhook secret could not be opened", "webhook", c.endpointID, "error", err)
 		return outcome{state: StateFailed, why: whyNoSecret, counts: true}
@@ -328,12 +329,12 @@ func (s *Service) record(ctx context.Context, id uuid.UUID, c claimed, o outcome
 			UPDATE webhook_delivery
 			SET state = $2, status = $3, error = $4, next_attempt_at = NULL, attempted_at = now(),
 			    delivered_at = CASE WHEN $2 = 'delivered' THEN now() END
-			WHERE id = $1 AND org_id = $5`, id, o.state, o.status, o.why, c.orgID); err != nil {
+			WHERE id = $1`, id, o.state, o.status, o.why); err != nil {
 			return err
 		}
 		switch {
 		case o.state == StateDelivered:
-			if _, err := tx.Exec(ctx, `UPDATE webhook_endpoint SET failures = 0, failing_since = NULL WHERE id = $1 AND org_id = $2`, c.endpointID, c.orgID); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE webhook_endpoint SET failures = 0, failing_since = NULL WHERE id = $1`, c.endpointID); err != nil {
 				return err
 			}
 		case o.counts && !c.manual:
@@ -343,10 +344,10 @@ func (s *Service) record(ctx context.Context, id uuid.UUID, c claimed, o outcome
 			}
 			if !disabled && c.attempt < MaxAttempts {
 				if _, err := tx.Exec(ctx, `
-					INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, event, occurred_at, attempt, next_attempt_at)
-					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+					INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, attempt, next_attempt_at)
+					VALUES ($1, $2, $3, $4, $5, $6, $7)
 					ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`,
-					c.orgID, c.endpointID, c.eventID, c.topic, c.event, c.occurred, c.attempt+1, s.now().Add(NextWait(c.attempt))); err != nil {
+					c.endpointID, c.eventID, c.topic, c.event, c.occurred, c.attempt+1, s.now().Add(NextWait(c.attempt))); err != nil {
 					return err
 				}
 			}
@@ -381,8 +382,8 @@ func (s *Service) countFailure(ctx context.Context, tx db.DBTX, c claimed) (bool
 	)
 	err := tx.QueryRow(ctx, `
 		UPDATE webhook_endpoint SET failures = failures + 1, failing_since = COALESCE(failing_since, now())
-		WHERE id = $1 AND org_id = $2
-		RETURNING failures, failing_since, enabled, name`, c.endpointID, c.orgID).Scan(&failures, &since, &enabled, &name)
+		WHERE id = $1
+		RETURNING failures, failing_since, enabled, name`, c.endpointID).Scan(&failures, &since, &enabled, &name)
 	if err != nil {
 		return false, err
 	}
@@ -392,13 +393,13 @@ func (s *Service) countFailure(ctx context.Context, tx db.DBTX, c claimed) (bool
 	if !ShouldDisable(failures, since, s.now()) {
 		return false, nil
 	}
-	if _, err := tx.Exec(ctx, `UPDATE webhook_endpoint SET enabled = false, disabled_reason = $3 WHERE id = $1 AND org_id = $2`,
-		c.endpointID, c.orgID, ReasonFailing); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE webhook_endpoint SET enabled = false, disabled_reason = $2 WHERE id = $1`,
+		c.endpointID, ReasonFailing); err != nil {
 		return false, err
 	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE webhook_delivery SET state = 'cancelled', error = $3, next_attempt_at = NULL
-		WHERE endpoint_id = $1 AND org_id = $2 AND state = 'pending' AND NOT manual`, c.endpointID, c.orgID, whyOff); err != nil {
+		UPDATE webhook_delivery SET state = 'cancelled', error = $2, next_attempt_at = NULL
+		WHERE endpoint_id = $1 AND state = 'pending' AND NOT manual`, c.endpointID, whyOff); err != nil {
 		return false, err
 	}
 	id := c.endpointID

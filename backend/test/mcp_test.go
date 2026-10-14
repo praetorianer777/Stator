@@ -74,10 +74,9 @@ func TestAnAssistantWorksAsThePersonWhoseTokenItHolds(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "mcp")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	bobID := h.addPerson(t, home.org, "member")
-	bob := api.as(t, bobID, home.org, slug)
+	owner := api.as(t, home.user)
+	bobID := h.addPerson(t, "member")
+	bob := api.as(t, bobID)
 
 	docs := newTree(t, owner, "MCP", "Tools")
 	open := docs.add(docs.homeID, "Open", map[string]any{"body": textDoc("the zebracorn handbook")})
@@ -213,7 +212,7 @@ func TestAnAssistantWorksAsThePersonWhoseTokenItHolds(t *testing.T) {
 			t.Errorf("bob reads %d rows of Secret (%v)", seen, err)
 		}
 		denied(t, conn, "retitling Locked", `UPDATE page SET title = 'Taken' WHERE id = $1`, locked)
-		denied(t, conn, "a page under Locked", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by) VALUES ($1, (SELECT space_id FROM page WHERE id = $2), $2, 'W', 'Planted', $3)`, home.org, locked, bobID)
+		denied(t, conn, "a page under Locked", `INSERT INTO page (space_id, parent_id, rank, title, created_by) VALUES ((SELECT space_id FROM page WHERE id = $1), $1, 'W', 'Planted', $2)`, locked, bobID)
 	})
 
 	t.Run("a read token reads and writes nothing", func(t *testing.T) {

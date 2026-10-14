@@ -76,14 +76,14 @@ func (h *harness) runStackWorker(t *testing.T) {
 	})
 }
 
-// drained waits until every event of an organization is done, then until
-// the replica has everything the worker wrote.
-func (h *harness) drained(t *testing.T, org uuid.UUID) {
+// drained waits until every event is done, then until the replica has
+// everything the worker wrote.
+func (h *harness) drained(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(deliveryWait)
-	for h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1 AND processed_at IS NULL`, org) > 0 {
+	for h.countRows(t, `SELECT count(*) FROM outbox_event WHERE processed_at IS NULL`) > 0 {
 		if time.Now().After(deadline) {
-			t.Fatalf("the outbox of %s did not drain within %s", org, deliveryWait)
+			t.Fatalf("the outbox did not drain within %s", deliveryWait)
 		}
 		time.Sleep(workerIdle)
 	}
@@ -199,10 +199,9 @@ func TestNotificationsOverTheAPI(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runWorker(t, notify.NewFanOut(h.cluster, testMailer(t), testAppURL, discard()))
 	home := h.makeMember(t, "notify")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID := h.namedPerson(t, home.org, "Ann Reader"), h.namedPerson(t, home.org, "Ben Reader"), h.namedPerson(t, home.org, "Carl Reader")
-	ann, ben, carl := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, carlID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Reader"), h.namedPerson(t, "Ben Reader"), h.namedPerson(t, "Carl Reader")
+	ann, ben, carl := api.as(t, annID), api.as(t, benID), api.as(t, carlID)
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "NOTE", "Notes")
@@ -210,11 +209,11 @@ func TestNotificationsOverTheAPI(t *testing.T) {
 	want(t, watchPage(t, ann, plan, false), http.StatusOK, "ann watches Plan")
 	want(t, ben.put(t, "/api/v1/spaces/NOTE/watch", nil), http.StatusNoContent, "ben watches the space")
 	want(t, watchPage(t, carl, plan, false), http.StatusOK, "carl watches Plan")
-	h.drained(t, home.org)
+	h.drained(t)
 
 	t.Run("a publish with notify tells each watcher once, and never the actor", func(t *testing.T) {
 		publishDraft(t, owner, plan, "Plan", "Second.", true, "Added the budget.")
-		h.drained(t, home.org)
+		h.drained(t)
 		for name, c := range map[string]*client{"ann": ann, "ben": ben, "carl": carl} {
 			got := notificationsOf(t, c, "")
 			if len(got) != 1 {
@@ -239,12 +238,12 @@ func TestNotificationsOverTheAPI(t *testing.T) {
 	t.Run("without notify nobody hears, and a restore with it tells them", func(t *testing.T) {
 		publishDraft(t, owner, plan, "Plan", "Third.", false)
 		want(t, owner.patch(t, pagePath(plan), map[string]any{"title": "Plan", "version": 3}), http.StatusOK, "a script publishes")
-		h.drained(t, home.org)
+		h.drained(t)
 		if n := unreadOf(t, ann); n != 1 {
 			t.Errorf("ann has %d unread after publishes without notify", n)
 		}
 		want(t, owner.post(t, pagePath(plan, "/versions/1/restore"), map[string]any{"baseVersion": 4, "notifyWatchers": true}), http.StatusOK, "restore version 1")
-		h.drained(t, home.org)
+		h.drained(t)
 		got := notificationsOf(t, ann, "")
 		if len(got) != 2 || got[0]["kind"] != "published" || number(got[0]["version"]) != 5 || got[0]["excerpt"] != "Restored version 1" {
 			t.Errorf("after the restore ann was told %v", got)
@@ -254,7 +253,7 @@ func TestNotificationsOverTheAPI(t *testing.T) {
 	t.Run("a page first published under a watched page or space is created", func(t *testing.T) {
 		made := obj(t, want(t, owner.post(t, "/api/v1/pages", map[string]any{"parentId": plan, "title": "Budget"}), http.StatusCreated, "a new page"), "page")["id"].(string)
 		want(t, owner.post(t, pagePath(made, "/publish"), map[string]any{"notifyWatchers": true}), http.StatusOK, "publish it")
-		h.drained(t, home.org)
+		h.drained(t)
 		for name, c := range map[string]*client{"ann, on the page above": ann, "ben, on the space": ben} {
 			got := notificationsOf(t, c, "?limit=1")
 			if len(got) != 1 || got[0]["kind"] != "created" || got[0]["page"].(map[string]any)["title"] != "Budget" || number(got[0]["version"]) != 1 {
@@ -302,7 +301,7 @@ func TestNotificationsOverTheAPI(t *testing.T) {
 		}
 		before := len(notificationsOf(t, ann, ""))
 		publishDraft(t, owner, plan, "Plan", "Sixth.", true)
-		h.drained(t, home.org)
+		h.drained(t)
 		if after := len(notificationsOf(t, ann, "")); after != before {
 			t.Errorf("ann was told about a publish she switched off: %d then %d", before, after)
 		}
@@ -322,7 +321,7 @@ func TestNotificationsOverTheAPI(t *testing.T) {
 			t.Errorf("carl's badge still counts %d", n)
 		}
 		publishDraft(t, owner, plan, "Plan", "Secret.", true)
-		h.drained(t, home.org)
+		h.drained(t)
 		if n := h.countRows(t, `SELECT count(*) FROM notification WHERE user_id = $1`, carlID); n != len(carlBefore) {
 			t.Errorf("carl got a row about a page he may not view: %d rows, %d before", n, len(carlBefore))
 		}
@@ -386,10 +385,9 @@ func TestNotificationsAreMailed(t *testing.T) {
 	h.runWorker(t, notify.NewFanOut(h.cluster, mailer, testAppURL, discard()))
 	pit := newMailpit(t)
 	home := h.makeMember(t, "mailed")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID := h.namedPerson(t, home.org, "Ann Mailed"), h.namedPerson(t, home.org, "Ben Mailed")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID := h.namedPerson(t, "Ann Mailed"), h.namedPerson(t, "Ben Mailed")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	annMail, benMail := h.emailOf(t, annID), h.emailOf(t, benID)
 
 	docs := newTree(t, owner, "MAIL", "Mailed")
@@ -402,7 +400,7 @@ func TestNotificationsAreMailed(t *testing.T) {
 
 	t.Run("a watcher with no digest is mailed at once, with the page's link", func(t *testing.T) {
 		publishDraft(t, owner, page, "Launch plan", "Go.", true, "Dates fixed.")
-		h.drained(t, home.org)
+		h.drained(t)
 		got := pit.await(t, annMail, 1)
 		if len(got) != 1 || got[0].Subject != `Person of mailed published a new version of "Launch plan"` {
 			t.Fatalf("ann caught %v", got)
@@ -420,7 +418,7 @@ func TestNotificationsAreMailed(t *testing.T) {
 
 	t.Run("a daily digest bundles what is unread at eight", func(t *testing.T) {
 		publishDraft(t, owner, page, "Launch plan", "Go again.", true)
-		h.drained(t, home.org)
+		h.drained(t)
 		if n := h.countRows(t, `SELECT count(*) FROM notification_digest WHERE user_id = $1`, benID); n != 2 {
 			t.Fatalf("ben's queue holds %d", n)
 		}
@@ -463,7 +461,7 @@ func TestNotificationsAreMailed(t *testing.T) {
 		want(t, ann.put(t, "/api/v1/notification-preferences", prefs), http.StatusOK, "ann stops mail about publishes")
 		before, rows := len(pit.to(t, annMail)), len(notificationsOf(t, ann, ""))
 		publishDraft(t, owner, page, "Launch plan", "Quietly.", true)
-		h.drained(t, home.org)
+		h.drained(t)
 		if got := len(notificationsOf(t, ann, "")); got != rows+1 {
 			t.Errorf("ann lists %d, want %d", got, rows+1)
 		}
@@ -497,10 +495,9 @@ func TestTwoWorkersNeverDeliverTwice(t *testing.T) {
 	mailer := testMailer(t)
 	pit := newMailpit(t)
 	home := h.makeMember(t, "workers")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.namedPerson(t, home.org, "Ann Twice")
-	ann := api.as(t, annID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID := h.namedPerson(t, "Ann Twice")
+	ann := api.as(t, annID)
 	annMail := h.emailOf(t, annID)
 	docs := newTree(t, owner, "TWICE", "Twice")
 	want(t, ann.put(t, "/api/v1/spaces/TWICE/watch", nil), http.StatusNoContent, "ann watches the space")
@@ -520,7 +517,7 @@ func TestTwoWorkersNeverDeliverTwice(t *testing.T) {
 	for _, id := range ids {
 		want(t, owner.post(t, pagePath(id, "/publish"), map[string]any{"notifyWatchers": true}), http.StatusOK, "publish a page")
 	}
-	h.drained(t, home.org)
+	h.drained(t)
 
 	mu.Lock()
 	for id := range handled[0] {

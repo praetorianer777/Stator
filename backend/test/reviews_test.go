@@ -56,12 +56,11 @@ func TestReviewsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api, _ := wordAPI(t, h)
 	home := h.makeMember(t, "reviews")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, bobID := h.namedPerson(t, home.org, "Ann Author"), h.namedPerson(t, home.org, "Bob Reviewer")
-	carlID, daveID := h.namedPerson(t, home.org, "Carl Checker"), h.namedPerson(t, home.org, "Dave Reader")
-	ann, bob, carl, dave := api.as(t, annID, home.org, slug), api.as(t, bobID, home.org, slug), api.as(t, carlID, home.org, slug), api.as(t, daveID, home.org, slug)
-	checkers := h.makeGroup(t, home.org, "Checkers", carlID)
+	owner := api.as(t, home.user)
+	annID, bobID := h.namedPerson(t, "Ann Author"), h.namedPerson(t, "Bob Reviewer")
+	carlID, daveID := h.namedPerson(t, "Carl Checker"), h.namedPerson(t, "Dave Reader")
+	ann, bob, carl, dave := api.as(t, annID), api.as(t, bobID), api.as(t, carlID), api.as(t, daveID)
+	checkers := h.makeGroup(t, "Checkers", carlID)
 	h.runWorker(t, notify.NewFanOut(h.cluster, nil, testAppURL, discard()))
 	watch := page.NewScheduleWatch(h.cluster, discard(), time.Hour)
 
@@ -175,7 +174,7 @@ func TestReviewsOverTheAPI(t *testing.T) {
 		}
 		refusedWith(t, "a side that names no review", bob.get(t, pagePath(leave, "/compare?to=review:nonsense")), http.StatusUnprocessableEntity, "validation_failed")
 
-		h.drained(t, home.org)
+		h.drained(t)
 		for who, c := range map[string]*client{"bob": bob, "carl": carl} {
 			if n := notificationsOfKind(t, c, string(notify.KindReview)); n != 1 {
 				t.Errorf("%s was asked %d times", who, n)
@@ -227,7 +226,7 @@ func TestReviewsOverTheAPI(t *testing.T) {
 		}
 		refusedWith(t, "deciding on a review that went out", decide(t, bob, leave, reviewID, "approve", ""), http.StatusConflict, "not_pending")
 
-		h.drained(t, home.org)
+		h.drained(t)
 		if n := notificationsOfKind(t, ann, string(notify.KindReviewed)); n != 3 {
 			t.Errorf("ann heard of %d decisions, want 3", n)
 		}
@@ -281,7 +280,7 @@ func TestReviewsOverTheAPI(t *testing.T) {
 		if mine := obj(t, want(t, ann.get(t, pagePath(leave)), http.StatusOK, "ann reads"), "page"); mine["draft"] != nil {
 			t.Error("ann's draft, published as she submitted it, stayed")
 		}
-		if data := h.recordedOnce(t, home.org, "review.skipped", &home.user, leave); !strings.Contains(data, "The law changed today") {
+		if data := h.recordedOnce(t, "review.skipped", &home.user, leave); !strings.Contains(data, "The law changed today") {
 			t.Errorf("the skip's record reads %s", data)
 		}
 	})
@@ -388,7 +387,7 @@ func TestReviewsOverTheAPI(t *testing.T) {
 		if r, _ := reviewOf(t, owner, leave); r != nil {
 			t.Errorf("after its removal the page is held by %v", r)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = $2`, home.org, events.TopicReviewSubmitted); n < 5 {
+		if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE topic = $1`, events.TopicReviewSubmitted); n < 5 {
 			t.Errorf("%d submissions were announced", n)
 		}
 	})
@@ -404,11 +403,10 @@ func TestReviewsAreHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "reviews-db")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, bobID, carlID, daveID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann := api.as(t, annID, home.org, slug)
-	checkers := h.makeGroup(t, home.org, "Checkers", carlID)
+	owner := api.as(t, home.user)
+	annID, bobID, carlID, daveID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann := api.as(t, annID)
+	checkers := h.makeGroup(t, "Checkers", carlID)
 
 	docs := newTree(t, owner, "REVDB", "Reviews")
 	spaceID := obj(t, want(t, owner.get(t, "/api/v1/spaces/REVDB"), http.StatusOK, "the space"), "space")["id"].(string)

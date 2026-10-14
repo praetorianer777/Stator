@@ -61,7 +61,7 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
       const reader = await context.newPage();
       const tree = reader.locator("[data-public-tree]");
       // An address shared while the public pages named the organization still leads there.
-      await openShowing(reader, `/public/${team.org.slug}/s/${key}`, tree.getByRole("link", { name: guide.title }));
+      await openShowing(reader, `/public/${team.site.slug}/s/${key}`, tree.getByRole("link", { name: guide.title }));
       await expect(reader).toHaveURL(`${WEB_URL}/public/s/${key}`);
       await expect(reader.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, nofollow");
       await expect(tree.getByRole("link", { name: secret.title })).toHaveCount(0);

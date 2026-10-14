@@ -104,7 +104,7 @@ func (s *Service) CreateIssues(ctx context.Context, in CreateIssuesInput, page P
 		issue.URL = IssueURL(v.Caller.BaseURL(), issue.Key)
 		// The page draws the new chip at once; a null kept for the key from
 		// before the issue existed would hide it until it expired.
-		s.cache.PutIssue(ctx, v.OrgID, v.TokenID, issue.Key, &issue)
+		s.cache.PutIssue(ctx, v.SiteID, v.TokenID, issue.Key, &issue)
 		made = append(made, issue)
 	}
 	return made, len(in.Items), nil

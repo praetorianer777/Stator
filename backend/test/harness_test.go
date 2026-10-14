@@ -63,8 +63,8 @@ type harness struct {
 	// replica is the superuser on the standby, nil when none is configured;
 	// only a superuser may pause and resume its replay.
 	replica *pgxpool.Pool
-	// org is the test's organization, made by its first makeMember.
-	org *instance.Org
+	// site is the test's site, made by its first makeMember.
+	site *instance.Site
 	// stack is set on the stack's own database, where makeMember adds people
 	// to the seed's organization and removes them when the test ends.
 	stack bool
@@ -358,41 +358,40 @@ func (h *harness) resumeReplay(t *testing.T) {
 	}
 }
 
-// member is one person in the test's organization, made behind the policies'
-// back so that what a test observes is only the policies' doing.
+// member is one person on the test's site, made behind the policies' back so
+// that what a test observes is only the policies' doing.
 type member struct {
-	org  uuid.UUID
 	user uuid.UUID
 	ctx  context.Context
 }
 
-// makeMember makes an owner of the test's organization; the first call makes
-// the organization, named after slug, or on the stack finds the seed's.
+// makeMember makes an owner of the test's site; the first call makes the
+// site, named after slug, or on the stack finds the seed's.
 func (h *harness) makeMember(t *testing.T, slug string) member {
 	t.Helper()
-	if h.org == nil && h.stack {
-		o := instance.Org{Slug: seed.DemoOrgSlug}
-		if err := h.super.QueryRow(context.Background(), `SELECT id FROM org WHERE slug = $1`, o.Slug).Scan(&o.ID); err != nil {
-			t.Fatalf("find the seed's organization on the stack: %v", err)
+	if h.site == nil && h.stack {
+		o := instance.Site{Slug: seed.DemoOrgSlug}
+		if err := h.super.QueryRow(context.Background(), `SELECT id FROM site WHERE slug = $1`, o.Slug).Scan(&o.ID); err != nil {
+			t.Fatalf("find the seed's site on the stack: %v", err)
 		}
-		h.org = &o
+		h.site = &o
 	}
-	if h.org == nil {
-		o := h.makeOrganization(t, slug)
-		h.org = &o
+	if h.site == nil {
+		o := h.makeSite(t, slug)
+		h.site = &o
 	}
-	return h.makePerson(t, *h.org, slug, "owner")
+	return h.makePerson(t, slug, "owner")
 }
 
-// makeOutsider makes a plain member of the test's organization who may make
-// spaces of their own: the outsider to a space closed with closeSpace.
+// makeOutsider makes a plain member of the test's site who may make spaces of
+// their own: the outsider to a space closed with closeSpace.
 func (h *harness) makeOutsider(t *testing.T, slug string) member {
 	t.Helper()
-	if h.org == nil {
-		t.Fatal("make the organization's owner with makeMember before an outsider")
+	if h.site == nil {
+		t.Fatal("make the site's owner with makeMember before an outsider")
 	}
-	m := h.makePerson(t, *h.org, slug, "member")
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO global_grant (org_id, permission, subject_type, user_id) VALUES ($1, 'createSpace', 'user', $2)`, m.org, m.user); err != nil {
+	m := h.makePerson(t, slug, "member")
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO global_grant (permission, subject_type, user_id) VALUES ('createSpace', 'user', $1)`, m.user); err != nil {
 		t.Fatalf("let the outsider make spaces: %v", err)
 	}
 	h.settle(t)
@@ -405,8 +404,8 @@ func (h *harness) closeSpace(t *testing.T, space any, keep ...uuid.UUID) {
 	t.Helper()
 	ctx := context.Background()
 	if _, err := h.super.Exec(ctx, `
-		INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
-		SELECT g.org_id, g.space_id, g.permission, 'user', k.id
+		INSERT INTO space_grant (space_id, permission, subject_type, user_id)
+		SELECT g.space_id, g.permission, 'user', k.id
 		FROM space_grant g CROSS JOIN unnest($2::uuid[]) AS k (id)
 		WHERE g.space_id = $1 AND g.subject_type = 'everyone'`, space, keep); err != nil {
 		t.Fatalf("keep the space open to %v: %v", keep, err)
@@ -422,8 +421,8 @@ func (h *harness) closeSpace(t *testing.T, space any, keep ...uuid.UUID) {
 func (h *harness) openSpaceTo(t *testing.T, space any, people ...uuid.UUID) {
 	t.Helper()
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
-		SELECT s.org_id, s.id, p, 'user', k.id
+		INSERT INTO space_grant (space_id, permission, subject_type, user_id)
+		SELECT s.id, p, 'user', k.id
 		FROM space s CROSS JOIN unnest($2::uuid[]) AS k (id)
 		CROSS JOIN unnest(ARRAY['view', 'addPages', 'addComments', 'delete']) AS p
 		WHERE s.id = $1`, space, people); err != nil {
@@ -432,29 +431,29 @@ func (h *harness) openSpaceTo(t *testing.T, space any, people ...uuid.UUID) {
 	h.settle(t)
 }
 
-func (h *harness) makeOrganization(t *testing.T, slug string) instance.Org {
+func (h *harness) makeSite(t *testing.T, slug string) instance.Site {
 	t.Helper()
 	// Unique per run so repeated runs against a kept database do not collide.
-	o := instance.Org{Slug: fmt.Sprintf("%s-%s", slug, uuid.NewString()[:8])}
-	if err := h.super.QueryRow(context.Background(), `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, o.Slug, slug).Scan(&o.ID); err != nil {
-		t.Fatalf("create org %s: %v", o.Slug, err)
+	o := instance.Site{Slug: fmt.Sprintf("%s-%s", slug, uuid.NewString()[:8])}
+	if err := h.super.QueryRow(context.Background(), `INSERT INTO site (slug, name) VALUES ($1, $2) RETURNING id`, o.Slug, slug).Scan(&o.ID); err != nil {
+		t.Fatalf("create the site %s: %v", o.Slug, err)
 	}
 	return o
 }
 
-func (h *harness) makePerson(t *testing.T, o instance.Org, slug, role string) member {
+func (h *harness) makePerson(t *testing.T, slug, role string) member {
 	t.Helper()
 	ctx := context.Background()
-	m := member{org: o.ID}
+	var m member
 	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, $2) RETURNING id`,
 		fmt.Sprintf("%s-%s@example.test", slug, uuid.NewString()[:8]), "Person of "+slug).Scan(&m.user); err != nil {
-		t.Fatalf("create user in %s: %v", o.Slug, err)
+		t.Fatalf("create the user %s: %v", slug, err)
 	}
 	if h.stack {
 		t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, m.user) })
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, o.ID, m.user, role); err != nil {
-		t.Fatalf("make the user a member of %s: %v", o.Slug, err)
+	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, $2)`, m.user, role); err != nil {
+		t.Fatalf("make %s a member: %v", slug, err)
 	}
 	m.ctx = db.WithUser(ctx, m.user)
 	h.settle(t)

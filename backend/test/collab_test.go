@@ -186,10 +186,9 @@ func TestEditingAPageTogether(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h, withCollab(nil))
 	home := h.makeMember(t, "collab")
-	slug := h.slugOf(t, home.org)
-	ann := api.as(t, home.user, home.org, slug)
-	bobID, carlID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	bob, carl := api.as(t, bobID, home.org, slug), api.as(t, carlID, home.org, slug)
+	ann := api.as(t, home.user)
+	bobID, carlID := h.addPerson(t, "member"), h.addPerson(t, "member")
+	bob, carl := api.as(t, bobID), api.as(t, carlID)
 	docs := newTree(t, ann, "LIVE", "Live")
 	notes := docs.add(docs.homeID, "Notes")
 	want(t, restrict(t, ann, notes, nil, []any{user(home.user), user(bobID)}), http.StatusOK, "only ann and bob edit Notes")
@@ -284,7 +283,7 @@ func TestASharedDraftFollowsPublishesFromElsewhere(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h, withCollab(nil))
 	home := h.makeMember(t, "collab-reset")
-	ann := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	ann := api.as(t, home.user)
 	docs := newTree(t, ann, "RESET", "Reset")
 	page := docs.add(docs.homeID, "Plans")
 
@@ -317,7 +316,7 @@ func TestASharedDraftIsCompacted(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h, withCollab(nil))
 	home := h.makeMember(t, "collab-compact")
-	ann := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	ann := api.as(t, home.user)
 	docs := newTree(t, ann, "PACK", "Pack")
 	page := docs.add(docs.homeID, "Long")
 
@@ -378,9 +377,8 @@ func TestTwoAPIProcessesShareASharedDraftThroughValkey(t *testing.T) {
 		}
 	}
 	home := h.makeMember(t, "collab-pods")
-	slug := h.slugOf(t, home.org)
-	bobID := h.addPerson(t, home.org, "member")
-	ann, bob := apis[0].as(t, home.user, home.org, slug), apis[1].as(t, bobID, home.org, slug)
+	bobID := h.addPerson(t, "member")
+	ann, bob := apis[0].as(t, home.user), apis[1].as(t, bobID)
 	docs := newTree(t, ann, "PODS", "Pods")
 	page := docs.add(docs.homeID, "Shared")
 	h.settle(t)
@@ -436,9 +434,8 @@ func TestTwoAPIProcessesShareASharedDraftThroughPostgres(t *testing.T) {
 	h := newHarness(t)
 	apis, _ := postgresPods(t, h)
 	home := h.makeMember(t, "collab-pg-pods")
-	slug := h.slugOf(t, home.org)
-	bobID := h.addPerson(t, home.org, "member")
-	ann, bob := apis[0].as(t, home.user, home.org, slug), apis[1].as(t, bobID, home.org, slug)
+	bobID := h.addPerson(t, "member")
+	ann, bob := apis[0].as(t, home.user), apis[1].as(t, bobID)
 	docs := newTree(t, ann, "PGPODS", "Pods")
 	page := docs.add(docs.homeID, "Shared")
 	h.settle(t)
@@ -475,9 +472,8 @@ func TestAProcessCutOffFromPostgresCatchesUp(t *testing.T) {
 	h := newHarness(t)
 	apis, names := postgresPods(t, h)
 	home := h.makeMember(t, "collab-pg-catchup")
-	slug := h.slugOf(t, home.org)
-	bobID := h.addPerson(t, home.org, "member")
-	ann, bob := apis[0].as(t, home.user, home.org, slug), apis[1].as(t, bobID, home.org, slug)
+	bobID := h.addPerson(t, "member")
+	ann, bob := apis[0].as(t, home.user), apis[1].as(t, bobID)
 	docs := newTree(t, ann, "PGCATCH", "Catch")
 	page := docs.add(docs.homeID, "Missed")
 	h.settle(t)
@@ -532,9 +528,8 @@ func TestTheSharedDraftIsWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h, withCollab(nil))
 	home := h.makeMember(t, "collab-rls")
-	slug := h.slugOf(t, home.org)
-	ann := api.as(t, home.user, home.org, slug)
-	bobID := h.addPerson(t, home.org, "member")
+	ann := api.as(t, home.user)
+	bobID := h.addPerson(t, "member")
 	other := h.makeOutsider(t, "collab-rls-other")
 	docs := newTree(t, ann, "WALL", "Wall")
 	h.closeSpace(t, docs.space, bobID)
@@ -556,7 +551,7 @@ func TestTheSharedDraftIsWalledByTheDatabase(t *testing.T) {
 		}
 		return n
 	}
-	insert := `INSERT INTO page_collab_update (org_id, page_id, room_id, body, created_by) VALUES ($1, $2, $3, $4, $5)`
+	insert := `INSERT INTO page_collab_update (page_id, room_id, body, created_by) VALUES ($1, $2, $3, $4)`
 
 	t.Run("a reader neither reads nor writes it", func(t *testing.T) {
 		actAs(t, conn, bobID)
@@ -565,8 +560,8 @@ func TestTheSharedDraftIsWalledByTheDatabase(t *testing.T) {
 				t.Errorf("bob reads %d rows of %s", n, table)
 			}
 		}
-		denied(t, conn, "an update", insert, home.org, page, room.room, []byte{2}, bobID)
-		denied(t, conn, "a room of his own", `INSERT INTO page_collab (org_id, page_id, base_version) VALUES ($1, $2, 1)`, home.org, page)
+		denied(t, conn, "an update", insert, page, room.room, []byte{2}, bobID)
+		denied(t, conn, "a room of his own", `INSERT INTO page_collab (page_id, base_version) VALUES ($1, 1)`, page)
 		untouched(t, conn, "throwing it away", `DELETE FROM page_collab WHERE page_id = $1`, page)
 		untouched(t, conn, "its updates", `DELETE FROM page_collab_update WHERE page_id = $1`, page)
 	})
@@ -576,20 +571,20 @@ func TestTheSharedDraftIsWalledByTheDatabase(t *testing.T) {
 		if n := count(`SELECT count(*) FROM page_collab_update`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d updates", n)
 		}
-		denied(t, conn, "an update into it", insert, home.org, page, room.room, []byte{2}, other.user)
+		denied(t, conn, "an update into it", insert, page, room.room, []byte{2}, other.user)
 	})
 
 	t.Run("an editor's update names her, and stays within the limit", func(t *testing.T) {
 		actAs(t, conn, home.user)
-		if _, err := conn.Exec(ctx, insert, home.org, page, room.room, []byte{3}, bobID); err != nil {
+		if _, err := conn.Exec(ctx, insert, page, room.room, []byte{3}, bobID); err != nil {
 			t.Fatalf("ann adds an update: %v", err)
 		}
 		if n := count(`SELECT count(*) FROM page_collab_update WHERE page_id = $1 AND created_by = $2`, page, home.user); n != 2 {
 			t.Errorf("%d of ann's updates name her", n)
 		}
 		denied(t, conn, "rewriting an update", `UPDATE page_collab_update SET body = '\x09' WHERE page_id = $1`, page)
-		denied(t, conn, "an update past the limit", insert, home.org, page, room.room, make([]byte, collab.MaxMessageBytes+1), home.user)
-		denied(t, conn, "an empty update", insert, home.org, page, room.room, []byte{}, home.user)
-		refused(t, conn, "an update to a room that is not there", insert, home.org, page, uuid.New(), []byte{4}, home.user)
+		denied(t, conn, "an update past the limit", insert, page, room.room, make([]byte, collab.MaxMessageBytes+1), home.user)
+		denied(t, conn, "an empty update", insert, page, room.room, []byte{}, home.user)
+		refused(t, conn, "an update to a room that is not there", insert, page, uuid.New(), []byte{4}, home.user)
 	})
 }

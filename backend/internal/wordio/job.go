@@ -161,22 +161,22 @@ func (s *Service) Queue(ctx context.Context, actor perm.Actor, parentID uuid.UUI
 	if err != nil {
 		return nil, 0, err
 	}
-	org, err := s.site.Org(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
 	id := uuid.Must(uuid.NewV7())
-	key := ObjectKey(org.ID, id)
+	key := ObjectKey(id)
 	if err := s.store.Put(ctx, key, bytes.NewReader(packed), int64(len(packed)), "application/zip"); err != nil {
 		return nil, 0, fmt.Errorf("store the Word documents: %w", err)
 	}
 	var out *Job
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if _, err := tx.Exec(ctx, `
+		var stored string
+		if err := tx.QueryRow(ctx, `
 			INSERT INTO word_import (id, requested_by, parent_id, file_count, size_bytes, skipped)
-			VALUES ($1, $2, $3, $4, $5, $6)`,
-			id, actor.UserID, parentID, len(b.docs), b.size, nonNil(b.skipped)); err != nil {
+			VALUES ($1, $2, $3, $4, $5, $6) RETURNING object_key`,
+			id, actor.UserID, parentID, len(b.docs), b.size, nonNil(b.skipped)).Scan(&stored); err != nil {
 			return err
+		}
+		if stored != key {
+			return fmt.Errorf("the database keeps the upload at %s, not at %s where it went", stored, key)
 		}
 		var err error
 		out, err = scanJob(tx.QueryRow(ctx, selectJob+` WHERE id = $1`, id))
@@ -196,9 +196,11 @@ func nonNil(s []string) []string {
 	return s
 }
 
-// ObjectKey is where an import's upload waits for the worker.
-func ObjectKey(org, id uuid.UUID) string {
-	return objectstore.OrgPrefix(org) + "word-import/" + id.String()
+// ObjectKey is where a new import's upload waits for the worker. The upload
+// comes before the row, so this must stay in step with the trigger
+// word_import_object_key; the worker reads the key the row stores.
+func ObjectKey(id uuid.UUID) string {
+	return "word-import/" + id.String()
 }
 
 // Job reads an import the caller queued.

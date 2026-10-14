@@ -75,10 +75,9 @@ func TestThePageTreeOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "tree")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	member := api.as(t, memberID, home.org, slug)
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
+	member := api.as(t, memberID)
 
 	docs := newTree(t, owner, "DOCS", "Docs")
 	other := newTree(t, owner, "OTHER", "Other")
@@ -177,7 +176,7 @@ func TestThePageTreeOverTheAPI(t *testing.T) {
 
 	t.Run("a member the spaces are closed to reaches none of it", func(t *testing.T) {
 		away := h.makeOutsider(t, "tree-away")
-		stranger := api.as(t, away.user, away.org, slug)
+		stranger := api.as(t, away.user)
 		theirs := newTree(t, stranger, "THEIRS", "Theirs")
 		for what, got := range map[string]response{
 			"list":         stranger.get(t, "/api/v1/spaces/DOCS/pages?parent="+docs.homeID),
@@ -199,7 +198,7 @@ func TestTwoCrossingMovesCannotCloseALoop(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "tree-race")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "RACE", "Race")
 
 	for round := range 5 {
@@ -208,7 +207,7 @@ func TestTwoCrossingMovesCannotCloseALoop(t *testing.T) {
 		codes := make([]int, 2)
 		var wg sync.WaitGroup
 		for i, pair := range [][2]string{{q, r}, {r, q}} {
-			c := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+			c := api.as(t, home.user)
 			c.eager = true
 			wg.Add(1)
 			go func() {
@@ -238,9 +237,8 @@ func TestTheTreeIsGuardedByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "tree-wall-a")
 	b := h.makeOutsider(t, "tree-wall-b")
-	slug := h.slugOf(t, a.org)
-	docsA := newTree(t, api.as(t, a.user, a.org, slug), "WALL", "Walled")
-	docsB := newTree(t, api.as(t, b.user, b.org, slug), "THEIRS", "Theirs")
+	docsA := newTree(t, api.as(t, a.user), "WALL", "Walled")
+	docsB := newTree(t, api.as(t, b.user), "THEIRS", "Theirs")
 	h.closeSpace(t, docsA.space)
 	top := docsA.add(docsA.homeID, "Top")
 	mid := docsA.add(top, "Mid")
@@ -251,7 +249,7 @@ func TestTheTreeIsGuardedByTheDatabase(t *testing.T) {
 	actAs(t, conn, a.user)
 	refused(t, conn, "a page under its own grandchild", `UPDATE page SET parent_id = $2 WHERE id = $1`, top, low)
 	refused(t, conn, "a page under itself", `UPDATE page SET parent_id = $1 WHERE id = $1`, top)
-	refused(t, conn, "a new page that is its own parent", `INSERT INTO page (id, org_id, space_id, parent_id, rank, title) VALUES ($1, $2, (SELECT space_id FROM page WHERE id = $3), $1, 'W', 'Loop')`, uuid.NewString(), a.org, top)
+	refused(t, conn, "a new page that is its own parent", `INSERT INTO page (id, space_id, parent_id, rank, title) VALUES ($1, (SELECT space_id FROM page WHERE id = $2), $1, 'W', 'Loop')`, uuid.NewString(), top)
 	refused(t, conn, "a page under a page of another space", `UPDATE page SET parent_id = $2 WHERE id = $1`, mid, theirs)
 
 	actAs(t, conn, b.user)

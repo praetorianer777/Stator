@@ -30,14 +30,14 @@ func (h *harness) signInRows(t *testing.T, m member) {
 		query string
 		args  []any
 	}{
-		{`INSERT INTO groups (org_id, name, source, external_ref) VALUES ($1, 'staff', 'oidc', 'staff')`, []any{m.org}},
-		{`INSERT INTO group_member (org_id, group_id, user_id) SELECT $1, id, $2 FROM groups WHERE org_id = $1`, []any{m.org, m.user}},
-		{`INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret) VALUES ($1, 'https://id.test', 'stator', '\x01'::bytea)`, []any{m.org}},
-		{`INSERT INTO oidc_login (state, org_id, nonce, code_verifier, expires_at) VALUES (gen_random_uuid()::text, $1, 'n', 'v', now() + interval '1 hour')`, []any{m.org}},
-		{`INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, []any{m.org, m.user}},
-		{`INSERT INTO audit_log (org_id, actor_user_id, action, target_type) VALUES ($1, $2, 'member.admitted', 'user')`, []any{m.org, m.user}},
+		{`INSERT INTO groups (name, source, external_ref) VALUES ('staff', 'oidc', 'staff')`, nil},
+		{`INSERT INTO group_member (group_id, user_id) SELECT id, $1 FROM groups`, []any{m.user}},
+		{`INSERT INTO oidc_provider (issuer, client_id, client_secret) VALUES ('https://id.test', 'stator', '\x01'::bytea)`, nil},
+		{`INSERT INTO oidc_login (state, nonce, code_verifier, expires_at) VALUES (gen_random_uuid()::text, 'n', 'v', now() + interval '1 hour')`, nil},
+		{`INSERT INTO join_request (user_id) VALUES ($1)`, []any{m.user}},
+		{`INSERT INTO audit_log (actor_user_id, action, target_type) VALUES ($1, 'member.admitted', 'user')`, []any{m.user}},
 		{`INSERT INTO user_identity (issuer, subject, user_id) VALUES ('https://id.test', gen_random_uuid()::text, $1)`, []any{m.user}},
-		{`INSERT INTO user_session (user_id, token_hash, current_org_id, proof_org_id, proof, expires_at) VALUES ($1, $2, $3, $3, 'oidc', $4)`, []any{m.user, digest, m.org, time.Now().Add(time.Hour)}},
+		{`INSERT INTO user_session (user_id, token_hash, proof, expires_at) VALUES ($1, $2, 'oidc', $3)`, []any{m.user, digest, time.Now().Add(time.Hour)}},
 	} {
 		if _, err := h.super.Exec(ctx, sql.query, sql.args...); err != nil {
 			t.Fatalf("%s: %v", sql.query, err)
@@ -67,7 +67,7 @@ func TestRawSQLCannotReachTheSignInTables(t *testing.T) {
 		}
 		return n
 	}
-	orgTables := []string{"groups", "group_member", "oidc_provider", "oidc_login", "org_join_request", "audit_log"}
+	orgTables := []string{"groups", "group_member", "oidc_provider", "oidc_login", "join_request", "audit_log"}
 	globalTables := []string{"user_session", "user_identity"}
 
 	t.Run("with nobody set nothing kept to administrators is visible", func(t *testing.T) {
@@ -122,8 +122,8 @@ func TestRawSQLCannotReachTheSignInTables(t *testing.T) {
 }
 
 // The admin role is exempt from the policies, so the trigger is what keeps a
-// group's members to the organization's members there.
-func TestAGroupKeepsItsMembersInItsOrganization(t *testing.T) {
+// group's members to the site's members there.
+func TestAGroupKeepsItsMembersToTheSite(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "lambda")
 	h.signInRows(t, a)
@@ -134,8 +134,8 @@ func TestAGroupKeepsItsMembersInItsOrganization(t *testing.T) {
 
 	_, err := h.cluster.WriteAdmin(context.Background(), func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO group_member (org_id, group_id, user_id)
-			SELECT $1, id, $2 FROM groups WHERE org_id = $1`, a.org, stranger)
+			INSERT INTO group_member (group_id, user_id)
+			SELECT id, $1 FROM groups`, stranger)
 		return err
 	})
 	if !isCheckViolation(err) {
@@ -163,15 +163,15 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 	}
 
 	actAs(t, conn, b.user)
-	if _, err := conn.Exec(ctx, `INSERT INTO oidc_provider (org_id, issuer, client_id) VALUES ($1, 'https://evil.test', 'stator')`, b.org); !isPolicyViolation(err) {
+	if _, err := conn.Exec(ctx, `INSERT INTO oidc_provider (issuer, client_id) VALUES ('https://evil.test', 'stator')`); !isPolicyViolation(err) {
 		t.Errorf("a member set up the sign-in provider: %v", err)
 	}
 
-	if _, err := h.super.Exec(ctx, `INSERT INTO oidc_provider (org_id, issuer, client_id, client_secret) VALUES ($1, 'https://id.test', 'stator', '\x01'::bytea)`, a.org); err != nil {
+	if _, err := h.super.Exec(ctx, `INSERT INTO oidc_provider (issuer, client_id, client_secret) VALUES ('https://id.test', 'stator', '\x01'::bytea)`); err != nil {
 		t.Fatal(err)
 	}
 	var staff uuid.UUID
-	if err := h.super.QueryRow(ctx, `INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, 'staff', 'member') RETURNING id`, a.org).Scan(&staff); err != nil {
+	if err := h.super.QueryRow(ctx, `INSERT INTO oidc_group_role (group_ref, role) VALUES ('staff', 'member') RETURNING id`).Scan(&staff); err != nil {
 		t.Fatal(err)
 	}
 	walledOff := func(t *testing.T, who string) {
@@ -182,14 +182,14 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 		if got := count(`SELECT count(*) FROM oidc_group_role`); got != 0 {
 			t.Errorf("%s sees %d group roles", who, got)
 		}
-		untouched(t, conn, who+" pointing sign-in elsewhere", `UPDATE oidc_provider SET issuer = 'https://evil.test', client_secret = NULL WHERE org_id = $1`, a.org)
-		untouched(t, conn, who+" raising a group to admin", `UPDATE oidc_group_role SET org_role = 'admin' WHERE id = $1`, staff)
+		untouched(t, conn, who+" pointing sign-in elsewhere", `UPDATE oidc_provider SET issuer = 'https://evil.test', client_secret = NULL`)
+		untouched(t, conn, who+" raising a group to admin", `UPDATE oidc_group_role SET role = 'admin' WHERE id = $1`, staff)
 		untouched(t, conn, who+" unmapping a group", `DELETE FROM oidc_group_role WHERE id = $1`, staff)
-		if _, err := conn.Exec(ctx, `INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, 'everyone', 'admin')`, a.org); !isPolicyViolation(err) {
+		if _, err := conn.Exec(ctx, `INSERT INTO oidc_group_role (group_ref, role) VALUES ('everyone', 'admin')`); !isPolicyViolation(err) {
 			t.Errorf("%s mapped a group to admin: %v", who, err)
 		}
 		// Last, since the provider going takes its group roles with it.
-		untouched(t, conn, who+" removing the sign-in provider", `DELETE FROM oidc_provider WHERE org_id = $1`, a.org)
+		untouched(t, conn, who+" removing the sign-in provider", `DELETE FROM oidc_provider`)
 	}
 
 	t.Run("a member", func(t *testing.T) {
@@ -206,13 +206,13 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if got := h.countRows(t, `SELECT count(*) FROM oidc_provider WHERE org_id = $1 AND issuer = 'https://id.test' AND client_secret IS NOT NULL`, a.org); got != 1 {
+	if got := h.countRows(t, `SELECT count(*) FROM oidc_provider WHERE issuer = 'https://id.test' AND client_secret IS NOT NULL`); got != 1 {
 		t.Error("the sign-in provider is not as the administrator left it")
 	}
-	if got := h.countRows(t, `SELECT count(*) FROM oidc_group_role WHERE org_id = $1`, a.org); got != 1 {
+	if got := h.countRows(t, `SELECT count(*) FROM oidc_group_role`); got != 1 {
 		t.Errorf("the organization holds %d group roles, want its one", got)
 	}
-	if got := h.countRows(t, `SELECT count(*) FROM oidc_group_role WHERE id = $1 AND org_role = 'member'`, staff); got != 1 {
+	if got := h.countRows(t, `SELECT count(*) FROM oidc_group_role WHERE id = $1 AND role = 'member'`, staff); got != 1 {
 		t.Error("the group role is not as the administrator left it")
 	}
 
@@ -225,13 +225,13 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 			t.Errorf("an administrator sees %d group roles, want the one", got)
 		}
 		for _, change := range []struct{ what, sql string }{
-			{"change the sign-in provider", `UPDATE oidc_provider SET enabled = false WHERE org_id = $1`},
-			{"map a group", `INSERT INTO oidc_group_role (org_id, group_ref, org_role) VALUES ($1, 'leads', 'admin')`},
-			{"remap a group", `UPDATE oidc_group_role SET org_role = 'admin' WHERE org_id = $1 AND group_ref = 'staff'`},
-			{"unmap a group", `DELETE FROM oidc_group_role WHERE org_id = $1 AND group_ref = 'leads'`},
-			{"remove the sign-in provider", `DELETE FROM oidc_provider WHERE org_id = $1`},
+			{"change the sign-in provider", `UPDATE oidc_provider SET enabled = false`},
+			{"map a group", `INSERT INTO oidc_group_role (group_ref, role) VALUES ('leads', 'admin')`},
+			{"remap a group", `UPDATE oidc_group_role SET role = 'admin' WHERE group_ref = 'staff'`},
+			{"unmap a group", `DELETE FROM oidc_group_role WHERE group_ref = 'leads'`},
+			{"remove the sign-in provider", `DELETE FROM oidc_provider`},
 		} {
-			if tag, err := conn.Exec(ctx, change.sql, a.org); err != nil || tag.RowsAffected() != 1 {
+			if tag, err := conn.Exec(ctx, change.sql); err != nil || tag.RowsAffected() != 1 {
 				t.Errorf("an administrator cannot %s: %d rows, %v", change.what, tag.RowsAffected(), err)
 			}
 		}

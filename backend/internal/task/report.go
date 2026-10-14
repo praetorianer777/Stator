@@ -122,7 +122,7 @@ func (s *Service) Report(ctx context.Context, actor perm.Actor, in ReportInput) 
 		case person != uuid.Nil:
 			where.WriteString(` AND t.assignee_id = ` + arg(person))
 			err := tx.QueryRow(ctx, `
-				SELECT COALESCE((SELECT u.name FROM org_member m JOIN app_user u ON u.id = m.user_id
+				SELECT COALESCE((SELECT u.name FROM member m JOIN app_user u ON u.id = m.user_id
 				                 WHERE m.user_id = $1), '')`, person).Scan(&out.AssigneeName)
 			if err != nil {
 				return fmt.Errorf("name the assignee: %w", err)

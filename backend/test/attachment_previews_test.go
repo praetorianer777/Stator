@@ -68,10 +68,9 @@ func TestPreviewsShowPDFsAndConvertOfficeDocumentsOnce(t *testing.T) {
 	converter := &countingConverter{inner: convert.New(h.cfg.ConverterURL, attachment.MaxPreviewSize)}
 	api := newAPIServer(t, h, func(s *httpapi.Server) { s.Attachments.WithConverter(converter) })
 	home := h.makeMember(t, "previews")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	readerID := h.addPerson(t, home.org, "member")
-	reader := api.as(t, readerID, home.org, slug)
+	owner := api.as(t, home.user)
+	readerID := h.addPerson(t, "member")
+	reader := api.as(t, readerID)
 	docs := newTree(t, owner, "PREV", "Previews")
 	pageID := docs.add(docs.homeID, "Plans")
 	want(t, owner.put(t, "/api/v1/spaces/PREV/permissions", map[string]any{"grants": []any{
@@ -138,7 +137,7 @@ func TestPreviewsShowPDFsAndConvertOfficeDocumentsOnce(t *testing.T) {
 		if n := converter.calls.Load(); n != 1 {
 			t.Fatalf("converted %d times", n)
 		}
-		key := "org/" + home.org.String() + "/preview/" + planID + ".pdf"
+		key := "preview/" + planID + ".pdf"
 		if stored := inBucket(t, api.store, key); !bytes.Equal(stored, converted) {
 			t.Errorf("the bucket keeps %d bytes under %s, want the %d served", len(stored), key, len(converted))
 		}
@@ -174,7 +173,7 @@ func TestPreviewsShowPDFsAndConvertOfficeDocumentsOnce(t *testing.T) {
 		}
 		want(t, reader.get(t, previewPath(uuid.NewString())), http.StatusNotFound, "a file that does not exist")
 		other := h.makeOutsider(t, "previews-other")
-		stranger := api.as(t, other.user, other.org, slug)
+		stranger := api.as(t, other.user)
 		want(t, stranger.get(t, previewPath(planID)), http.StatusNotFound, "the preview of a file in a space closed to the caller")
 		want(t, api.anonymous().get(t, previewPath(planID)), http.StatusUnauthorized, "a preview without a session")
 	})
@@ -189,7 +188,7 @@ func TestPreviewsShowPDFsAndConvertOfficeDocumentsOnce(t *testing.T) {
 	})
 
 	t.Run("the preview goes with its file", func(t *testing.T) {
-		key := "org/" + home.org.String() + "/preview/" + planID + ".pdf"
+		key := "preview/" + planID + ".pdf"
 		want(t, owner.delete(t, "/api/v1/attachments/"+planID), http.StatusNoContent, "delete the plan")
 		if n := h.countRows(t, `SELECT count(*) FROM attachment_preview WHERE attachment_id = $1`, planID); n != 0 {
 			t.Errorf("%d preview rows outlive the file", n)
@@ -206,13 +205,12 @@ func TestPreviewsShowPDFsAndConvertOfficeDocumentsOnce(t *testing.T) {
 func TestAPreviewThatCannotBeMadeSaysSo(t *testing.T) {
 	h := newHarness(t)
 	home := h.makeMember(t, "previews-down")
-	slug := h.slugOf(t, home.org)
 
 	// Nothing answers at this address, as when the service is down.
 	gone := newAPIServer(t, h, func(s *httpapi.Server) {
 		s.Attachments.WithConverter(convert.New("http://converter-gone.invalid:3000", attachment.MaxPreviewSize))
 	})
-	owner := gone.as(t, home.user, home.org, slug)
+	owner := gone.as(t, home.user)
 	docs := newTree(t, owner, "DOWN", "Down")
 	files := pagePath(docs.add(docs.homeID, "Plans"), "/attachments")
 	plan := obj(t, want(t, owner.upload(t, files, "plan.docx", docxOf(t, "Plan")), http.StatusCreated, "upload the plan"), "attachment")
@@ -230,7 +228,7 @@ func TestAPreviewThatCannotBeMadeSaysSo(t *testing.T) {
 
 	t.Run("without a converter office documents have no preview", func(t *testing.T) {
 		off := newAPIServer(t, h, func(s *httpapi.Server) { s.Attachments.WithConverter(nil) })
-		viewer := off.as(t, home.user, home.org, slug)
+		viewer := off.as(t, home.user)
 		// A browser of its own, with no write of its own to wait for.
 		h.settle(t)
 		for _, f := range filesOf(t, viewer, files) {
@@ -246,7 +244,7 @@ func TestAPreviewThatCannotBeMadeSaysSo(t *testing.T) {
 
 	t.Run("a document the converter refuses is remembered as failed", func(t *testing.T) {
 		working := newAPIServer(t, h)
-		writer := working.as(t, home.user, home.org, slug)
+		writer := working.as(t, home.user)
 		// Not a presentation at all: the suite opens it as nothing it can draw.
 		junk := obj(t, want(t, writer.upload(t, files, "deck.pptx", []byte("\x00\x01not a presentation")), http.StatusCreated, "upload the junk"), "attachment")
 		r := writer.get(t, previewPath(junk["id"].(string)))
@@ -270,10 +268,9 @@ func TestPreviewsAreGuardedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "previews-rls")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, carlID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann := api.as(t, annID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, carlID := h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann := api.as(t, annID)
 	docs := newTree(t, owner, "PRLS", "Guarded")
 	h.closeSpace(t, docs.space, annID, carlID)
 	open := docs.add(docs.homeID, "Open")
@@ -288,11 +285,11 @@ func TestPreviewsAreGuardedByTheDatabase(t *testing.T) {
 	h.settle(t)
 
 	conn := appConn(t)
-	insert := `INSERT INTO attachment_preview (attachment_id, org_id, state) VALUES ($1, $2, 'failed')`
+	insert := `INSERT INTO attachment_preview (attachment_id, state) VALUES ($1, 'failed')`
 
 	t.Run("somebody who cannot see the file can neither see nor make its preview", func(t *testing.T) {
 		actAs(t, conn, carlID)
-		denied(t, conn, "a preview of a hidden file", insert, hiddenFile, home.org)
+		denied(t, conn, "a preview of a hidden file", insert, hiddenFile)
 		var n int
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM attachment_preview WHERE attachment_id = $1`, openFile).Scan(&n); err != nil || n != 1 {
 			t.Errorf("carl reads %d previews of the open file (%v)", n, err)
@@ -303,15 +300,15 @@ func TestPreviewsAreGuardedByTheDatabase(t *testing.T) {
 		actAs(t, conn, home.user)
 		denied(t, conn, "marking it failed", `UPDATE attachment_preview SET state = 'failed', size_bytes = NULL WHERE attachment_id = $1`, openFile)
 		denied(t, conn, "removing it", `DELETE FROM attachment_preview WHERE attachment_id = $1`, openFile)
-		refused(t, conn, "a second preview of the file", insert, openFile, home.org)
-		refused(t, conn, "naming its object", `INSERT INTO attachment_preview (attachment_id, org_id, state, object_key) VALUES ($1, $2, 'failed', 'org/elsewhere')`, hiddenFile, home.org)
-		denied(t, conn, "a ready preview of no size", `INSERT INTO attachment_preview (attachment_id, org_id, state) VALUES ($1, $2, 'ready')`, hiddenFile, home.org)
+		refused(t, conn, "a second preview of the file", insert, openFile)
+		refused(t, conn, "naming its object", `INSERT INTO attachment_preview (attachment_id, state, object_key) VALUES ($1, 'failed', 'org/elsewhere')`, hiddenFile)
+		denied(t, conn, "a ready preview of no size", `INSERT INTO attachment_preview (attachment_id, state) VALUES ($1, 'ready')`, hiddenFile)
 	})
 
 	t.Run("a member the space is closed to reaches none of it", func(t *testing.T) {
 		other := h.makeOutsider(t, "previews-rls-other")
 		actAs(t, conn, other.user)
-		denied(t, conn, "a preview of a file they may not see", insert, hiddenFile, home.org)
+		denied(t, conn, "a preview of a file they may not see", insert, hiddenFile)
 		var n int
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM attachment_preview`).Scan(&n); err != nil || n != 0 {
 			t.Errorf("a member the space is closed to reads %d previews (%v)", n, err)

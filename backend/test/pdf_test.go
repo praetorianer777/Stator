@@ -126,17 +126,16 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 	tap := h.printer(t)
 	api := newAPIServer(t, h, func(s *httpapi.Server) { s.Renderer = tap })
 	home := h.makeMember(t, "pdf-export")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	inaID := h.addPerson(t, home.org, "member")
-	ina := api.as(t, inaID, home.org, slug)
+	owner := api.as(t, home.user)
+	inaID := h.addPerson(t, "member")
+	ina := api.as(t, inaID)
 	ctx := context.Background()
 	var anonymous bool
-	if err := h.super.QueryRow(ctx, `SELECT anonymous_access FROM org WHERE id = $1`, home.org).Scan(&anonymous); err != nil {
+	if err := h.super.QueryRow(ctx, `SELECT anonymous_access FROM site`).Scan(&anonymous); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		h.cleanupExec(t, h.super, `UPDATE org SET anonymous_access = $2 WHERE id = $1`, home.org, anonymous)
+		h.cleanupExec(t, h.super, `UPDATE site SET anonymous_access = $1`, anonymous)
 	})
 
 	pdfKey, farKey := uniqueKey("PDF"), uniqueKey("FAR")
@@ -205,7 +204,7 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 		if n := h.renderTokens(t, home.user); n != 0 {
 			t.Errorf("%d print tokens outlive the print", n)
 		}
-		if data := h.recordedOnce(t, home.org, "page.exported", &home.user, guide); !strings.Contains(data, `"scope": "pdf"`) {
+		if data := h.recordedOnce(t, "page.exported", &home.user, guide); !strings.Contains(data, `"scope": "pdf"`) {
 			t.Errorf("the export's record reads %s", data)
 		}
 	})
@@ -255,17 +254,16 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 		conn := appConn(t)
 		actAs(t, conn, home.user)
 		for what, sql := range map[string]string{
-			"an hour":     `INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, $2, 'x', $3, ARRAY['read'], now() + interval '1 hour', true)`,
-			"forever":     `INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, $2, 'x', $3, ARRAY['read'], NULL, true)`,
-			"able to act": `INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, $2, 'x', $3, '{}', now() + interval '1 minute', true)`,
+			"an hour":     `INSERT INTO api_token (user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, 'x', $2, ARRAY['read'], now() + interval '1 hour', true)`,
+			"forever":     `INSERT INTO api_token (user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, 'x', $2, ARRAY['read'], NULL, true)`,
+			"able to act": `INSERT INTO api_token (user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, 'x', $2, '{}', now() + interval '1 minute', true)`,
 		} {
 			_, digest, _ := auth.GenerateAPIToken()
-			refused(t, conn, "a print token "+what, sql, home.org, home.user, digest)
+			refused(t, conn, "a print token "+what, sql, home.user, digest)
 		}
 		_, digest, _ := auth.GenerateAPIToken()
 		var id uuid.UUID
-		if err := conn.QueryRow(ctx, `INSERT INTO api_token (org_id, user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, $2, 'x', $3, ARRAY['read'], now() + interval '2 minutes', true) RETURNING id`,
-			home.org, home.user, digest).Scan(&id); err != nil {
+		if err := conn.QueryRow(ctx, `INSERT INTO api_token (user_id, name, token_hash, scopes, expires_at, for_render) VALUES ($1, 'x', $2, ARRAY['read'], now() + interval '2 minutes', true) RETURNING id`, home.user, digest).Scan(&id); err != nil {
 			t.Fatalf("a print token as the api makes it: %v", err)
 		}
 		refused(t, conn, "a print token lengthened", `UPDATE api_token SET expires_at = now() + interval '1 day' WHERE id = $1`, id)
@@ -309,7 +307,7 @@ func TestAPageIsPrintedAsPDFAsItsReaderReadsIt(t *testing.T) {
 
 	t.Run("without a render service the export says so", func(t *testing.T) {
 		off := newAPIServer(t, h)
-		got := want(t, off.as(t, home.user, home.org, slug).get(t, pagePath(guide, "/pdf")), http.StatusServiceUnavailable, "print with no service")
+		got := want(t, off.as(t, home.user).get(t, pagePath(guide, "/pdf")), http.StatusServiceUnavailable, "print with no service")
 		if errorCode(t, got) != "render_unavailable" || !strings.Contains(got.Body["error"].(map[string]any)["message"].(string), "render service") {
 			t.Errorf("no service answers %s", got.Raw)
 		}

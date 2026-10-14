@@ -75,8 +75,8 @@ type createTestPersonRequest struct {
 	// Label starts the address, so a leftover person names the spec that made them.
 	Label string `json:"label,omitempty"`
 	// Name is what the interface shows; the label when empty.
-	Name string       `json:"name,omitempty"`
-	Role auth.OrgRole `json:"role"`
+	Name string    `json:"name,omitempty"`
+	Role auth.Role `json:"role"`
 	// SpaceKey is the one space a guest is let into, as a viewer.
 	SpaceKey string `json:"spaceKey,omitempty"`
 }

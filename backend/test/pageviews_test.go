@@ -25,12 +25,12 @@ import (
 
 // viewedOn says a person opened a page days ago, as the superuser, since the
 // database counts every view on the day it happens.
-func (h *harness) viewedOn(t *testing.T, org, person uuid.UUID, pageID string, days ...int) {
+func (h *harness) viewedOn(t *testing.T, person uuid.UUID, pageID string, days ...int) {
 	t.Helper()
 	for _, ago := range days {
 		if _, err := h.super.Exec(context.Background(), `
-			INSERT INTO page_view (org_id, page_id, user_id, day) VALUES ($1, $2, $3, page_view_today() - $4::integer)
-			ON CONFLICT DO NOTHING`, org, pageID, person, ago); err != nil {
+			INSERT INTO page_view (page_id, user_id, day) VALUES ($1, $2, page_view_today() - $3::integer)
+			ON CONFLICT DO NOTHING`, pageID, person, ago); err != nil {
 			t.Fatalf("a view of %s %d days ago: %v", pageID, ago, err)
 		}
 	}
@@ -62,10 +62,9 @@ func TestPageViewsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "views")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID, carlID := h.namedPerson(t, org.org, "Ann Editor"), h.namedPerson(t, org.org, "Ben Reader"), h.namedPerson(t, org.org, "Carl Outside")
-	ann, ben, carl := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug), api.as(t, carlID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Editor"), h.namedPerson(t, "Ben Reader"), h.namedPerson(t, "Carl Outside")
+	ann, ben, carl := api.as(t, annID), api.as(t, benID), api.as(t, carlID)
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "PVW", "Viewed")
@@ -96,7 +95,7 @@ func TestPageViewsOverTheAPI(t *testing.T) {
 				t.Errorf("%s reads %v, want two views by two readers", who, got)
 			}
 		}
-		h.viewedOn(t, org.org, annID, guide, 5, 40)
+		h.viewedOn(t, annID, guide, 5, 40)
 		h.settle(t)
 		if got := countsOf(t, ben, guide); got != [4]int{4, 2, 3, 2} {
 			t.Errorf("with two older days of ann's, Guide counts %v, want 4 views, 2 readers, 3 and 2 lately", got)
@@ -223,14 +222,14 @@ func TestPageViewsOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("somebody who leaves takes their name and leaves their views", func(t *testing.T) {
-		if _, err := h.super.Exec(context.Background(), `DELETE FROM org_member WHERE org_id = $1 AND user_id = $2`, org.org, benID); err != nil {
+		if _, err := h.super.Exec(context.Background(), `DELETE FROM member WHERE user_id = $1`, benID); err != nil {
 			t.Fatal(err)
 		}
 		h.settle(t)
 		if got := countsOf(t, ann, guide); got != [4]int{4, 1, 3, 1} {
 			t.Errorf("after ben left Guide counts %v, want his view kept and him gone from the readers", got)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE org_id = $1 AND page_id = $2 AND user_id IS NULL`, org.org, guide); n != 1 {
+		if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE page_id = $1 AND user_id IS NULL`, guide); n != 1 {
 			t.Errorf("%d of ben's views are left without his name, want 1", n)
 		}
 		sameList(t, "Guide's readers without ben", namesOf(t, want(t, ann.get(t, pagePath(guide, "/readers")), http.StatusOK, "ann lists")), "Ann Editor")
@@ -243,8 +242,7 @@ func TestAReloadWritesNothing(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "views-reload")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
+	owner := api.as(t, org.user)
 	docs := newTree(t, owner, "PVR", "Reloaded")
 	hot := docs.add(docs.homeID, "Hot")
 	other := docs.add(docs.homeID, "Other")
@@ -260,9 +258,8 @@ func TestAReloadWritesNothing(t *testing.T) {
 		t.Helper()
 		var view, seen string
 		if err := h.super.QueryRow(context.Background(), `
-			SELECT (SELECT v.xmin::text || '/' || v.xmax::text FROM page_view v WHERE v.org_id = $1 AND v.page_id = $2),
-			       (SELECT r.xmin::text || '/' || r.xmax::text FROM page_visit r WHERE r.org_id = $1 AND r.page_id = $2 AND r.user_id = $3)`,
-			org.org, hot, org.user).Scan(&view, &seen); err != nil {
+			SELECT (SELECT v.xmin::text || '/' || v.xmax::text FROM page_view v WHERE v.page_id = $1),
+			       (SELECT r.xmin::text || '/' || r.xmax::text FROM page_visit r WHERE r.page_id = $1 AND r.user_id = $2)`, hot, org.user).Scan(&view, &seen); err != nil {
 			t.Fatal(err)
 		}
 		return view, seen
@@ -281,7 +278,7 @@ func TestAReloadWritesNothing(t *testing.T) {
 		if v, s := versions(); v != view || s != seen {
 			t.Errorf("twenty reloads moved the view from %s to %s and the visit from %s to %s", view, v, seen, s)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE org_id = $1 AND page_id = $2`, org.org, hot); n != 1 {
+		if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE page_id = $1`, hot); n != 1 {
 			t.Errorf("Hot has %d view rows, want 1", n)
 		}
 	})
@@ -301,7 +298,7 @@ func TestAReloadWritesNothing(t *testing.T) {
 		for err := range errs {
 			t.Errorf("a visit at once failed: %v", err)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE org_id = $1 AND page_id = $2`, org.org, other); n != 1 {
+		if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE page_id = $1`, other); n != 1 {
 			t.Errorf("Other has %d view rows, want 1", n)
 		}
 	})
@@ -320,7 +317,7 @@ func TestAReloadWritesNothing(t *testing.T) {
 		if len(recent) != 2 || recent[0].ID.String() != hot {
 			t.Errorf("the recent pages are %v, want Hot first", recent)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE org_id = $1 AND page_id = $2`, org.org, hot); n != 1 {
+		if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE page_id = $1`, hot); n != 1 {
 			t.Errorf("Hot has %d view rows, want 1", n)
 		}
 	})
@@ -334,9 +331,8 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "views-rls")
 	other := h.makeOutsider(t, "views-rls-other")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID := h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member")
+	owner := api.as(t, org.user)
+	annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
 	docs := newTree(t, owner, "PVS", "Walled")
 	want(t, owner.put(t, "/api/v1/spaces/PVS/permissions", map[string]any{"grants": []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
@@ -346,8 +342,8 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 	guide := docs.add(docs.homeID, "Guide")
 	secret := docs.add(docs.homeID, "Secret")
 	want(t, restrict(t, owner, secret, []any{user(org.user)}, nil), http.StatusOK, "only the owner reads Secret")
-	h.viewedOn(t, org.org, annID, guide, 0, 3)
-	h.visited(t, org.org, annID, guide, 0)
+	h.viewedOn(t, annID, guide, 0, 3)
+	h.visited(t, annID, guide, 0)
 	h.settle(t)
 
 	conn := appConn(t)
@@ -360,18 +356,18 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 		}
 		return n
 	}
-	const insert = `INSERT INTO page_view (org_id, page_id, user_id, day) VALUES ($1, $2, $3, page_view_today() - $4::integer)`
+	const insert = `INSERT INTO page_view (page_id, user_id, day) VALUES ($1, $2, page_view_today() - $3::integer)`
 
 	t.Run("a view is one's own, today, of a page one may view", func(t *testing.T) {
 		actAs(t, conn, benID)
-		refused(t, conn, "a view counted for ann", insert, org.org, guide, annID, 1)
-		refused(t, conn, "a view counted for ann today", insert, org.org, guide, annID, 0)
-		refused(t, conn, "a view counted yesterday", insert, org.org, guide, benID, 1)
-		refused(t, conn, "a view of a page ben may not view", insert, org.org, secret, benID, 0)
-		if _, err := conn.Exec(ctx, insert, org.org, guide, benID, 0); err != nil {
+		refused(t, conn, "a view counted for ann", insert, guide, annID, 1)
+		refused(t, conn, "a view counted for ann today", insert, guide, annID, 0)
+		refused(t, conn, "a view counted yesterday", insert, guide, benID, 1)
+		refused(t, conn, "a view of a page ben may not view", insert, secret, benID, 0)
+		if _, err := conn.Exec(ctx, insert, guide, benID, 0); err != nil {
 			t.Fatalf("ben may not count his own view: %v", err)
 		}
-		refused(t, conn, "the same view twice without the conflict clause", insert, org.org, guide, benID, 0)
+		refused(t, conn, "the same view twice without the conflict clause", insert, guide, benID, 0)
 	})
 
 	t.Run("nobody rewrites, removes or reads another's views, nor touches the tally", func(t *testing.T) {
@@ -381,7 +377,7 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 			"handing a view to somebody else": `UPDATE page_view SET user_id = NULL`,
 			"removing views":                  `DELETE FROM page_view`,
 			"reading the tally":               `SELECT count(*) FROM page_view_tally`,
-			"adding to the tally":             `INSERT INTO page_view_tally (org_id, page_id, views) VALUES ('` + org.org.String() + `', '` + guide + `', 100)`,
+			"adding to the tally":             `INSERT INTO page_view_tally (page_id, views) VALUES ('` + guide + `', 100)`,
 			"pruning":                         `SELECT page_view_prune(page_view_today() - 400)`,
 			"hiding ann's name":               `UPDATE app_user SET show_in_readers = false WHERE id = '` + annID.String() + `'`,
 		} {
@@ -435,7 +431,7 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 		if n := count(`SELECT count(*) FROM page_view`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d views", n)
 		}
-		refused(t, conn, "a view of a page in the closed space", insert, other.org, guide, other.user, 0)
+		refused(t, conn, "a view of a page in the closed space", insert, guide, other.user, 0)
 	})
 }
 
@@ -445,15 +441,14 @@ func TestRetentionMovesOldViewsIntoTheTally(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "views-keep")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID := h.namedPerson(t, org.org, "Ann Lately"), h.namedPerson(t, org.org, "Ben Long Ago")
+	owner := api.as(t, org.user)
+	annID, benID := h.namedPerson(t, "Ann Lately"), h.namedPerson(t, "Ben Long Ago")
 	docs := newTree(t, owner, "PVK", "Kept")
 	guide := docs.add(docs.homeID, "Guide")
-	h.viewedOn(t, org.org, annID, guide, 100, 95, 10)
-	h.viewedOn(t, org.org, benID, guide, 120)
-	h.visited(t, org.org, annID, guide, 10)
-	h.visited(t, org.org, benID, guide, 120)
+	h.viewedOn(t, annID, guide, 100, 95, 10)
+	h.viewedOn(t, benID, guide, 120)
+	h.visited(t, annID, guide, 10)
+	h.visited(t, benID, guide, 120)
 	h.settle(t)
 	if got := countsOf(t, owner, guide); got != [4]int{4, 2, 1, 1} {
 		t.Fatalf("before pruning Guide counts %v", got)
@@ -471,10 +466,10 @@ func TestRetentionMovesOldViewsIntoTheTally(t *testing.T) {
 	if n < 3 {
 		t.Errorf("retention took %d views, want at least the three old ones", n)
 	}
-	if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE org_id = $1 AND page_id = $2`, org.org, guide); n != 1 {
+	if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE page_id = $1`, guide); n != 1 {
 		t.Errorf("%d named views of Guide are left, want ann's of ten days ago", n)
 	}
-	if n := h.countRows(t, `SELECT views FROM page_view_tally WHERE org_id = $1 AND page_id = $2`, org.org, guide); n != 3 {
+	if n := h.countRows(t, `SELECT views FROM page_view_tally WHERE page_id = $1`, guide); n != 3 {
 		t.Errorf("the tally holds %d views, want 3", n)
 	}
 	h.settle(t)
@@ -497,7 +492,7 @@ func TestRetentionMovesOldViewsIntoTheTally(t *testing.T) {
 	if err := prune(context.Background(), `page_view_today() - 29`); !errors.As(err, &pgErr) || pgErr.Code != "22023" {
 		t.Errorf("pruning the last 29 days = %v, want refused", err)
 	}
-	if n := h.countRows(t, `SELECT count(*) FROM page_view WHERE org_id = $1`, org.org); n != 1 {
+	if n := h.countRows(t, `SELECT count(*) FROM page_view`); n != 1 {
 		t.Errorf("a refused prune took views: %d left", n)
 	}
 }
@@ -513,8 +508,7 @@ func TestPageViewCountsReadAnIndexNotTheTable(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "views-plan")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
+	owner := api.as(t, org.user)
 	docs := newTree(t, owner, "PVP", "Popular")
 	hot := docs.add(docs.homeID, "Hot")
 	ctx := context.Background()
@@ -525,16 +519,16 @@ func TestPageViewCountsReadAnIndexNotTheTable(t *testing.T) {
 		args []any
 	}{
 		{`INSERT INTO app_user (email, name) SELECT $1 || '-' || i || '@example.test', 'Reader ' || i FROM generate_series(1, $2) i`, []any{tag, people}},
-		{`INSERT INTO org_member (org_id, user_id, org_role) SELECT $1, id, 'member' FROM app_user WHERE email LIKE $2`, []any{org.org, tag + "-%"}},
-		{`INSERT INTO page (org_id, space_id, parent_id, rank, title, version, created_by, updated_by)
-		  SELECT p.org_id, p.space_id, p.id, 'b' || lpad(i::text, 6, '0'), 'Other ' || i, 1, $2, $2
+		{`INSERT INTO member (user_id, role) SELECT id, 'member' FROM app_user WHERE email LIKE $1`, []any{tag + "-%"}},
+		{`INSERT INTO page (space_id, parent_id, rank, title, version, created_by, updated_by)
+		  SELECT p.space_id, p.id, 'b' || lpad(i::text, 6, '0'), 'Other ' || i, 1, $2, $2
 		  FROM page p, generate_series(1, $3) i WHERE p.id = $1`, []any{docs.homeID, org.user, pages}},
-		{`INSERT INTO page_view (org_id, page_id, user_id, day)
-		  SELECT $1, p.id, m.user_id, page_view_today() - d
-		  FROM page p CROSS JOIN org_member m CROSS JOIN generate_series(0, $2 - 1) d
-		  WHERE p.org_id = $1 AND m.org_id = $1 AND (p.id = $3 OR p.title LIKE 'Other %')`, []any{org.org, days, hot}},
-		{`INSERT INTO page_visit (org_id, user_id, page_id, visited_at)
-		  SELECT $1, m.user_id, $2, now() - make_interval(mins => (random() * 1000)::int) FROM org_member m WHERE m.org_id = $1`, []any{org.org, hot}},
+		{`INSERT INTO page_view (page_id, user_id, day)
+		  SELECT p.id, m.user_id, page_view_today() - d
+		  FROM page p CROSS JOIN member m CROSS JOIN generate_series(0, $1 - 1) d
+		  WHERE p.id = $2 OR p.title LIKE 'Other %'`, []any{days, hot}},
+		{`INSERT INTO page_visit (user_id, page_id, visited_at)
+		  SELECT m.user_id, $1, now() - make_interval(mins => (random() * 1000)::int) FROM member m`, []any{hot}},
 		{`ANALYZE page_view, page_visit`, nil},
 	} {
 		if _, err := h.super.Exec(ctx, stmt.sql, stmt.args...); err != nil {

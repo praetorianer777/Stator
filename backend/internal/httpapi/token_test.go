@@ -10,23 +10,21 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
-	"github.com/praetorianer777/stator/backend/internal/instance"
 )
 
 // tokenServer knows a session, a token that may do anything and one that may
-// only read, all for the same person in the same organization.
+// only read, all for the same person.
 func tokenServer(t *testing.T) *Server {
 	t.Helper()
 	s := newServer(t)
-	org := &instance.Org{ID: uuid.New(), Slug: "acme"}
 	user := uuid.New()
 	session, full, reader, limited := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	s.Auth = fakeAuth{
-		"session": {UserID: user, Org: org, Role: auth.RoleMember, SessionID: &session},
-		"full":    {UserID: user, Org: org, Role: auth.RoleMember, TokenID: &full},
-		"reader":  {UserID: user, Org: org, Role: auth.RoleMember, TokenID: &reader, Scopes: []string{auth.ScopeRead}},
+		"session": {UserID: user, Role: auth.RoleMember, SessionID: &session},
+		"full":    {UserID: user, Role: auth.RoleMember, TokenID: &full},
+		"reader":  {UserID: user, Role: auth.RoleMember, TokenID: &reader, Scopes: []string{auth.ScopeRead}},
 		// An owner's, so a refusal is the token's and never the person's.
-		"spaces": {UserID: user, Org: org, Role: auth.RoleOwner, TokenID: &limited, SpacesOnly: true, TokenSpaces: []uuid.UUID{uuid.New()}},
+		"spaces": {UserID: user, Role: auth.RoleOwner, TokenID: &limited, SpacesOnly: true, TokenSpaces: []uuid.UUID{uuid.New()}},
 	}
 	return s
 }

@@ -28,12 +28,12 @@ import (
 
 // recordedOnce fails unless the log holds exactly one entry of the action by
 // the actor on the target, nil meaning none, and returns its data as text.
-func (h *harness) recordedOnce(t *testing.T, org uuid.UUID, action string, actor *uuid.UUID, target any) string {
+func (h *harness) recordedOnce(t *testing.T, action string, actor *uuid.UUID, target any) string {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
 		SELECT data::text FROM audit_log
-		WHERE org_id = $1 AND action = $2 AND actor_user_id IS NOT DISTINCT FROM $3 AND target_id IS NOT DISTINCT FROM $4::uuid`,
-		org, action, actor, target)
+		WHERE action = $1 AND actor_user_id IS NOT DISTINCT FROM $2 AND target_id IS NOT DISTINCT FROM $3::uuid`,
+		action, actor, target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,16 +68,16 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "audit-acts")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.namedPerson(t, home.org, "Ann Audit")
-	ann := api.as(t, annID, home.org, slug)
+	slug := h.site.Slug
+	owner := api.as(t, home.user)
+	annID := h.namedPerson(t, "Ann Audit")
+	ann := api.as(t, annID)
 	me := &home.user
 	covered := map[string]bool{}
 	once := func(action string, actor *uuid.UUID, target any) string {
 		t.Helper()
 		covered[action] = true
-		return h.recordedOnce(t, home.org, action, actor, target)
+		return h.recordedOnce(t, action, actor, target)
 	}
 
 	spaceID := idOf(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "AUD", "name": "Audited"}), http.StatusCreated, "make a space"), "space")
@@ -153,7 +153,7 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 		t.Errorf("the brand's entry holds %s", data)
 	}
 	var ip *string
-	if err := h.super.QueryRow(context.Background(), `SELECT host(ip) FROM audit_log WHERE org_id = $1 AND action = $2 AND target_id = $3`, home.org, audit.ActionThemeDefaultSet, themeID).Scan(&ip); err != nil || ip == nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT host(ip) FROM audit_log WHERE action = $1 AND target_id = $2`, audit.ActionThemeDefaultSet, themeID).Scan(&ip); err != nil || ip == nil {
 		t.Errorf("the caller's address is not recorded: %v %v", ip, err)
 	}
 
@@ -191,7 +191,7 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, id) })
-		if _, err := h.super.Exec(context.Background(), `INSERT INTO org_join_request (org_id, user_id) VALUES ($1, $2)`, home.org, id); err != nil {
+		if _, err := h.super.Exec(context.Background(), `INSERT INTO join_request (user_id) VALUES ($1)`, id); err != nil {
 			t.Fatal(err)
 		}
 		h.settle(t)
@@ -393,12 +393,11 @@ func TestTheAuditLogIsTheAdministratorsAndOnlyEverAddedTo(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "audit-read")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	member := api.as(t, memberID, home.org, slug)
-	adminID := h.addPerson(t, home.org, "admin")
-	admin := api.as(t, adminID, home.org, slug)
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
+	member := api.as(t, memberID)
+	adminID := h.addPerson(t, "admin")
+	admin := api.as(t, adminID)
 	nobody := api.anonymous()
 	want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "RD", "name": "Read"}), http.StatusCreated, "make a space")
 
@@ -470,7 +469,7 @@ func TestTheAuditLogIsTheAdministratorsAndOnlyEverAddedTo(t *testing.T) {
 		if !errors.As(err, &pgErr) || pgErr.Code != "22023" {
 			t.Errorf("pruning the last day = %v, want refused", err)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1`, home.org); n == 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log`); n == 0 {
 			t.Error("the record lost its entries")
 		}
 	})
@@ -482,7 +481,7 @@ func TestAnEntryCommitsAndRollsBackWithItsAct(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "audit-tx")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	marker := uuid.New()
 	refused := errors.New("the act failed after its entry was written")
 	_, err := h.cluster.Write(home.ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -502,26 +501,26 @@ func TestAnEntryCommitsAndRollsBackWithItsAct(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	h.recordedOnce(t, home.org, audit.ActionSpaceCreated, &home.user, marker)
+	h.recordedOnce(t, audit.ActionSpaceCreated, &home.user, marker)
 
 	// A refusal the database makes after the act began leaves nothing either.
 	themeID := idOf(t, want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "Private", "spec": map[string]any{"colors": map[string]any{"light": map[string]string{"accent": "#336699"}}}}), http.StatusCreated, "make a theme"), "theme")
 	if got := owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": themeID}); got.Status != http.StatusUnprocessableEntity {
 		t.Fatalf("a private theme became the default: %d %s", got.Status, got.Raw)
 	}
-	if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = $2`, home.org, audit.ActionThemeDefaultSet); n != 0 {
+	if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = $1`, audit.ActionThemeDefaultSet); n != 0 {
 		t.Errorf("a refused default left %d entries", n)
 	}
 }
 
 // plantEntry writes an entry behind the policies' back, at a time of the
 // test's choosing.
-func (h *harness) plantEntry(t *testing.T, org uuid.UUID, action string, actor *uuid.UUID, targetType string, target *uuid.UUID, at time.Time) uuid.UUID {
+func (h *harness) plantEntry(t *testing.T, action string, actor *uuid.UUID, targetType string, target *uuid.UUID, at time.Time) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
 	if err := h.super.QueryRow(context.Background(), `
-		INSERT INTO audit_log (org_id, actor_user_id, action, target_type, target_id, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`, org, actor, action, targetType, target, at).Scan(&id); err != nil {
+		INSERT INTO audit_log (actor_user_id, action, target_type, target_id, created_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`, actor, action, targetType, target, at).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	return id
@@ -554,18 +553,18 @@ func TestTheAuditLogIsWalkedAndNarrowed(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "audit-walk")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
-	annID := h.namedPerson(t, home.org, "Ann Walker")
+	owner := api.as(t, home.user)
+	annID := h.namedPerson(t, "Ann Walker")
 	space, page := uuid.New(), uuid.New()
 	day := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, -10)
 	at := func(days int) time.Time { return day.AddDate(0, 0, days).Add(12 * time.Hour) }
-	h.plantEntry(t, home.org, audit.ActionSpaceCreated, &home.user, "space", &space, at(0))
-	h.plantEntry(t, home.org, audit.ActionSpaceUpdated, &annID, "space", &space, at(1))
-	h.plantEntry(t, home.org, audit.ActionPageExported, &annID, "page", &page, at(2))
+	h.plantEntry(t, audit.ActionSpaceCreated, &home.user, "space", &space, at(0))
+	h.plantEntry(t, audit.ActionSpaceUpdated, &annID, "space", &space, at(1))
+	h.plantEntry(t, audit.ActionPageExported, &annID, "page", &page, at(2))
 	// Two at one instant: the id keeps them in order across a window's edge.
-	h.plantEntry(t, home.org, audit.ActionOrgPermissionSet, &home.user, "org", nil, at(3))
-	h.plantEntry(t, home.org, audit.ActionPageRestrictionsSet, &home.user, "page", &page, at(3))
-	h.plantEntry(t, home.org, audit.ActionMemberJoined, nil, "user", &annID, at(4))
+	h.plantEntry(t, audit.ActionOrgPermissionSet, &home.user, "org", nil, at(3))
+	h.plantEntry(t, audit.ActionPageRestrictionsSet, &home.user, "page", &page, at(3))
+	h.plantEntry(t, audit.ActionMemberJoined, nil, "user", &annID, at(4))
 	h.settle(t)
 
 	all := actionsOf(t, owner, "")
@@ -611,10 +610,10 @@ func TestRetentionTakesOnlyTheOld(t *testing.T) {
 	h := newHarness(t)
 	a, b := h.makeMember(t, "audit-keep-a"), h.makeMember(t, "audit-keep-b")
 	now := time.Now()
-	old := h.plantEntry(t, a.org, audit.ActionSpaceCreated, &a.user, "space", nil, now.AddDate(0, 0, -40))
-	oldB := h.plantEntry(t, b.org, audit.ActionSpaceCreated, &b.user, "space", nil, now.AddDate(0, 0, -31))
-	young := h.plantEntry(t, a.org, audit.ActionSpaceUpdated, &a.user, "space", nil, now.AddDate(0, 0, -29))
-	fresh := h.plantEntry(t, b.org, audit.ActionSpaceUpdated, &b.user, "space", nil, now)
+	old := h.plantEntry(t, audit.ActionSpaceCreated, &a.user, "space", nil, now.AddDate(0, 0, -40))
+	oldB := h.plantEntry(t, audit.ActionSpaceCreated, &b.user, "space", nil, now.AddDate(0, 0, -31))
+	young := h.plantEntry(t, audit.ActionSpaceUpdated, &a.user, "space", nil, now.AddDate(0, 0, -29))
+	fresh := h.plantEntry(t, audit.ActionSpaceUpdated, &b.user, "space", nil, now)
 
 	n, err := audit.NewRetention(h.cluster, 30*24*time.Hour, discard()).Once(context.Background())
 	if err != nil {

@@ -20,7 +20,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/secret"
 )
 
-// WebhookPath is where Armature posts the organization's events, under the
+// WebhookPath is where Armature posts the site's events, under the
 // app's origin.
 const WebhookPath = "/api/v1/armature/webhook"
 
@@ -31,7 +31,7 @@ const (
 )
 
 var (
-	// ErrNotConfigured is an organization without an Armature connection.
+	// ErrNotConfigured is a site without an Armature connection.
 	ErrNotConfigured = errors.New("the organization has not connected Armature")
 	// ErrNotConnected is a caller who stored no token.
 	ErrNotConnected = errors.New("the caller has not connected their Armature account")
@@ -59,7 +59,7 @@ type Options struct {
 	Log         *slog.Logger
 }
 
-// Service keeps the organization's connection and each member's token, and
+// Service keeps the site's connection and each member's token, and
 // hands later work the caller as Armature knows them.
 type Service struct {
 	db     *db.Cluster
@@ -104,7 +104,7 @@ func (s *Service) endpoint(ctx context.Context, tx db.DBTX) (*endpoint, error) {
 	return &e, nil
 }
 
-// Connection is the organization's connection for an administrator, or nil.
+// Connection is the site's connection for an administrator, or nil.
 func (s *Service) Connection(ctx context.Context) (*Connection, error) {
 	var out *Connection
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -134,7 +134,7 @@ func (s *Service) readConnection(ctx context.Context, tx db.DBTX) (*Connection, 
 	return &c, nil
 }
 
-// SaveConnection sets the organization's Armature. A new address or
+// SaveConnection sets the site's Armature. A new address or Armature
 // organization forgets every stored token in the same transaction.
 func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip string) (*Connection, db.LSN, error) {
 	actor, _ := db.UserFrom(ctx)
@@ -159,10 +159,10 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 	}
 
 	var before *Connection
-	var orgID uuid.UUID
+	var siteID uuid.UUID
 	if err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		if orgID, err = instance.ID(ctx, tx); err != nil {
+		if siteID, err = instance.ID(ctx, tx); err != nil {
 			return err
 		}
 		before, err = s.readConnection(ctx, tx)
@@ -172,7 +172,7 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 	}
 	var sealed []byte
 	if secret != "" {
-		if sealed, err = s.seal(secret, webhookContext(orgID), "webhookSecret"); err != nil {
+		if sealed, err = s.seal(secret, webhookContext(siteID), "webhookSecret"); err != nil {
 			return nil, 0, err
 		}
 	}
@@ -194,7 +194,7 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 		_, err := tx.Exec(ctx, `
 			INSERT INTO armature_connection (base_url, org_slug, webhook_secret, updated_by)
 			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (org_id) DO UPDATE SET
+			ON CONFLICT (singleton) DO UPDATE SET
 			    base_url = EXCLUDED.base_url,
 			    org_slug = EXCLUDED.org_slug,
 			    webhook_secret = CASE WHEN $5 THEN armature_connection.webhook_secret ELSE EXCLUDED.webhook_secret END,
@@ -308,8 +308,8 @@ func (s *Service) account(ctx context.Context, tx db.DBTX) (*Account, error) {
 // tokenRow is the caller's stored token, still sealed.
 type tokenRow struct {
 	ID uuid.UUID
-	// OrgID is part of what the token was sealed with.
-	OrgID     uuid.UUID
+	// SiteID is part of what the token was sealed with.
+	SiteID    uuid.UUID
 	Sealed    []byte
 	Status    Status
 	User      *AccountUser
@@ -327,9 +327,9 @@ func (s *Service) ownToken(ctx context.Context, tx db.DBTX) (*tokenRow, error) {
 		armatureName, armatureAt *string
 	)
 	err := tx.QueryRow(ctx, `
-		SELECT id, org_id, token, status, armature_user_id, armature_user_name, armature_user_email, checked_at
+		SELECT id, (SELECT id FROM site), token, status, armature_user_id, armature_user_name, armature_user_email, checked_at
 		FROM armature_token WHERE user_id = $1`, user,
-	).Scan(&row.ID, &row.OrgID, &row.Sealed, &row.Status, &armatureUser, &armatureName, &armatureAt, &row.CheckedAt)
+	).Scan(&row.ID, &row.SiteID, &row.Sealed, &row.Status, &armatureUser, &armatureName, &armatureAt, &row.CheckedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -354,10 +354,10 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 		return nil, 0, &FieldError{Field: "token", Message: "That is not an Armature token. Make one under Tokens in Armature and paste it here; it starts with " + TokenPrefix + "."}
 	}
 	var e *endpoint
-	var orgID uuid.UUID
+	var siteID uuid.UUID
 	if err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		if orgID, err = instance.ID(ctx, tx); err != nil {
+		if siteID, err = instance.ID(ctx, tx); err != nil {
 			return err
 		}
 		e, err = s.endpoint(ctx, tx)
@@ -378,7 +378,7 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 	case !e.owns(me):
 		return nil, 0, &FieldError{Field: "token", Message: fmt.Sprintf("This token belongs to another Armature organization than %s. Make one while signed in to %s in Armature and paste it here.", e.OrgSlug, e.OrgSlug)}
 	}
-	sealed, err := s.seal(token, tokenContext(orgID, user), "token")
+	sealed, err := s.seal(token, tokenContext(siteID, user), "token")
 	if err != nil {
 		return nil, 0, err
 	}
@@ -477,7 +477,7 @@ func (s *Service) Disconnect(ctx context.Context) (db.LSN, error) {
 // Viewer is the caller as Armature knows them. TokenID keys their entries in
 // the Cache, and Caller makes every call with their own token.
 type Viewer struct {
-	OrgID   uuid.UUID
+	SiteID  uuid.UUID
 	UserID  uuid.UUID
 	TokenID uuid.UUID
 	Caller  *Caller
@@ -516,7 +516,7 @@ func (s *Service) Viewer(ctx context.Context) (*Viewer, Status, error) {
 	if err != nil {
 		return nil, StatusRejected, nil
 	}
-	return &Viewer{OrgID: row.OrgID, UserID: user, TokenID: row.ID, Caller: s.client.As(e.BaseURL, token)}, StatusOK, nil
+	return &Viewer{SiteID: row.SiteID, UserID: user, TokenID: row.ID, Caller: s.client.As(e.BaseURL, token)}, StatusOK, nil
 }
 
 // NoteRejected marks the viewer's token rejected after Armature answered it
@@ -578,7 +578,7 @@ func (s *Service) seal(value string, context []byte, field string) ([]byte, erro
 
 func (s *Service) open(ctx context.Context, row *tokenRow) (string, error) {
 	user, _ := db.UserFrom(ctx)
-	plain, err := s.box.Open(row.Sealed, tokenContext(row.OrgID, user))
+	plain, err := s.box.Open(row.Sealed, tokenContext(row.SiteID, user))
 	if err != nil {
 		s.opts.Log.Warn("a stored Armature token could not be opened", "token_id", row.ID, "error", err)
 		return "", err
@@ -586,20 +586,20 @@ func (s *Service) open(ctx context.Context, row *tokenRow) (string, error) {
 	return string(plain), nil
 }
 
-// tokenContext binds a sealed token to its organization and person, so a
-// copy moved onto another row does not open.
-func tokenContext(org, user uuid.UUID) []byte {
-	return append(append([]byte("armature.token:"), org[:]...), user[:]...)
+// tokenContext binds a sealed token to its site and person, so a copy moved
+// onto another row does not open.
+func tokenContext(site, user uuid.UUID) []byte {
+	return append(append([]byte("armature.token:"), site[:]...), user[:]...)
 }
 
-// webhookContext binds the webhook secret to its organization.
-func webhookContext(org uuid.UUID) []byte {
-	return append([]byte("armature.webhook:"), org[:]...)
+// webhookContext binds the webhook secret to its site.
+func webhookContext(site uuid.UUID) []byte {
+	return append([]byte("armature.webhook:"), site[:]...)
 }
 
-// OpenWebhookSecret opens a sealed webhook secret of org, for the receiver.
-func (s *Service) OpenWebhookSecret(org uuid.UUID, sealed []byte) (string, error) {
-	plain, err := s.box.Open(sealed, webhookContext(org))
+// OpenWebhookSecret opens the site's sealed webhook secret, for the receiver.
+func (s *Service) OpenWebhookSecret(site uuid.UUID, sealed []byte) (string, error) {
+	plain, err := s.box.Open(sealed, webhookContext(site))
 	return string(plain), err
 }
 

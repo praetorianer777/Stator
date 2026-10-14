@@ -60,7 +60,7 @@ func (s *Service) Invite(ctx context.Context, actor perm.Actor, spaceKey string,
 	}); err != nil {
 		return nil, 0, err
 	}
-	// Making a person is signup's business, which no tenant's policies cover.
+	// Making a person is signup's business, which no member's policies cover.
 	var userID uuid.UUID
 	if _, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		name, _, _ := strings.Cut(email, "@")
@@ -82,7 +82,7 @@ func (s *Service) Invite(ctx context.Context, actor perm.Actor, spaceKey string,
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (user_id, org_role, guest_space_id)
+			INSERT INTO member (user_id, role, guest_space_id)
 			VALUES ($1, 'guest', $2)`, userID, sp.ID); err != nil {
 			return fmt.Errorf("make the guest's membership: %w", err)
 		}
@@ -94,7 +94,7 @@ func (s *Service) Invite(ctx context.Context, actor perm.Actor, spaceKey string,
 			}
 		}
 		// Somebody who asked to join and is now invited has had their answer.
-		if _, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE user_id = $1`, userID); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM join_request WHERE user_id = $1`, userID); err != nil {
 			return err
 		}
 		guests, err := list(ctx, tx, sp.ID, &userID)
@@ -123,8 +123,8 @@ func (s *Service) Remove(ctx context.Context, actor perm.Actor, spaceKey string,
 			return err
 		}
 		tag, err := tx.Exec(ctx, `
-			DELETE FROM org_member WHERE user_id = $1
-			  AND org_role = 'guest' AND guest_space_id = $2`, userID, sp.ID)
+			DELETE FROM member WHERE user_id = $1
+			  AND role = 'guest' AND guest_space_id = $2`, userID, sp.ID)
 		if err != nil {
 			return err
 		}
@@ -160,13 +160,13 @@ func adminSpace(ctx context.Context, tx db.DBTX, actor perm.Actor, key string) (
 // instead, since a guest is made only by an invitation.
 func notYetHere(ctx context.Context, tx db.DBTX, userID uuid.UUID, email string, sp *space.Space) error {
 	var (
-		role     auth.OrgRole
+		role     auth.Role
 		inSpace  *uuid.UUID
 		named    *string
 		spaceKey *string
 	)
 	err := tx.QueryRow(ctx, `
-		SELECT m.org_role, m.guest_space_id, gs.name, gs.key FROM org_member m
+		SELECT m.role, m.guest_space_id, gs.name, gs.key FROM member m
 		LEFT JOIN space gs ON gs.id = m.guest_space_id
 		WHERE m.user_id = $1`, userID).Scan(&role, &inSpace, &named, &spaceKey)
 	switch {
@@ -187,9 +187,9 @@ func list(ctx context.Context, tx db.DBTX, spaceID uuid.UUID, only *uuid.UUID) (
 	rows, err := tx.Query(ctx, `
 		SELECT u.id, u.email::text, u.name, m.created_at,
 		       ARRAY(SELECT g.permission FROM space_grant g
-		             WHERE g.org_id = m.org_id AND g.space_id = m.guest_space_id AND g.subject_type = 'user' AND g.user_id = m.user_id)
-		FROM org_member m JOIN app_user u ON u.id = m.user_id
-		WHERE m.org_role = 'guest' AND m.guest_space_id = $1
+		             WHERE g.space_id = m.guest_space_id AND g.subject_type = 'user' AND g.user_id = m.user_id)
+		FROM member m JOIN app_user u ON u.id = m.user_id
+		WHERE m.role = 'guest' AND m.guest_space_id = $1
 		  AND ($2::uuid IS NULL OR m.user_id = $2)
 		ORDER BY lower(u.name), u.email`, spaceID, only)
 	if err != nil {

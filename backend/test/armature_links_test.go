@@ -145,13 +145,13 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-links")
-	slug := h.slugOf(t, home.org)
+	slug := h.site.Slug
 	stubControl(t, http.MethodDelete, slug, nil)
-	owner := api.as(t, home.user, home.org, slug)
-	bobID := h.addPerson(t, home.org, "member")
-	bob := api.as(t, bobID, home.org, slug)
-	carolID := h.addPerson(t, home.org, "member")
-	carol := api.as(t, carolID, home.org, slug)
+	owner := api.as(t, home.user)
+	bobID := h.addPerson(t, "member")
+	bob := api.as(t, bobID)
+	carolID := h.addPerson(t, "member")
+	carol := api.as(t, carolID)
 
 	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "alice")}), http.StatusOK, "the owner connects as alice")
@@ -163,7 +163,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 	docs := newTree(t, owner, "LNK", "Linked")
 	page := docs.add(docs.homeID, "Key rotation runbook", map[string]any{"body": linkedDoc([]string{"CP-1"}, "CP-2")})
 	pageURL := armature.PageURL(os.Getenv("STATOR_TEST_APP_URL"), "LNK", uuid.MustParse(page))
-	h.drained(t, home.org)
+	h.drained(t)
 
 	t.Run("publishing links the page on each issue it names, as the person who published", func(t *testing.T) {
 		got := linksOn(t, slug, pageURL)
@@ -182,7 +182,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 	t.Run("syncing again sends the same links and changes nothing", func(t *testing.T) {
 		payload, _ := json.Marshal(events.ArmatureLinks{PageID: uuid.MustParse(page), ActorID: bobID})
 		for range 2 {
-			if err := sync.Handle(context.Background(), events.Event{OrgID: home.org, Topic: events.TopicArmatureLinks, Payload: payload}); err != nil {
+			if err := sync.Handle(context.Background(), events.Event{Topic: events.TopicArmatureLinks, Payload: payload}); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -194,7 +194,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 
 	t.Run("a chip taken out loses its link, and a rename retitles the rest", func(t *testing.T) {
 		republish(t, bob, page, "Signing key runbook", linkedDoc(nil, "CP-2"))
-		h.drained(t, home.org)
+		h.drained(t)
 		got := linksOn(t, slug, pageURL)
 		sameKeys(t, "after bob's change", got, "CP-2")
 		if got["CP-2"]["title"] != "Signing key runbook" {
@@ -207,7 +207,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 
 	t.Run("a link bob adds is his", func(t *testing.T) {
 		republish(t, bob, page, "", linkedDoc([]string{"CP-1"}, "CP-2"))
-		h.drained(t, home.org)
+		h.drained(t)
 		got := linksOn(t, slug, pageURL)
 		sameKeys(t, "after bob adds CP-1", got, "CP-1", "CP-2")
 		if got["CP-1"]["createdByName"] != "Bob" || got["CP-2"]["createdByName"] != "Alice" {
@@ -217,7 +217,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 
 	t.Run("a page not every member may view is titled so on its issues", func(t *testing.T) {
 		want(t, restrict(t, owner, page, []any{user(home.user), user(bobID)}, nil), http.StatusOK, "the owner hides the page")
-		h.drained(t, home.org)
+		h.drained(t)
 		for key, l := range linksOn(t, slug, pageURL) {
 			if l["title"] != armature.RestrictedLinkTitle {
 				t.Errorf("the link on %s of a restricted page is titled %v", key, l["title"])
@@ -225,7 +225,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 		}
 		want(t, carol.get(t, pagePath(page, "/armature-links")), http.StatusNotFound, "carol asks for a page she may not view")
 		want(t, restrict(t, owner, page, nil, nil), http.StatusOK, "the owner opens the page again")
-		h.drained(t, home.org)
+		h.drained(t)
 		for key, l := range linksOn(t, slug, pageURL) {
 			if l["title"] != "Signing key runbook" {
 				t.Errorf("the link on %s of an open page is titled %v", key, l["title"])
@@ -236,12 +236,11 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 	t.Run("an Armature that answers 503 is asked again through the outbox", func(t *testing.T) {
 		stubControl(t, http.MethodPut, slug+"/remote-links/outage", map[string]any{"status": http.StatusServiceUnavailable, "count": 1})
 		republish(t, bob, page, "", linkedDoc([]string{"CP-1", "CP-4"}, "CP-2"))
-		h.drained(t, home.org)
+		h.drained(t)
 		sameKeys(t, "after the outage", linksOn(t, slug, pageURL), "CP-1", "CP-2", "CP-4")
 		if n := h.countRows(t, `
 			SELECT count(*) FROM outbox_event
-			WHERE org_id = $1 AND topic = $2 AND payload ->> 'pageId' = $3 AND attempts > 1 AND last_error LIKE '%503%'`,
-			home.org, events.TopicArmatureLinks, page); n != 1 {
+			WHERE topic = $1 AND payload ->> 'pageId' = $2 AND attempts > 1 AND last_error LIKE '%503%'`, events.TopicArmatureLinks, page); n != 1 {
 			t.Errorf("%d events were tried again after the 503, want 1", n)
 		}
 	})
@@ -249,7 +248,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 	t.Run("a refusal marks the key failed, and the next change tries it again", func(t *testing.T) {
 		stubControl(t, http.MethodPut, slug+"/people/bob/read-only-projects", map[string]any{"projects": []string{"CP"}})
 		republish(t, bob, page, "", linkedDoc([]string{"CP-1", "CP-4", "CP-5"}, "CP-2", "SEC-1"))
-		h.drained(t, home.org)
+		h.drained(t)
 		states := syncStates(t, owner, page)
 		for _, key := range []string{"CP-5", "SEC-1"} {
 			if states[key]["state"] != "failed" || !strings.Contains(states[key]["error"].(string), "next change") {
@@ -268,13 +267,13 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 
 		stubControl(t, http.MethodPut, slug+"/people/bob/read-only-projects", map[string]any{"projects": []string{}})
 		republish(t, carol, page, "", linkedDoc([]string{"CP-1", "CP-4", "CP-5"}, "CP-2", "SEC-1"))
-		h.drained(t, home.org)
+		h.drained(t)
 		if got := syncStates(t, owner, page)["CP-5"]; got["state"] != "failed" || !strings.Contains(got["error"].(string), "has not connected an Armature account") {
 			t.Errorf("CP-5 after carol's change, who has no token, reads %v", got)
 		}
 
 		republish(t, owner, page, "", linkedDoc([]string{"CP-1", "CP-4", "CP-5"}, "CP-2"))
-		h.drained(t, home.org)
+		h.drained(t)
 		states = syncStates(t, owner, page)
 		for _, key := range []string{"CP-1", "CP-2", "CP-4", "CP-5"} {
 			if states[key]["state"] != "synced" || states[key]["error"] != nil {
@@ -287,7 +286,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 	t.Run("moving the page to another space puts its links under the new address", func(t *testing.T) {
 		ops := newTree(t, owner, "OPS", "Operations")
 		want(t, docs.move(page, map[string]any{"parentId": ops.homeID}), http.StatusOK, "move the page")
-		h.drained(t, home.org)
+		h.drained(t)
 		sameKeys(t, "the old address", linksOn(t, slug, pageURL))
 		pageURL = armature.PageURL(os.Getenv("STATOR_TEST_APP_URL"), "OPS", uuid.MustParse(page))
 		sameKeys(t, "the new address", linksOn(t, slug, pageURL), "CP-1", "CP-2", "CP-4", "CP-5")
@@ -296,21 +295,21 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 
 	t.Run("trashing takes the links off and restoring puts them back", func(t *testing.T) {
 		want(t, owner.delete(t, pagePath(page)), http.StatusNoContent, "trash the page")
-		h.drained(t, home.org)
+		h.drained(t)
 		sameKeys(t, "in the trash", linksOn(t, slug, pageURL))
 		want(t, docs.restore(page), http.StatusOK, "restore the page")
-		h.drained(t, home.org)
+		h.drained(t)
 		sameKeys(t, "restored", linksOn(t, slug, pageURL), "CP-1", "CP-2", "CP-4", "CP-5")
 	})
 
 	t.Run("a copy is linked as a page of its own", func(t *testing.T) {
 		made := obj(t, want(t, owner.post(t, pagePath(page, "/copy"), map[string]any{"parentId": docs.homeID}), http.StatusCreated, "copy the page"), "page")
-		h.drained(t, home.org)
+		h.drained(t)
 		copyURL := armature.PageURL(os.Getenv("STATOR_TEST_APP_URL"), "OPS", uuid.MustParse(made["id"].(string)))
 		sameKeys(t, "the copy", linksOn(t, slug, copyURL), "CP-1", "CP-2", "CP-4", "CP-5")
 		want(t, owner.delete(t, pagePath(made["id"].(string))), http.StatusNoContent, "trash the copy")
 		want(t, owner.delete(t, "/api/v1/spaces/OPS/trash/"+made["id"].(string)), http.StatusNoContent, "purge the copy")
-		h.drained(t, home.org)
+		h.drained(t)
 		sameKeys(t, "the purged copy", linksOn(t, slug, copyURL))
 		if n := h.countRows(t, `SELECT count(*) FROM armature_remote_link WHERE page_id = $1`, made["id"]); n != 0 {
 			t.Errorf("%d records of the purged copy are left", n)
@@ -324,28 +323,25 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM armature_remote_link WHERE page_id = $1`, page).Scan(&n); err != nil || n != 4 {
 			t.Errorf("bob reads %d records of a page he may view (%v)", n, err)
 		}
-		denied(t, conn, "recording a link", `INSERT INTO armature_remote_link (org_id, page_id, issue_key, state) VALUES ($1, $2, 'CP-9', 'synced')`, home.org, page)
+		denied(t, conn, "recording a link", `INSERT INTO armature_remote_link (page_id, issue_key, state) VALUES ($1, 'CP-9', 'synced')`, page)
 		denied(t, conn, "marking a link synced", `UPDATE armature_remote_link SET state = 'synced', error = NULL`)
 		denied(t, conn, "forgetting the links", `DELETE FROM armature_remote_link`)
-		denied(t, conn, "syncing as the owner", `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'armature.links', $2)`,
-			home.org, map[string]any{"pageId": page, "actorId": home.user})
-		denied(t, conn, "an event with more than a page", `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'armature.links', $2)`,
-			home.org, map[string]any{"pageId": page, "actorId": bobID, "keys": []string{"CP-9"}})
-		denied(t, conn, "an event without a page", `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'armature.links', $2)`,
-			home.org, map[string]any{"pageId": "not a page", "actorId": bobID})
+		denied(t, conn, "syncing as the owner", `INSERT INTO outbox_event (topic, payload) VALUES ('armature.links', $1)`, map[string]any{"pageId": page, "actorId": home.user})
+		denied(t, conn, "an event with more than a page", `INSERT INTO outbox_event (topic, payload) VALUES ('armature.links', $1)`, map[string]any{"pageId": page, "actorId": bobID, "keys": []string{"CP-9"}})
+		denied(t, conn, "an event without a page", `INSERT INTO outbox_event (topic, payload) VALUES ('armature.links', $1)`, map[string]any{"pageId": "not a page", "actorId": bobID})
 
 		want(t, restrict(t, owner, page, []any{user(home.user)}, nil), http.StatusOK, "the owner hides the page from bob")
-		h.drained(t, home.org)
+		h.drained(t)
 		if err := conn.QueryRow(context.Background(), `SELECT count(*) FROM armature_remote_link WHERE page_id = $1`, page).Scan(&n); err != nil || n != 0 {
 			t.Errorf("bob reads %d records of a page he may not view (%v)", n, err)
 		}
 		want(t, restrict(t, owner, page, nil, nil), http.StatusOK, "the owner opens the page again")
-		h.drained(t, home.org)
+		h.drained(t)
 	})
 
 	t.Run("a new Armature address forgets the records", func(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug + "-moved"}), http.StatusOK, "point at another organization")
-		if n := h.countRows(t, `SELECT count(*) FROM armature_remote_link WHERE org_id = $1`, home.org); n != 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM armature_remote_link`); n != 0 {
 			t.Errorf("%d records survived the move", n)
 		}
 	})

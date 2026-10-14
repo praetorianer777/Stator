@@ -57,10 +57,9 @@ func TestDraftsAndPublishingOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "drafts")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	ann := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
-	ben := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	ann := api.as(t, h.addPerson(t, "member"))
+	ben := api.as(t, h.addPerson(t, "member"))
 	docs := newTree(t, owner, "DRAFT", "Drafts")
 
 	var pageID, childID string
@@ -257,11 +256,10 @@ func TestAPublishConflictShowsItsCallerTheNewerVersion(t *testing.T) {
 	needReplica(t, h)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "conflict-read")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.addPerson(t, home.org, "member")
-	ann := api.as(t, annID, home.org, slug)
-	ben := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	annID := h.addPerson(t, "member")
+	ann := api.as(t, annID)
+	ben := api.as(t, h.addPerson(t, "member"))
 	docs := newTree(t, owner, "RACE", "Race")
 
 	made := want(t, ann.post(t, "/api/v1/pages", map[string]any{"parentId": docs.homeID, "title": "Plan", "body": textDoc("Idea"), "publish": true}), http.StatusCreated, "make a page")
@@ -278,7 +276,7 @@ func TestAPublishConflictShowsItsCallerTheNewerVersion(t *testing.T) {
 		t.Fatalf("a publish over a newer version: %d %s", late.Status, late.Raw)
 	}
 
-	stranger := api.as(t, annID, home.org, slug)
+	stranger := api.as(t, annID)
 	stranger.eager = true
 	if p := obj(t, want(t, stranger.get(t, pagePath(pageID)), http.StatusOK, "a fresh browser reads"), "page"); number(p["version"]) != 1 {
 		t.Fatalf("a fresh browser read version %v, so the replica was not behind", p["version"])
@@ -298,10 +296,9 @@ func TestHistoryCompareAndRestoreOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "history")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	member := api.as(t, memberID, home.org, slug)
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
+	member := api.as(t, memberID)
 	docs := newTree(t, owner, "HIST", "History")
 	h.closeSpace(t, docs.space, memberID)
 
@@ -413,7 +410,7 @@ func TestHistoryCompareAndRestoreOverTheAPI(t *testing.T) {
 
 	t.Run("a member the space is closed to reaches none of it", func(t *testing.T) {
 		away := h.makeOutsider(t, "history-away")
-		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+		stranger := api.as(t, away.user)
 		for what, got := range map[string]response{
 			"history": stranger.get(t, pagePath(id, "/versions")),
 			"version": stranger.get(t, pagePath(id, "/versions/1")),
@@ -435,10 +432,9 @@ func TestVersionsAndDraftsAreGuardedByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "version-wall-a")
 	b := h.makeOutsider(t, "version-wall-b")
-	slug := h.slugOf(t, a.org)
-	ownerA := api.as(t, a.user, a.org, slug)
+	ownerA := api.as(t, a.user)
 	docsA := newTree(t, ownerA, "WALL", "Walled")
-	docsB := newTree(t, api.as(t, b.user, b.org, slug), "THEIRS", "Theirs")
+	docsB := newTree(t, api.as(t, b.user), "THEIRS", "Theirs")
 	h.closeSpace(t, docsA.space)
 	pageA := docsA.add(docsA.homeID, "Secret")
 	pageB := docsB.add(docsB.homeID, "Theirs")
@@ -453,9 +449,9 @@ func TestVersionsAndDraftsAreGuardedByTheDatabase(t *testing.T) {
 			t.Errorf("B reads %d rows of A's %s (%v)", n, table, err)
 		}
 	}
-	refused(t, conn, "a version of A's page, as A", `INSERT INTO page_version (org_id, page_id, number, title, body) VALUES ($1, $2, 2, 'Planted', '{}')`, a.org, pageA)
-	refused(t, conn, "a version of A's page, as B", `INSERT INTO page_version (org_id, page_id, number, title, body) VALUES ($1, $2, 2, 'Planted', '{}')`, b.org, pageA)
-	refused(t, conn, "a draft of A's page", `INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version) VALUES ($1, $2, $3, 'Planted', '{}', 1)`, b.org, pageA, b.user)
+	refused(t, conn, "a version of A's page, as A", `INSERT INTO page_version (page_id, number, title, body) VALUES ($1, 2, 'Planted', '{}')`, pageA)
+	refused(t, conn, "a version of A's page, as B", `INSERT INTO page_version (page_id, number, title, body) VALUES ($1, 2, 'Planted', '{}')`, pageA)
+	refused(t, conn, "a draft of A's page", `INSERT INTO page_draft (page_id, user_id, title, body, base_version) VALUES ($1, $2, 'Planted', '{}', 1)`, pageA, b.user)
 	untouched(t, conn, "A's drafts from B", `UPDATE page_draft SET title = 'Taken' WHERE page_id = $1`, pageA)
 	untouched(t, conn, "deleting A's drafts from B", `DELETE FROM page_draft WHERE page_id = $1`, pageA)
 
@@ -463,9 +459,9 @@ func TestVersionsAndDraftsAreGuardedByTheDatabase(t *testing.T) {
 	untouched(t, conn, "rewriting B's own history", `UPDATE page_version SET title = 'Rewritten' WHERE page_id = $1`, pageB)
 	refused(t, conn, "rewriting B's own history's comment", `UPDATE page_version SET comment = 'Rewritten' WHERE page_id = $1`, pageB)
 	refused(t, conn, "deleting B's own history", `DELETE FROM page_version WHERE page_id = $1`, pageB)
-	refused(t, conn, "skipping a version number", `INSERT INTO page_version (org_id, page_id, number, title, body) VALUES ($1, $2, 3, 'Skipped', '{}')`, b.org, pageB)
-	refused(t, conn, "reusing a version number", `INSERT INTO page_version (org_id, page_id, number, title, body) VALUES ($1, $2, 1, 'Again', '{}')`, b.org, pageB)
-	refused(t, conn, "a draft in somebody else's name", `INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version) VALUES ($1, $2, $3, 'Planted', '{}', 1)`, b.org, pageB, a.user)
+	refused(t, conn, "skipping a version number", `INSERT INTO page_version (page_id, number, title, body) VALUES ($1, 3, 'Skipped', '{}')`, pageB)
+	refused(t, conn, "reusing a version number", `INSERT INTO page_version (page_id, number, title, body) VALUES ($1, 1, 'Again', '{}')`, pageB)
+	refused(t, conn, "a draft in somebody else's name", `INSERT INTO page_draft (page_id, user_id, title, body, base_version) VALUES ($1, $2, 'Planted', '{}', 1)`, pageB, a.user)
 
 	if n := h.count(t, a.ctx, `SELECT count(*) FROM page_draft WHERE page_id = $1 AND title = 'Secret'`, pageA); n != 1 {
 		t.Errorf("A's draft is gone or changed: %d", n)

@@ -63,14 +63,14 @@ func (s *Service) reapBatchWith(ctx context.Context, read readFunc, write writeF
 	return removed, nil
 }
 
-// Sweep removes the objects of the caller's organization whose rows are gone,
-// right after a purge or a deleted space, so the bytes go with the pages.
+// Sweep removes the objects whose rows are gone, right after a purge or a
+// deleted space, so the bytes go with the pages.
 func (s *Service) Sweep(ctx context.Context) (int, error) {
 	return s.reapBatchWith(ctx, s.db.ReadPrimary, s.db.Write)
 }
 
-// Reaper removes the bytes behind tombstones across every organization, in
-// the worker: what a sweep missed and what a deleted organization left.
+// Reaper removes the bytes behind tombstones in the worker, which sees every
+// one: what a sweep missed.
 type Reaper struct {
 	service  *Service
 	log      *slog.Logger

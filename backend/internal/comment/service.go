@@ -118,7 +118,7 @@ const selectComments = `
 SELECT t.id, t.page_id, t.kind, t.quote, t.detached_at IS NOT NULL, t.resolved_at, COALESCE(r.name, ''),
        c.id, c.author_id, COALESCE(u.name, ''), c.original_author, c.body, c.deleted_at IS NOT NULL, c.created_at, c.edited_at
 FROM comment_thread t
-JOIN comment c ON c.org_id = t.org_id AND c.thread_id = t.id
+JOIN comment c ON c.thread_id = t.id
 LEFT JOIN app_user u ON u.id = c.author_id
 LEFT JOIN app_user r ON r.id = t.resolved_by`
 
@@ -473,13 +473,13 @@ func CountsOf(ctx context.Context, tx db.DBTX, pageID uuid.UUID) (Counts, error)
 	var c Counts
 	err := tx.QueryRow(ctx, `
 		SELECT
-			(SELECT count(*) FROM comment c JOIN comment_thread t ON t.org_id = c.org_id AND t.id = c.thread_id
+			(SELECT count(*) FROM comment c JOIN comment_thread t ON t.id = c.thread_id
 			 WHERE c.page_id = $1 AND c.deleted_at IS NULL AND t.kind = 'page'),
 			count(*) FILTER (WHERE t.detached_at IS NULL),
 			count(*) FILTER (WHERE t.detached_at IS NOT NULL)
 		FROM comment_thread t
 		WHERE t.page_id = $1 AND t.kind = 'inline' AND t.resolved_at IS NULL
-		  AND EXISTS (SELECT 1 FROM comment c WHERE c.org_id = t.org_id AND c.thread_id = t.id AND c.deleted_at IS NULL)`,
+		  AND EXISTS (SELECT 1 FROM comment c WHERE c.thread_id = t.id AND c.deleted_at IS NULL)`,
 		pageID).Scan(&c.Page, &c.Inline, &c.Detached)
 	return c, err
 }

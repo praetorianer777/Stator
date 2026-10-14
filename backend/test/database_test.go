@@ -322,10 +322,16 @@ func moveToClone(t *testing.T) {
 	if c.err != nil {
 		t.Fatal(c.err)
 	}
+	pointAt(t, c.name)
+}
 
+// pointAt sends every connection the suite reads from the environment to the
+// database named until the test ends.
+func pointAt(t *testing.T, name string) {
+	t.Helper()
 	for _, env := range []string{envPrimary, envAdmin, envSuperuser, envReplicaSuperuser} {
 		if v := os.Getenv(env); v != "" {
-			moved, err := databaseURL(v, c.name)
+			moved, err := databaseURL(v, name)
 			if err != nil {
 				t.Fatalf("%s: %v", env, err)
 			}
@@ -335,7 +341,7 @@ func moveToClone(t *testing.T) {
 	if v := os.Getenv(envReplicas); v != "" {
 		var moved []string
 		for _, u := range strings.Split(v, ",") {
-			m, err := databaseURL(strings.TrimSpace(u), c.name)
+			m, err := databaseURL(strings.TrimSpace(u), name)
 			if err != nil {
 				t.Fatalf("%s: %v", envReplicas, err)
 			}

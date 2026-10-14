@@ -31,14 +31,13 @@ var (
 )
 
 // JoinRequests lists who is waiting to be let in, oldest first.
-func (s *Service) JoinRequests(ctx context.Context, orgID uuid.UUID) ([]JoinRequest, error) {
+func (s *Service) JoinRequests(ctx context.Context) ([]JoinRequest, error) {
 	out := []JoinRequest{}
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.email::text, u.name, r.created_at
-			FROM org_join_request r JOIN app_user u ON u.id = r.user_id
-			WHERE r.org_id = $1
-			ORDER BY r.created_at, u.email`, orgID)
+			FROM join_request r JOIN app_user u ON u.id = r.user_id
+			ORDER BY r.created_at, u.email`)
 		if err != nil {
 			return err
 		}
@@ -57,13 +56,13 @@ func (s *Service) JoinRequests(ctx context.Context, orgID uuid.UUID) ([]JoinRequ
 
 // AdmitJoinRequest lets a waiting person in with the standing given. Their
 // next sign-in through the provider then succeeds.
-func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID, role OrgRole, actor uuid.UUID, ip string) (*Admitted, db.LSN, error) {
+func (s *Service) AdmitJoinRequest(ctx context.Context, userID uuid.UUID, role Role, actor uuid.UUID, ip string) (*Admitted, db.LSN, error) {
 	if role != RoleAdmin && role != RoleMember {
 		return nil, 0, ErrBadJoinRole
 	}
 	made := Admitted{UserID: userID, Role: role}
 	lsn, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE org_id = $1 AND user_id = $2`, orgID, userID)
+		tag, err := tx.Exec(ctx, `DELETE FROM join_request WHERE user_id = $1`, userID)
 		if err != nil {
 			return err
 		}
@@ -71,9 +70,9 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID,
 			return ErrNoSuchRequest
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)
-			ON CONFLICT (org_id, user_id) DO UPDATE SET org_role = EXCLUDED.org_role, role_source = 'manual'`,
-			orgID, userID, string(role)); err != nil {
+			INSERT INTO member (user_id, role) VALUES ($1, $2)
+			ON CONFLICT (user_id) DO UPDATE SET role = EXCLUDED.role, role_source = 'manual'`,
+			userID, string(role)); err != nil {
 			return fmt.Errorf("create membership: %w", err)
 		}
 		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionMemberAdmitted, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip,
@@ -87,9 +86,9 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, orgID, userID uuid.UUID,
 
 // DeclineJoinRequest forgets the request. The person may sign in again and
 // ask once more; nothing about the request is kept but the record of the refusal.
-func (s *Service) DeclineJoinRequest(ctx context.Context, orgID, userID, actor uuid.UUID, ip string) (db.LSN, error) {
+func (s *Service) DeclineJoinRequest(ctx context.Context, userID, actor uuid.UUID, ip string) (db.LSN, error) {
 	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM org_join_request WHERE org_id = $1 AND user_id = $2`, orgID, userID)
+		tag, err := tx.Exec(ctx, `DELETE FROM join_request WHERE user_id = $1`, userID)
 		if err != nil {
 			return err
 		}
@@ -102,7 +101,7 @@ func (s *Service) DeclineJoinRequest(ctx context.Context, orgID, userID, actor u
 
 // EnsureMember lets an address in ahead of its first sign-in, making the account
 // if need be; a membership already there is left alone.
-func (s *Service) EnsureMember(ctx context.Context, email string, role OrgRole) (bool, error) {
+func (s *Service) EnsureMember(ctx context.Context, email string, role Role) (bool, error) {
 	email = NormalizeEmail(email)
 	if !strings.Contains(email, "@") {
 		return false, fmt.Errorf("%q is not an email address", email)
@@ -113,8 +112,7 @@ func (s *Service) EnsureMember(ctx context.Context, email string, role OrgRole) 
 	name, _, _ := strings.Cut(email, "@")
 	var added bool
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		org, err := instance.Find(ctx, tx)
-		if err != nil {
+		if _, err := instance.Find(ctx, tx); err != nil {
 			return err
 		}
 		var userID uuid.UUID
@@ -125,8 +123,8 @@ func (s *Service) EnsureMember(ctx context.Context, email string, role OrgRole) 
 			return fmt.Errorf("find or create %s: %w", email, err)
 		}
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)
-			ON CONFLICT (org_id, user_id) DO NOTHING`, org.ID, userID, string(role))
+			INSERT INTO member (user_id, role) VALUES ($1, $2)
+			ON CONFLICT (user_id) DO NOTHING`, userID, string(role))
 		added = tag.RowsAffected() == 1
 		return err
 	})

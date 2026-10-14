@@ -21,12 +21,12 @@ import (
 func TestAnAdministratorAddsPeopleWhoSignInWithAPassword(t *testing.T) {
 	h := newHarness(t)
 	a := h.startAPI(t, testSessionTTL)
-	org := h.makeOrg(t, "adders")
+	h.emptySite(t, "adders")
 	ctx := context.Background()
 	users := a.URL + httpapi.APIPrefix + "/users"
 
 	admin := newBrowser(t)
-	adminEmail := bootstrapAdmin(t, h, a, org)
+	adminEmail := bootstrapAdmin(t, h, a)
 	if resp, body := postJSON(t, admin, a.URL+httpapi.APIPrefix+"/auth/login", map[string]string{"email": adminEmail, "password": adminPassword}); resp.StatusCode != http.StatusOK {
 		t.Fatalf("admin login = %d %v", resp.StatusCode, body)
 	}
@@ -64,8 +64,8 @@ func TestAnAdministratorAddsPeopleWhoSignInWithAPassword(t *testing.T) {
 		var hash string
 		var audited int
 		if err := h.super.QueryRow(ctx, `
-			SELECT u.password_hash, (SELECT count(*) FROM audit_log WHERE org_id = $2 AND action = 'member.created' AND target_id = u.id)
-			FROM app_user u WHERE u.email = $1`, ada, org.ID).Scan(&hash, &audited); err != nil {
+			SELECT u.password_hash, (SELECT count(*) FROM audit_log WHERE action = 'member.created' AND target_id = u.id)
+			FROM app_user u WHERE u.email = $1`, ada).Scan(&hash, &audited); err != nil {
 			t.Fatal(err)
 		}
 		if strings.Contains(hash, generated) || !strings.HasPrefix(hash, "$argon2id$") || audited != 1 {

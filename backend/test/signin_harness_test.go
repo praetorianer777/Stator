@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"html"
 	"io"
 	"net"
@@ -100,21 +99,17 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 	return a
 }
 
-// makeOrg is the test's organization with nobody in it, made behind the
-// policies' back.
-func (h *harness) makeOrg(t *testing.T, slug string) instance.Org {
+// emptySite is the test's site with nobody in it, made behind the policies'
+// back.
+func (h *harness) emptySite(t *testing.T, slug string) instance.Site {
 	t.Helper()
-	if h.org != nil {
-		t.Fatalf("the test already has its organization, %s; an instance holds one", h.org.Slug)
+	if h.site != nil {
+		t.Fatalf("the test already has its site, %s; an instance holds one", h.site.Slug)
 	}
-	full := fmt.Sprintf("%s-%s", slug, uuid.NewString()[:8])
-	org := instance.Org{Slug: full}
-	if err := h.super.QueryRow(context.Background(), `INSERT INTO org (slug, name) VALUES ($1, $2) RETURNING id`, full, slug).Scan(&org.ID); err != nil {
-		t.Fatalf("create org %s: %v", full, err)
-	}
-	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM org WHERE id = $1`, org.ID) })
-	h.org = &org
-	return org
+	site := h.makeSite(t, slug)
+	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM site WHERE id = $1`, site.ID) })
+	h.site = &site
+	return site
 }
 
 // forgetPerson removes an account a test makes, by address, before and after,
@@ -345,9 +340,9 @@ func (k *keycloak) newPerson(t *testing.T, h *harness, username, password string
 	return email
 }
 
-// letIn makes the address a member of org ahead of its first sign-in, the
+// letIn makes the address a member ahead of its first sign-in, the
 // way the seed does, making the account if need be.
-func (h *harness) letIn(t *testing.T, org instance.Org, email, role string) {
+func (h *harness) letIn(t *testing.T, email, role string) {
 	t.Helper()
 	ctx := context.Background()
 	var id uuid.UUID
@@ -356,7 +351,7 @@ func (h *harness) letIn(t *testing.T, org instance.Org, email, role string) {
 		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email RETURNING id`, email, email).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, $3)`, org.ID, id, role); err != nil {
+	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, $2)`, id, role); err != nil {
 		t.Fatal(err)
 	}
 }

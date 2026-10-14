@@ -1,5 +1,5 @@
-// Package armature reaches the Armature instance an organization connects, as
-// the person asking with their own token. See docs/api-contract-m3.md.
+// Package armature reaches the Armature instance the site connects, as the
+// person asking with their own token. See docs/api-contract-m3.md.
 package armature
 
 import (
@@ -81,7 +81,7 @@ type Status string
 
 const (
 	StatusOK Status = "ok"
-	// StatusNotConfigured is an organization with no Armature connection.
+	// StatusNotConfigured is a site with no Armature connection.
 	StatusNotConfigured Status = "not_configured"
 	// StatusNotConnected is a person who stored no token.
 	StatusNotConnected Status = "not_connected"
@@ -126,7 +126,7 @@ var StatusCategories = []string{"todo", "in_progress", "done"}
 // screen tells an administrator to subscribe to these.
 var WebhookTopics = []string{"issue.created", "issue.updated", "issue.transitioned", "comment.added"}
 
-// Connection is the organization's Armature instance, for its administrators.
+// Connection is the site's Armature instance, for its administrators.
 type Connection struct {
 	// BaseURL is the origin people open Armature at, without /api/v1.
 	BaseURL string `json:"baseUrl"`
@@ -158,7 +158,7 @@ type ConnectionInput struct {
 
 // Account is the caller's own link to Armature.
 type Account struct {
-	// Configured says the organization has an Armature connection.
+	// Configured says the site has an Armature connection.
 	Configured bool `json:"configured"`
 	// BaseURL is where issues open, null until configured.
 	BaseURL *string `json:"baseUrl"`

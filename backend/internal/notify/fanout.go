@@ -49,8 +49,8 @@ type Plan struct {
 	Tells   []Tell
 }
 
-// Planner reads what an event is about and who could hear of it, in the
-// event's organization, as the worker. A nil plan tells nobody.
+// Planner reads what an event is about and who could hear of it, as the
+// worker. A nil plan tells nobody.
 type Planner func(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error)
 
 // Pick keeps one kind per person, the first of Kinds that applies, and
@@ -118,7 +118,7 @@ func (f *FanOut) Plan(topic string, planner Planner) *FanOut {
 // finds every row already written and sends nothing again.
 func (f *FanOut) Handle(ctx context.Context, e events.Event) error {
 	planner, ok := f.planners[e.Topic]
-	if !ok || e.OrgID == uuid.Nil {
+	if !ok {
 		return nil
 	}
 	pinned := db.PinPrimary(ctx)
@@ -266,7 +266,7 @@ func planVerificationLapsed(ctx context.Context, tx db.DBTX, e events.Event) (*P
 	err := tx.QueryRow(ctx, `
 		SELECT o.user_id, COALESCE(perm_page_viewable(v.page_id, o.user_id), false), v.verified_by, v.version
 		FROM page_verification v
-		LEFT JOIN page_owner o ON o.org_id = v.org_id AND o.page_id = v.page_id
+		LEFT JOIN page_owner o ON o.page_id = v.page_id
 		WHERE v.page_id = $1 AND v.expires_at <= now() AND v.expires_at = $2`,
 		in.PageID, in.ExpiresAt).Scan(&owner, &ownerViews, &verifier, &version)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -298,7 +298,7 @@ func planTaskDue(ctx context.Context, tx db.DBTX, e events.Event) (*Plan, error)
 	)
 	err := tx.QueryRow(ctx, `
 		SELECT t.summary, p.version FROM page_task t
-		JOIN page p ON p.org_id = t.org_id AND p.id = t.page_id
+		JOIN page p ON p.id = t.page_id
 		JOIN space s ON s.id = p.space_id
 		WHERE t.page_id = $1 AND t.task_id = $2 AND t.assignee_id = $3
 		  AND t.due_on = $4::date AND NOT t.done AND p.archived_at IS NULL AND s.archived_at IS NULL`,
@@ -324,7 +324,7 @@ func planScheduleFailed(ctx context.Context, tx db.DBTX, e events.Event) (*Plan,
 	}
 	var version int
 	err := tx.QueryRow(ctx, `
-		SELECT p.version FROM page_schedule sc JOIN page p ON p.org_id = sc.org_id AND p.id = sc.page_id
+		SELECT p.version FROM page_schedule sc JOIN page p ON p.id = sc.page_id
 		WHERE sc.page_id = $1 AND sc.user_id = $2
 		  AND sc.failed_at IS NOT NULL AND sc.publish_at = $3`,
 		in.PageID, in.AuthorID, in.PublishAt).Scan(&version)

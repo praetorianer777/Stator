@@ -82,7 +82,7 @@ func (s *Service) Calendar(ctx context.Context, project, month string) (Status, 
 		return status, nil, err
 	}
 	var cached CalendarMonth
-	if s.cache.Calendar(ctx, v.OrgID, v.TokenID, project, month, &cached) {
+	if s.cache.Calendar(ctx, v.SiteID, v.TokenID, project, month, &cached) {
 		return StatusOK, &cached, nil
 	}
 	var answer struct {
@@ -101,7 +101,7 @@ func (s *Service) Calendar(ctx context.Context, project, month string) (Status, 
 	}
 	out := buildCalendar(month, answer.Month.Items, v.Caller.BaseURL())
 	out.Truncated = answer.Month.Truncated
-	s.cache.PutCalendar(ctx, v.OrgID, v.TokenID, project, month, out)
+	s.cache.PutCalendar(ctx, v.SiteID, v.TokenID, project, month, out)
 	return StatusOK, out, nil
 }
 
@@ -145,11 +145,11 @@ func CalendarField(tokenID uuid.UUID, project, month string) string {
 }
 
 // Calendar reads a cached month; see Issue.
-func (c *Cache) Calendar(ctx context.Context, org, tokenID uuid.UUID, project, month string, out any) bool {
-	return c.getField(ctx, SearchKey(org), CalendarField(tokenID, project, month), CalendarCacheTTL, out)
+func (c *Cache) Calendar(ctx context.Context, site, tokenID uuid.UUID, project, month string, out any) bool {
+	return c.getField(ctx, SearchKey(site), CalendarField(tokenID, project, month), CalendarCacheTTL, out)
 }
 
 // PutCalendar stores a month.
-func (c *Cache) PutCalendar(ctx context.Context, org, tokenID uuid.UUID, project, month string, value any) {
-	c.putField(ctx, SearchKey(org), CalendarField(tokenID, project, month), CalendarCacheTTL, value)
+func (c *Cache) PutCalendar(ctx context.Context, site, tokenID uuid.UUID, project, month string, value any) {
+	c.putField(ctx, SearchKey(site), CalendarField(tokenID, project, month), CalendarCacheTTL, value)
 }
