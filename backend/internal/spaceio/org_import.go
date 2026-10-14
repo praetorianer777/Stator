@@ -849,7 +849,7 @@ func (b *auditRows) flush(ctx context.Context, tx db.DBTX) error {
 	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO audit_log (actor_user_id, action, target_type, target_id, data, created_at)
-		SELECT $1, NULLIF(a, '')::uuid, act, tt, NULLIF(tid, '')::uuid, d::jsonb, at::timestamptz
+		SELECT NULLIF(a, '')::uuid, act, tt, NULLIF(tid, '')::uuid, d::jsonb, at::timestamptz
 		FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[]) AS e(a, act, tt, tid, d, at)`,
 		b.actor, b.action, b.targetType, b.target, b.data, b.at)
 	*b = auditRows{}

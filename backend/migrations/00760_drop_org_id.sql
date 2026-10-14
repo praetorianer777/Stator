@@ -36,12 +36,28 @@ ALTER TABLE org_brand ADD COLUMN logo_key text;
 UPDATE org_brand SET logo_key = 'org/' || org_id::text || '/brand/logo-' || logo_version::text WHERE logo_type IS NOT NULL;
 ALTER TABLE org_brand ADD CONSTRAINT org_brand_logo_keyed CHECK ((logo_type IS NULL) = (logo_key IS NULL));
 
+-- A generated key could not be named in an insert; one named that is not the
+-- row's own is refused the same way, so no row points at another's file.
+-- +goose StatementBegin
+CREATE OR REPLACE FUNCTION object_key_derived(given text, derived text) RETURNS text
+    LANGUAGE plpgsql IMMUTABLE SET search_path = public, pg_temp
+AS $$
+BEGIN
+    IF given IS NOT NULL AND given IS DISTINCT FROM derived THEN
+        RAISE EXCEPTION 'an object key comes from its row and is never chosen'
+            USING ERRCODE = 'check_violation', CONSTRAINT = 'object_key_stays';
+    END IF;
+    RETURN derived;
+END;
+$$;
+-- +goose StatementEnd
+
 -- +goose StatementBegin
 CREATE OR REPLACE FUNCTION attachment_object_key() RETURNS trigger
     LANGUAGE plpgsql SET search_path = public, pg_temp
 AS $$
 BEGIN
-    NEW.object_key := 'page/' || NEW.page_id::text || '/' || NEW.id::text;
+    NEW.object_key := object_key_derived(NEW.object_key, 'page/' || NEW.page_id::text || '/' || NEW.id::text);
     RETURN NEW;
 END;
 $$;
@@ -52,7 +68,7 @@ CREATE OR REPLACE FUNCTION attachment_preview_object_key() RETURNS trigger
     LANGUAGE plpgsql SET search_path = public, pg_temp
 AS $$
 BEGIN
-    NEW.object_key := 'preview/' || NEW.attachment_id::text || '.pdf';
+    NEW.object_key := object_key_derived(NEW.object_key, 'preview/' || NEW.attachment_id::text || '.pdf');
     RETURN NEW;
 END;
 $$;
@@ -63,7 +79,7 @@ CREATE OR REPLACE FUNCTION theme_asset_object_key() RETURNS trigger
     LANGUAGE plpgsql SET search_path = public, pg_temp
 AS $$
 BEGIN
-    NEW.object_key := 'theme/' || NEW.theme_id::text || '/' || NEW.id::text;
+    NEW.object_key := object_key_derived(NEW.object_key, 'theme/' || NEW.theme_id::text || '/' || NEW.id::text);
     RETURN NEW;
 END;
 $$;
@@ -75,7 +91,7 @@ CREATE OR REPLACE FUNCTION job_object_key() RETURNS trigger
     LANGUAGE plpgsql SET search_path = public, pg_temp
 AS $$
 BEGIN
-    NEW.object_key := TG_ARGV[0] || '/' || NEW.id::text;
+    NEW.object_key := object_key_derived(NEW.object_key, TG_ARGV[0] || '/' || NEW.id::text);
     RETURN NEW;
 END;
 $$;
