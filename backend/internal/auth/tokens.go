@@ -46,8 +46,8 @@ type APIToken struct {
 	Secret    string     `json:"secret,omitempty"`
 }
 
-// OrgAPIToken is a token as an administrator sees it: with whose it is.
-type OrgAPIToken struct {
+// SiteAPIToken is a token as an administrator sees it: with whose it is.
+type SiteAPIToken struct {
 	APIToken
 	Owner User `json:"owner"`
 }
@@ -189,9 +189,9 @@ func (s *Service) ListAPITokens(ctx context.Context, userID uuid.UUID) ([]APITok
 	return out, err
 }
 
-// ListOrgAPITokens returns every token on the site, for an administrator.
-func (s *Service) ListOrgAPITokens(ctx context.Context) ([]OrgAPIToken, error) {
-	out := []OrgAPIToken{}
+// ListSiteAPITokens returns every token on the site, for an administrator.
+func (s *Service) ListSiteAPITokens(ctx context.Context) ([]SiteAPIToken, error) {
+	out := []SiteAPIToken{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT `+tokenColumns+`, u.id, u.email::text, u.name, COALESCE(u.avatar_url, '')
@@ -208,7 +208,7 @@ func (s *Service) ListOrgAPITokens(ctx context.Context) ([]OrgAPIToken, error) {
 			if err != nil {
 				return err
 			}
-			out = append(out, OrgAPIToken{APIToken: t, Owner: owner})
+			out = append(out, SiteAPIToken{APIToken: t, Owner: owner})
 		}
 		return rows.Err()
 	})
@@ -220,8 +220,8 @@ func (s *Service) RevokeAPIToken(ctx context.Context, userID, tokenID uuid.UUID,
 	return s.revoke(ctx, &userID, userID, tokenID, ip)
 }
 
-// RevokeOrgAPIToken deletes anybody's token, for an administrator.
-func (s *Service) RevokeOrgAPIToken(ctx context.Context, actor, tokenID uuid.UUID, ip string) (db.LSN, error) {
+// RevokeSiteAPIToken deletes anybody's token, for an administrator.
+func (s *Service) RevokeSiteAPIToken(ctx context.Context, actor, tokenID uuid.UUID, ip string) (db.LSN, error) {
 	return s.revoke(ctx, nil, actor, tokenID, ip)
 }
 

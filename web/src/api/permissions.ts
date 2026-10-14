@@ -36,7 +36,7 @@ export const GLOBAL_PERMISSIONS: GlobalPermission[] = ["use", "createSpace", "ad
 export const SPACE_PERMISSIONS: SpacePermission[] = ["view", "addPages", "addComments", "delete", "administer"];
 
 export const accessQueryKey = ["access", "me"] as const;
-export const orgPermissionsQueryKey = ["org", "permissions"] as const;
+export const sitePermissionsQueryKey = ["site", "permissions"] as const;
 
 export function spacePermissionsQueryKey(spaceKey: string) {
   return ["space-permissions", spaceKey.toUpperCase()] as const;
@@ -71,20 +71,22 @@ export function useAccess() {
   return useQuery(accessQuery);
 }
 
-export function useOrgPermissions() {
+export function useSitePermissions() {
   return useQuery({
-    queryKey: orgPermissionsQueryKey,
+    queryKey: sitePermissionsQueryKey,
     queryFn: async (): Promise<GlobalGrant[]> => (await api.GET("/site/permissions")).data!.permissions,
   });
 }
 
-export function useSetOrgPermission() {
+export function useSetSitePermission() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ permission, subjects }: { permission: GlobalPermission; subjects: SubjectRef[] }): Promise<GlobalGrant> =>
       (await api.PUT("/site/permissions/{permission}", { params: { path: { permission } }, body: { subjects } })).data!.permission,
     onSuccess: (saved) => {
-      queryClient.setQueryData<GlobalGrant[]>(orgPermissionsQueryKey, (before) => before?.map((each) => (each.permission === saved.permission ? saved : each)));
+      queryClient.setQueryData<GlobalGrant[]>(sitePermissionsQueryKey, (before) =>
+        before?.map((each) => (each.permission === saved.permission ? saved : each)),
+      );
       return queryClient.invalidateQueries({ queryKey: accessQueryKey });
     },
   });

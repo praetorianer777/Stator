@@ -76,12 +76,12 @@ func (s *Server) handleRevokeAPIToken(w http.ResponseWriter, r *http.Request) {
 	respondNoContent(w)
 }
 
-func (s *Server) handleListOrgAPITokens(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleListSiteAPITokens(w http.ResponseWriter, r *http.Request) {
 	if s.Accounts == nil {
 		respondError(w, r, errSignInOff)
 		return
 	}
-	tokens, err := s.Accounts.ListOrgAPITokens(r.Context())
+	tokens, err := s.Accounts.ListSiteAPITokens(r.Context())
 	if err != nil {
 		respondError(w, r, err)
 		return
@@ -89,7 +89,7 @@ func (s *Server) handleListOrgAPITokens(w http.ResponseWriter, r *http.Request) 
 	respondJSON(w, r, http.StatusOK, map[string]any{"tokens": tokens})
 }
 
-func (s *Server) handleRevokeOrgAPIToken(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleRevokeSiteAPIToken(w http.ResponseWriter, r *http.Request) {
 	if s.Accounts == nil {
 		respondError(w, r, errSignInOff)
 		return
@@ -100,7 +100,7 @@ func (s *Server) handleRevokeOrgAPIToken(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	p := PrincipalFrom(r.Context())
-	lsn, err := s.Accounts.RevokeOrgAPIToken(r.Context(), p.UserID, id, clientIP(r))
+	lsn, err := s.Accounts.RevokeSiteAPIToken(r.Context(), p.UserID, id, clientIP(r))
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)

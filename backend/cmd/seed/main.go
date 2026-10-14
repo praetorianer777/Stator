@@ -54,11 +54,11 @@ func run() error {
 	}
 	defer cluster.Close()
 
-	res, err := seed.Ensure(ctx, cluster, boot.OrgName)
+	res, err := seed.Ensure(ctx, cluster, boot.SiteName)
 	if err != nil {
 		return err
 	}
-	log.Info("seed done", "created", res.OrgCreated)
+	log.Info("seed done", "created", res.SiteCreated)
 
 	accounts := auth.NewService(cluster, auth.DefaultPasswordParams(), cfg.Auth.SessionTTL)
 	// Somebody has to be able to get in before any identity provider is set

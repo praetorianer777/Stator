@@ -73,9 +73,6 @@
       "name": "notifications"
     },
     {
-      "name": "organization"
-    },
-    {
       "name": "pages"
     },
     {
@@ -122,6 +119,9 @@
     },
     {
       "name": "tokens"
+    },
+    {
+      "name": "transfer"
     },
     {
       "name": "trash"
@@ -1362,7 +1362,7 @@
         }
       }
     },
-    "/armature/webhook/{orgSlug}": {
+    "/armature/webhook/{siteSlug}": {
       "post": {
         "operationId": "armatureWebhookWithSlug",
         "summary": "The address POST /armature/webhook had while it named the organization, kept for receivers set up with it; a slug that is not the organization's is refused as a bad signature.",
@@ -1371,7 +1371,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -10729,7 +10729,7 @@
         }
       }
     },
-    "/public/{orgSlug}": {
+    "/public/{siteSlug}": {
       "get": {
         "operationId": "publicSiteWithSlug",
         "summary": "The address GET /public had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -10738,7 +10738,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -10774,7 +10774,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/attachments/{attachmentID}": {
+    "/public/{siteSlug}/attachments/{attachmentID}": {
       "get": {
         "operationId": "publicAttachmentWithSlug",
         "summary": "The address GET /public/attachments/{attachmentID} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -10783,7 +10783,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -10828,7 +10828,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/links/{token}": {
+    "/public/{siteSlug}/links/{token}": {
       "get": {
         "operationId": "linkedPageWithSlug",
         "summary": "The address GET /public/links/{token} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -10837,7 +10837,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -10881,7 +10881,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/links/{token}/attachments/{attachmentID}": {
+    "/public/{siteSlug}/links/{token}/attachments/{attachmentID}": {
       "get": {
         "operationId": "linkedAttachmentWithSlug",
         "summary": "The address GET /public/links/{token}/attachments/{attachmentID} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -10890,7 +10890,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -10943,7 +10943,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/links/{token}/docx": {
+    "/public/{siteSlug}/links/{token}/docx": {
       "get": {
         "operationId": "linkedPageWordWithSlug",
         "summary": "The address GET /public/links/{token}/docx had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -10952,7 +10952,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -10996,7 +10996,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/links/{token}/logo": {
+    "/public/{siteSlug}/links/{token}/logo": {
       "get": {
         "operationId": "linkedLogoWithSlug",
         "summary": "The address GET /public/links/{token}/logo had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -11005,7 +11005,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -11049,7 +11049,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/links/{token}/pdf": {
+    "/public/{siteSlug}/links/{token}/pdf": {
       "get": {
         "operationId": "linkedPagePDFWithSlug",
         "summary": "The address GET /public/links/{token}/pdf had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -11058,7 +11058,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -11102,7 +11102,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/logo": {
+    "/public/{siteSlug}/logo": {
       "get": {
         "operationId": "publicLogoWithSlug",
         "summary": "The address GET /public/logo had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -11111,7 +11111,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -11147,7 +11147,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/pages/{pageID}": {
+    "/public/{siteSlug}/pages/{pageID}": {
       "get": {
         "operationId": "publicPageWithSlug",
         "summary": "The address GET /public/pages/{pageID} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -11156,7 +11156,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -11201,7 +11201,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/pages/{pageID}/docx": {
+    "/public/{siteSlug}/pages/{pageID}/docx": {
       "get": {
         "operationId": "publicPageWordWithSlug",
         "summary": "The address GET /public/pages/{pageID}/docx had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -11210,7 +11210,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -11255,7 +11255,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/pages/{pageID}/pdf": {
+    "/public/{siteSlug}/pages/{pageID}/pdf": {
       "get": {
         "operationId": "publicPagePDFWithSlug",
         "summary": "The address GET /public/pages/{pageID}/pdf had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -11264,7 +11264,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -11309,7 +11309,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/search": {
+    "/public/{siteSlug}/search": {
       "get": {
         "operationId": "publicSearchWithSlug",
         "summary": "The address GET /public/search had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -11318,7 +11318,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -11354,7 +11354,7 @@
         "deprecated": true
       }
     },
-    "/public/{orgSlug}/spaces/{spaceKey}": {
+    "/public/{siteSlug}/spaces/{spaceKey}": {
       "get": {
         "operationId": "publicSpaceWithSlug",
         "summary": "The address GET /public/spaces/{spaceKey} had while it named the organization: a permanent redirect there when the slug is the organization's, else not found.",
@@ -11363,7 +11363,7 @@
         ],
         "parameters": [
           {
-            "name": "orgSlug",
+            "name": "siteSlug",
             "in": "path",
             "required": true,
             "schema": {
@@ -12070,10 +12070,10 @@
     },
     "/site/exports": {
       "get": {
-        "operationId": "listOrgExports",
+        "operationId": "listSiteExports",
         "summary": "The organization's latest exports, newest first. For administrators.",
         "tags": [
-          "organization"
+          "transfer"
         ],
         "responses": {
           "200": {
@@ -12086,7 +12086,7 @@
                     "exports": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/OrgExport"
+                        "$ref": "#/components/schemas/SiteExport"
                       }
                     }
                   },
@@ -12110,10 +12110,10 @@
         }
       },
       "post": {
-        "operationId": "createOrgExport",
+        "operationId": "createSiteExport",
         "summary": "Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /site/exports follows. For administrators.",
         "tags": [
-          "organization"
+          "transfer"
         ],
         "responses": {
           "202": {
@@ -12124,7 +12124,7 @@
                   "type": "object",
                   "properties": {
                     "export": {
-                      "$ref": "#/components/schemas/OrgExport"
+                      "$ref": "#/components/schemas/SiteExport"
                     }
                   },
                   "required": [
@@ -12149,10 +12149,10 @@
     },
     "/site/exports/{exportID}/file": {
       "get": {
-        "operationId": "downloadOrgExport",
+        "operationId": "downloadSiteExport",
         "summary": "The archive an export of the organization made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after. For administrators.",
         "tags": [
-          "organization"
+          "transfer"
         ],
         "parameters": [
           {
@@ -12298,10 +12298,10 @@
     },
     "/site/imports": {
       "get": {
-        "operationId": "listOrgImports",
+        "operationId": "listSiteImports",
         "summary": "The organization's latest imports, newest first. For administrators.",
         "tags": [
-          "organization"
+          "transfer"
         ],
         "responses": {
           "200": {
@@ -12314,7 +12314,7 @@
                     "imports": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/OrgImport"
+                        "$ref": "#/components/schemas/SiteImport"
                       }
                     }
                   },
@@ -12338,10 +12338,10 @@
         }
       },
       "post": {
-        "operationId": "createOrgImport",
+        "operationId": "createSiteImport",
         "summary": "Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /site/imports/{importID} follows to its report. For administrators.",
         "tags": [
-          "organization"
+          "transfer"
         ],
         "requestBody": {
           "required": true,
@@ -12371,7 +12371,7 @@
                   "type": "object",
                   "properties": {
                     "import": {
-                      "$ref": "#/components/schemas/OrgImport"
+                      "$ref": "#/components/schemas/SiteImport"
                     }
                   },
                   "required": [
@@ -12426,10 +12426,10 @@
     },
     "/site/imports/{importID}": {
       "get": {
-        "operationId": "getOrgImport",
+        "operationId": "getSiteImport",
         "summary": "One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators.",
         "tags": [
-          "organization"
+          "transfer"
         ],
         "parameters": [
           {
@@ -12451,7 +12451,7 @@
                   "type": "object",
                   "properties": {
                     "import": {
-                      "$ref": "#/components/schemas/OrgImport"
+                      "$ref": "#/components/schemas/SiteImport"
                     }
                   },
                   "required": [
@@ -12668,7 +12668,7 @@
     },
     "/site/tokens": {
       "get": {
-        "operationId": "listOrgAPITokens",
+        "operationId": "listSiteAPITokens",
         "summary": "Every personal access token in the organization, with whose it is. For administrators.",
         "tags": [
           "access"
@@ -12684,7 +12684,7 @@
                     "tokens": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/OrgAPIToken"
+                        "$ref": "#/components/schemas/SiteAPIToken"
                       }
                     }
                   },
@@ -12710,7 +12710,7 @@
     },
     "/site/tokens/{tokenID}": {
       "delete": {
-        "operationId": "revokeOrgAPIToken",
+        "operationId": "revokeSiteAPIToken",
         "summary": "Revoke anybody's token in the organization. For administrators.",
         "tags": [
           "access"
@@ -21835,369 +21835,6 @@
           "responses"
         ]
       },
-      "OrgAPIToken": {
-        "type": "object",
-        "properties": {
-          "allSpaces": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "expiresAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "lastUsedAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "name": {
-            "type": "string"
-          },
-          "owner": {
-            "$ref": "#/components/schemas/User"
-          },
-          "scopes": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "read"
-              ]
-            }
-          },
-          "secret": {
-            "type": "string"
-          },
-          "spaces": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "scopes",
-          "spaces",
-          "allSpaces",
-          "lastUsedAt",
-          "expiresAt",
-          "createdAt",
-          "owner"
-        ]
-      },
-      "OrgExport": {
-        "type": "object",
-        "properties": {
-          "expiresAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "failure": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "forbidden",
-                  "too_large",
-                  "failed"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "fileName": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "finishedAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "message": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "mine": {
-            "type": "boolean"
-          },
-          "progress": {
-            "$ref": "#/components/schemas/SpaceTransferProgress"
-          },
-          "requestedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "requestedBy": {
-            "type": "string"
-          },
-          "size": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "startedAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "state": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "running",
-              "done",
-              "failed",
-              "expired"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "state",
-          "progress",
-          "requestedBy",
-          "mine",
-          "requestedAt",
-          "startedAt",
-          "finishedAt",
-          "fileName",
-          "size",
-          "expiresAt",
-          "failure",
-          "message"
-        ]
-      },
-      "OrgImport": {
-        "type": "object",
-        "properties": {
-          "failure": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "forbidden",
-                  "not_empty",
-                  "invalid",
-                  "too_large",
-                  "failed"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "finishedAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "message": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "progress": {
-            "$ref": "#/components/schemas/SpaceTransferProgress"
-          },
-          "report": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/OrgImportReport"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "requestedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "requestedBy": {
-            "type": "string"
-          },
-          "startedAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "state": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "running",
-              "done",
-              "failed"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "state",
-          "progress",
-          "requestedBy",
-          "report",
-          "failure",
-          "message",
-          "requestedAt",
-          "startedAt",
-          "finishedAt"
-        ]
-      },
-      "OrgImportReport": {
-        "type": "object",
-        "properties": {
-          "auditEntries": {
-            "type": "integer"
-          },
-          "comments": {
-            "type": "integer"
-          },
-          "drafts": {
-            "type": "integer"
-          },
-          "dropped": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DroppedEntry"
-            }
-          },
-          "droppedReactions": {
-            "type": "integer"
-          },
-          "files": {
-            "type": "integer"
-          },
-          "groups": {
-            "type": "integer"
-          },
-          "kept": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "matched": {
-            "type": "integer"
-          },
-          "notCarried": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OrgOmission"
-            }
-          },
-          "pages": {
-            "type": "integer"
-          },
-          "people": {
-            "type": "integer"
-          },
-          "reattributed": {
-            "type": "integer"
-          },
-          "spaces": {
-            "type": "integer"
-          },
-          "templates": {
-            "type": "integer"
-          },
-          "themes": {
-            "type": "integer"
-          },
-          "versions": {
-            "type": "integer"
-          },
-          "webhooks": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "spaces",
-          "pages",
-          "versions",
-          "files",
-          "comments",
-          "drafts",
-          "templates",
-          "themes",
-          "webhooks",
-          "people",
-          "matched",
-          "groups",
-          "auditEntries",
-          "kept",
-          "dropped",
-          "reattributed",
-          "droppedReactions",
-          "notCarried"
-        ]
-      },
-      "OrgOmission": {
-        "type": "object",
-        "properties": {
-          "count": {
-            "type": "integer"
-          },
-          "key": {
-            "type": "string"
-          },
-          "what": {
-            "type": "string"
-          },
-          "why": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "key",
-          "what",
-          "why"
-        ]
-      },
       "OutlineEntry": {
         "type": "object",
         "properties": {
@@ -24929,6 +24566,369 @@
           "spaceKey",
           "home",
           "archived"
+        ]
+      },
+      "SiteAPIToken": {
+        "type": "object",
+        "properties": {
+          "allSpaces": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/User"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "read"
+              ]
+            }
+          },
+          "secret": {
+            "type": "string"
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "spaces",
+          "allSpaces",
+          "lastUsedAt",
+          "expiresAt",
+          "createdAt",
+          "owner"
+        ]
+      },
+      "SiteExport": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "too_large",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fileName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/SpaceTransferProgress"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedBy": {
+            "type": "string"
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "expired"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "progress",
+          "requestedBy",
+          "mine",
+          "requestedAt",
+          "startedAt",
+          "finishedAt",
+          "fileName",
+          "size",
+          "expiresAt",
+          "failure",
+          "message"
+        ]
+      },
+      "SiteImport": {
+        "type": "object",
+        "properties": {
+          "failure": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "not_empty",
+                  "invalid",
+                  "too_large",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "progress": {
+            "$ref": "#/components/schemas/SpaceTransferProgress"
+          },
+          "report": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SiteImportReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedBy": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "progress",
+          "requestedBy",
+          "report",
+          "failure",
+          "message",
+          "requestedAt",
+          "startedAt",
+          "finishedAt"
+        ]
+      },
+      "SiteImportReport": {
+        "type": "object",
+        "properties": {
+          "auditEntries": {
+            "type": "integer"
+          },
+          "comments": {
+            "type": "integer"
+          },
+          "drafts": {
+            "type": "integer"
+          },
+          "dropped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DroppedEntry"
+            }
+          },
+          "droppedReactions": {
+            "type": "integer"
+          },
+          "files": {
+            "type": "integer"
+          },
+          "groups": {
+            "type": "integer"
+          },
+          "kept": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "matched": {
+            "type": "integer"
+          },
+          "notCarried": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SiteOmission"
+            }
+          },
+          "pages": {
+            "type": "integer"
+          },
+          "people": {
+            "type": "integer"
+          },
+          "reattributed": {
+            "type": "integer"
+          },
+          "spaces": {
+            "type": "integer"
+          },
+          "templates": {
+            "type": "integer"
+          },
+          "themes": {
+            "type": "integer"
+          },
+          "versions": {
+            "type": "integer"
+          },
+          "webhooks": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spaces",
+          "pages",
+          "versions",
+          "files",
+          "comments",
+          "drafts",
+          "templates",
+          "themes",
+          "webhooks",
+          "people",
+          "matched",
+          "groups",
+          "auditEntries",
+          "kept",
+          "dropped",
+          "reattributed",
+          "droppedReactions",
+          "notCarried"
+        ]
+      },
+      "SiteOmission": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "what": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "what",
+          "why"
         ]
       },
       "Space": {

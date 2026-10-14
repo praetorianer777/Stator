@@ -2,7 +2,7 @@ import { createRoute } from "@tanstack/react-router";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { AuditLog } from "@/features/audit/AuditLog";
-import { useCanAdministerOrg } from "@/features/permissions/access";
+import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
 
@@ -11,7 +11,7 @@ export const auditRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/audit",
   component: function AuditRoute() {
-    if (!useCanAdministerOrg()) {
+    if (!useCanAdministerSite()) {
       return (
         <div className="mx-auto max-w-3xl" data-audit-refused>
           <PageHeader crumb={t.settings.title} title={t.audit.title} />

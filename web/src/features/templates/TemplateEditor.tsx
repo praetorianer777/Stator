@@ -145,7 +145,7 @@ function TemplateForm({ template, spaceKey }: { template?: Template; spaceKey?: 
             render: (label) => <Link {...back}>{label}</Link>,
           },
         ]}
-        title={template ? t.templates.editTitle(template.name) : spaceKey ? t.templates.newSpaceTitle(spaceKey) : t.templates.newOrgTitle}
+        title={template ? t.templates.editTitle(template.name) : spaceKey ? t.templates.newSpaceTitle(spaceKey) : t.templates.newSiteTitle}
         actions={
           <>
             <Link

@@ -91,7 +91,7 @@ export const en = {
   account: {
     hub: "Hub page",
     brand: "Export brand",
-    orgTransfer: "Export and import",
+    siteTransfer: "Export and import",
     exampleSpace: "Example space",
     menu: "Your account",
     guest: "Guest",
@@ -590,7 +590,7 @@ export const en = {
       notConnected: "Connect your Armature account under Profile, Armature to see your Armature theme here.",
     },
     useBuiltIn: "Use the built-in theme",
-    useOrgDefault: "Use the organization's default",
+    useSiteDefault: "Use the organization's default",
     show: "Show",
     viewMine: "Mine",
     viewShared: "Shared with me",
@@ -849,7 +849,7 @@ export const en = {
       },
     },
   },
-  orgTransfer: {
+  siteTransfer: {
     title: "Export and import",
     notAdmin: "Only an administrator of the organization exports or imports all of it. Ask one of them to do it.",
     exportTitle: "Export the organization",
@@ -862,7 +862,7 @@ export const en = {
     importTitle: "Import an organization",
     importIntro:
       "Fill this organization from the archive of a whole organization, made by another Stator. Its spaces, people, groups and settings come in; people are found by their email address, and everybody signs in again here. It works only while this organization has no spaces.",
-    importOrg: "Import organization",
+    importSite: "Import organization",
     imported: "The organization is imported. Everybody signs in again here.",
     importedBy: (name: string, when: string) => `Imported by ${name} on ${when}`,
     notCarriedTitle: "What does not come across",
@@ -1913,7 +1913,7 @@ export const en = {
     spaceTitle: "Reading without signing in",
     spaceIntro: "Anybody may read this space's published pages without signing in. Restricted pages, drafts, comments and the names of people stay private.",
     spaceToggle: "Let anybody read this space without signing in",
-    orgOff: "This takes effect once an administrator of the organization lets people read without signing in.",
+    siteOff: "This takes effect once an administrator of the organization lets people read without signing in.",
     personal: "A personal space is never public. Move the pages to a team space to publish them.",
     spaceAddress: (url: string) => `Public address: ${url}`,
   },
@@ -2512,8 +2512,8 @@ export const en = {
     discard: "Discard changes",
     saved: "Saved.",
     unsaved: "You have changes that are not saved.",
-    orgTitle: "Permissions",
-    orgIntro:
+    siteTitle: "Permissions",
+    siteIntro:
       "What people may do across the whole organization. What they may do in a space is set in that space's settings, and single pages can be narrowed further.",
     globalNames: { use: "Use Stator", createSpace: "Create spaces", administer: "Administer the organization" },
     globalHints: {
@@ -2524,7 +2524,7 @@ export const en = {
     globalEmpty: "Nobody but the administrators.",
     fixedNote: "This follows the roles of the organization's members. Change a role under Single sign-on.",
     fixedLink: "Open Single sign-on",
-    notOrgAdmin: "Only an administrator of the organization can see and change its permissions.",
+    notSiteAdmin: "Only an administrator of the organization can see and change its permissions.",
     spaceIntro:
       "Who may do what in this space. Every permission includes viewing, and administering includes all of them. Administrators of the organization may do everything in every space.",
     spaceGrid: "Permissions in this space",
@@ -3087,11 +3087,11 @@ export const en = {
   },
   templates: {
     title: "Templates",
-    orgList: "Templates for every space",
+    siteList: "Templates for every space",
     spaceList: "This space's templates",
-    orgIntro: "Every space offers these when somebody makes a page, after its own templates and before the built-in ones.",
+    siteIntro: "Every space offers these when somebody makes a page, after its own templates and before the built-in ones.",
     spaceIntro: "Pages made in this space can start from these, beside the organization's templates and the built-in ones.",
-    orgNotAdmin: "Only an administrator of the organization changes these templates. Ask one of them, or make the template in a space you administer.",
+    siteNotAdmin: "Only an administrator of the organization changes these templates. Ask one of them, or make the template in a space you administer.",
     spaceNotAdmin: "Only an administrator of this space changes its templates. Ask one of them.",
     empty: "No templates yet",
     emptyBody: "Make one, with variables for what changes from page to page.",
@@ -3108,7 +3108,7 @@ export const en = {
     cannotEdit: "Only the administrators who keep this template can change it. Ask one of them.",
     spaceCrumb: (key: string) => `${key} templates`,
     editTitle: (name: string) => `Edit ${name}`,
-    newOrgTitle: "New template for every space",
+    newSiteTitle: "New template for every space",
     newSpaceTitle: (key: string) => `New template for ${key}`,
     cancel: "Cancel",
     save: "Save template",

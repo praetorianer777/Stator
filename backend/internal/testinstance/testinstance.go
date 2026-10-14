@@ -265,7 +265,7 @@ func (s *Service) AgeExample(ctx context.Context, spaceKey, drop string) error {
 
 func (s *Service) exists(ctx context.Context, tx db.DBTX) error {
 	_, err := instance.Find(ctx, tx)
-	if errors.Is(err, instance.ErrNone) {
+	if errors.Is(err, instance.ErrNotBootstrapped) {
 		return ErrNoOrganization
 	}
 	return err

@@ -6,7 +6,7 @@ import { Icon } from "@/components/icons";
 import { AUDIT_PATH, STALE_PATH, TEMPLATES_PATH, WEBHOOKS_PATH } from "@/config";
 import { WaitingReviewsButton } from "@/features/reviews/WaitingReviews";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
-import { useCanAdministerOrg } from "@/features/permissions/access";
+import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { DRAWER_ID } from "./state";
 
@@ -44,7 +44,7 @@ export function TopBar({
   const logout = useLogout();
   const name = me?.user.name ?? t.account.guest;
   const admin = administers(me?.organization?.role);
-  const orgAdmin = useCanAdministerOrg();
+  const orgAdmin = useCanAdministerSite();
   const waiting = useJoinRequests(admin).data?.length ?? 0;
   const items: MenuItem[] = [
     { label: t.account.profile, icon: <Icon.User />, onSelect: () => navigate({ to: "/settings/profile" }), attrs: { "data-action": "profile" } },
@@ -84,25 +84,25 @@ export function TopBar({
       label: t.account.permissions,
       icon: <Icon.Lock />,
       onSelect: () => navigate({ to: "/settings/permissions" }),
-      attrs: { "data-action": "org-permissions" },
+      attrs: { "data-action": "site-permissions" },
     });
     items.push({
       label: t.account.hub,
       icon: <Icon.Flag />,
       onSelect: () => navigate({ to: "/settings/hub" }),
-      attrs: { "data-action": "org-hub" },
+      attrs: { "data-action": "site-hub" },
     });
     items.push({
       label: t.account.brand,
       icon: <Icon.Gallery />,
       onSelect: () => navigate({ to: "/settings/brand" }),
-      attrs: { "data-action": "org-brand" },
+      attrs: { "data-action": "site-brand" },
     });
     items.push({
-      label: t.account.orgTransfer,
+      label: t.account.siteTransfer,
       icon: <Icon.Download />,
       onSelect: () => navigate({ to: "/settings/transfer" }),
-      attrs: { "data-action": "org-transfer" },
+      attrs: { "data-action": "site-transfer" },
     });
     items.push({
       label: t.account.exampleSpace,

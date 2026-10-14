@@ -1,23 +1,23 @@
 import { createRoute } from "@tanstack/react-router";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { OrgPermissions } from "@/features/permissions/OrgPermissions";
-import { useCanAdministerOrg } from "@/features/permissions/access";
+import { SitePermissions } from "@/features/permissions/SitePermissions";
+import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
 
-export const orgPermissionsRoute = createRoute({
+export const sitePermissionsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/permissions",
-  component: function OrgPermissionsRoute() {
-    if (!useCanAdministerOrg()) {
+  component: function SitePermissionsRoute() {
+    if (!useCanAdministerSite()) {
       return (
         <div className="mx-auto max-w-3xl">
-          <PageHeader crumb={t.settings.title} title={t.permissions.orgTitle} />
-          <EmptyState icon={<Icon.Lock />} title={t.permissions.orgTitle} description={t.permissions.notOrgAdmin} />
+          <PageHeader crumb={t.settings.title} title={t.permissions.siteTitle} />
+          <EmptyState icon={<Icon.Lock />} title={t.permissions.siteTitle} description={t.permissions.notSiteAdmin} />
         </div>
       );
     }
-    return <OrgPermissions />;
+    return <SitePermissions />;
   },
 });

@@ -2,7 +2,7 @@ import { createRoute } from "@tanstack/react-router";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { WEBHOOKS_PATH } from "@/config";
-import { useCanAdministerOrg } from "@/features/permissions/access";
+import { useCanAdministerSite } from "@/features/permissions/access";
 import { Webhooks } from "@/features/webhooks/Webhooks";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
@@ -12,7 +12,7 @@ export const webhooksRoute = createRoute({
   getParentRoute: () => appRoute,
   path: WEBHOOKS_PATH,
   component: function WebhooksRoute() {
-    if (!useCanAdministerOrg()) {
+    if (!useCanAdministerSite()) {
       return (
         <div className="mx-auto max-w-3xl" data-webhooks-refused>
           <PageHeader crumb={t.settings.title} title={t.webhooks.title} />

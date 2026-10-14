@@ -265,7 +265,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/armature/webhook/{orgSlug}": {
+    "/armature/webhook/{siteSlug}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2275,7 +2275,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}": {
+    "/public/{siteSlug}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2295,7 +2295,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/attachments/{attachmentID}": {
+    "/public/{siteSlug}/attachments/{attachmentID}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2315,7 +2315,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/links/{token}": {
+    "/public/{siteSlug}/links/{token}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2335,7 +2335,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/links/{token}/attachments/{attachmentID}": {
+    "/public/{siteSlug}/links/{token}/attachments/{attachmentID}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2355,7 +2355,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/links/{token}/docx": {
+    "/public/{siteSlug}/links/{token}/docx": {
         parameters: {
             query?: never;
             header?: never;
@@ -2375,7 +2375,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/links/{token}/logo": {
+    "/public/{siteSlug}/links/{token}/logo": {
         parameters: {
             query?: never;
             header?: never;
@@ -2395,7 +2395,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/links/{token}/pdf": {
+    "/public/{siteSlug}/links/{token}/pdf": {
         parameters: {
             query?: never;
             header?: never;
@@ -2415,7 +2415,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/logo": {
+    "/public/{siteSlug}/logo": {
         parameters: {
             query?: never;
             header?: never;
@@ -2435,7 +2435,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/pages/{pageID}": {
+    "/public/{siteSlug}/pages/{pageID}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2455,7 +2455,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/pages/{pageID}/docx": {
+    "/public/{siteSlug}/pages/{pageID}/docx": {
         parameters: {
             query?: never;
             header?: never;
@@ -2475,7 +2475,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/pages/{pageID}/pdf": {
+    "/public/{siteSlug}/pages/{pageID}/pdf": {
         parameters: {
             query?: never;
             header?: never;
@@ -2495,7 +2495,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/search": {
+    "/public/{siteSlug}/search": {
         parameters: {
             query?: never;
             header?: never;
@@ -2515,7 +2515,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/public/{orgSlug}/spaces/{spaceKey}": {
+    "/public/{siteSlug}/spaces/{spaceKey}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2699,10 +2699,10 @@ export interface paths {
             cookie?: never;
         };
         /** The organization's latest exports, newest first. For administrators. */
-        get: operations["listOrgExports"];
+        get: operations["listSiteExports"];
         put?: never;
         /** Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /site/exports follows. For administrators. */
-        post: operations["createOrgExport"];
+        post: operations["createSiteExport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2717,7 +2717,7 @@ export interface paths {
             cookie?: never;
         };
         /** The archive an export of the organization made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after. For administrators. */
-        get: operations["downloadOrgExport"];
+        get: operations["downloadSiteExport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2752,10 +2752,10 @@ export interface paths {
             cookie?: never;
         };
         /** The organization's latest imports, newest first. For administrators. */
-        get: operations["listOrgImports"];
+        get: operations["listSiteImports"];
         put?: never;
         /** Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /site/imports/{importID} follows to its report. For administrators. */
-        post: operations["createOrgImport"];
+        post: operations["createSiteImport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2770,7 +2770,7 @@ export interface paths {
             cookie?: never;
         };
         /** One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators. */
-        get: operations["getOrgImport"];
+        get: operations["getSiteImport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2839,7 +2839,7 @@ export interface paths {
             cookie?: never;
         };
         /** Every personal access token in the organization, with whose it is. For administrators. */
-        get: operations["listOrgAPITokens"];
+        get: operations["listSiteAPITokens"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2859,7 +2859,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** Revoke anybody's token in the organization. For administrators. */
-        delete: operations["revokeOrgAPIToken"];
+        delete: operations["revokeSiteAPIToken"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4984,86 +4984,6 @@ export interface components {
             summary?: string;
             tags?: string[];
         };
-        OrgAPIToken: {
-            allSpaces: boolean;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            expiresAt: string | null;
-            /** Format: uuid */
-            id: string;
-            /** Format: date-time */
-            lastUsedAt: string | null;
-            name: string;
-            owner: components["schemas"]["User"];
-            scopes: "read"[];
-            secret?: string;
-            spaces: string[];
-        };
-        OrgExport: {
-            /** Format: date-time */
-            expiresAt: string | null;
-            failure: ("forbidden" | "too_large" | "failed") | null;
-            fileName: string | null;
-            /** Format: date-time */
-            finishedAt: string | null;
-            /** Format: uuid */
-            id: string;
-            message: string | null;
-            mine: boolean;
-            progress: components["schemas"]["SpaceTransferProgress"];
-            /** Format: date-time */
-            requestedAt: string;
-            requestedBy: string;
-            size: number | null;
-            /** Format: date-time */
-            startedAt: string | null;
-            /** @enum {string} */
-            state: "queued" | "running" | "done" | "failed" | "expired";
-        };
-        OrgImport: {
-            failure: ("forbidden" | "not_empty" | "invalid" | "too_large" | "failed") | null;
-            /** Format: date-time */
-            finishedAt: string | null;
-            /** Format: uuid */
-            id: string;
-            message: string | null;
-            progress: components["schemas"]["SpaceTransferProgress"];
-            report: components["schemas"]["OrgImportReport"] | null;
-            /** Format: date-time */
-            requestedAt: string;
-            requestedBy: string;
-            /** Format: date-time */
-            startedAt: string | null;
-            /** @enum {string} */
-            state: "queued" | "running" | "done" | "failed";
-        };
-        OrgImportReport: {
-            auditEntries: number;
-            comments: number;
-            drafts: number;
-            dropped: components["schemas"]["DroppedEntry"][];
-            droppedReactions: number;
-            files: number;
-            groups: number;
-            kept: string[];
-            matched: number;
-            notCarried: components["schemas"]["OrgOmission"][];
-            pages: number;
-            people: number;
-            reattributed: number;
-            spaces: number;
-            templates: number;
-            themes: number;
-            versions: number;
-            webhooks: number;
-        };
-        OrgOmission: {
-            count?: number;
-            key: string;
-            what: string;
-            why: string;
-        };
         OutlineEntry: {
             depth: number;
             /** Format: uuid */
@@ -5782,6 +5702,86 @@ export interface components {
             id: string;
             spaceKey: string;
             title: string;
+        };
+        SiteAPIToken: {
+            allSpaces: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            name: string;
+            owner: components["schemas"]["User"];
+            scopes: "read"[];
+            secret?: string;
+            spaces: string[];
+        };
+        SiteExport: {
+            /** Format: date-time */
+            expiresAt: string | null;
+            failure: ("forbidden" | "too_large" | "failed") | null;
+            fileName: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            message: string | null;
+            mine: boolean;
+            progress: components["schemas"]["SpaceTransferProgress"];
+            /** Format: date-time */
+            requestedAt: string;
+            requestedBy: string;
+            size: number | null;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** @enum {string} */
+            state: "queued" | "running" | "done" | "failed" | "expired";
+        };
+        SiteImport: {
+            failure: ("forbidden" | "not_empty" | "invalid" | "too_large" | "failed") | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            message: string | null;
+            progress: components["schemas"]["SpaceTransferProgress"];
+            report: components["schemas"]["SiteImportReport"] | null;
+            /** Format: date-time */
+            requestedAt: string;
+            requestedBy: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** @enum {string} */
+            state: "queued" | "running" | "done" | "failed";
+        };
+        SiteImportReport: {
+            auditEntries: number;
+            comments: number;
+            drafts: number;
+            dropped: components["schemas"]["DroppedEntry"][];
+            droppedReactions: number;
+            files: number;
+            groups: number;
+            kept: string[];
+            matched: number;
+            notCarried: components["schemas"]["SiteOmission"][];
+            pages: number;
+            people: number;
+            reattributed: number;
+            spaces: number;
+            templates: number;
+            themes: number;
+            versions: number;
+            webhooks: number;
+        };
+        SiteOmission: {
+            count?: number;
+            key: string;
+            what: string;
+            why: string;
         };
         Space: {
             /** Format: date-time */
@@ -7274,7 +7274,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
             };
             cookie?: never;
         };
@@ -13467,7 +13467,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
             };
             cookie?: never;
         };
@@ -13505,7 +13505,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 attachmentID: string;
             };
             cookie?: never;
@@ -13544,7 +13544,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 token: string;
             };
             cookie?: never;
@@ -13583,7 +13583,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 token: string;
                 attachmentID: string;
             };
@@ -13623,7 +13623,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 token: string;
             };
             cookie?: never;
@@ -13662,7 +13662,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 token: string;
             };
             cookie?: never;
@@ -13701,7 +13701,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 token: string;
             };
             cookie?: never;
@@ -13740,7 +13740,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
             };
             cookie?: never;
         };
@@ -13778,7 +13778,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 pageID: string;
             };
             cookie?: never;
@@ -13817,7 +13817,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 pageID: string;
             };
             cookie?: never;
@@ -13856,7 +13856,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 pageID: string;
             };
             cookie?: never;
@@ -13895,7 +13895,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
             };
             cookie?: never;
         };
@@ -13933,7 +13933,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgSlug: string;
+                siteSlug: string;
                 spaceKey: string;
             };
             cookie?: never;
@@ -14392,7 +14392,7 @@ export interface operations {
             };
         };
     };
-    listOrgExports: {
+    listSiteExports: {
         parameters: {
             query?: never;
             header?: never;
@@ -14408,7 +14408,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        exports: components["schemas"]["OrgExport"][];
+                        exports: components["schemas"]["SiteExport"][];
                     };
                 };
             };
@@ -14423,7 +14423,7 @@ export interface operations {
             };
         };
     };
-    createOrgExport: {
+    createSiteExport: {
         parameters: {
             query?: never;
             header?: never;
@@ -14439,7 +14439,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        export: components["schemas"]["OrgExport"];
+                        export: components["schemas"]["SiteExport"];
                     };
                 };
             };
@@ -14454,7 +14454,7 @@ export interface operations {
             };
         };
     };
-    downloadOrgExport: {
+    downloadSiteExport: {
         parameters: {
             query?: never;
             header?: never;
@@ -14569,7 +14569,7 @@ export interface operations {
             };
         };
     };
-    listOrgImports: {
+    listSiteImports: {
         parameters: {
             query?: never;
             header?: never;
@@ -14585,7 +14585,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        imports: components["schemas"]["OrgImport"][];
+                        imports: components["schemas"]["SiteImport"][];
                     };
                 };
             };
@@ -14600,7 +14600,7 @@ export interface operations {
             };
         };
     };
-    createOrgImport: {
+    createSiteImport: {
         parameters: {
             query?: never;
             header?: never;
@@ -14623,7 +14623,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        import: components["schemas"]["OrgImport"];
+                        import: components["schemas"]["SiteImport"];
                     };
                 };
             };
@@ -14665,7 +14665,7 @@ export interface operations {
             };
         };
     };
-    getOrgImport: {
+    getSiteImport: {
         parameters: {
             query?: never;
             header?: never;
@@ -14683,7 +14683,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        import: components["schemas"]["OrgImport"];
+                        import: components["schemas"]["SiteImport"];
                     };
                 };
             };
@@ -14832,7 +14832,7 @@ export interface operations {
             };
         };
     };
-    listOrgAPITokens: {
+    listSiteAPITokens: {
         parameters: {
             query?: never;
             header?: never;
@@ -14848,7 +14848,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        tokens: components["schemas"]["OrgAPIToken"][];
+                        tokens: components["schemas"]["SiteAPIToken"][];
                     };
                 };
             };
@@ -14863,7 +14863,7 @@ export interface operations {
             };
         };
     };
-    revokeOrgAPIToken: {
+    revokeSiteAPIToken: {
         parameters: {
             query?: never;
             header?: never;

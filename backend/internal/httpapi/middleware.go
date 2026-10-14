@@ -241,9 +241,9 @@ func requireAuth(next http.Handler) http.Handler {
 	})
 }
 
-// requireOrg rejects a caller who is no member, for whom the database would
+// requireMember rejects a caller who is no member, for whom the database would
 // act as nobody.
-func requireOrg(next http.Handler) http.Handler {
+func requireMember(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := PrincipalFrom(r.Context())
 		if p == nil {
@@ -261,7 +261,7 @@ func requireOrg(next http.Handler) http.Handler {
 // requireAdmin lets through only an owner or administrator of the organization
 // the caller is acting in.
 func requireAdmin(next http.Handler) http.Handler {
-	return requireOrg(requireWholeInstance(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return requireMember(requireWholeInstance(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !PrincipalFrom(r.Context()).CanAdminister() {
 			respondError(w, r, ErrForbidden("Only an administrator can do that. Ask one of them."))
 			return

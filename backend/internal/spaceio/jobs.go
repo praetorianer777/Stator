@@ -281,13 +281,13 @@ type Jobs struct {
 	db    *db.Cluster
 	store objectstore.Store
 	// MaxImportBytes is what an uploaded archive may weigh, and
-	// MaxOrgImportBytes an organization's.
-	MaxImportBytes    int64
-	MaxOrgImportBytes int64
+	// MaxSiteImportBytes an organization's.
+	MaxImportBytes     int64
+	MaxSiteImportBytes int64
 }
 
 func NewJobs(cluster *db.Cluster, store objectstore.Store) *Jobs {
-	return &Jobs{db: cluster, store: store, MaxImportBytes: DefaultMaxImportBytes, MaxOrgImportBytes: DefaultMaxOrgImportBytes}
+	return &Jobs{db: cluster, store: store, MaxImportBytes: DefaultMaxImportBytes, MaxSiteImportBytes: DefaultMaxSiteImportBytes}
 }
 
 // QueueExport asks the worker to export a space the caller administers, and

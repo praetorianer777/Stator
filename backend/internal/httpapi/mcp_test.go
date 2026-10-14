@@ -19,32 +19,32 @@ import (
 // Why an operation is not a tool. docs/decisions.md and docs/mcp.md say the
 // same in prose.
 const (
-	whyEdge        = "a probe, the document itself (a resource instead), the endpoint itself or a sign-in step"
-	whySelf        = "the caller's own session, settings, tokens, themes or Armature account, changed by a person at the keyboard"
-	whyAdmin       = "administration or who may do what: the provider, members, tokens, permissions, restrictions, spaces themselves and their shortcuts, archiving, webhooks"
-	whyRemoves     = "deletes or takes something away; no tool removes anything, as in Armature"
-	whyBrowser     = "furniture of the browser client: typeahead, badges, pickers, visits, drafts and live saves"
-	whyFiles       = "moves files rather than words; get_page_markdown and replace_page_markdown carry a page's words"
-	whyArmature    = "Armature's own MCP endpoint serves its issues as the person, without Stator in between"
-	whyAttention   = "reaches other people or a page's standing: shares, reactions, watches, stars, owners and verification"
-	whyReorganize  = "moves, copies, restores, publishes or schedules a draft; a person does that in the tree, the trash, the history or the editor"
-	whyThreads     = "an inline thread needs the body with a passage marked, and threads are rewritten or resolved where they are read"
-	whyReaders     = "names the people who read a page, which stays with its editors in the page; get_page_views counts them"
-	whyLive        = "a WebSocket a browser holds open while its person edits, not a call and an answer"
-	whyPublic      = "the reading view for people who are not signed in; an assistant acts for a member, whom get_page and search serve"
-	whyPrint       = "a PDF is a file for a person to keep or hand on, printed by a browser; get_page and get_page_markdown carry the same words to a model"
-	whyTransfer    = "moves a whole space as a file, an administrator's act the worker runs; get_space_outline and get_page_markdown carry a space's words"
-	whyOrgTransfer = "moves a whole organization as a file, an administrator's act the worker runs before Stator moves"
-	whyWord        = "a Word document is a file for a person to edit offline or hand on; get_page and get_page_markdown carry the same words to a model"
-	whyWordImport  = "a Word document is a file a person uploads, and several are imported by the worker; import_markdown carries a model's words into a new page"
-	whyReview      = "a review is a person's judgement of a draft, and confirming a page was read is a person's own word; both are given in the page, beside what they are about"
-	whyLinks       = "opens a page to anybody outside the organization, a decision its editors make in the share dialog; the token is shown once, to a person"
+	whyEdge         = "a probe, the document itself (a resource instead), the endpoint itself or a sign-in step"
+	whySelf         = "the caller's own session, settings, tokens, themes or Armature account, changed by a person at the keyboard"
+	whyAdmin        = "administration or who may do what: the provider, members, tokens, permissions, restrictions, spaces themselves and their shortcuts, archiving, webhooks"
+	whyRemoves      = "deletes or takes something away; no tool removes anything, as in Armature"
+	whyBrowser      = "furniture of the browser client: typeahead, badges, pickers, visits, drafts and live saves"
+	whyFiles        = "moves files rather than words; get_page_markdown and replace_page_markdown carry a page's words"
+	whyArmature     = "Armature's own MCP endpoint serves its issues as the person, without Stator in between"
+	whyAttention    = "reaches other people or a page's standing: shares, reactions, watches, stars, owners and verification"
+	whyReorganize   = "moves, copies, restores, publishes or schedules a draft; a person does that in the tree, the trash, the history or the editor"
+	whyThreads      = "an inline thread needs the body with a passage marked, and threads are rewritten or resolved where they are read"
+	whyReaders      = "names the people who read a page, which stays with its editors in the page; get_page_views counts them"
+	whyLive         = "a WebSocket a browser holds open while its person edits, not a call and an answer"
+	whyPublic       = "the reading view for people who are not signed in; an assistant acts for a member, whom get_page and search serve"
+	whyPrint        = "a PDF is a file for a person to keep or hand on, printed by a browser; get_page and get_page_markdown carry the same words to a model"
+	whyTransfer     = "moves a whole space as a file, an administrator's act the worker runs; get_space_outline and get_page_markdown carry a space's words"
+	whySiteTransfer = "moves a whole organization as a file, an administrator's act the worker runs before Stator moves"
+	whyWord         = "a Word document is a file for a person to edit offline or hand on; get_page and get_page_markdown carry the same words to a model"
+	whyWordImport   = "a Word document is a file a person uploads, and several are imported by the worker; import_markdown carries a model's words into a new page"
+	whyReview       = "a review is a person's judgement of a draft, and confirming a page was read is a person's own word; both are given in the page, beside what they are about"
+	whyLinks        = "opens a page to anybody outside the organization, a decision its editors make in the share dialog; the token is shown once, to a person"
 )
 
 // The old public addresses only send on to the new ones, which are no tools.
 func init() {
 	for _, old := range oldPublicPaths {
-		notTools["GET /public/{orgSlug}"+old.path] = whyPublic
+		notTools["GET /public/{siteSlug}"+old.path] = whyPublic
 	}
 }
 
@@ -58,7 +58,7 @@ var notTools = map[string]string{
 	"GET /auth/oidc/start":                                         whyEdge,
 	"GET /auth/oidc/callback":                                      whyEdge,
 	"POST /armature/webhook":                                       whyEdge,
-	"POST /armature/webhook/{orgSlug}":                             whyEdge,
+	"POST /armature/webhook/{siteSlug}":                            whyEdge,
 	"POST /mcp":                                                    whyEdge,
 	"GET /pages/{pageID}/collab":                                   whyLive,
 	"POST /auth/logout":                                            whySelf,
@@ -166,12 +166,12 @@ var notTools = map[string]string{
 	"POST /space-imports":                                          whyTransfer,
 	"GET /space-imports":                                           whyTransfer,
 	"GET /space-imports/{importID}":                                whyTransfer,
-	"POST /site/exports":                                           whyOrgTransfer,
-	"GET /site/exports":                                            whyOrgTransfer,
-	"GET /site/exports/{exportID}/file":                            whyOrgTransfer,
-	"POST /site/imports":                                           whyOrgTransfer,
-	"GET /site/imports":                                            whyOrgTransfer,
-	"GET /site/imports/{importID}":                                 whyOrgTransfer,
+	"POST /site/exports":                                           whySiteTransfer,
+	"GET /site/exports":                                            whySiteTransfer,
+	"GET /site/exports/{exportID}/file":                            whySiteTransfer,
+	"POST /site/imports":                                           whySiteTransfer,
+	"GET /site/imports":                                            whySiteTransfer,
+	"GET /site/imports/{importID}":                                 whySiteTransfer,
 	"PATCH /spaces/{spaceKey}":                                     whyAdmin,
 	"GET /audit/facets":                                            whyAdmin,
 	"GET /audit/export":                                            whyAdmin,

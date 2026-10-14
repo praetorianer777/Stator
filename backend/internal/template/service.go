@@ -151,7 +151,7 @@ func (k *keeper) may(space *uuid.UUID) bool {
 	if may, ok := k.seen[key]; ok {
 		return may
 	}
-	action := perm.KeepOrgTemplates
+	action := perm.KeepSiteTemplates
 	if space != nil {
 		action = perm.KeepTemplates
 	}
@@ -164,7 +164,7 @@ func (k *keeper) check(space *uuid.UUID) error {
 	if k.may(space) {
 		return nil
 	}
-	action := perm.KeepOrgTemplates
+	action := perm.KeepSiteTemplates
 	if space != nil {
 		action = perm.KeepTemplates
 	}

@@ -647,14 +647,14 @@ func TestSpaceTransfersHaveSaneBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 	if c.SpaceTransferCheck != DefaultSpaceTransferCheck || c.SpaceExportTTL != DefaultSpaceExportTTL || c.SpaceImportLimit != DefaultSpaceImportLimit ||
-		c.OrgImportLimit != DefaultOrgImportLimit {
-		t.Errorf("the defaults read as %s, %s, %d, %d", c.SpaceTransferCheck, c.SpaceExportTTL, c.SpaceImportLimit, c.OrgImportLimit)
+		c.SiteImportLimit != DefaultSiteImportLimit {
+		t.Errorf("the defaults read as %s, %s, %d, %d", c.SpaceTransferCheck, c.SpaceExportTTL, c.SpaceImportLimit, c.SiteImportLimit)
 	}
 	t.Setenv("STATOR_SPACE_IMPORT_LIMIT", "1GB")
 	t.Setenv("STATOR_SPACE_EXPORT_TTL", "72h")
 	t.Setenv("STATOR_ORG_IMPORT_LIMIT", "10GB")
-	if c, err = Load(); err != nil || c.SpaceImportLimit != 1<<30 || c.SpaceExportTTL != 72*time.Hour || c.OrgImportLimit != 10<<30 {
-		t.Errorf("1GB, 72h and 10GB read as %d, %s and %d, %v", c.SpaceImportLimit, c.SpaceExportTTL, c.OrgImportLimit, err)
+	if c, err = Load(); err != nil || c.SpaceImportLimit != 1<<30 || c.SpaceExportTTL != 72*time.Hour || c.SiteImportLimit != 10<<30 {
+		t.Errorf("1GB, 72h and 10GB read as %d, %s and %d, %v", c.SpaceImportLimit, c.SpaceExportTTL, c.SiteImportLimit, err)
 	}
 	for key, bad := range map[string]string{
 		"STATOR_SPACE_TRANSFER_CHECK_INTERVAL": "10ms",
@@ -675,11 +675,11 @@ func TestTheBootstrapOrganizationIsNamedOrDefaultsToTheDemo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Bootstrap.OrgName != "Demo" {
-		t.Errorf("default organization = %q", c.Bootstrap.OrgName)
+	if c.Bootstrap.SiteName != "Demo" {
+		t.Errorf("default organization = %q", c.Bootstrap.SiteName)
 	}
 	t.Setenv("STATOR_BOOTSTRAP_ORG_NAME", "Acme Corp")
-	if c, err = Load(); err != nil || c.Bootstrap.OrgName != "Acme Corp" {
+	if c, err = Load(); err != nil || c.Bootstrap.SiteName != "Acme Corp" {
 		t.Fatalf("named organization = %+v, %v", c.Bootstrap, err)
 	}
 }

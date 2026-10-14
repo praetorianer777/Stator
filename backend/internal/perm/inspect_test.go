@@ -19,7 +19,7 @@ func inspected(f Facts, published bool, chain ...InspectLink) InspectFacts {
 	}
 	a := PageRules(f, links)
 	trashable := !chain[len(chain)-1].Page.Home
-	out := InspectFacts{OrgAdmin: f.OrgAdmin(), Use: f.HoldsGlobal(UseStator), Space: map[SpacePermission]bool{},
+	out := InspectFacts{SiteAdmin: f.SiteAdmin(), Use: f.HoldsGlobal(UseStator), Space: map[SpacePermission]bool{},
 		Chain: chain, Published: published, Trashable: trashable,
 		Verdict: map[Right]bool{RightView: a.View, RightEdit: a.Edit, RightDelete: a.Delete && trashable, RightComment: a.Comment && published}}
 	for _, p := range SpacePermissions {
@@ -181,7 +181,7 @@ func TestTheStepsNameTheirPagesListsAndGrants(t *testing.T) {
 		t.Errorf("the grant that lets an administrator through is not named: %+v", before)
 	}
 	orgAdmin := Explain(inspected(Facts{Member: true, Role: auth.RoleOwner}, true, home, secret))[0].Steps
-	if orgAdmin[0].Kind != StepOrgAdmin || len(orgAdmin) != 2 || !orgAdmin[1].Bypassed {
+	if orgAdmin[0].Kind != StepSiteAdmin || len(orgAdmin) != 2 || !orgAdmin[1].Bypassed {
 		t.Errorf("an owner's view is %+v", orgAdmin)
 	}
 	for _, r := range rights {

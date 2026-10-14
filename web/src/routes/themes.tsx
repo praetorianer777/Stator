@@ -29,11 +29,11 @@ export function inThemeView(theme: Theme, view: View, me: string | undefined): b
 }
 
 /** What the page says about the theme the reader sees. */
-export function activeThemeMeta(seen: Theme | null, source: string, orgDefault: Theme | undefined): string {
+export function activeThemeMeta(seen: Theme | null, source: string, siteDefault: Theme | undefined): string {
   if (source === "armature") return seen ? t.themes.usingArmature(seen.name) : t.themes.usingArmatureBuiltIn;
   if (seen && source === "organization") return t.themes.usingDefault(seen.name);
   if (seen) return t.themes.using(seen.name);
-  if (orgDefault) return t.themes.usingBuiltInOverDefault(orgDefault.name);
+  if (siteDefault) return t.themes.usingBuiltInOverDefault(siteDefault.name);
   return t.themes.usingBuiltIn;
 }
 
@@ -55,7 +55,7 @@ function ThemesPage() {
   const themes = all.filter((each) => inThemeView(each, view, me));
   const seen = activeData?.theme ?? null;
   const source = activeData?.source ?? "";
-  const orgDefault = all.find((each) => each.default);
+  const siteDefault = all.find((each) => each.default);
   const failure = error ?? choose.error ?? update.error ?? setDefault.error ?? importTheme.error ?? remove.error;
 
   return (
@@ -63,7 +63,7 @@ function ThemesPage() {
       <PageHeader
         crumbs={[{ label: t.settings.title }]}
         title={t.themes.title}
-        meta={activeThemeMeta(seen, source, orgDefault)}
+        meta={activeThemeMeta(seen, source, siteDefault)}
         actions={
           <>
             {seen && source === "organization" && (
@@ -75,13 +75,13 @@ function ThemesPage() {
                 {t.themes.useBuiltIn}
               </Button>
             )}
-            {!seen && orgDefault && (
+            {!seen && siteDefault && (
               <Button
                 variant="secondary"
-                onClick={() => choose.mutate(null, { onSuccess: () => setNotice(t.themes.nowUsing(orgDefault.name)) })}
-                data-action="org-default-theme"
+                onClick={() => choose.mutate(null, { onSuccess: () => setNotice(t.themes.nowUsing(siteDefault.name)) })}
+                data-action="site-default-theme"
               >
-                {t.themes.useOrgDefault}
+                {t.themes.useSiteDefault}
               </Button>
             )}
             <Button
@@ -199,7 +199,7 @@ function ThemesPage() {
                                 label: t.themes.stopUsing,
                                 icon: <Icon.X />,
                                 onSelect: () =>
-                                  choose.mutate(null, { onSuccess: () => setNotice(orgDefault ? t.themes.backToDefault : t.themes.backToBuiltIn) }),
+                                  choose.mutate(null, { onSuccess: () => setNotice(siteDefault ? t.themes.backToDefault : t.themes.backToBuiltIn) }),
                                 attrs: { "data-action": "stop-theme" },
                               }
                             : {

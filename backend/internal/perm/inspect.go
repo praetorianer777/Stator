@@ -34,9 +34,9 @@ var Rights = []Right{RightView, RightEdit, RightDelete, RightComment}
 type StepKind string
 
 const (
-	// StepOrgAdmin is administering the organization, which holds every
+	// StepSiteAdmin is administering the organization, which holds every
 	// space permission and passes every list.
-	StepOrgAdmin StepKind = "orgAdmin"
+	StepSiteAdmin StepKind = "orgAdmin"
 	// StepUse is the organization's use permission.
 	StepUse StepKind = "use"
 	// StepSpace is holding a space permission.
@@ -60,7 +60,7 @@ const (
 )
 
 // StepKinds lists every StepKind, for the API document.
-var StepKinds = []StepKind{StepOrgAdmin, StepUse, StepSpace, StepUnpublished, StepList, StepGrant, StepView, StepPublished, StepHome, StepArchived}
+var StepKinds = []StepKind{StepSiteAdmin, StepUse, StepSpace, StepUnpublished, StepList, StepGrant, StepView, StepPublished, StepHome, StepArchived}
 
 // ListKind is which of a page's lists a restriction is on.
 type ListKind string
@@ -136,9 +136,9 @@ type InspectLink struct {
 
 // InspectFacts are the database's answers for one person and one page.
 type InspectFacts struct {
-	OrgAdmin bool
-	Use      bool
-	UseVia   []Subject
+	SiteAdmin bool
+	Use       bool
+	UseVia    []Subject
 	// Space is perm_space_holds for each space permission.
 	Space map[SpacePermission]bool
 	// Grants are the space's grants that name the person, before implication.
@@ -207,8 +207,8 @@ func step(s AccessStep) AccessStep {
 // standing is how the person holds a space permission: as an organization
 // administrator, or through use and the space's grants.
 func (f InspectFacts) standing(p SpacePermission, withUse bool) []AccessStep {
-	if f.OrgAdmin {
-		return []AccessStep{step(AccessStep{Kind: StepOrgAdmin, Passed: true})}
+	if f.SiteAdmin {
+		return []AccessStep{step(AccessStep{Kind: StepSiteAdmin, Passed: true})}
 	}
 	var out []AccessStep
 	if withUse {
@@ -246,7 +246,7 @@ func grantsGiving(grants []SpaceGrant, p SpacePermission) []SpaceGrant {
 // grantDecides says a grant list, not the space's add pages, is what lets
 // the person edit, or would once the other conditions are met.
 func (f InspectFacts) grantDecides() bool {
-	if f.OrgAdmin || f.Space[SpaceAddPages] || !f.Use {
+	if f.SiteAdmin || f.Space[SpaceAddPages] || !f.Use {
 		return false
 	}
 	for _, l := range f.Chain {
@@ -286,7 +286,7 @@ func (f InspectFacts) lists(kind ListKind) []AccessStep {
 		if len(facts.Listed) == 0 {
 			continue
 		}
-		if len(out) == 0 && admin && !f.OrgAdmin {
+		if len(out) == 0 && admin && !f.SiteAdmin {
 			out = append(out, f.spaceStep(SpaceAdminister))
 		}
 		page, k := l.Page, kind
@@ -359,7 +359,7 @@ func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (Insp
 		       perm_space_holds($1, $3, 'delete'), perm_space_holds($1, $3, 'administer'),
 		       perm_page_viewable($2, $1), perm_page_editable($2, $1), perm_page_deletable($2, $1), perm_page_commentable($2, $1),
 		       COALESCE((SELECT page_trashable(parent_id, kind) FROM page WHERE id = $2), false)`,
-		person, page, space).Scan(&f.OrgAdmin, &f.Use, &held[0], &held[1], &held[2], &held[3], &held[4], &view, &edit, &del, &comment, &f.Trashable)
+		person, page, space).Scan(&f.SiteAdmin, &f.Use, &held[0], &held[1], &held[2], &held[3], &held[4], &view, &edit, &del, &comment, &f.Trashable)
 	if err != nil {
 		return f, fmt.Errorf("ask the database: %w", err)
 	}

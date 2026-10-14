@@ -14,10 +14,10 @@ import { loginRoute } from "./login";
 import { notificationSettingsRoute, watchingRoute } from "./notifications";
 import { homeRoute, personalHomeRoute } from "./pages";
 import { brandSettingsRoute } from "./brand";
-import { orgTransferRoute } from "./org-transfer";
+import { siteTransferRoute } from "./site-transfer";
 import { hubSettingsRoute } from "./hub";
 import { pageEditRoute } from "./page-edit";
-import { orgPermissionsRoute } from "./permissions";
+import { sitePermissionsRoute } from "./permissions";
 import { pageHistoryRoute } from "./page-history";
 import { printLinkRoute, printPageRoute, printPublicPageRoute } from "./print";
 import { profileRoute } from "./profile";
@@ -76,10 +76,10 @@ const routeTree = rootRoute.addChildren([
     notificationSettingsRoute,
     watchingRoute,
     ssoRoute,
-    orgPermissionsRoute,
+    sitePermissionsRoute,
     hubSettingsRoute,
     brandSettingsRoute,
-    orgTransferRoute,
+    siteTransferRoute,
     exampleSpaceRoute,
     armatureSettingsRoute,
     auditRoute,

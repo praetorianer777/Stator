@@ -61,7 +61,7 @@ export function useBrandPicture(href: string | null, footer: string, known: bool
 }
 
 /** The brand of the signed-in reader's organization. */
-export function useOrgPrintBrand(): PrintBrand | undefined {
+export function useSitePrintBrand(): PrintBrand | undefined {
   const { data, error } = useBrand();
   const href = data ? brandLogoHref(data) : null;
   const picture = useBrandPicture(href, data ? footerLine(data.footer) : "", Boolean(data));

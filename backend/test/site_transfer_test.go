@@ -20,15 +20,15 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
-// orgTransferAPI keeps themes in the app's bucket too, as transferAPI does
+// siteTransferAPI keeps themes in the app's bucket too, as transferAPI does
 // files on pages.
-func orgTransferAPI(t *testing.T, h *harness) *apiServer {
+func siteTransferAPI(t *testing.T, h *harness) *apiServer {
 	t.Helper()
 	return transferAPI(t, h, func(s *httpapi.Server) { s.Themes = theme.NewService(h.cluster, h.appStore(t)) })
 }
 
-// exportOrg exports the caller's organization and downloads the archive.
-func (a *apiServer) exportOrg(t *testing.T, c *client) (map[string]any, []byte) {
+// exportSite exports the caller's organization and downloads the archive.
+func (a *apiServer) exportSite(t *testing.T, c *client) (map[string]any, []byte) {
 	t.Helper()
 	queued := obj(t, want(t, c.post(t, "/api/v1/site/exports", nil), http.StatusAccepted, "export the organization"), "export")
 	id := queued["id"].(string)
@@ -51,7 +51,7 @@ func (a *apiServer) exportOrg(t *testing.T, c *client) (map[string]any, []byte) 
 	return done, data
 }
 
-func sendOrgArchive(t *testing.T, c *client, data []byte) response {
+func sendSiteArchive(t *testing.T, c *client, data []byte) response {
 	t.Helper()
 	var body bytes.Buffer
 	form := multipart.NewWriter(&body)
@@ -64,10 +64,10 @@ func sendOrgArchive(t *testing.T, c *client, data []byte) response {
 	return c.send(t, http.MethodPost, "/api/v1/site/imports", form.FormDataContentType(), &body)
 }
 
-// importOrg imports an organization's archive and follows the job to its end.
-func (a *apiServer) importOrg(t *testing.T, c *client, data []byte) map[string]any {
+// importSite imports an organization's archive and follows the job to its end.
+func (a *apiServer) importSite(t *testing.T, c *client, data []byte) map[string]any {
 	t.Helper()
-	queued := obj(t, want(t, sendOrgArchive(t, c, data), http.StatusAccepted, "import the organization"), "import")
+	queued := obj(t, want(t, sendSiteArchive(t, c, data), http.StatusAccepted, "import the organization"), "import")
 	id := queued["id"].(string)
 	return a.followTransfer(t, func() map[string]any {
 		return obj(t, want(t, c.get(t, "/api/v1/site/imports/"+id), http.StatusOK, "follow the import"), "import")
@@ -81,7 +81,7 @@ func (a *apiServer) importOrg(t *testing.T, c *client, data []byte) map[string]a
 // themes, templates and webhooks, with what does not come across listed.
 func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	h := newHarness(t)
-	api := orgTransferAPI(t, h)
+	api := siteTransferAPI(t, h)
 	ctx := context.Background()
 	from := h.makeMember(t, "org-from")
 	fromSlug := h.site.Slug
@@ -138,17 +138,17 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 
 	var archive []byte
 	t.Run("an administrator exports the organization as one archive", func(t *testing.T) {
-		job, data := api.exportOrg(t, owner)
+		job, data := api.exportSite(t, owner)
 		if !strings.HasSuffix(job["fileName"].(string), ".zip") || !strings.HasPrefix(job["fileName"].(string), fromSlug+"-organization-") {
 			t.Errorf("the export is named %v", job["fileName"])
 		}
 		archive = data
 		files := archiveFiles(t, data)
-		var m spaceio.OrgManifest
+		var m spaceio.SiteManifest
 		if err := json.Unmarshal(files["manifest.json"], &m); err != nil {
 			t.Fatalf("the manifest: %v", err)
 		}
-		if m.Format != spaceio.OrgFormat || m.Counts.Spaces != 4 || len(m.Spaces) != 4 || m.Brand.Logo == nil || len(m.Themes) != 1 ||
+		if m.Format != spaceio.SiteFormat || m.Counts.Spaces != 4 || len(m.Spaces) != 4 || m.Brand.Logo == nil || len(m.Themes) != 1 ||
 			len(m.Themes[0].Files) != 1 || len(m.Webhooks) != 1 || len(m.Templates) != 1 || m.AuditEntries == 0 {
 			t.Errorf("the manifest reads %+v", m)
 		}
@@ -161,7 +161,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 				t.Errorf("the archive does not say it leaves out %s: %v", what, lists)
 			}
 		}
-		people := map[string]spaceio.OrgPerson{}
+		people := map[string]spaceio.SitePerson{}
 		for _, p := range m.People {
 			people[p.Ref] = p
 		}
@@ -205,7 +205,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	// The archive lands in a fresh instance, whose one organization has no
 	// spaces, where everybody but dora already has an account to be found by.
 	fresh := newFreshHarness(t)
-	freshAPI := orgTransferAPI(t, fresh)
+	freshAPI := siteTransferAPI(t, fresh)
 	to := fresh.makeMember(t, "org-to")
 	there := map[uuid.UUID]uuid.UUID{}
 	for _, id := range []uuid.UUID{from.user, annID, bobID, uuid.MustParse(guestID)} {
@@ -215,7 +215,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 
 	t.Run("what is not an organization's archive is refused in a sentence", func(t *testing.T) {
 		_, spaceArchive := api.exportSpace(t, owner, "OPS", "archive")
-		got := want(t, sendOrgArchive(t, landed, spaceArchive), http.StatusUnprocessableEntity, "a space's archive")
+		got := want(t, sendSiteArchive(t, landed, spaceArchive), http.StatusUnprocessableEntity, "a space's archive")
 		if msg := fieldError(t, got, "file"); !strings.Contains(msg, "organization") {
 			t.Errorf("a space's archive is refused with %q", msg)
 		}
@@ -223,7 +223,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 
 	var job map[string]any
 	t.Run("the archive fills a fresh organization", func(t *testing.T) {
-		job = freshAPI.importOrg(t, landed, archive)
+		job = freshAPI.importSite(t, landed, archive)
 		if job["state"] != "done" {
 			t.Fatalf("the import ended as %v", job)
 		}
@@ -384,7 +384,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	})
 
 	t.Run("an organization with spaces takes no archive", func(t *testing.T) {
-		if code := errorCode(t, want(t, sendOrgArchive(t, landed, archive), http.StatusConflict, "import again")); code != "org_not_empty" {
+		if code := errorCode(t, want(t, sendSiteArchive(t, landed, archive), http.StatusConflict, "import again")); code != "org_not_empty" {
 			t.Errorf("a second import is refused as %s", code)
 		}
 	})
@@ -393,7 +393,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 // Straight through SQL as stator_app: only an administrator of the
 // organization queues an export or an import of it, for themselves and as
 // a job still to run, reads them, and nobody but the worker writes on.
-func TestTheDatabaseKeepsOrgTransfersToAdministrators(t *testing.T) {
+func TestTheDatabaseKeepsSiteTransfersToAdministrators(t *testing.T) {
 	h := newHarness(t)
 	h.makeMember(t, "org-transfer-sql")
 	memberID := h.addPerson(t, "member")

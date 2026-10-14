@@ -14,19 +14,19 @@ import (
 // Seeded names. Nobody types or reads the slug; it only answers the public
 // addresses of the time the site was an organization.
 const (
-	DemoOrgSlug = "demo"
-	DemoOrgName = "Demo"
+	DemoSiteSlug = "demo"
+	DemoSiteName = "Demo"
 )
 
 // Result says what a run made, as opposed to what it found already there.
 type Result struct {
-	OrgCreated bool
+	SiteCreated bool
 }
 
 // Run seeds the cluster through the admin role, since making the site
 // precedes any member.
 func Run(ctx context.Context, cluster *db.Cluster) (Result, error) {
-	return Ensure(ctx, cluster, DemoOrgName)
+	return Ensure(ctx, cluster, DemoSiteName)
 }
 
 // Ensure makes the instance's site when there is none, and leaves an existing
@@ -34,8 +34,8 @@ func Run(ctx context.Context, cluster *db.Cluster) (Result, error) {
 func Ensure(ctx context.Context, cluster *db.Cluster, name string) (Result, error) {
 	var res Result
 	_, err := cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		tag, err := tx.Exec(ctx, `INSERT INTO site (slug, name) SELECT $1, $2 WHERE NOT EXISTS (SELECT FROM site)`, DemoOrgSlug, name)
-		res.OrgCreated = tag.RowsAffected() == 1
+		tag, err := tx.Exec(ctx, `INSERT INTO site (slug, name) SELECT $1, $2 WHERE NOT EXISTS (SELECT FROM site)`, DemoSiteSlug, name)
+		res.SiteCreated = tag.RowsAffected() == 1
 		return err
 	})
 	return res, err

@@ -7,7 +7,7 @@ import (
 )
 
 func TestTheDemoIsWhatTheBootstrapOrganizationDefaultsTo(t *testing.T) {
-	if config.DefaultBootstrapOrgName != DemoOrgName {
-		t.Fatalf("config default %q, seed %q", config.DefaultBootstrapOrgName, DemoOrgName)
+	if config.DefaultBootstrapSiteName != DemoSiteName {
+		t.Fatalf("config default %q, seed %q", config.DefaultBootstrapSiteName, DemoSiteName)
 	}
 }

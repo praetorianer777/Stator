@@ -2,7 +2,7 @@ import { createRoute } from "@tanstack/react-router";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { BrandSettings } from "@/features/brand/BrandSettings";
-import { useCanAdministerOrg } from "@/features/permissions/access";
+import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
 
@@ -10,7 +10,7 @@ export const brandSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/brand",
   component: function BrandSettingsRoute() {
-    if (!useCanAdministerOrg()) {
+    if (!useCanAdministerSite()) {
       return (
         <div className="mx-auto max-w-3xl">
           <PageHeader crumb={t.settings.title} title={t.brand.title} />

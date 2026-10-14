@@ -27,7 +27,7 @@ export const INSTANCE_SPECS = [
   "issue-list",
   "join",
   "login",
-  "org-transfer",
+  "site-transfer",
   "page-links",
   "pdf-brand",
   "pdf-export",

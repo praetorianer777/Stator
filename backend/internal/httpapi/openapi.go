@@ -161,9 +161,9 @@ var operations = append([]operation{
 		request: admitRequest{}, responses: ok(env{"admitted": auth.Admitted{}})},
 	{method: "DELETE", path: "/users/requests/{userID}", handler: "handleDeclineJoinRequest", wholeInstance: true, tag: "access", summary: "Turn a waiting person away; they may ask again. For administrators.",
 		responses: none()},
-	{method: "GET", path: "/site/tokens", handler: "handleListOrgAPITokens", wholeInstance: true, tag: "access", summary: "Every personal access token in the organization, with whose it is. For administrators.",
-		responses: ok(env{"tokens": []auth.OrgAPIToken{}})},
-	{method: "DELETE", path: "/site/tokens/{tokenID}", handler: "handleRevokeOrgAPIToken", wholeInstance: true, tag: "access", summary: "Revoke anybody's token in the organization. For administrators.",
+	{method: "GET", path: "/site/tokens", handler: "handleListSiteAPITokens", wholeInstance: true, tag: "access", summary: "Every personal access token in the organization, with whose it is. For administrators.",
+		responses: ok(env{"tokens": []auth.SiteAPIToken{}})},
+	{method: "DELETE", path: "/site/tokens/{tokenID}", handler: "handleRevokeSiteAPIToken", wholeInstance: true, tag: "access", summary: "Revoke anybody's token in the organization. For administrators.",
 		responses: none()},
 
 	{method: "GET", path: "/tokens", handler: "handleListAPITokens", wholeInstance: true, tag: "tokens", summary: "The caller's personal access tokens in this organization, without their secrets.",
@@ -225,24 +225,24 @@ var operations = append([]operation{
 		summary:   "One import, as its requester or an administrator of the organization follows it: its progress, then the new space's key and what could not come across, page by page for another wiki's export, or why it failed.",
 		responses: ok(env{"import": spaceio.ImportJob{}})},
 	// Organization export and import (#383), run by the worker.
-	{method: "POST", path: "/site/exports", handler: "handleCreateOrgExport", wholeInstance: true, tag: "organization",
+	{method: "POST", path: "/site/exports", handler: "handleCreateSiteExport", wholeInstance: true, tag: "transfer",
 		summary:   "Ask the worker to export the whole organization as one archive: every space in the space archive format with its drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log, with a list of what it leaves out. 202 with the job, which GET /site/exports follows. For administrators.",
-		responses: map[int]any{202: env{"export": spaceio.OrgExportJob{}}}},
-	{method: "GET", path: "/site/exports", handler: "handleListOrgExports", wholeInstance: true, tag: "organization",
+		responses: map[int]any{202: env{"export": spaceio.SiteExportJob{}}}},
+	{method: "GET", path: "/site/exports", handler: "handleListSiteExports", wholeInstance: true, tag: "transfer",
 		summary:   "The organization's latest exports, newest first. For administrators.",
-		responses: ok(env{"exports": []spaceio.OrgExportJob{}})},
-	{method: "GET", path: "/site/exports/{exportID}/file", handler: "handleDownloadOrgExport", wholeInstance: true, tag: "organization", binary: true,
+		responses: ok(env{"exports": []spaceio.SiteExportJob{}})},
+	{method: "GET", path: "/site/exports/{exportID}/file", handler: "handleDownloadSiteExport", wholeInstance: true, tag: "transfer", binary: true,
 		summary:   "The archive an export of the organization made, as a zip download, until it expires; conflict with not_ready before it is made, gone with export_expired after. For administrators.",
 		responses: map[int]any{200: nil, 409: errorEnvelope{}, 410: errorEnvelope{}}},
-	{method: "POST", path: "/site/imports", handler: "handleCreateOrgImport", wholeInstance: true, tag: "organization", multipart: true,
+	{method: "POST", path: "/site/imports", handler: "handleCreateSiteImport", wholeInstance: true, tag: "transfer", multipart: true,
 		summary:   "Upload an organization's archive, as a multipart part named file, and ask the worker to fill this organization from it: its spaces, people, groups and settings. Refused at once when the file is no such archive, or this organization has a space already (409 org_not_empty); 202 with the job, which GET /site/imports/{importID} follows to its report. For administrators.",
-		responses: map[int]any{202: env{"import": spaceio.OrgImportJob{}}, 409: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
-	{method: "GET", path: "/site/imports", handler: "handleListOrgImports", wholeInstance: true, tag: "organization",
+		responses: map[int]any{202: env{"import": spaceio.SiteImportJob{}}, 409: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/site/imports", handler: "handleListSiteImports", wholeInstance: true, tag: "transfer",
 		summary:   "The organization's latest imports, newest first. For administrators.",
-		responses: ok(env{"imports": []spaceio.OrgImportJob{}})},
-	{method: "GET", path: "/site/imports/{importID}", handler: "handleGetOrgImport", wholeInstance: true, tag: "organization",
+		responses: ok(env{"imports": []spaceio.SiteImportJob{}})},
+	{method: "GET", path: "/site/imports/{importID}", handler: "handleGetSiteImport", wholeInstance: true, tag: "transfer",
 		summary:   "One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators.",
-		responses: ok(env{"import": spaceio.OrgImportJob{}})},
+		responses: ok(env{"import": spaceio.SiteImportJob{}})},
 	{method: "GET", path: "/spaces/{spaceKey}", handler: "handleGetSpace", tool: "get_space", toolHelp: "One space by its key, with its home page id and what the caller may do in it.", tag: "spaces", summary: "One space by its key, and what the caller may do in it.", responses: ok(env{"space": space.Space{}})},
 	{method: "PATCH", path: "/spaces/{spaceKey}", handler: "handleUpdateSpace", tag: "spaces", summary: "Rename or describe a space. For the space's administrators.", request: space.UpdateInput{}, responses: ok(env{"space": space.Space{}})},
 	{method: "DELETE", path: "/spaces/{spaceKey}", handler: "handleDeleteSpace", tag: "spaces", summary: "Delete a space and every page in it. For the space's administrators.", responses: none()},
@@ -939,7 +939,7 @@ var operations = append([]operation{
 	{method: "POST", path: "/armature/webhook", handler: "handleArmatureWebhook", tag: "armature", public: true,
 		summary: "Where Armature posts issue events, signed with the organization's webhook secret; clears the cached issues they name.",
 		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}}},
-	{method: "POST", path: "/armature/webhook/{orgSlug}", handler: "handleArmatureWebhook", id: "armatureWebhookWithSlug", tag: "armature", public: true, deprecated: true,
+	{method: "POST", path: "/armature/webhook/{siteSlug}", handler: "handleArmatureWebhook", id: "armatureWebhookWithSlug", tag: "armature", public: true, deprecated: true,
 		summary: "The address POST /armature/webhook had while it named the organization, kept for receivers set up with it; a slug that is not the organization's is refused as a bad signature.",
 		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}}},
 
@@ -1088,14 +1088,14 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["SpaceImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}
 	b.FieldOverrides["SpaceExport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ExportFailures)}, {Type: "null"}}}
 	b.FieldOverrides["SpaceImport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ImportFailures)}, {Type: "null"}}}
-	b.Names[reflect.TypeOf(spaceio.OrgExportJob{})] = "OrgExport"
-	b.Names[reflect.TypeOf(spaceio.OrgImportJob{})] = "OrgImport"
-	b.Names[reflect.TypeOf(spaceio.OrgReport{})] = "OrgImportReport"
-	b.Names[reflect.TypeOf(spaceio.Omission{})] = "OrgOmission"
-	b.FieldOverrides["OrgExport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ExportStates)}
-	b.FieldOverrides["OrgImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}
-	b.FieldOverrides["OrgExport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.OrgExportFailures)}, {Type: "null"}}}
-	b.FieldOverrides["OrgImport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.OrgImportFailures)}, {Type: "null"}}}
+	b.Names[reflect.TypeOf(spaceio.SiteExportJob{})] = "SiteExport"
+	b.Names[reflect.TypeOf(spaceio.SiteImportJob{})] = "SiteImport"
+	b.Names[reflect.TypeOf(spaceio.SiteReport{})] = "SiteImportReport"
+	b.Names[reflect.TypeOf(spaceio.Omission{})] = "SiteOmission"
+	b.FieldOverrides["SiteExport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ExportStates)}
+	b.FieldOverrides["SiteImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}
+	b.FieldOverrides["SiteExport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.SiteExportFailures)}, {Type: "null"}}}
+	b.FieldOverrides["SiteImport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.SiteImportFailures)}, {Type: "null"}}}
 	b.Names[reflect.TypeOf(wordio.Job{})] = "WordImport"
 	b.Names[reflect.TypeOf(wordio.FileReport{})] = "WordImportFile"
 	b.Names[reflect.TypeOf(wordio.Made{})] = "WordImportPage"
@@ -1111,7 +1111,7 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["Backdrop.fit"] = &openapi.Schema{Type: "string", Enum: theme.BackdropFits}
 	scopes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: []string{auth.ScopeRead}}}
 	b.FieldOverrides["APIToken.scopes"] = scopes
-	b.FieldOverrides["OrgAPIToken.scopes"] = scopes
+	b.FieldOverrides["SiteAPIToken.scopes"] = scopes
 	b.FieldOverrides["CreateTokenRequest.scopes"] = scopes
 	b.Enums[reflect.TypeOf(auth.Role(""))] = enumStrings(auth.Roles)
 	b.Enums[reflect.TypeOf(page.Kind(""))] = enumStrings(page.Kinds)

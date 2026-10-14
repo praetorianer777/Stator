@@ -39,8 +39,8 @@ var (
 	digestSettings = []string{"off", "hourly", "daily"}
 )
 
-// readOrgManifest reads and checks an organization archive's table of contents.
-func readOrgManifest(zr *zip.Reader) (*OrgManifest, error) {
+// readSiteManifest reads and checks an organization archive's table of contents.
+func readSiteManifest(zr *zip.Reader) (*SiteManifest, error) {
 	a := openArchive(zr)
 	if a.entries[manifestPath] == nil {
 		return nil, invalid("This file is not an organization archive of Stator: it holds no manifest.json. Export the organization from its settings in Stator, then import that file.")
@@ -49,20 +49,20 @@ func readOrgManifest(zr *zip.Reader) (*OrgManifest, error) {
 	if err != nil {
 		return nil, err
 	}
-	var m OrgManifest
+	var m SiteManifest
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, invalid("The archive's manifest.json is not one Stator reads. Export the organization again and import the new file.")
 	}
-	if err := CheckOrgManifest(&m); err != nil {
+	if err := CheckSiteManifest(&m); err != nil {
 		return nil, err
 	}
 	return &m, nil
 }
 
-// orgImporter fills one organization from one archive, in one transaction.
-type orgImporter struct {
+// siteImporter fills one organization from one archive, in one transaction.
+type siteImporter struct {
 	w        *Watch
-	m        *OrgManifest
+	m        *SiteManifest
 	outer    *archive
 	importer uuid.UUID
 	spaces   []*importer
@@ -71,12 +71,12 @@ type orgImporter struct {
 	r renames
 	// people and groups are the archive's refs here; guests wait for their space.
 	people, groups map[string]uuid.UUID
-	guests         []OrgPerson
+	guests         []SitePerson
 	themes         map[uuid.UUID]uuid.UUID
 	spaceIDs       map[uuid.UUID]uuid.UUID
 	seated         map[string]bool
 	uploaded       []string
-	report         OrgReport
+	report         SiteReport
 	step           func()
 }
 
@@ -96,10 +96,10 @@ func part(what string, err error) error {
 	return &partError{what: what, err: err}
 }
 
-// importOrg fills the organization from the archive. Everything is read and
+// importSite fills the organization from the archive. Everything is read and
 // checked once before the transaction, which writes it all and marks the
 // job done, so a failure keeps nothing.
-func (w *Watch) importOrg(ctx context.Context, c *orgClaim) (db.LSN, error) {
+func (w *Watch) importSite(ctx context.Context, c *siteClaim) (db.LSN, error) {
 	f, done, err := w.tempFile()
 	if err != nil {
 		return 0, err
@@ -118,11 +118,11 @@ func (w *Watch) importOrg(ctx context.Context, c *orgClaim) (db.LSN, error) {
 	if err != nil {
 		return 0, invalid("This file is no zip. Export the organization from its settings in Stator, then import that file.")
 	}
-	m, err := readOrgManifest(zr)
+	m, err := readSiteManifest(zr)
 	if err != nil {
 		return 0, err
 	}
-	oi := &orgImporter{w: w, m: m, outer: openArchive(zr), importer: c.user, r: newRenames(),
+	oi := &siteImporter{w: w, m: m, outer: openArchive(zr), importer: c.user, r: newRenames(),
 		people: map[string]uuid.UUID{}, groups: map[string]uuid.UUID{}, themes: map[uuid.UUID]uuid.UUID{},
 		spaceIDs: map[uuid.UUID]uuid.UUID{}, seated: map[string]bool{}}
 	oi.report.settle()
@@ -169,7 +169,7 @@ func (w *Watch) importOrg(ctx context.Context, c *orgClaim) (db.LSN, error) {
 	for _, t := range m.Themes {
 		total += len(t.Files)
 	}
-	p := newProgress(w, kindOrgImport, c.id, c.attempts)
+	p := newProgress(w, kindSiteImport, c.id, c.attempts)
 	p.setTotal(ctx, total)
 	oi.step = p.step(ctx)
 	for _, im := range oi.spaces {
@@ -253,13 +253,13 @@ func (w *Watch) openNested(outer *archive, name string, file *os.File) (*zip.Rea
 // write makes everything of the archive in the caller's transaction: the
 // people and groups first, as the spaces name them, then the themes, the
 // spaces, the guests of each, and what hangs off all of them.
-func (oi *orgImporter) write(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) write(ctx context.Context, tx db.DBTX) error {
 	var taken bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM space)`).Scan(&taken); err != nil {
 		return err
 	}
 	if taken {
-		return ErrOrgNotEmpty
+		return ErrSiteNotEmpty
 	}
 	steps := []func() error{
 		func() error { return oi.writePeople(ctx, tx) },
@@ -289,7 +289,7 @@ func (oi *orgImporter) write(ctx context.Context, tx db.DBTX) error {
 }
 
 // person finds a person by ref, here or nowhere.
-func (oi *orgImporter) person(ref string) *uuid.UUID {
+func (oi *siteImporter) person(ref string) *uuid.UUID {
 	if id, ok := oi.people[ref]; ok {
 		return &id
 	}
@@ -299,7 +299,7 @@ func (oi *orgImporter) person(ref string) *uuid.UUID {
 // writePeople finds everybody by their address, or makes their account, and
 // lets them into the organization in the role they had; somebody who is a
 // member here already keeps their role.
-func (oi *orgImporter) writePeople(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writePeople(ctx context.Context, tx db.DBTX) error {
 	for _, p := range oi.m.People {
 		email := strings.TrimSpace(p.Email)
 		if !strings.Contains(email, "@") {
@@ -354,7 +354,7 @@ func (oi *orgImporter) writePeople(ctx context.Context, tx db.DBTX) error {
 }
 
 // writeGroups finds each group by its name, or makes it, with its members.
-func (oi *orgImporter) writeGroups(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writeGroups(ctx context.Context, tx db.DBTX) error {
 	for _, g := range oi.m.Groups {
 		name := strings.TrimSpace(g.Name)
 		if name == "" || !slices.Contains(groupSources, g.Source) {
@@ -392,13 +392,13 @@ func (oi *orgImporter) writeGroups(ctx context.Context, tx db.DBTX) error {
 	return nil
 }
 
-func (oi *orgImporter) isGuest(ref string) bool {
-	return slices.ContainsFunc(oi.guests, func(p OrgPerson) bool { return p.Ref == ref })
+func (oi *siteImporter) isGuest(ref string) bool {
+	return slices.ContainsFunc(oi.guests, func(p SitePerson) bool { return p.Ref == ref })
 }
 
 // writeThemes makes each theme its owner's again, its files under new ids
 // that its spec is rewritten to name.
-func (oi *orgImporter) writeThemes(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writeThemes(ctx context.Context, tx db.DBTX) error {
 	for _, t := range oi.m.Themes {
 		owner := oi.importer
 		if id := oi.person(t.Owner); id != nil {
@@ -429,7 +429,7 @@ func (oi *orgImporter) writeThemes(ctx context.Context, tx db.DBTX) error {
 		renamed := map[uuid.UUID]uuid.UUID{}
 		files := map[uuid.UUID]bool{}
 		for _, file := range t.Files {
-			data, err := oi.outer.read(orgThemeFilePath(file.ID), theme.MaxAssetBytes)
+			data, err := oi.outer.read(siteThemeFilePath(file.ID), theme.MaxAssetBytes)
 			if err != nil {
 				return err
 			}
@@ -472,7 +472,7 @@ func (oi *orgImporter) writeThemes(ctx context.Context, tx db.DBTX) error {
 
 // writeSpaces makes each space as its own archive would, with the
 // organization's people and groups found by ref before any address.
-func (oi *orgImporter) writeSpaces(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writeSpaces(ctx context.Context, tx db.DBTX) error {
 	for _, im := range oi.spaces {
 		im.presetPeople, im.presetGroups = oi.people, oi.groups
 		im.made = func(ctx context.Context, tx db.DBTX) error { return oi.writeGuests(ctx, tx, im.key, im.spaceID) }
@@ -511,7 +511,7 @@ func (oi *orgImporter) writeSpaces(ctx context.Context, tx db.DBTX) error {
 
 // writeGuests lets the guests of a space in as soon as it exists, before
 // its grants name them; a guest whose space is not in the archive is not.
-func (oi *orgImporter) writeGuests(ctx context.Context, tx db.DBTX, key string, space uuid.UUID) error {
+func (oi *siteImporter) writeGuests(ctx context.Context, tx db.DBTX, key string, space uuid.UUID) error {
 	for _, g := range oi.guests {
 		if g.GuestSpace != key {
 			continue
@@ -528,7 +528,7 @@ func (oi *orgImporter) writeGuests(ctx context.Context, tx db.DBTX, key string, 
 
 // writeSettings gives the organization the archive's name and switches, its
 // hub and its default theme; it keeps its own address.
-func (oi *orgImporter) writeSettings(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writeSettings(ctx context.Context, tx db.DBTX) error {
 	set := oi.m.Settings
 	var hub, defaultTheme *uuid.UUID
 	if set.HubPage != nil {
@@ -550,7 +550,7 @@ func (oi *orgImporter) writeSettings(ctx context.Context, tx db.DBTX) error {
 }
 
 // writeBrand gives the exports their footer lines and logo back.
-func (oi *orgImporter) writeBrand(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writeBrand(ctx context.Context, tx db.DBTX) error {
 	b := oi.m.Brand
 	_, err := tx.Exec(ctx, `
 		INSERT INTO brand (footer_en, footer_de, updated_by) VALUES ($1, $2, $3)
@@ -562,7 +562,7 @@ func (oi *orgImporter) writeBrand(ctx context.Context, tx db.DBTX) error {
 	if b.Logo == nil {
 		return nil
 	}
-	data, err := oi.outer.read(orgLogoPath, brand.MaxLogoBytes)
+	data, err := oi.outer.read(siteLogoPath, brand.MaxLogoBytes)
 	if err != nil {
 		return err
 	}
@@ -584,7 +584,7 @@ func (oi *orgImporter) writeBrand(ctx context.Context, tx db.DBTX) error {
 }
 
 // subject is a grant's subject here, or false when nobody here answers to it.
-func (oi *orgImporter) subject(s Subject) (user, group *uuid.UUID, ok bool) {
+func (oi *siteImporter) subject(s Subject) (user, group *uuid.UUID, ok bool) {
 	switch s.Type {
 	case "user":
 		user = oi.person(s.Person)
@@ -601,7 +601,7 @@ func (oi *orgImporter) subject(s Subject) (user, group *uuid.UUID, ok bool) {
 }
 
 // writePermissions replaces what a new organization grants by the archive's.
-func (oi *orgImporter) writePermissions(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writePermissions(ctx context.Context, tx db.DBTX) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM global_grant`); err != nil {
 		return err
 	}
@@ -622,7 +622,7 @@ func (oi *orgImporter) writePermissions(ctx context.Context, tx db.DBTX) error {
 
 // writeSignIn brings the provider across switched off, without its secret,
 // unless the organization has one of its own, which stays.
-func (oi *orgImporter) writeSignIn(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writeSignIn(ctx context.Context, tx db.DBTX) error {
 	s := oi.m.SignIn
 	if s == nil {
 		return nil
@@ -657,7 +657,7 @@ func (oi *orgImporter) writeSignIn(ctx context.Context, tx db.DBTX) error {
 
 // writeArmature brings the Armature connection across without its webhook
 // secret, unless the organization has one of its own.
-func (oi *orgImporter) writeArmature(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writeArmature(ctx context.Context, tx db.DBTX) error {
 	a := oi.m.Armature
 	if a == nil {
 		return nil
@@ -676,7 +676,7 @@ func (oi *orgImporter) writeArmature(ctx context.Context, tx db.DBTX) error {
 
 // writeTemplates makes the templates every space offers, pointed at the
 // pages they name here.
-func (oi *orgImporter) writeTemplates(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writeTemplates(ctx context.Context, tx db.DBTX) error {
 	r := oi.r
 	for _, t := range oi.m.Templates {
 		body, err := r.rewrite(t.Body)
@@ -702,7 +702,7 @@ func (oi *orgImporter) writeTemplates(ctx context.Context, tx db.DBTX) error {
 
 // writeWebhooks brings each webhook across switched off, with no secret that
 // signs: its secret is rotated before it is switched on.
-func (oi *orgImporter) writeWebhooks(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writeWebhooks(ctx context.Context, tx db.DBTX) error {
 	for _, h := range oi.m.Webhooks {
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
@@ -722,7 +722,7 @@ func (oi *orgImporter) writeWebhooks(ctx context.Context, tx db.DBTX) error {
 	return nil
 }
 
-func (oi *orgImporter) writePreferences(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writePreferences(ctx context.Context, tx db.DBTX) error {
 	for _, p := range oi.m.Preferences {
 		user := oi.person(p.Person)
 		if user == nil || !slices.Contains(digestSettings, p.Digest) {
@@ -744,7 +744,7 @@ func (oi *orgImporter) writePreferences(ctx context.Context, tx db.DBTX) error {
 	return nil
 }
 
-func (oi *orgImporter) writePersonThemes(ctx context.Context, tx db.DBTX) error {
+func (oi *siteImporter) writePersonThemes(ctx context.Context, tx db.DBTX) error {
 	for _, p := range oi.m.PersonThemes {
 		user := oi.person(p.Person)
 		if user == nil {
@@ -769,8 +769,8 @@ func (oi *orgImporter) writePersonThemes(ctx context.Context, tx db.DBTX) error 
 
 // writeAuditLog writes the organization's record as it was, its people and
 // what it names found here where the import made them anew.
-func (oi *orgImporter) writeAuditLog(ctx context.Context, tx db.DBTX) error {
-	if oi.outer.entries[orgAuditPath] == nil {
+func (oi *siteImporter) writeAuditLog(ctx context.Context, tx db.DBTX) error {
+	if oi.outer.entries[siteAuditPath] == nil {
 		return nil
 	}
 	ids := map[uuid.UUID]uuid.UUID{}
@@ -786,7 +786,7 @@ func (oi *orgImporter) writeAuditLog(ctx context.Context, tx db.DBTX) error {
 			}
 		}
 	}
-	rc, err := oi.outer.entries[orgAuditPath].Open()
+	rc, err := oi.outer.entries[siteAuditPath].Open()
 	if err != nil {
 		return invalid("The archive's audit.jsonl could not be read. Export the organization again and import the new file.")
 	}
@@ -856,15 +856,15 @@ func (b *auditRows) flush(ctx context.Context, tx db.DBTX) error {
 	return part("the audit log", err)
 }
 
-// orgFailureOf reads why an organization's import failed beyond what a
+// siteFailureOf reads why an organization's import failed beyond what a
 // space's import says, naming the part a refused row belonged to.
-func orgFailureOf(err error) (Failure, string) {
+func siteFailureOf(err error) (Failure, string) {
 	var (
 		pgErr *pgconn.PgError
 		at    *partError
 	)
 	switch {
-	case errors.Is(err, ErrOrgNotEmpty):
+	case errors.Is(err, ErrSiteNotEmpty):
 		return FailureNotEmpty, ""
 	case errors.As(err, &pgErr) && strings.HasPrefix(pgErr.Code, "23") && errors.As(err, &at):
 		return FailureInvalid, fmt.Sprintf("The archive's %s could not be saved as it is (%s). Export the organization again and import the new file.", at.what, pgErr.ConstraintName)

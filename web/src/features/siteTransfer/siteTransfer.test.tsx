@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { OrgExport, OrgImport, OrgImportReport } from "@/api/orgTransfers";
+import type { SiteExport, SiteImport, SiteImportReport } from "@/api/siteTransfers";
 import type * as config from "@/config";
 import { renderAt, signedIn, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
@@ -14,7 +14,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
 
-function anExport(over: Partial<OrgExport> = {}): OrgExport {
+function anExport(over: Partial<SiteExport> = {}): SiteExport {
   return {
     id: "e-1",
     state: "queued",
@@ -33,7 +33,7 @@ function anExport(over: Partial<OrgExport> = {}): OrgExport {
   };
 }
 
-function anImport(over: Partial<OrgImport> = {}): OrgImport {
+function anImport(over: Partial<SiteImport> = {}): SiteImport {
   return {
     id: "i-1",
     state: "queued",
@@ -49,7 +49,7 @@ function anImport(over: Partial<OrgImport> = {}): OrgImport {
   };
 }
 
-const report: OrgImportReport = {
+const report: SiteImportReport = {
   spaces: 2,
   pages: 14,
   versions: 30,
@@ -72,7 +72,7 @@ const report: OrgImportReport = {
 
 describe("exporting the organization", () => {
   it("asks the worker for the archive, follows it, offers the file and says what stays behind", async () => {
-    let jobs: OrgExport[] = [];
+    let jobs: SiteExport[] = [];
     let looks = 0;
     const sent = stubApi({
       "GET /site/imports": { status: 200, body: { imports: [] } },
@@ -109,7 +109,7 @@ describe("exporting the organization", () => {
 describe("importing an organization", () => {
   it("uploads the archive, follows the worker and shows what came across", async () => {
     const uploads = stubUploads();
-    let jobs: OrgImport[] = [];
+    let jobs: SiteImport[] = [];
     let looks = 0;
     stubApi({
       "GET /site/exports": { status: 200, body: { exports: [] } },
@@ -122,14 +122,14 @@ describe("importing an organization", () => {
     await renderAt("/settings/transfer");
     await screen.findByText("The organization has not been exported yet.");
     const file = new File(["zip"], "acme-organization.zip", { type: "application/zip" });
-    await userEvent.upload(document.querySelector<HTMLInputElement>("[data-org-import-file]")!, file);
+    await userEvent.upload(document.querySelector<HTMLInputElement>("[data-site-import-file]")!, file);
     await userEvent.click(screen.getByRole("button", { name: "Import organization" }));
     const sent = upload(uploads, 0);
     expect(sent.url).toBe("/api/v1/site/imports");
     expect(sent.file.name).toBe("acme-organization.zip");
     jobs = [anImport({ state: "running", progress: { done: 2, total: 9 } })];
     sent.respond(202, { import: jobs[0] });
-    const card = (await screen.findByText("What came across")).closest("[data-org-import-report]") as HTMLElement;
+    const card = (await screen.findByText("What came across")).closest("[data-site-import-report]") as HTMLElement;
     expect(within(card).getByText("Spaces").nextElementSibling).toHaveTextContent("2");
     expect(within(card).getByText("This organization kept its own sign-in provider.")).toBeInTheDocument();
     expect(within(card).getByText(/Webhooks came across switched off/)).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe("importing an organization", () => {
     });
     await renderAt("/settings/transfer");
     await screen.findByText("The organization has not been exported yet.");
-    await userEvent.upload(document.querySelector<HTMLInputElement>("[data-org-import-file]")!, new File(["zip"], "a.zip", { type: "application/zip" }));
+    await userEvent.upload(document.querySelector<HTMLInputElement>("[data-site-import-file]")!, new File(["zip"], "a.zip", { type: "application/zip" }));
     await userEvent.click(screen.getByRole("button", { name: "Import organization" }));
     upload(uploads, 0).respond(409, {
       error: { code: "org_not_empty", message: "This organization has spaces already, and an organization's archive is imported only into one without any." },

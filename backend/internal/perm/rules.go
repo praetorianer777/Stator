@@ -30,9 +30,9 @@ type Facts struct {
 // holds every permission in every space so nothing can be orphaned.
 func (f Facts) roleAdmin() bool { return f.Member && f.Role.CanAdminister() }
 
-// OrgAdmin reports whether the person administers the organization itself,
+// SiteAdmin reports whether the person administers the organization itself,
 // which a token limited to spaces never does.
-func (f Facts) OrgAdmin() bool { return f.roleAdmin() && !f.SpacesOnly }
+func (f Facts) SiteAdmin() bool { return f.roleAdmin() && !f.SpacesOnly }
 
 // HoldsGlobal reports whether a global permission applies. Without use a
 // person holds nothing, administer follows the roles alone, and a token
@@ -43,7 +43,7 @@ func (f Facts) HoldsGlobal(p GlobalPermission) bool {
 		return false
 	case f.roleAdmin():
 		return true
-	case !f.Member, p == AdministerOrg:
+	case !f.Member, p == AdministerSite:
 		return false
 	}
 	return slices.Contains(f.Global, UseStator) && slices.Contains(f.Global, p)
@@ -76,7 +76,7 @@ func Decide(f Facts, action Action) bool {
 		// guest reaches.
 		return f.HoldsGlobal(UseStator) && !f.SpacesOnly
 	case CreateExampleSpace:
-		return f.OrgAdmin()
+		return f.SiteAdmin()
 	case ViewSpace:
 		return f.HoldsSpace(SpaceView)
 	case EditPages, EditCalendars, ArrangePages:
@@ -87,8 +87,8 @@ func Decide(f Facts, action Action) bool {
 		return f.HoldsSpace(SpaceDelete)
 	case AdministerSpace, DeleteSpace, PurgeTrash, InspectAccess, ArchivePages, ArchiveSpace, ReviewStale, ManageShortcuts, CopyPermissionsFrom, GrantEdit, KeepTemplates:
 		return f.HoldsSpace(SpaceAdminister)
-	case KeepOrgTemplates, MoveOrg:
-		return f.OrgAdmin()
+	case KeepSiteTemplates, MoveSite:
+		return f.SiteAdmin()
 	}
 	return false
 }
@@ -110,7 +110,7 @@ func (f Facts) GlobalCan() GlobalCan {
 	return GlobalCan{
 		Use:         f.HoldsGlobal(UseStator),
 		CreateSpace: f.HoldsGlobal(CreateSpaces),
-		Administer:  f.HoldsGlobal(AdministerOrg),
+		Administer:  f.HoldsGlobal(AdministerSite),
 	}
 }
 

@@ -10,7 +10,7 @@ type Wire = components["schemas"];
 
 /** Who is signed in, and their standing in the organization. */
 export type Me = Wire["MeResponse"];
-export type OrgRole = Wire["Standing"]["role"];
+export type SiteRole = Wire["Standing"]["role"];
 export type Provider = Wire["Provider"];
 export type ProviderView = Wire["ProviderView"];
 export type SaveProviderInput = Wire["SaveOIDCProviderRequest"];
@@ -63,7 +63,7 @@ export function guestSpaceOf(me: Me | undefined): Wire["SpaceRef"] | null {
 }
 
 /** Whether a role may change the organization's settings. */
-export function administers(role: OrgRole | undefined): boolean {
+export function administers(role: SiteRole | undefined): boolean {
   return role === "owner" || role === "admin";
 }
 

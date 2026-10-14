@@ -84,7 +84,7 @@ export const de: Messages = {
   account: {
     hub: "Hub-Seite",
     brand: "Marke der Exporte",
-    orgTransfer: "Export und Import",
+    siteTransfer: "Export und Import",
     exampleSpace: "Beispielbereich",
     menu: "Ihr Konto",
     guest: "Gast",
@@ -608,7 +608,7 @@ export const de: Messages = {
       notConnected: "Verbinden Sie Ihr Armature-Konto unter Profil, Armature, um Ihr Armature-Design hier zu sehen.",
     },
     useBuiltIn: "Standarddesign verwenden",
-    useOrgDefault: "Vorgabe der Organisation verwenden",
+    useSiteDefault: "Vorgabe der Organisation verwenden",
     show: "Anzeigen",
     viewMine: "Meine",
     viewShared: "Mit mir geteilt",
@@ -872,7 +872,7 @@ export const de: Messages = {
       },
     },
   },
-  orgTransfer: {
+  siteTransfer: {
     title: "Export und Import",
     notAdmin: "Nur Administratoren der Organisation exportieren oder importieren sie ganz. Bitten Sie eine von ihnen darum.",
     exportTitle: "Die Organisation exportieren",
@@ -885,7 +885,7 @@ export const de: Messages = {
     importTitle: "Eine Organisation importieren",
     importIntro:
       "Füllen Sie diese Organisation aus dem Archiv einer ganzen Organisation, das ein anderes Stator erzeugt hat. Ihre Bereiche, Personen, Gruppen und Einstellungen kommen herein; Personen werden an ihrer E-Mail-Adresse erkannt, und alle melden sich hier neu an. Das geht nur, solange diese Organisation keine Bereiche hat.",
-    importOrg: "Organisation importieren",
+    importSite: "Organisation importieren",
     imported: "Die Organisation ist importiert. Alle melden sich hier neu an.",
     importedBy: (name: string, when: string) => `Importiert von ${name} am ${when}`,
     notCarriedTitle: "Was nicht mitkommt",
@@ -1989,7 +1989,7 @@ export const de: Messages = {
     spaceIntro:
       "Alle dürfen die veröffentlichten Seiten dieses Bereichs ohne Anmeldung lesen. Eingeschränkte Seiten, Entwürfe, Kommentare und die Namen von Personen bleiben privat.",
     spaceToggle: "Alle diesen Bereich ohne Anmeldung lesen lassen",
-    orgOff: "Das gilt erst, wenn ein Administrator der Organisation das Lesen ohne Anmeldung erlaubt.",
+    siteOff: "Das gilt erst, wenn ein Administrator der Organisation das Lesen ohne Anmeldung erlaubt.",
     personal: "Ein persönlicher Bereich ist nie öffentlich. Verschieben Sie die Seiten in einen Teambereich, um sie zu veröffentlichen.",
     spaceAddress: (url: string) => `Öffentliche Adresse: ${url}`,
   },
@@ -2605,8 +2605,8 @@ export const de: Messages = {
     discard: "Änderungen verwerfen",
     saved: "Gespeichert.",
     unsaved: "Sie haben Änderungen, die nicht gespeichert sind.",
-    orgTitle: "Berechtigungen",
-    orgIntro:
+    siteTitle: "Berechtigungen",
+    siteIntro:
       "Was Personen in der gesamten Organisation tun dürfen. Was sie in einem Bereich dürfen, steht in dessen Einstellungen, und einzelne Seiten lassen sich weiter einschränken.",
     globalNames: { use: "Stator nutzen", createSpace: "Bereiche anlegen", administer: "Organisation verwalten" },
     globalHints: {
@@ -2617,7 +2617,7 @@ export const de: Messages = {
     globalEmpty: "Niemand außer den Administratoren.",
     fixedNote: "Dies folgt den Rollen der Mitglieder der Organisation. Ändern Sie eine Rolle unter Single Sign-on.",
     fixedLink: "Single Sign-on öffnen",
-    notOrgAdmin: "Nur ein Administrator der Organisation kann ihre Berechtigungen sehen und ändern.",
+    notSiteAdmin: "Nur ein Administrator der Organisation kann ihre Berechtigungen sehen und ändern.",
     spaceIntro:
       "Wer in diesem Bereich was tun darf. Jede Berechtigung schließt Ansehen ein, und Verwalten schließt alle ein. Administratoren der Organisation dürfen in jedem Bereich alles.",
     spaceGrid: "Berechtigungen in diesem Bereich",
@@ -3189,11 +3189,11 @@ export const de: Messages = {
   },
   templates: {
     title: "Vorlagen",
-    orgList: "Vorlagen für alle Bereiche",
+    siteList: "Vorlagen für alle Bereiche",
     spaceList: "Vorlagen dieses Bereichs",
-    orgIntro: "Jeder Bereich bietet diese an, wenn jemand eine Seite anlegt, nach seinen eigenen Vorlagen und vor den mitgelieferten.",
+    siteIntro: "Jeder Bereich bietet diese an, wenn jemand eine Seite anlegt, nach seinen eigenen Vorlagen und vor den mitgelieferten.",
     spaceIntro: "Seiten in diesem Bereich können mit diesen beginnen, neben den Vorlagen der Organisation und den mitgelieferten.",
-    orgNotAdmin:
+    siteNotAdmin:
       "Nur Administratoren der Organisation ändern diese Vorlagen. Bitten Sie eine von ihnen, oder legen Sie die Vorlage in einem Bereich an, den Sie verwalten.",
     spaceNotAdmin: "Nur Administratoren dieses Bereichs ändern seine Vorlagen. Bitten Sie eine von ihnen.",
     empty: "Noch keine Vorlagen",
@@ -3211,7 +3211,7 @@ export const de: Messages = {
     cannotEdit: "Nur die Administratoren, die diese Vorlage verwalten, können sie ändern. Bitten Sie eine von ihnen.",
     spaceCrumb: (key: string) => `Vorlagen von ${key}`,
     editTitle: (name: string) => `${name} bearbeiten`,
-    newOrgTitle: "Neue Vorlage für alle Bereiche",
+    newSiteTitle: "Neue Vorlage für alle Bereiche",
     newSpaceTitle: (key: string) => `Neue Vorlage für ${key}`,
     cancel: "Abbrechen",
     save: "Vorlage speichern",

@@ -182,7 +182,7 @@ func TestTheSeedIsIdempotent(t *testing.T) {
 	demoOrgs := func() int {
 		t.Helper()
 		var n int
-		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM site WHERE slug = $1`, seed.DemoOrgSlug).Scan(&n); err != nil {
+		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM site WHERE slug = $1`, seed.DemoSiteSlug).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
@@ -195,7 +195,7 @@ func TestTheSeedIsIdempotent(t *testing.T) {
 		if err != nil {
 			t.Fatalf("seed run %d: %v", run+1, err)
 		}
-		if res.OrgCreated {
+		if res.SiteCreated {
 			t.Errorf("seed run %d made the demo organization again", run+1)
 		}
 	}
@@ -219,8 +219,8 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 		if err != nil {
 			t.Fatalf("run %d: %v", run+1, err)
 		}
-		if res.OrgCreated != (run == 0) {
-			t.Errorf("run %d: organization created = %v", run+1, res.OrgCreated)
+		if res.SiteCreated != (run == 0) {
+			t.Errorf("run %d: organization created = %v", run+1, res.SiteCreated)
 		}
 		made, err := accounts.EnsureAdmin(ctx, email, "Administrator", "first password 1")
 		if err != nil {
@@ -245,7 +245,7 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 	}
 
 	res, err := seed.Ensure(ctx, h.cluster, "Another")
-	if err != nil || res.OrgCreated {
+	if err != nil || res.SiteCreated {
 		t.Fatalf("bootstrapping under another name = %+v, %v; want the organization there left alone", res, err)
 	}
 	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM site`).Scan(&org); err != nil || org != 1 {
