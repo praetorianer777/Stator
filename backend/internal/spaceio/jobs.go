@@ -350,7 +350,9 @@ func (j *Jobs) Exports(ctx context.Context, actor perm.Actor, key string, limit 
 // Download opens an export's file for whoever may read the export.
 func (j *Jobs) Download(ctx context.Context, actor perm.Actor, id uuid.UUID) (*ExportJob, io.ReadCloser, error) {
 	var found *ExportJob
-	err := j.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+	// The worker's write that made it done is nobody's own, so no pin holds
+	// a replica to it; the primary has every state any read has shown.
+	err := j.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		found, err = scanExport(tx.QueryRow(ctx, selectExport+` WHERE e.id = $1`, id))
 		if errors.Is(err, pgx.ErrNoRows) {

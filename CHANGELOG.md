@@ -1183,6 +1183,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- An export the list shows as done now always downloads (#404). The download
+  read the export from a replica, which may not yet have replayed the
+  worker's write that finished it, and then answered `not_ready`; it now
+  reads the export from the primary, for spaces and the organization alike.
 - The database now keeps the sign-in provider and the roles its groups map
   to for the organization's administrators (#401). Before, only the wall
   between organizations held them, so straight through SQL any member could
