@@ -42,7 +42,7 @@ gh issue develop 42 --name feat/42-page-tree --base main --checkout
 
 # ... work ...
 
-./run-tests.sh                       # everything; the hook runs the quick subset before every push (STATOR_GATE=full for all)
+./run-tests.sh                       # everything; the hook runs the quick subset before every push (STATOR_GATE=full git push for all)
 git push -u origin HEAD
 
 gh pr create --title "..." --body-file /tmp/pr.md   # body contains "Closes #42"
