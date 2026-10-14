@@ -291,7 +291,8 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
   it the answer is 413 `too_large` with a sentence naming the limit; an empty
   file is 422 on `file`. The content type sent is kept when specific, else the
   bytes are sniffed. Images report `width` and `height`.
-- **Storage.** S3-compatible, key `org/<org id>/page/<page id>/<attachment id>`.
+- **Storage.** S3-compatible, key `page/<page id>/<attachment id>`, kept in the
+  row (files stored before #380 keep `org/<org id>/page/...`).
   Attachments stay with a trashed page and are deleted, objects included, when
   it is purged or its space deleted. Copying a page copies its attachments and
   rewrites the copy's references.

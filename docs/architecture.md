@@ -38,10 +38,10 @@ Keycloak / any OIDC provider <── login ──┘
 
 ### Multi-tenancy
 
-An instance holds one organization (#380): the database refuses a second
-(`org_is_the_only_one`). No policy or function reads an organization any
-more; every table still carries an `org_id`, filled by its default, until
-the last step of `docs/plans/380-one-organization.md` drops it. Every table
+An instance holds one organization (#380), whose settings are the one row
+of `site`; its key (`site_one_row`) refuses a second. The schema names no
+organization: no table carries an `org_id`, and no policy or function reads
+one. Every table
 forces row level security, with a permissive policy that admits every row
 and restrictive access policies that decide who reaches which. The
 application connects as `stator_app`, which cannot bypass RLS; migrations

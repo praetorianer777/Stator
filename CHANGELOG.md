@@ -1070,6 +1070,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
   `{id, topic, occurredAt, payload}`: an instance serves one organization, so
   the field said nothing. A receiver that reads `orgId` to tell instances
   apart should tell them by the address it gave each, or by its secret.
+- The database schema names no organization any more (#380): `org_id` is
+  gone from every table with the keys and indexes that led with it, and the
+  tables named after the organization are named after the site (`site`,
+  `member`, `join_request`, `brand`, `site_export`, `site_import`). Files
+  already stored keep their keys, which their rows go on naming; new ones
+  are stored without the organization in their key. Secrets sealed before
+  keep opening. The upgrade rebuilds keys on every table, so it takes a
+  while on a large instance and the site is down for it. Anything that reads
+  the database directly, such as reports, has to follow the new names.
 - Nothing in the database reads an organization any more (#380): the
   policies that kept each organization's rows to itself, and the filter by
   organization inside every function, are gone, and who reaches what is

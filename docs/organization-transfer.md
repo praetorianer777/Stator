@@ -62,7 +62,7 @@ the upgrade. Go back to the release you ran before, and then:
 the background, and the page offers it for download for
 `STATOR_SPACE_EXPORT_TTL` (a day by default), as it does a space's export.
 Only the organization's administrators queue an export, list them or
-download one; the database holds the `org_export` rows to them, and the
+download one; the database holds the `site_export` rows to them, and the
 worker checks again that whoever asked is still one before it begins.
 
 `<slug>-organization-<date>.zip` holds:
