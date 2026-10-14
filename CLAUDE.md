@@ -13,9 +13,10 @@ Read `.claude/skills/gh/SKILL.md` before changing anything. Branches are
 request with `Closes #N`, and the user merges. `.claude/hooks/branch-guard.sh`
 enforces this and, before every push, runs the layers of `./run-tests.sh` that
 the pushed files can affect: format, Go, web and the shell tests by default,
-and the stack, integration and browser layers with `STATOR_GATE=full`. CI runs
-every layer and blocks the merge, so a quick local gate says what it skipped.
-A gate that does not finish blocks the push.
+and the stack, integration and browser layers with `STATOR_GATE=full git push`.
+CI runs every layer and blocks the merge, so a quick local gate says what it
+skipped. A gate that does not finish blocks the push; `STATOR_GATE_LIMIT=<seconds>
+git push` gives it longer, up to 1700.
 
 ## Nothing is installed on this machine
 

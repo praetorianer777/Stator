@@ -569,16 +569,23 @@ blocks the merge.
   unknown base runs everything, so a new directory is tested until listed.
 - **Quick by default.** The hook runs the shell tests, format, Go and web
   layers (about 7 minutes) and leaves the stack, the integration suite and
-  the browser suite to CI. `STATOR_GATE=full` runs them too, for the files
+  the browser suite to CI. `STATOR_GATE=full git push` runs them too, for the files
   that can affect them. This replaces "every push runs every layer" in
   `CLAUDE.md`; a failing layer still blocks the push.
 - **Said aloud.** A passing hook tells the user which layers ran and which
   were skipped, so nobody believes a shorter gate was the whole suite.
 - **A gate that does not finish is a failure.** A watchdog stops the gate
-  after 20 minutes (28 for a full gate; `STATOR_GATE_LIMIT` sets seconds),
-  before the hook's timeout, and denies the push with a sentence saying so.
-  The gate runs in a group of its own so the make and docker it started die
-  with it, and its stack is taken down, which a killed gate never did.
+  after 20 minutes (28 for a full gate; `STATOR_GATE_LIMIT` sets seconds, at
+  most 1700), before the hook's timeout, and denies the push with a sentence
+  saying so. The gate runs in a group of its own so the make and docker it
+  started die with it, and its stack is taken down, which a killed gate never
+  did.
+- **Settings come from the push command (#413).** The hook runs before the
+  command, so a variable in front of `git push` never reached it, and
+  `STATOR_GATE=full git push` ran the quick gate. The hook now reads
+  `STATOR_GATE` and `STATOR_GATE_LIMIT` from the command's leading
+  assignments, then from its own environment, refuses a value it cannot
+  honour, and logs the mode and limit it took and where from.
 
 ## 2026-10-10: The chart brings SeaweedFS as a subchart whose keys the secrets Job makes (#341)
 

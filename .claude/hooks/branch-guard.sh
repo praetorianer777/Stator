@@ -173,6 +173,50 @@ stop_gate() {
   return 0
 }
 
+# Claude Code kills the hook at the timeout in .claude/settings.json (1800
+# seconds) and a killed hook lets the push through (#328), so the gate must be
+# stopped, and its stack taken down, well before that.
+GATE_LIMIT_MAX=1700
+GATE_LIMIT_QUICK=1200
+
+# A variable written in front of git push reaches git, not this hook, which
+# runs before the command (#413), so the command text is read first.
+# Sets $setting and $from (command, env or default).
+gate_setting() { # name default assignments...
+  local name="$1" a
+  setting="$2" from=default
+  shift 2
+  if [[ -n "${!name:-}" ]]; then setting="${!name}" from=env; fi
+  for a in "$@"; do
+    if [[ "$a" == "$name="* ]]; then setting="${a#*=}" from=command; fi
+  done
+}
+
+source_of() {
+  case "$1" in
+    command) printf 'in front of git push' ;;
+    env) printf 'in the environment Claude Code runs in' ;;
+  esac
+}
+
+# Records the STATOR_GATE and STATOR_GATE_LIMIT a push asks for; a value the
+# hook cannot honour refuses the push rather than running another gate.
+gate_settings() { # repo assignments...
+  local repo="$1" mode mode_from
+  shift
+  gate_setting STATOR_GATE quick "$@"
+  mode="$setting" mode_from="$from"
+  [[ "$mode" == quick || "$mode" == full ]] \
+    || deny "STATOR_GATE is quick or full, not '${mode//$QUOTED/...}' ($(source_of "$mode_from")). Push with STATOR_GATE=full git push for every layer, or without STATOR_GATE for the quick gate."
+  gate_setting STATOR_GATE_LIMIT "$([[ "$mode" == full ]] && echo "$GATE_LIMIT_MAX" || echo "$GATE_LIMIT_QUICK")" "$@"
+  [[ "$setting" =~ ^[1-9][0-9]{0,5}$ ]] && (( setting <= GATE_LIMIT_MAX )) \
+    || deny "STATOR_GATE_LIMIT is a whole number of seconds up to $GATE_LIMIT_MAX, not '${setting//$QUOTED/...}' ($(source_of "$from")), because Claude Code kills the hook at 1800 seconds and the gate must be stopped before that. Push with STATOR_GATE_LIMIT=<seconds> git push, or without it for the default."
+  gate_mode["$repo"]="$mode"
+  gate_mode_from["$repo"]="$mode_from"
+  gate_limit["$repo"]="$setting"
+  gate_limit_from["$repo"]="$from"
+}
+
 # What a push changes, against where the branch left main; a base that cannot
 # be found gives no files, which runs every layer.
 changed_files() {
@@ -182,21 +226,19 @@ changed_files() {
 }
 
 run_tests() {
-  local repo="$1" log start rc mode limit plan layers skipped flag watchdog
+  local repo="$1" log start rc mode limit plan layers skipped flag watchdog more=""
   log="$(mktemp)"
   flag="$(mktemp -u)"
   start=$SECONDS
-  mode="${STATOR_GATE:-quick}"
-  [[ "$mode" == full ]] || mode=quick
+  mode="${gate_mode[$repo]}"
+  limit="${gate_limit[$repo]}"
   plan="$(changed_files "$repo" | "$HOOK_DIR/gate-layers.sh" "$mode")"
   layers="$(sed -n 's/^run: //p' <<< "$plan")"
   skipped="$(sed -n 's/^skipped: //p' <<< "$plan")"
-  # Under the hook's own timeout, which kills it without a word and lets the
-  # push through (#328): a gate that has not finished by then did not pass.
-  limit="${STATOR_GATE_LIMIT:-$([[ "$mode" == full ]] && echo 1700 || echo 1200)}"
   # A gate killed at the hook's timeout writes no closing line, so its start
-  # gets a line of its own.
-  gate_log=$'\t'"gate=$repo"
+  # gets a line of its own; it names where mode and limit came from, so a
+  # setting the hook never saw shows (#413).
+  gate_log=$'\t'"gate=$repo"$'\t'"gate_mode=$mode (${gate_mode_from[$repo]})"$'\t'"gate_limit=$limit (${gate_limit_from[$repo]})"
   decision=gating log_line
   # run-tests.sh gives each checkout its own stack, so gates running in
   # parallel worktrees do not collide (#95).
@@ -223,7 +265,8 @@ run_tests() {
   if [[ -e "$flag" ]]; then
     rm -f "$flag" "$log"
     gate_log+=$'\t'"gate_timeout=$limit"
-    deny "Push blocked: the gate did not finish within $((limit / 60)) minutes, so nothing is known about this push. Run the layers yourself (./run-tests.sh $layers), or push with STATOR_GATE_LIMIT=<seconds> set higher; with the machine busy, ask the user to push with '! git push', which skips the gate, and let CI judge."
+    (( limit < GATE_LIMIT_MAX )) && more=", or give the gate longer with STATOR_GATE_LIMIT=<seconds> git push (at most $GATE_LIMIT_MAX)"
+    deny "Push blocked: the gate did not finish within $((limit / 60)) minutes, so nothing is known about this push. Run the layers yourself (./run-tests.sh $layers)$more; with the machine busy, ask the user to push with '! git push', which skips the gate, and let CI judge."
   fi
   if (( rc != 0 )); then
     local tail_out
@@ -254,6 +297,7 @@ case "$tool" in
     # A cd earlier in the command decides where later segments run (#207),
     # so a cwd outside this repo no longer settles the matter on its own.
     dir="$cwd" prev="" lost="" stack=() gates=()
+    declare -A gate_mode=() gate_mode_from=() gate_limit=() gate_limit_from=()
     if repo="$(checkout_for "$cwd")"; then branch="$(current_branch "$repo")"; else repo="" branch=""; fi
 
     # Heredoc bodies and quoted strings are data (commit messages, issue
@@ -272,9 +316,10 @@ case "$tool" in
     while IFS= read -r seg; do
       read -ra t <<< "$seg"
       # Strip env assignments and wrappers (time git push, env -i git commit, ...).
-      k=0
+      k=0 assigns=()
       while [[ "${t[k]:-}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] \
         || [[ "${t[k]:-}" =~ ^(time|command|exec|nohup|nice|stdbuf|env|sudo|doas)$ ]]; do
+        [[ "${t[k]}" == *=* ]] && assigns+=("${t[k]}")
         [[ "${t[k]:-}" == env ]] && while [[ "${t[k+1]:-}" == -* ]]; do ((k++)); done
         ((k++))
       done
@@ -374,7 +419,10 @@ case "$tool" in
               && deny "Pushing to main is not allowed; push the issue branch and open a PR instead."
           done
           valid "$branch" || deny "Refusing to push from branch '$branch'. $HINT"
-          [[ " ${gates[*]} " == *" $repo "* ]] || gates+=("$repo")
+          if [[ " ${gates[*]} " != *" $repo "* ]]; then
+            gate_settings "$repo" "${assigns[@]}"
+            gates+=("$repo")
+          fi
           ;;
       esac
     done <<< "$segments"

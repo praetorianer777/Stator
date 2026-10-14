@@ -321,20 +321,51 @@ git switch -qc fix/7-gate-layers
 mkdir -p backend && printf 'words\n' > NOTES.md && printf 'package x\n' > backend/x.go && git add NOTES.md backend && git commit -qm "words and a backend file"
 printf '#!/bin/sh\necho "$@" > "$GATE_ARGS"\n' > run-tests.sh; chmod +x run-tests.sh
 export GATE_ARGS="$W3/args"
-push_json() { jq -nc --arg cwd "$W3/r" '{tool_name:"Bash",cwd:$cwd,tool_input:{command:"git push -u origin HEAD"}}'; }
-out="$(push_json | .claude/hooks/branch-guard.sh)"
-if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go" ]]; then echo "ok    gate  ran the layers of the files the branch changed since main"; else echo "FAIL  gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
+push_json() { jq -nc --arg cwd "$W3/r" --arg cmd "${1:-git push -u origin HEAD}" '{tool_name:"Bash",cwd:$cwd,tool_input:{command:$cmd}}'; }
+LOG3="$W3/r/.git/branch-guard.log"
+FULL="shell check-format check-go test-integration test-backup test-e2e"
+ran() { # label expected-layers
+  if [[ "$(cat "$GATE_ARGS" 2>/dev/null)" == "$2" ]]; then echo "ok    gate  $1"; else echo "FAIL  gate  $1 ran '$(cat "$GATE_ARGS" 2>/dev/null)'"; fail=1; fi
+}
+gating_logged() { # label pattern
+  if grep $'\tdecision=gating\t' "$LOG3" | tail -n 1 | grep -qF -- "$2"; then echo "ok    gate  $1 logged"
+  else echo "FAIL  gate  $1: the gate's first line lacks '$2': $(grep $'\tdecision=gating\t' "$LOG3" | tail -n 1)"; fail=1; fi
+}
+out="$(push_json | env -u STATOR_GATE -u STATOR_GATE_LIMIT .claude/hooks/branch-guard.sh)"
+ran "ran the layers of the files the branch changed since main" "shell check-format check-go"
 if jq -e '.systemMessage | contains("Skipped:") and contains("test-e2e")' <<< "$out" > /dev/null; then echo "ok    gate  said what it skipped"; else echo "FAIL  the skipped layers were not said: $out"; fail=1; fi
+gating_logged "default mode and limit" $'\tgate_mode=quick (default)\tgate_limit=1200 (default)'
 out="$(push_json | STATOR_GATE=full .claude/hooks/branch-guard.sh)"
-if [[ "$(cat "$GATE_ARGS")" == "shell check-format check-go test-integration test-backup test-e2e" ]]; then echo "ok    gate  STATOR_GATE=full runs the browser suite"; else echo "FAIL  full gate ran '$(cat "$GATE_ARGS")'"; fail=1; fi
+ran "STATOR_GATE=full in the environment runs the browser suite" "$FULL"
+gating_logged "mode from the environment" $'\tgate_mode=full (env)\tgate_limit=1700 (default)'
+
+echo "== the gate takes STATOR_GATE and STATOR_GATE_LIMIT from the push command (#413)"
+rm -f "$GATE_ARGS"
+out="$(push_json "STATOR_GATE=full git push -u origin HEAD" | env -u STATOR_GATE .claude/hooks/branch-guard.sh)"
+ran "STATOR_GATE=full git push runs integration, backup and browser" "$FULL"
+gating_logged "mode from the command" $'\tgate_mode=full (command)'
+out="$(push_json "STATOR_GATE=quick git push" | STATOR_GATE=full .claude/hooks/branch-guard.sh)"
+ran "the command overrides the environment" "shell check-format check-go"
+out="$(push_json "env STATOR_GATE='full' STATOR_GATE_LIMIT=900 git push" | STATOR_GATE_LIMIT=600 .claude/hooks/branch-guard.sh)"
+ran "env STATOR_GATE='full' git push" "$FULL"
+gating_logged "limit from the command" $'\tgate_mode=full (command)\tgate_limit=900 (command)'
+out="$(push_json | env -u STATOR_GATE STATOR_GATE_LIMIT=600 .claude/hooks/branch-guard.sh)"
+gating_logged "limit from the environment" $'\tgate_limit=600 (env)'
+for bad in "STATOR_GATE=yes git push" "STATOR_GATE_LIMIT=2400 git push" "STATOR_GATE_LIMIT=10m git push" "STATOR_GATE_LIMIT=0 git push" 'STATOR_GATE=$MODE git push'; do
+  rm -f "$GATE_ARGS"
+  got="$(push_json "$bad" | .claude/hooks/branch-guard.sh | jq -r '.hookSpecificOutput.permissionDecision // "allow"')"
+  if [[ "$got" == deny && ! -e "$GATE_ARGS" ]]; then echo "ok    gate  refused '$bad'"; else echo "FAIL  gate  '$bad' gave $got"; fail=1; fi
+done
+got="$(push_json | STATOR_GATE=yes .claude/hooks/branch-guard.sh | jq -r '.hookSpecificOutput.permissionDecision // "allow"')"
+[[ "$got" == deny ]] && echo "ok    gate  refused STATOR_GATE=yes in the environment" || { echo "FAIL  gate  STATOR_GATE=yes in the environment gave $got"; fail=1; }
 
 echo "== a gate that does not finish blocks the push (#328)"
 printf '#!/bin/sh\nexec sleep 37\n' > run-tests.sh
-got="$(push_json | STATOR_GATE_LIMIT=3 .claude/hooks/branch-guard.sh | jq -r '.hookSpecificOutput | .permissionDecision + " " + .permissionDecisionReason')"
-if [[ "$got" == deny\ *"did not finish within"* ]]; then echo "ok    timeout  denied the push"; else echo "FAIL  a gate that ran out of time gave: $got"; fail=1; fi
+got="$(push_json "STATOR_GATE_LIMIT=3 git push -u origin HEAD" | env -u STATOR_GATE_LIMIT .claude/hooks/branch-guard.sh | jq -r '.hookSpecificOutput | .permissionDecision + " " + .permissionDecisionReason')"
+if [[ "$got" == deny\ *"did not finish within"*"STATOR_GATE_LIMIT=<seconds> git push"* ]]; then echo "ok    timeout  denied the push"; else echo "FAIL  a gate that ran out of time gave: $got"; fail=1; fi
 sleep 1
 if pgrep -f '^sleep 37$' > /dev/null; then echo "FAIL  timeout  the gate was left running"; fail=1; pkill -f '^sleep 37$'; else echo "ok    timeout  nothing was left running"; fi
-grep -q $'\tgate_timeout=3' "$W3/r/.git/branch-guard.log" && echo "ok    timeout  logged" || { echo "FAIL  timeout  not logged"; fail=1; }
+grep -q $'\tgate_limit=3 (command)\t.*\tgate_timeout=3' "$LOG3" && echo "ok    timeout  logged" || { echo "FAIL  timeout  not logged"; fail=1; }
 cd "$W"
 
 if (( fail )); then
