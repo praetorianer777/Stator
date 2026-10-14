@@ -33,10 +33,9 @@ func TestTemplateButtonsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "template-button")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, carlID := h.namedPerson(t, org.org, "Ann Button"), h.namedPerson(t, org.org, "Carl Button")
-	ann, carl := api.as(t, annID, org.org, slug), api.as(t, carlID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID, carlID := h.namedPerson(t, "Ann Button"), h.namedPerson(t, "Carl Button")
+	ann, carl := api.as(t, annID), api.as(t, carlID)
 
 	docs := newTree(t, owner, "TBA", "Button space")
 	want(t, owner.put(t, "/api/v1/spaces/TBA/permissions", map[string]any{"grants": []any{
@@ -98,7 +97,7 @@ func TestTemplateButtonsOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("whoever may not add pages there, or see there, makes nothing", func(t *testing.T) {
-		before := h.countRows(t, `SELECT count(*) FROM page WHERE org_id = $1`, org.org)
+		before := h.countRows(t, `SELECT count(*) FROM page`)
 		want(t, carl.post(t, "/api/v1/templates/how-to/pages", map[string]any{"parentId": plans}), http.StatusForbidden, "carl, who only reads")
 		want(t, carl.post(t, "/api/v1/templates/how-to/pages", map[string]any{"parentId": secret}), http.StatusNotFound, "carl under the secret")
 		r := want(t, ann.post(t, "/api/v1/templates/no-such-template/pages", map[string]any{"spaceKey": "TBA"}), http.StatusUnprocessableEntity, "a template that is not there")
@@ -109,7 +108,7 @@ func TestTemplateButtonsOverTheAPI(t *testing.T) {
 		if _, ok := fieldsOf(t, r)["spaceKey"]; !ok {
 			t.Errorf("nowhere is refused with %v", r.Body)
 		}
-		if after := h.countRows(t, `SELECT count(*) FROM page WHERE org_id = $1`, org.org); after != before {
+		if after := h.countRows(t, `SELECT count(*) FROM page`); after != before {
 			t.Errorf("refused clicks made %d pages", after-before)
 		}
 	})
@@ -119,11 +118,11 @@ func TestTemplateButtonsOverTheAPI(t *testing.T) {
 	t.Run("the database holds the button to who may add pages", func(t *testing.T) {
 		spaceID := docs.spaceID(t)
 		conn := appConn(t)
-		insert := `INSERT INTO page (id, org_id, space_id, parent_id, rank, title, created_by, updated_by) VALUES ($1, $2, $3, $4, 'zz', 'Forged', $5, $5)`
+		insert := `INSERT INTO page (id, space_id, parent_id, rank, title, created_by, updated_by) VALUES ($1, $2, $3, 'zz', 'Forged', $4, $4)`
 		actAs(t, conn, carlID)
-		denied(t, conn, "a reader adds a page under plans", insert, uuid.Must(uuid.NewV7()), org.org, spaceID, plans, carlID)
+		denied(t, conn, "a reader adds a page under plans", insert, uuid.Must(uuid.NewV7()), spaceID, plans, carlID)
 		actAs(t, conn, annID)
-		if _, err := conn.Exec(context.Background(), insert, uuid.Must(uuid.NewV7()), org.org, spaceID, plans, annID); err != nil {
+		if _, err := conn.Exec(context.Background(), insert, uuid.Must(uuid.NewV7()), spaceID, plans, annID); err != nil {
 			t.Errorf("ann cannot add a page under plans: %v", err)
 		}
 	})
@@ -149,10 +148,9 @@ func TestContributorsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "contributors")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID, carlID := h.namedPerson(t, org.org, "Ann Writer"), h.namedPerson(t, org.org, "Ben Writer"), h.namedPerson(t, org.org, "Carl Reader")
-	ann, ben, carl := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug), api.as(t, carlID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Writer"), h.namedPerson(t, "Ben Writer"), h.namedPerson(t, "Carl Reader")
+	ann, ben, carl := api.as(t, annID), api.as(t, benID), api.as(t, carlID)
 
 	docs := newTree(t, owner, "CTB", "Contributors")
 	want(t, owner.put(t, "/api/v1/spaces/CTB/permissions", map[string]any{"grants": []any{

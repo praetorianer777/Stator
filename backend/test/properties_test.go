@@ -65,9 +65,8 @@ func TestAPropertiesReportTabulatesWhatEachReaderMayRead(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "props")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	member := api.as(t, h.addPerson(t, "member"))
 
 	docs := newTree(t, owner, "ADR", "Decisions")
 	other := newTree(t, owner, "OPS", "Operations")

@@ -19,9 +19,8 @@ func TestTheBrandIsChangedByAdministratorsAndReadByMembers(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "brand")
-	slug := h.slugOf(t, home.org)
-	admin := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	admin := api.as(t, home.user)
+	member := api.as(t, h.addPerson(t, "member"))
 
 	t.Run("a new organization has no brand", func(t *testing.T) {
 		got := obj(t, want(t, member.get(t, "/api/v1/site/brand"), http.StatusOK, "read the brand"), "brand")
@@ -98,7 +97,7 @@ func TestTheBrandIsChangedByAdministratorsAndReadByMembers(t *testing.T) {
 	})
 
 	t.Run("setting it is in the audit log", func(t *testing.T) {
-		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'org.brand_set'`, home.org); n < 3 {
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = 'org.brand_set'`); n < 3 {
 			t.Errorf("%d brand changes are in the log", n)
 		}
 	})
@@ -108,21 +107,21 @@ func TestTheBrandIsHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "brand-db")
-	admin := api.as(t, home.user, home.org, h.slugOf(t, home.org))
-	memberID := h.addPerson(t, home.org, "member")
+	admin := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
 	want(t, admin.put(t, "/api/v1/site/brand/footer", map[string]any{"en": "Internal", "de": ""}), http.StatusOK, "set the footer")
 
 	conn := appConn(t)
 	ctx := context.Background()
 	actAs(t, conn, memberID)
-	refused(t, conn, "a member changing the footer", `UPDATE org_brand SET footer_en = 'Mine'`)
-	refused(t, conn, "a member removing the brand", `DELETE FROM org_brand`)
+	refused(t, conn, "a member changing the footer", `UPDATE brand SET footer_en = 'Mine'`)
+	refused(t, conn, "a member removing the brand", `DELETE FROM brand`)
 
 	actAs(t, conn, home.user)
-	refused(t, conn, "a footer over 200 characters", `UPDATE org_brand SET footer_en = repeat('x', 201)`)
-	refused(t, conn, "a logo that is no picture", `UPDATE org_brand SET logo_type = 'image/svg+xml', logo_size = 10`)
-	refused(t, conn, "a logo with no size", `UPDATE org_brand SET logo_type = 'image/png'`)
-	if _, err := conn.Exec(ctx, `UPDATE org_brand SET footer_de = 'Intern'`); err != nil {
+	refused(t, conn, "a footer over 200 characters", `UPDATE brand SET footer_en = repeat('x', 201)`)
+	refused(t, conn, "a logo that is no picture", `UPDATE brand SET logo_type = 'image/svg+xml', logo_size = 10`)
+	refused(t, conn, "a logo with no size", `UPDATE brand SET logo_type = 'image/png'`)
+	if _, err := conn.Exec(ctx, `UPDATE brand SET footer_de = 'Intern'`); err != nil {
 		t.Fatalf("an administrator could not change the footer: %v", err)
 	}
 }
@@ -131,8 +130,7 @@ func TestAnonymousReadersSeeTheBrandOfAnOpenOrganization(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "brand-public")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 	anon := api.anonymous()
 	base := publicPath()
 
@@ -192,8 +190,7 @@ func TestAWordExportCarriesTheBrand(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "brand-word")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 	anon := api.anonymous()
 
 	docs := newTree(t, owner, "BRW", "Branded handbook")
@@ -202,7 +199,7 @@ func TestAWordExportCarriesTheBrand(t *testing.T) {
 	h.settle(t)
 
 	var orgName string
-	if err := h.super.QueryRow(context.Background(), `SELECT name FROM org WHERE id = $1`, home.org).Scan(&orgName); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT name FROM site`).Scan(&orgName); err != nil {
 		t.Fatal(err)
 	}
 
@@ -252,14 +249,13 @@ func TestAnHTMLExportCarriesTheBrand(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "brand-html")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "BRH", "Branded handbook")
 	guide := docs.add(docs.homeID, "Branded guide")
 	publishBody(t, owner, guide, map[string]any{"type": "doc", "content": []any{plainPara("Read offline.")}})
 	h.settle(t)
 	var orgName string
-	if err := h.super.QueryRow(context.Background(), `SELECT name FROM org WHERE id = $1`, home.org).Scan(&orgName); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT name FROM site`).Scan(&orgName); err != nil {
 		t.Fatal(err)
 	}
 

@@ -18,7 +18,7 @@ func TestInterfaceLanguage(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "language")
-	me := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	me := api.as(t, home.user)
 	locale := func(r response) any { return obj(t, r, "user")["locale"] }
 
 	t.Run("nobody has chosen until they do, so the browser decides", func(t *testing.T) {

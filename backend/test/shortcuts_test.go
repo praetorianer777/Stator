@@ -52,11 +52,11 @@ func shortcutIDs(t *testing.T, c *client, key string) map[string]string {
 	return out
 }
 
-func shortcutActions(t *testing.T, h *harness, org uuid.UUID, space string) []string {
+func shortcutActions(t *testing.T, h *harness, space string) []string {
 	t.Helper()
 	rows, err := h.super.Query(context.Background(), `
-		SELECT action FROM audit_log WHERE org_id = $1 AND target_type = 'space' AND target_id = $2 AND action LIKE 'space.shortcut%'
-		ORDER BY created_at, id`, org, space)
+		SELECT action FROM audit_log WHERE target_type = 'space' AND target_id = $1 AND action LIKE 'space.shortcut%'
+		ORDER BY created_at, id`, space)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,10 +79,9 @@ func TestSpaceShortcutsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "shortcuts")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID := h.namedPerson(t, org.org, "Ann Member")
-	ann := api.as(t, annID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID := h.namedPerson(t, "Ann Member")
+	ann := api.as(t, annID)
 
 	docs := newTree(t, owner, "SHC", "Shortcuts")
 	h.closeSpace(t, docs.space, annID)
@@ -155,7 +154,7 @@ func TestSpaceShortcutsOverTheAPI(t *testing.T) {
 			}
 		}
 		away := h.makeOutsider(t, "shortcuts-away")
-		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+		stranger := api.as(t, away.user)
 		for what, r := range map[string]response{
 			"list":   stranger.get(t, shortcutsPath("SHC")),
 			"pin":    stranger.post(t, shortcutsPath("SHC"), map[string]any{"url": "https://example.com"}),
@@ -231,7 +230,7 @@ func TestSpaceShortcutsOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("every change is in the audit log", func(t *testing.T) {
-		sameList(t, "the space's shortcut acts", shortcutActions(t, h, org.org, docs.spaceID(t)),
+		sameList(t, "the space's shortcut acts", shortcutActions(t, h, docs.spaceID(t)),
 			audit.ActionShortcutAdded, audit.ActionShortcutAdded, audit.ActionShortcutAdded, audit.ActionShortcutAdded, audit.ActionShortcutAdded,
 			audit.ActionShortcutMoved, audit.ActionShortcutMoved, audit.ActionShortcutMoved,
 			audit.ActionShortcutAdded, audit.ActionShortcutRemoved)
@@ -244,7 +243,7 @@ func TestASpaceHoldsAFewShortcuts(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "shortcuts-full")
-	owner := api.as(t, org.user, org.org, h.slugOf(t, org.org))
+	owner := api.as(t, org.user)
 	newTree(t, owner, "FUL", "Full")
 	for i := range shortcut.MaxPerSpace {
 		want(t, owner.post(t, shortcutsPath("FUL"), map[string]any{"url": fmt.Sprintf("https://example.com/%d", i)}), http.StatusCreated, "pin one more")
@@ -266,9 +265,8 @@ func TestShortcutsAreEnforcedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "shortcut-wall")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID := h.addPerson(t, org.org, "member")
+	owner := api.as(t, org.user)
+	annID := h.addPerson(t, "member")
 
 	docs := newTree(t, owner, "SWL", "Walled shortcuts")
 	open := docs.add(docs.homeID, "Open")
@@ -302,8 +300,8 @@ func TestShortcutsAreEnforcedByTheDatabase(t *testing.T) {
 		if n := count(`SELECT count(*) FROM space_shortcut WHERE page_id = $1`, secret); n != 0 {
 			t.Errorf("ann reads the shortcut to Secret")
 		}
-		denied(t, conn, "ann pins a link", `INSERT INTO space_shortcut (org_id, space_id, url, label, rank) VALUES ($1, $2, 'https://example.org', 'Mine', 'z')`, org.org, spaceID)
-		denied(t, conn, "ann pins a page", `INSERT INTO space_shortcut (org_id, space_id, page_id, rank) VALUES ($1, $2, $3, 'z')`, org.org, spaceID, open)
+		denied(t, conn, "ann pins a link", `INSERT INTO space_shortcut (space_id, url, label, rank) VALUES ($1, 'https://example.org', 'Mine', 'z')`, spaceID)
+		denied(t, conn, "ann pins a page", `INSERT INTO space_shortcut (space_id, page_id, rank) VALUES ($1, $2, 'z')`, spaceID, open)
 		untouched(t, conn, "ann reorders", `UPDATE space_shortcut SET rank = 'a' WHERE space_id = $1`, spaceID)
 		untouched(t, conn, "ann relabels", `UPDATE space_shortcut SET label = 'Mine' WHERE space_id = $1`, spaceID)
 		untouched(t, conn, "ann removes", `DELETE FROM space_shortcut WHERE space_id = $1`, spaceID)
@@ -315,11 +313,11 @@ func TestShortcutsAreEnforcedByTheDatabase(t *testing.T) {
 			"javascript:alert(1)", "JAVASCRIPT:alert(1)", "data:text/html,x", "ftp://example.com", "//example.com",
 			"https://user:pw@example.com", "https://exa mple.com", "https://example.com/\nx", "",
 		} {
-			denied(t, conn, "a link to "+bad, `INSERT INTO space_shortcut (org_id, space_id, url, label, rank) VALUES ($1, $2, $3, 'Bad', 'z')`, org.org, spaceID, bad)
+			denied(t, conn, "a link to "+bad, `INSERT INTO space_shortcut (space_id, url, label, rank) VALUES ($1, $2, 'Bad', 'z')`, spaceID, bad)
 		}
-		denied(t, conn, "a link without a label", `INSERT INTO space_shortcut (org_id, space_id, url, rank) VALUES ($1, $2, 'https://example.org', 'z')`, org.org, spaceID)
-		denied(t, conn, "a page and a link at once", `INSERT INTO space_shortcut (org_id, space_id, page_id, url, label, rank) VALUES ($1, $2, $3, 'https://example.org', 'Both', 'z')`, org.org, spaceID, open)
-		denied(t, conn, "a shortcut to a trashed page", `INSERT INTO space_shortcut (org_id, space_id, page_id, rank) VALUES ($1, $2, $3, 'z')`, org.org, spaceID, gone)
+		denied(t, conn, "a link without a label", `INSERT INTO space_shortcut (space_id, url, rank) VALUES ($1, 'https://example.org', 'z')`, spaceID)
+		denied(t, conn, "a page and a link at once", `INSERT INTO space_shortcut (space_id, page_id, url, label, rank) VALUES ($1, $2, 'https://example.org', 'Both', 'z')`, spaceID, open)
+		denied(t, conn, "a shortcut to a trashed page", `INSERT INTO space_shortcut (space_id, page_id, rank) VALUES ($1, $2, 'z')`, spaceID, gone)
 		denied(t, conn, "a shortcut moved to another space", `UPDATE space_shortcut SET space_id = $2 WHERE space_id = $1`, spaceID, otherID)
 		denied(t, conn, "a link pointed elsewhere", `UPDATE space_shortcut SET url = 'javascript:alert(1)' WHERE url IS NOT NULL AND space_id = $1`, spaceID)
 		denied(t, conn, "a page shortcut pointed elsewhere", `UPDATE space_shortcut SET page_id = $2 WHERE page_id = $1`, open, secret)
@@ -334,9 +332,9 @@ func TestShortcutsAreEnforcedByTheDatabase(t *testing.T) {
 	t.Run("the limit holds whatever path adds them", func(t *testing.T) {
 		actAs(t, conn, org.user)
 		refused(t, conn, "a space filled past its limit", `
-			INSERT INTO space_shortcut (org_id, space_id, url, label, rank)
-			SELECT $1, $2, 'https://example.com/' || n, 'Link ' || n, 'y' || lpad(n::text, 3, '0')
-			FROM generate_series(1, space_shortcut_max() + 1) AS n`, org.org, otherID)
+			INSERT INTO space_shortcut (space_id, url, label, rank)
+			SELECT $1, 'https://example.com/' || n, 'Link ' || n, 'y' || lpad(n::text, 3, '0')
+			FROM generate_series(1, space_shortcut_max() + 1) AS n`, otherID)
 		if n := count(`SELECT count(*) FROM space_shortcut WHERE space_id = $1`, otherID); n != 0 {
 			t.Errorf("a refused statement left %d shortcuts", n)
 		}

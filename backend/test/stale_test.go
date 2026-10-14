@@ -20,7 +20,7 @@ import (
 
 // backdate says a page's latest version was published days ago, as the
 // superuser with triggers off, since the database stamps every publish with now.
-func (h *harness) backdate(t *testing.T, org uuid.UUID, where string, days int, args ...any) {
+func (h *harness) backdate(t *testing.T, where string, days int, args ...any) {
 	t.Helper()
 	ctx := context.Background()
 	tx, err := h.super.Begin(ctx)
@@ -31,8 +31,8 @@ func (h *harness) backdate(t *testing.T, org uuid.UUID, where string, days int, 
 	if _, err := tx.Exec(ctx, `SET LOCAL session_replication_role = replica`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.Exec(ctx, `UPDATE page SET published_at = now() - make_interval(days => $2) WHERE org_id = $1 AND `+where,
-		append([]any{org, days}, args...)...); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE page SET published_at = now() - make_interval(days => $1) WHERE `+where,
+		append([]any{days}, args...)...); err != nil {
 		t.Fatalf("backdate %s: %v", where, err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -41,11 +41,11 @@ func (h *harness) backdate(t *testing.T, org uuid.UUID, where string, days int, 
 }
 
 // visited says a person last opened a page days ago.
-func (h *harness) visited(t *testing.T, org, person uuid.UUID, pageID string, days int) {
+func (h *harness) visited(t *testing.T, person uuid.UUID, pageID string, days int) {
 	t.Helper()
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO page_visit (org_id, user_id, page_id, visited_at) VALUES ($1, $2, $3, now() - make_interval(days => $4))
-		ON CONFLICT (org_id, user_id, page_id) DO UPDATE SET visited_at = EXCLUDED.visited_at`, org, person, pageID, days); err != nil {
+		INSERT INTO page_visit (user_id, page_id, visited_at) VALUES ($1, $2, now() - make_interval(days => $3))
+		ON CONFLICT (user_id, page_id) DO UPDATE SET visited_at = EXCLUDED.visited_at`, person, pageID, days); err != nil {
 		t.Fatalf("a visit to %s: %v", pageID, err)
 	}
 }
@@ -56,10 +56,9 @@ func TestStaleReportOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stale")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID, carlID := h.namedPerson(t, org.org, "Ann Steward"), h.namedPerson(t, org.org, "Ben Member"), h.namedPerson(t, org.org, "Carl Owner")
-	ann, ben := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Steward"), h.namedPerson(t, "Ben Member"), h.namedPerson(t, "Carl Owner")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	nobody := api.anonymous()
 
 	ops := newTree(t, owner, "OPS", "Operations")
@@ -84,16 +83,16 @@ func TestStaleReportOverTheAPI(t *testing.T) {
 	h.lapse(t, lapsed)
 	want(t, owner.delete(t, pagePath(trashed)), http.StatusNoContent, "Trashed goes to the trash")
 
-	h.backdate(t, org.org, `id = $3`, 500, docOld)
-	h.backdate(t, org.org, `id = $3`, 450, under)
-	h.backdate(t, org.org, `id = $3`, 400, ancient)
-	h.backdate(t, org.org, `id = $3`, 400, trashed)
-	h.backdate(t, org.org, `id = $3`, 250, lapsed)
-	h.backdate(t, org.org, `id = $3`, 200, old)
-	h.backdate(t, org.org, `id = $3`, 300, lately)
-	h.visited(t, org.org, benID, old, 190)
-	h.visited(t, org.org, carlID, old, 195)
-	h.visited(t, org.org, benID, lately, 10)
+	h.backdate(t, `id = $2`, 500, docOld)
+	h.backdate(t, `id = $2`, 450, under)
+	h.backdate(t, `id = $2`, 400, ancient)
+	h.backdate(t, `id = $2`, 400, trashed)
+	h.backdate(t, `id = $2`, 250, lapsed)
+	h.backdate(t, `id = $2`, 200, old)
+	h.backdate(t, `id = $2`, 300, lately)
+	h.visited(t, benID, old, 190)
+	h.visited(t, carlID, old, 195)
+	h.visited(t, benID, lately, 10)
 	h.settle(t)
 
 	t.Run("the stalest pages come first, in the spaces the reader administers", func(t *testing.T) {
@@ -242,9 +241,8 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stale-rls")
 	other := h.makeOutsider(t, "stale-rls-other")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID := h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member")
+	owner := api.as(t, org.user)
+	annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
 
 	ops := newTree(t, owner, "SRO", "Reviewed")
 	want(t, owner.put(t, "/api/v1/spaces/SRO/permissions", map[string]any{"grants": []any{
@@ -256,11 +254,11 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 	h.closeSpace(t, docs.space, annID, benID)
 	gone := ops.add(ops.homeID, "Gone quiet")
 	elsewhere := docs.add(docs.homeID, "Quiet elsewhere")
-	h.backdate(t, org.org, `id IN ($3, $4)`, 400, gone, elsewhere)
-	h.visited(t, org.org, org.user, gone, 300)
+	h.backdate(t, `id IN ($2, $3)`, 400, gone, elsewhere)
+	h.visited(t, org.user, gone, 300)
 	h.settle(t)
 	var docsID uuid.UUID
-	if err := h.super.QueryRow(context.Background(), `SELECT id FROM space WHERE org_id = $1 AND key = 'SRD'`, org.org).Scan(&docsID); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT id FROM space WHERE key = 'SRD'`).Scan(&docsID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -312,7 +310,7 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("a home page is listed but never offered for archiving", func(t *testing.T) {
-		h.backdate(t, org.org, `id = $3`, 500, ops.homeID)
+		h.backdate(t, `id = $2`, 500, ops.homeID)
 		h.settle(t)
 		actAs(t, conn, annID)
 		rows, err := conn.Query(ctx, `SELECT title, archivable FROM stale_pages(NULL, NULL, false, NULL, false, 180, NULL, NULL, 100)`)
@@ -361,9 +359,8 @@ func TestStaleReportReadsAWindowNotTheWholeOrganization(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stale-plan")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID := h.addPerson(t, org.org, "member")
+	owner := api.as(t, org.user)
+	annID := h.addPerson(t, "member")
 	open := newTree(t, owner, "SPL", "Plenty")
 	closed := newTree(t, owner, "SPC", "Closed")
 	want(t, owner.put(t, "/api/v1/spaces/SPL/permissions", map[string]any{"grants": []any{
@@ -374,25 +371,25 @@ func TestStaleReportReadsAWindowNotTheWholeOrganization(t *testing.T) {
 	bulk := func(key, home string, n int) {
 		t.Helper()
 		if _, err := h.super.Exec(ctx, `
-			INSERT INTO page (org_id, space_id, parent_id, rank, title, version, created_by, updated_by)
-			SELECT $1, s.id, $3, 'b' || lpad(i::text, 6, '0'), 'Bulk ' || i, 1, $4, $4
-			FROM space s, generate_series(1, $5) i
-			WHERE s.org_id = $1 AND s.key = $2`, org.org, key, home, org.user, n); err != nil {
+			INSERT INTO page (space_id, parent_id, rank, title, version, created_by, updated_by)
+			SELECT s.id, $2, 'b' || lpad(i::text, 6, '0'), 'Bulk ' || i, 1, $3, $3
+			FROM space s, generate_series(1, $4) i
+			WHERE s.key = $1`, key, home, org.user, n); err != nil {
 			t.Fatalf("fill %s: %v", key, err)
 		}
 	}
 	bulk("SPL", open.homeID, pages)
 	bulk("SPC", closed.homeID, hidden)
-	h.backdate(t, org.org, `title LIKE 'Bulk %'`, 400)
+	h.backdate(t, `title LIKE 'Bulk %'`, 400)
 	var people []uuid.UUID
 	for range visitors {
-		people = append(people, h.addPerson(t, org.org, "member"))
+		people = append(people, h.addPerson(t, "member"))
 	}
 	if _, err := h.super.Exec(ctx, `
-		INSERT INTO page_visit (org_id, user_id, page_id, visited_at)
-		SELECT $1, u, p.id, now() - make_interval(days => 200 + (random() * 100)::int)
-		FROM page p, unnest($2::uuid[]) u
-		WHERE p.org_id = $1 AND p.title LIKE 'Bulk %'`, org.org, people); err != nil {
+		INSERT INTO page_visit (user_id, page_id, visited_at)
+		SELECT u, p.id, now() - make_interval(days => 200 + (random() * 100)::int)
+		FROM page p, unnest($1::uuid[]) u
+		WHERE p.title LIKE 'Bulk %'`, people); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.super.Exec(ctx, `ANALYZE page, page_visit`); err != nil {

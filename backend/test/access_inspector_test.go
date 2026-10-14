@@ -20,11 +20,10 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "inspect")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, bobID, carlID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, bob, carl := api.as(t, annID, home.org, slug), api.as(t, bobID, home.org, slug), api.as(t, carlID, home.org, slug)
-	writers := h.makeGroup(t, home.org, "Writers", bobID)
+	owner := api.as(t, home.user)
+	annID, bobID, carlID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, bob, carl := api.as(t, annID), api.as(t, bobID), api.as(t, carlID)
+	writers := h.makeGroup(t, "Writers", bobID)
 
 	docs := newTree(t, owner, "INSP", "Inspect")
 	top := docs.add(docs.homeID, "Top")
@@ -74,7 +73,7 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 			perm.RightView:    seen == 1,
 			perm.RightEdit:    does(person, `UPDATE page SET title = title || ' (checked)' WHERE id = $1`, page),
 			perm.RightDelete:  does(person, `SELECT page_trash($1)`, page),
-			perm.RightComment: does(person, `INSERT INTO comment_thread (org_id, page_id, kind, created_by) VALUES ($1, $2, 'page', $3)`, home.org, page, person),
+			perm.RightComment: does(person, `INSERT INTO comment_thread (page_id, kind, created_by) VALUES ($1, 'page', $2)`, page, person),
 		}
 	}
 	people := map[string]uuid.UUID{"owner": home.user, "ann": annID, "bob": bobID, "carl": carlID}

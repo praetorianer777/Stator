@@ -32,10 +32,9 @@ func TestTrashAndRestoreOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "trash")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	member := api.as(t, memberID, home.org, slug)
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
+	member := api.as(t, memberID)
 
 	docs := newTree(t, owner, "TRASH", "Bin")
 	h.closeSpace(t, docs.space, memberID)
@@ -137,7 +136,7 @@ func TestTrashAndRestoreOverTheAPI(t *testing.T) {
 		if err := h.super.QueryRow(context.Background(), `SELECT count(*) FROM page WHERE id = ANY($1::uuid[])`, []string{a1, a2}).Scan(&left); err != nil || left != 0 {
 			t.Fatalf("%d emptied pages are still stored (%v)", left, err)
 		}
-		rows, err := h.super.Query(context.Background(), `SELECT action FROM audit_log WHERE org_id = $1 AND action IN ('page.purged', 'trash.emptied') ORDER BY created_at`, home.org)
+		rows, err := h.super.Query(context.Background(), `SELECT action FROM audit_log WHERE action IN ('page.purged', 'trash.emptied') ORDER BY created_at`)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -151,7 +150,7 @@ func TestTrashAndRestoreOverTheAPI(t *testing.T) {
 		d := docs.add(docs.homeID, "D")
 		want(t, member.delete(t, "/api/v1/pages/"+d), http.StatusNoContent, "delete D")
 		away := h.makeOutsider(t, "trash-away")
-		stranger := api.as(t, away.user, away.org, slug)
+		stranger := api.as(t, away.user)
 		for what, got := range map[string]response{
 			"list":    stranger.get(t, "/api/v1/spaces/TRASH/trash"),
 			"restore": stranger.post(t, "/api/v1/spaces/TRASH/trash/"+d+"/restore", nil),
@@ -173,10 +172,9 @@ func TestTheTrashIsWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "trash-wall-a")
 	b := h.makeOutsider(t, "trash-wall-b")
-	slug := h.slugOf(t, a.org)
-	ownerA := api.as(t, a.user, a.org, slug)
+	ownerA := api.as(t, a.user)
 	docsA := newTree(t, ownerA, "WALL", "Walled")
-	docsB := newTree(t, api.as(t, b.user, b.org, slug), "THEIRS", "Theirs")
+	docsB := newTree(t, api.as(t, b.user), "THEIRS", "Theirs")
 	h.closeSpace(t, docsA.space)
 	gone := docsA.add(docsA.homeID, "Gone")
 	want(t, ownerA.delete(t, "/api/v1/pages/"+gone), http.StatusNoContent, "delete")

@@ -24,7 +24,7 @@ const (
 	leaseTopic = "test.lease"
 )
 
-// deleteBound is how long deleting the organization may take while the
+// deleteBound is how long deleting the handled event may take while the
 // handler runs; it waits on nothing, so this is generous.
 var deleteBound = bound{deadline: 10 * time.Second, watchdog: 2 * time.Second}
 
@@ -32,11 +32,11 @@ var deleteBound = bound{deadline: 10 * time.Second, watchdog: 2 * time.Second}
 var errNotThisTest = errors.New("not this test's event")
 
 // While a handler runs, the worker holds no lock on its event: a handler's
-// write may wait on a delete of the organization, and a delete that waited on
-// the event in turn hung the suite until go test gave up (#217).
+// write may wait on a delete that reaches the event, and a delete that waited
+// on the event in turn hung the suite until go test gave up (#217).
 func TestOutboxWorkerHoldsNoLockWhileItHandles(t *testing.T) {
 	h := newHarness(t)
-	m := h.makeMember(t, "lease")
+	h.makeMember(t, "lease")
 
 	var (
 		mu   sync.Mutex
@@ -76,7 +76,7 @@ func TestOutboxWorkerHoldsNoLockWhileItHandles(t *testing.T) {
 	for try := 0; try < claimTries && handling == uuid.Nil; try++ {
 		var id uuid.UUID
 		if err := h.super.QueryRow(context.Background(),
-			`INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, $2, '{}') RETURNING id`, m.org, leaseTopic).Scan(&id); err != nil {
+			`INSERT INTO outbox_event (topic, payload) VALUES ($1, '{}') RETURNING id`, leaseTopic).Scan(&id); err != nil {
 			t.Fatalf("add an event: %v", err)
 		}
 		mu.Lock()
@@ -94,11 +94,11 @@ func TestOutboxWorkerHoldsNoLockWhileItHandles(t *testing.T) {
 		t.Fatalf("another worker took every one of %d events first", claimTries)
 	}
 
-	if report, err := h.execBounded(t, h.super, deleteBound, `DELETE FROM org WHERE id = $1`, m.org); err != nil {
-		t.Fatalf("deleting the organization while its event is handled: %v\n%s", err, report)
+	if report, err := h.execBounded(t, h.super, deleteBound, `DELETE FROM outbox_event WHERE id = $1`, handling); err != nil {
+		t.Fatalf("deleting the event while it is handled: %v\n%s", err, report)
 	}
 	stop()
-	if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1`, m.org); n != 0 {
-		t.Errorf("%d events of the deleted organization are left", n)
+	if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE id = $1`, handling); n != 0 {
+		t.Errorf("the deleted event is left %d times", n)
 	}
 }

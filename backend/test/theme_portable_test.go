@@ -27,7 +27,7 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "porter")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	made := want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "Traveller", "spec": map[string]any{"colors": map[string]any{"light": map[string]string{"accent": "#123456"}}, "shape": map[string]any{"radiusControl": 0}}}), http.StatusCreated, "make a theme")
 	themeID := obj(t, made, "theme")["id"].(string)
@@ -54,7 +54,7 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 
 	t.Run("another member cannot export it while it is private", func(t *testing.T) {
 		away := h.makeOutsider(t, "porter-away")
-		stranger := api.as(t, away.user, away.org, h.slugOf(t, away.org))
+		stranger := api.as(t, away.user)
 		if resp, _ := stranger.download(t, "/api/v1/themes/"+themeID+"/export"); resp.StatusCode != http.StatusNotFound {
 			t.Fatalf("somebody else's private theme was exported: %d", resp.StatusCode)
 		}
@@ -82,7 +82,7 @@ func TestAThemeTravelsAsOneFile(t *testing.T) {
 		if resp, data := owner.download(t, "/api/v1/themes/"+newID+"/assets/"+newAsset); resp.StatusCode != http.StatusOK || string(data) != string(svg) {
 			t.Fatalf("the imported file does not read back: %d", resp.StatusCode)
 		}
-		if _, err := api.store.Get(context.Background(), themeObject(home.org, newID, newAsset)); err != nil {
+		if _, err := api.store.Get(context.Background(), themeObject(newID, newAsset)); err != nil {
 			t.Fatalf("the imported file is not in the bucket: %v", err)
 		}
 	})
@@ -115,7 +115,7 @@ func TestTheMinecraftThemeFromArmatureImports(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "minecraft")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	file, err := os.ReadFile(minecraftFile)
 	if err != nil {

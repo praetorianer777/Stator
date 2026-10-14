@@ -49,10 +49,9 @@ func TestAnOlderExampleIsRenewedAndWhatPeopleDidStays(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "example-renew")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	member := api.as(t, memberID, home.org, slug)
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
+	member := api.as(t, memberID)
 	ctx := context.Background()
 
 	spaceID := api.makeExample(t, owner, map[string]any{"language": "en"})["id"].(string)
@@ -157,7 +156,7 @@ func TestAnOlderExampleIsRenewedAndWhatPeopleDidStays(t *testing.T) {
 		if n := h.countRows(t, `SELECT count(*) FROM example_page WHERE space_id = $1 AND page_id IS NOT NULL`, spaceID); n != names {
 			t.Errorf("the example knows %d pages, want %d", n, names)
 		}
-		if data := h.recordedOnce(t, home.org, audit.ActionExampleSpaceRenewed, &home.user, spaceID); !strings.Contains(data, `"from": 0`) {
+		if data := h.recordedOnce(t, audit.ActionExampleSpaceRenewed, &home.user, spaceID); !strings.Contains(data, `"from": 0`) {
 			t.Errorf("the record reads %s", data)
 		}
 	})
@@ -186,8 +185,8 @@ func TestAnOlderExampleIsRenewedAndWhatPeopleDidStays(t *testing.T) {
 			t.Errorf("renewing no example answers %d %s", got.Status, got.Raw)
 		}
 		// As a job queued before the space went, which the deletion leaves without it.
-		if _, err := h.super.Exec(ctx, `INSERT INTO example_job (id, org_id, requested_by, language, kind) VALUES ($1, $2, $3, 'en', 'renew')`,
-			uuid.New(), home.org, home.user); err != nil {
+		if _, err := h.super.Exec(ctx, `INSERT INTO example_job (id, requested_by, language, kind) VALUES ($1, $2, 'en', 'renew')`,
+			uuid.New(), home.user); err != nil {
 			t.Fatal(err)
 		}
 		job := obj(t, api.exampleJob(t, owner), "job")
@@ -211,30 +210,30 @@ func strs(v any) []string {
 func TestTheDatabaseKeepsTheRenewalTheWorkers(t *testing.T) {
 	h := newHarness(t)
 	home := h.makeMember(t, "example-renew-sql")
-	memberID := h.addPerson(t, home.org, "member")
+	memberID := h.addPerson(t, "member")
 	ctx := context.Background()
 	conn := appConn(t)
 	actAs(t, conn, home.user)
 	exampleID, plainID := uuid.New(), uuid.New()
-	if _, err := conn.Exec(ctx, `INSERT INTO space (id, org_id, key, name, created_by, example, example_version, example_language)
-		VALUES ($1, $2, 'EXAMPLE', 'Example', $3, true, 1, 'en')`, exampleID, home.org, home.user); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO space (id, key, name, created_by, example, example_version, example_language)
+		VALUES ($1, 'EXAMPLE', 'Example', $2, true, 1, 'en')`, exampleID, home.user); err != nil {
 		t.Fatalf("an administrator cannot make the example through SQL: %v", err)
 	}
-	if _, err := conn.Exec(ctx, `INSERT INTO space (id, org_id, key, name, created_by) VALUES ($1, $2, 'PLAIN', 'Plain', $3)`, plainID, home.org, home.user); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO space (id, key, name, created_by) VALUES ($1, 'PLAIN', 'Plain', $2)`, plainID, home.user); err != nil {
 		t.Fatal(err)
 	}
 
 	refused(t, conn, "an administrator claiming a newer version", `UPDATE space SET example_version = 99 WHERE id = $1`, exampleID)
 	refused(t, conn, "an administrator changing the example's language", `UPDATE space SET example_language = 'de' WHERE id = $1`, exampleID)
 	refused(t, conn, "an administrator reading the pages the example made", `SELECT count(*) FROM example_page`)
-	renew := `INSERT INTO example_job (id, org_id, requested_by, language, kind, space_id) VALUES ($1, $2, $3, 'en', $4, $5)`
-	refused(t, conn, "renewing an ordinary space", renew, uuid.New(), home.org, home.user, "renew", plainID)
-	refused(t, conn, "renewing nothing", renew, uuid.New(), home.org, home.user, "renew", nil)
-	refused(t, conn, "making the example on a space there is", renew, uuid.New(), home.org, home.user, "make", exampleID)
+	renew := `INSERT INTO example_job (id, requested_by, language, kind, space_id) VALUES ($1, $2, 'en', $3, $4)`
+	refused(t, conn, "renewing an ordinary space", renew, uuid.New(), home.user, "renew", plainID)
+	refused(t, conn, "renewing nothing", renew, uuid.New(), home.user, "renew", nil)
+	refused(t, conn, "making the example on a space there is", renew, uuid.New(), home.user, "make", exampleID)
 	actAs(t, conn, memberID)
-	refused(t, conn, "a member renewing the example", renew, uuid.New(), home.org, memberID, "renew", exampleID)
+	refused(t, conn, "a member renewing the example", renew, uuid.New(), memberID, "renew", exampleID)
 	actAs(t, conn, home.user)
-	if _, err := conn.Exec(ctx, renew, uuid.New(), home.org, home.user, "renew", exampleID); err != nil {
+	if _, err := conn.Exec(ctx, renew, uuid.New(), home.user, "renew", exampleID); err != nil {
 		t.Fatalf("an administrator cannot queue a renewal through SQL: %v", err)
 	}
 }

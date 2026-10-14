@@ -51,8 +51,8 @@ func (c *client) uploadAs(t *testing.T, path, name, contentType string, data []b
 	return c.send(t, http.MethodPost, path, form.FormDataContentType(), &body)
 }
 
-func objectKey(org uuid.UUID, page, id string) string {
-	return fmt.Sprintf("org/%s/page/%s/%s", org, page, id)
+func objectKey(page, id string) string {
+	return fmt.Sprintf("page/%s/%s", page, id)
 }
 
 // inBucket reads an object straight from the bucket, nil when it is gone.
@@ -83,12 +83,11 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "files")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	member := api.as(t, memberID, home.org, slug)
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
+	member := api.as(t, memberID)
 	away := h.makeOutsider(t, "files-away")
-	stranger := api.as(t, away.user, away.org, slug)
+	stranger := api.as(t, away.user)
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "FILES", "Files")
@@ -106,7 +105,7 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 			made["width"].(float64) != 3 || made["height"].(float64) != 2 || made["uploadedByName"] != "A member" || made["pageId"] != pageID {
 			t.Fatalf("the upload answered %v", made)
 		}
-		if got := inBucket(t, api.store, objectKey(home.org, pageID, pictureID)); !bytes.Equal(got, picture) {
+		if got := inBucket(t, api.store, objectKey(pageID, pictureID)); !bytes.Equal(got, picture) {
 			t.Fatalf("the bucket holds %d bytes, want the %d uploaded", len(got), len(picture))
 		}
 	})
@@ -228,7 +227,7 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 				copiedPicture = f["id"].(string)
 			}
 		}
-		if got := inBucket(t, api.store, objectKey(home.org, copyID, copiedPicture)); !bytes.Equal(got, picture) {
+		if got := inBucket(t, api.store, objectKey(copyID, copiedPicture)); !bytes.Equal(got, picture) {
 			t.Fatalf("the copy's picture holds %d bytes in the bucket", len(got))
 		}
 		text := string(copied["body"].(map[string]any)["content"].([]any)[0].(map[string]any)["attrs"].(map[string]any)["attachmentId"].(string))
@@ -249,7 +248,7 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("a delete is final and takes the bytes", func(t *testing.T) {
-		key := objectKey(home.org, pageID, pictureID)
+		key := objectKey(pageID, pictureID)
 		want(t, member.delete(t, "/api/v1/attachments/"+pictureID), http.StatusNoContent, "delete")
 		if inBucket(t, api.store, key) != nil {
 			t.Error("the bytes are still in the bucket")
@@ -268,7 +267,7 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 	t.Run("purging a page and deleting a space take the bytes", func(t *testing.T) {
 		gone := docs.add(docs.homeID, "Doomed")
 		id := obj(t, want(t, member.upload(t, "/api/v1/pages/"+gone+"/attachments", "a.txt", []byte("a")), http.StatusCreated, "upload"), "attachment")["id"].(string)
-		key := objectKey(home.org, gone, id)
+		key := objectKey(gone, id)
 		want(t, member.delete(t, "/api/v1/pages/"+gone), http.StatusNoContent, "trash")
 		if inBucket(t, api.store, key) == nil {
 			t.Fatal("trashing a page took its files")
@@ -278,12 +277,12 @@ func TestAttachmentsOverTheAPI(t *testing.T) {
 			t.Error("a purged page's file is still in the bucket")
 		}
 
-		keys, err := api.store.List(context.Background(), objectstore.OrgPrefix(home.org))
+		keys, err := api.store.List(context.Background(), "page/"+pageID+"/")
 		if err != nil || len(keys) == 0 {
-			t.Fatalf("the organization has %d objects (%v)", len(keys), err)
+			t.Fatalf("the page has %d objects (%v)", len(keys), err)
 		}
 		want(t, owner.delete(t, "/api/v1/spaces/FILES"), http.StatusNoContent, "delete the space")
-		if keys, _ := api.store.List(context.Background(), objectstore.OrgPrefix(home.org)); len(keys) != 0 {
+		if keys, _ := api.store.List(context.Background(), "page/"+pageID+"/"); len(keys) != 0 {
 			t.Errorf("a deleted space left %v", keys)
 		}
 	})
@@ -314,10 +313,9 @@ func TestAVideoPlaysInPlaceAndSeeksByRanges(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "video")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 	away := h.makeOutsider(t, "video-away")
-	stranger := api.as(t, away.user, away.org, slug)
+	stranger := api.as(t, away.user)
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "CLIPS", "Clips")
@@ -398,8 +396,8 @@ func (h *harness) publishOver(t *testing.T, pageID, body string) {
 	t.Helper()
 	ctx := context.Background()
 	if _, err := h.super.Exec(ctx, `
-		INSERT INTO page_version (org_id, page_id, number, title, body)
-		SELECT org_id, id, version + 1, title, $2 FROM page WHERE id = $1`, pageID, body); err != nil {
+		INSERT INTO page_version (page_id, number, title, body)
+		SELECT id, version + 1, title, $2 FROM page WHERE id = $1`, pageID, body); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.super.Exec(ctx, `UPDATE page SET version = version + 1, body = $2 WHERE id = $1`, pageID, body); err != nil {
@@ -430,7 +428,7 @@ func TestACopysHistoryKeepsItsOwnFiles(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "files-history")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "HIST", "History")
 	original := docs.add(docs.homeID, "Original")
 	fileID := obj(t, want(t, owner.upload(t, "/api/v1/pages/"+original+"/attachments", "plan.png", pngOf(t, 2, 2)), http.StatusCreated, "upload"), "attachment")["id"].(string)
@@ -472,7 +470,7 @@ func TestARestoredVersionShowsADeletedFileAsMissing(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "files-restore")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "REST", "Restore")
 	pageID := docs.add(docs.homeID, "Page")
 	fileID := obj(t, want(t, owner.upload(t, "/api/v1/pages/"+pageID+"/attachments", "plan.png", pngOf(t, 2, 2)), http.StatusCreated, "upload"), "attachment")["id"].(string)
@@ -499,15 +497,14 @@ func TestAttachmentRowsAreWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "files-wall-a")
 	b := h.makeOutsider(t, "files-wall-b")
-	slug := h.slugOf(t, a.org)
-	ownerA := api.as(t, a.user, a.org, slug)
-	ownerB := api.as(t, b.user, b.org, slug)
+	ownerA := api.as(t, a.user)
+	ownerB := api.as(t, b.user)
 	treeA := newTree(t, ownerA, "WALL", "A")
 	homeA := treeA.homeID
 	homeB := newTree(t, ownerB, "THEIRS", "B").homeID
 	h.closeSpace(t, treeA.space)
 	fileA := obj(t, want(t, ownerA.upload(t, "/api/v1/pages/"+homeA+"/attachments", "a.txt", []byte("a")), http.StatusCreated, "upload in A"), "attachment")["id"].(string)
-	keyA := objectKey(a.org, homeA, fileA)
+	keyA := objectKey(homeA, fileA)
 
 	conn := appConn(t)
 	count := func(sql string, args ...any) int {
@@ -527,16 +524,17 @@ func TestAttachmentRowsAreWalledByTheDatabase(t *testing.T) {
 		t.Error("B sees A's file")
 	}
 	untouched(t, conn, "deleting A's file", `DELETE FROM attachment WHERE id = $1`, fileA)
-	refused(t, conn, "a file on A's page", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1)`, a.org, homeA)
+	refused(t, conn, "a file on A's page", `INSERT INTO attachment (page_id, file_name, size_bytes) VALUES ($1, 'x', 1)`, homeA)
 	var keyB string
-	if err := conn.QueryRow(context.Background(), `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1) RETURNING object_key`, b.org, homeB).Scan(&keyB); err != nil {
+	if err := conn.QueryRow(context.Background(), `INSERT INTO attachment (page_id, file_name, size_bytes) VALUES ($1, 'x', 1) RETURNING object_key`, homeB).Scan(&keyB); err != nil {
 		t.Errorf("B cannot keep a file on their own page: %v", err)
 	}
+	refused(t, conn, "a file on B's page naming A's object", `INSERT INTO attachment (page_id, file_name, size_bytes, object_key) VALUES ($1, 'x', 1, $2)`, homeB, keyA)
 
-	refused(t, conn, "a tombstone naming A's file", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyA, a.org)
-	refused(t, conn, "a tombstone naming A's preview", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, "org/"+a.org.String()+"/preview/"+fileA+".pdf", a.org)
-	refused(t, conn, "a tombstone naming somebody's theme file", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, themeObject(a.org, uuid.NewString(), uuid.NewString()), a.org)
-	refused(t, conn, "a tombstone naming B's own file", `INSERT INTO attachment_tombstone (object_key, org_id) VALUES ($1, $2)`, keyB, b.org)
+	refused(t, conn, "a tombstone naming A's file", `INSERT INTO attachment_tombstone (object_key) VALUES ($1)`, keyA)
+	refused(t, conn, "a tombstone naming A's preview", `INSERT INTO attachment_tombstone (object_key) VALUES ($1)`, "preview/"+fileA+".pdf")
+	refused(t, conn, "a tombstone naming somebody's theme file", `INSERT INTO attachment_tombstone (object_key) VALUES ($1)`, themeObject(uuid.NewString(), uuid.NewString()))
+	refused(t, conn, "a tombstone naming B's own file", `INSERT INTO attachment_tombstone (object_key) VALUES ($1)`, keyB)
 	if tag, err := conn.Exec(context.Background(), `DELETE FROM attachment WHERE object_key = $1`, keyB); err != nil || tag.RowsAffected() != 1 {
 		t.Errorf("B cannot delete their own file: %d rows, %v", tag.RowsAffected(), err)
 	}
@@ -546,8 +544,8 @@ func TestAttachmentRowsAreWalledByTheDatabase(t *testing.T) {
 
 	actAs(t, conn, a.user)
 	refused(t, conn, "moving a file off its bytes", `UPDATE attachment SET page_id = $2 WHERE id = $1`, fileA, homeA)
-	refused(t, conn, "a key of one's choosing", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, object_key) VALUES ($1, $2, 'x', 1, 'org/elsewhere')`, a.org, homeA)
-	refused(t, conn, "an empty file", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 0)`, a.org, homeA)
+	refused(t, conn, "a key of one's choosing", `INSERT INTO attachment (page_id, file_name, size_bytes, object_key) VALUES ($1, 'x', 1, 'org/elsewhere')`, homeA)
+	refused(t, conn, "an empty file", `INSERT INTO attachment (page_id, file_name, size_bytes) VALUES ($1, 'x', 0)`, homeA)
 
 	if inBucket(t, api.store, keyA) == nil || h.tombstones(t, keyA) != 0 {
 		t.Error("A's file was touched")

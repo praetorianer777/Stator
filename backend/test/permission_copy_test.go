@@ -68,11 +68,10 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "permcopy")
 	ctx := home.ctx
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, bobID, carlID := h.namedPerson(t, home.org, "Ann Admin"), h.namedPerson(t, home.org, "Bob Writer"), h.namedPerson(t, home.org, "Carl Keeper")
-	ann, bob, carl := api.as(t, annID, home.org, slug), api.as(t, bobID, home.org, slug), api.as(t, carlID, home.org, slug)
-	writers := h.makeGroup(t, home.org, "Writers", bobID)
+	owner := api.as(t, home.user)
+	annID, bobID, carlID := h.namedPerson(t, "Ann Admin"), h.namedPerson(t, "Bob Writer"), h.namedPerson(t, "Carl Keeper")
+	ann, bob, carl := api.as(t, annID), api.as(t, bobID), api.as(t, carlID)
+	writers := h.makeGroup(t, "Writers", bobID)
 
 	source := newTree(t, owner, "SRC", "Source")
 	target := newTree(t, owner, "TGT", "Target")
@@ -216,7 +215,7 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 		if got := h.grantRows(t, ctx, targetID); !slices.Equal(got, wantRows) {
 			t.Errorf("TGT holds %v, want %v", got, wantRows)
 		}
-		data := h.recordedOnce(t, home.org, audit.ActionSpacePermissionsCopied, &annID, targetID)
+		data := h.recordedOnce(t, audit.ActionSpacePermissionsCopied, &annID, targetID)
 		for _, part := range []string{`"mode": "replace"`, `"key": "SRC"`, sourceID, `"added": 2`, `"removed": 2`, `"skipped": 1`} {
 			if !strings.Contains(data, part) {
 				t.Errorf("the record %s lacks %s", data, part)
@@ -228,7 +227,7 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 			t.Errorf("copying twice changes %v", again["changes"])
 		}
 		want(t, ann.post(t, copyPath("TGT", "", ""), map[string]any{"from": "SRC", "mode": "replace", "fingerprint": again["fingerprint"]}), http.StatusOK, "apply a copy that changes nothing")
-		h.recordedOnce(t, home.org, audit.ActionSpacePermissionsCopied, &annID, targetID)
+		h.recordedOnce(t, audit.ActionSpacePermissionsCopied, &annID, targetID)
 	})
 
 	t.Run("straight through SQL the database holds a copy to the same rules", func(t *testing.T) {
@@ -251,24 +250,24 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 			t.Errorf("carl, who does not administer SRC, reads %d of its grants", n)
 		}
 		actAs(t, conn, bobID)
-		denied(t, conn, "bob granting in TGT", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, group_id)
-			VALUES ($1, $2, 'delete', 'group', $3)`, home.org, targetID, writers)
+		denied(t, conn, "bob granting in TGT", `INSERT INTO space_grant (space_id, permission, subject_type, group_id)
+			VALUES ($1, 'delete', 'group', $2)`, targetID, writers)
 		actAs(t, conn, annID)
-		denied(t, conn, "SRC's guest copied into TGT", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
-			VALUES ($1, $2, 'view', 'user', $3)`, home.org, targetID, gwenID)
-		denied(t, conn, "SRC's guest copied into ann's own space", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
-			VALUES ($1, $2, 'view', 'user', $3)`, home.org, personal["id"], gwenID)
-		denied(t, conn, "anybody copied into ann's own space", `INSERT INTO space_grant (org_id, space_id, permission, subject_type)
-			VALUES ($1, $2, 'view', 'anonymous')`, home.org, personal["id"])
-		denied(t, conn, "anybody given more than view", `INSERT INTO space_grant (org_id, space_id, permission, subject_type)
-			VALUES ($1, $2, 'addPages', 'anonymous')`, home.org, targetID)
+		denied(t, conn, "SRC's guest copied into TGT", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
+			VALUES ($1, 'view', 'user', $2)`, targetID, gwenID)
+		denied(t, conn, "SRC's guest copied into ann's own space", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
+			VALUES ($1, 'view', 'user', $2)`, personal["id"], gwenID)
+		denied(t, conn, "anybody copied into ann's own space", `INSERT INTO space_grant (space_id, permission, subject_type)
+			VALUES ($1, 'view', 'anonymous')`, personal["id"])
+		denied(t, conn, "anybody given more than view", `INSERT INTO space_grant (space_id, permission, subject_type)
+			VALUES ($1, 'addPages', 'anonymous')`, targetID)
 		denied(t, conn, "ann taking the last administrator from TGT", `DELETE FROM space_grant WHERE space_id = $1 AND permission = 'administer'`, targetID)
 		if n := h.count(t, ctx, `SELECT count(*) FROM space_grant WHERE space_id = $1 AND permission = 'administer'`, targetID); n != 1 {
 			t.Errorf("TGT has %d administer grants after the refusal", n)
 		}
 		if _, err := conn.Exec(ctx, `
-			WITH handed AS (INSERT INTO space_grant (org_id, space_id, permission, subject_type, group_id) VALUES ($1, $2, 'administer', 'group', $3))
-			DELETE FROM space_grant WHERE space_id = $2 AND permission = 'administer' AND user_id = $4`, home.org, targetID, writers, annID); err != nil {
+			WITH handed AS (INSERT INTO space_grant (space_id, permission, subject_type, group_id) VALUES ($1, 'administer', 'group', $2))
+			DELETE FROM space_grant WHERE space_id = $1 AND permission = 'administer' AND user_id = $3`, targetID, writers, annID); err != nil {
 			t.Errorf("ann may hand administering TGT on to the writers: %v", err)
 		}
 		// The organization's administrators hold every space anyway, and may

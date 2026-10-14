@@ -84,17 +84,17 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	api := orgTransferAPI(t, h)
 	ctx := context.Background()
 	from := h.makeMember(t, "org-from")
-	fromSlug := h.slugOf(t, from.org)
-	t.Cleanup(func() { h.cleanupExec(t, h.super, `UPDATE org SET default_theme_id = NULL WHERE id = $1`, from.org) })
-	owner := api.as(t, from.user, from.org, fromSlug)
-	annID := h.namedPerson(t, from.org, "Ann Mover")
-	ann := api.as(t, annID, from.org, fromSlug)
-	bobID := h.addPerson(t, from.org, "member")
-	bob := api.as(t, bobID, from.org, fromSlug)
-	doraID := h.namedPerson(t, from.org, "Dora Leaver")
+	fromSlug := h.site.Slug
+	t.Cleanup(func() { h.cleanupExec(t, h.super, `UPDATE site SET default_theme_id = NULL`) })
+	owner := api.as(t, from.user)
+	annID := h.namedPerson(t, "Ann Mover")
+	ann := api.as(t, annID)
+	bobID := h.addPerson(t, "member")
+	bob := api.as(t, bobID)
+	doraID := h.namedPerson(t, "Dora Leaver")
 	doraEmail := emailOf(t, h, doraID)
 	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, doraEmail) })
-	writers := h.makeGroup(t, from.org, "Writers", annID, doraID)
+	writers := h.makeGroup(t, "Writers", annID, doraID)
 	want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{group(writers)}}), http.StatusOK, "let the writers create spaces")
 
 	trip := newTree(t, owner, "TRIP", "Trip")
@@ -207,12 +207,11 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	fresh := newFreshHarness(t)
 	freshAPI := orgTransferAPI(t, fresh)
 	to := fresh.makeMember(t, "org-to")
-	toSlug := fresh.slugOf(t, to.org)
 	there := map[uuid.UUID]uuid.UUID{}
 	for _, id := range []uuid.UUID{from.user, annID, bobID, uuid.MustParse(guestID)} {
 		there[id] = fresh.accountLike(t, h, id)
 	}
-	landed := freshAPI.as(t, to.user, to.org, toSlug)
+	landed := freshAPI.as(t, to.user)
 
 	t.Run("what is not an organization's archive is refused in a sentence", func(t *testing.T) {
 		_, spaceArchive := api.exportSpace(t, owner, "OPS", "archive")
@@ -244,9 +243,9 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		}
 	})
 
-	annThere := freshAPI.as(t, there[annID], to.org, toSlug)
+	annThere := freshAPI.as(t, there[annID])
 	// The owner came across in their role, as did the page only they read.
-	ownerThere := freshAPI.as(t, there[from.user], to.org, toSlug)
+	ownerThere := freshAPI.as(t, there[from.user])
 	theirs, _ := outline(t, owner, "TRIP")
 	ours, ids := outline(t, ownerThere, "TRIP")
 	t.Run("the spaces, their trees and the people in their roles are the same", func(t *testing.T) {
@@ -254,23 +253,23 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 			t.Errorf("the tree came across as %q, from %q", ours, theirs)
 		}
 		var role string
-		if err := fresh.super.QueryRow(ctx, `SELECT org_role FROM org_member WHERE org_id = $1 AND user_id = $2`, to.org, there[annID]).Scan(&role); err != nil || role != "member" {
+		if err := fresh.super.QueryRow(ctx, `SELECT role FROM member WHERE user_id = $1`, there[annID]).Scan(&role); err != nil || role != "member" {
 			t.Errorf("ann is %q in the new organization: %v", role, err)
 		}
 		var doraThere uuid.UUID
 		if err := fresh.super.QueryRow(ctx, `
-			SELECT u.id FROM app_user u JOIN org_member m ON m.user_id = u.id AND m.org_id = $1 WHERE u.email = $2`, to.org, doraEmail).Scan(&doraThere); err != nil {
+			SELECT u.id FROM app_user u JOIN member m ON m.user_id = u.id WHERE u.email = $1`, doraEmail).Scan(&doraThere); err != nil {
 			t.Errorf("dora was not made again: %v", err)
 		}
 		var guestSpace string
 		if err := fresh.super.QueryRow(ctx, `
-			SELECT s.key FROM org_member m JOIN space s ON s.id = m.guest_space_id WHERE m.org_id = $1 AND m.user_id = $2`, to.org, there[uuid.MustParse(guestID)]).Scan(&guestSpace); err != nil || guestSpace != "TRIP" {
+			SELECT s.key FROM member m JOIN space s ON s.id = m.guest_space_id WHERE m.user_id = $1`, there[uuid.MustParse(guestID)]).Scan(&guestSpace); err != nil || guestSpace != "TRIP" {
 			t.Errorf("the guest's space is %q: %v", guestSpace, err)
 		}
 		var personalOwner, archived string
 		if err := fresh.super.QueryRow(ctx, `
-			SELECT COALESCE((SELECT owner_id::text FROM space WHERE org_id = $1 AND key = 'ANNS'), ''),
-			       COALESCE((SELECT archived_at::text FROM space WHERE org_id = $1 AND key = 'OLD'), '')`, to.org).Scan(&personalOwner, &archived); err != nil ||
+			SELECT COALESCE((SELECT owner_id::text FROM space WHERE key = 'ANNS'), ''),
+			       COALESCE((SELECT archived_at::text FROM space WHERE key = 'OLD'), '')`).Scan(&personalOwner, &archived); err != nil ||
 			personalOwner != there[annID].String() || archived == "" {
 			t.Errorf("ann's personal space is %q's and OLD archived at %q: %v", personalOwner, archived, err)
 		}
@@ -280,7 +279,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		}
 		var members int
 		if err := fresh.super.QueryRow(ctx, `
-			SELECT count(*) FROM group_member m JOIN groups g ON g.id = m.group_id WHERE g.org_id = $1 AND g.name = 'Writers'`, to.org).Scan(&members); err != nil || members != 2 {
+			SELECT count(*) FROM group_member m JOIN groups g ON g.id = m.group_id WHERE g.name = 'Writers'`).Scan(&members); err != nil || members != 2 {
 			t.Errorf("Writers has %d members: %v", members, err)
 		}
 	})
@@ -289,10 +288,10 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	t.Run("restrictions hold, versions keep their authors, files and comments come along", func(t *testing.T) {
 		want(t, annThere.get(t, pagePath(topThere)), http.StatusOK, "ann reads Top")
 		var bobThere uuid.UUID
-		if err := fresh.super.QueryRow(ctx, `SELECT user_id FROM org_member WHERE org_id = $1 AND user_id = $2`, to.org, there[bobID]).Scan(&bobThere); err != nil {
+		if err := fresh.super.QueryRow(ctx, `SELECT user_id FROM member WHERE user_id = $1`, there[bobID]).Scan(&bobThere); err != nil {
 			t.Fatalf("bob did not come across: %v", err)
 		}
-		bobLanded := freshAPI.as(t, bobThere, to.org, toSlug)
+		bobLanded := freshAPI.as(t, bobThere)
 		want(t, bobLanded.get(t, pagePath(topThere)), http.StatusNotFound, "bob reads Top")
 		lists := string(want(t, annThere.get(t, pagePath(topThere, "/restrictions")), http.StatusOK, "Top's lists").Raw)
 		if !strings.Contains(lists, there[annID].String()) || !strings.Contains(lists, "Writers") {
@@ -321,7 +320,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		}
 		var secretThere string
 		if err := fresh.super.QueryRow(ctx, `
-			SELECT p.id::text FROM page p JOIN space s ON s.id = p.space_id WHERE s.org_id = $1 AND p.title = 'Secret plan' AND p.version = 0`, to.org).Scan(&secretThere); err != nil {
+			SELECT p.id::text FROM page p JOIN space s ON s.id = p.space_id WHERE p.title = 'Secret plan' AND p.version = 0`).Scan(&secretThere); err != nil {
 			t.Fatalf("the secret plan did not come across unpublished: %v", err)
 		}
 		want(t, ownerThere.get(t, pagePath(secretThere)), http.StatusOK, "its author reads the secret plan")
@@ -356,7 +355,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		var assets int
 		if err := fresh.super.QueryRow(ctx, `
 			SELECT t.id::text, t.spec::text, (SELECT count(*) FROM theme_asset a WHERE a.theme_id = t.id)
-			FROM org o JOIN theme t ON t.id = o.default_theme_id WHERE o.id = $1`, to.org).Scan(&themeID, &spec, &assets); err != nil {
+			FROM site o JOIN theme t ON t.id = o.default_theme_id`).Scan(&themeID, &spec, &assets); err != nil {
 			t.Fatalf("the default theme did not come across: %v", err)
 		}
 		if assets != 1 || strings.Contains(spec, glyph) || !strings.Contains(spec, "#336699") {
@@ -372,14 +371,14 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		var canCreate int
 		if err := fresh.super.QueryRow(ctx, `
 			SELECT count(*) FROM global_grant gg JOIN groups g ON g.id = gg.group_id
-			WHERE gg.org_id = $1 AND gg.permission = 'createSpace' AND g.name = 'Writers'`, to.org).Scan(&canCreate); err != nil || canCreate != 1 {
+			WHERE gg.permission = 'createSpace' AND g.name = 'Writers'`).Scan(&canCreate); err != nil || canCreate != 1 {
 			t.Errorf("Writers may create spaces %d times: %v", canCreate, err)
 		}
 		var created int
-		if err := fresh.super.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'space.created'`, to.org).Scan(&created); err != nil || created != 4 {
+		if err := fresh.super.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE action = 'space.created'`).Scan(&created); err != nil || created != 4 {
 			t.Errorf("the audit log holds %d of the spaces made in the old record: %v", created, err)
 		}
-		if data := fresh.recordedOnce(t, to.org, audit.ActionOrgImported, &to.user, nil); !strings.Contains(data, fromSlug) {
+		if data := fresh.recordedOnce(t, audit.ActionOrgImported, &to.user, nil); !strings.Contains(data, fromSlug) {
 			t.Errorf("the import's record reads %s", data)
 		}
 	})
@@ -396,44 +395,44 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 // a job still to run, reads them, and nobody but the worker writes on.
 func TestTheDatabaseKeepsOrgTransfersToAdministrators(t *testing.T) {
 	h := newHarness(t)
-	home := h.makeMember(t, "org-transfer-sql")
-	memberID := h.addPerson(t, home.org, "member")
-	adminID := h.addPerson(t, home.org, "admin")
+	h.makeMember(t, "org-transfer-sql")
+	memberID := h.addPerson(t, "member")
+	adminID := h.addPerson(t, "admin")
 	ctx := context.Background()
-	exportSQL := `INSERT INTO org_export (id, org_id, requested_by) VALUES ($1, $2, $3)`
-	importSQL := `INSERT INTO org_import (id, org_id, requested_by, size_bytes) VALUES ($1, $2, $3, 10)`
+	exportSQL := `INSERT INTO site_export (id, requested_by) VALUES ($1, $2)`
+	importSQL := `INSERT INTO site_import (id, requested_by, size_bytes) VALUES ($1, $2, 10)`
 
 	conn := appConn(t)
 	actAs(t, conn, memberID)
-	refused(t, conn, "a member exporting the organization", exportSQL, uuid.New(), home.org, memberID)
-	refused(t, conn, "a member importing into the organization", importSQL, uuid.New(), home.org, memberID)
+	refused(t, conn, "a member exporting the organization", exportSQL, uuid.New(), memberID)
+	refused(t, conn, "a member importing into the organization", importSQL, uuid.New(), memberID)
 
 	actAs(t, conn, adminID)
-	refused(t, conn, "an administrator exporting for somebody else", exportSQL, uuid.New(), home.org, memberID)
-	refused(t, conn, "an administrator importing for somebody else", importSQL, uuid.New(), home.org, memberID)
+	refused(t, conn, "an administrator exporting for somebody else", exportSQL, uuid.New(), memberID)
+	refused(t, conn, "an administrator importing for somebody else", importSQL, uuid.New(), memberID)
 	refused(t, conn, "an export queued as done",
-		`INSERT INTO org_export (id, org_id, requested_by, state) VALUES ($1, $2, $3, 'done')`, uuid.New(), home.org, adminID)
+		`INSERT INTO site_export (id, requested_by, state) VALUES ($1, $2, 'done')`, uuid.New(), adminID)
 	refused(t, conn, "an import queued with its report",
-		`INSERT INTO org_import (id, org_id, requested_by, size_bytes, report) VALUES ($1, $2, $3, 10, '{}')`, uuid.New(), home.org, adminID)
+		`INSERT INTO site_import (id, requested_by, size_bytes, report) VALUES ($1, $2, 10, '{}')`, uuid.New(), adminID)
 	export, imported := uuid.New(), uuid.New()
-	if _, err := conn.Exec(ctx, exportSQL, export, home.org, adminID); err != nil {
+	if _, err := conn.Exec(ctx, exportSQL, export, adminID); err != nil {
 		t.Fatalf("an administrator cannot queue an export through SQL: %v", err)
 	}
-	if _, err := conn.Exec(ctx, importSQL, imported, home.org, adminID); err != nil {
+	if _, err := conn.Exec(ctx, importSQL, imported, adminID); err != nil {
 		t.Fatalf("an administrator cannot queue an import through SQL: %v", err)
 	}
 	// The suite's rows would otherwise wait for a worker that has no file
 	// for them.
 	t.Cleanup(func() {
-		h.cleanupExec(t, h.super, `DELETE FROM org_export WHERE id = $1`, export)
-		h.cleanupExec(t, h.super, `DELETE FROM org_import WHERE id = $1`, imported)
+		h.cleanupExec(t, h.super, `DELETE FROM site_export WHERE id = $1`, export)
+		h.cleanupExec(t, h.super, `DELETE FROM site_import WHERE id = $1`, imported)
 	})
 	for what, sql := range map[string]string{
-		"marking an export done":   `UPDATE org_export SET state = 'done' WHERE id = $1`,
-		"deleting an export":       `DELETE FROM org_export WHERE id = $1`,
-		"marking an import done":   `UPDATE org_import SET state = 'done' WHERE id = $1`,
-		"writing an import report": `UPDATE org_import SET report = '{}' WHERE id = $1`,
-		"deleting an import":       `DELETE FROM org_import WHERE id = $1`,
+		"marking an export done":   `UPDATE site_export SET state = 'done' WHERE id = $1`,
+		"deleting an export":       `DELETE FROM site_export WHERE id = $1`,
+		"marking an import done":   `UPDATE site_import SET state = 'done' WHERE id = $1`,
+		"writing an import report": `UPDATE site_import SET report = '{}' WHERE id = $1`,
+		"deleting an import":       `DELETE FROM site_import WHERE id = $1`,
 	} {
 		id := export
 		if strings.Contains(what, "import") {
@@ -442,11 +441,11 @@ func TestTheDatabaseKeepsOrgTransfersToAdministrators(t *testing.T) {
 		refused(t, conn, "an administrator "+what, sql, id)
 	}
 	var seen int
-	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM org_export WHERE id = $1) + (SELECT count(*) FROM org_import WHERE id = $2)`, export, imported).Scan(&seen); err != nil || seen != 2 {
+	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM site_export WHERE id = $1) + (SELECT count(*) FROM site_import WHERE id = $2)`, export, imported).Scan(&seen); err != nil || seen != 2 {
 		t.Errorf("the administrator reads %d of the jobs: %v", seen, err)
 	}
 	actAs(t, conn, memberID)
-	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM org_export) + (SELECT count(*) FROM org_import)`).Scan(&seen); err != nil || seen != 0 {
+	if err := conn.QueryRow(ctx, `SELECT (SELECT count(*) FROM site_export) + (SELECT count(*) FROM site_import)`).Scan(&seen); err != nil || seen != 0 {
 		t.Errorf("a member reads %d jobs: %v", seen, err)
 	}
 }

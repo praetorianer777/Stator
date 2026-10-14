@@ -96,10 +96,11 @@ func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "example-space")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
-	member := api.as(t, memberID, home.org, slug)
+	owner := api.as(t, home.user)
+	// The stub's tenant is named after the site, as Armature's would be.
+	slug := h.site.Slug
+	memberID := h.addPerson(t, "member")
+	member := api.as(t, memberID)
 	ctx := context.Background()
 
 	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
@@ -174,10 +175,10 @@ func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
 	})
 
 	t.Run("it is audited once, as the example and not as a space", func(t *testing.T) {
-		if data := h.recordedOnce(t, home.org, audit.ActionExampleSpaceCreated, &home.user, spaceID); !strings.Contains(data, `"language": "de"`) {
+		if data := h.recordedOnce(t, audit.ActionExampleSpaceCreated, &home.user, spaceID); !strings.Contains(data, `"language": "de"`) {
 			t.Errorf("the record reads %s", data)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = $2`, home.org, audit.ActionSpaceCreated); n != 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = $1`, audit.ActionSpaceCreated); n != 0 {
 			t.Errorf("the example is recorded as %d plain spaces too", n)
 		}
 	})
@@ -191,7 +192,7 @@ func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
 		if obj(t, got, "space")["id"] != spaceID || obj(t, got, "job")["spaceKey"] != example.Key {
 			t.Errorf("the example is %s", got.Raw)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM space WHERE org_id = $1`, home.org); n != 1 {
+		if n := h.countRows(t, `SELECT count(*) FROM space`); n != 1 {
 			t.Errorf("the organization holds %d spaces", n)
 		}
 	})
@@ -230,7 +231,7 @@ func TestClicksWhileTheExampleIsMadeFindTheOneJob(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "example-clicks")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	const clicks = 5
 	answers := make([]response, clicks)
@@ -256,31 +257,32 @@ func TestClicksWhileTheExampleIsMadeFindTheOneJob(t *testing.T) {
 	if got := obj(t, api.exampleJob(t, owner), "job"); got["state"] != "done" || got["id"] != id {
 		t.Errorf("the job ended %v", got)
 	}
-	if n := h.countRows(t, `SELECT count(*) FROM example_job WHERE org_id = $1`, home.org); n != 1 {
+	if n := h.countRows(t, `SELECT count(*) FROM example_job`); n != 1 {
 		t.Errorf("%d jobs were queued", n)
 	}
-	if n := h.countRows(t, `SELECT count(*) FROM space WHERE org_id = $1 AND example`, home.org); n != 1 {
+	if n := h.countRows(t, `SELECT count(*) FROM space WHERE example`); n != 1 {
 		t.Errorf("%d examples were made", n)
 	}
 }
 
-// slowDown makes every statement of the kind on table in org sleep, until
-// the test ends.
-func (h *harness) slowDown(t *testing.T, org uuid.UUID, table, kind string, sleep time.Duration) {
+// slowDown makes every statement of the kind on table sleep, until the test
+// ends.
+func (h *harness) slowDown(t *testing.T, table, kind string, sleep time.Duration) {
 	t.Helper()
-	h.orgTrigger(t, org, table, kind, fmt.Sprintf(`PERFORM pg_sleep(%f);`, sleep.Seconds()))
+	h.rowTrigger(t, table, kind, fmt.Sprintf(`PERFORM pg_sleep(%f);`, sleep.Seconds()))
 }
 
-// orgTrigger runs body before each row the kind of statement on table writes
-// in org, until the test ends.
-func (h *harness) orgTrigger(t *testing.T, org uuid.UUID, table, kind, body string) {
+// rowTrigger runs body before each row the kind of statement on table writes,
+// until the test ends; the test's database is its own, so nobody else's rows
+// pass through it.
+func (h *harness) rowTrigger(t *testing.T, table, kind, body string) {
 	t.Helper()
 	name := "test_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 	ctx := context.Background()
 	if _, err := h.super.Exec(ctx, fmt.Sprintf(`
 		CREATE FUNCTION %[1]s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN %[2]s RETURN NEW; END $$;
-		CREATE TRIGGER %[1]s BEFORE %[3]s ON %[4]s FOR EACH ROW WHEN (NEW.org_id = '%[5]s') EXECUTE FUNCTION %[1]s();`,
-		name, body, kind, table, org)); err != nil {
+		CREATE TRIGGER %[1]s BEFORE %[3]s ON %[4]s FOR EACH ROW EXECUTE FUNCTION %[1]s();`,
+		name, body, kind, table)); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -296,8 +298,8 @@ func TestTheExampleOutlastsTheRequestLimit(t *testing.T) {
 	const limit = 2 * time.Second
 	api := newAPIServer(t, h, func(s *httpapi.Server) { s.RequestTimeout = limit })
 	home := h.makeMember(t, "example-slow")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
-	h.slowDown(t, home.org, "space", "INSERT", limit+time.Second)
+	owner := api.as(t, home.user)
+	h.slowDown(t, "space", "INSERT", limit+time.Second)
 
 	began := time.Now()
 	sp := api.makeExample(t, owner, map[string]any{"language": "en"})
@@ -315,9 +317,9 @@ func TestAFailedExampleLeavesNothingBehind(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "example-fails")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	// The calendar comes after the space and its pages are made.
-	h.orgTrigger(t, home.org, "calendar", "INSERT", `RAISE EXCEPTION 'the test refuses calendars';`)
+	h.rowTrigger(t, "calendar", "INSERT", `RAISE EXCEPTION 'the test refuses calendars';`)
 
 	want(t, owner.post(t, "/api/v1/example-space", map[string]any{"language": "en"}), http.StatusAccepted, "ask for the example")
 	got := api.exampleJob(t, owner)
@@ -326,12 +328,12 @@ func TestAFailedExampleLeavesNothingBehind(t *testing.T) {
 		t.Fatalf("the failed making reads %s", got.Raw)
 	}
 	for what, sql := range map[string]string{
-		"spaces":    `SELECT count(*) FROM space WHERE org_id = $1`,
-		"pages":     `SELECT count(*) FROM page WHERE org_id = $1`,
-		"files":     `SELECT count(*) FROM attachment WHERE org_id = $1`,
-		"audit log": `SELECT count(*) FROM audit_log WHERE org_id = $1 AND target_type = 'space'`,
+		"spaces":    `SELECT count(*) FROM space`,
+		"pages":     `SELECT count(*) FROM page`,
+		"files":     `SELECT count(*) FROM attachment`,
+		"audit log": `SELECT count(*) FROM audit_log WHERE target_type = 'space'`,
 	} {
-		if n := h.countRows(t, sql, home.org); n != 0 {
+		if n := h.countRows(t, sql); n != 0 {
 			t.Errorf("the failed making left %d %s", n, what)
 		}
 	}
@@ -370,14 +372,14 @@ func TestTheExampleTakesTheNextKeyWhenItsOwnIsTaken(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "example-key")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": example.Key, "name": "Our rotor and stator"}), http.StatusCreated, "take the key")
 	if key := api.makeExample(t, owner, map[string]any{"language": "en"})["key"]; key != example.Key+"2" {
 		t.Errorf("the example's key is %v", key)
 	}
 	var body []byte
 	if err := h.super.QueryRow(context.Background(), `
-		SELECT p.body FROM page p JOIN space s ON s.home_page_id = p.id WHERE s.org_id = $1 AND s.example`, home.org).Scan(&body); err != nil {
+		SELECT p.body FROM page p JOIN space s ON s.home_page_id = p.id WHERE s.example`).Scan(&body); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(body), `"space": "`+example.Key+`2"`) {
@@ -392,27 +394,26 @@ func TestTheDatabaseKeepsTheExampleTheAdministrators(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "example-sql")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
 	want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{user(memberID)}}), http.StatusOK, "let the member create spaces")
 	ordinary := obj(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "PLAIN", "name": "Plain"}), http.StatusCreated, "make a space"), "space")["id"]
 
-	insert := `INSERT INTO space (id, org_id, key, name, created_by, example, example_version, example_language) VALUES ($1, $2, $3, 'Mine', $4, true, 1, 'en')`
+	insert := `INSERT INTO space (id, key, name, created_by, example, example_version, example_language) VALUES ($1, $2, 'Mine', $3, true, 1, 'en')`
 	conn := appConn(t)
 	actAs(t, conn, memberID)
-	refused(t, conn, "a member who may create spaces making the example", insert, uuid.New(), home.org, "MINE", memberID)
-	if _, err := conn.Exec(context.Background(), `INSERT INTO space (id, org_id, key, name, created_by) VALUES ($1, $2, 'MINE', 'Mine', $3)`, uuid.New(), home.org, memberID); err != nil {
+	refused(t, conn, "a member who may create spaces making the example", insert, uuid.New(), "MINE", memberID)
+	if _, err := conn.Exec(context.Background(), `INSERT INTO space (id, key, name, created_by) VALUES ($1, 'MINE', 'Mine', $2)`, uuid.New(), memberID); err != nil {
 		t.Fatalf("the same member cannot make an ordinary space: %v", err)
 	}
 
 	actAs(t, conn, home.user)
 	refused(t, conn, "an administrator marking a space the example", `UPDATE space SET example = true WHERE id = $1`, ordinary)
-	if _, err := conn.Exec(context.Background(), insert, uuid.New(), home.org, "FIRST", home.user); err != nil {
+	if _, err := conn.Exec(context.Background(), insert, uuid.New(), "FIRST", home.user); err != nil {
 		t.Fatalf("an administrator cannot make the example through SQL: %v", err)
 	}
-	refused(t, conn, "a second example", insert, uuid.New(), home.org, "SECOND", home.user)
-	refused(t, conn, "unmarking the example", `UPDATE space SET example = false WHERE org_id = $1 AND example`, home.org)
+	refused(t, conn, "a second example", insert, uuid.New(), "SECOND", home.user)
+	refused(t, conn, "unmarking the example", `UPDATE space SET example = false WHERE example`)
 
 	// The example was made through SQL, which pins no read to it, so the replica
 	// the API reads from must have it before the API is asked.
@@ -433,23 +434,23 @@ func TestTheDatabaseKeepsTheExampleTheAdministrators(t *testing.T) {
 func TestTheDatabaseKeepsTheExampleJobsTheAdministrators(t *testing.T) {
 	h := newHarness(t)
 	home := h.makeMember(t, "example-job-sql")
-	memberID := h.addPerson(t, home.org, "member")
+	memberID := h.addPerson(t, "member")
 	ctx := context.Background()
-	insert := `INSERT INTO example_job (id, org_id, requested_by, language) VALUES ($1, $2, $3, 'en')`
+	insert := `INSERT INTO example_job (id, requested_by, language) VALUES ($1, $2, 'en')`
 
 	conn := appConn(t)
 	actAs(t, conn, memberID)
-	refused(t, conn, "a member queuing the example", insert, uuid.New(), home.org, memberID)
+	refused(t, conn, "a member queuing the example", insert, uuid.New(), memberID)
 
 	actAs(t, conn, home.user)
-	refused(t, conn, "an administrator queuing it for somebody else", insert, uuid.New(), home.org, memberID)
+	refused(t, conn, "an administrator queuing it for somebody else", insert, uuid.New(), memberID)
 	refused(t, conn, "an administrator queuing a job already done",
-		`INSERT INTO example_job (id, org_id, requested_by, language, state) VALUES ($1, $2, $3, 'en', 'done')`, uuid.New(), home.org, home.user)
+		`INSERT INTO example_job (id, requested_by, language, state) VALUES ($1, $2, 'en', 'done')`, uuid.New(), home.user)
 	job := uuid.New()
-	if _, err := conn.Exec(ctx, insert, job, home.org, home.user); err != nil {
+	if _, err := conn.Exec(ctx, insert, job, home.user); err != nil {
 		t.Fatalf("an administrator cannot queue the example through SQL: %v", err)
 	}
-	refused(t, conn, "a second job while one waits", insert, uuid.New(), home.org, home.user)
+	refused(t, conn, "a second job while one waits", insert, uuid.New(), home.user)
 	for what, sql := range map[string]string{
 		"marking it done":  `UPDATE example_job SET state = 'done' WHERE id = $1`,
 		"deleting it":      `DELETE FROM example_job WHERE id = $1`,
@@ -462,7 +463,7 @@ func TestTheDatabaseKeepsTheExampleJobsTheAdministrators(t *testing.T) {
 		t.Errorf("the administrator reads %d of their job: %v", seen, err)
 	}
 	actAs(t, conn, memberID)
-	if err := conn.QueryRow(ctx, `SELECT count(*) FROM example_job WHERE org_id = $1`, home.org).Scan(&seen); err != nil || seen != 0 {
+	if err := conn.QueryRow(ctx, `SELECT count(*) FROM example_job`).Scan(&seen); err != nil || seen != 0 {
 		t.Errorf("a member reads %d jobs: %v", seen, err)
 	}
 }

@@ -290,7 +290,7 @@ func TestTheAPIReadsItsOwnWrites(t *testing.T) {
 	needReplica(t, h)
 	api := newAPIServer(t, h)
 	m := h.makeMember(t, "api-ryw")
-	person := api.as(t, m.user, m.org, h.slugOf(t, m.org))
+	person := api.as(t, m.user)
 
 	roundTrip := func(t *testing.T, name string) {
 		t.Helper()
@@ -325,7 +325,7 @@ func TestTheAPIReadsItsOwnWrites(t *testing.T) {
 		h.pauseReplay(t)
 		made := want(t, person.post(t, "/api/v1/themes", map[string]any{"name": "Unseen " + uuid.NewString()[:8]}), http.StatusCreated, "make a theme")
 		id := obj(t, made, "theme")["id"].(string)
-		stranger := api.as(t, m.user, m.org, h.slugOf(t, m.org))
+		stranger := api.as(t, m.user)
 		stranger.eager = true
 		want(t, stranger.get(t, "/api/v1/themes/"+id), http.StatusNotFound, "a fresh browser reads the paused replica")
 		h.resumeReplay(t)

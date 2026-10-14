@@ -22,7 +22,7 @@ func TestATransactionForNobodyReachesNothing(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "nobody")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	newTree(t, owner, uniqueKey("NOB"), "Nobody's")
 	h.settle(t)
 
@@ -32,11 +32,11 @@ func TestATransactionForNobodyReachesNothing(t *testing.T) {
 		}
 	}
 	_, err := h.cluster.Write(context.Background(), func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ('nobody', 'Nobody')`)
+		_, err := tx.Exec(ctx, `INSERT INTO site (slug, name) VALUES ('nobody', 'Nobody')`)
 		return err
 	})
 	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) || (pgErr.Code != "42501" && pgErr.Code != "23514") {
+	if !errors.As(err, &pgErr) || (pgErr.Code != "42501" && pgErr.Code != "23505") {
 		t.Fatalf("an organization made for nobody = %v, want refused", err)
 	}
 }
@@ -48,7 +48,7 @@ func TestRawSQLAsTheAppRoleCannotLiftRowSecurity(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "gamma")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	newTree(t, owner, uniqueKey("GAM"), "Gamma")
 	h.settle(t)
 
@@ -81,9 +81,9 @@ func TestRawSQLAsTheAppRoleCannotLiftRowSecurity(t *testing.T) {
 	})
 
 	for _, attempt := range []struct{ name, sql string }{
-		{"turning row security off", `SET row_security = off; SELECT count(*) FROM org`},
-		{"disabling the policies", `ALTER TABLE org DISABLE ROW LEVEL SECURITY`},
-		{"dropping a policy", `DROP POLICY org_app ON org`},
+		{"turning row security off", `SET row_security = off; SELECT count(*) FROM site`},
+		{"disabling the policies", `ALTER TABLE site DISABLE ROW LEVEL SECURITY`},
+		{"dropping a policy", `DROP POLICY site_app ON site`},
 		{"becoming the exempt role", `SET ROLE stator_admin`},
 	} {
 		t.Run(attempt.name+" is refused", func(t *testing.T) {
@@ -101,18 +101,18 @@ func TestRawSQLAsTheAppRoleCannotLiftRowSecurity(t *testing.T) {
 		})
 	}
 
-	// The trigger that keeps one organization speaks first, so either refusal
-	// will do; removing it is filtered by the policies, which admit no delete.
+	// The site's key may speak first, so either refusal will do; removing it
+	// is filtered by the policies, which admit no delete.
 	t.Run("making or removing the organization is refused", func(t *testing.T) {
 		if _, err := conn.Exec(ctx, `RESET ALL`); err != nil {
 			t.Fatal(err)
 		}
-		_, err := conn.Exec(ctx, `INSERT INTO org (slug, name) VALUES ('sneaky', 'Sneaky')`)
+		_, err := conn.Exec(ctx, `INSERT INTO site (slug, name) VALUES ('sneaky', 'Sneaky')`)
 		var pgErr *pgconn.PgError
-		if !errors.As(err, &pgErr) || (pgErr.Code != "42501" && pgErr.Code != "23514") {
+		if !errors.As(err, &pgErr) || (pgErr.Code != "42501" && pgErr.Code != "23505") {
 			t.Errorf("making an organization = %v, want refused", err)
 		}
-		tag, err := conn.Exec(ctx, `DELETE FROM org`)
+		tag, err := conn.Exec(ctx, `DELETE FROM site`)
 		if err != nil || tag.RowsAffected() != 0 {
 			t.Errorf("the app role removed %d organizations (%v)", tag.RowsAffected(), err)
 		}
@@ -131,7 +131,7 @@ func TestTheAdminRoleIsExemptFromThePolicies(t *testing.T) {
 		if err := tx.QueryRow(ctx, `SELECT current_user`).Scan(&role); err != nil {
 			return err
 		}
-		return tx.QueryRow(ctx, `SELECT count(*) FROM org_member WHERE org_id = $1`, a.org).Scan(&n)
+		return tx.QueryRow(ctx, `SELECT count(*) FROM member WHERE user_id = $1`, a.user).Scan(&n)
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -214,13 +214,14 @@ func TestEveryTableForcesRowSecurity(t *testing.T) {
 	}
 }
 
-// An instance serves one organization, so no policy and no function reads
-// the tenant: neither current_org_id(), kept only until org_id goes, nor the
-// app.org_id setting it read. A migration that brings either back fails here.
+// An instance serves one organization, so the schema names none: no column is
+// org_id, there is no current_org_id(), and no policy or function reads
+// either, nor the app.org_id setting. A migration that brings one back fails
+// here.
 func TestNothingReadsTheTenant(t *testing.T) {
 	h := newHarness(t)
 	ctx := context.Background()
-	const tenant = `(current_org_id\s*\(|app\.org_id)`
+	const tenant = `(current_org_id|app\.org_id|\morg_id\M)`
 	found := func(sql string) []string {
 		t.Helper()
 		rows, err := h.super.Query(ctx, sql, tenant)
@@ -241,13 +242,50 @@ func TestNothingReadsTheTenant(t *testing.T) {
 	}
 	for _, name := range found(`
 		SELECT p.oid::regprocedure::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-		WHERE n.nspname = 'public' AND p.proname <> 'current_org_id' AND p.prosrc ~ $1
+		WHERE n.nspname = 'public' AND (p.prosrc ~ $1 OR p.proname ~ $1)
 		ORDER BY 1`) {
 		t.Errorf("function %s reads the tenant", name)
 	}
-	// A pattern that matched nothing at all would pass for the wrong reason.
-	if len(found(`SELECT 'x' WHERE 'org_id = current_org_id ()' ~ $1 AND 'current_setting(''app.org_id'')' ~ $1`)) != 1 {
+	for _, name := range found(`
+		SELECT table_name || '.' || column_name FROM information_schema.columns
+		WHERE table_schema = 'public' AND column_name ~ $1
+		ORDER BY 1`) {
+		t.Errorf("column %s names the organization", name)
+	}
+	// A pattern that matched nothing at all would pass for the wrong reason;
+	// Armature's own organization is no tenant and must not match.
+	if len(found(`SELECT 'x' WHERE 'a.org_id = b.org_id' ~ $1 AND 'current_org_id()' ~ $1
+		AND 'current_setting(''app.org_id'')' ~ $1 AND 'armature_org_id' !~ $1`)) != 1 {
 		t.Fatal("the pattern no longer recognises a read of the tenant")
+	}
+}
+
+// The tables named after the organization took the site's name with the
+// schema change, and nothing in the catalog keeps the old ones.
+func TestNoTableIsNamedAfterTheOrganization(t *testing.T) {
+	h := newHarness(t)
+	rows, err := h.super.Query(context.Background(), `
+		SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+		WHERE n.nspname = 'public' AND c.relname ~ '^org(_|$)'
+		UNION ALL
+		SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+		WHERE n.nspname = 'public' AND p.proname ~ '^org(_|$)'
+		UNION ALL
+		SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND policyname ~ '^org(_|$)'
+		ORDER BY 1`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		t.Errorf("%s is still named after the organization", name)
+	}
+	var site bool
+	if err := h.super.QueryRow(context.Background(), `SELECT to_regclass('public.site') IS NOT NULL AND to_regclass('public.member') IS NOT NULL`).Scan(&site); err != nil || !site {
+		t.Fatalf("site and member are not there (%v); the schema is not migrated", err)
 	}
 }
 

@@ -54,10 +54,9 @@ func TestLivePagesOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "live-pages")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID := h.namedPerson(t, home.org, "Ann Live"), h.namedPerson(t, home.org, "Ben Reader")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID := h.namedPerson(t, "Ann Live"), h.namedPerson(t, "Ben Reader")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	h.runWorker(t, notify.NewFanOut(h.cluster, nil, testAppURL, discard()))
 
 	docs := newTree(t, owner, "LIVE", "Live")
@@ -103,11 +102,11 @@ func TestLivePagesOverTheAPI(t *testing.T) {
 				t.Errorf("%s still has a draft of a live page: %v", who, d)
 			}
 		}
-		if data := h.recordedOnce(t, home.org, audit.ActionPageModeChanged, &home.user, notes); !strings.Contains(data, "Ann Live") || !strings.Contains(data, `"mode": "live"`) {
+		if data := h.recordedOnce(t, audit.ActionPageModeChanged, &home.user, notes); !strings.Contains(data, "Ann Live") || !strings.Contains(data, `"mode": "live"`) {
 			t.Errorf("the audit entry reads %s", data)
 		}
 		want(t, owner.put(t, pagePath(notes, "/mode"), map[string]any{"mode": "live"}), http.StatusOK, "choose live again")
-		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = $2`, home.org, audit.ActionPageModeChanged); n != 1 {
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = $1`, audit.ActionPageModeChanged); n != 1 {
 			t.Errorf("choosing the mode a page has is recorded too: %d entries", n)
 		}
 		if got := owner.put(t, pagePath(box, "/mode"), map[string]any{"mode": "live"}); got.Status != http.StatusConflict || errorCode(t, got) != "folder" {
@@ -148,11 +147,11 @@ func TestLivePagesOverTheAPI(t *testing.T) {
 			t.Fatalf("ann's save went into version %d, amended %v", n, amended)
 		}
 		// Nothing new is no save at all.
-		before := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1`, home.org)
+		before := h.countRows(t, `SELECT count(*) FROM outbox_event`)
 		if n, _ = savedVersion(t, liveSave(t, ann, notes, "Notes", mentionDoc("Ann adds a word for", benID)), "the same again"); n != 2 {
 			t.Fatalf("the same words again went into version %d", n)
 		}
-		if after := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1`, home.org); after != before {
+		if after := h.countRows(t, `SELECT count(*) FROM outbox_event`); after != before {
 			t.Errorf("saving nothing new emitted %d events", after-before)
 		}
 		ticket := uuid.NewString()
@@ -167,7 +166,7 @@ func TestLivePagesOverTheAPI(t *testing.T) {
 		if latest["live"] != true || latest["authorName"] == "Ann Live" || mustJSON(t, latest["coEditors"]) != `["Ann Live"]` {
 			t.Errorf("the live version reads %v", latest)
 		}
-		h.drained(t, home.org)
+		h.drained(t)
 		if n := notificationsOfKind(t, ben, "mentioned"); n != 1 {
 			t.Errorf("ben was told of his mention %d times, want once", n)
 		}
@@ -202,7 +201,7 @@ func TestLivePagesOverTheAPI(t *testing.T) {
 	t.Run("a write from elsewhere wins over the shared draft it overtook", func(t *testing.T) {
 		var room string
 		if err := h.super.QueryRow(context.Background(), `
-			INSERT INTO page_collab (org_id, page_id, base_version, seeded) VALUES ($1, $2, 3, true) RETURNING id::text`, home.org, notes).Scan(&room); err != nil {
+			INSERT INTO page_collab (page_id, base_version, seeded) VALUES ($1, 3, true) RETURNING id::text`, notes).Scan(&room); err != nil {
 			t.Fatal(err)
 		}
 		if got := liveSave(t, ann, notes, "Notes", textDoc("From a lost room"), uuid.NewString()); got.Status != http.StatusConflict || errorCode(t, got) != "room_gone" {
@@ -247,10 +246,9 @@ func TestLivePagesAreHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "live-db")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.addPerson(t, home.org, "member")
-	readerID := h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	annID := h.addPerson(t, "member")
+	readerID := h.addPerson(t, "member")
 
 	docs := newTree(t, owner, "LIVEDB", "Live")
 	notes := docs.add(docs.homeID, "Notes")

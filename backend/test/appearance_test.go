@@ -16,9 +16,8 @@ func TestAPagesAppearanceIsItsEditorsToChoose(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "appearance")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	member := api.as(t, h.addPerson(t, "member"))
 
 	docs := newTree(t, owner, "LOOK", "Looks")
 	plans := docs.add(docs.homeID, "Plans")
@@ -94,9 +93,8 @@ func TestAPagesAppearanceIsHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "appearance-db")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
 
 	docs := newTree(t, owner, "LOOKDB", "Looks")
 	plans := docs.add(docs.homeID, "Plans")

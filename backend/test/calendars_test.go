@@ -49,11 +49,10 @@ func TestTeamCalendarsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "calendars")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID := h.namedPerson(t, org.org, "Ann Planner")
-	readerID := h.addPerson(t, org.org, "member")
-	ann, reader := api.as(t, annID, org.org, slug), api.as(t, readerID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID := h.namedPerson(t, "Ann Planner")
+	readerID := h.addPerson(t, "member")
+	ann, reader := api.as(t, annID), api.as(t, readerID)
 
 	cal := newTree(t, owner, "CAL", "Calendars")
 	want(t, owner.put(t, "/api/v1/spaces/CAL/permissions", map[string]any{"grants": []any{
@@ -182,7 +181,7 @@ func TestTeamCalendarsOverTheAPI(t *testing.T) {
 
 	t.Run("a member the space is closed to finds nothing", func(t *testing.T) {
 		away := h.makeOutsider(t, "calendars-away")
-		stranger := api.as(t, away.user, away.org, slug)
+		stranger := api.as(t, away.user)
 		other := obj(t, want(t, owner.post(t, calendarsPath("CAL"), map[string]any{"name": "Ops"}), http.StatusCreated, "add Ops"), "calendar")["id"].(string)
 		want(t, stranger.get(t, calendarsPath("CAL")), http.StatusNotFound, "a stranger lists")
 		want(t, stranger.get(t, eventsPath(other, "2026-10-01T00:00:00Z", "2026-11-01T00:00:00Z")), http.StatusNotFound, "a stranger reads")
@@ -197,7 +196,7 @@ func TestASpaceHoldsAFewCalendars(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "calendars-full")
-	owner := api.as(t, org.user, org.org, h.slugOf(t, org.org))
+	owner := api.as(t, org.user)
 	newTree(t, owner, "CFU", "Full")
 	for i := range calendar.MaxPerSpace {
 		want(t, owner.post(t, calendarsPath("CFU"), map[string]any{"name": fmt.Sprintf("Calendar %d", i)}), http.StatusCreated, "add one more")
@@ -220,10 +219,9 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "calendar-wall")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID := h.addPerson(t, org.org, "member")
-	readerID := h.addPerson(t, org.org, "member")
+	owner := api.as(t, org.user)
+	annID := h.addPerson(t, "member")
+	readerID := h.addPerson(t, "member")
 	away := h.makeOutsider(t, "calendar-wall-away")
 
 	walled := newTree(t, owner, "CWL", "Walled calendars")
@@ -249,15 +247,15 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 		}
 		return n
 	}
-	insertEvent := `INSERT INTO calendar_event (org_id, space_id, calendar_id, title, kind, all_day, starts_at, ends_at) VALUES ($1, $2, $3, $4, 'event', $5, $6, $7)`
+	insertEvent := `INSERT INTO calendar_event (space_id, calendar_id, title, kind, all_day, starts_at, ends_at) VALUES ($1, $2, $3, 'event', $4, $5, $6)`
 
 	t.Run("a reader reads and changes nothing", func(t *testing.T) {
 		actAs(t, conn, readerID)
 		if n := count(`SELECT count(*) FROM calendar_event WHERE calendar_id = $1`, team); n != 1 {
 			t.Errorf("the reader reads %d events", n)
 		}
-		denied(t, conn, "a reader adds a calendar", `INSERT INTO calendar (org_id, space_id, name) VALUES ($1, $2, 'Mine')`, org.org, spaceID)
-		denied(t, conn, "a reader adds an event", insertEvent, org.org, spaceID, team, "Mine", true, "2026-10-16T00:00:00Z", "2026-10-16T00:00:00Z")
+		denied(t, conn, "a reader adds a calendar", `INSERT INTO calendar (space_id, name) VALUES ($1, 'Mine')`, spaceID)
+		denied(t, conn, "a reader adds an event", insertEvent, spaceID, team, "Mine", true, "2026-10-16T00:00:00Z", "2026-10-16T00:00:00Z")
 		untouched(t, conn, "a reader renames", `UPDATE calendar SET name = 'Mine' WHERE id = $1`, team)
 		untouched(t, conn, "a reader retitles", `UPDATE calendar_event SET title = 'Mine' WHERE calendar_id = $1`, team)
 		untouched(t, conn, "a reader removes events", `DELETE FROM calendar_event WHERE calendar_id = $1`, team)
@@ -273,17 +271,17 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 
 	t.Run("an editor keeps events to their shape, their calendar and their author", func(t *testing.T) {
 		actAs(t, conn, annID)
-		if _, err := conn.Exec(ctx, insertEvent, org.org, spaceID, team, "Planning", false, "2026-10-16T09:00:00Z", "2026-10-16T10:00:00Z"); err != nil {
+		if _, err := conn.Exec(ctx, insertEvent, spaceID, team, "Planning", false, "2026-10-16T09:00:00Z", "2026-10-16T10:00:00Z"); err != nil {
 			t.Fatalf("ann cannot add an event: %v", err)
 		}
 		var author uuid.UUID
 		if err := conn.QueryRow(ctx, `SELECT created_by FROM calendar_event WHERE title = 'Planning' AND calendar_id = $1`, team).Scan(&author); err != nil || author != annID {
 			t.Errorf("the event was signed by %v (%v)", author, err)
 		}
-		denied(t, conn, "an all day event at ten", insertEvent, org.org, spaceID, team, "Half", true, "2026-10-16T10:00:00Z", "2026-10-16T10:00:00Z")
-		denied(t, conn, "an event that ends before it starts", insertEvent, org.org, spaceID, team, "Backwards", false, "2026-10-16T10:00:00Z", "2026-10-16T09:00:00Z")
+		denied(t, conn, "an all day event at ten", insertEvent, spaceID, team, "Half", true, "2026-10-16T10:00:00Z", "2026-10-16T10:00:00Z")
+		denied(t, conn, "an event that ends before it starts", insertEvent, spaceID, team, "Backwards", false, "2026-10-16T10:00:00Z", "2026-10-16T09:00:00Z")
 		// calendar.MaxEventDays is the database's longest event to the day.
-		if _, err := conn.Exec(ctx, insertEvent, org.org, spaceID, team, "Year", true, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"); err != nil {
+		if _, err := conn.Exec(ctx, insertEvent, spaceID, team, "Year", true, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"); err != nil {
 			t.Fatalf("ann cannot add a day: %v", err)
 		}
 		longest := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, calendar.MaxEventDays)
@@ -291,15 +289,15 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 			t.Errorf("an event of %d days is refused: %v", calendar.MaxEventDays, err)
 		}
 		denied(t, conn, "an event a day longer than the longest", `UPDATE calendar_event SET ends_at = $2 WHERE calendar_id = $1 AND title = 'Year'`, team, longest.AddDate(0, 0, 1))
-		denied(t, conn, "an event of two years", insertEvent, org.org, spaceID, team, "Long", true, "2026-01-01T00:00:00Z", "2028-01-01T00:00:00Z")
-		denied(t, conn, "an event without a title", insertEvent, org.org, spaceID, team, " ", true, "2026-10-16T00:00:00Z", "2026-10-16T00:00:00Z")
-		denied(t, conn, "an event of no kind", `INSERT INTO calendar_event (org_id, space_id, calendar_id, title, kind, all_day, starts_at, ends_at) VALUES ($1, $2, $3, 'Odd', 'holiday', true, '2026-10-16', '2026-10-16')`, org.org, spaceID, team)
-		denied(t, conn, "an event in somebody else's name", `INSERT INTO calendar_event (org_id, space_id, calendar_id, title, all_day, starts_at, ends_at, created_by) VALUES ($1, $2, $3, 'Forged', true, '2026-10-16', '2026-10-16', $4)`, org.org, spaceID, team, readerID)
+		denied(t, conn, "an event of two years", insertEvent, spaceID, team, "Long", true, "2026-01-01T00:00:00Z", "2028-01-01T00:00:00Z")
+		denied(t, conn, "an event without a title", insertEvent, spaceID, team, " ", true, "2026-10-16T00:00:00Z", "2026-10-16T00:00:00Z")
+		denied(t, conn, "an event of no kind", `INSERT INTO calendar_event (space_id, calendar_id, title, kind, all_day, starts_at, ends_at) VALUES ($1, $2, 'Odd', 'holiday', true, '2026-10-16', '2026-10-16')`, spaceID, team)
+		denied(t, conn, "an event in somebody else's name", `INSERT INTO calendar_event (space_id, calendar_id, title, all_day, starts_at, ends_at, created_by) VALUES ($1, $2, 'Forged', true, '2026-10-16', '2026-10-16', $3)`, spaceID, team, readerID)
 		denied(t, conn, "an event moved to another calendar", `UPDATE calendar_event SET calendar_id = $2 WHERE calendar_id = $1`, team, elsewhere)
 		denied(t, conn, "an event moved to another space", `UPDATE calendar_event SET space_id = $2 WHERE calendar_id = $1`, team, otherID)
 		denied(t, conn, "a calendar moved to another space", `UPDATE calendar SET space_id = $2 WHERE id = $1`, team, otherID)
-		refused(t, conn, "an event whose space is not its calendar's", insertEvent, org.org, spaceID, elsewhere, "Astray", true, "2026-10-16T00:00:00Z", "2026-10-16T00:00:00Z")
-		refused(t, conn, "a second calendar of one name", `INSERT INTO calendar (org_id, space_id, name) VALUES ($1, $2, 'team')`, org.org, spaceID)
+		refused(t, conn, "an event whose space is not its calendar's", insertEvent, spaceID, elsewhere, "Astray", true, "2026-10-16T00:00:00Z", "2026-10-16T00:00:00Z")
+		refused(t, conn, "a second calendar of one name", `INSERT INTO calendar (space_id, name) VALUES ($1, 'team')`, spaceID)
 		if _, err := conn.Exec(ctx, `UPDATE calendar_event SET title = 'Release day' WHERE calendar_id = $1 AND title = 'Release'`, team); err != nil {
 			t.Errorf("ann cannot retitle: %v", err)
 		}
@@ -308,7 +306,7 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 	t.Run("an archived space freezes its calendars", func(t *testing.T) {
 		want(t, owner.put(t, "/api/v1/spaces/CWL/archive", nil), http.StatusOK, "archive CWL")
 		actAs(t, conn, annID)
-		denied(t, conn, "an event in an archived space", insertEvent, org.org, spaceID, team, "Late", true, "2026-10-17T00:00:00Z", "2026-10-17T00:00:00Z")
+		denied(t, conn, "an event in an archived space", insertEvent, spaceID, team, "Late", true, "2026-10-17T00:00:00Z", "2026-10-17T00:00:00Z")
 		untouched(t, conn, "a retitle in an archived space", `UPDATE calendar_event SET title = 'Late' WHERE calendar_id = $1`, team)
 		want(t, owner.delete(t, "/api/v1/spaces/CWL/archive"), http.StatusOK, "unarchive CWL")
 	})
@@ -316,8 +314,8 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 	t.Run("the limit holds whatever path adds them", func(t *testing.T) {
 		actAs(t, conn, org.user)
 		refused(t, conn, "a space filled past its limit", `
-			INSERT INTO calendar (org_id, space_id, name)
-			SELECT $1, $2, 'Calendar ' || n FROM generate_series(1, calendar_max() + 1) AS n`, org.org, otherID)
+			INSERT INTO calendar (space_id, name)
+			SELECT $1, 'Calendar ' || n FROM generate_series(1, calendar_max() + 1) AS n`, otherID)
 		if n := count(`SELECT count(*) FROM calendar WHERE space_id = $1`, otherID); n != 1 {
 			t.Errorf("a refused statement left %d calendars", n)
 		}
@@ -330,10 +328,10 @@ func TestACalendarMonthOfArmatureIssues(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-cal")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	bob := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
-	carol := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	slug := h.site.Slug
+	owner := api.as(t, home.user)
+	bob := api.as(t, h.addPerson(t, "member"))
+	carol := api.as(t, h.addPerson(t, "member"))
 	monthPath := func(project, month string) string {
 		return "/api/v1/armature/calendar?" + url.Values{"project": {project}, "month": {month}}.Encode()
 	}

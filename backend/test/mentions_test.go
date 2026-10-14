@@ -60,10 +60,9 @@ func TestMentionsOverTheAPI(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runWorker(t, notify.NewFanOut(h.cluster, nil, testAppURL, discard()))
 	home := h.makeMember(t, "mentions")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID, danID := h.namedPerson(t, home.org, "Ann Named"), h.namedPerson(t, home.org, "Ben Named"), h.namedPerson(t, home.org, "Carl Named"), h.namedPerson(t, home.org, "Dan Outsider")
-	ann, ben, carl, dan := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, carlID, home.org, slug), api.as(t, danID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID, danID := h.namedPerson(t, "Ann Named"), h.namedPerson(t, "Ben Named"), h.namedPerson(t, "Carl Named"), h.namedPerson(t, "Dan Outsider")
+	ann, ben, carl, dan := api.as(t, annID), api.as(t, benID), api.as(t, carlID), api.as(t, danID)
 
 	docs := newTree(t, owner, "MENT", "Mentions")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("The plan.")})
@@ -104,7 +103,7 @@ func TestMentionsOverTheAPI(t *testing.T) {
 
 	t.Run("publishing tells the people newly mentioned who may view the page", func(t *testing.T) {
 		publishBody(t, owner, plan, mentionDoc("Ann owns the budget.", annID, danID, uuid.New(), home.user))
-		h.drained(t, home.org)
+		h.drained(t)
 		got := mentionsOf(t, ann)
 		if len(got) != 1 || got[0]["page"].(map[string]any)["id"] != plan || number(got[0]["version"]) != 2 ||
 			got[0]["excerpt"] != "Ann owns the budget. @Someone @Someone @Someone @Someone" || got[0]["actorId"] != home.user.String() || got[0]["threadId"] != nil {
@@ -113,25 +112,25 @@ func TestMentionsOverTheAPI(t *testing.T) {
 		if got := notificationsOf(t, dan, ""); len(got) != 0 {
 			t.Errorf("dan, who may not view the page, was told %v", got)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM notification WHERE org_id = $1 AND user_id = $2`, home.org, danID); n != 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM notification WHERE user_id = $1`, danID); n != 0 {
 			t.Errorf("dan has %d rows", n)
 		}
 		if got := notificationsOf(t, owner, ""); len(got) != 0 {
 			t.Errorf("the actor was told of their own mention: %v", got)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM watch WHERE org_id = $1 AND user_id = $2`, home.org, annID); n != 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM watch WHERE user_id = $1`, annID); n != 0 {
 			t.Errorf("a mention made ann watch %d things", n)
 		}
 	})
 
 	t.Run("a republish tells nobody again, and an added person alone", func(t *testing.T) {
 		publishBody(t, owner, plan, mentionDoc("Ann owns the budget, still.", annID, danID))
-		h.drained(t, home.org)
+		h.drained(t)
 		if got := mentionsOf(t, ann); len(got) != 1 {
 			t.Errorf("a republish told ann again: %v", got)
 		}
 		publishBody(t, owner, plan, mentionDoc("Ann and Ben own it.", annID, benID))
-		h.drained(t, home.org)
+		h.drained(t)
 		if got := mentionsOf(t, ann); len(got) != 1 {
 			t.Errorf("adding ben told ann again: %v", got)
 		}
@@ -139,7 +138,7 @@ func TestMentionsOverTheAPI(t *testing.T) {
 			t.Errorf("ben was told %v", got)
 		}
 		want(t, owner.post(t, pagePath(plan, "/versions/2/restore"), map[string]any{"baseVersion": 4}), http.StatusOK, "restore version 2")
-		h.drained(t, home.org)
+		h.drained(t)
 		if got := mentionsOf(t, ann); len(got) != 1 {
 			t.Errorf("a restore that keeps ann told her again: %v", got)
 		}
@@ -150,7 +149,7 @@ func TestMentionsOverTheAPI(t *testing.T) {
 		made := obj(t, want(t, ann.post(t, pagePath(plan, "/comments"), map[string]any{"body": mentionDoc("Carl, can you check?", carlID, danID, annID)}),
 			http.StatusCreated, "ann mentions carl in a comment"), "thread")
 		thread = made["id"].(string)
-		h.drained(t, home.org)
+		h.drained(t)
 		got := mentionsOf(t, carl)
 		if len(got) != 1 || got[0]["threadId"] != thread || got[0]["commentId"] != thread || got[0]["excerpt"] != "Carl, can you check? @Someone @Someone @Someone" {
 			t.Errorf("carl was told %v", got)
@@ -167,7 +166,7 @@ func TestMentionsOverTheAPI(t *testing.T) {
 
 	t.Run("an edit tells only the people it adds, and nobody twice", func(t *testing.T) {
 		want(t, ann.patch(t, "/api/v1/comments/"+thread, map[string]any{"body": mentionDoc("Carl or Ben?", carlID, benID)}), http.StatusOK, "ann adds ben")
-		h.drained(t, home.org)
+		h.drained(t)
 		if got := mentionsOf(t, carl); len(got) != 1 {
 			t.Errorf("the edit told carl again: %v", got)
 		}
@@ -177,11 +176,11 @@ func TestMentionsOverTheAPI(t *testing.T) {
 		}
 		want(t, ann.patch(t, "/api/v1/comments/"+thread, map[string]any{"body": mentionDoc("Ben?", benID)}), http.StatusOK, "ann drops carl")
 		want(t, ann.patch(t, "/api/v1/comments/"+thread, map[string]any{"body": mentionDoc("Carl after all.", carlID)}), http.StatusOK, "ann names carl again")
-		h.drained(t, home.org)
+		h.drained(t)
 		if got := mentionsOf(t, carl); len(got) != 1 {
 			t.Errorf("naming carl again told him twice: %v", got)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE org_id = $1 AND topic = 'comment.edited'`, home.org); n != 3 {
+		if n := h.countRows(t, `SELECT count(*) FROM outbox_event WHERE topic = 'comment.edited'`); n != 3 {
 			t.Errorf("%d comment.edited events for three edits", n)
 		}
 	})
@@ -189,7 +188,7 @@ func TestMentionsOverTheAPI(t *testing.T) {
 	t.Run("a reply mentions too", func(t *testing.T) {
 		want(t, reply(t, carl, thread, "Done."), http.StatusCreated, "carl replies")
 		r := obj(t, want(t, ben.post(t, "/api/v1/comments/"+thread+"/replies", map[string]any{"body": mentionDoc("Thanks", carlID)}), http.StatusCreated, "ben thanks carl"), "comment")
-		h.drained(t, home.org)
+		h.drained(t)
 		got := mentionsOf(t, carl)
 		if len(got) != 2 || got[0]["commentId"] != r["id"] {
 			t.Errorf("carl was told %v", got)
@@ -210,9 +209,8 @@ func TestMentionsAreEnforcedByTheDatabase(t *testing.T) {
 		"waiting-"+uuid.NewString()[:8]+"@example.test").Scan(&waitingID); err != nil {
 		t.Fatal(err)
 	}
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, danID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	annID, danID := h.addPerson(t, "member"), h.addPerson(t, "member")
 
 	docs := newTree(t, owner, "MRAW", "Raw")
 	secret := docs.add(docs.homeID, "Secret")
@@ -221,25 +219,25 @@ func TestMentionsAreEnforcedByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	event := `INSERT INTO outbox_event (org_id, topic, payload) VALUES ($1, 'mention.probe', jsonb_build_object('actorId', $2::text, 'mentioned', $3::jsonb))`
+	event := `INSERT INTO outbox_event (topic, payload) VALUES ('mention.probe', jsonb_build_object('actorId', $1::text, 'mentioned', $2::jsonb))`
 
 	t.Run("an event mentions only members", func(t *testing.T) {
 		actAs(t, conn, home.user)
-		denied(t, conn, "a mention of a stranger", event, home.org, home.user, `["`+uuid.NewString()+`"]`)
-		denied(t, conn, "a mention of somebody who is no member", event, home.org, home.user, `["`+waitingID.String()+`"]`)
-		denied(t, conn, "a mention that is no id", event, home.org, home.user, `["ann"]`)
-		denied(t, conn, "mentions that are no list", event, home.org, home.user, `{"id":"`+annID.String()+`"}`)
-		if _, err := conn.Exec(ctx, event, home.org, home.user, `["`+annID.String()+`","`+danID.String()+`"]`); err != nil {
+		denied(t, conn, "a mention of a stranger", event, home.user, `["`+uuid.NewString()+`"]`)
+		denied(t, conn, "a mention of somebody who is no member", event, home.user, `["`+waitingID.String()+`"]`)
+		denied(t, conn, "a mention that is no id", event, home.user, `["ann"]`)
+		denied(t, conn, "mentions that are no list", event, home.user, `{"id":"`+annID.String()+`"}`)
+		if _, err := conn.Exec(ctx, event, home.user, `["`+annID.String()+`","`+danID.String()+`"]`); err != nil {
 			t.Errorf("a mention of two members was refused: %v", err)
 		}
 	})
 
 	t.Run("nobody is told of a mention on a page they may not view", func(t *testing.T) {
-		insert := `INSERT INTO notification (org_id, user_id, event_id, kind, page_id) VALUES ($1, $2, $3, 'mentioned', $4)`
+		insert := `INSERT INTO notification (user_id, event_id, kind, page_id) VALUES ($1, $2, 'mentioned', $3)`
 		actAs(t, conn, danID)
-		denied(t, conn, "dan told of Secret", insert, home.org, danID, uuid.New(), secret)
+		denied(t, conn, "dan told of Secret", insert, danID, uuid.New(), secret)
 		actAs(t, conn, home.user)
-		denied(t, conn, "the owner writing ann's row", insert, home.org, annID, uuid.New(), secret)
+		denied(t, conn, "the owner writing ann's row", insert, annID, uuid.New(), secret)
 	})
 
 	t.Run("the picker's rule leaves out only the unpublished rule", func(t *testing.T) {

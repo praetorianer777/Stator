@@ -43,9 +43,9 @@ func searchKeys(t *testing.T, c *client, q string, limit, offset int) (string, [
 	return status, keys, r
 }
 
-func cachedSearch(t *testing.T, h *harness, org, tokenID uuid.UUID, q string, limit, offset int) bool {
+func cachedSearch(t *testing.T, h *harness, tokenID uuid.UUID, q string, limit, offset int) bool {
 	t.Helper()
-	n, err := h.valkey(t).HExists(context.Background(), armature.SearchKey(org), armature.SearchField(tokenID, q, limit, offset)).Result()
+	n, err := h.valkey(t).HExists(context.Background(), armature.SearchKey(h.site.ID), armature.SearchField(tokenID, q, limit, offset)).Result()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,11 +56,11 @@ func TestAnIssueListShowsEachReaderTheRowsArmatureShowsThem(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-search")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	bobID := h.addPerson(t, home.org, "member")
-	bob := api.as(t, bobID, home.org, slug)
-	carol := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	slug := h.site.Slug
+	owner := api.as(t, home.user)
+	bobID := h.addPerson(t, "member")
+	bob := api.as(t, bobID)
+	carol := api.as(t, h.addPerson(t, "member"))
 	base := armatureURL(t)
 
 	if status, keys, _ := searchKeys(t, bob, "project = CP", 0, 0); status != "not_configured" || len(keys) != 0 {
@@ -111,10 +111,10 @@ func TestAnIssueListShowsEachReaderTheRowsArmatureShowsThem(t *testing.T) {
 	})
 
 	t.Run("the cache keeps each reader's answer until it is cleared", func(t *testing.T) {
-		bobRow, ownerRow := tokenRowOf(t, h, home.org, bobID), tokenRowOf(t, h, home.org, home.user)
+		bobRow, ownerRow := tokenRowOf(t, h, bobID), tokenRowOf(t, h, home.user)
 		const q = "project = CP ORDER BY key"
 		searchKeys(t, bob, q, 1, 0)
-		if !cachedSearch(t, h, home.org, bobRow, q, 1, 0) || cachedSearch(t, h, home.org, ownerRow, q, 1, 0) {
+		if !cachedSearch(t, h, bobRow, q, 1, 0) || cachedSearch(t, h, ownerRow, q, 1, 0) {
 			t.Error("the answer is not cached for bob alone")
 		}
 		stubControl(t, http.MethodPatch, slug+"/issues/CP-1", map[string]any{"summary": "Renamed in Armature"})
@@ -123,7 +123,7 @@ func TestAnIssueListShowsEachReaderTheRowsArmatureShowsThem(t *testing.T) {
 		if !strings.Contains(string(cached.Raw), "Set up the build pipeline") || !strings.Contains(string(fresh.Raw), "Renamed in Armature") {
 			t.Errorf("bob's answer was not cached, or the owner's was shared: %s %s", cached.Raw, fresh.Raw)
 		}
-		armature.NewCache(h.valkey(t), discard()).ForgetSearches(context.Background(), home.org)
+		armature.NewCache(h.valkey(t), discard()).ForgetSearches(context.Background(), h.site.ID)
 		if _, _, again := searchKeys(t, bob, q, 1, 0); !strings.Contains(string(again.Raw), "Renamed in Armature") {
 			t.Errorf("after the cache cleared bob reads %s", again.Raw)
 		}
@@ -174,7 +174,7 @@ func TestAnIssueListStoresItsQueryAndNeverItsRows(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-list")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "LST", "Lists")
 	listNode := func(attrs map[string]any) map[string]any {
 		return map[string]any{"type": "doc", "content": []any{

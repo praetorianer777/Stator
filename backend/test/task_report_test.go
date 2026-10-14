@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // A task report (#57): the tasks a filter picks by space, assignee, due day
@@ -30,10 +32,9 @@ func TestATaskReportPicksTasksByItsFilter(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runStackWorker(t)
 	org := h.makeMember(t, "task-report")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID, carlID := h.namedPerson(t, org.org, "Ann Report"), h.namedPerson(t, org.org, "Ben Report"), h.namedPerson(t, org.org, "Carl Report")
-	ann, carl := api.as(t, annID, org.org, slug), api.as(t, carlID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Report"), h.namedPerson(t, "Ben Report"), h.namedPerson(t, "Carl Report")
+	ann, carl := api.as(t, annID), api.as(t, carlID)
 
 	day := func(days int) string { return time.Now().UTC().AddDate(0, 0, days).Format(time.DateOnly) }
 	alpha := newTree(t, owner, "TRA", "Alpha")
@@ -53,7 +54,7 @@ func TestATaskReportPicksTasksByItsFilter(t *testing.T) {
 	))
 	publishBody(t, owner, ops, todoDoc("Ops.", todo{text: "Beta", assignee: annID, due: day(0)}))
 	publishBody(t, owner, secret, todoDoc("Secret.", todo{text: "Secret", assignee: annID, due: day(0)}))
-	h.drained(t, org.org)
+	h.drained(t)
 
 	for _, c := range []struct {
 		what   string
@@ -99,7 +100,7 @@ func TestATaskReportPicksTasksByItsFilter(t *testing.T) {
 		if _, body := reportOf(t, carl, url.Values{"assignee": {"me"}}); body["assigneeName"] != "" {
 			t.Errorf("the reader's own report names %v", body["assigneeName"])
 		}
-		got, body := reportOf(t, ann, url.Values{"assignee": {org.org.String()}})
+		got, body := reportOf(t, ann, url.Values{"assignee": {uuid.NewString()}})
 		if len(got) != 0 || body["assigneeName"] != "" {
 			t.Errorf("somebody not in the organization has %v, named %v", got, body["assigneeName"])
 		}

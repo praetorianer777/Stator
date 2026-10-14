@@ -24,8 +24,7 @@ func TestAFileUploadedAgainIsItsNextVersion(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "file-versions")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "FVER", "Versions")
 	pageID := docs.add(docs.homeID, "Plan")
 	other := docs.add(docs.homeID, "Other")
@@ -108,8 +107,7 @@ func TestAFileUploadedAgainIsItsNextVersion(t *testing.T) {
 		actAs(t, conn, home.user)
 		var version int
 		if err := conn.QueryRow(context.Background(),
-			`INSERT INTO attachment (org_id, page_id, file_name, size_bytes, version) VALUES ($1, $2, 'BUDGET.xlsx', 1, 99) RETURNING version`,
-			home.org, pageID).Scan(&version); err != nil {
+			`INSERT INTO attachment (page_id, file_name, size_bytes, version) VALUES ($1, 'BUDGET.xlsx', 1, 99) RETURNING version`, pageID).Scan(&version); err != nil {
 			t.Fatal(err)
 		}
 		if version != 5 {
@@ -128,10 +126,9 @@ func TestAnEarlierVersionIsRestoredAsTheNextOne(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "file-restore")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	readerID := h.addPerson(t, home.org, "member")
-	reader := api.as(t, readerID, home.org, slug)
+	owner := api.as(t, home.user)
+	readerID := h.addPerson(t, "member")
+	reader := api.as(t, readerID)
 	docs := newTree(t, owner, "FRES", "Restore")
 	want(t, owner.put(t, "/api/v1/spaces/FRES/permissions", map[string]any{"grants": []any{
 		map[string]any{"subject": user(home.user), "permissions": []any{"view", "addPages", "administer"}},
@@ -196,16 +193,16 @@ func TestAnEarlierVersionIsRestoredAsTheNextOne(t *testing.T) {
 		upload("notes.txt", "notes")
 		conn := appConn(t)
 		actAs(t, conn, readerID)
-		denied(t, conn, "a reader restoring", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, restored_from) VALUES ($1, $2, 'budget.csv', 2, 1)`, home.org, pageID)
+		denied(t, conn, "a reader restoring", `INSERT INTO attachment (page_id, file_name, size_bytes, restored_from) VALUES ($1, 'budget.csv', 2, 1)`, pageID)
 		actAs(t, conn, home.user)
 		for what, sql := range map[string]string{
-			"restoring the latest version":   `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, restored_from) VALUES ($1, $2, 'BUDGET.csv', 2, 3)`,
-			"restoring a version never made": `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, restored_from) VALUES ($1, $2, 'budget.csv', 2, 9)`,
-			"restoring another file":         `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, restored_from) VALUES ($1, $2, 'notes.txt', 2, 2)`,
+			"restoring the latest version":   `INSERT INTO attachment (page_id, file_name, size_bytes, restored_from) VALUES ($1, 'BUDGET.csv', 2, 3)`,
+			"restoring a version never made": `INSERT INTO attachment (page_id, file_name, size_bytes, restored_from) VALUES ($1, 'budget.csv', 2, 9)`,
+			"restoring another file":         `INSERT INTO attachment (page_id, file_name, size_bytes, restored_from) VALUES ($1, 'notes.txt', 2, 2)`,
 		} {
-			refused(t, conn, what, sql, home.org, pageID)
+			refused(t, conn, what, sql, pageID)
 		}
-		refused(t, conn, "restoring version 0", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes, restored_from) VALUES ($1, $2, 'budget.csv', 2, 0)`, home.org, pageID)
+		refused(t, conn, "restoring version 0", `INSERT INTO attachment (page_id, file_name, size_bytes, restored_from) VALUES ($1, 'budget.csv', 2, 0)`, pageID)
 		refused(t, conn, "marking an upload restored", `UPDATE attachment SET restored_from = 1 WHERE page_id = $1`, pageID)
 		if n := h.countRows(t, `SELECT count(*) FROM attachment WHERE page_id = $1`, pageID); n != 4 {
 			t.Errorf("the page holds %d files, want the 4 the service made", n)
@@ -218,7 +215,7 @@ func TestAnEarlierVersionIsRestoredAsTheNextOne(t *testing.T) {
 		if all := filesOf(t, owner, files); len(all) != 3 {
 			t.Errorf("after one version went the page lists %v", all)
 		}
-		keys := []string{objectKey(home.org, pageID, second["id"].(string)), objectKey(home.org, pageID, restored["id"].(string))}
+		keys := []string{objectKey(pageID, second["id"].(string)), objectKey(pageID, restored["id"].(string))}
 		want(t, owner.delete(t, "/api/v1/attachments/"+second["id"].(string)+"?versions=all"), http.StatusNoContent, "delete every budget")
 		all := filesOf(t, owner, files)
 		if len(all) != 1 || all[0]["fileName"] != "notes.txt" {

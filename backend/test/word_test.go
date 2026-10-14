@@ -53,10 +53,9 @@ func TestAPageIsExportedToWordAsItsReaderReadsIt(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h, func(s *httpapi.Server) { s.AppBaseURL = "https://stator.example" })
 	home := h.makeMember(t, "word-export")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	inaID := h.addPerson(t, home.org, "member")
-	ina := api.as(t, inaID, home.org, slug)
+	owner := api.as(t, home.user)
+	inaID := h.addPerson(t, "member")
+	ina := api.as(t, inaID)
 	ctx := context.Background()
 
 	docs := newTree(t, owner, "WRD", "Word handbook")
@@ -115,7 +114,7 @@ func TestAPageIsExportedToWordAsItsReaderReadsIt(t *testing.T) {
 		if got := resp.Header.Get("Cache-Control"); got != "no-store" {
 			t.Errorf("Cache-Control = %q", got)
 		}
-		if data := h.recordedOnce(t, home.org, "page.exported", &home.user, guide); !strings.Contains(data, `"scope": "docx"`) {
+		if data := h.recordedOnce(t, "page.exported", &home.user, guide); !strings.Contains(data, `"scope": "docx"`) {
 			t.Errorf("the export's record reads %s", data)
 		}
 		// The stack's office suite opening it is the proof an editor of

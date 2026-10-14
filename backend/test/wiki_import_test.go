@@ -140,10 +140,9 @@ func TestAnHTMLExportOfAnotherWikiBecomesASpace(t *testing.T) {
 	h := newHarness(t)
 	api := transferAPI(t, h)
 	home := h.makeMember(t, "wiki-html")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	knownID := h.addPerson(t, home.org, "member")
-	known := api.as(t, knownID, home.org, slug)
+	owner := api.as(t, home.user)
+	knownID := h.addPerson(t, "member")
+	known := api.as(t, knownID)
 
 	job := api.importSpace(t, owner, htmlExport(t, emailOf(t, h, knownID)), "key=wiki")
 	if job["state"] != "done" || job["source"] != "html" || job["spaceKey"] != "WIKI" {
@@ -222,7 +221,7 @@ func TestAnHTMLExportOfAnotherWikiBecomesASpace(t *testing.T) {
 	t.Run("the space starts with the permissions of any new space", func(t *testing.T) {
 		want(t, known.get(t, "/api/v1/spaces/WIKI"), http.StatusOK, "a member reads the space")
 		spaceID, _ := uuid.Parse(space["id"].(string))
-		if data := h.recordedOnce(t, home.org, audit.ActionSpaceImported, &home.user, spaceID); !strings.Contains(data, `"source": "html"`) || !strings.Contains(data, `"lost": 2`) {
+		if data := h.recordedOnce(t, audit.ActionSpaceImported, &home.user, spaceID); !strings.Contains(data, `"source": "html"`) || !strings.Contains(data, `"lost": 2`) {
 			t.Errorf("the import's record reads %s", data)
 		}
 	})
@@ -234,9 +233,8 @@ func TestAnXMLExportOfAnotherWikiKeepsItsHistory(t *testing.T) {
 	h := newHarness(t)
 	api := transferAPI(t, h)
 	home := h.makeMember(t, "wiki-xml")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	knownID := h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	knownID := h.addPerson(t, "member")
 
 	job := api.importSpace(t, owner, xmlExport(t, emailOf(t, h, knownID)), "key=eng2&name=Engineering+wiki")
 	if job["state"] != "done" || job["source"] != "xml" || job["spaceKey"] != "ENG2" {
@@ -297,9 +295,8 @@ func TestExportsOfOtherWikisAreRefusedInSentences(t *testing.T) {
 	h := newHarness(t)
 	api := transferAPI(t, h)
 	home := h.makeMember(t, "wiki-refusals")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	member := api.as(t, h.addPerson(t, "member"))
 	newTree(t, owner, "TAKEN", "Taken")
 	export := htmlExport(t, "nobody@example.com")
 
@@ -329,18 +326,18 @@ func TestExportsOfOtherWikisAreRefusedInSentences(t *testing.T) {
 func TestTheDatabaseHoldsExportImportsToAKey(t *testing.T) {
 	h := newHarness(t)
 	home := h.makeMember(t, "wiki-sql")
-	memberID := h.addPerson(t, home.org, "member")
+	memberID := h.addPerson(t, "member")
 	ctx := context.Background()
 	conn := appConn(t)
 
 	actAs(t, conn, home.user)
 	refused(t, conn, "an export queued without a key",
-		`INSERT INTO space_import (id, org_id, requested_by, size_bytes, source) VALUES ($1, $2, $3, 10, 'html')`, uuid.New(), home.org, home.user)
+		`INSERT INTO space_import (id, requested_by, size_bytes, source) VALUES ($1, $2, 10, 'html')`, uuid.New(), home.user)
 	refused(t, conn, "an import of a source nobody reads",
-		`INSERT INTO space_import (id, org_id, requested_by, key, size_bytes, source) VALUES ($1, $2, $3, 'SRCX', 10, 'pdf')`, uuid.New(), home.org, home.user)
+		`INSERT INTO space_import (id, requested_by, key, size_bytes, source) VALUES ($1, $2, 'SRCX', 10, 'pdf')`, uuid.New(), home.user)
 	queued := uuid.New()
-	if _, err := conn.Exec(ctx, `INSERT INTO space_import (id, org_id, requested_by, key, size_bytes, source) VALUES ($1, $2, $3, 'SRCX', 10, 'xml')`,
-		queued, home.org, home.user); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO space_import (id, requested_by, key, size_bytes, source) VALUES ($1, $2, 'SRCX', 10, 'xml')`,
+		queued, home.user); err != nil {
 		t.Fatalf("an administrator cannot queue an export's import through SQL: %v", err)
 	}
 	h.cleanupExec(t, h.super, `DELETE FROM space_import WHERE id = $1`, queued)
@@ -348,5 +345,5 @@ func TestTheDatabaseHoldsExportImportsToAKey(t *testing.T) {
 
 	actAs(t, conn, memberID)
 	refused(t, conn, "a member importing an export",
-		`INSERT INTO space_import (id, org_id, requested_by, key, size_bytes, source) VALUES ($1, $2, $3, 'SRCY', 10, 'html')`, uuid.New(), home.org, memberID)
+		`INSERT INTO space_import (id, requested_by, key, size_bytes, source) VALUES ($1, $2, 'SRCY', 10, 'html')`, uuid.New(), memberID)
 }

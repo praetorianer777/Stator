@@ -13,11 +13,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
-	"github.com/praetorianer777/stator/backend/internal/theme"
 )
 
-func themeObject(org uuid.UUID, themeID, assetID string) string {
-	return theme.ObjectKey(org, uuid.MustParse(themeID), uuid.MustParse(assetID))
+func themeObject(themeID, assetID string) string {
+	return "theme/" + themeID + "/" + assetID
 }
 
 // A theme is its maker's, shared when they say so, and chosen per person.
@@ -26,10 +25,9 @@ func TestThemesOverTheAPI(t *testing.T) {
 	api := newAPIServer(t, h)
 
 	home := h.makeMember(t, "themes")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	other := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
-	admin := api.as(t, h.addPerson(t, home.org, "admin"), home.org, slug)
+	owner := api.as(t, home.user)
+	other := api.as(t, h.addPerson(t, "member"))
+	admin := api.as(t, h.addPerson(t, "admin"))
 
 	spec := map[string]any{
 		"colors": map[string]any{"light": map[string]string{"accent": "#ff0066"}, "dark": map[string]string{"accent": "#00ffcc"}},
@@ -152,7 +150,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		}
 		assetID = asset["id"].(string)
 
-		stored, err := api.store.Get(context.Background(), themeObject(home.org, themeID, assetID))
+		stored, err := api.store.Get(context.Background(), themeObject(themeID, assetID))
 		if err != nil {
 			t.Fatalf("the bytes are not in the bucket: %v", err)
 		}
@@ -195,7 +193,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if got, _ := owner.download(t, "/api/v1/themes/"+themeID+"/assets/"+assetID); got.StatusCode != http.StatusNotFound {
 			t.Errorf("a removed file still serves: %d", got.StatusCode)
 		}
-		if _, err := api.store.Get(context.Background(), themeObject(home.org, themeID, assetID)); !errors.Is(err, objectstore.ErrNoObject) {
+		if _, err := api.store.Get(context.Background(), themeObject(themeID, assetID)); !errors.Is(err, objectstore.ErrNoObject) {
 			t.Errorf("a removed file is still in the bucket: %v", err)
 		}
 		// One more, left on the theme, so deleting the theme has something to take.
@@ -210,7 +208,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if got := owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": themeID}); got.Status != http.StatusUnprocessableEntity {
 			t.Fatalf("a private theme became the default: %d %s", got.Status, got.Raw)
 		}
-		if _, err := h.super.Exec(context.Background(), `UPDATE org SET default_theme_id = $1 WHERE id = $2`, themeID, home.org); err == nil {
+		if _, err := h.super.Exec(context.Background(), `UPDATE site SET default_theme_id = $1`, themeID); err == nil {
 			t.Fatal("SQL let a private theme be the default")
 		}
 
@@ -249,7 +247,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 			t.Fatalf("an unshared theme is still shown as the default: %s", gone.Raw)
 		}
 		var still *string
-		if err := h.super.QueryRow(context.Background(), `SELECT default_theme_id::text FROM org WHERE id = $1`, home.org).Scan(&still); err != nil || still != nil {
+		if err := h.super.QueryRow(context.Background(), `SELECT default_theme_id::text FROM site`).Scan(&still); err != nil || still != nil {
 			t.Fatalf("default_theme_id after unsharing = %v, %v", still, err)
 		}
 		want(t, owner.patch(t, "/api/v1/themes/"+themeID, map[string]any{"shared": true}), http.StatusOK, "share again")
@@ -288,7 +286,7 @@ func TestThemesOverTheAPI(t *testing.T) {
 		if got := owner.get(t, "/api/v1/themes/"+themeID); got.Status != http.StatusNotFound {
 			t.Errorf("a deleted theme is still found: %d", got.Status)
 		}
-		if _, err := api.store.Get(context.Background(), themeObject(home.org, themeID, assetID)); !errors.Is(err, objectstore.ErrNoObject) {
+		if _, err := api.store.Get(context.Background(), themeObject(themeID, assetID)); !errors.Is(err, objectstore.ErrNoObject) {
 			t.Errorf("a deleted theme's file is still in the bucket: %v", err)
 		}
 	})
@@ -302,10 +300,9 @@ func TestThemeRowsAreWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	a := h.makeMember(t, "theme-wall-a")
 	b := h.makeOutsider(t, "theme-wall-b")
-	admin := h.addPerson(t, a.org, "admin")
-	slug := h.slugOf(t, a.org)
-	owner := api.as(t, a.user, a.org, slug)
-	outsider := api.as(t, b.user, b.org, slug)
+	admin := h.addPerson(t, "admin")
+	owner := api.as(t, a.user)
+	outsider := api.as(t, b.user)
 
 	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>`)
 	private := obj(t, want(t, owner.post(t, "/api/v1/themes", map[string]any{"name": "Walled"}), http.StatusCreated, "make a private theme"), "theme")["id"].(string)
@@ -351,15 +348,15 @@ func TestThemeRowsAreWalledByTheDatabase(t *testing.T) {
 		untouched(t, conn, "deleting another's theme", `DELETE FROM theme WHERE id = $1`, id)
 		untouched(t, conn, "renaming another's file", `UPDATE theme_asset SET name = 'taken.svg' WHERE theme_id = $1`, id)
 		untouched(t, conn, "deleting another's file", `DELETE FROM theme_asset WHERE theme_id = $1`, id)
-		refused(t, conn, "a file on another's theme", `INSERT INTO theme_asset (org_id, theme_id, name, content_type, size) VALUES ($1, $2, 'x.svg', 'image/svg+xml', 1)`, a.org, id)
+		refused(t, conn, "a file on another's theme", `INSERT INTO theme_asset (theme_id, name, content_type, size) VALUES ($1, 'x.svg', 'image/svg+xml', 1)`, id)
 	}
-	refused(t, conn, "a theme in another's name", `INSERT INTO theme (org_id, owner_id, name) VALUES ($1, $2, 'Planted')`, a.org, a.user)
+	refused(t, conn, "a theme in another's name", `INSERT INTO theme (owner_id, name) VALUES ($1, 'Planted')`, a.user)
 	refused(t, conn, "handing one's theme to another", `UPDATE theme SET owner_id = $2 WHERE id = $1`, theirs, a.user)
 	untouched(t, conn, "changing another's choice", `UPDATE user_theme SET theme_id = $2 WHERE user_id = $1`, a.user, shared)
 	untouched(t, conn, "dropping another's choice", `DELETE FROM user_theme WHERE user_id = $1`, a.user)
-	refused(t, conn, "choosing for the administrator", `INSERT INTO user_theme (org_id, user_id, theme_id) VALUES ($1, $2, $3)`, a.org, admin, shared)
-	refused(t, conn, "choosing another's private theme", `INSERT INTO user_theme (org_id, user_id, theme_id) VALUES ($1, $2, $3)`, a.org, b.user, private)
-	if _, err := conn.Exec(context.Background(), `INSERT INTO user_theme (org_id, user_id, theme_id) VALUES ($1, $2, $3)`, a.org, b.user, shared); err != nil {
+	refused(t, conn, "choosing for the administrator", `INSERT INTO user_theme (user_id, theme_id) VALUES ($1, $2)`, admin, shared)
+	refused(t, conn, "choosing another's private theme", `INSERT INTO user_theme (user_id, theme_id) VALUES ($1, $2)`, b.user, private)
+	if _, err := conn.Exec(context.Background(), `INSERT INTO user_theme (user_id, theme_id) VALUES ($1, $2)`, b.user, shared); err != nil {
 		t.Errorf("a member cannot choose a shared theme: %v", err)
 	}
 

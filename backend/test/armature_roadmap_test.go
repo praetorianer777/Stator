@@ -38,10 +38,10 @@ func TestARoadmapDrawsWhatEachReaderMaySee(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-road")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	bob := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
-	carol := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	slug := h.site.Slug
+	owner := api.as(t, home.user)
+	bob := api.as(t, h.addPerson(t, "member"))
+	carol := api.as(t, h.addPerson(t, "member"))
 
 	// CP-5 is SEC-2, moved; the epic is the next issue of CP.
 	stubControl(t, http.MethodPost, slug+"/projects/CP/issues", map[string]any{"summary": "Launch the beta", "type": "Epic"})

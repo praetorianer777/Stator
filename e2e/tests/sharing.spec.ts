@@ -55,7 +55,6 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     api,
     apiAs,
     pageAs,
-    team,
   }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Share");
     const runbook = await createPage(api, space.homePageId, uniqueName(testInfo, "Runbook"), doc("Rollback steps."));
@@ -63,8 +62,8 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     const bobId = must(await bobApi.GET("/auth/me")).user.id;
     const groupName = uniqueName(testInfo, "Readers");
     await withDatabase(async (db) => {
-      const { rows } = await db.query<{ id: string }>("INSERT INTO groups (org_id, name) VALUES ($1, $2) RETURNING id", [team.org.id, groupName]);
-      await db.query("INSERT INTO group_member (org_id, group_id, user_id) VALUES ($1, $2, $3)", [team.org.id, rows[0]!.id, bobId]);
+      const { rows } = await db.query<{ id: string }>("INSERT INTO groups (name) VALUES ($1) RETURNING id", [groupName]);
+      await db.query("INSERT INTO group_member (group_id, user_id) VALUES ($1, $2)", [rows[0]!.id, bobId]);
     });
 
     await openPage(page, space.key, runbook);

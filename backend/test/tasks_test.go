@@ -152,10 +152,9 @@ func TestTasksOverTheAPI(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runWorker(t, notify.NewFanOut(h.cluster, nil, testAppURL, discard()))
 	org := h.makeMember(t, "tasks")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID, carlID := h.namedPerson(t, org.org, "Ann Doer"), h.namedPerson(t, org.org, "Ben Doer"), h.namedPerson(t, org.org, "Carl Outsider")
-	ann, ben, carl := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug), api.as(t, carlID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Doer"), h.namedPerson(t, "Ben Doer"), h.namedPerson(t, "Carl Outsider")
+	ann, ben, carl := api.as(t, annID), api.as(t, benID), api.as(t, carlID)
 
 	docs := newTree(t, owner, "TSK", "Tasks")
 	minutes := docs.add(docs.homeID, "Minutes")
@@ -170,7 +169,7 @@ func TestTasksOverTheAPI(t *testing.T) {
 			todo{text: "Book a room", assignee: benID, nested: []todo{{text: "Ask facilities", assignee: annID}}},
 			todo{text: "Nobody's yet"},
 		))
-		h.drained(t, org.org)
+		h.drained(t)
 		ids = taskIDsOf(t, owner, minutes)
 		if len(ids) != 4 {
 			t.Fatalf("the published items have the ids %v", ids)
@@ -210,7 +209,7 @@ func TestTasksOverTheAPI(t *testing.T) {
 			todo{id: ids["Book a room"], text: "Book a room", assignee: annID},
 			todo{text: "Nobody's yet"},
 		))
-		h.drained(t, org.org)
+		h.drained(t)
 		if got := taskIDsOf(t, owner, minutes); got["Send the notes"] != ids["Send the notes"] || got["Nobody's yet"] != ids["Nobody's yet"] {
 			t.Errorf("the tasks changed ids: %v, were %v", got, ids)
 		}
@@ -231,8 +230,8 @@ func TestTasksOverTheAPI(t *testing.T) {
 			t.Errorf("the refusal does not say what to change: %v", r.Body)
 		}
 		publishBody(t, owner, secret, todoDoc("Plans.", todo{text: "A stranger does it", assignee: uuid.New()}, todo{text: "Ann does it", assignee: annID}))
-		h.drained(t, org.org)
-		if n := h.countRows(t, `SELECT count(*) FROM page_task WHERE org_id = $1 AND page_id = $2 AND assignee_id IS NULL`, org.org, secret); n != 1 {
+		h.drained(t)
+		if n := h.countRows(t, `SELECT count(*) FROM page_task WHERE page_id = $1 AND assignee_id IS NULL`, secret); n != 1 {
 			t.Errorf("%d tasks of the plans are unassigned, want the stranger's", n)
 		}
 		if got := tasksOf(t, carl, "open"); len(got) != 0 {
@@ -264,7 +263,7 @@ func TestTasksOverTheAPI(t *testing.T) {
 			t.Errorf("the task reads %v", got)
 		}
 		want(t, ann.patch(t, pagePath(minutes, "/tasks/"+ids["Send the notes"]), map[string]any{"done": true}), http.StatusOK, "and again")
-		h.drained(t, org.org)
+		h.drained(t)
 		p := obj(t, want(t, owner.get(t, pagePath(minutes)), http.StatusOK, "read the minutes"), "page")
 		if number(p["version"]) != before+1 {
 			t.Errorf("ticking twice made version %v of %d", p["version"], before)
@@ -318,7 +317,7 @@ func TestTasksOverTheAPI(t *testing.T) {
 	t.Run("a copy takes the tasks and tells nobody", func(t *testing.T) {
 		before := len(kindOf(t, ann, notify.KindAssigned))
 		want(t, owner.post(t, pagePath(minutes, "/copy"), map[string]any{"parentId": docs.homeID, "title": "Minutes copy"}), http.StatusCreated, "copy the minutes")
-		h.drained(t, org.org)
+		h.drained(t)
 		n := 0
 		for _, each := range tasksOf(t, ann, "open") {
 			if each["page"].(map[string]any)["title"] == "Minutes copy" {
@@ -359,8 +358,8 @@ func TestTasksOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("refusals", func(t *testing.T) {
-		readerID := h.namedPerson(t, org.org, "Rita Reader")
-		reader := api.as(t, readerID, org.org, slug)
+		readerID := h.namedPerson(t, "Rita Reader")
+		reader := api.as(t, readerID)
 		want(t, restrict(t, owner, minutes, nil, []any{user(org.user), user(annID)}), http.StatusOK, "only ann and the owner edit the minutes")
 		h.settle(t)
 		want(t, reader.patch(t, pagePath(minutes, "/tasks/"+ids["Book a room"]), map[string]any{"done": true}), http.StatusForbidden, "a reader ticks a task")
@@ -387,10 +386,9 @@ func TestADueTaskRemindsItsAssignee(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runWorker(t, notify.NewFanOut(h.cluster, nil, testAppURL, discard()))
 	org := h.makeMember(t, "due-tasks")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID := h.namedPerson(t, org.org, "Ann Due")
-	ann := api.as(t, annID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID := h.namedPerson(t, "Ann Due")
+	ann := api.as(t, annID)
 	watch := task.NewDueWatch(h.cluster, discard(), time.Hour)
 	ctx := context.Background()
 
@@ -405,11 +403,11 @@ func TestADueTaskRemindsItsAssignee(t *testing.T) {
 		todo{text: "Tomorrow", assignee: annID, due: tomorrow},
 		todo{text: "Done today", assignee: annID, due: today, done: true},
 	))
-	h.drained(t, org.org)
+	h.drained(t)
 	if _, err := watch.Once(ctx); err != nil {
 		t.Fatal(err)
 	}
-	h.drained(t, org.org)
+	h.drained(t)
 	due := kindOf(t, ann, notify.KindDue)
 	if len(due) != 1 || due[0]["excerpt"] != "Today @Someone "+today || due[0]["actorId"] != nil {
 		t.Fatalf("ann was reminded of %v", due)
@@ -427,16 +425,16 @@ func TestADueTaskRemindsItsAssignee(t *testing.T) {
 		todo{id: ids["Yesterday"], text: "Yesterday", assignee: annID, due: yesterday},
 		todo{id: ids["Tomorrow"], text: "Tomorrow", assignee: annID, due: today},
 	))
-	h.drained(t, org.org)
+	h.drained(t)
 	if _, err := watch.Once(ctx); err != nil {
 		t.Fatal(err)
 	}
-	h.drained(t, org.org)
+	h.drained(t)
 	due = kindOf(t, ann, notify.KindDue)
 	if len(due) != 2 || due[0]["excerpt"] != "Tomorrow @Someone "+today {
 		t.Errorf("after moving a day to today ann was reminded of %v", due)
 	}
-	if n := h.countRows(t, `SELECT count(*) FROM page_task WHERE org_id = $1 AND due_noticed_at IS NULL`, org.org); n != 0 {
+	if n := h.countRows(t, `SELECT count(*) FROM page_task WHERE due_noticed_at IS NULL`); n != 0 {
 		t.Errorf("%d tasks still wait for a reminder", n)
 	}
 }
@@ -447,9 +445,8 @@ func TestTasksAreHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "task-rls")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, carlID, ritaID := h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member")
+	owner := api.as(t, org.user)
+	annID, carlID, ritaID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
 
 	docs := newTree(t, owner, "TRLS", "Raw tasks")
 	page := docs.add(docs.homeID, "Page")
@@ -462,14 +459,14 @@ func TestTasksAreHeldByTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	ctx := context.Background()
-	insert := `INSERT INTO page_task (org_id, page_id, task_id, position, summary, assignee_id) VALUES ($1, $2, $3, 0, 'Forged', $4)`
+	insert := `INSERT INTO page_task (page_id, task_id, position, summary, assignee_id) VALUES ($1, $2, 0, 'Forged', $3)`
 
 	t.Run("only an editor of a published page writes its tasks", func(t *testing.T) {
 		actAs(t, conn, ritaID)
-		denied(t, conn, "a reader adds a task", insert, org.org, page, uuid.New(), nil)
+		denied(t, conn, "a reader adds a task", insert, page, uuid.New(), nil)
 		actAs(t, conn, org.user)
-		denied(t, conn, "a task on an unpublished page", insert, org.org, sketch, uuid.New(), nil)
-		if _, err := conn.Exec(ctx, insert, org.org, page, uuid.New(), annID); err != nil {
+		denied(t, conn, "a task on an unpublished page", insert, sketch, uuid.New(), nil)
+		if _, err := conn.Exec(ctx, insert, page, uuid.New(), annID); err != nil {
 			t.Errorf("the owner may not write a task of their page: %v", err)
 		}
 		actAs(t, conn, carlID)
@@ -483,7 +480,7 @@ func TestTasksAreHeldByTheDatabase(t *testing.T) {
 
 	t.Run("a task is assigned only to somebody who may view the page", func(t *testing.T) {
 		actAs(t, conn, org.user)
-		denied(t, conn, "carl assigned on the secret", insert, org.org, secret, uuid.New(), carlID)
+		denied(t, conn, "carl assigned on the secret", insert, secret, uuid.New(), carlID)
 		denied(t, conn, "carl given the secret's task", `UPDATE page_task SET assignee_id = $2 WHERE page_id = $1`, secret, carlID)
 	})
 
@@ -492,7 +489,7 @@ func TestTasksAreHeldByTheDatabase(t *testing.T) {
 		denied(t, conn, "the app notes a reminder", `UPDATE page_task SET due_noticed_at = now() WHERE page_id = $1`, secret)
 		denied(t, conn, "the app names who assigned", `UPDATE page_task SET assigned_by = $2 WHERE page_id = $1`, secret, annID)
 		denied(t, conn, "the app backdates a task done", `UPDATE page_task SET done_at = now() - interval '1 day' WHERE page_id = $1`, secret)
-		denied(t, conn, "the app forges the version", `INSERT INTO page_task (org_id, page_id, task_id, position, summary, assigned_version) VALUES ($1, $2, $3, 0, 'x', 7)`, org.org, page, uuid.New())
+		denied(t, conn, "the app forges the version", `INSERT INTO page_task (page_id, task_id, position, summary, assigned_version) VALUES ($1, $2, 0, 'x', 7)`, page, uuid.New())
 		if _, err := conn.Exec(ctx, `UPDATE page_task SET done = true WHERE page_id = $1`, secret); err != nil {
 			t.Fatal(err)
 		}
@@ -512,7 +509,7 @@ func TestTasksAreHeldByTheDatabase(t *testing.T) {
 	t.Run("somebody who leaves leaves their tasks unassigned", func(t *testing.T) {
 		want(t, owner.delete(t, "/api/v1/users/"+annID.String()), http.StatusNoContent, "ann leaves")
 		h.settle(t)
-		if n := h.countRows(t, `SELECT count(*) FROM page_task WHERE org_id = $1 AND assignee_id IS NOT NULL`, org.org); n != 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM page_task WHERE assignee_id IS NOT NULL`); n != 0 {
 			t.Errorf("%d tasks are still assigned to somebody gone", n)
 		}
 	})
@@ -525,8 +522,7 @@ func TestTasksFollowASpaceLimitedToken(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "task-token")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 
 	near := newTree(t, owner, "TNEAR", "Near")
 	far := newTree(t, owner, "TFAR", "Far")
@@ -566,7 +562,7 @@ func TestTasksFollowASpaceLimitedToken(t *testing.T) {
 		t.Errorf("the token reads %d tasks of TFAR", n)
 	}
 	untouched(t, conn, "ticking TFAR's task", `UPDATE page_task SET done = true WHERE page_id = $1`, farPage)
-	denied(t, conn, "a task planted in TFAR", `INSERT INTO page_task (org_id, page_id, task_id, position, summary) VALUES ($1, $2, $3, 1, 'Planted')`, home.org, farPage, uuid.New())
+	denied(t, conn, "a task planted in TFAR", `INSERT INTO page_task (page_id, task_id, position, summary) VALUES ($1, $2, 1, 'Planted')`, farPage, uuid.New())
 	if _, err := conn.Exec(ctx, `SELECT set_config($1, '', false)`, db.TokenSpacesVar); err != nil {
 		t.Fatal(err)
 	}

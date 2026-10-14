@@ -29,7 +29,7 @@ func TestAPageKeepsFormulasAsTheirSource(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "math")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	docs := newTree(t, owner, "MATH", "Maths")
 	body := docOf(

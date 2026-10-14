@@ -34,26 +34,26 @@ func TestASecondOrganizationIsRefused(t *testing.T) {
 	h.makeMember(t, "only")
 	ctx := context.Background()
 
-	if _, err := h.super.Exec(ctx, `INSERT INTO org (slug, name) VALUES ('second', 'Second')`); !isOnlyOrganization(err) {
+	if _, err := h.super.Exec(ctx, `INSERT INTO site (slug, name) VALUES ('second', 'Second')`); !isOnlyOrganization(err) {
 		t.Errorf("the superuser made a second organization: %v", err)
 	}
 	_, err := h.cluster.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `INSERT INTO org (slug, name) VALUES ('second', 'Second')`)
+		_, err := tx.Exec(ctx, `INSERT INTO site (slug, name) VALUES ('second', 'Second')`)
 		return err
 	})
 	if !isOnlyOrganization(err) {
 		t.Errorf("the admin role made a second organization: %v", err)
 	}
 	var n int
-	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM org`).Scan(&n); err != nil || n != 1 {
+	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM site`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("organizations: %d (%v), want 1", n, err)
 	}
 }
 
-// isOnlyOrganization recognises the refusal of org_is_the_only_one.
+// isOnlyOrganization recognises the site's key refusing a second row.
 func isOnlyOrganization(err error) bool {
 	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23514" && strings.Contains(pgErr.Message, "one per instance")
+	return errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "site_one_row"
 }
 
 // An instance holding several organizations is refused at the upgrade with a
@@ -62,7 +62,7 @@ func isOnlyOrganization(err error) bool {
 func TestTheUpgradeRefusesSeveralOrganizations(t *testing.T) {
 	newHarness(t)
 	ctx := context.Background()
-	refusing, before := migrationsAround(t)
+	refusing, before := migrationsAround(t, oneOrganizationMigration)
 
 	t.Run("several organizations are refused and nothing changes", func(t *testing.T) {
 		scratch := scratchDatabase(t)
@@ -127,23 +127,23 @@ func TestTheUpgradeRefusesSeveralOrganizations(t *testing.T) {
 		}
 		var members, spaces, pages int
 		if err := scratch.pool.QueryRow(ctx, `
-			SELECT (SELECT count(*) FROM org_member WHERE org_id = $1 AND user_id = $2),
-			       (SELECT count(*) FROM space WHERE org_id = $1 AND key = 'KEPT'),
+			SELECT (SELECT count(*) FROM member m JOIN site s ON s.id = $1 WHERE m.user_id = $2),
+			       (SELECT count(*) FROM space WHERE key = 'KEPT'),
 			       (SELECT count(*) FROM page WHERE space_id = $3 AND title = 'Kept page')`, org, user, space).Scan(&members, &spaces, &pages); err != nil {
 			t.Fatal(err)
 		}
 		if members != 1 || spaces != 1 || pages != 1 {
 			t.Errorf("after the upgrade: %d members, %d spaces, %d pages, want 1 each", members, spaces, pages)
 		}
-		if _, err := scratch.pool.Exec(ctx, `INSERT INTO org (slug, name) VALUES ('globex', 'Globex')`); !isOnlyOrganization(err) {
+		if _, err := scratch.pool.Exec(ctx, `INSERT INTO site (slug, name) VALUES ('globex', 'Globex')`); !isOnlyOrganization(err) {
 			t.Errorf("the upgraded instance took a second organization: %v", err)
 		}
 	})
 }
 
-// migrationsAround is the version of the refusing migration and of the one
-// before it, read from the embedded files as goose reads them.
-func migrationsAround(t *testing.T) (refusing, before int64) {
+// migrationsAround is the version of the migration whose name ends in suffix
+// and of the one before it, read from the embedded files as goose reads them.
+func migrationsAround(t *testing.T, suffix string) (refusing, before int64) {
 	t.Helper()
 	names, err := fs.Glob(migrations.FS, "*.sql")
 	if err != nil {
@@ -155,13 +155,13 @@ func migrationsAround(t *testing.T) (refusing, before int64) {
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		if strings.HasSuffix(name, oneOrganizationMigration) {
+		if strings.HasSuffix(name, suffix) {
 			refusing = v
 		}
 		versions = append(versions, v)
 	}
 	if refusing == 0 {
-		t.Fatalf("no migration ends in %s", oneOrganizationMigration)
+		t.Fatalf("no migration ends in %s", suffix)
 	}
 	for _, v := range versions {
 		if v < refusing && v > before {
@@ -174,6 +174,7 @@ func migrationsAround(t *testing.T) (refusing, before int64) {
 // scratch is an empty database of the test's own, reached as the superuser
 // the way cmd/migrate reaches the stack's.
 type scratch struct {
+	name string
 	pool *pgxpool.Pool
 	db   *sql.DB
 }
@@ -202,7 +203,7 @@ func scratchDatabase(t *testing.T) scratch {
 	if err := goose.SetDialect("postgres"); err != nil {
 		t.Fatal(err)
 	}
-	return scratch{pool: pool, db: sqlDB}
+	return scratch{name: name, pool: pool, db: sqlDB}
 }
 
 func mustPool(t *testing.T, u string) *pgxpool.Pool {

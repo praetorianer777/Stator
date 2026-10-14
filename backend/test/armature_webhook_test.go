@@ -78,17 +78,17 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "arm-hooks")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	slug := h.site.Slug
+	owner := api.as(t, home.user)
 
 	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug, "webhookSecret": webhookSecret}), http.StatusOK, "connect Armature")
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "alice")}), http.StatusOK, "the owner connects")
 	h.settle(t)
 	var armatureOrg uuid.UUID
-	if err := h.super.QueryRow(context.Background(), `SELECT armature_org_id FROM armature_connection WHERE org_id = $1`, home.org).Scan(&armatureOrg); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT armature_org_id FROM armature_connection`).Scan(&armatureOrg); err != nil {
 		t.Fatal(err)
 	}
-	tokenID := tokenRowOf(t, h, home.org, home.user)
+	tokenID := tokenRowOf(t, h, home.user)
 	t.Cleanup(func() { stubControl(t, http.MethodDelete, slug, nil) })
 
 	status := func(key string) string {
@@ -117,7 +117,7 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 		if r.Status != http.StatusNoContent || len(r.Raw) != 0 {
 			t.Fatalf("a signed delivery is answered %d %s", r.Status, r.Raw)
 		}
-		if _, cached := cachedIssue(t, h, home.org, tokenID, "CP-2"); cached {
+		if _, cached := cachedIssue(t, h, tokenID, "CP-2"); cached {
 			t.Error("the issue is still cached after its webhook")
 		}
 		if got := status("CP-2"); got != "done" {
@@ -142,14 +142,14 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 			t.Errorf("a delivery to the old address left the issue %s, want in_progress", got)
 		}
 		var remembered time.Duration
-		remembered, _ = h.valkey(t).TTL(context.Background(), armature.EventKey(home.org, d.ID)).Result()
+		remembered, _ = h.valkey(t).TTL(context.Background(), armature.EventKey(h.site.ID, d.ID)).Result()
 		if remembered <= armature.WebhookReplayWindow-time.Minute || remembered > armature.WebhookReplayWindow {
 			t.Errorf("the event is remembered for %s, want %s", remembered, armature.WebhookReplayWindow)
 		}
 	})
 
 	t.Run("each topic clears what the contract says", func(t *testing.T) {
-		search := armature.SearchKey(home.org)
+		search := armature.SearchKey(h.site.ID)
 		for _, tc := range []struct {
 			topic    string
 			payload  map[string]any
@@ -170,7 +170,7 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 				t.Fatalf("%s is answered %d %s", tc.topic, r.Status, r.Raw)
 			}
 			for _, key := range []string{"CP-1", "CP-3", "CP-4", "CP-5", "SEC-2"} {
-				_, cached := cachedIssue(t, h, home.org, tokenID, key)
+				_, cached := cachedIssue(t, h, tokenID, key)
 				if cleared := contains(tc.cleared, key); cached == cleared {
 					t.Errorf("%s: %s cached %v, want cleared %v", tc.topic, key, cached, cleared)
 				}
@@ -215,10 +215,10 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 				t.Errorf("the refusals differ, which tells an organization apart:\n%s\n%s", answers[0], each)
 			}
 		}
-		if _, cached := cachedIssue(t, h, home.org, tokenID, "CP-1"); !cached {
+		if _, cached := cachedIssue(t, h, tokenID, "CP-1"); !cached {
 			t.Error("a refused delivery cleared the cache")
 		}
-		if n, _ := h.valkey(t).Exists(context.Background(), armature.EventKey(home.org, good.ID)).Result(); n != 0 {
+		if n, _ := h.valkey(t).Exists(context.Background(), armature.EventKey(h.site.ID, good.ID)).Result(); n != 0 {
 			t.Error("a refused delivery's event was remembered, so the genuine one would be taken for a replay")
 		}
 	})

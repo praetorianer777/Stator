@@ -89,9 +89,8 @@ func TestSpaceTemplatesOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "space-templates")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	member := api.as(t, h.addPerson(t, "member"))
 
 	t.Run("members list the built-ins, and nobody else does", func(t *testing.T) {
 		all := list(t, want(t, member.get(t, "/api/v1/space-templates"), http.StatusOK, "list space templates"), "templates")
@@ -158,8 +157,7 @@ func TestSpaceTemplatesOverTheAPI(t *testing.T) {
 			}
 
 			var logged string
-			if err := h.super.QueryRow(context.Background(), `SELECT data->>'template' FROM audit_log WHERE org_id = $1 AND action = $2 AND target_id = $3`,
-				home.org, audit.ActionSpaceCreated, id).Scan(&logged); err != nil || logged != c.template {
+			if err := h.super.QueryRow(context.Background(), `SELECT data->>'template' FROM audit_log WHERE action = $1 AND target_id = $2`, audit.ActionSpaceCreated, id).Scan(&logged); err != nil || logged != c.template {
 				t.Errorf("the audit log names template %q (%v)", logged, err)
 			}
 		})
@@ -185,7 +183,7 @@ func TestSpaceTemplatesOverTheAPI(t *testing.T) {
 		if got := member.post(t, "/api/v1/spaces", map[string]any{"key": "MEMBER", "name": "Member's", "template": "team"}); got.Status != http.StatusForbidden {
 			t.Errorf("a member who may not create spaces made one from a template: %d", got.Status)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM space WHERE org_id = $1 AND key IN ('NOPE', 'MINE', 'MEMBER')`, home.org); n != 0 {
+		if n := h.countRows(t, `SELECT count(*) FROM space WHERE key IN ('NOPE', 'MINE', 'MEMBER')`); n != 0 {
 			t.Errorf("%d refused spaces were made", n)
 		}
 	})
@@ -197,21 +195,21 @@ func TestASpaceFromATemplateIsMadeWholeOrNotAtAll(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "space-template-atomic")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	// The documentation template's last page carries release-notes; the
-	// trigger refuses it in this organization only.
+	// trigger refuses it in this test's database only.
 	ctx := context.Background()
 	fn := "refuse_label_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 	if _, err := h.super.Exec(ctx, fmt.Sprintf(`
 		CREATE FUNCTION %[1]s() RETURNS trigger LANGUAGE plpgsql AS $$
 		BEGIN
-			IF NEW.org_id = '%[2]s' AND NEW.name = 'release-notes' THEN
+			IF NEW.name = 'release-notes' THEN
 				RAISE EXCEPTION 'refused by the test';
 			END IF;
 			RETURN NEW;
 		END $$;
-		CREATE TRIGGER %[1]s BEFORE INSERT ON page_label FOR EACH ROW EXECUTE FUNCTION %[1]s();`, fn, home.org)); err != nil {
+		CREATE TRIGGER %[1]s BEFORE INSERT ON page_label FOR EACH ROW EXECUTE FUNCTION %[1]s();`, fn)); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -223,14 +221,14 @@ func TestASpaceFromATemplateIsMadeWholeOrNotAtAll(t *testing.T) {
 		t.Fatalf("the refused label answered %d: %s", got.Status, got.Raw)
 	}
 	for what, sql := range map[string]string{
-		"spaces":        `SELECT count(*) FROM space WHERE org_id = $1`,
-		"pages":         `SELECT count(*) FROM page WHERE org_id = $1`,
-		"versions":      `SELECT count(*) FROM page_version WHERE org_id = $1`,
-		"labels":        `SELECT count(*) FROM page_label WHERE org_id = $1`,
-		"grants":        `SELECT count(*) FROM space_grant WHERE org_id = $1`,
-		"audit entries": `SELECT count(*) FROM audit_log WHERE org_id = $1 AND action = 'space.created'`,
+		"spaces":        `SELECT count(*) FROM space`,
+		"pages":         `SELECT count(*) FROM page`,
+		"versions":      `SELECT count(*) FROM page_version`,
+		"labels":        `SELECT count(*) FROM page_label`,
+		"grants":        `SELECT count(*) FROM space_grant`,
+		"audit entries": `SELECT count(*) FROM audit_log WHERE action = 'space.created'`,
 	} {
-		if n := h.countRows(t, sql, home.org); n != 0 {
+		if n := h.countRows(t, sql); n != 0 {
 			t.Errorf("%d %s were left of the space", n, what)
 		}
 	}
@@ -242,19 +240,19 @@ func TestATemplatesPermissionsHoldInTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "space-template-sql")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
-	memberID := h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
 	sp := obj(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "DOCS", "name": "Docs", "template": "documentation"}), http.StatusCreated, "make the space"), "space")
 	spaceID, homeID := sp["id"].(string), sp["homePageId"].(string)
 
 	conn := appConn(t)
 	actAs(t, conn, memberID)
-	refused(t, conn, "granting everyone addPages", `INSERT INTO space_grant (org_id, space_id, permission, subject_type) VALUES ($1, $2, 'addPages', 'everyone')`, home.org, spaceID)
-	refused(t, conn, "granting themselves administer", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id) VALUES ($1, $2, 'administer', 'user', $3)`, home.org, spaceID, memberID)
+	refused(t, conn, "granting everyone addPages", `INSERT INTO space_grant (space_id, permission, subject_type) VALUES ($1, 'addPages', 'everyone')`, spaceID)
+	refused(t, conn, "granting themselves administer", `INSERT INTO space_grant (space_id, permission, subject_type, user_id) VALUES ($1, 'administer', 'user', $2)`, spaceID, memberID)
 	untouched(t, conn, "taking view from everyone", `DELETE FROM space_grant WHERE space_id = $1`, spaceID)
-	refused(t, conn, "adding a page", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by, updated_by) VALUES ($1, $2, $3, 'W', 'Planted', $4, $4)`, home.org, spaceID, homeID, memberID)
+	refused(t, conn, "adding a page", `INSERT INTO page (space_id, parent_id, rank, title, created_by, updated_by) VALUES ($1, $2, 'W', 'Planted', $3, $3)`, spaceID, homeID, memberID)
 	refused(t, conn, "retitling a page", `UPDATE page SET title = 'Taken' WHERE space_id = $1`, spaceID)
-	refused(t, conn, "labelling a page", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'planted', $3)`, home.org, homeID, memberID)
+	refused(t, conn, "labelling a page", `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'planted', $2)`, homeID, memberID)
 
 	docs, err := template.SpaceByKey("documentation")
 	if err != nil {

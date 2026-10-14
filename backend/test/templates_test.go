@@ -42,7 +42,7 @@ func TestTemplatesOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "templates")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "TPL", "Templates")
 
 	t.Run("members list the built-ins and read each", func(t *testing.T) {
@@ -122,7 +122,7 @@ func TestTemplateHintsAreStrippedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "hints-sql")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "HINT", "Hints")
 	published := docs.add(docs.homeID, "Published")
 	unpublished := obj(t, want(t, owner.post(t, "/api/v1/pages", map[string]any{"parentId": docs.homeID, "title": "Mine"}), http.StatusCreated, "make"), "page")["id"].(string)
@@ -131,7 +131,7 @@ func TestTemplateHintsAreStrippedByTheDatabase(t *testing.T) {
 	conn := appConn(t)
 	ctx := context.Background()
 	actAs(t, conn, home.user)
-	if _, err := conn.Exec(ctx, `INSERT INTO page_version (org_id, page_id, number, title, body, created_by) VALUES ($1, $2, 2, 'Raw', $3, $4)`, home.org, published, body, home.user); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO page_version (page_id, number, title, body, created_by) VALUES ($1, 2, 'Raw', $2, $3)`, published, body, home.user); err != nil {
 		t.Fatalf("insert a version: %v", err)
 	}
 	if _, err := conn.Exec(ctx, `UPDATE page SET body = $2, version = 2 WHERE id = $1`, published, body); err != nil {

@@ -22,10 +22,9 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "perm-rls")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, bobID, carlID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann := api.as(t, annID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, bobID, carlID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann := api.as(t, annID)
 
 	docs := newTree(t, owner, "RAW", "Raw")
 	top := docs.add(docs.homeID, "Top")
@@ -75,8 +74,8 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 		}
 		untouched(t, conn, "retitling a hidden page", `UPDATE page SET title = 'Taken' WHERE id = $1`, low)
 		untouched(t, conn, "lifting a restriction he cannot see", `DELETE FROM page_restriction WHERE page_id = $1`, top)
-		denied(t, conn, "putting himself on the list", `INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id) VALUES ($1, $2, 'view', 'user', $3)`, home.org, top, carlID)
-		denied(t, conn, "a page under a hidden one", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by) VALUES ($1, (SELECT space_id FROM page WHERE id = $2), $3, 'W', 'Planted', $4)`, home.org, open, low, carlID)
+		denied(t, conn, "putting himself on the list", `INSERT INTO page_restriction (page_id, kind, subject_type, user_id) VALUES ($1, 'view', 'user', $2)`, top, carlID)
+		denied(t, conn, "a page under a hidden one", `INSERT INTO page (space_id, parent_id, rank, title, created_by) VALUES ((SELECT space_id FROM page WHERE id = $1), $2, 'W', 'Planted', $3)`, open, low, carlID)
 		denied(t, conn, "trashing through the database's own function", `SELECT page_trash($1)`, low)
 		denied(t, conn, "moving through the database's own function", `SELECT page_place(ARRAY[$1::uuid], $2, ARRAY['W'])`, open, low)
 	})
@@ -87,11 +86,11 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 			t.Fatalf("bob does not read Low: %d", n)
 		}
 		denied(t, conn, "retitling it", `UPDATE page SET title = 'Bob''s' WHERE id = $1`, low)
-		denied(t, conn, "a file on it", `INSERT INTO attachment (org_id, page_id, file_name, size_bytes) VALUES ($1, $2, 'x', 1)`, home.org, low)
+		denied(t, conn, "a file on it", `INSERT INTO attachment (page_id, file_name, size_bytes) VALUES ($1, 'x', 1)`, low)
 		untouched(t, conn, "its files", `DELETE FROM attachment WHERE page_id = $1`, low)
 		denied(t, conn, "trashing it", `UPDATE page SET trashed_at = now(), trash_id = id WHERE id = $1`, low)
-		denied(t, conn, "publishing a version of it", `INSERT INTO page_version (org_id, page_id, number, title, body, created_by) VALUES ($1, $2, 2, 'Bob''s', '{}', $3)`, home.org, low, bobID)
-		denied(t, conn, "a draft of it", `INSERT INTO page_draft (org_id, page_id, user_id, title, body, base_version) VALUES ($1, $2, $3, 'Bob''s', '{}', 1)`, home.org, low, bobID)
+		denied(t, conn, "publishing a version of it", `INSERT INTO page_version (page_id, number, title, body, created_by) VALUES ($1, 2, 'Bob''s', '{}', $2)`, low, bobID)
+		denied(t, conn, "a draft of it", `INSERT INTO page_draft (page_id, user_id, title, body, base_version) VALUES ($1, $2, 'Bob''s', '{}', 1)`, low, bobID)
 		untouched(t, conn, "lifting its restriction", `DELETE FROM page_restriction WHERE page_id = $1`, top)
 		untouched(t, conn, "ann's draft", `DELETE FROM page_draft WHERE page_id = $1`, low)
 		if n := count(`SELECT count(*) FROM page_restriction WHERE page_id = $1`, top); n != 3 {
@@ -101,17 +100,17 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 
 	t.Run("a reader cannot write, a member cannot administer", func(t *testing.T) {
 		actAs(t, conn, annID)
-		denied(t, conn, "a page in a read only space", `INSERT INTO page (org_id, space_id, parent_id, rank, title, created_by) VALUES ($1, (SELECT space_id FROM page WHERE id = $2), $2, 'W', 'Planted', $3)`, home.org, readPage, annID)
+		denied(t, conn, "a page in a read only space", `INSERT INTO page (space_id, parent_id, rank, title, created_by) VALUES ((SELECT space_id FROM page WHERE id = $1), $1, 'W', 'Planted', $2)`, readPage, annID)
 		denied(t, conn, "retitling in a read only space", `UPDATE page SET title = 'Taken' WHERE id = $1`, readPage)
 		denied(t, conn, "renaming a space", `UPDATE space SET name = 'Taken' WHERE key = 'RAW'`)
 		untouched(t, conn, "deleting a space", `DELETE FROM space WHERE key = 'RAW'`)
-		denied(t, conn, "granting herself a space", `INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id) VALUES ($1, (SELECT id FROM space WHERE key = 'READ'), 'administer', 'user', $2)`, home.org, annID)
-		denied(t, conn, "granting herself spaces", `INSERT INTO global_grant (org_id, permission, subject_type, user_id) VALUES ($1, 'createSpace', 'user', $2)`, home.org, annID)
+		denied(t, conn, "granting herself a space", `INSERT INTO space_grant (space_id, permission, subject_type, user_id) VALUES ((SELECT id FROM space WHERE key = 'READ'), 'administer', 'user', $1)`, annID)
+		denied(t, conn, "granting herself spaces", `INSERT INTO global_grant (permission, subject_type, user_id) VALUES ('createSpace', 'user', $1)`, annID)
 		untouched(t, conn, "taking use from everyone", `DELETE FROM global_grant`)
-		denied(t, conn, "making a space", `INSERT INTO space (org_id, key, name, created_by) VALUES ($1, 'MINE', 'Mine', $2)`, home.org, annID)
+		denied(t, conn, "making a space", `INSERT INTO space (key, name, created_by) VALUES ('MINE', 'Mine', $1)`, annID)
 		denied(t, conn, "purging", `SELECT page_purge($1)`, top)
 		denied(t, conn, "emptying the trash", `SELECT space_empty_trash((SELECT id FROM space WHERE key = 'RAW'))`)
-		denied(t, conn, "a view list on the home page", `INSERT INTO page_restriction (org_id, page_id, kind, subject_type, user_id) VALUES ($1, $2, 'view', 'user', $3)`, home.org, docs.homeID, annID)
+		denied(t, conn, "a view list on the home page", `INSERT INTO page_restriction (page_id, kind, subject_type, user_id) VALUES ($1, 'view', 'user', $2)`, docs.homeID, annID)
 		if n := count(`SELECT count(*) FROM page WHERE id = ANY ($1)`, []string{top, low}); n != 2 {
 			t.Errorf("ann does not read the pages she restricted: %d", n)
 		}
@@ -131,11 +130,11 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("without use nothing is seen", func(t *testing.T) {
-		if _, err := h.super.Exec(ctx, `DELETE FROM global_grant WHERE org_id = $1 AND permission = 'use'`, home.org); err != nil {
+		if _, err := h.super.Exec(ctx, `DELETE FROM global_grant WHERE permission = 'use'`); err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() {
-			h.cleanupExec(t, h.super, `INSERT INTO global_grant (org_id, permission, subject_type) VALUES ($1, 'use', 'everyone')`, home.org)
+			h.cleanupExec(t, h.super, `INSERT INTO global_grant (permission, subject_type) VALUES ('use', 'everyone')`)
 		})
 		actAs(t, conn, annID)
 		for _, table := range []string{"space", "page"} {
@@ -156,14 +155,13 @@ func TestTheServiceAndTheDatabaseAgree(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "perm-agree")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 	people := map[string]uuid.UUID{"owner": home.user}
 	for _, name := range []string{"ann", "bob", "carl"} {
-		people[name] = h.addPerson(t, home.org, "member")
+		people[name] = h.addPerson(t, "member")
 	}
-	team := h.makeGroup(t, home.org, "Team", people["bob"])
-	ann := api.as(t, people["ann"], home.org, slug)
+	team := h.makeGroup(t, "Team", people["bob"])
+	ann := api.as(t, people["ann"])
 
 	docs := newTree(t, owner, "AGREE", "Agree")
 	a := docs.add(docs.homeID, "A")
@@ -192,7 +190,7 @@ func TestTheServiceAndTheDatabaseAgree(t *testing.T) {
 		"gwen":  {"Home", "D"},
 	}
 	for name, id := range people {
-		caller := api.as(t, id, home.org, slug)
+		caller := api.as(t, id)
 		seen := map[string]bool{}
 		for page, title := range titles {
 			got := caller.get(t, "/api/v1/pages/"+page).Status == http.StatusOK

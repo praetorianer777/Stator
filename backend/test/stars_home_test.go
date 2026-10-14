@@ -87,10 +87,9 @@ func TestStarsAndHomeOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stars")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID := h.namedPerson(t, org.org, "Ann Star"), h.namedPerson(t, org.org, "Ben Star")
-	ann, ben := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID, benID := h.namedPerson(t, "Ann Star"), h.namedPerson(t, "Ben Star")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "STR", "Starred")
@@ -257,10 +256,9 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "stars-rls")
 	other := h.makeOutsider(t, "stars-rls-other")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID, benID := h.addPerson(t, org.org, "member"), h.addPerson(t, org.org, "member")
-	ann, ben := api.as(t, annID, org.org, slug), api.as(t, benID, org.org, slug)
+	owner := api.as(t, org.user)
+	annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 
 	docs := newTree(t, owner, "SRL", "Walls")
 	h.closeSpace(t, docs.space, annID, benID)
@@ -273,7 +271,7 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 	want(t, restrict(t, owner, closed, []any{user(org.user), user(benID)}, nil), http.StatusOK, "Closed is not ann's")
 	h.settle(t)
 	var spaceID uuid.UUID
-	if err := h.super.QueryRow(context.Background(), `SELECT id FROM space WHERE org_id = $1 AND key = 'SRL'`, org.org).Scan(&spaceID); err != nil {
+	if err := h.super.QueryRow(context.Background(), `SELECT id FROM space WHERE key = 'SRL'`).Scan(&spaceID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -293,13 +291,13 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 		if n := count(`SELECT count(*) FROM star`); n != 1 {
 			t.Errorf("ann reads %d stars, want her own one", n)
 		}
-		denied(t, conn, "starring for ben", `INSERT INTO star (org_id, user_id, page_id) VALUES ($1, $2, $3)`, org.org, benID, open)
-		denied(t, conn, "starring a page she may not view", `INSERT INTO star (org_id, user_id, page_id) VALUES ($1, $2, $3)`, org.org, annID, closed)
-		denied(t, conn, "a star on nothing", `INSERT INTO star (org_id, user_id) VALUES ($1, $2)`, org.org, annID)
-		denied(t, conn, "a star on a page and a space at once", `INSERT INTO star (org_id, user_id, page_id, space_id) VALUES ($1, $2, $3, $4)`, org.org, annID, open, spaceID)
+		denied(t, conn, "starring for ben", `INSERT INTO star (user_id, page_id) VALUES ($1, $2)`, benID, open)
+		denied(t, conn, "starring a page she may not view", `INSERT INTO star (user_id, page_id) VALUES ($1, $2)`, annID, closed)
+		denied(t, conn, "a star on nothing", `INSERT INTO star (user_id) VALUES ($1)`, annID)
+		denied(t, conn, "a star on a page and a space at once", `INSERT INTO star (user_id, page_id, space_id) VALUES ($1, $2, $3)`, annID, open, spaceID)
 		denied(t, conn, "moving her star to another page", `UPDATE star SET page_id = $2 WHERE user_id = $1`, annID, closed)
 		untouched(t, conn, "removing ben's stars", `DELETE FROM star WHERE user_id = $1`, benID)
-		if _, err := conn.Exec(ctx, `INSERT INTO star (org_id, user_id, space_id) VALUES ($1, $2, $3)`, org.org, annID, spaceID); err != nil {
+		if _, err := conn.Exec(ctx, `INSERT INTO star (user_id, space_id) VALUES ($1, $2)`, annID, spaceID); err != nil {
 			t.Errorf("ann cannot star a space she may view: %v", err)
 		}
 	})
@@ -360,8 +358,8 @@ func TestStarsAndHomeAreWalledByTheDatabase(t *testing.T) {
 		if n := count(`SELECT count(*) FROM home_edited(NULL, NULL, 100)`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d edits", n)
 		}
-		denied(t, conn, "a star on a page of the closed space", `INSERT INTO star (org_id, user_id, page_id) VALUES ($1, $2, $3)`, org.org, other.user, open)
-		untouched(t, conn, "removing other people's stars", `DELETE FROM star WHERE org_id = $1`, org.org)
+		denied(t, conn, "a star on a page of the closed space", `INSERT INTO star (user_id, page_id) VALUES ($1, $2)`, other.user, open)
+		untouched(t, conn, "removing other people's stars", `DELETE FROM star`)
 	})
 }
 
@@ -377,25 +375,24 @@ func TestUpdatesReadAWindowNotTheWholeOrganization(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	org := h.makeMember(t, "updates-plan")
-	slug := h.slugOf(t, org.org)
-	owner := api.as(t, org.user, org.org, slug)
-	annID := h.addPerson(t, org.org, "member")
+	owner := api.as(t, org.user)
+	annID := h.addPerson(t, "member")
 	open := newTree(t, owner, "PLN", "Plenty")
 	closed := newTree(t, owner, "PLC", "Closed")
 	ctx := context.Background()
 	bulk := func(key, home string, n int) {
 		t.Helper()
 		if _, err := h.super.Exec(ctx, `
-			INSERT INTO page (org_id, space_id, parent_id, rank, title, version, created_by, updated_by)
-			SELECT $1, s.id, $3, 'b' || lpad(i::text, 6, '0'), 'Bulk ' || i, 1, $4, $4
-			FROM space s, generate_series(1, $5) i
-			WHERE s.org_id = $1 AND s.key = $2`, org.org, key, home, org.user, n); err != nil {
+			INSERT INTO page (space_id, parent_id, rank, title, version, created_by, updated_by)
+			SELECT s.id, $2, 'b' || lpad(i::text, 6, '0'), 'Bulk ' || i, 1, $3, $3
+			FROM space s, generate_series(1, $4) i
+			WHERE s.key = $1`, key, home, org.user, n); err != nil {
 			t.Fatalf("fill %s: %v", key, err)
 		}
 	}
 	bulk("PLN", open.homeID, pages)
 	bulk("PLC", closed.homeID, hidden)
-	if _, err := h.super.Exec(ctx, `DELETE FROM space_grant g USING space s WHERE g.space_id = s.id AND s.org_id = $1 AND s.key = 'PLC' AND g.subject_type = 'everyone'`, org.org); err != nil {
+	if _, err := h.super.Exec(ctx, `DELETE FROM space_grant g USING space s WHERE g.space_id = s.id AND s.key = 'PLC' AND g.subject_type = 'everyone'`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.super.Exec(ctx, `ANALYZE page`); err != nil {

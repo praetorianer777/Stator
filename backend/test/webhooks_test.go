@@ -181,11 +181,10 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runStackWorker(t)
 	home := h.makeMember(t, "hooks-keep")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	adminID := h.addPerson(t, home.org, "admin")
-	admin := api.as(t, adminID, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	adminID := h.addPerson(t, "admin")
+	admin := api.as(t, adminID)
+	member := api.as(t, h.addPerson(t, "member"))
 	bin, address := hookBin(t)
 
 	id, plain := makeHook(t, owner, "Chat", address, events.TopicPagePublished)
@@ -208,7 +207,7 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 		if bytes.Contains(sealed, []byte(plain)) || bytes.Contains(sealed, []byte(webhook.SecretPrefix)) {
 			t.Error("the secret is stored as it was shown")
 		}
-		if data := h.recordedOnce(t, home.org, audit.ActionWebhookCreated, me, id); strings.Contains(data, plain) || strings.Contains(data, "/_hooks/") {
+		if data := h.recordedOnce(t, audit.ActionWebhookCreated, me, id); strings.Contains(data, plain) || strings.Contains(data, "/_hooks/") {
 			t.Errorf("the record of a new webhook holds its secret or its path: %s", data)
 		}
 	})
@@ -245,7 +244,7 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 		if fresh == "" || fresh == plain {
 			t.Fatalf("the rotation answered %v", rotated)
 		}
-		h.recordedOnce(t, home.org, audit.ActionWebhookSecretRotated, me, id)
+		h.recordedOnce(t, audit.ActionWebhookSecretRotated, me, id)
 		want(t, admin.post(t, path+"/test", nil), http.StatusOK, "ping again")
 		last := binDeliveries(t, bin)
 		if d := last[len(last)-1]; !webhook.Verify([]byte(d.Body), fresh, d.Headers["X-Stator-Signature-256"]) || webhook.Verify([]byte(d.Body), plain, d.Headers["X-Stator-Signature-256"]) {
@@ -255,7 +254,7 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 		if saved["owner"].(map[string]any)["id"] != adminID.String() || saved["enabled"] != false || saved["topics"].([]any)[0] != "*" {
 			t.Errorf("the saved webhook reads %v", saved)
 		}
-		if data := h.recordedOnce(t, home.org, audit.ActionWebhookUpdated, &adminID, id); !strings.Contains(data, `"enabled": false`) {
+		if data := h.recordedOnce(t, audit.ActionWebhookUpdated, &adminID, id); !strings.Contains(data, `"enabled": false`) {
 			t.Errorf("the update is recorded as %s", data)
 		}
 	})
@@ -303,7 +302,7 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 
 	t.Run("deleting takes the log with it", func(t *testing.T) {
 		want(t, owner.delete(t, path), http.StatusNoContent, "delete the webhook")
-		h.recordedOnce(t, home.org, audit.ActionWebhookDeleted, me, id)
+		h.recordedOnce(t, audit.ActionWebhookDeleted, me, id)
 		want(t, owner.get(t, path+"/deliveries"), http.StatusNotFound, "the log of a deleted webhook")
 		want(t, owner.delete(t, path), http.StatusNotFound, "delete it again")
 		if n := h.countRows(t, `SELECT count(*) FROM webhook_delivery WHERE endpoint_id = $1`, id); n != 0 {
@@ -317,8 +316,7 @@ func TestContentEventsReachTheReceiverAsTheOwnerMayReadThem(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runStackWorker(t)
 	home := h.makeMember(t, "hooks-events")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "HOOK", "Hooks")
 	elsewhere := newTree(t, owner, "ELSE", "Elsewhere")
 	bin, address := hookBin(t)
@@ -375,8 +373,7 @@ func TestAFailingReceiverIsRetriedThenTurnedOff(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runStackWorker(t)
 	home := h.makeMember(t, "hooks-retry")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "RTY", "Retries")
 	bin, address := hookBin(t)
 	binAnswers(t, bin, http.StatusServiceUnavailable)
@@ -427,12 +424,12 @@ func TestAFailingReceiverIsRetriedThenTurnedOff(t *testing.T) {
 		if hook["enabled"] != false || hook["disabledReason"] != webhook.ReasonFailing || number(hook["failures"]) != webhook.DisableAfterFailures {
 			t.Fatalf("the failing webhook reads %v", hook)
 		}
-		if data := h.recordedOnce(t, home.org, audit.ActionWebhookDisabled, nil, id); !strings.Contains(data, webhook.ReasonFailing) {
+		if data := h.recordedOnce(t, audit.ActionWebhookDisabled, nil, id); !strings.Contains(data, webhook.ReasonFailing) {
 			t.Errorf("the worker's turning it off is recorded as %s", data)
 		}
 
 		third := docs.add(docs.homeID, "Third")
-		h.drained(t, home.org)
+		h.drained(t)
 		if n := h.countRows(t, `SELECT count(*) FROM webhook_delivery WHERE endpoint_id = $1 AND event ->> 'pageId' = $2`, id, third); n != 0 {
 			t.Errorf("a webhook that is off was queued %d attempts", n)
 		}
@@ -451,10 +448,9 @@ func TestAPayloadIsWithheldWhatItsOwnerMayNotViewWhenItIsSent(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runStackWorker(t)
 	home := h.makeMember(t, "hooks-perm")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID := h.addPerson(t, home.org, "admin")
-	ann := api.as(t, annID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID := h.addPerson(t, "admin")
+	ann := api.as(t, annID)
 	docs := newTree(t, owner, "PRM", "Permissions")
 	want(t, owner.put(t, "/api/v1/spaces/PRM/permissions", map[string]any{"grants": []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments"}},
@@ -465,7 +461,7 @@ func TestAPayloadIsWithheldWhatItsOwnerMayNotViewWhenItIsSent(t *testing.T) {
 
 	// Ann made it while an administrator; she is a member now, and the
 	// payloads are read as she may read them when they are sent.
-	h.cleanupExec(t, h.super, `UPDATE org_member SET org_role = 'member' WHERE org_id = $1 AND user_id = $2`, home.org, annID)
+	h.cleanupExec(t, h.super, `UPDATE member SET role = 'member' WHERE user_id = $1`, annID)
 	h.settle(t)
 
 	open := docs.add(docs.homeID, "Open")
@@ -497,7 +493,7 @@ func TestAPayloadIsWithheldWhatItsOwnerMayNotViewWhenItIsSent(t *testing.T) {
 	})
 
 	t.Run("the owner leaving withholds everything but a ping", func(t *testing.T) {
-		h.cleanupExec(t, h.super, `DELETE FROM org_member WHERE org_id = $1 AND user_id = $2`, home.org, annID)
+		h.cleanupExec(t, h.super, `DELETE FROM member WHERE user_id = $1`, annID)
 		h.settle(t)
 		hook := list(t, want(t, owner.get(t, "/api/v1/webhooks"), http.StatusOK, "the list"), "webhooks")[0].(map[string]any)
 		if hook["owner"] != nil {
@@ -518,7 +514,7 @@ func TestTheServerNeverPostsIntoItsOwnNetwork(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "hooks-ssrf")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	for _, inside := range []string{"http://10.0.0.1/hook", "http://169.254.169.254/latest/meta-data", "http://localhost:8080/api/v1/auth/me"} {
 		fieldError(t, want(t, owner.post(t, "/api/v1/webhooks", map[string]any{"name": "In", "url": inside, "topics": []string{"*"}}), http.StatusUnprocessableEntity, "save "+inside), "url")
 	}
@@ -534,8 +530,8 @@ func TestWebhooksAreWalledByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "hooks-rls")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
-	memberID := h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
 	_, address := hookBin(t)
 	id, _ := makeHook(t, owner, "Walled", address, "*")
 	want(t, owner.post(t, "/api/v1/webhooks/"+id+"/test", nil), http.StatusOK, "a ping for the log")
@@ -559,7 +555,7 @@ func TestWebhooksAreWalledByTheDatabase(t *testing.T) {
 		denied(t, conn, "read a sealed secret", `SELECT secret_sealed FROM webhook_endpoint`)
 		denied(t, conn, "name another owner", `UPDATE webhook_endpoint SET owner_id = $2 WHERE id = $1`, id, memberID)
 		denied(t, conn, "clear the failures", `UPDATE webhook_endpoint SET failures = 0, failing_since = NULL WHERE id = $1`, id)
-		denied(t, conn, "forge a delivered attempt", `INSERT INTO webhook_delivery (org_id, endpoint_id, event_id, topic, event, occurred_at, state) VALUES ($1, $2, $3, 'ping', '{}', now(), 'delivered')`, home.org, id, uuid.New())
+		denied(t, conn, "forge a delivered attempt", `INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, state) VALUES ($1, $2, 'ping', '{}', now(), 'delivered')`, id, uuid.New())
 		denied(t, conn, "rewrite the log", `UPDATE webhook_delivery SET state = 'delivered'`)
 		denied(t, conn, "erase the log", `DELETE FROM webhook_delivery`)
 		denied(t, conn, "take a topic nobody emits", `UPDATE webhook_endpoint SET topics = '{armature.links}' WHERE id = $1`, id)
@@ -577,7 +573,7 @@ func TestWebhooksAreWalledByTheDatabase(t *testing.T) {
 		if n := count(`SELECT count(*) FROM webhook_endpoint`) + count(`SELECT count(*) FROM webhook_delivery`); n != 0 {
 			t.Errorf("a member reads %d rows", n)
 		}
-		denied(t, conn, "a member adds a webhook", `INSERT INTO webhook_endpoint (org_id, name, url, secret_sealed, topics) VALUES ($1, 'Mine', 'https://x.example', '\x01', '{*}')`, home.org)
+		denied(t, conn, "a member adds a webhook", `INSERT INTO webhook_endpoint (name, url, secret_sealed, topics) VALUES ('Mine', 'https://x.example', '\x01', '{*}')`)
 		untouched(t, conn, "a member deletes it", `DELETE FROM webhook_endpoint WHERE id = $1`, id)
 		untouched(t, conn, "a member turns it off", `UPDATE webhook_endpoint SET enabled = false WHERE id = $1`, id)
 	})

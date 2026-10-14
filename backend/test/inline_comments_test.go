@@ -135,10 +135,9 @@ func TestInlineCommentsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "inline")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID := h.namedPerson(t, home.org, "Ann Reviewer"), h.namedPerson(t, home.org, "Ben Reviewer"), h.namedPerson(t, home.org, "Carl Reader")
-	ann, ben, carl := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, carlID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Reviewer"), h.namedPerson(t, "Ben Reviewer"), h.namedPerson(t, "Carl Reader")
+	ann, ben, carl := api.as(t, annID), api.as(t, benID), api.as(t, carlID)
 
 	docs := newTree(t, owner, "INL", "Inline")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("We ship on Friday after the review.", "Notes follow here.")})
@@ -312,10 +311,9 @@ func TestInlineCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "inline-rls")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann := api.as(t, annID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann := api.as(t, annID)
 
 	docs := newTree(t, owner, "IRAW", "Inline raw")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("We ship on Friday.")})
@@ -340,12 +338,12 @@ func TestInlineCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	_ = json.Unmarshal(raw, &body)
 	asJSON := func(v any) string { out, _ := json.Marshal(v); return string(out) }
 	setBody := `UPDATE page SET body = $2::jsonb WHERE id = $1`
-	newThread := `INSERT INTO comment_thread (org_id, id, page_id, kind, created_by, quote) VALUES ($1, $2, $3, 'inline', $4, 'ship')`
+	newThread := `INSERT INTO comment_thread (id, page_id, kind, created_by, quote) VALUES ($1, $2, 'inline', $3, 'ship')`
 
 	t.Run("a commenter adds only the mark of a thread of their own", func(t *testing.T) {
 		actAs(t, conn, carlID)
 		carls := uuid.NewString()
-		denied(t, conn, "a thread without addComments", newThread, home.org, carls, plan, carlID)
+		denied(t, conn, "a thread without addComments", newThread, carls, plan, carlID)
 		denied(t, conn, "a mark without addComments", setBody, plan, asJSON(marked(t, body, 0, "ship", anns)))
 
 		actAs(t, conn, annID)
@@ -353,17 +351,17 @@ func TestInlineCommentsAreEnforcedByTheDatabase(t *testing.T) {
 		denied(t, conn, "a mark naming no thread", setBody, plan, asJSON(marked(t, body, 0, "ship", invented)))
 		bens := uuid.NewString()
 		actAs(t, conn, benID)
-		if _, err := conn.Exec(ctx, newThread, home.org, bens, plan, benID); err != nil {
+		if _, err := conn.Exec(ctx, newThread, bens, plan, benID); err != nil {
 			t.Fatalf("ben may not start a thread: %v", err)
 		}
 		actAs(t, conn, annID)
 		denied(t, conn, "marking ben's thread", setBody, plan, asJSON(marked(t, body, 0, "ship", bens)))
-		denied(t, conn, "a thread as somebody else", newThread, home.org, uuid.NewString(), plan, benID)
+		denied(t, conn, "a thread as somebody else", newThread, uuid.NewString(), plan, benID)
 		denied(t, conn, "a thread resolved from the start",
-			`INSERT INTO comment_thread (org_id, id, page_id, kind, created_by, quote, resolved_at, resolved_by) VALUES ($1, $2, $3, 'inline', $4, 'x', now(), $4)`,
-			home.org, uuid.NewString(), plan, annID)
+			`INSERT INTO comment_thread (id, page_id, kind, created_by, quote, resolved_at, resolved_by) VALUES ($1, $2, 'inline', $3, 'x', now(), $3)`,
+			uuid.NewString(), plan, annID)
 		mine := uuid.NewString()
-		if _, err := conn.Exec(ctx, newThread, home.org, mine, plan, annID); err != nil {
+		if _, err := conn.Exec(ctx, newThread, mine, plan, annID); err != nil {
 			t.Fatalf("ann may not start a thread: %v", err)
 		}
 		reworded := marked(t, body, 0, "ship", mine)
@@ -401,8 +399,8 @@ func TestInlineCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	t.Run("no version holds a mark, however it is written", func(t *testing.T) {
 		actAs(t, conn, home.user)
 		if _, err := conn.Exec(ctx, `
-			INSERT INTO page_version (org_id, page_id, number, title, body, created_by)
-			SELECT org_id, id, version + 1, title, body, $2 FROM page WHERE id = $1`, plan, home.user); err != nil {
+			INSERT INTO page_version (page_id, number, title, body, created_by)
+			SELECT id, version + 1, title, body, $2 FROM page WHERE id = $1`, plan, home.user); err != nil {
 			t.Fatalf("the owner may not write a version: %v", err)
 		}
 		var marks int
@@ -424,10 +422,9 @@ func TestInlineCommentNotifications(t *testing.T) {
 	api := newAPIServer(t, h)
 	h.runWorker(t, notify.NewFanOut(h.cluster, nil, testAppURL, discard()))
 	home := h.makeMember(t, "inline-notify")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID, carlID := h.namedPerson(t, home.org, "Ann Asker"), h.namedPerson(t, home.org, "Ben Answerer"), h.namedPerson(t, home.org, "Carl Closer")
-	ann, ben, carl := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug), api.as(t, carlID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID, carlID := h.namedPerson(t, "Ann Asker"), h.namedPerson(t, "Ben Answerer"), h.namedPerson(t, "Carl Closer")
+	ann, ben, carl := api.as(t, annID), api.as(t, benID), api.as(t, carlID)
 
 	docs := newTree(t, owner, "INOT", "Inline notes")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("We ship on Friday.")})
@@ -435,7 +432,7 @@ func TestInlineCommentNotifications(t *testing.T) {
 	r, thread := startInline(t, ann, plan, 0, "ship on Friday", "Why Friday?")
 	want(t, r, http.StatusCreated, "ann starts a thread")
 	want(t, reply(t, ben, thread, "Because."), http.StatusCreated, "ben replies")
-	h.drained(t, home.org)
+	h.drained(t)
 	for name, c := range map[string]*client{"ann": ann, "ben": ben, "carl": carl, "the owner": owner} {
 		want(t, c.post(t, "/api/v1/notifications/read", map[string]any{"all": true}), http.StatusNoContent, name+" starts with nothing unread")
 	}
@@ -443,7 +440,7 @@ func TestInlineCommentNotifications(t *testing.T) {
 	for _, act := range []string{"resolve", "reopen"} {
 		t.Run(act+" tells the thread's writers", func(t *testing.T) {
 			want(t, carl.post(t, "/api/v1/comments/"+thread+"/"+act, nil), http.StatusOK, "carl "+act+"s")
-			h.drained(t, home.org)
+			h.drained(t)
 			for name, c := range map[string]*client{"ann": ann, "ben": ben} {
 				got := notificationsOf(t, c, "?unread=true")
 				if len(got) != 1 || got[0]["kind"] != "resolved" || got[0]["threadId"] != thread || got[0]["excerpt"] != "ship on Friday" ||
@@ -462,7 +459,7 @@ func TestInlineCommentNotifications(t *testing.T) {
 
 	t.Run("doing it twice tells nobody again", func(t *testing.T) {
 		want(t, carl.post(t, "/api/v1/comments/"+thread+"/reopen", nil), http.StatusOK, "carl reopens an open thread")
-		h.drained(t, home.org)
+		h.drained(t)
 		if got := notificationsOf(t, ann, "?unread=true"); len(got) != 0 {
 			t.Errorf("ann was told %v", got)
 		}

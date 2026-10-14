@@ -63,8 +63,8 @@ func sendJSON(t *testing.T, b *browser, method, target string, body any) (int, m
 func TestAnAdministratorsSessionOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	a := h.startAPI(t, testSessionTTL)
-	home := h.makeOrg(t, "session-home")
-	email := bootstrapAdmin(t, h, a, home)
+	h.emptySite(t, "session-home")
+	email := bootstrapAdmin(t, h, a)
 
 	b := newBrowser(t)
 	base := a.URL + httpapi.APIPrefix

@@ -43,10 +43,9 @@ func TestAGalleryShowsEachReaderThePicturesTheyMayDownload(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "gallery")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	inaID := h.addPerson(t, home.org, "member")
-	ina := api.as(t, inaID, home.org, slug)
+	owner := api.as(t, home.user)
+	inaID := h.addPerson(t, "member")
+	ina := api.as(t, inaID)
 	anon := api.anonymous()
 	ctx := context.Background()
 

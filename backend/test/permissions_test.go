@@ -11,17 +11,17 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// makeGroup makes a group of the organization with members, behind the
-// policies' back like makeMember.
-func (h *harness) makeGroup(t *testing.T, org uuid.UUID, name string, members ...uuid.UUID) uuid.UUID {
+// makeGroup makes a group with members, behind the policies' back like
+// makeMember.
+func (h *harness) makeGroup(t *testing.T, name string, members ...uuid.UUID) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
 	var id uuid.UUID
-	if err := h.super.QueryRow(ctx, `INSERT INTO groups (org_id, name) VALUES ($1, $2) RETURNING id`, org, name).Scan(&id); err != nil {
+	if err := h.super.QueryRow(ctx, `INSERT INTO groups (name) VALUES ($1) RETURNING id`, name).Scan(&id); err != nil {
 		t.Fatalf("make the group %s: %v", name, err)
 	}
 	for _, m := range members {
-		if _, err := h.super.Exec(ctx, `INSERT INTO group_member (org_id, group_id, user_id) VALUES ($1, $2, $3)`, org, id, m); err != nil {
+		if _, err := h.super.Exec(ctx, `INSERT INTO group_member (group_id, user_id) VALUES ($1, $2)`, id, m); err != nil {
 			t.Fatalf("put a member in %s: %v", name, err)
 		}
 	}
@@ -52,11 +52,10 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "perms")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, bobID, carlID, daveID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, bob, carl, dave := api.as(t, annID, home.org, slug), api.as(t, bobID, home.org, slug), api.as(t, carlID, home.org, slug), api.as(t, daveID, home.org, slug)
-	writers := h.makeGroup(t, home.org, "Writers", bobID)
+	owner := api.as(t, home.user)
+	annID, bobID, carlID, daveID := h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, bob, carl, dave := api.as(t, annID), api.as(t, bobID), api.as(t, carlID), api.as(t, daveID)
+	writers := h.makeGroup(t, "Writers", bobID)
 
 	t.Run("global permissions", func(t *testing.T) {
 		me := obj(t, want(t, ann.get(t, "/api/v1/access/me"), http.StatusOK, "ann's access"), "can")
@@ -366,7 +365,7 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 		if got := bob.get(t, "/api/v1/pages/"+top); got.Status != http.StatusNotFound {
 			t.Errorf("bob left Writers and still sees Top: %d", got.Status)
 		}
-		if _, err := h.super.Exec(context.Background(), `INSERT INTO group_member (org_id, group_id, user_id) VALUES ($1, $2, $3)`, home.org, writers, bobID); err != nil {
+		if _, err := h.super.Exec(context.Background(), `INSERT INTO group_member (group_id, user_id) VALUES ($1, $2)`, writers, bobID); err != nil {
 			t.Fatal(err)
 		}
 		h.settle(t)
@@ -412,7 +411,7 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("every change is in the audit log", func(t *testing.T) {
-		rows, err := h.super.Query(context.Background(), `SELECT DISTINCT action FROM audit_log WHERE org_id = $1 AND action LIKE '%permission%' OR org_id = $1 AND action LIKE '%restriction%'`, home.org)
+		rows, err := h.super.Query(context.Background(), `SELECT DISTINCT action FROM audit_log WHERE action LIKE '%permission%' OR action LIKE '%restriction%'`)
 		if err != nil {
 			t.Fatal(err)
 		}

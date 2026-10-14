@@ -219,12 +219,11 @@ func TestASpaceTravelsToAnotherInstanceWhole(t *testing.T) {
 	h := newHarness(t)
 	api := transferAPI(t, h)
 	from := h.makeMember(t, "travel-from")
-	fromSlug := h.slugOf(t, from.org)
-	owner := api.as(t, from.user, from.org, fromSlug)
-	annID := h.namedPerson(t, from.org, "Ann Traveller")
-	ann := api.as(t, annID, from.org, fromSlug)
-	bob := api.as(t, h.addPerson(t, from.org, "member"), from.org, fromSlug)
-	writers := h.makeGroup(t, from.org, "Writers", annID)
+	owner := api.as(t, from.user)
+	annID := h.namedPerson(t, "Ann Traveller")
+	ann := api.as(t, annID)
+	bob := api.as(t, h.addPerson(t, "member"))
+	writers := h.makeGroup(t, "Writers", annID)
 
 	trip := newTree(t, owner, "TRIP", "Trip")
 	top := trip.add(trip.homeID, "Top")
@@ -311,13 +310,13 @@ func TestASpaceTravelsToAnotherInstanceWhole(t *testing.T) {
 	t.Run("an export not made, or past its time, is not downloaded", func(t *testing.T) {
 		ctx := context.Background()
 		var spaceID uuid.UUID
-		if err := h.super.QueryRow(ctx, `SELECT id FROM space WHERE org_id = $1 AND key = 'TRIP'`, from.org).Scan(&spaceID); err != nil {
+		if err := h.super.QueryRow(ctx, `SELECT id FROM space WHERE key = 'TRIP'`).Scan(&spaceID); err != nil {
 			t.Fatal(err)
 		}
 		failed := uuid.New()
 		if _, err := h.super.Exec(ctx, `
-			INSERT INTO space_export (id, org_id, space_id, space_key, requested_by, format, state, failure)
-			VALUES ($1, $2, $3, 'TRIP', $4, 'archive', 'failed', 'failed')`, failed, from.org, spaceID, from.user); err != nil {
+			INSERT INTO space_export (id, space_id, space_key, requested_by, format, state, failure)
+			VALUES ($1, $2, 'TRIP', $3, 'archive', 'failed', 'failed')`, failed, spaceID, from.user); err != nil {
 			t.Fatal(err)
 		}
 		h.settle(t)
@@ -384,15 +383,14 @@ func TestASpaceTravelsToAnotherInstanceWhole(t *testing.T) {
 	fresh := newFreshHarness(t)
 	freshAPI := transferAPI(t, fresh)
 	to := fresh.makeMember(t, "travel-to")
-	toSlug := fresh.slugOf(t, to.org)
-	landedOwner := freshAPI.as(t, to.user, to.org, toSlug)
+	landedOwner := freshAPI.as(t, to.user)
 	annThereID := fresh.accountLike(t, h, annID)
-	if _, err := fresh.super.Exec(context.Background(), `INSERT INTO org_member (org_id, user_id, org_role) VALUES ($1, $2, 'member')`, to.org, annThereID); err != nil {
+	if _, err := fresh.super.Exec(context.Background(), `INSERT INTO member (user_id, role) VALUES ($1, 'member')`, annThereID); err != nil {
 		t.Fatal(err)
 	}
 	fresh.settle(t)
-	landedWriters := fresh.makeGroup(t, to.org, "writers")
-	annThere := freshAPI.as(t, annThereID, to.org, toSlug)
+	landedWriters := fresh.makeGroup(t, "writers")
+	annThere := freshAPI.as(t, annThereID)
 
 	var landed map[string]any
 	t.Run("the archive comes into another instance under a new key", func(t *testing.T) {
@@ -521,9 +519,8 @@ func TestInvalidArchivesAreRefusedInSentences(t *testing.T) {
 	h := newHarness(t)
 	api := transferAPI(t, h)
 	home := h.makeMember(t, "transfer-refusals")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	member := api.as(t, h.addPerson(t, "member"))
 	docs := newTree(t, owner, "SRC", "Source")
 	page := docs.add(docs.homeID, "Plain")
 	_, archive := api.exportSpace(t, owner, "SRC", "archive")
@@ -578,7 +575,7 @@ func TestInvalidArchivesAreRefusedInSentences(t *testing.T) {
 
 	t.Run("an archive over the limit is refused", func(t *testing.T) {
 		small := transferAPI(t, h, func(s *httpapi.Server) { s.SpaceTransfers.MaxImportBytes = 64 })
-		if code := errorCode(t, want(t, sendArchive(t, small.as(t, home.user, home.org, slug), archive, ""), http.StatusRequestEntityTooLarge, "a large archive")); code != "too_large" {
+		if code := errorCode(t, want(t, sendArchive(t, small.as(t, home.user), archive, ""), http.StatusRequestEntityTooLarge, "a large archive")); code != "too_large" {
 			t.Errorf("a large archive is refused as %s", code)
 		}
 	})
@@ -592,32 +589,31 @@ func TestTheDatabaseKeepsSpaceTransfersToTheirPeople(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "transfer-sql")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	memberID := h.addPerson(t, home.org, "member")
+	owner := api.as(t, home.user)
+	memberID := h.addPerson(t, "member")
 	sp := obj(t, want(t, owner.post(t, "/api/v1/spaces", map[string]any{"key": "SQLX", "name": "SQL"}), http.StatusCreated, "make a space"), "space")
 	spaceID := uuid.MustParse(sp["id"].(string))
 	ctx := context.Background()
-	exportSQL := `INSERT INTO space_export (id, org_id, space_id, space_key, requested_by, format) VALUES ($1, $2, $3, 'SQLX', $4, 'archive')`
-	importSQL := `INSERT INTO space_import (id, org_id, requested_by, key, size_bytes) VALUES ($1, $2, $3, 'NEWX', 10)`
+	exportSQL := `INSERT INTO space_export (id, space_id, space_key, requested_by, format) VALUES ($1, $2, 'SQLX', $3, 'archive')`
+	importSQL := `INSERT INTO space_import (id, requested_by, key, size_bytes) VALUES ($1, $2, 'NEWX', 10)`
 
 	conn := appConn(t)
 	actAs(t, conn, memberID)
-	refused(t, conn, "a member exporting a space they do not administer", exportSQL, uuid.New(), home.org, spaceID, memberID)
-	refused(t, conn, "a member importing a space", importSQL, uuid.New(), home.org, memberID)
+	refused(t, conn, "a member exporting a space they do not administer", exportSQL, uuid.New(), spaceID, memberID)
+	refused(t, conn, "a member importing a space", importSQL, uuid.New(), memberID)
 
 	actAs(t, conn, home.user)
-	refused(t, conn, "an administrator exporting for somebody else", exportSQL, uuid.New(), home.org, spaceID, memberID)
-	refused(t, conn, "an administrator importing for somebody else", importSQL, uuid.New(), home.org, memberID)
+	refused(t, conn, "an administrator exporting for somebody else", exportSQL, uuid.New(), spaceID, memberID)
+	refused(t, conn, "an administrator importing for somebody else", importSQL, uuid.New(), memberID)
 	refused(t, conn, "an export queued as done",
-		`INSERT INTO space_export (id, org_id, space_id, space_key, requested_by, format, state) VALUES ($1, $2, $3, 'SQLX', $4, 'archive', 'done')`, uuid.New(), home.org, spaceID, home.user)
+		`INSERT INTO space_export (id, space_id, space_key, requested_by, format, state) VALUES ($1, $2, 'SQLX', $3, 'archive', 'done')`, uuid.New(), spaceID, home.user)
 	refused(t, conn, "an import queued with its space made",
-		`INSERT INTO space_import (id, org_id, requested_by, key, size_bytes, space_id) VALUES ($1, $2, $3, 'NEWX', 10, $4)`, uuid.New(), home.org, home.user, spaceID)
+		`INSERT INTO space_import (id, requested_by, key, size_bytes, space_id) VALUES ($1, $2, 'NEWX', 10, $3)`, uuid.New(), home.user, spaceID)
 	export, imported := uuid.New(), uuid.New()
-	if _, err := conn.Exec(ctx, exportSQL, export, home.org, spaceID, home.user); err != nil {
+	if _, err := conn.Exec(ctx, exportSQL, export, spaceID, home.user); err != nil {
 		t.Fatalf("an administrator cannot queue an export through SQL: %v", err)
 	}
-	if _, err := conn.Exec(ctx, importSQL, imported, home.org, home.user); err != nil {
+	if _, err := conn.Exec(ctx, importSQL, imported, home.user); err != nil {
 		t.Fatalf("an administrator cannot queue an import through SQL: %v", err)
 	}
 	for what, sql := range map[string]string{

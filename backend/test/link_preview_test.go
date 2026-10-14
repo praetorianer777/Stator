@@ -35,9 +35,8 @@ func TestLinkPreviewsAreReadThroughTheGuardAndKept(t *testing.T) {
 	open := newAPIServer(t, h, func(s *httpapi.Server) { s.Unfurl = h.unfurl(t, netguard.ParseAllow("127.0.0.0/8")) })
 	guarded := newAPIServer(t, h)
 	home := h.makeMember(t, "preview")
-	slug := h.slugOf(t, home.org)
-	reader := open.as(t, home.user, home.org, slug)
-	outsider := guarded.as(t, home.user, home.org, slug)
+	reader := open.as(t, home.user)
+	outsider := guarded.as(t, home.user)
 
 	preview := func(c *client, addr string) map[string]any {
 		t.Helper()

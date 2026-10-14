@@ -22,9 +22,8 @@ func TestFoldersHoldPagesAndNothingElse(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "folders")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	member := api.as(t, h.addPerson(t, home.org, "member"), home.org, slug)
+	owner := api.as(t, home.user)
+	member := api.as(t, h.addPerson(t, "member"))
 
 	docs := newTree(t, owner, "FOLD", "Folders")
 	guides := folder(docs, docs.homeID, "Guides")
@@ -111,7 +110,7 @@ func TestFoldersAreHeldByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "folders-db")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 	docs := newTree(t, owner, "FDB", "Folders")
 	box := folder(docs, docs.homeID, "Box")
 	inside := docs.add(box, "Inside")
@@ -126,8 +125,8 @@ func TestFoldersAreHeldByTheDatabase(t *testing.T) {
 	refused(t, conn, "a reaction to a folder", `INSERT INTO reaction (page_id, user_id, emoji) VALUES ($1, $2, '👍')`, box, home.user)
 	refused(t, conn, "a version of a folder", `INSERT INTO page_version (page_id, number, title, body, created_by)
 		VALUES ($1, 2, 'Box', '{"type":"doc"}', $2)`, box, home.user)
-	refused(t, conn, "a folder for a home page", `INSERT INTO page (id, org_id, space_id, parent_id, rank, title, kind, created_by, updated_by)
-		SELECT $1, org_id, space_id, NULL, 'a', 'Root', 'folder', $2, $2 FROM page WHERE id = $3`, uuid.New(), home.user, box)
+	refused(t, conn, "a folder for a home page", `INSERT INTO page (id, space_id, parent_id, rank, title, kind, created_by, updated_by)
+		SELECT $1, space_id, NULL, 'a', 'Root', 'folder', $2, $2 FROM page WHERE id = $3`, uuid.New(), home.user, box)
 
 	var published *string
 	if err := conn.QueryRow(context.Background(), `SELECT published_at::text FROM page WHERE id = $1`, box).Scan(&published); err != nil {

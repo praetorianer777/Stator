@@ -35,10 +35,9 @@ func TestLabelsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "labels")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 
 	ops := newTree(t, owner, "LOPS", "Operations")
 	dev := newTree(t, owner, "LDEV", "Development")
@@ -206,10 +205,9 @@ func TestLabelsFollowTheirPage(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "label-wall")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	annID, benID := h.addPerson(t, home.org, "member"), h.addPerson(t, home.org, "member")
-	ann, ben := api.as(t, annID, home.org, slug), api.as(t, benID, home.org, slug)
+	owner := api.as(t, home.user)
+	annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
+	ann, ben := api.as(t, annID), api.as(t, benID)
 	other := h.makeOutsider(t, "label-wall-b")
 
 	docs := newTree(t, owner, "LWALL", "Walled")
@@ -297,13 +295,13 @@ func TestLabelsFollowTheirPage(t *testing.T) {
 		if n := count(`SELECT count(*) FROM page_label WHERE page_id = $1`, open); n != 1 {
 			t.Errorf("ben reads %d labels of the open page", n)
 		}
-		denied(t, conn, "labelling a page he may not view", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'mine', $3)`, home.org, closed, benID)
-		denied(t, conn, "labelling a page he may not edit", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'mine', $3)`, home.org, locked, benID)
-		denied(t, conn, "labelling in somebody else's name", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'mine', $3)`, home.org, open, annID)
+		denied(t, conn, "labelling a page he may not view", `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'mine', $2)`, closed, benID)
+		denied(t, conn, "labelling a page he may not edit", `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'mine', $2)`, locked, benID)
+		denied(t, conn, "labelling in somebody else's name", `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'mine', $2)`, open, annID)
 		untouched(t, conn, "unlabelling a page he may not view", `DELETE FROM page_label WHERE page_id = $1`, closed)
 		refused(t, conn, "renaming a label", `UPDATE page_label SET name = 'renamed' WHERE page_id = $1`, open)
-		denied(t, conn, "a name that is no label", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'Not/Normal', $3)`, home.org, open, benID)
-		if _, err := conn.Exec(ctx, `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'bens', $3)`, home.org, open, benID); err != nil {
+		denied(t, conn, "a name that is no label", `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'Not/Normal', $2)`, open, benID)
+		if _, err := conn.Exec(ctx, `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'bens', $2)`, open, benID); err != nil {
 			t.Errorf("ben may not label a page he edits: %v", err)
 		}
 		if _, err := conn.Exec(ctx, `DELETE FROM page_label WHERE page_id = $1 AND name = 'bens'`, open); err != nil {
@@ -316,8 +314,8 @@ func TestLabelsFollowTheirPage(t *testing.T) {
 		if n := count(`SELECT count(*) FROM page_label`); n != 0 {
 			t.Errorf("a member the space is closed to reads %d labels", n)
 		}
-		refused(t, conn, "a label on a page of the closed space", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'planted', $3)`, other.org, open, other.user)
-		refused(t, conn, "a label in ann's name", `INSERT INTO page_label (org_id, page_id, name, created_by) VALUES ($1, $2, 'planted', $3)`, home.org, open, annID)
+		refused(t, conn, "a label on a page of the closed space", `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'planted', $2)`, open, other.user)
+		refused(t, conn, "a label in ann's name", `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'planted', $2)`, open, annID)
 		untouched(t, conn, "deleting the labels of the closed space", `DELETE FROM page_label`)
 	})
 }

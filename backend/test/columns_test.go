@@ -32,7 +32,7 @@ func TestColumnsKeepTheirSharesAndSearchReadsEveryColumn(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "columns")
-	owner := api.as(t, home.user, home.org, h.slugOf(t, home.org))
+	owner := api.as(t, home.user)
 
 	docs := newTree(t, owner, "COL", "Columns")
 	page := docs.add(docs.homeID, "Compare", map[string]any{"body": columnsDoc(columnOf(33, "The narrow quokka"), columnOf(67, "The wide wombat"))})

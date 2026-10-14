@@ -18,10 +18,9 @@ func TestAnEditedPictureIsItsFilesNextVersion(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "picture-edit")
-	slug := h.slugOf(t, home.org)
-	owner := api.as(t, home.user, home.org, slug)
-	readerID := h.addPerson(t, home.org, "member")
-	reader := api.as(t, readerID, home.org, slug)
+	owner := api.as(t, home.user)
+	readerID := h.addPerson(t, "member")
+	reader := api.as(t, readerID)
 	docs := newTree(t, owner, "PEDT", "Edits")
 	want(t, owner.put(t, "/api/v1/spaces/PEDT/permissions", map[string]any{"grants": []any{
 		map[string]any{"subject": user(home.user), "permissions": []any{"view", "addPages", "administer"}},
@@ -120,22 +119,22 @@ func TestAnEditedPictureIsItsFilesNextVersion(t *testing.T) {
 	t.Run("straight through SQL an edit names a picture's version of the same file and keeps its type, by an editor", func(t *testing.T) {
 		conn := appConn(t)
 		actAs(t, conn, readerID)
-		denied(t, conn, "a reader saving an edit", `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'shot.png', 'image/png', 2, 1)`, home.org, pageID)
+		denied(t, conn, "a reader saving an edit", `INSERT INTO attachment (page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, 'shot.png', 'image/png', 2, 1)`, pageID)
 		actAs(t, conn, home.user)
 		for what, sql := range map[string]string{
-			"editing a version never made":  `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'shot.png', 'image/png', 2, 9)`,
-			"an edit of another type":       `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'SHOT.png', 'image/jpeg', 2, 1)`,
-			"editing a text file":           `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'notes.txt', 'text/plain', 2, 1)`,
-			"editing a GIF":                 `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'loop.gif', 'image/gif', 2, 1)`,
-			"an edit that is a restore too": `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from, restored_from) VALUES ($1, $2, 'shot.png', 'image/png', 2, 1, 1)`,
-			"editing version 0":             `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'shot.png', 'image/png', 2, 0)`,
+			"editing a version never made":  `INSERT INTO attachment (page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, 'shot.png', 'image/png', 2, 9)`,
+			"an edit of another type":       `INSERT INTO attachment (page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, 'SHOT.png', 'image/jpeg', 2, 1)`,
+			"editing a text file":           `INSERT INTO attachment (page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, 'notes.txt', 'text/plain', 2, 1)`,
+			"editing a GIF":                 `INSERT INTO attachment (page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, 'loop.gif', 'image/gif', 2, 1)`,
+			"an edit that is a restore too": `INSERT INTO attachment (page_id, file_name, content_type, size_bytes, edited_from, restored_from) VALUES ($1, 'shot.png', 'image/png', 2, 1, 1)`,
+			"editing version 0":             `INSERT INTO attachment (page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, 'shot.png', 'image/png', 2, 0)`,
 		} {
-			refused(t, conn, what, sql, home.org, pageID)
+			refused(t, conn, what, sql, pageID)
 		}
-		refused(t, conn, "an edit of another page's file", `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'shot.png', 'image/png', 2, 1)`, home.org, docs.homeID)
+		refused(t, conn, "an edit of another page's file", `INSERT INTO attachment (page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, 'shot.png', 'image/png', 2, 1)`, docs.homeID)
 		refused(t, conn, "marking an upload edited", `UPDATE attachment SET edited_from = 1 WHERE page_id = $1`, pageID)
 		// What the rule allows goes through, so the refusals above are the rule's.
-		if _, err := conn.Exec(context.Background(), `INSERT INTO attachment (org_id, page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, $2, 'Shot.PNG', 'image/png', 2, 2)`, home.org, pageID); err != nil {
+		if _, err := conn.Exec(context.Background(), `INSERT INTO attachment (page_id, file_name, content_type, size_bytes, edited_from) VALUES ($1, 'Shot.PNG', 'image/png', 2, 2)`, pageID); err != nil {
 			t.Errorf("an editor's edit of version 2 was refused: %v", err)
 		}
 		if n := h.countRows(t, `SELECT count(*) FROM attachment WHERE page_id = $1 AND lower(file_name) = 'shot.png'`, pageID); n != 4 {
