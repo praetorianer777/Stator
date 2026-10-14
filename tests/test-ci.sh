@@ -4,7 +4,8 @@
 # gate across parallel jobs, so a layer left out of the matrix would otherwise
 # stop gating pull requests without anything turning red. Also that the
 # browser specs keep apart by people and spaces of their own rather than by
-# an organization each, since an instance serves one organization (#380).
+# an organization each, since an instance serves one organization (#380),
+# and that nothing outside the history names the tenant any more.
 set -u
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
@@ -73,6 +74,18 @@ for name in $instance_specs; do
   [[ -f "$E2E/tests/$name.spec.ts" ]] || fail "INSTANCE_SPECS names $name, but there is no e2e/tests/$name.spec.ts"
 done
 [[ -n "$instance_specs" && $FAILED -eq 0 ]] && pass "every spec INSTANCE_SPECS names exists"
+
+echo "🧪 nothing names the tenant"
+
+# The tenant setting, its function and the slug in Stator's own paths went
+# with #380. They stay where history is kept: the migrations, the changelog,
+# the decision record and the plan; the catalog test spells what it hunts,
+# and Armature's own API document has paths of its own named so.
+tenant=$(git -C "$SRC" grep -lE 'current_org_id|app\.org_id|/\{orgSlug\}' -- . \
+  ':!backend/migrations/' ':!CHANGELOG.md' ':!docs/decisions.md' ':!docs/plans/' \
+  ':!backend/test/rls_test.go' ':!api/armature/' ':!tests/test-ci.sh')
+[[ -z "$tenant" ]] && pass "no file outside the history names current_org_id, app.org_id or a /{orgSlug} path" \
+  || fail "these name current_org_id, app.org_id or a /{orgSlug} path, which went with one organization per instance (#380): $(paste -sd' ' <<< "$tenant")"
 
 if [[ $FAILED -eq 0 ]]; then echo "✅ ci.yml tests passed"; else echo "❌ ci.yml tests failed"; fi
 exit $FAILED
