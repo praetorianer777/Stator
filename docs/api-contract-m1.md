@@ -190,8 +190,8 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
 | Operation | Needs | Answers |
 |---|---|---|
 | `GET /access/me` | member | `{can: {use, createSpace, administer}}` |
-| `GET /org/permissions` | administer | `{permissions}` |
-| `PUT /org/permissions/{permission}` | administer | `{permission}`; 409 for `administer` |
+| `GET /site/permissions` | administer | `{permissions}` |
+| `PUT /site/permissions/{permission}` | administer | `{permission}`; 409 for `administer` |
 | `GET /spaces/{spaceKey}/permissions` | space administer | `{grants}` |
 | `PUT /spaces/{spaceKey}/permissions` | space administer | `{grants}` |
 | `GET /pages/{pageID}/restrictions` | view | `{restrictions}` |

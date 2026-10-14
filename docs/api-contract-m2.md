@@ -346,7 +346,7 @@ as publish stores it.
   puts the slug right) and a link to the preferences.
 - **The database** lets `stator_app` read, and mark read, only the actor's
   own notifications, and read and write only their own preferences. The
-  fan-out plans as the worker, per organization, and writes each row acting
+  fan-out plans as the worker and writes each row acting
   for its recipient, so the database itself refuses a row about a page they
   may not view; the integration suite proves through SQL that no person
   reads another's rows or a row about a page they may not view.

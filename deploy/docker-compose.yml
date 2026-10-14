@@ -10,7 +10,7 @@ x-db-env: &db-env
   POSTGRES_DB: stator
 
 # The api, worker and seed connect as stator_app, which row level security
-# constrains, and as stator_admin for what runs before a tenant is known.
+# constrains, and as stator_admin for what runs before anybody is known.
 x-app-db-env: &app-db-env
   STATOR_ENV: development
   STATOR_DB_PRIMARY_URL: postgres://stator_app:${APP_DB_PASSWORD:-stator_app}@postgres-primary:5432/stator?sslmode=disable
@@ -353,7 +353,7 @@ services:
       <<: [*app-db-env, *s3-env, *auth-env, *bootstrap-env, *armature-env]
       STATOR_HTTP_ADDR: ":8080"
       STATOR_LOG_LEVEL: debug
-      # The browser suite makes an organization per spec file through these;
+      # The browser suite makes its people and resets the settings through these;
       # the Helm chart never sets them.
       STATOR_TEST_ENDPOINTS: "1"
       STATOR_TEST_ENDPOINTS_TOKEN: ${STATOR_TEST_ENDPOINTS_TOKEN:-stator-dev-test-endpoints-token}
