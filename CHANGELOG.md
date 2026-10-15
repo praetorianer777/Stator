@@ -9,6 +9,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `GET /api/v1/meta` lists Stator's integration capabilities (#409):
+  `page-links@1`, `theme-export@1`, `webhook-receiver@1` and `webhooks@1`, in
+  Armature's `name@version` scheme, described in `docs/integration.md`.
+  Stator reads the connected Armature's capabilities in turn and turns off
+  each feature Armature does not offer, saying which capability is missing
+  and what to update on the settings page and in the chip or block; an
+  Armature from before `/meta` is said to be too old.
 - Releases are published from a tag (#410). `./release.sh` writes the
   version into `VERSION` and the chart's `version` and `appVersion` and opens
   the pull request `release/vX.Y.Z`; merging it tags the merge commit

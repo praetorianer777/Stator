@@ -3,6 +3,41 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-15: Stator decides from Armature's capabilities, not its version (#409)
+
+Stator reports what it offers at `/meta` as `name@version`, the scheme
+Armature reports its own in (Cloudster1/Armature#249): `page-links@1`,
+`theme-export@1`, `webhook-receiver@1` and `webhooks@1`. Each names the
+operations and topics it rests on, and a unit test refuses one the build no
+longer has, so the list cannot outlive a feature. The names and what each
+promises are in [`docs/integration.md`](integration.md) until Dynamo's shared
+list (Dynamo#4) is written.
+
+It reads Armature's `/meta` in turn, and turns each feature off whose
+capability Armature does not list, saying so on the settings page and in the
+block, instead of letting a call fail later with a message that names no
+cause. A release number would tell only by a table of which release had
+what, which every partner would keep apart and get wrong.
+
+- **One copy per process, five minutes.** Nothing announces an upgrade, and
+  `/meta` is cheap; Valkey would only matter if a stale answer cost more than
+  five minutes of a sentence. The settings page, connecting and Check again
+  ask afresh, so an administrator who upgraded sees it at once.
+- **Not answering is not missing.** An Armature that does not answer `/meta`
+  in time turns nothing off: the read it was asked for says Armature did not
+  answer, which is the truth. An Armature that answers 404 at `/meta` is from
+  before capabilities and offers none.
+- **Creating issues rests on `issue-embed@1`.** Armature names no capability
+  for `POST /issues`; the issues made are drawn as chips, which need it. A
+  name of its own belongs in Dynamo's list.
+- **The stub answers as the pinned Armature,** and as an older one when
+  reached by a host a test names, since `/meta` takes no token to tell one
+  suite's Armature from another's. The real-Armature suite checks the stub
+  reports what the real one does.
+
+**Reconsider if** Armature announces capability changes, by a webhook topic
+or otherwise; then the copy can live until it is told.
+
 ## 2026-10-15: A release is a pull request, and its merge commit is the tag (#410)
 
 Stator, Armature and Exciter release the same way, after the release script
@@ -63,8 +98,8 @@ release can tell which build of which tool it talks to.
   both images, so the page and the api never disagree. An image built
   without them says `VERSION+dev` and no commit.
 - **`apiVersion` is `info.version` of `api/openapi.json`** and rises only
-  for a change that breaks clients. `capabilities` stays empty until the
-  integration features are named (#409).
+  for a change that breaks clients. `capabilities` names the integration
+  features (#409, see `docs/integration.md`).
 - **The sidebar shows the api's build,** `v1.2.3` for a release and
   `v1.2.3+4 · abc1234` otherwise, with the commit and build time in its
   tooltip, since a bug report needs the build that served it. While the api
