@@ -104,9 +104,9 @@ describe("the chart block", () => {
               groupBy: "statusCategory",
               total: 4,
               slices: [
-                { label: "To do", category: "todo", count: 2 },
-                { label: "Done", category: "done", count: 1 },
-                { label: "In progress", category: "in_progress", count: 1 },
+                { label: "todo", category: "todo", count: 2 },
+                { label: "done", category: "done", count: 1 },
+                { label: "in_progress", category: "in_progress", count: 1 },
               ],
               days: [],
               url: `${BASE}/search?q=project+%3D+CP`,

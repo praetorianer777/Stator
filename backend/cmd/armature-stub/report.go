@@ -14,8 +14,6 @@ import (
 // a count grouped by one field, and created_vs_resolved, a day by day count
 // over a window that ends today.
 
-var categoryLabels = map[string]string{"todo": "To do", "in_progress": "In progress", "done": "Done"}
-
 // scoped reads a project route's project and its q, answering for itself
 // when it cannot: counted are the issues of the project the query matches.
 func scoped(c *call) (pr *project, counted []*issue, ok bool) {
@@ -69,7 +67,7 @@ func (s *stub) report(c *call) {
 func (s *stub) chart(c *call, groupBy string, counted []*issue) {
 	label := map[string]func(*issue) (string, string){
 		"status":         func(is *issue) (string, string) { return is.Status.Name, is.Status.Category },
-		"statusCategory": func(is *issue) (string, string) { return categoryLabels[is.Status.Category], is.Status.Category },
+		"statusCategory": func(is *issue) (string, string) { return is.Status.Category, is.Status.Category },
 		"type":           func(is *issue) (string, string) { return is.Type.Name, "" },
 		"priority":       func(is *issue) (string, string) { return is.Priority, "" },
 		"assignee": func(is *issue) (string, string) {

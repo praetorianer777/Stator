@@ -239,34 +239,38 @@ func (s *stub) me(c *call) {
 			"installation": map[string]any{"id": t.OrgID, "name": orgName(t)},
 			"role":         roleOf(p),
 		},
-		"organizations": []map[string]any{{"orgId": t.OrgID, "orgSlug": t.Slug, "orgName": orgName(t), "role": roleOf(p)}},
-		"limits":        map[string]any{"uploadBytes": uploadBytes},
+		"limits": map[string]any{"uploadBytes": uploadBytes},
 		// Every call to the stub carries a personal access token, which
 		// Armature describes here; a session would answer null.
 		"token": map[string]any{"id": idOf(t.Slug, "token", p.Name), "name": "Stator", "scopes": []string{}, "projects": []string{}, "createdAt": seeded},
 	})
 }
 
-// issuePermissions are what Armature grants a member on a project they work in.
-var issuePermissions = []string{"issue.read", "issue.write", "comment.write"}
+// The stub grants each project it shows somebody as Armature's built-in
+// roles would over that one project: user to work in it, reader to see it.
+var (
+	userPermissions   = []string{"read", "issue.write", "issue.transition", "comment.write"}
+	readerPermissions = []string{"read"}
+)
 
 func (s *stub) access(c *call) {
 	projects := map[string][]string{}
-	var keys []string
+	keys := []string{}
 	var grants []map[string]string
 	for _, pr := range c.tenant.projects {
 		if c.person.sees(pr) {
-			projects[pr.Key] = issuePermissions
+			role, perms := "user", userPermissions
 			if !c.person.writes(pr) {
-				projects[pr.Key] = []string{"issue.read"}
+				role, perms = "reader", readerPermissions
 			}
+			projects[pr.Key] = perms
 			keys = append(keys, pr.Key)
-			grants = append(grants, map[string]string{"projectKey": pr.Key, "role": "developer"})
+			grants = append(grants, map[string]string{"projectKey": pr.Key, "role": role})
 		}
 	}
 	org := []string{}
 	if c.person.Name == adminName {
-		org = []string{"org.administer"}
+		org = []string{"org.administer", "project.create"}
 	}
 	respond(c.w, http.StatusOK, map[string]any{
 		"canAdministerOrg": c.person.Name == adminName,
