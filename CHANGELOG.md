@@ -9,6 +9,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Other tools, Exciter first, put remote links on pages (#419):
+  `GET`, `POST` and `DELETE /api/v1/pages/{pageID}/remote-links`, each link a
+  `url`, `title` (at most 255 characters), `source` and optional `iconUrl`,
+  with who first put it. A `POST` with a `url` the page has already replaces
+  that link (200), a new one is 201. Reading needs view of the page, putting
+  and taking need edit, in the service and in the database alike. A page
+  lists its links to its readers in a panel grouped by source, in English and
+  German, and whoever may edit it can take one off; taking one off sends the
+  webhook topic `page.remote_link.removed` with the page and the link's `id`
+  and `url`. Links stay with their page in the trash and go when it is
+  purged. `GET /api/v1/meta` lists `page-remote-links@1`; see
+  `docs/integration.md`.
 - Stator's outbound webhooks carry an envelope version (#412), as Armature's
   do. Receivers see three things new, none of which breaks one written
   before: the body has `"version": 1` before `id` and `"source": "stator"`

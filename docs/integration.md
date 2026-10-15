@@ -12,7 +12,7 @@ promise features, not data.
   "product": "stator",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["page-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"]
+  "capabilities": ["page-links@1", "page-remote-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"]
 }
 ```
 
@@ -30,6 +30,20 @@ the page, with `source` `Stator`.
 
 - `GET /pages/{pageID}/armature-links`
 - the worker's topic `armature.links`
+
+### `page-remote-links@1`
+
+Another tool puts links to its objects on a page, such as the requirements a
+page specifies, as somebody who may edit the page, with that person's own
+personal access token; a link with the same url replaces the one there, and
+the tool hears through a webhook when somebody takes one off. The page shows
+them to its readers, grouped by source.
+
+- `GET /pages/{pageID}/remote-links`, `POST /pages/{pageID}/remote-links`
+- `DELETE /pages/{pageID}/remote-links/{linkID}`
+- topic `page.remote_link.removed`
+
+See [Remote links on pages](#remote-links-on-pages).
 
 ### `webhook-receiver@1`
 
@@ -54,7 +68,8 @@ delivery and a new secret, each delivery a signed, numbered envelope as
 - `GET /webhooks/{webhookID}/deliveries`
 - `POST /webhooks/{webhookID}/deliveries/{deliveryID}/redeliver`
 - `POST /webhooks/{webhookID}/test`, `POST /webhooks/{webhookID}/rotate-secret`
-- topics `page.published`, `page.moved`, `page.deleted` and `comment.created`
+- topics `page.published`, `page.moved`, `page.deleted`, `comment.created`
+  and `page.remote_link.removed`
 
 ### `theme-export@1`
 
@@ -68,8 +83,54 @@ The list lives in `backend/internal/httpapi/capabilities.go`. A unit test
 refuses a capability naming an operation the operations table does not have
 or that answers 501, a topic `events.Topics` does not list or one the
 receiver does not act on, and a name that is not `name@version` or is listed
-twice. `page.remote-links`, remote links on Stator's own pages, comes with
-#419.
+twice.
+
+## Remote links on pages
+
+A tool keeps its own links on a page, as Stator keeps its links on Armature's
+issues (`page-links@1`). The model is Armature's remote links on issues.
+
+| Field | What it is |
+| --- | --- |
+| `url` | The object's address, `http://` or `https://`, at most 2048 characters. The key: a page has one link per `url`. |
+| `title` | The object's title, at most 255 characters. |
+| `source` | The tool's name, at most 100 characters, such as `Exciter`. The page groups links by it. |
+| `iconUrl` | Optional: a small picture of the tool, `http://` or `https://`. Where it does not load, the source's initial stands in. |
+
+`POST /pages/{pageID}/remote-links` with those fields answers 201 and
+`{remoteLink}` for a new link, and 200 for one whose `url` the page has
+already, which it replaces: the title, source and icon are the new ones, the
+`id` and `createdBy`, who first put it, stay. So a tool can send all of its
+links again whenever it likes. A field that cannot be stored is 422 with a
+sentence on that field.
+
+- **Who.** `GET` needs view of the page, and answers `{remoteLinks}` by
+  source, then in the order they were put; `POST` and `DELETE` need edit of
+  it. A page the caller may not view is 404, one they may view but not edit
+  403, and a read-only token is refused every write with 403
+  `read_only_token`. The database holds the same rules, so a link is never
+  read, put or taken around the service.
+- **Taking one off.** `DELETE /pages/{pageID}/remote-links/{linkID}` answers
+  204, or 404 for a link that is not on that page. Whoever took it off, the
+  tool that put it included, every webhook subscribed to
+  `page.remote_link.removed` is told, so a tool can leave off what a person
+  took off:
+
+  ```json
+  { "page": { "id": "...", "title": "Plans", "version": 3, "url": "...", "space": { "key": "DOC", "name": "Docs" }, "kind": "page" },
+    "remoteLink": { "id": "...", "url": "https://exciter.example/r/...", "title": "REQ-1 Sign in (specifies)", "source": "Exciter" },
+    "actor": { "id": "...", "name": "Ada" } }
+  ```
+
+  As every payload, the page is read as the webhook's owner when the attempt
+  is sent; one they may not view, or one never published, withholds the
+  delivery.
+- **The trash.** A link stays with its page in the trash, is out of reach
+  there, comes back with it, and goes when the page is purged, without a
+  webhook: `page.deleted` has said the page is gone. A copy of a page takes
+  none of its links, which belong to the original.
+- **No other topic.** Putting a link is not announced; the tool that put it
+  knows.
 
 ## Webhooks Stator sends
 
@@ -96,7 +157,7 @@ delivery it sees to it.
 | `version` | The envelope version the endpoint was registered for, an integer. |
 | `id` | The event's id, the same on every retry and redelivery, so a receiver can drop one it has handled. |
 | `source` | The product that sent it, always `stator`. Added to version 1 without raising it, as a step toward the shape a later version takes. |
-| `topic` | `ping`, `page.published`, `page.moved`, `page.deleted` or `comment.created`. |
+| `topic` | `ping`, `page.published`, `page.moved`, `page.deleted`, `comment.created` or `page.remote_link.removed`. |
 | `occurredAt` | When the event happened, in UTC. |
 | `payload` | The event's own fields, read as the endpoint's owner when the attempt is sent. |
 
