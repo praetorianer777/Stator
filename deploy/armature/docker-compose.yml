@@ -1,0 +1,119 @@
+# A real Armature beside the stack, for make test-armature (mk/armature.mk):
+# built from the commit api/armature/SOURCE names, which is also the commit
+# whose API document the armature-stub is held to. Only what Stator calls
+# runs: the api, the worker that posts webhooks, and what those two need.
+# Every service joins the stack's own network, so Stator's api and worker
+# reach it as armature-api and its worker posts to Stator's api as api.
+# Names start with armature- because the stack has an api of its own.
+
+x-db-urls: &db-urls
+  ARMATURE_DB_PRIMARY_URL: postgres://armature_app:armature_app@armature-postgres:5432/armature?sslmode=disable
+  ARMATURE_DB_ADMIN_URL: postgres://armature_admin:armature_admin@armature-postgres:5432/armature?sslmode=disable
+  ARMATURE_REDIS_URL: redis://:armature_valkey@armature-valkey:6379/0
+
+# Development settings, as Armature's own stack has them: open sign-up so the
+# seed makes its people through the API, and private addresses let through so
+# the worker reaches Stator's api on the shared network.
+x-armature-env: &armature-env
+  <<: *db-urls
+  ARMATURE_ENV: development
+  ARMATURE_LOG_LEVEL: debug
+  ARMATURE_NAME: Armature
+  ARMATURE_SIGNUP: open
+  ARMATURE_OUTBOUND_ALLOW: "127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+  ARMATURE_SECRET_KEY: YXJtYXR1cmUtZGV2LWtleS1ub3QtYS1zZWNyZXQtMDA=
+  ARMATURE_APP_URL: http://localhost:${ARMATURE_PORT:-8191}
+
+# Tagged with the commit, so another checkout or a later run of the same
+# commit starts the images already built.
+x-build: &build
+  context: ${ARMATURE_SRC:?make armature-src checks Armature out and names it}
+  dockerfile: deploy/Dockerfile.backend
+
+services:
+  armature-postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: armature
+      POSTGRES_PASSWORD: armature
+      POSTGRES_DB: armature
+      APP_DB_PASSWORD: armature_app
+      ADMIN_DB_PASSWORD: armature_admin
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    # Nothing here outlives a run, so a commit need not wait for the disk.
+    command: ["postgres", "-c", "synchronous_commit=off", "-c", "track_commit_timestamp=on"]
+    volumes:
+      - ${ARMATURE_SRC}/deploy/postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    tmpfs:
+      - /var/lib/postgresql/18/docker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U armature -d armature"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+      start_interval: 1s
+
+  armature-valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--requirepass", "armature_valkey"]
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -a armature_valkey --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+      start_interval: 1s
+
+  armature-migrate:
+    image: stator-armature-migrate:${ARMATURE_REF:?the pinned commit}
+    build:
+      <<: *build
+      target: migrate
+    depends_on:
+      armature-postgres:
+        condition: service_healthy
+    environment:
+      ARMATURE_DB_PRIMARY_URL: postgres://armature:armature@armature-postgres:5432/armature?sslmode=disable
+    restart: "no"
+
+  armature-api:
+    image: stator-armature-api:${ARMATURE_REF:?the pinned commit}
+    build:
+      <<: *build
+      target: api
+    depends_on:
+      armature-migrate:
+        condition: service_completed_successfully
+      armature-valkey:
+        condition: service_healthy
+    environment:
+      <<: *armature-env
+      ARMATURE_HTTP_ADDR: ":8080"
+    ports:
+      - "127.0.0.1:${ARMATURE_PORT:-8191}:8080"
+    healthcheck:
+      test: ["CMD", "/app/api", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+      start_interval: 1s
+
+  armature-worker:
+    image: stator-armature-worker:${ARMATURE_REF:?the pinned commit}
+    build:
+      <<: *build
+      target: worker
+    depends_on:
+      armature-migrate:
+        condition: service_completed_successfully
+      armature-valkey:
+        condition: service_healthy
+    environment:
+      <<: *armature-env
+
+networks:
+  default:
+    name: ${STACK_NET:?the stack's network; start the stack first}
+    external: true

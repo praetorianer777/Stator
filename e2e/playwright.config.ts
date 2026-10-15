@@ -11,11 +11,14 @@ const INSTANCE_FILES = new RegExp(`/(${INSTANCE_SPECS.join("|")})\\.spec\\.ts$`)
 // `make test-e2e` runs the suite in two phases, the parallel specs and then
 // the instance ones with one worker, since a project depending on another
 // would run the other whole in every shard. Without E2E_PHASE every project
-// is there, for running one spec by hand.
-type Phase = "parallel" | "instance";
+// but the real Armature's is there, for running one spec by hand. `make
+// test-armature` runs the third phase alone, against a real Armature it
+// starts beside the stack (e2e/real-armature).
+type Phase = "parallel" | "instance" | "armature";
+const PHASES: Phase[] = ["parallel", "instance", "armature"];
 const PHASE = process.env.E2E_PHASE as Phase | undefined;
-if (PHASE !== undefined && PHASE !== "parallel" && PHASE !== "instance") {
-  throw new Error(`E2E_PHASE is ${PHASE}; set it to parallel or instance, or leave it out.`);
+if (PHASE !== undefined && !PHASES.includes(PHASE)) {
+  throw new Error(`E2E_PHASE is ${PHASE}; set it to ${PHASES.join(", ")}, or leave it out.`);
 }
 
 const desktop = { ...devices["Desktop Chrome"] };
@@ -30,6 +33,27 @@ const instanceProjects: Project[] = [
   { ...instance, name: "instance", grepInvert: /@mobile/, use: desktop },
   { ...instance, name: "instance-mobile", grepInvert: /@desktop/, use: mobile },
 ];
+// The seed makes Armature's people, project and issues once for the phase;
+// the specs connect the organization to it, so they run one at a time.
+const armatureProjects: Project[] = [
+  { name: "armature-seed", testDir: "./real-armature", testMatch: /seed\.setup\.ts$/ },
+  {
+    name: "real-armature",
+    testDir: "./real-armature",
+    testMatch: /\.spec\.ts$/,
+    dependencies: ["setup", "armature-seed"],
+    fullyParallel: false,
+    metadata: { [RESETS_INSTANCE]: true },
+    use: desktop,
+  },
+];
+const phaseProjects: Record<Phase | "all", Project[]> = {
+  parallel: parallelProjects,
+  instance: instanceProjects,
+  armature: armatureProjects,
+  all: [...parallelProjects, ...instanceProjects],
+};
+const phaseSuffix = PHASE === "parallel" || PHASE === undefined ? "" : `-${PHASE}`;
 
 // CI splits the suite across jobs, each of which leaves a blob per phase that
 // the run's last job merges into one HTML report and one JSON file
@@ -41,13 +65,13 @@ const reporter: ReporterDescription[] = process.env.CI
   ? [["list"], ["blob", { outputDir: `${REPORTS_DIR}/e2e-blob/${PHASE ?? "all"}`, fileName: `report-${PHASE ?? "all"}${shardName}.zip` }]]
   : [
       ["list"],
-      ["html", { outputFolder: PHASE === "instance" ? "playwright-report-instance" : "playwright-report", open: "never" }],
+      ["html", { outputFolder: `playwright-report${phaseSuffix}`, open: "never" }],
       ["json", { outputFile: `${REPORTS_DIR}/e2e${PHASE ? `-${PHASE}` : ""}/e2e.json` }],
     ];
 
 export default defineConfig({
   testDir: "./tests",
-  outputDir: PHASE === "instance" ? "./test-results-instance" : "./test-results",
+  outputDir: `./test-results${phaseSuffix}`,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
@@ -68,7 +92,6 @@ export default defineConfig({
   projects: [
     { name: "setup", testMatch: /.*\.setup\.ts/, teardown: "teardown" },
     { name: "teardown", testMatch: /.*\.teardown\.ts/ },
-    ...(PHASE === "instance" ? [] : parallelProjects),
-    ...(PHASE === "parallel" ? [] : instanceProjects),
+    ...phaseProjects[PHASE ?? "all"],
   ],
 });

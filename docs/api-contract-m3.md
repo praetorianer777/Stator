@@ -80,10 +80,11 @@ New settings, in compose and the chart:
   `armature.MaxResponseBytes`, 4 MiB, and a theme file up to
   `theme.MaxPackageBytes`.
 - **Local development.** The compose stack sets
-  `STATOR_OUTBOUND_ALLOW=armature-stub` and
-  `STATOR_ARMATURE_BACKCHANNEL=http://localhost:${ARMATURE_STUB_PORT}=http://armature-stub:8080`,
-  so the base URL is the one a browser opens and the api reaches the stub on
-  the compose network. To use a real Armature running on the host instead, set
+  `STATOR_OUTBOUND_ALLOW=armature-stub,web,armature-api` and
+  `STATOR_ARMATURE_BACKCHANNEL=http://localhost:${ARMATURE_STUB_PORT}=http://armature-stub:8080,http://localhost:${ARMATURE_PORT}=http://armature-api:8080`,
+  so the base URL is the one a browser opens and the api reaches the stub, or
+  the real Armature of `make test-armature`, on the compose network. To use a
+  real Armature running on the host instead, set
   `STATOR_OUTBOUND_ALLOW=host.docker.internal`, give `api` and `worker`
   `extra_hosts: ["host.docker.internal:host-gateway"]`, and map
   `http://localhost:8080=http://host.docker.internal:8080`. Nothing else
@@ -737,6 +738,51 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   vendored document is how a change in Armature reaches Stator; the test then
   says what the stub has to follow.
 
+## Against a real Armature
+
+The stub answers in Armature's shapes, but only a real Armature shows that
+Stator works with one (#420). `make test-armature`, the `test-armature` layer
+of `./run-tests.sh` and a CI job of its own, runs the browser specs under
+`e2e/real-armature` against the running stack and an Armature it builds and
+starts beside it.
+
+- **Which Armature.** The commit `api/armature/SOURCE` names, the same one
+  whose document the stub is held to, so the file is the one place the
+  Armature Stator is tested with is pinned, for Dynamo as much as for Stator.
+  `make armature-openapi REF=...` moves both. `make armature-src` checks the
+  commit out under `.cache/armature/src` in a container, from GitHub or from
+  `ARMATURE_GIT`, such as a local clone that has it.
+- **How it runs.** `deploy/armature/docker-compose.yml` builds Armature's
+  api, worker and migrations from that checkout, tagged with the commit so
+  another checkout or run reuses them, and starts them with a Postgres and a
+  Valkey of their own on the stack's network, as `armature-api` and the rest.
+  The stack's api and worker reach `armature-api` through the guard and the
+  backchannel like the stub, and Armature's worker posts webhooks to `api`.
+  It publishes `ARMATURE_PORT`, the tenth port of the checkout's block, which
+  `.cache/stack.env` names as `STATOR_REAL_ARMATURE_URL`. Every run starts
+  from an empty Armature and removes it afterwards; `KEEP_ARMATURE=1` keeps
+  it for a look, and `make armature-down` or `make stack-down` removes it.
+- **The seed**, `e2e/real-armature/seed.setup.ts`, makes everything through
+  Armature's own API: Ada signs up first and administers the installation,
+  Mia and Nils sign up as members, and Nils's grant is taken away so his
+  token works and sees nothing. Ada makes the project `RA` with a team, an
+  epic over two dated issues and a third issue due this month; each of them
+  gets a personal access token, Mia uses one of Armature's example themes,
+  and a webhook to Stator is registered for the topics Stator reads.
+- **What it covers.** Connecting Armature in the settings and storing a
+  token; a chip, the issue block (inserted from the slash menu too), the
+  issue list, the chart, the roadmap and the calendar's issues as Mia sees
+  them, and Nils seeing none of them; issues filed from a selection; the
+  remote link a published page puts on its issue, and its removal when the
+  page goes to the trash; a change in Armature reaching the page through
+  Armature's own signed webhook; and following Mia's Armature theme.
+- **Where the two disagreed**, the stub follows Armature: a chart by status
+  category or priority is labelled with Armature's own values, such as
+  `in_progress`, which the chart words for the reader; `GET /access/me`
+  names Armature's permissions (`read`, `issue.write`, `issue.transition`,
+  `comment.write`) and roles (`user`, `reader`); `GET /auth/me` has no list
+  of organizations; and `GET /projects` answers a page at a time.
+
 ## Changes Armature needs
 
 To be filed in Cloudster1/Armature; none blocks the start of M3.
@@ -747,12 +793,16 @@ To be filed in Cloudster1/Armature; none blocks the start of M3.
    until its cache runs out. Wanted: `issue.deleted` `{issueId, key, actorId}`,
    subscribable by webhooks, and `issue.created` for clones and imports. Stator
    then clears `issue:{key}` and `search` for it (#33).
-2. **Say what a token may do.** `GET /auth/me` called with a token does not
+2. **Say what a token may do.** Done: `GET /auth/me` answers `token`.
+   `GET /auth/me` called with a token did not
    say that the token has the read scope, so Stator cannot warn at connect time
    that it will not create issues or sync links. Wanted: `GET /auth/me` answers
    `token: {id, name, scopes, projects, expiresAt}` when the caller is a token,
    null for a session (#27, #31, #32).
-3. **Sign a timestamp on webhooks** (hardening, not needed for M3). A delivery
+3. **Sign a timestamp on webhooks** (hardening, not needed for M3). Done:
+   Armature sends `X-Armature-Timestamp` and
+   `X-Armature-Signature-Timestamped-256`, and numbers the envelope, of which
+   Stator reads version 1 and refuses any other with 422. A delivery
    carries no signed time, so a receiver can only defend against replays by
    remembering event ids. Wanted: an `X-Armature-Timestamp` header, and a
    second signature header over `{timestamp}.{body}`, so receivers written for

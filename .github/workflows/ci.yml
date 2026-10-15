@@ -137,8 +137,44 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # The real Armature (mk/armature.mk), built from the commit
+  # api/armature/SOURCE pins. A job of its own beside the gate: building
+  # Armature takes it longer than any part of the gate, and a change in how
+  # Armature answers shows here without the stub's jobs turning red with it.
+  armature:
+    name: test-armature
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore the npm cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/npm
+          key: npm-e2e-${{ hashFiles('e2e/package-lock.json') }}
+          restore-keys: npm-e2e-
+
+      - name: Run test-armature
+        run: ./run-tests.sh test-armature
+
+      - name: Say why the job stopped
+        if: cancelled()
+        run: echo "::error title=Job stopped::The real-Armature job was cancelled before it finished, by its time limit or by a newer push to this branch. No test failed; look at the run's duration."
+
+      - name: Keep the layer's reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-armature
+          path: reports/
+          retention-days: 7
+          if-no-files-found: ignore
+
   report:
-    needs: gate
+    needs: [gate, armature]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

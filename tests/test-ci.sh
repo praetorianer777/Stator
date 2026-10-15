@@ -17,7 +17,9 @@ fail() { echo "   ❌ $1"; FAILED=1; }
 
 echo "🧪 ci.yml runs the whole gate"
 
-ci_layers=$(sed -n 's/^ *layers: *//p' "$CI" | tr ' ' '\n' | sort)
+# A job of the gate's matrix names its layers; a job of its own runs them
+# with ./run-tests.sh on one line.
+ci_layers=$({ sed -n 's/^ *layers: *//p' "$CI"; sed -n 's|^ *run: \./run-tests\.sh \([a-z -]*\)$|\1|p' "$CI"; } | tr ' ' '\n' | sed '/^$/d' | sort)
 for layer in $("$SRC/run-tests.sh" --list); do
   if grep -qx "$layer" <<< "$ci_layers"; then
     pass "a job runs $layer"
