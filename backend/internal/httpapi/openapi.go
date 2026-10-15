@@ -42,6 +42,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/template"
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
+	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 	"github.com/praetorianer777/stator/backend/internal/wikiread"
@@ -126,6 +127,8 @@ var operations = append([]operation{
 		responses: map[int]any{200: readinessResponse{}, 503: statusResponse{}}},
 	{method: "GET", path: "/openapi.json", handler: "handleOpenAPI", tag: "health", summary: "This document.", public: true,
 		responses: ok(openapi.Document{})},
+	{method: "GET", path: "/meta", handler: "handleMeta", tag: "health", summary: "Which product and build answers here, the API version it speaks and the integration features it offers. Armature and Exciter answer the same shape.", public: true,
+		responses: ok(metaResponse{})},
 
 	{method: "POST", path: "/auth/login", handler: "handleLogin", tag: "auth", summary: "Sign in a local account with email and password, and set the session cookie.", public: true,
 		request: loginRequest{}, responses: ok(meResponse{})},
@@ -1036,6 +1039,8 @@ func enumStrings[T ~string](values []T) []string {
 // by the document and the MCP tools so both describe a type alike.
 func specBuilder() *openapi.Builder {
 	b := openapi.NewBuilder()
+	b.Names[reflect.TypeOf(metaResponse{})] = "Meta"
+	b.Names[reflect.TypeOf(version.Info{})] = "BuildInfo"
 	b.Names[reflect.TypeOf(page.CreateInput{})] = "PageCreateInput"
 	b.Names[reflect.TypeOf(page.UpdateInput{})] = "PageUpdateInput"
 	b.Names[reflect.TypeOf(reaction.Input{})] = "ReactionInput"
@@ -1195,7 +1200,7 @@ func Spec() *openapi.Document {
 		OpenAPI: "3.1.0",
 		Info: openapi.Info{
 			Title:   "Stator",
-			Version: "1",
+			Version: APIVersion,
 			Description: "The wiki's HTTP API. Every endpoint answers JSON; errors share one envelope. " +
 				"Sign in with a session cookie or an API token sent as a bearer token.",
 		},

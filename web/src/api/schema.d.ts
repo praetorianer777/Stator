@@ -821,6 +821,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which product and build answers here, the API version it speaks and the integration features it offers. Armature and Exciter answer the same shape. */
+        get: operations["meta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/notification-preferences": {
         parameters: {
             query?: never;
@@ -4209,6 +4226,11 @@ export interface components {
             footer: components["schemas"]["Footer"];
             logo: components["schemas"]["Logo"] | null;
         };
+        BuildInfo: {
+            builtAt?: string;
+            commit?: string;
+            version: string;
+        };
         Calendar: {
             canEdit: boolean;
             /** Format: date-time */
@@ -4924,6 +4946,12 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+        };
+        Meta: {
+            apiVersion: string;
+            build: components["schemas"]["BuildInfo"];
+            capabilities: string[];
+            product: string;
         };
         MissingPerson: {
             email: string;
@@ -8899,6 +8927,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    meta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meta"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

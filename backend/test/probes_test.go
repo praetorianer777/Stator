@@ -35,6 +35,7 @@ func TestProbesAndMetricsAgainstTheDatabase(t *testing.T) {
 		{api.URL + "/healthz", `"status":"ok"`},
 		{api.URL + "/readyz", `"routing"`},
 		{api.URL + httpapi.APIPrefix + "/openapi.json", `"bearerFormat":"stator_pat_`},
+		{api.URL + httpapi.APIPrefix + "/meta", `"product":"stator"`},
 		{metrics.URL + "/metrics", `stator_db_pool_connections{pool="primary"`},
 	} {
 		resp, err := http.Get(probe.url)
