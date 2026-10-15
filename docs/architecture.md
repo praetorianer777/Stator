@@ -259,7 +259,10 @@ Two images are built. `Dockerfile.backend` holds every Go binary, and each
 service picks one by its command. Both images are stamped with the version and
 commit `scripts/build-stamp.sh` reads from git (`1.2.3` on a release tag,
 `1.2.3+4.gabc1234` past one, `VERSION+dev` without one), which compose passes
-as build arguments; `GET /api/v1/meta` reports it and the sidebar shows it. `Dockerfile.web` builds
+as build arguments; `GET /api/v1/meta` reports it and the sidebar shows it.
+A release builds them, with the `backup` target and `Dockerfile.render`, from
+its tag and pushes them to `ghcr.io/praetorianer777/stator-<image>`
+(`docs/releasing.md`). `Dockerfile.web` builds
 the SPA with Node and serves it from nginx (`deploy/nginx.conf`), which proxies
 `/api/`, `/healthz` and `/readyz` to the api so the browser sees one origin,
 over connections it keeps and reuses (in compose it looks the api's address

@@ -3,6 +3,48 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-15: A release is a pull request, and its merge commit is the tag (#410)
+
+Stator, Armature and Exciter release the same way, after the release script
+of chaosflix-jellyfin: `./release.sh` infers the next semver from the
+Conventional Commits and writes the notes, and a `v*` tag publishes. Here
+main takes no direct commits, so the flow differs where it has to.
+
+- **The bump travels on `release/vX.Y.Z`.** `release.sh` keeps its checks
+  (on `main`, not behind `origin/main`) and adds a clean tree and an unused
+  tag and branch, then commits the version files and the changelog on that
+  branch, pushes it and opens its pull request. The branch guard accepts the
+  name without an issue: the version is its identity and the pull request
+  its record, and a release is the user's job, not an agent's.
+- **The workflow tags the merge commit, not the script.** A tag set by
+  `release.sh` would sit on a commit main does not have; a tag set after the
+  merge by hand is a step that gets forgotten. `release.yml` runs on the
+  closed pull request and `scripts/release-tag.sh` tags the merge commit,
+  refusing one main lacks, version files that say another version and a tag
+  that points elsewhere. The message is the release's `CHANGELOG.md`
+  section, which the pull request showed for review.
+- **One run does the rest.** A tag pushed with the workflow's own token
+  starts no workflow, so the image, chart and release jobs follow the tag
+  job in the same run; a tag pushed by hand and `workflow_dispatch` start
+  them too, for a re-run.
+- **One list of version files.** `scripts/version-files.sh` names them
+  (`VERSION`, the chart's `version` and `appVersion`, a `package.json` once
+  it carries a version) for `release.sh`, the workflow and the test that
+  refuses them disagreeing. The chart is versioned with the application, so
+  chart `X.Y.Z` installs Stator `X.Y.Z`.
+- **Images are `ghcr.io/praetorianer777/stator-<image>`,** tagged `X.Y.Z`
+  and with the short commit, and the chart's defaults point there; the chart
+  is `oci://ghcr.io/praetorianer777/charts/stator`, apart from the images so
+  the two kinds of package never share a name. A test keeps the workflow's
+  image list equal to the images the chart runs at its `appVersion`.
+- **Dynamo is told, not waited for.** A `repository_dispatch`
+  (`tool-released`, `{tool, version}`) goes to Dynamo when
+  `DYNAMO_DISPATCH_TOKEN` is set; without it the release still stands and
+  the run leaves a notice.
+- **A workflow that runs only on a release is checked on every push:**
+  actionlint over `.github/workflows`, the image and chart names, and the
+  packaged chart's version, in `tests/test-release-workflow.sh`.
+
 ## 2026-10-15: Every build says what it is, at GET /api/v1/meta (#407, #398)
 
 Stator, Armature and Exciter answer the same unauthenticated
@@ -11,7 +53,7 @@ Stator, Armature and Exciter answer the same unauthenticated
 release can tell which build of which tool it talks to.
 
 - **The version is semver, as Armature's.** `scripts/build-stamp.sh` derives
-  it from git: `1.2.3` on the tag `v1.2.3` that `release.sh` makes,
+  it from git: `1.2.3` on the tag `v1.2.3` that a release sets,
   `1.2.3+4.gabc1234` four commits past it, and `VERSION+dev` with no tag in
   reach (CI's shallow clone) or outside git. The commit is the short hash.
 - **Passed in, not read in the image.** Armature's image build runs
