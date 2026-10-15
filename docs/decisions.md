@@ -3,6 +3,30 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-15: The suite signs in through one realm, dynamo (#411)
+
+Stator, Armature and Exciter each ran a Keycloak realm of their own, so one
+sign-in never carried across and Dynamo could not start one Keycloak for the
+three. They now import the same `deploy/keycloak/realm.json`: realm
+`dynamo`, a client per tool with the same redirect patterns and `groups`
+claim, and the people alice, bob, carol and dave. Stator uses only its own
+client; the others are there so one file serves the suite. The secrets and
+passwords in it are for development only.
+
+Dynamo will hold the canonical copy. Until it does, Armature's copy at the
+commit `api/armature/SOURCE` pins is the canonical one: `make
+armature-openapi` vendors it beside Armature's API document as
+`api/armature/realm.json`, and `tests/test-realm.sh` refuses a
+`deploy/keycloak/realm.json` that is not the same bytes. A vendored copy,
+not a fetch, because the shell layer runs before every push and must work
+offline and never flake on the network; and the pin is the one place
+Stator already names which Armature it follows, so moving it moves the realm
+with it. Armature compares its copy with Dynamo's (`make realm-check`); once
+Dynamo holds the realm, Stator's check reads that copy instead.
+
+**Reconsider if** the tools need people or groups the others must not see:
+then each keeps its realm, and Dynamo gives up one Keycloak for all three.
+
 ## 2026-10-15: The webhook envelope carries a version, and each attempt signs its time (#412)
 
 Stator's outbound envelope gains Armature's `version` (Cloudster1/Armature#242),

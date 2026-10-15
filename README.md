@@ -36,20 +36,26 @@ to `.cache/stack.env`.
 | Mailpit | `http://localhost:$MAILPIT_PORT` |
 | Postgres | `127.0.0.1:$POSTGRES_PORT`, user `stator`, password `stator` |
 
-Keycloak imports the realm `stator-dev` with the clients `stator` (secret
-`stator-dev-secret`) and `armature` (secret `armature-dev-secret`). Both put a
-`groups` claim in their tokens. The test users:
+Keycloak imports the realm `dynamo` from `deploy/keycloak/realm.json`, the
+same file Armature and Exciter import, so one sign-in works in all three. It
+has a client per tool, `stator` (secret `stator-dev-secret`), `armature`
+(`armature-dev-secret`) and `exciter` (`exciter-dev-secret`); Stator uses only
+its own. Each puts a `groups` claim in its tokens. The secrets and passwords
+in the realm are for development only. `tests/test-realm.sh` refuses a realm
+that differs from Armature's at the commit `api/armature/SOURCE` pins, the
+canonical copy until Dynamo holds one. The test users:
 
-| User | Password | Groups |
-|---|---|---|
-| `alice` | `alice password` | `stator-administrators`, `engineering` |
-| `bob` | `bob password` | `marketing` |
-| `carol` | `carol password` | `engineering` |
+| User | Password | Email | Groups |
+|---|---|---|---|
+| `alice` | `alice password` | `alice@suite.test` | `armature-administrators`, `exciter-administrators`, `stator-administrators`, `engineering` |
+| `bob` | `bob password` | `bob@suite.test` | `developers`, `engineering` |
+| `carol` | `carol password` | `carol@suite.test` | `portal-owners`, `scrum-masters`, `quality` |
+| `dave` | `dave password` | `dave@suite.test` | `readers`, `marketing` |
 
 The seed points the `demo` organization at this realm, so on the sign-in page
 enter `demo` and choose "Sign in with SSO". The seed lets `alice` in as an
 administrator and `bob` as a member ahead of time; anybody else the realm signs
-in, such as `carol`, waits until an administrator lets them in under Single sign-on, in the
+in, such as `carol` or `dave`, waits until an administrator lets them in under Single sign-on, in the
 account menu. Their groups follow them once they are in. The seed also makes a local
 administrator of `demo` for the password form: `admin@stator.test` with
 `stator admin password`. The client `stator` requires PKCE.

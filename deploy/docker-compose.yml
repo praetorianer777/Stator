@@ -62,10 +62,10 @@ x-armature-env: &armature-env
 # browser suite's reset gives them back.
 # Anybody else the realm signs in waits for an administrator.
 x-bootstrap-env: &bootstrap-env
-  STATOR_BOOTSTRAP_OIDC_ISSUER: http://localhost:${KEYCLOAK_PORT:-8180}/realms/stator-dev
+  STATOR_BOOTSTRAP_OIDC_ISSUER: http://localhost:${KEYCLOAK_PORT:-8180}/realms/dynamo
   STATOR_BOOTSTRAP_OIDC_CLIENT_ID: stator
   STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET: stator-dev-secret
-  STATOR_BOOTSTRAP_MEMBERS: alice@stator.test=admin,bob@stator.test=member
+  STATOR_BOOTSTRAP_MEMBERS: alice@suite.test=admin,bob@suite.test=member
 
 # Every Go service runs the same image, which migrate alone builds. Compose
 # runs each service's build at once, and the classic builder then tags one
@@ -255,10 +255,12 @@ services:
       start_period: 120s
       start_interval: 1s
 
-  # The identity provider. The realm is imported afresh on every start, so no
-  # volume: a mounted data directory would be root owned while the image runs
-  # unprivileged. The browser reaches it on the published port, containers as
-  # keycloak:8080.
+  # The identity provider, with the suite's realm dynamo: the same file
+  # Armature and Exciter import, so one sign-in works in all three; Stator
+  # uses only its own client. The realm is imported afresh on every start, so
+  # no volume: a mounted data directory would be root owned while the image
+  # runs unprivileged. The browser reaches it on the published port,
+  # containers as keycloak:8080.
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     command: ["start-dev", "--import-realm", "--http-port=8080"]

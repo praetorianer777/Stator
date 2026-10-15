@@ -8,7 +8,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const provider = {
   provider: {
-    issuer: "http://localhost:8180/realms/stator-dev",
+    issuer: "http://localhost:8180/realms/dynamo",
     clientId: "stator",
     hasSecret: true,
     groupsClaim: "groups",

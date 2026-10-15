@@ -428,7 +428,7 @@ func TestBootstrapMembersAreParsed(t *testing.T) {
 
 func TestTheBootstrapProviderNeedsAClientAndAKeyForItsSecret(t *testing.T) {
 	clean(t)
-	t.Setenv("STATOR_BOOTSTRAP_OIDC_ISSUER", "http://localhost:8180/realms/stator-dev")
+	t.Setenv("STATOR_BOOTSTRAP_OIDC_ISSUER", "http://localhost:8180/realms/dynamo")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_BOOTSTRAP_OIDC_CLIENT_ID") {
 		t.Fatalf("an issuer without a client = %v", err)
 	}
@@ -455,7 +455,7 @@ func TestTheTestEndpointsNeedATokenAProviderAndNoProduction(t *testing.T) {
 		t.Fatalf("on without a token or a provider = %v", err)
 	}
 	t.Setenv("STATOR_TEST_ENDPOINTS_TOKEN", "short")
-	t.Setenv("STATOR_BOOTSTRAP_OIDC_ISSUER", "http://localhost:8180/realms/stator-dev")
+	t.Setenv("STATOR_BOOTSTRAP_OIDC_ISSUER", "http://localhost:8180/realms/dynamo")
 	t.Setenv("STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "stator")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_TEST_ENDPOINTS_TOKEN") {
 		t.Fatalf("a short token = %v", err)

@@ -34,14 +34,16 @@ const (
 	envBuildCommit  = "STATOR_TEST_BUILD_COMMIT"
 )
 
-// The development realm and its credentials, as deploy/keycloak/realm.json
-// defines them and the README documents them.
+// The suite's realm and its development-only credentials, as
+// deploy/keycloak/realm.json defines them and the README documents them.
 const (
-	realm          = "stator-dev"
+	realm          = "dynamo"
 	statorClient   = "stator"
 	statorSecret   = "stator-dev-secret"
 	armatureClient = "armature"
 	armatureSecret = "armature-dev-secret"
+	exciterClient  = "exciter"
+	exciterSecret  = "exciter-dev-secret"
 )
 
 // replicaCatchUp bounds the wait for the api's first replica health pass, which
@@ -318,8 +320,8 @@ func TestANewOrganizationGetsItsGrantWhereTheOwnerIsBoundByRowLevelSecurity(t *t
 	}
 }
 
-// The realm the stack imports is the one sign-in is built against: both
-// clients sign the test users in, and their tokens carry the groups claim.
+// The realm the stack imports is the one sign-in is built against: every
+// tool's client signs the test users in, and their tokens carry the groups claim.
 func TestTheRealmSignsInTheTestUsersWithTheirGroups(t *testing.T) {
 	kc := stackURL(t, envKeycloakURL)
 
@@ -327,9 +329,12 @@ func TestTheRealmSignsInTheTestUsersWithTheirGroups(t *testing.T) {
 		client, secret, user, password string
 		groups                         []string
 	}{
-		{statorClient, statorSecret, "alice", "alice password", []string{"engineering", "stator-administrators"}},
-		{statorClient, statorSecret, "bob", "bob password", []string{"marketing"}},
-		{armatureClient, armatureSecret, "alice", "alice password", []string{"engineering", "stator-administrators"}},
+		{statorClient, statorSecret, "alice", alicePassword, aliceGroups},
+		{statorClient, statorSecret, "bob", bobPassword, []string{"developers", "engineering"}},
+		{statorClient, statorSecret, "carol", carolPassword, []string{"portal-owners", "quality", "scrum-masters"}},
+		{statorClient, statorSecret, "dave", davePassword, []string{"marketing", "readers"}},
+		{armatureClient, armatureSecret, "alice", alicePassword, aliceGroups},
+		{exciterClient, exciterSecret, "alice", alicePassword, aliceGroups},
 	} {
 		t.Run(tc.client+" signs in "+tc.user, func(t *testing.T) {
 			resp, err := httpClient.PostForm(kc+"/realms/"+realm+"/protocol/openid-connect/token", url.Values{

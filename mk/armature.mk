@@ -1,12 +1,14 @@
-# Armature's API document, vendored for the armature-stub's contract test.
-# Updating it is how a change in Armature reaches Stator: the test then says
-# what the stub has to follow. Fetched in a container, like every tool here.
+# Armature's API document, vendored for the armature-stub's contract test,
+# and its Keycloak realm from the same commit, the suite's canonical realm
+# until Dynamo holds one (tests/test-realm.sh). Updating them is how a change
+# in Armature reaches Stator: the tests then say what has to follow. Fetched
+# in a container, like every tool here.
 ARMATURE_REPO ?= Cloudster1/Armature
 CURL_IMAGE ?= curlimages/curl:8.16.0
 ARMATURE_API_DIR := $(ROOT)/api/armature
 
 .PHONY: armature-openapi
-armature-openapi: ## Vendor Armature's api/openapi.json at a commit: make armature-openapi REF=<sha or branch>
+armature-openapi: ## Vendor Armature's api/openapi.json and Keycloak realm at a commit: make armature-openapi REF=<sha or branch>
 	@[ -n "$(REF)" ] || { echo "Name the Armature commit to vendor: make armature-openapi REF=<sha or branch>"; exit 1; }
 	@mkdir -p $(ARMATURE_API_DIR)
 	@sha=$$(docker run --rm $(CURL_IMAGE) -fsSL -H 'Accept: application/vnd.github.sha' \
@@ -15,8 +17,11 @@ armature-openapi: ## Vendor Armature's api/openapi.json at a commit: make armatu
 	docker run --rm $(CURL_IMAGE) -fsSL https://raw.githubusercontent.com/$(ARMATURE_REPO)/$$sha/api/openapi.json \
 		> $(ARMATURE_API_DIR)/openapi.json.tmp \
 		&& mv $(ARMATURE_API_DIR)/openapi.json.tmp $(ARMATURE_API_DIR)/openapi.json \
+		&& docker run --rm $(CURL_IMAGE) -fsSL https://raw.githubusercontent.com/$(ARMATURE_REPO)/$$sha/deploy/keycloak/realm.json \
+			> $(ARMATURE_API_DIR)/realm.json.tmp \
+		&& mv $(ARMATURE_API_DIR)/realm.json.tmp $(ARMATURE_API_DIR)/realm.json \
 		&& printf '%s %s api/openapi.json\n' '$(ARMATURE_REPO)' "$$sha" > $(ARMATURE_API_DIR)/SOURCE \
-		&& echo "Vendored $(ARMATURE_REPO) $$sha; run make check-go to see what the stub has to follow."
+		&& echo "Vendored $(ARMATURE_REPO) $$sha; run make check-go to see what the stub has to follow, and tests/test-realm.sh whether deploy/keycloak/realm.json has to follow its realm."
 
 # A real Armature beside the stack, for the test-armature layer: built from
 # the commit api/armature/SOURCE names, so the Armature the browser suite runs

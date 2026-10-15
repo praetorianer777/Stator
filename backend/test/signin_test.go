@@ -66,7 +66,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 	a := h.startAPI(t, testSessionTTL)
 	site := h.emptySite(t, "wonderland")
 	configureProvider(t, a, kc.issuer(), true)
-	h.letIn(t, "alice@stator.test", "member")
+	h.letIn(t, "alice@suite.test", "member")
 	ctx := context.Background()
 
 	t.Run("the client secret is sealed at rest", func(t *testing.T) {
@@ -93,7 +93,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 		}
 		user, _ := me["user"].(map[string]any)
 		current, _ := me["organization"].(map[string]any)
-		if user["email"] != "alice@stator.test" || user["name"] != "Alice Admin" {
+		if user["email"] != "alice@suite.test" || user["name"] != "Alice Admin" {
 			t.Errorf("user = %v", user)
 		}
 		if current["name"] == nil || current["role"] != string(auth.RoleMember) {
@@ -106,7 +106,7 @@ func TestSignInThroughKeycloak(t *testing.T) {
 	})
 
 	t.Run("her groups are created and joined", func(t *testing.T) {
-		if got := h.providerGroups(t, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-administrators"}) {
+		if got := h.providerGroups(t, "alice@suite.test"); !slices.Equal(got, aliceGroups) {
 			t.Fatalf("groups = %q", got)
 		}
 	})
@@ -145,18 +145,18 @@ func TestSignInThroughKeycloak(t *testing.T) {
 
 		again := newBrowser(t)
 		again.signIn(t, a, "alice", alicePassword, "")
-		if got := h.providerGroups(t, "alice@stator.test"); !slices.Equal(got, []string{"stator-administrators"}) {
+		if got := h.providerGroups(t, "alice@suite.test"); !slices.Equal(got, []string{"armature-administrators", "exciter-administrators", "stator-administrators"}) {
 			t.Fatalf("groups after leaving engineering = %q", got)
 		}
 		var accounts int
-		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM app_user WHERE email = 'alice@stator.test'`).Scan(&accounts); err != nil || accounts != 1 {
+		if err := h.super.QueryRow(ctx, `SELECT count(*) FROM app_user WHERE email = 'alice@suite.test'`).Scan(&accounts); err != nil || accounts != 1 {
 			t.Fatalf("alice has %d accounts after signing in twice (%v)", accounts, err)
 		}
 
 		kc.setMembership(t, "alice", "engineering", true)
 		again = newBrowser(t)
 		again.signIn(t, a, "alice", alicePassword, "")
-		if got := h.providerGroups(t, "alice@stator.test"); !slices.Equal(got, []string{"engineering", "stator-administrators"}) {
+		if got := h.providerGroups(t, "alice@suite.test"); !slices.Equal(got, aliceGroups) {
 			t.Fatalf("groups after rejoining engineering = %q", got)
 		}
 	})
@@ -186,19 +186,19 @@ func TestOnlyExistingGroupsAreJoinedWhenCreationIsOff(t *testing.T) {
 	a := h.startAPI(t, testSessionTTL)
 	h.emptySite(t, "builders")
 	configureProvider(t, a, kc.issuer(), false)
-	h.letIn(t, "bob@stator.test", "member")
+	h.letIn(t, "bob@suite.test", "member")
 
 	newBrowser(t).signIn(t, a, "bob", bobPassword, "")
-	if got := h.providerGroups(t, "bob@stator.test"); len(got) != 0 {
+	if got := h.providerGroups(t, "bob@suite.test"); len(got) != 0 {
 		t.Fatalf("groups = %q, want none while no group is mapped", got)
 	}
 
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO groups (name, source, external_ref) VALUES ('Marketing team', 'oidc', 'marketing')`); err != nil {
+		INSERT INTO groups (name, source, external_ref) VALUES ('Developers', 'oidc', 'developers')`); err != nil {
 		t.Fatal(err)
 	}
 	newBrowser(t).signIn(t, a, "bob", bobPassword, "")
-	if got := h.providerGroups(t, "bob@stator.test"); !slices.Equal(got, []string{"marketing"}) {
+	if got := h.providerGroups(t, "bob@suite.test"); !slices.Equal(got, []string{"developers"}) {
 		t.Fatalf("groups = %q, want the mapped one", got)
 	}
 }

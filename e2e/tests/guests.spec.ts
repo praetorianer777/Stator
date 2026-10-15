@@ -9,7 +9,7 @@ import { WEB_URL } from "../fixtures/stack";
 
 const ANONYMOUS = { cookies: [], origins: [] };
 // A realm user the organisation lets in only as a guest, from deploy/keycloak/realm.json.
-const CAROL = { username: "carol", password: "carol password", email: "carol@stator.test" };
+const CAROL = { username: "carol", password: "carol password", email: "carol@suite.test" };
 // The spec's own bob, named after it (fixtures/team.ts).
 let BOB_EMAIL = "";
 

@@ -1108,6 +1108,32 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The development stack's Keycloak imports the suite's realm `dynamo` in place
+  of `stator-dev` (#411), the same `deploy/keycloak/realm.json` Armature and
+  Exciter import, so one sign-in works in all three. It has the clients
+  `stator`, `armature` and `exciter` (development-only secrets
+  `stator-dev-secret`, `armature-dev-secret`, `exciter-dev-secret`) and the
+  people alice, bob, carol and dave, whose addresses are now
+  `@suite.test` and whose groups are the suite's: alice is in
+  `stator-administrators` and `engineering` as before and in the other tools'
+  administrator groups, bob in `developers` and `engineering`, carol
+  (now Carol Checker) in `portal-owners`, `scrum-masters` and `quality`, and
+  dave, new, in `readers` and `marketing`. The stack's provider is
+  `http://localhost:$KEYCLOAK_PORT/realms/dynamo`, and the seed lets
+  `alice@suite.test` in as an administrator and `bob@suite.test` as a member.
+  `tests/test-realm.sh`, in the shell layer, refuses a realm that differs from
+  Armature's at the commit `api/armature/SOURCE` pins, which
+  `make armature-openapi` now vendors as `api/armature/realm.json`. In
+  `make test-armature` the real Armature signs in through the same Keycloak,
+  and a spec proves alice's sign-in to Stator carries over to it.
+- Upgrade note (#411): an existing development database keeps the provider
+  the seed pointed at `stator-dev`, and the seed never changes a provider
+  that is there. Start afresh with `make clean` and `make up`, or keep the
+  data: run `make seed` to let the `@suite.test` people in, and change the
+  issuer under Single sign-on to
+  `http://localhost:$KEYCLOAK_PORT/realms/dynamo` (client and secret stay).
+  The `@stator.test` accounts the old realm made stay behind as people of
+  their own.
 - What still said organization without meaning one is named after the site
   (#380). Migration 00770 renames the indexes and constraints the schema
   change left with `org` in their names; anything that refers to them by
