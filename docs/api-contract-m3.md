@@ -502,7 +502,7 @@ Uses `GET /armature/issues/{issueKey}` from #28.
 
 | Operation | Needs | Answers |
 |---|---|---|
-| `POST /armature/webhook` | the signature | 204; 401 `bad_signature`; 413 `too_large` |
+| `POST /armature/webhook` | the signature | 204; 401 `bad_signature`, `stale_delivery`; 413 `too_large`; 422 `unsupported_version` |
 | `POST /armature/webhook/{siteSlug}` (deprecated alias) | the signature | as above; any slug but the instance's is 401 `bad_signature` |
 
 - **The address.** As built in #33 the path named the organization's slug, so
@@ -526,7 +526,11 @@ Uses `GET /armature/issues/{issueKey}` from #28.
   not judged. Instead the event `id` is remembered in Valkey for
   `WebhookReplayWindow`, 24 hours, once acted on; a second delivery of it is
   204 and changes nothing. The worst a replay can do anyway is clear a cache
-  entry. Armature signs no timestamp; see the changes Armature needs.
+  entry. Since #412, a delivery that signs its time, as Armature does since
+  its #242, is also held to it: the timestamped signature must match and the
+  time be within `WebhookTimestampTolerance`, five minutes, of Stator's
+  clock, or it is 401 (`bad_signature`, or `stale_delivery` for a time out
+  of the window). `docs/integration.md` has the whole order.
 - **What each topic clears** (`armature.WebhookTopics`):
 
   | Topic | Clears |

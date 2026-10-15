@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,13 +16,44 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/events"
 )
 
-// Envelope is what a receiver gets, Armature's shape: the id is the event's,
-// the same on every attempt, so a receiver can tell a repeat.
-type Envelope struct {
+// EnvelopeV1 is what an endpoint on version 1 receives, Armature's shape: the
+// id is the event's, the same on every attempt, so a receiver can tell a repeat.
+type EnvelopeV1 struct {
+	Version    int       `json:"version"`
 	ID         uuid.UUID `json:"id"`
 	Topic      string    `json:"topic"`
 	OccurredAt time.Time `json:"occurredAt"`
 	Payload    any       `json:"payload"`
+}
+
+// event is what every version's envelope is built from.
+type event struct {
+	id       uuid.UUID
+	topic    string
+	occurred time.Time
+	payload  any
+}
+
+// envelopes builds each version's body. A later version is a row beside 1,
+// and an endpoint on 1 keeps getting 1.
+var envelopes = map[int]func(e event) any{
+	1: func(e event) any {
+		return EnvelopeV1{Version: 1, ID: e.id, Topic: e.topic, OccurredAt: e.occurred, Payload: e.payload}
+	},
+}
+
+// Versions lists the envelope versions this release sends, lowest first.
+func Versions() []int {
+	return slices.Sorted(maps.Keys(envelopes))
+}
+
+// envelopeFor is the body an endpoint on the version is posted for the event.
+func envelopeFor(version int, e event) ([]byte, error) {
+	build, ok := envelopes[version]
+	if !ok {
+		return nil, fmt.Errorf("%w: %d", ErrUnknownVersion, version)
+	}
+	return json.Marshal(build(e))
 }
 
 // SpaceRef names a space.
@@ -100,10 +134,13 @@ const pingMessage = "Stator can reach this address."
 // owner through the database's own rules: what they may not view is
 // errWithheld, and no part of it is sent.
 func (s *Service) body(ctx context.Context, c claimed) ([]byte, error) {
-	env := Envelope{ID: c.eventID, Topic: c.topic, OccurredAt: c.occurred.UTC()}
+	if _, ok := envelopes[c.version]; !ok {
+		return nil, fmt.Errorf("%w: %d", ErrUnknownVersion, c.version)
+	}
+	env := event{id: c.eventID, topic: c.topic, occurred: c.occurred.UTC()}
 	if c.topic == TopicPing {
-		env.Payload = Ping{Message: pingMessage}
-		return json.Marshal(env)
+		env.payload = Ping{Message: pingMessage}
+		return envelopeFor(c.version, env)
 	}
 	if c.owner == nil {
 		return nil, errWithheld
@@ -111,7 +148,7 @@ func (s *Service) body(ctx context.Context, c claimed) ([]byte, error) {
 	asOwner := db.PinPrimary(db.WithUser(ctx, *c.owner))
 	err := s.db.Read(asOwner, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		env.Payload, err = s.payload(ctx, tx, c.topic, c.event)
+		env.payload, err = s.payload(ctx, tx, c.topic, c.event)
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -120,7 +157,7 @@ func (s *Service) body(ctx context.Context, c claimed) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(env)
+	return envelopeFor(c.version, env)
 }
 
 func (s *Service) payload(ctx context.Context, tx db.DBTX, topic string, event json.RawMessage) (any, error) {

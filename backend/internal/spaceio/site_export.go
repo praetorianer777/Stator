@@ -313,7 +313,7 @@ func (s *siteSnapshot) readTemplates(ctx context.Context, tx db.DBTX) error {
 
 func (s *siteSnapshot) readWebhooks(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
-		SELECT name, url, topics, enabled, owner_id FROM webhook_endpoint ORDER BY lower(name), id`)
+		SELECT name, url, topics, enabled, owner_id, version FROM webhook_endpoint ORDER BY lower(name), id`)
 	if err != nil {
 		return err
 	}
@@ -322,7 +322,7 @@ func (s *siteSnapshot) readWebhooks(ctx context.Context, tx db.DBTX) error {
 			h     SiteWebhook
 			owner *uuid.UUID
 		)
-		err := row.Scan(&h.Name, &h.URL, &h.Topics, &h.Enabled, &owner)
+		err := row.Scan(&h.Name, &h.URL, &h.Topics, &h.Enabled, &owner, &h.Version)
 		h.Owner = idText(owner)
 		return h, err
 	})

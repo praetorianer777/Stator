@@ -174,6 +174,9 @@ type SiteWebhook struct {
 	Topics  []string `json:"topics"`
 	Enabled bool     `json:"enabled"`
 	Owner   string   `json:"owner"`
+	// Version is the envelope version it is registered for; an archive from
+	// before it was numbered leaves it out, which means 1.
+	Version int `json:"version,omitempty"`
 }
 
 // SitePreference is how a person wants to be told of things.

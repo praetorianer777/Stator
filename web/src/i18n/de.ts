@@ -153,6 +153,14 @@ export const de: Messages = {
     webhookUrlHint:
       "Ein Endpunkt mit der älteren Adresse, die auf einen Kurznamen endete, funktioniert weiter. Ändern Sie sie auf diese, wenn Sie ihn das nächste Mal bearbeiten.",
     topics: "Themen",
+    lastDelivery: {
+      none: "Stator hat noch keine Zustellung von Armature angenommen.",
+      taken: (topic: string, when: string) => `Stator hat zuletzt am ${when} eine Zustellung ${topic} angenommen,`,
+      version: (version: number) => `in Umschlag-Version ${version},`,
+      unversioned: "ohne Umschlag-Version, also von einem älteren Armature,",
+      timestamped: "mit signierter Uhrzeit.",
+      untimed: "ohne signierte Uhrzeit. Aktualisieren Sie Armature, damit Stator Wiederholungen abweisen kann.",
+    },
     copy: "Adresse kopieren",
     copied: "Adresse kopiert.",
     copyFailed: "Das Kopieren hat nicht geklappt. Markieren Sie die Adresse und kopieren Sie sie selbst.",
@@ -3306,8 +3314,8 @@ export const de: Messages = {
     create: "Webhook hinzufügen",
     ownerNote: "Der Webhook sendet in Ihrem Namen: Was Sie nicht sehen dürfen, wird nie gesendet. Wer ihn als Nächstes speichert, sendet in eigenem Namen.",
     freshTitle: "Kopieren Sie das Geheimnis jetzt",
-    freshBody: (header: string) =>
-      `Es wird nur dieses eine Mal angezeigt. Jede Zustellung trägt ${header}: sha256= und den HMAC-SHA256 des Inhalts mit diesem Geheimnis, damit der Empfänger sie prüfen kann. Wenn Sie es verlieren, erneuern Sie das Geheimnis.`,
+    freshBody: (header: string, timestamped: string, timestamp: string) =>
+      `Es wird nur dieses eine Mal angezeigt. Jede Zustellung trägt ${header}: sha256= und den HMAC-SHA256 des Inhalts mit diesem Geheimnis, damit der Empfänger sie prüfen kann, und ${timestamped}, dasselbe über ${timestamp}, einen Punkt und den Inhalt, damit er eine Wiederholung abweisen kann. Wenn Sie es verlieren, erneuern Sie das Geheimnis.`,
     freshLabel: (name: string) => `Geheimnis für ${name}`,
     copy: "Geheimnis kopieren",
     copied: "Geheimnis kopiert.",

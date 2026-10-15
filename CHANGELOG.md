@@ -9,6 +9,24 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Stator's outbound webhooks carry an envelope version (#412), as Armature's
+  do. Receivers see three things new, none of which breaks one written
+  before: the body has `"version": 1` before `id`, the same version comes in
+  `X-Stator-Webhook-Version`, and each attempt also carries
+  `X-Stator-Timestamp` (Unix seconds) and `X-Stator-Signature-Timestamped-256`
+  (`sha256=` and the HMAC of the timestamp, a dot and the body), so a
+  receiver can refuse a replay. A webhook answers its `version`, takes one
+  when it is made or saved, and keeps it; every existing webhook is on 1. A
+  receiver ignores fields and topics it does not know and refuses a version
+  it does not know. The envelope, every payload and the headers are described
+  under `webhooks` in `api/openapi.json`; see `docs/integration.md`.
+- Stator's receiver for Armature's webhooks checks the timestamped signature
+  when Armature sends one (#412), and refuses a delivery signed more than five
+  minutes from its clock with 401 `stale_delivery`, and one whose
+  `X-Armature-Webhook-Version` is not 1 with 422 `unsupported_version`. The
+  Armature settings page says when Stator last took a delivery, in which
+  envelope version and whether its time was signed (`lastDelivery` on
+  `GET /api/v1/armature/connection`).
 - `GET /api/v1/meta` lists Stator's integration capabilities (#409):
   `page-links@1`, `theme-export@1`, `webhook-receiver@1` and `webhooks@1`, in
   Armature's `name@version` scheme, described in `docs/integration.md`.

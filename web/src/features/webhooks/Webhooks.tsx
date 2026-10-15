@@ -15,7 +15,16 @@ import {
 } from "@/api/webhooks";
 import { Button, Card, Checkbox, Dialog, EmptyState, ErrorBanner, Field, IconButton, Menu, PageHeader, Table, Tag, Td, Th, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { COPY_FEEDBACK_MS, WEBHOOK_NAME_MAX_LENGTH, WEBHOOK_SIGNATURE_HEADER, WEBHOOK_TOPIC_ANY, WEBHOOK_TOPICS, WEBHOOK_URL_MAX_LENGTH } from "@/config";
+import {
+  COPY_FEEDBACK_MS,
+  WEBHOOK_NAME_MAX_LENGTH,
+  WEBHOOK_SIGNATURE_HEADER,
+  WEBHOOK_TIMESTAMP_HEADER,
+  WEBHOOK_TIMESTAMPED_SIGNATURE_HEADER,
+  WEBHOOK_TOPIC_ANY,
+  WEBHOOK_TOPICS,
+  WEBHOOK_URL_MAX_LENGTH,
+} from "@/config";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 
@@ -298,7 +307,7 @@ function FreshSecret({ name, secret, onDone }: { name: string; secret: string; o
   return (
     <Card className="mb-6 space-y-2 border-accent/40 p-4" data-webhook-secret>
       <h2 className="text-sm font-semibold text-ink">{t.webhooks.freshTitle}</h2>
-      <p className="text-sm text-ink-muted">{t.webhooks.freshBody(WEBHOOK_SIGNATURE_HEADER)}</p>
+      <p className="text-sm text-ink-muted">{t.webhooks.freshBody(WEBHOOK_SIGNATURE_HEADER, WEBHOOK_TIMESTAMPED_SIGNATURE_HEADER, WEBHOOK_TIMESTAMP_HEADER)}</p>
       <Field
         label={t.webhooks.freshLabel(name)}
         value={secret}

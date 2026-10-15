@@ -940,7 +940,7 @@ var operations = append([]operation{
 
 	// Webhooks (#33): Armature signs, so nobody signs in.
 	{method: "POST", path: "/armature/webhook", handler: "handleArmatureWebhook", tag: "armature", public: true,
-		summary: "Where Armature posts issue events, signed with the organization's webhook secret; clears the cached issues they name.",
+		summary: "Where Armature posts issue events, signed with the organization's webhook secret, and when it signs the time too, within " + strconv.Itoa(int(armature.WebhookTimestampTolerance.Minutes())) + " minutes of Stator's clock; envelope version " + strconv.Itoa(armature.WebhookVersion) + " only. Clears the cached issues they name and ignores fields and topics it does not know.",
 		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
 	{method: "POST", path: "/armature/webhook/{siteSlug}", handler: "handleArmatureWebhook", id: "armatureWebhookWithSlug", tag: "armature", public: true, deprecated: true,
 		summary: "The address POST /armature/webhook had while it named the organization, kept for receivers set up with it; a slug that is not the organization's is refused as a bad signature.",
@@ -1295,8 +1295,66 @@ func Spec() *openapi.Document {
 	for _, tag := range openapi.SortedKeys(tags) {
 		doc.Tags = append(doc.Tags, openapi.Tag{Name: tag})
 	}
+	doc.Webhooks = map[string]openapi.PathItem{"event": {"post": webhookDelivery(b)}}
 	doc.Components.Schemas = b.Components()
 	return doc
+}
+
+// webhookDelivery is what an endpoint is posted for each event, in Armature's
+// shape: a receiver is written against it, so the body and the headers it is
+// signed in are here.
+func webhookDelivery(b *openapi.Builder) *openapi.Operation {
+	for t, name := range map[reflect.Type]string{
+		reflect.TypeOf(webhook.PagePublished{}):  "WebhookPagePublished",
+		reflect.TypeOf(webhook.PageMoved{}):      "WebhookPageMoved",
+		reflect.TypeOf(webhook.PageDeleted{}):    "WebhookPageDeleted",
+		reflect.TypeOf(webhook.CommentCreated{}): "WebhookCommentCreated",
+		reflect.TypeOf(webhook.Ping{}):           "WebhookPing",
+		reflect.TypeOf(webhook.PageRef{}):        "WebhookPageRef",
+		reflect.TypeOf(webhook.SpaceRef{}):       "WebhookSpaceRef",
+		reflect.TypeOf(webhook.Person{}):         "WebhookPerson",
+		reflect.TypeOf(webhook.Place{}):          "WebhookPlace",
+		reflect.TypeOf(webhook.CommentRef{}):     "WebhookCommentRef",
+	} {
+		b.Names[t] = name
+	}
+	b.Descriptions[reflect.TypeOf(webhook.EnvelopeV1{})] = "What an endpoint registered for envelope version 1 is posted."
+	b.FieldOverrides["EnvelopeV1.version"] = &openapi.Schema{Type: "integer", Description: "The envelope version, 1 here; the version header says the same."}
+	b.FieldOverrides["EnvelopeV1.topic"] = &openapi.Schema{Type: "string",
+		Description: "What happened: " + strings.Join(append([]string{webhook.TopicPing}, webhook.Topics...), ", ") + ". A receiver ignores a topic it does not know."}
+	b.FieldOverrides["EnvelopeV1.occurredAt"] = &openapi.Schema{Type: "string", Format: "date-time", Description: "When the event happened, in UTC."}
+	payloads := []*openapi.Schema{}
+	for _, p := range []any{webhook.PagePublished{}, webhook.PageMoved{}, webhook.PageDeleted{}, webhook.CommentCreated{}, webhook.Ping{}} {
+		payloads = append(payloads, b.SchemaOf(p))
+	}
+	b.FieldOverrides["EnvelopeV1.payload"] = &openapi.Schema{AnyOf: payloads,
+		Description: "The event's own fields, by topic, read as the endpoint's owner when the attempt is sent."}
+	header := func(name, description string) openapi.Parameter {
+		return openapi.Parameter{Name: name, In: "header", Required: true, Description: description, Schema: &openapi.Schema{Type: "string"}}
+	}
+	return &openapi.Operation{
+		OperationID: "webhookEvent",
+		Summary:     "What a webhook endpoint is posted for each event it subscribes to.",
+		Description: "A receiver ignores fields and topics it does not know, and refuses an envelope version it does not know. " +
+			"The version rises only for a change that breaks a receiver, and an endpoint keeps the version it was registered for.",
+		Tags: []string{"webhooks"},
+		Parameters: []openapi.Parameter{
+			header(webhook.EventHeader, "The topic, as in the body."),
+			header(webhook.DeliveryHeader, "This attempt's id; a retry or a redelivery has its own."),
+			header(webhook.VersionHeader, "The envelope version of the body, as in its version field."),
+			header(webhook.SignatureHeader, "sha256= and the hex HMAC-SHA256 of the body, keyed with the endpoint's secret."),
+			header(webhook.TimestampHeader, "When this attempt was sent, in Unix seconds."),
+			header(webhook.TimestampedSignatureHeader, "sha256= and the hex HMAC-SHA256 of the timestamp, a dot and the body."),
+		},
+		RequestBody: &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
+			"application/json": {Schema: b.SchemaOf(webhook.EnvelopeV1{})},
+		}},
+		Responses: map[string]*openapi.Response{
+			"2XX":     {Description: "Taken: the delivery is done."},
+			"default": {Description: "Not taken: the delivery is tried again later, with backoff, as is one not answered in time."},
+		},
+		Security: []map[string][]string{},
+	}
 }
 
 // operationID is what a client calls the operation: the handler's name unless

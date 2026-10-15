@@ -13,6 +13,8 @@ type Body = Parameters<typeof createPage>[3];
 
 /** Well inside the minute an issue stays cached, so only the webhook can explain a change seen this soon. */
 const SOONER_THAN_THE_CACHE = { timeout: 20_000 };
+/** The one envelope version Stator's receiver reads, armature.WebhookVersion. */
+const ENVELOPE_VERSION = 1;
 
 test.describe("a real Armature's webhooks", { tag: ["@auth"] }, () => {
   let spaceKey = "";
@@ -80,6 +82,16 @@ test.describe("a real Armature's webhooks", { tag: ["@auth"] }, () => {
         })
         .toContain(204);
       await admin.dispose();
+
+      // What Stator took was Armature's numbered envelope, signed with the
+      // time it was sent, which the receiver held to its window (#412).
+      const { data } = await api.GET("/armature/connection");
+      expect(data?.connection?.lastDelivery, "the last delivery Stator took").toMatchObject({
+        version: ENVELOPE_VERSION,
+        timestamped: true,
+      });
+      await page.goto("/settings/armature");
+      await expect(page.locator("[data-last-delivery]")).toContainText(`in envelope version ${ENVELOPE_VERSION}, signed with the time it was sent.`);
     } finally {
       await ada.dispose();
     }

@@ -392,6 +392,9 @@ func (s *Server) handleListArmatureLinks(w http.ResponseWriter, r *http.Request)
 var errBadSignature = &APIError{Status: http.StatusUnauthorized, Code: "bad_signature",
 	Message: "The signature does not match. Check that the webhook secret in Armature is the one saved in Stator under Settings, Armature."}
 
+var errWebhookStale = &APIError{Status: http.StatusUnauthorized, Code: "stale_delivery",
+	Message: fmt.Sprintf("The delivery was signed more than %d minutes away from Stator's clock. Check that both servers keep the right time; Armature sends it again by itself.", int(armature.WebhookTimestampTolerance.Minutes()))}
+
 var errWebhookVersion = &APIError{Status: http.StatusUnprocessableEntity, Code: "unsupported_version",
 	Message: fmt.Sprintf("Stator reads webhook envelope version %d. Register the endpoint in Armature for version %d.", armature.WebhookVersion, armature.WebhookVersion)}
 
@@ -424,9 +427,18 @@ func (s *Server) handleArmatureWebhook(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, ErrBadRequest("The delivery could not be read. Armature sends it again by itself."))
 		return
 	}
-	err = s.Armature.Webhook(r.Context(), body, r.Header.Get(armature.SignatureHeader))
+	err = s.Armature.Webhook(r.Context(), body, armature.WebhookHeaders{
+		Signature:            r.Header.Get(armature.SignatureHeader),
+		Timestamp:            r.Header.Get(armature.TimestampHeader),
+		TimestampedSignature: r.Header.Get(armature.TimestampedSignatureHeader),
+		Version:              r.Header.Get(armature.WebhookVersionHeader),
+	})
 	if errors.Is(err, armature.ErrBadSignature) {
 		respondError(w, r, errBadSignature)
+		return
+	}
+	if errors.Is(err, armature.ErrWebhookStale) {
+		respondError(w, r, errWebhookStale)
 		return
 	}
 	if errors.Is(err, armature.ErrWebhookVersion) {

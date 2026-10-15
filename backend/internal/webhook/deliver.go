@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -53,6 +54,7 @@ const (
 	whyOff        = "The webhook was turned off before this was sent."
 	whyNoOwner    = "Nothing was sent: the administrator who saved this webhook has left. Save it again to send as yourself."
 	whyNotVisible = "Nothing was sent: the webhook's owner may not view this page, or it no longer exists."
+	whyVersion    = "Nothing was sent: this delivery is in envelope version %d, which this Stator does not send. Register the webhook for version %s; the events after that are sent in it."
 )
 
 // errWithheld is a payload the owner could not read; nothing is sent.
@@ -75,8 +77,8 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 	ctx = db.WithUser(ctx, uuid.Nil)
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, next_attempt_at)
-			SELECT id, $1, $2, $3, $4, now() FROM webhook_endpoint
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, next_attempt_at, version)
+			SELECT id, $1, $2, $3, $4, now(), version FROM webhook_endpoint
 			WHERE enabled AND ($2 = ANY (topics) OR $5 = ANY (topics))
 			ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`,
 			e.ID, e.Topic, payload, occurred, TopicAny)
@@ -156,10 +158,15 @@ func (s *Service) Test(ctx context.Context, id uuid.UUID) (*WebhookDelivery, db.
 	var made uuid.UUID
 	system := asSystem(ctx)
 	lsn, err := s.db.WriteAdmin(system, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `
-			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, manual, next_attempt_at)
-			VALUES ($1, $2, $3, '{}', now(), true, now() + make_interval(secs => $4))
+		err := tx.QueryRow(ctx, `
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, manual, next_attempt_at, version)
+			SELECT id, $2, $3, '{}', now(), true, now() + make_interval(secs => $4), version
+			FROM webhook_endpoint WHERE id = $1
 			RETURNING id`, id, uuid.New(), TopicPing, ClaimLease.Seconds()).Scan(&made)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
 	})
 	if err != nil {
 		return nil, 0, err
@@ -186,10 +193,10 @@ func (s *Service) Redeliver(ctx context.Context, webhookID, deliveryID uuid.UUID
 	system := asSystem(ctx)
 	lsn, err := s.db.WriteAdmin(system, func(ctx context.Context, tx db.DBTX) error {
 		err := tx.QueryRow(ctx, `
-			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, attempt, manual, next_attempt_at)
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, attempt, manual, next_attempt_at, version)
 			SELECT d.endpoint_id, d.event_id, d.topic, d.event, d.occurred_at,
 			       (SELECT max(attempt) FROM webhook_delivery x WHERE x.endpoint_id = d.endpoint_id AND x.event_id = d.event_id) + 1,
-			       true, now() + make_interval(secs => $2)
+			       true, now() + make_interval(secs => $2), d.version
 			FROM webhook_delivery d WHERE d.id = $1
 			RETURNING id`, deliveryID, ClaimLease.Seconds()).Scan(&made)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -235,6 +242,9 @@ type claimed struct {
 	occurred                    time.Time
 	attempt                     int
 	state                       DeliveryState
+	// version is the envelope the delivery was queued in, which its retries
+	// and redeliveries keep whatever the endpoint is on by then.
+	version int
 }
 
 // outcome is how one attempt went.
@@ -254,11 +264,11 @@ func (s *Service) attempt(ctx context.Context, id uuid.UUID) (*WebhookDelivery, 
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
 			SELECT (SELECT id FROM site), d.endpoint_id, d.event_id, e.url, d.topic, e.secret_sealed, e.enabled, d.manual, e.owner_id,
-			       d.event, d.occurred_at, d.attempt, d.state
+			       d.event, d.occurred_at, d.attempt, d.state, d.version
 			FROM webhook_delivery d JOIN webhook_endpoint e ON e.id = d.endpoint_id
 			WHERE d.id = $1`, id).
 			Scan(&c.siteID, &c.endpointID, &c.eventID, &c.url, &c.topic, &c.sealed, &c.enabled, &c.manual, &c.owner,
-				&c.event, &c.occurred, &c.attempt, &c.state)
+				&c.event, &c.occurred, &c.attempt, &c.state, &c.version)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, 0, ErrNotFound
@@ -286,6 +296,13 @@ func (s *Service) send(ctx context.Context, id uuid.UUID, c claimed) outcome {
 		}
 		return outcome{state: StateWithheld, why: why}
 	}
+	// Only a later release, taken back, leaves a delivery in a version this
+	// one cannot build. Every attempt would fail alike, so it is neither
+	// retried nor counted against the endpoint.
+	if errors.Is(err, ErrUnknownVersion) {
+		s.opts.Log.Warn("a webhook delivery is in an envelope version this release does not send", "delivery", id, "version", c.version)
+		return outcome{state: StateFailed, why: fmt.Sprintf(whyVersion, c.version, versionList())}
+	}
 	if err != nil {
 		s.opts.Log.Warn("a webhook payload could not be read", "delivery", id, "error", err)
 		return outcome{state: StateFailed, why: whyUnreached, counts: true}
@@ -295,7 +312,7 @@ func (s *Service) send(ctx context.Context, id uuid.UUID, c claimed) outcome {
 		s.opts.Log.Warn("a webhook secret could not be opened", "webhook", c.endpointID, "error", err)
 		return outcome{state: StateFailed, why: whyNoSecret, counts: true}
 	}
-	status, err := s.post(ctx, c.url, string(plain), c.topic, id, body)
+	status, err := s.post(ctx, c.url, string(plain), c.topic, c.version, id, body)
 	if err != nil {
 		s.opts.Log.Info("a webhook delivery did not reach its receiver", "delivery", id, "error", err)
 		return outcome{state: StateFailed, why: why(err), counts: true}
@@ -344,10 +361,10 @@ func (s *Service) record(ctx context.Context, id uuid.UUID, c claimed, o outcome
 			}
 			if !disabled && c.attempt < MaxAttempts {
 				if _, err := tx.Exec(ctx, `
-					INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, attempt, next_attempt_at)
-					VALUES ($1, $2, $3, $4, $5, $6, $7)
+					INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, attempt, next_attempt_at, version)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 					ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`,
-					c.endpointID, c.eventID, c.topic, c.event, c.occurred, c.attempt+1, s.now().Add(NextWait(c.attempt))); err != nil {
+					c.endpointID, c.eventID, c.topic, c.event, c.occurred, c.attempt+1, s.now().Add(NextWait(c.attempt)), c.version); err != nil {
 					return err
 				}
 			}
@@ -418,7 +435,7 @@ func (s *Service) read(ctx context.Context, id uuid.UUID) (*WebhookDelivery, err
 }
 
 // post sends one request and returns the status, or the error that stopped it.
-func (s *Service) post(ctx context.Context, address, secret, topic string, deliveryID uuid.UUID, body []byte) (int, error) {
+func (s *Service) post(ctx context.Context, address, secret, topic string, version int, deliveryID uuid.UUID, body []byte) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, sendTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, address, bytes.NewReader(body))
@@ -429,7 +446,12 @@ func (s *Service) post(ctx context.Context, address, secret, topic string, deliv
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set(EventHeader, topic)
 	req.Header.Set(DeliveryHeader, deliveryID.String())
+	req.Header.Set(VersionHeader, strconv.Itoa(version))
+	// Signed as sent, so a retry or a redelivery carries its own time.
+	sent := s.now()
 	req.Header.Set(SignatureHeader, Sign(body, secret))
+	req.Header.Set(TimestampHeader, strconv.FormatInt(sent.Unix(), 10))
+	req.Header.Set(TimestampedSignatureHeader, SignTimestamped(body, secret, sent))
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return 0, err

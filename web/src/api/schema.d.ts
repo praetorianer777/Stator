@@ -257,7 +257,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Where Armature posts issue events, signed with the organization's webhook secret; clears the cached issues they name. */
+        /** Where Armature posts issue events, signed with the organization's webhook secret, and when it signs the time too, within 5 minutes of Stator's clock; envelope version 1 only. Clears the cached issues they name and ignores fields and topics it does not know. */
         post: operations["armatureWebhook"];
         delete?: never;
         options?: never;
@@ -4001,7 +4001,28 @@ export interface paths {
         trace?: never;
     };
 }
-export type webhooks = Record<string, never>;
+export interface webhooks {
+    event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What a webhook endpoint is posted for each event it subscribes to.
+         * @description A receiver ignores fields and topics it does not know, and refuses an envelope version it does not know. The version rises only for a change that breaks a receiver, and an endpoint keeps the version it was registered for.
+         */
+        post: operations["webhookEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export interface components {
     schemas: {
         APIError: {
@@ -4378,6 +4399,7 @@ export interface components {
             armatureOrgId: string | null;
             baseUrl: string;
             connected: number;
+            lastDelivery: components["schemas"]["WebhookReceipt"] | null;
             orgSlug: string;
             partner: components["schemas"]["Partner"];
             /** Format: date-time */
@@ -4546,6 +4568,11 @@ export interface components {
             }[];
             servers?: components["schemas"]["Server"][];
             tags?: components["schemas"]["Tag"][];
+            webhooks?: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["Operation"] | null;
+                };
+            };
         };
         Draft: {
             baseVersion: number;
@@ -4583,6 +4610,22 @@ export interface components {
             spaceName: string;
             title: string;
             unpublished: boolean;
+        };
+        /** @description What an endpoint registered for envelope version 1 is posted. */
+        EnvelopeV1: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: date-time
+             * @description When the event happened, in UTC.
+             */
+            occurredAt: string;
+            /** @description The event's own fields, by topic, read as the endpoint's owner when the attempt is sent. */
+            payload: components["schemas"]["WebhookPagePublished"] | components["schemas"]["WebhookPageMoved"] | components["schemas"]["WebhookPageDeleted"] | components["schemas"]["WebhookCommentCreated"] | components["schemas"]["WebhookPing"];
+            /** @description What happened: ping, page.published, page.moved, page.deleted, comment.created. A receiver ignores a topic it does not know. */
+            topic: string;
+            /** @description The envelope version, 1 here; the version header says the same. */
+            version: number;
         };
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
@@ -5667,6 +5710,7 @@ export interface components {
             };
             $ref?: string;
             additionalProperties?: components["schemas"]["Schema"];
+            anyOf?: (components["schemas"]["Schema"] | null)[];
             description?: string;
             enum?: string[];
             format?: string;
@@ -6404,6 +6448,21 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             url: string;
+            version: number;
+        };
+        WebhookCommentCreated: {
+            actor: components["schemas"]["WebhookPerson"] | null;
+            comment: components["schemas"]["WebhookCommentRef"];
+            page: components["schemas"]["WebhookPageRef"];
+        };
+        WebhookCommentRef: {
+            /** Format: uuid */
+            id: string;
+            reply: boolean;
+            text: string;
+            /** Format: uuid */
+            threadId: string;
+            url: string;
         };
         WebhookDelivery: {
             attempt: number;
@@ -6446,10 +6505,58 @@ export interface components {
             name: string;
             topics: ("*" | "page.published" | "page.moved" | "page.deleted" | "comment.created")[];
             url: string;
+            version?: number;
         };
         WebhookOwner: {
             /** Format: uuid */
             id: string;
+            name: string;
+        };
+        WebhookPageDeleted: {
+            actor: components["schemas"]["WebhookPerson"] | null;
+            page: components["schemas"]["WebhookPageRef"];
+        };
+        WebhookPageMoved: {
+            actor: components["schemas"]["WebhookPerson"] | null;
+            from: components["schemas"]["WebhookPlace"];
+            page: components["schemas"]["WebhookPageRef"];
+            to: components["schemas"]["WebhookPlace"];
+        };
+        WebhookPagePublished: {
+            actor: components["schemas"]["WebhookPerson"] | null;
+            page: components["schemas"]["WebhookPageRef"];
+        };
+        WebhookPageRef: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            space: components["schemas"]["WebhookSpaceRef"];
+            title: string;
+            url: string;
+            version: number;
+        };
+        WebhookPerson: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        WebhookPing: {
+            message: string;
+        };
+        WebhookPlace: {
+            /** Format: uuid */
+            parentId: string | null;
+            space: components["schemas"]["WebhookSpaceRef"] | null;
+        };
+        WebhookReceipt: {
+            /** Format: date-time */
+            receivedAt: string;
+            timestamped: boolean;
+            topic: string;
+            version: number | null;
+        };
+        WebhookSpaceRef: {
+            key: string;
             name: string;
         };
         WordImport: {
@@ -18398,6 +18505,48 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+        };
+    };
+    webhookEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The topic, as in the body. */
+                "X-Stator-Event": string;
+                /** @description This attempt's id; a retry or a redelivery has its own. */
+                "X-Stator-Delivery": string;
+                /** @description The envelope version of the body, as in its version field. */
+                "X-Stator-Webhook-Version": string;
+                /** @description sha256= and the hex HMAC-SHA256 of the body, keyed with the endpoint's secret. */
+                "X-Stator-Signature-256": string;
+                /** @description When this attempt was sent, in Unix seconds. */
+                "X-Stator-Timestamp": string;
+                /** @description sha256= and the hex HMAC-SHA256 of the timestamp, a dot and the body. */
+                "X-Stator-Signature-Timestamped-256": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvelopeV1"];
+            };
+        };
+        responses: {
+            /** @description Taken: the delivery is done. */
+            "2XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not taken: the delivery is tried again later, with backoff, as is one not answered in time. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

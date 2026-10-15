@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/events"
+	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
@@ -68,12 +70,18 @@ func binAnswers(t *testing.T, bin string, status int) {
 	resp.Body.Close()
 }
 
-// received is one delivery a bin took, with its envelope read.
+// received is one delivery a bin took, when it took it, with its envelope read.
 type received struct {
 	Headers map[string]string `json:"headers"`
 	Body    string            `json:"body"`
+	At      time.Time         `json:"at"`
 	env     map[string]any
 }
+
+// signedWithin is how far a delivery's signed time may be from when the bin
+// took it: the stub and the worker share the host's clock, and the time is
+// signed in whole seconds.
+const signedWithin = 10 * time.Second
 
 func (r received) payload() map[string]any {
 	p, _ := r.env["payload"].(map[string]any)
@@ -166,6 +174,29 @@ func (h *harness) awaitState(t *testing.T, webhookID, topic, pageID, want string
 	}
 }
 
+// asDocumented holds a delivery to what api/openapi.json promises a receiver:
+// the body fits the envelope, every header is there, the version header is the
+// body's, and the timestamped signature verifies under secret, now.
+func asDocumented(t *testing.T, d received, secret string) {
+	t.Helper()
+	doc := httpapi.Spec()
+	delivery := doc.Webhooks["event"]["post"]
+	if err := doc.ValidateJSON(delivery.RequestBody.Content["application/json"].Schema, []byte(d.Body)); err != nil {
+		t.Errorf("the body does not fit the documented envelope: %v\n%s", err, d.Body)
+	}
+	for _, p := range delivery.Parameters {
+		if p.In == "header" && p.Required && d.Headers[p.Name] == "" {
+			t.Errorf("the delivery lacks the documented header %s: %v", p.Name, d.Headers)
+		}
+	}
+	if version := d.Headers[webhook.VersionHeader]; version != strconv.Itoa(number(d.env["version"])) || version != strconv.Itoa(webhook.CurrentVersion) {
+		t.Errorf("the version header says %q and the body %v, want both %d", version, d.env["version"], webhook.CurrentVersion)
+	}
+	if !webhook.VerifyTimestamped([]byte(d.Body), secret, d.Headers[webhook.TimestampHeader], d.Headers[webhook.TimestampedSignatureHeader], signedWithin, d.At) {
+		t.Errorf("the timestamp %q and its signature %q do not verify", d.Headers[webhook.TimestampHeader], d.Headers[webhook.TimestampedSignatureHeader])
+	}
+}
+
 func makeHook(t *testing.T, c *client, name, address string, topics ...string) (id, secretValue string) {
 	t.Helper()
 	got := obj(t, want(t, c.post(t, "/api/v1/webhooks", map[string]any{"name": name, "url": address, "topics": topics}), http.StatusCreated, "make "+name), "webhook")
@@ -200,6 +231,9 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 		if len(hooks) != 1 || hooks[0].(map[string]any)["owner"].(map[string]any)["id"] != home.user.String() {
 			t.Errorf("the list reads %s", got.Raw)
 		}
+		if v := number(hooks[0].(map[string]any)["version"]); v != webhook.CurrentVersion {
+			t.Errorf("a webhook made without a version is on %d, want the current %d", v, webhook.CurrentVersion)
+		}
 		var sealed []byte
 		if err := h.super.QueryRow(context.Background(), `SELECT secret_sealed FROM webhook_endpoint WHERE id = $1`, id).Scan(&sealed); err != nil {
 			t.Fatal(err)
@@ -231,6 +265,7 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 		if d.env["topic"] != webhook.TopicPing || d.env["orgId"] != nil || d.payload()["message"] == "" {
 			t.Errorf("the envelope reads %s", d.Body)
 		}
+		asDocumented(t, d, plain)
 		log := list(t, want(t, owner.get(t, path+"/deliveries"), http.StatusOK, "read the log"), "deliveries")
 		if len(log) != 1 || log[0].(map[string]any)["id"] != sent["id"] {
 			t.Errorf("the log reads %v", log)
@@ -261,15 +296,44 @@ func TestAnAdministratorKeepsWebhooksAndSeesTheSecretOnce(t *testing.T) {
 
 	t.Run("what cannot be a webhook is refused with a sentence", func(t *testing.T) {
 		for name, body := range map[string]map[string]any{
-			"url":    {"name": "Loop", "url": "http://127.0.0.1:9/hook", "topics": []string{"*"}},
-			"topics": {"name": "Lapse", "url": address, "topics": []string{"page.verification_lapsed"}},
-			"name":   {"name": "chat ROOM", "url": address, "topics": []string{"*"}},
+			"url":     {"name": "Loop", "url": "http://127.0.0.1:9/hook", "topics": []string{"*"}},
+			"topics":  {"name": "Lapse", "url": address, "topics": []string{"page.verification_lapsed"}},
+			"name":    {"name": "chat ROOM", "url": address, "topics": []string{"*"}},
+			"version": {"name": "Next", "url": address, "topics": []string{"*"}, "version": webhook.CurrentVersion + 1},
 		} {
 			if msg := fieldError(t, want(t, owner.post(t, "/api/v1/webhooks", body), http.StatusUnprocessableEntity, "refuse "+name), name); msg == "" {
 				t.Errorf("no sentence for %s", name)
 			}
 		}
 		want(t, owner.patch(t, path, map[string]any{"name": "Chat", "url": "ftp://x", "topics": []string{"*"}}), http.StatusUnprocessableEntity, "a bad address on save")
+	})
+
+	t.Run("an endpoint keeps its envelope version, and one this release does not send is refused", func(t *testing.T) {
+		current := webhook.CurrentVersion
+		saved := obj(t, want(t, admin.patch(t, path, map[string]any{"name": "Chat room", "url": address, "topics": []string{"*"}}), http.StatusOK, "save without a version"), "webhook")
+		if number(saved["version"]) != current {
+			t.Errorf("a save without a version moved the webhook to %v", saved["version"])
+		}
+		if _, err := h.super.Exec(context.Background(), `UPDATE webhook_endpoint SET version = 0 WHERE id = $1`, id); err == nil {
+			t.Error("the database took envelope version 0")
+		}
+		// Only a later release, taken back, leaves an endpoint on a version
+		// this one does not send: the attempt says so instead of guessing.
+		if _, err := h.super.Exec(context.Background(), `UPDATE webhook_endpoint SET version = $2 WHERE id = $1`, id, current+1); err != nil {
+			t.Fatal(err)
+		}
+		before := len(binDeliveries(t, bin))
+		sent := obj(t, want(t, admin.post(t, path+"/test", nil), http.StatusOK, "ping on a version not sent"), "delivery")
+		if sent["state"] != "failed" || !strings.Contains(sent["error"].(string), "envelope version "+strconv.Itoa(current+1)) {
+			t.Errorf("the ping reads %v", sent)
+		}
+		if after := len(binDeliveries(t, bin)); after != before {
+			t.Errorf("a delivery in a version this release does not send reached the receiver")
+		}
+		want(t, admin.patch(t, path, map[string]any{"name": "Chat room", "url": address, "topics": []string{"*"}, "version": current}), http.StatusOK, "register for the current version")
+		if sent := obj(t, want(t, admin.post(t, path+"/test", nil), http.StatusOK, "ping again"), "delivery"); sent["state"] != "delivered" {
+			t.Errorf("the ping after registering for version %d reads %v", current, sent)
+		}
 	})
 
 	t.Run("members and strangers are refused every operation", func(t *testing.T) {
@@ -353,6 +417,9 @@ func TestContentEventsReachTheReceiverAsTheOwnerMayReadThem(t *testing.T) {
 	deleted := awaitTopic(t, bin, events.TopicPageDeleted, page, 1)[0].payload()
 	if deleted["page"].(map[string]any)["title"] != "Plans" {
 		t.Errorf("the deletion reads %v", deleted)
+	}
+	for _, topic := range webhook.Topics {
+		asDocumented(t, awaitTopic(t, bin, topic, page, 1)[0], plain)
 	}
 
 	t.Run("a redelivery is the same event again, as the next attempt", func(t *testing.T) {

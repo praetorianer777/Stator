@@ -3,6 +3,8 @@ package webhook
 import (
 	"encoding/json"
 	"errors"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -169,7 +171,7 @@ func TestAPingEnvelopeIsArmaturesShape(t *testing.T) {
 	s := &Service{}
 	id, site := uuid.New(), uuid.New()
 	at := time.Date(2026, 10, 1, 8, 0, 0, 0, time.FixedZone("CEST", 2*60*60))
-	raw, err := s.body(t.Context(), claimed{eventID: id, siteID: site, topic: TopicPing, occurred: at})
+	raw, err := s.body(t.Context(), claimed{eventID: id, siteID: site, topic: TopicPing, occurred: at, version: CurrentVersion})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +179,7 @@ func TestAPingEnvelopeIsArmaturesShape(t *testing.T) {
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got["id"] != id.String() || got["topic"] != TopicPing || got["orgId"] != nil || got["occurredAt"] != "2026-10-01T06:00:00Z" {
+	if got["version"] != float64(CurrentVersion) || got["id"] != id.String() || got["topic"] != TopicPing || got["orgId"] != nil || got["occurredAt"] != "2026-10-01T06:00:00Z" {
 		t.Fatalf("envelope %s", raw)
 	}
 	if got["payload"].(map[string]any)["message"] != pingMessage {
@@ -187,8 +189,70 @@ func TestAPingEnvelopeIsArmaturesShape(t *testing.T) {
 
 func TestAnEventWithoutAnOwnerIsWithheld(t *testing.T) {
 	s := &Service{}
-	_, err := s.body(t.Context(), claimed{eventID: uuid.New(), siteID: uuid.New(), topic: events.TopicPagePublished, event: json.RawMessage(`{}`)})
+	_, err := s.body(t.Context(), claimed{eventID: uuid.New(), siteID: uuid.New(), topic: events.TopicPagePublished, event: json.RawMessage(`{}`), version: CurrentVersion})
 	if !errors.Is(err, errWithheld) {
 		t.Fatalf("an endpoint without an owner sent a payload: %v", err)
+	}
+}
+
+// The timestamped signature is Armature's: the same HMAC over the time, a
+// dot and the body, so a receiver written for one checks both.
+func TestATimestampedSignatureRefusesAReplay(t *testing.T) {
+	body := []byte(`{"version":1}`)
+	sent := time.Date(2026, 10, 15, 9, 30, 0, 0, time.UTC)
+	stamp := strconv.FormatInt(sent.Unix(), 10)
+	sig := SignTimestamped(body, "secret", sent)
+	if sig != Sign([]byte(stamp+"."+string(body)), "secret") {
+		t.Fatalf("the timestamped signature %q is not the HMAC of the time, a dot and the body", sig)
+	}
+	window := 5 * time.Minute
+	if !VerifyTimestamped(body, "secret", stamp, sig, window, sent.Add(window)) {
+		t.Error("a delivery at the edge of the window is refused")
+	}
+	for name, ok := range map[string]bool{
+		"a replay much later":    VerifyTimestamped(body, "secret", stamp, sig, window, sent.Add(window+time.Second)),
+		"a time from the future": VerifyTimestamped(body, "secret", stamp, sig, window, sent.Add(-window-time.Second)),
+		"another secret":         VerifyTimestamped(body, "other", stamp, sig, window, sent),
+		"another time":           VerifyTimestamped(body, "secret", strconv.FormatInt(sent.Unix()+1, 10), sig, window, sent),
+		"a time with a sign":     VerifyTimestamped(body, "secret", "+"+stamp, sig, window, sent),
+		"no time":                VerifyTimestamped(body, "secret", "", sig, window, sent),
+		"another body":           VerifyTimestamped([]byte(`{}`), "secret", stamp, sig, window, sent),
+	} {
+		if ok {
+			t.Errorf("%s verifies", name)
+		}
+	}
+}
+
+// An endpoint keeps the version it was registered for, so a body is built in
+// that one, and a version this release does not send is refused, never guessed.
+func TestAnEnvelopeIsBuiltInTheEndpointsVersion(t *testing.T) {
+	if got := Versions(); !slices.Equal(got, []int{CurrentVersion}) {
+		t.Fatalf("this release sends versions %v, want %d alone", got, CurrentVersion)
+	}
+	raw, err := envelopeFor(CurrentVersion, event{id: uuid.New(), topic: TopicPing, occurred: time.Now().UTC(), payload: Ping{Message: pingMessage}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(raw), `{"version":1,"id":`) {
+		t.Errorf("the body does not lead with its version: %s", raw)
+	}
+	if _, err := envelopeFor(CurrentVersion+1, event{}); !errors.Is(err, ErrUnknownVersion) {
+		t.Errorf("a version this release does not send was built: %v", err)
+	}
+	s := &Service{}
+	if _, err := s.body(t.Context(), claimed{eventID: uuid.New(), topic: TopicPing, version: CurrentVersion + 1}); !errors.Is(err, ErrUnknownVersion) {
+		t.Errorf("a delivery queued in an unknown version was built: %v", err)
+	}
+	for _, v := range []int{0, CurrentVersion + 1} {
+		_, err := s.clean(WebhookInput{Name: "A", URL: "https://x.example", Topics: []string{TopicAny}, Version: &v})
+		var field *FieldError
+		if !errors.As(err, &field) || field.Field != "version" || !strings.Contains(field.Message, strconv.Itoa(CurrentVersion)) {
+			t.Errorf("version %d: %v, want a refusal naming the versions sent", v, err)
+		}
+	}
+	current := CurrentVersion
+	if _, err := s.clean(WebhookInput{Name: "A", URL: "https://x.example", Topics: []string{TopicAny}, Version: &current}); err != nil {
+		t.Errorf("the current version is refused: %v", err)
 	}
 }

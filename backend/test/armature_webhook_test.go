@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,23 @@ func (d delivery) body(t *testing.T) []byte {
 // it had while it named the organization.
 func postWebhook(t *testing.T, api *apiServer, oldSlug string, body []byte, signature string) response {
 	t.Helper()
+	return postWebhookWith(t, api, oldSlug, body, map[string]string{armature.SignatureHeader: signature})
+}
+
+// timestamped are the headers Armature signs a delivery in since #242: the
+// plain signature, the time it was sent and the signature over both.
+func timestamped(body []byte, secret string, sent time.Time) map[string]string {
+	return map[string]string{
+		armature.SignatureHeader:            armature.Sign(body, secret),
+		armature.TimestampHeader:            strconv.FormatInt(sent.Unix(), 10),
+		armature.TimestampedSignatureHeader: armature.SignTimestamped(body, secret, sent),
+		armature.WebhookVersionHeader:       strconv.Itoa(armature.WebhookVersion),
+	}
+}
+
+// postWebhookWith posts with the headers given, an empty one left out.
+func postWebhookWith(t *testing.T, api *apiServer, oldSlug string, body []byte, headers map[string]string) response {
+	t.Helper()
 	address := api.srv.URL + "/api/v1/armature/webhook"
 	if oldSlug != "" {
 		address += "/" + oldSlug
@@ -59,8 +77,10 @@ func postWebhook(t *testing.T, api *apiServer, oldSlug string, body []byte, sign
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Armature-Webhook")
-	if signature != "" {
-		req.Header.Set(armature.SignatureHeader, signature)
+	for name, value := range headers {
+		if value != "" {
+			req.Header.Set(name, value)
+		}
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -248,6 +268,73 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 		unsigned := next.body(t)
 		if r := postWebhook(t, api, "", unsigned, armature.Sign(unsigned, webhookSecret+"x")); r.Status != http.StatusUnauthorized {
 			t.Errorf("an unknown version with a wrong signature is answered %d, which tells the version apart before the secret", r.Status)
+		}
+	})
+
+	t.Run("a delivery that signs its time is held to it, and the connection shows the last one taken", func(t *testing.T) {
+		status("CP-1")
+		d := delivery{ID: uuid.New(), Topic: "issue.updated", OrgID: armatureOrg, Payload: map[string]any{"key": "CP-1"}, Version: armature.WebhookVersion}
+		body := d.body(t)
+		now := time.Now()
+		forged := timestamped(body, webhookSecret, now)
+		forged[armature.TimestampedSignatureHeader] = armature.Sign(body, webhookSecret)
+		halfway := timestamped(body, webhookSecret, now)
+		halfway[armature.TimestampedSignatureHeader] = ""
+		moved := timestamped(body, webhookSecret, now)
+		moved[armature.TimestampHeader] = strconv.FormatInt(now.Unix()+1, 10)
+		for _, tc := range []struct {
+			name    string
+			headers map[string]string
+			status  int
+			code    string
+		}{
+			{"a replay later than the window", timestamped(body, webhookSecret, now.Add(-armature.WebhookTimestampTolerance-time.Minute)), http.StatusUnauthorized, "stale_delivery"},
+			{"a time ahead of the window", timestamped(body, webhookSecret, now.Add(armature.WebhookTimestampTolerance+time.Minute)), http.StatusUnauthorized, "stale_delivery"},
+			{"the plain signature as the timestamped one", forged, http.StatusUnauthorized, "bad_signature"},
+			{"a time without its signature", halfway, http.StatusUnauthorized, "bad_signature"},
+			{"a time changed after signing", moved, http.StatusUnauthorized, "bad_signature"},
+		} {
+			r := postWebhookWith(t, api, "", body, tc.headers)
+			if r.Status != tc.status || errorCode(t, r) != tc.code {
+				t.Errorf("%s is answered %d %s, want %d %s", tc.name, r.Status, r.Raw, tc.status, tc.code)
+			}
+		}
+		if _, cached := cachedIssue(t, h, tokenID, "CP-1"); !cached {
+			t.Error("a refused timestamped delivery cleared the cache")
+		}
+		if n, _ := h.valkey(t).Exists(context.Background(), armature.EventKey(h.site.ID, d.ID)).Result(); n != 0 {
+			t.Error("a refused timestamped delivery's event was remembered")
+		}
+
+		// The version header is read before the body, after the signature.
+		next := timestamped(body, webhookSecret, now)
+		next[armature.WebhookVersionHeader] = strconv.Itoa(armature.WebhookVersion + 1)
+		if r := postWebhookWith(t, api, "", body, next); r.Status != http.StatusUnprocessableEntity || errorCode(t, r) != "unsupported_version" {
+			t.Errorf("a newer version header is answered %d %s", r.Status, r.Raw)
+		}
+
+		if r := postWebhookWith(t, api, "", body, timestamped(body, webhookSecret, now)); r.Status != http.StatusNoContent {
+			t.Fatalf("a delivery signed with its time is answered %d %s", r.Status, r.Raw)
+		}
+		if _, cached := cachedIssue(t, h, tokenID, "CP-1"); cached {
+			t.Error("the issue is still cached after a timestamped delivery")
+		}
+		last := func() map[string]any {
+			t.Helper()
+			c := obj(t, want(t, owner.get(t, "/api/v1/armature/connection"), http.StatusOK, "read the connection"), "connection")
+			got, _ := c["lastDelivery"].(map[string]any)
+			return got
+		}
+		if got := last(); got == nil || got["topic"] != "issue.updated" || number(got["version"]) != armature.WebhookVersion || got["timestamped"] != true {
+			t.Errorf("the last delivery reads %v, want version %d signed with its time", got, armature.WebhookVersion)
+		}
+
+		// An Armature from before #242 signs no time and names no version.
+		if r := send(delivery{ID: uuid.New(), Topic: "ping", OrgID: armatureOrg, Payload: map[string]any{}}, webhookSecret); r.Status != http.StatusNoContent {
+			t.Fatalf("a delivery without a time is answered %d %s", r.Status, r.Raw)
+		}
+		if got := last(); got == nil || got["topic"] != "ping" || got["version"] != nil || got["timestamped"] != false {
+			t.Errorf("the last delivery reads %v, want one without a version or a time", got)
 		}
 	})
 
