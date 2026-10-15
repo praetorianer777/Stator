@@ -38,6 +38,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request'
       && github.event.pull_request.merged
+      && github.event.pull_request.head.repo.full_name == github.repository
       && startsWith(github.event.pull_request.head.ref, 'release/v')
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -71,25 +72,28 @@ jobs:
       tag: ${{ steps.resolve.outputs.tag }}
       version: ${{ steps.resolve.outputs.version }}
       commit: ${{ steps.resolve.outputs.commit }}
-    env:
-      TAG: ${{ inputs.tag || github.event.pull_request.head.ref || github.ref_name }}
     steps:
       - name: Name the tag
+        id: name
+        env:
+          REF: ${{ inputs.tag || github.event.pull_request.head.ref || github.ref_name }}
         run: |
-          tag="${TAG#release/}"
+          tag="${REF#release/}"
           if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::$tag is no release tag; releases are tagged vX.Y.Z."
             exit 1
           fi
-          echo "TAG=$tag" >> "$GITHUB_ENV"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
         with:
-          ref: refs/tags/${{ env.TAG }}
+          ref: refs/tags/${{ steps.name.outputs.tag }}
           fetch-depth: 0
 
       - name: Check the tag against the version files
         id: resolve
+        env:
+          TAG: ${{ steps.name.outputs.tag }}
         run: |
           version="${TAG#v}"
           scripts/version-files.sh check "$version"
@@ -104,8 +108,11 @@ jobs:
             echo "commit=$(scripts/build-stamp.sh commit)"
           } >> "$GITHUB_OUTPUT"
 
+  # The default condition would skip these whenever the tag job was skipped,
+  # as it is for a tag push, because it looks at every job upstream.
   images:
     needs: resolve
+    if: ${{ !cancelled() && needs.resolve.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -161,6 +168,7 @@ jobs:
 
   chart:
     needs: [resolve, images]
+    if: ${{ !cancelled() && needs.images.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -188,6 +196,7 @@ jobs:
 
   publish:
     needs: [resolve, images, chart]
+    if: ${{ !cancelled() && needs.chart.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
