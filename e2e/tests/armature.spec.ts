@@ -50,6 +50,12 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
       await expect(page.locator("body")).not.toContainText(WEBHOOK_SECRET);
       // The disconnect button is the danger variant, so axe judges its colours too.
       await expect(page.locator('[data-action="disconnect-armature"]')).toBeVisible();
+      const members = page.locator("[data-armature-members]");
+      await expect(members).toContainText("Each member now connects their own Armature account");
+      await expect(members.getByRole("link", { name: "Connect your own account" })).toHaveAttribute(
+        "href",
+        `${PROFILE_PATH}?return=${encodeURIComponent(SETTINGS_PATH)}#armature`,
+      );
       await expectAccessible(page);
 
       await page.locator('[data-action="account"]').click();
