@@ -13,7 +13,12 @@ ALTER TABLE page
 ALTER TABLE page_version
     ADD COLUMN live boolean NOT NULL DEFAULT false,
     ADD COLUMN updated_at timestamptz;
+-- Not forced meanwhile, so that an owner that is no superuser reaches every
+-- row too; see 00070 (#423).
+ALTER TABLE page_version NO FORCE ROW LEVEL SECURITY;
 UPDATE page_version SET updated_at = created_at;
+ALTER TABLE page_version FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE page_version
     ALTER COLUMN updated_at SET NOT NULL,
     ALTER COLUMN updated_at SET DEFAULT now();

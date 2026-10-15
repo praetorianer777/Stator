@@ -3,6 +3,31 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-15: A migration that reads rows lifts the forced row level security on them (#423)
+
+Under CloudNativePG the migrations run as `stator_owner`, which is neither
+superuser nor `BYPASSRLS`, and every table forces row level security on its
+owner. Until 00750 the tenant policies admitted no row to a session that
+named no organization, so a backfill run as that owner reached nothing:
+00670 stopped the upgrade of a real instance, and others had quietly done
+nothing.
+
+- **`NO FORCE` around the statement, not a tenant named.** Each such
+  migration takes `FORCE ROW LEVEL SECURITY` off the tables its statements
+  read and write and puts it back after, in the same transaction; the owner
+  then passes its own policies as the superuser always did, so for the
+  superuser nothing changes. Naming an organization would reach one of
+  several, and `BYPASSRLS` is the superuser's to grant, not the owner's.
+- **Applied migrations were edited.** Goose keeps no checksums, an instance
+  past them never runs them again, and one stuck before them needs exactly
+  this. An instance that already went through the quiet ones under
+  CloudNativePG keeps what they missed; `docs/upgrading.md` lists them.
+- **Proven as the bound owner, against the superuser.** An integration test
+  writes an instance at three releases and upgrades it as a role like
+  `stator_owner`, beside a copy upgraded by the superuser, and holds every
+  table of the two to the same rows and each backfill to its own. A later
+  migration that misses rows it writes there tells the two apart.
+
 ## 2026-10-15: A release is a pull request, and its merge commit is the tag (#410)
 
 Stator, Armature and Exciter release the same way, after the release script
