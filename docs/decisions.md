@@ -11,9 +11,14 @@ second time over its send time, `X-Stator-Timestamp` and
 `X-Stator-Signature-Timestamped-256`, beside the plain signature a receiver
 written before keeps checking. An endpoint records the version it was
 registered for, and a delivery the one it was queued in; the shape is
-Armature's on purpose, so one receiver serves both products, and no
-`source` field or other envelope standard is added until Dynamo decides on
-one.
+Armature's on purpose, so one receiver serves both products.
+
+- **`source` now, a wider event standard as version 2.** The envelope also
+  says `"source": "stator"`, a step toward the shape a later version takes.
+  It is added to version 1 without raising it, since a receiver ignores a
+  field it does not know; nothing else is renamed or moved. That shape will
+  be envelope version 2, beside 1, and the version each endpoint registers
+  for is what lets the two be sent side by side.
 
 - **The version is the endpoint's, not the release's.** A receiver upgrades
   when its administrator moves the endpoint, not when Stator is updated, and

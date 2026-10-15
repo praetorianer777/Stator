@@ -24,7 +24,7 @@ func TestTheDocumentDescribesAWebhookDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{"version", "id", "topic", "occurredAt", "payload"} {
+	for _, field := range []string{"version", "id", "source", "topic", "occurredAt", "payload"} {
 		if !slices.Contains(body.Required, field) {
 			t.Errorf("the envelope does not promise %s", field)
 		}
@@ -67,7 +67,7 @@ func TestEveryPayloadFitsTheDocumentedEnvelope(t *testing.T) {
 			t.Errorf("no payload of %s is checked against the document", topic)
 			continue
 		}
-		raw, err := json.Marshal(webhook.EnvelopeV1{Version: webhook.CurrentVersion, ID: uuid.New(), Topic: topic, OccurredAt: time.Now().UTC(), Payload: payload})
+		raw, err := json.Marshal(webhook.EnvelopeV1{Version: webhook.CurrentVersion, ID: uuid.New(), Source: webhook.Source, Topic: topic, OccurredAt: time.Now().UTC(), Payload: payload})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -75,10 +75,13 @@ func TestEveryPayloadFitsTheDocumentedEnvelope(t *testing.T) {
 			t.Errorf("%s does not fit the document: %v", topic, err)
 		}
 	}
-	if err := doc.ValidateJSON(schema, []byte(`{"id":"x","topic":"ping","occurredAt":"2026-10-15T09:30:00Z","payload":{"message":"hi"}}`)); err == nil {
+	if err := doc.ValidateJSON(schema, []byte(`{"version":1,"id":"x","source":"elsewhere","topic":"ping","occurredAt":"2026-10-15T09:30:00Z","payload":{"message":"hi"}}`)); err == nil {
+		t.Error("an envelope from another source fits the document")
+	}
+	if err := doc.ValidateJSON(schema, []byte(`{"id":"x","source":"stator","topic":"ping","occurredAt":"2026-10-15T09:30:00Z","payload":{"message":"hi"}}`)); err == nil {
 		t.Error("an envelope without a version fits the document")
 	}
-	if err := doc.ValidateJSON(schema, []byte(`{"version":1,"id":"x","topic":"page.published","occurredAt":"2026-10-15T09:30:00Z","payload":{"page":{}}}`)); err == nil {
+	if err := doc.ValidateJSON(schema, []byte(`{"version":1,"id":"x","source":"stator","topic":"page.published","occurredAt":"2026-10-15T09:30:00Z","payload":{"page":{}}}`)); err == nil {
 		t.Error("a payload that is no topic's fits the document")
 	}
 }

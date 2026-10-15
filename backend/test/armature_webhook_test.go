@@ -31,6 +31,8 @@ type delivery struct {
 	// Version is the envelope's; 0 leaves it out, as Armature did before it
 	// numbered the envelope.
 	Version int
+	// Source is a field the receiver does not read; empty leaves it out.
+	Source string
 }
 
 func (d delivery) body(t *testing.T) []byte {
@@ -38,6 +40,9 @@ func (d delivery) body(t *testing.T) []byte {
 	envelope := map[string]any{"id": d.ID, "topic": d.Topic, "orgId": d.OrgID, "occurredAt": time.Now().UTC(), "payload": d.Payload}
 	if d.Version != 0 {
 		envelope["version"] = d.Version
+	}
+	if d.Source != "" {
+		envelope["source"] = d.Source
 	}
 	raw, err := json.Marshal(envelope)
 	if err != nil {
@@ -273,7 +278,9 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 
 	t.Run("a delivery that signs its time is held to it, and the connection shows the last one taken", func(t *testing.T) {
 		status("CP-1")
-		d := delivery{ID: uuid.New(), Topic: "issue.updated", OrgID: armatureOrg, Payload: map[string]any{"key": "CP-1"}, Version: armature.WebhookVersion}
+		// source is one of the fields an envelope may gain without a new
+		// version, which the receiver ignores.
+		d := delivery{ID: uuid.New(), Topic: "issue.updated", OrgID: armatureOrg, Payload: map[string]any{"key": "CP-1"}, Version: armature.WebhookVersion, Source: "armature"}
 		body := d.body(t)
 		now := time.Now()
 		forged := timestamped(body, webhookSecret, now)

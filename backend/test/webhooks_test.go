@@ -184,6 +184,9 @@ func asDocumented(t *testing.T, d received, secret string) {
 	if err := doc.ValidateJSON(delivery.RequestBody.Content["application/json"].Schema, []byte(d.Body)); err != nil {
 		t.Errorf("the body does not fit the documented envelope: %v\n%s", err, d.Body)
 	}
+	if d.env["source"] != webhook.Source {
+		t.Errorf("the envelope names its source %v, want %s", d.env["source"], webhook.Source)
+	}
 	for _, p := range delivery.Parameters {
 		if p.In == "header" && p.Required && d.Headers[p.Name] == "" {
 			t.Errorf("the delivery lacks the documented header %s: %v", p.Name, d.Headers)

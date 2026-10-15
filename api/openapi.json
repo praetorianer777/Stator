@@ -20380,6 +20380,13 @@
               }
             ]
           },
+          "source": {
+            "type": "string",
+            "description": "The product that sent the delivery, always stator. Added to version 1 without raising it, as a receiver ignores a field it does not know.",
+            "enum": [
+              "stator"
+            ]
+          },
           "topic": {
             "type": "string",
             "description": "What happened: ping, page.published, page.moved, page.deleted, comment.created. A receiver ignores a topic it does not know."
@@ -20392,6 +20399,7 @@
         "required": [
           "version",
           "id",
+          "source",
           "topic",
           "occurredAt",
           "payload"

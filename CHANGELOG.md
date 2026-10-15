@@ -11,7 +11,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 - Stator's outbound webhooks carry an envelope version (#412), as Armature's
   do. Receivers see three things new, none of which breaks one written
-  before: the body has `"version": 1` before `id`, the same version comes in
+  before: the body has `"version": 1` before `id` and `"source": "stator"`
+  after it, the same version comes in
   `X-Stator-Webhook-Version`, and each attempt also carries
   `X-Stator-Timestamp` (Unix seconds) and `X-Stator-Signature-Timestamped-256`
   (`sha256=` and the HMAC of the timestamp, a dot and the body), so a

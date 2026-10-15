@@ -179,7 +179,7 @@ func TestAPingEnvelopeIsArmaturesShape(t *testing.T) {
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got["version"] != float64(CurrentVersion) || got["id"] != id.String() || got["topic"] != TopicPing || got["orgId"] != nil || got["occurredAt"] != "2026-10-01T06:00:00Z" {
+	if got["version"] != float64(CurrentVersion) || got["id"] != id.String() || got["source"] != Source || got["topic"] != TopicPing || got["orgId"] != nil || got["occurredAt"] != "2026-10-01T06:00:00Z" {
 		t.Fatalf("envelope %s", raw)
 	}
 	if got["payload"].(map[string]any)["message"] != pingMessage {

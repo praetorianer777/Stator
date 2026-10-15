@@ -84,6 +84,7 @@ delivery it sees to it.
 {
   "version": 1,
   "id": "0199e1c2-7d4a-7c11-9b1e-3f0a2b4c5d6e",
+  "source": "stator",
   "topic": "page.published",
   "occurredAt": "2026-10-15T09:30:00Z",
   "payload": { "page": { "id": "...", "title": "Plans", "version": 3, "url": "...", "space": { "key": "DOC", "name": "Docs" }, "kind": "page" }, "actor": { "id": "...", "name": "Ada" } }
@@ -94,6 +95,7 @@ delivery it sees to it.
 | --- | --- |
 | `version` | The envelope version the endpoint was registered for, an integer. |
 | `id` | The event's id, the same on every retry and redelivery, so a receiver can drop one it has handled. |
+| `source` | The product that sent it, always `stator`. Added to version 1 without raising it, as a step toward the shape a later version takes. |
 | `topic` | `ping`, `page.published`, `page.moved`, `page.deleted` or `comment.created`. |
 | `occurredAt` | When the event happened, in UTC. |
 | `payload` | The event's own fields, read as the endpoint's owner when the attempt is sent. |
@@ -134,7 +136,10 @@ refuse a replay.
 
 | Version | Since | What changed |
 | --- | --- | --- |
-| 1 | #412 | The envelope as it was, with `version` added, and the timestamp headers. |
+| 1 | #412 | The envelope as it was, with `version` and `source` added, and the timestamp headers. |
+
+A later version takes a wider event standard's shape; it comes beside 1, and
+each endpoint moves when its administrator registers it for the new one.
 
 ## Receiving Armature's webhooks
 
@@ -155,7 +160,8 @@ Armature's `docs/webhooks.md` describes it for receivers.
    the answer is 422 `unsupported_version`, which Armature logs and retries.
    A body without a version is from before Armature numbered it and is read
    as 1.
-4. Fields and topics Stator does not know are ignored, with 204.
+4. Fields and topics Stator does not know, such as a `source`, are ignored,
+   with 204.
 
 `GET /armature/connection` answers under `lastDelivery` the last delivery
 taken: when, its topic, the version its body named and whether its time was

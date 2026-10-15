@@ -19,8 +19,11 @@ import (
 // EnvelopeV1 is what an endpoint on version 1 receives, Armature's shape: the
 // id is the event's, the same on every attempt, so a receiver can tell a repeat.
 type EnvelopeV1 struct {
-	Version    int       `json:"version"`
-	ID         uuid.UUID `json:"id"`
+	Version int       `json:"version"`
+	ID      uuid.UUID `json:"id"`
+	// Source names the product that sent it, always Source; added to version 1
+	// as a step toward the shape a later version takes.
+	Source     string    `json:"source"`
 	Topic      string    `json:"topic"`
 	OccurredAt time.Time `json:"occurredAt"`
 	Payload    any       `json:"payload"`
@@ -38,7 +41,7 @@ type event struct {
 // and an endpoint on 1 keeps getting 1.
 var envelopes = map[int]func(e event) any{
 	1: func(e event) any {
-		return EnvelopeV1{Version: 1, ID: e.id, Topic: e.topic, OccurredAt: e.occurred, Payload: e.payload}
+		return EnvelopeV1{Version: 1, ID: e.id, Source: Source, Topic: e.topic, OccurredAt: e.occurred, Payload: e.payload}
 	},
 }
 

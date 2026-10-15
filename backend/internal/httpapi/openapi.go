@@ -1320,6 +1320,8 @@ func webhookDelivery(b *openapi.Builder) *openapi.Operation {
 	}
 	b.Descriptions[reflect.TypeOf(webhook.EnvelopeV1{})] = "What an endpoint registered for envelope version 1 is posted."
 	b.FieldOverrides["EnvelopeV1.version"] = &openapi.Schema{Type: "integer", Description: "The envelope version, 1 here; the version header says the same."}
+	b.FieldOverrides["EnvelopeV1.source"] = &openapi.Schema{Type: "string", Enum: []string{webhook.Source},
+		Description: "The product that sent the delivery, always " + webhook.Source + ". Added to version 1 without raising it, as a receiver ignores a field it does not know."}
 	b.FieldOverrides["EnvelopeV1.topic"] = &openapi.Schema{Type: "string",
 		Description: "What happened: " + strings.Join(append([]string{webhook.TopicPing}, webhook.Topics...), ", ") + ". A receiver ignores a topic it does not know."}
 	b.FieldOverrides["EnvelopeV1.occurredAt"] = &openapi.Schema{Type: "string", Format: "date-time", Description: "When the event happened, in UTC."}

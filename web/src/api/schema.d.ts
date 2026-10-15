@@ -4622,6 +4622,11 @@ export interface components {
             occurredAt: string;
             /** @description The event's own fields, by topic, read as the endpoint's owner when the attempt is sent. */
             payload: components["schemas"]["WebhookPagePublished"] | components["schemas"]["WebhookPageMoved"] | components["schemas"]["WebhookPageDeleted"] | components["schemas"]["WebhookCommentCreated"] | components["schemas"]["WebhookPing"];
+            /**
+             * @description The product that sent the delivery, always stator. Added to version 1 without raising it, as a receiver ignores a field it does not know.
+             * @enum {string}
+             */
+            source: "stator";
             /** @description What happened: ping, page.published, page.moved, page.deleted, comment.created. A receiver ignores a topic it does not know. */
             topic: string;
             /** @description The envelope version, 1 here; the version header says the same. */

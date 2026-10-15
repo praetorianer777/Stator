@@ -67,6 +67,8 @@ const (
 	// CurrentVersion is the envelope a new endpoint is registered for. It
 	// rises only for a change that breaks a receiver, as docs/integration.md says.
 	CurrentVersion = 1
+	// Source is what every envelope names as its sender.
+	Source = "stator"
 )
 
 // Backoff is the wait before each retry, by attempt number; a sixth failure
