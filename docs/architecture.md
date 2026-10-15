@@ -255,8 +255,11 @@ The primary runs with `synchronous_commit=off`: a commit that waited for the
 host's disk could take seconds on a busy machine. Only this stack does so; see
 `docs/decisions.md`.
 
-Two images are built. `Dockerfile.backend` holds every Go binary, stamped with
-`VERSION`, and each service picks one by its command. `Dockerfile.web` builds
+Two images are built. `Dockerfile.backend` holds every Go binary, and each
+service picks one by its command. Both images are stamped with the version and
+commit `scripts/build-stamp.sh` reads from git (`1.2.3` on a release tag,
+`1.2.3+4.gabc1234` past one, `VERSION+dev` without one), which compose passes
+as build arguments; `GET /api/v1/meta` reports it and the sidebar shows it. `Dockerfile.web` builds
 the SPA with Node and serves it from nginx (`deploy/nginx.conf`), which proxies
 `/api/`, `/healthz` and `/readyz` to the api so the browser sees one origin,
 over connections it keeps and reuses (in compose it looks the api's address

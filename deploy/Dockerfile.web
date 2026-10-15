@@ -12,7 +12,11 @@ FROM deps AS build
 COPY VERSION /src/VERSION
 COPY api/ /src/api/
 COPY web/ ./
-RUN npm run build
+# The client's own stamp, shown while the api cannot be reached; the same
+# arguments as the backend image's, so the two agree.
+ARG VERSION=""
+ARG COMMIT=""
+RUN STATOR_BUILD_VERSION="$VERSION" STATOR_BUILD_COMMIT="$COMMIT" npm run build
 
 FROM nginx:1.29-alpine
 COPY --from=build /src/web/dist /usr/share/nginx/html

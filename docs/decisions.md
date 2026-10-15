@@ -3,6 +3,31 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-15: Every build says what it is, at GET /api/v1/meta (#407, #398)
+
+Stator, Armature and Exciter answer the same unauthenticated
+`GET /api/v1/meta`: `product`, `build` (`version`, `commit`, `builtAt`),
+`apiVersion` and `capabilities`, so a partner, an operator or a combined
+release can tell which build of which tool it talks to.
+
+- **The version is semver, as Armature's.** `scripts/build-stamp.sh` derives
+  it from git: `1.2.3` on the tag `v1.2.3` that `release.sh` makes,
+  `1.2.3+4.gabc1234` four commits past it, and `VERSION+dev` with no tag in
+  reach (CI's shallow clone) or outside git. The commit is the short hash.
+- **Passed in, not read in the image.** Armature's image build runs
+  `git describe` on a copied `.git`; Stator's build context has none, and a
+  worktree's `.git` is only a file. The Makefile runs the script and compose,
+  the chart install test and `make build-go` pass `VERSION` and `COMMIT` to
+  both images, so the page and the api never disagree. An image built
+  without them says `VERSION+dev` and no commit.
+- **`apiVersion` is `info.version` of `api/openapi.json`** and rises only
+  for a change that breaks clients. `capabilities` stays empty until the
+  integration features are named (#409).
+- **The sidebar shows the api's build,** `v1.2.3` for a release and
+  `v1.2.3+4 · abc1234` otherwise, with the commit and build time in its
+  tooltip, since a bug report needs the build that served it. While the api
+  does not answer it shows the client's own stamp.
+
 ## 2026-10-14: One organization per instance (#380)
 
 An instance serves one organization, and nothing in Stator chooses,

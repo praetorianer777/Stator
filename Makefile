@@ -5,6 +5,10 @@
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 VERSION := $(shell cat $(ROOT)/VERSION)
+# What the binaries and images say they are; compose passes both to the image
+# builds, so the page and the api describe the same build.
+export STATOR_BUILD_VERSION := $(shell $(ROOT)/scripts/build-stamp.sh version)
+export STATOR_BUILD_COMMIT := $(shell $(ROOT)/scripts/build-stamp.sh commit)
 UID_GID := $(shell id -u):$(shell id -g)
 # Machine-readable results of the last run of each suite, which
 # scripts/test-summary.sh turns into durations, counts and the slowest tests.

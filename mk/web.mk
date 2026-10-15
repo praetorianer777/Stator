@@ -12,6 +12,7 @@ DOCKER_NODE = docker run --rm $(DOCKER_NODE_TTY) \
 	-v $(NPM_CACHE):/npmcache \
 	-e npm_config_cache=/npmcache \
 	-e npm_config_update_notifier=false \
+	-e STATOR_BUILD_VERSION -e STATOR_BUILD_COMMIT \
 	-e HOME=/tmp \
 	-w /src/web $(NODE_IMAGE)
 
@@ -62,6 +63,7 @@ web-dev: | $(NPM_CACHE) ## Vite dev server on a port derived from this checkout'
 		-e npm_config_cache=/npmcache \
 		-e HOME=/tmp \
 		-e VITE_API_PROXY=$(VITE_API_PROXY) \
+		-e STATOR_BUILD_VERSION -e STATOR_BUILD_COMMIT \
 		--name stator-web-dev-$(WEB_DEV_PORT) \
 		-p $(WEB_DEV_PORT):5173 \
 		-w /src/web $(NODE_IMAGE) npm run dev

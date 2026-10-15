@@ -65,8 +65,13 @@ kind create cluster --name "$CLUSTER" --image "$NODE_IMAGE" --kubeconfig "$KUBEC
 ok "kind cluster $CLUSTER is up"
 
 say "The images, built from this checkout and loaded into the cluster"
-docker build -q -f "$ROOT/deploy/Dockerfile.backend" -t stator-test/backend:ci "$ROOT" >/dev/null
-docker build -q -f "$ROOT/deploy/Dockerfile.web" -t stator-test/web:ci "$ROOT" >/dev/null
+# make passes the stamp in: the tools image has no git to read it with.
+BUILD_VERSION="${STATOR_BUILD_VERSION:-$("$ROOT/scripts/build-stamp.sh" version)}"
+BUILD_COMMIT="${STATOR_BUILD_COMMIT:-$("$ROOT/scripts/build-stamp.sh" commit)}"
+for image in backend web; do
+  docker build -q -f "$ROOT/deploy/Dockerfile.$image" -t "stator-test/$image:ci" \
+    --build-arg VERSION="$BUILD_VERSION" --build-arg COMMIT="$BUILD_COMMIT" "$ROOT" >/dev/null
+done
 kind load docker-image --name "$CLUSTER" stator-test/backend:ci stator-test/web:ci
 ok "backend and web are on the node"
 
@@ -103,6 +108,10 @@ done
 [[ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${LOCAL_PORT}/healthz")" == 200 ]] || fail "/healthz through the web server is not 200"
 [[ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${LOCAL_PORT}/readyz")" == 200 ]] || fail "/readyz through the web server is not 200"
 ok "the web server reaches the api, and the api reaches its database"
+meta="$(curl -fs "http://127.0.0.1:${LOCAL_PORT}/api/v1/meta")" || fail "/api/v1/meta through the web server did not answer"
+[[ "$(jq -r '.product + " " + .build.version + " " + (.build.commit // "")' <<<"$meta")" == "stator $BUILD_VERSION $BUILD_COMMIT" ]] \
+  || fail "/api/v1/meta says $meta, want stator $BUILD_VERSION $BUILD_COMMIT"
+ok "the api reports the build it was stamped with, to anybody"
 
 PASSWORD="$(kubectl get secret "${FULL}-bootstrap-admin" -n "$NS" -o jsonpath='{.data.password}' | base64 -d)"
 JAR="$(mktemp)"

@@ -13,5 +13,6 @@ test-chart-install: chart-tools ## Install and upgrade the chart in a throwaway 
 	docker run --rm --network host \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT):/work:ro \
+		-e STATOR_BUILD_VERSION -e STATOR_BUILD_COMMIT \
 		-e KEEP_CLUSTER -e CLUSTER=stator-chart-install-$$(printf '%s' $(ROOT) | cksum | cut -d' ' -f1) \
 		$(CHART_TOOLS_IMAGE) /work/scripts/chart-install-test.sh

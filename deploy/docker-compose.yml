@@ -71,6 +71,12 @@ x-backend: &backend
   image: ${COMPOSE_PROJECT_NAME:-stator}-backend
   pull_policy: never
 
+# What the images say they are; the Makefile sets both from
+# scripts/build-stamp.sh, and a build without them calls itself VERSION+dev.
+x-build-stamp: &build-stamp
+  VERSION: ${STATOR_BUILD_VERSION:-}
+  COMMIT: ${STATOR_BUILD_COMMIT:-}
+
 services:
   postgres-primary:
     image: postgres:18-alpine
@@ -281,6 +287,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.backend
+      args: *build-stamp
     command: ["/app/migrate", "up"]
     depends_on:
       postgres-primary:
@@ -297,6 +304,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.backend
+      args: *build-stamp
       target: backup
     profiles: [tools]
     depends_on:
@@ -429,6 +437,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.web
+      args: *build-stamp
     depends_on:
       api:
         condition: service_healthy
