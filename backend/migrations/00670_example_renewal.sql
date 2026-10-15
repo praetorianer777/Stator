@@ -6,6 +6,10 @@ ALTER TABLE space
     ADD COLUMN example_version integer,
     ADD COLUMN example_language text;
 
+-- Not forced meanwhile, so that an owner that is no superuser reaches every
+-- row too; see 00070 (#423).
+ALTER TABLE space NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE example_job NO FORCE ROW LEVEL SECURITY;
 UPDATE space s
 SET example_version = 0,
     example_language = COALESCE(
@@ -13,6 +17,8 @@ SET example_version = 0,
          WHERE j.space_id = s.id AND j.state = 'done'
          ORDER BY j.finished_at DESC LIMIT 1), 'en')
 WHERE example;
+ALTER TABLE space FORCE ROW LEVEL SECURITY;
+ALTER TABLE example_job FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE space
     ADD CONSTRAINT space_example_versioned CHECK (

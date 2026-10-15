@@ -5,7 +5,12 @@
 -- which means following the browser. A choice is one of the languages the
 -- interface speaks, whatever writes it.
 ALTER TABLE app_user ALTER COLUMN locale DROP NOT NULL, ALTER COLUMN locale DROP DEFAULT;
+-- Not forced meanwhile, so that an owner that is no superuser reaches every
+-- row too; see 00070 (#423).
+ALTER TABLE app_user NO FORCE ROW LEVEL SECURITY;
 UPDATE app_user SET locale = NULL;
+ALTER TABLE app_user FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE app_user ADD CONSTRAINT app_user_locale_offered CHECK (locale IN ('en', 'de'));
 
 -- +goose Down

@@ -5,9 +5,13 @@
 -- the database's to give, so two uploads at once cannot both take it.
 ALTER TABLE attachment ADD COLUMN version integer NOT NULL DEFAULT 1 CHECK (version > 0);
 
+-- Not forced meanwhile, so that an owner that is no superuser reaches every
+-- row too; see 00070 (#423).
+ALTER TABLE attachment NO FORCE ROW LEVEL SECURITY;
 UPDATE attachment a SET version = n.version
 FROM (SELECT id, row_number() OVER (PARTITION BY org_id, page_id, lower(file_name) ORDER BY created_at, id) AS version FROM attachment) n
 WHERE a.id = n.id;
+ALTER TABLE attachment FORCE ROW LEVEL SECURITY;
 
 CREATE UNIQUE INDEX attachment_version_idx ON attachment (org_id, page_id, lower(file_name), version);
 
