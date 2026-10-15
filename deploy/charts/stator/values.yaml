@@ -8,15 +8,16 @@ fullnameOverride: ""
 images:
   # deploy/Dockerfile.backend carries every Go binary; each workload runs the
   # one it needs. deploy/Dockerfile.web is the SPA behind nginx. An empty tag
-  # means the chart's appVersion.
-  backend: { repository: stator/backend, tag: "" }
-  web: { repository: stator/web, tag: "" }
+  # means the chart's appVersion: release.yml pushes every image with one
+  # under that version (tests/test-release-workflow.sh keeps the two lists equal).
+  backend: { repository: ghcr.io/praetorianer777/stator-backend, tag: "" }
+  web: { repository: ghcr.io/praetorianer777/stator-web, tag: "" }
   # deploy/Dockerfile.render: the public Chrome image with the render
   # service's script baked in, for PDF export.
-  render: { repository: stator/render, tag: "" }
+  render: { repository: ghcr.io/praetorianer777/stator-render, tag: "" }
   # deploy/Dockerfile.backend built with --target backup: the backup command
   # beside pg_dump and psql of the server's major version.
-  backup: { repository: stator/backup, tag: "" }
+  backup: { repository: ghcr.io/praetorianer777/stator-backup, tag: "" }
   # The client the roles Job runs, and the server the bundled Postgres runs.
   psql: { repository: postgres, tag: 18-alpine }
   valkey: { repository: valkey/valkey, tag: 8-alpine }

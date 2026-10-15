@@ -9,6 +9,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Releases are published from a tag (#410). `./release.sh` writes the
+  version into `VERSION` and the chart's `version` and `appVersion` and opens
+  the pull request `release/vX.Y.Z`; merging it tags the merge commit
+  `vX.Y.Z`, and the tag pushes the backend, backup, web and render images to
+  `ghcr.io/praetorianer777/stator-<image>` (as the version and the short
+  commit), the chart to `oci://ghcr.io/praetorianer777/charts/stator`,
+  publishes the GitHub release and tells Dynamo. The chart's images default
+  to those repositories. See `docs/releasing.md`.
+
 - `GET /api/v1/meta` says which build answers, without signing in (#407):
   the product, the version, short commit and build time, the API version and
   the integration capabilities, in the shape Armature and Exciter share. The

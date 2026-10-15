@@ -272,7 +272,7 @@ check "nothing is rendered for backups" "$(grep -c 'component: backup\|component
 render "backups on" "${SWFS[@]}" --set backup.enabled=true
 check "a CronJob each for backup and restore" "$(grep -c '^kind: CronJob$' <<<"${RENDERED}")" "2"
 check "neither runs on its own" "$(grep -c '^  suspend: true$' <<<"${RENDERED}")" "2"
-check "they run the backup image" "$(grep -c 'image: stator/backup:' <<<"${RENDERED}")" "2"
+check "they run the backup image" "$(grep -c 'image: ghcr.io/praetorianer777/stator-backup:' <<<"${RENDERED}")" "2"
 check "they connect as the owner, as the migrate Job does" "$(grep -A1 -- '- name: STATOR_DB_PRIMARY_URL$' <<<"${RENDERED}" | grep -c 'DB_OWNER_PASSWORD')" "3"
 check "they read the S3 keys as the api does" "$(grep -A4 'name: STATOR_S3_ACCESS_KEY$' <<<"${RENDERED}" | grep -c 'name: "\?stator-s3"\?$')" "4"
 check "they have the key the secrets were sealed with" "$(grep -c 'name: STATOR_SECRET_KEY$' <<<"${RENDERED}")" "4"

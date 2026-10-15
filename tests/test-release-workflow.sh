@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Tests for .github/workflows/release.yml, which runs only for a release and so
+# cannot be tried on a pull request: actionlint passes over it, the images it
+# pushes are the ones the chart runs, under the names the chart gives them,
+# the chart it packages carries the release version, and the steps a release
+# depends on are still there. release.sh and release-tag.sh have their own
+# tests in tests/test-release.sh. Needs bash and Docker.
+set -u
+
+SRC="$(cd "$(dirname "$0")/.." && pwd)"
+WF="${SRC}/.github/workflows/release.yml"
+VALUES="${SRC}/deploy/charts/stator/values.yaml"
+
+W="$(mktemp -d)" || exit 1
+trap 'rm -rf "${W}"' EXIT
+
+FAILED=0
+pass() { echo "   ✅ $1"; }
+fail() { echo "   ❌ $1"; FAILED=1; }
+check() { if [[ "$2" == "$3" ]]; then pass "$1"; else fail "$1: expected [$3], got [$2]"; fi; }
+
+echo "🧪 release.yml passes actionlint"
+if out=$(make -s -C "${SRC}" check-actions 2>&1); then
+    pass "actionlint and shellcheck find nothing in .github/workflows"
+else
+    fail "actionlint found problems"
+    sed 's/^/      /' <<<"${out}"
+fi
+
+echo "🧪 release.yml pushes the images the chart runs"
+
+prefix=$(sed -n 's/^  IMAGE_PREFIX: *//p' "${WF}")
+[[ -n "${prefix}" ]] || fail "release.yml sets no IMAGE_PREFIX this test can read"
+pushed=$(sed -n 's/^ *- image: *//p' "${WF}" | sort)
+[[ -n "${pushed}" ]] || fail "release.yml's image matrix lists no image this test can read"
+
+# An image whose tag is empty runs at the chart's appVersion, which only a
+# release of Stator publishes; every other image names its own tag.
+released=$(sed -n 's/^  \([a-z]*\): { repository: \([^,]*\), tag: "" }$/\1 \2/p' "${VALUES}")
+[[ -n "${released}" ]] || fail "values.yaml lists no image with an empty tag this test can read"
+while read -r name repository; do
+    [[ -n "${name}" ]] || continue
+    check "the chart pulls ${name} from where release.yml pushes it" "${repository}" "${prefix}-${name}"
+done <<<"${released}"
+check "release.yml pushes exactly the images the chart runs at its appVersion" \
+    "$(paste -sd' ' <<<"${pushed}")" "$(cut -d' ' -f1 <<<"${released}" | sort | paste -sd' ')"
+check "the release summary lists the same images" \
+    "$(sed -n 's/^ *for image in \(.*\); do$/\1/p' "${WF}" | tr ' ' '\n' | sort | paste -sd' ')" \
+    "$(paste -sd' ' <<<"${pushed}")"
+
+# Each matrix entry names its Dockerfile and, for a stage that is not the last,
+# its target; both must exist, or the build fails only on the tag.
+while IFS='|' read -r image dockerfile target; do
+    [[ -f "${SRC}/${dockerfile}" ]] && pass "${image}: ${dockerfile} exists" \
+        || fail "${image}: release.yml builds ${dockerfile}, which does not exist"
+    if [[ -n "${target}" ]]; then
+        grep -qiE "^FROM .* AS ${target}\$" "${SRC}/${dockerfile}" && pass "${image}: ${dockerfile} has the stage ${target}" \
+            || fail "${image}: ${dockerfile} has no stage ${target}"
+    fi
+done < <(awk '
+    /^ *- image: / { if (image) print image "|" file "|" target; image = $3; file = ""; target = "" }
+    /^ *dockerfile: / { file = $2 }
+    /^ *target: / { target = $2; gsub(/"/, "", target) }
+    /^    steps:/ && image { print image "|" file "|" target; image = "" }
+' "${WF}")
+
+echo "🧪 release.yml covers every step of a release"
+has() { grep -qF -- "$2" "${WF}" && pass "$1" || fail "$1: release.yml no longer contains: $2"; }
+has "a merged release pull request starts it" "types: [closed]"
+has "only a release branch is tagged" "startsWith(github.event.pull_request.head.ref, 'release/v')"
+has "the tag goes on the merge commit" 'scripts/release-tag.sh "$BRANCH" "$MERGE_COMMIT"'
+has "a tag pushed by hand starts it" 'tags: ["v*"]'
+has "the version files must agree with the tag" 'scripts/version-files.sh check "$version"'
+has "the images carry the version" 'VERSION=${{ needs.resolve.outputs.version }}'
+has "the images carry the commit" 'COMMIT=${{ needs.resolve.outputs.commit }}'
+has "the images are tagged with the version" ':${{ needs.resolve.outputs.version }}'
+has "the images are tagged with the commit" ':${{ needs.resolve.outputs.commit }}'
+has "the chart is packaged" "make chart-package"
+has "the chart is pushed" "make chart-push"
+has "the chart goes to an OCI repository" "CHART_REPOSITORY: oci://"
+has "the release notes come from the tag message" "%(contents)"
+has "Dynamo is told which tool was released" 'tool: "stator"'
+has "Dynamo hears it as tool-released" 'event_type: "tool-released"'
+has "a missing Dynamo token is a notice, not a failure" "::notice::DYNAMO_DISPATCH_TOKEN is not set"
+
+echo "🧪 the packaged chart carries the release version"
+version=$(tr -d '[:space:]' <"${SRC}/VERSION")
+if out=$(make -s -C "${SRC}" chart-package CHART_DIST="${W}" 2>&1); then
+    pass "make chart-package packs the chart"
+    chart_yaml=$(tar -xzOf "${W}/stator-${version}.tgz" stator/Chart.yaml 2>/dev/null)
+    check "the package is named for VERSION" "$([[ -n "${chart_yaml}" ]] && echo found)" "found"
+    check "its version is VERSION" "$(sed -n 's/^version: //p' <<<"${chart_yaml}")" "${version}"
+    check "its appVersion is VERSION" "$(sed -n 's/^appVersion: //p' <<<"${chart_yaml}" | tr -d '"')" "${version}"
+    check "it carries the subchart, so installing it needs no other repository" \
+        "$(tar -tzf "${W}/stator-${version}.tgz" | grep -c '^stator/charts/seaweedfs/Chart.yaml$')" "1"
+else
+    fail "make chart-package failed"
+    sed 's/^/      /' <<<"${out}"
+fi
+
+if (( FAILED )); then
+    echo "❌ release workflow tests failed"
+    exit 1
+fi
+echo "✅ release workflow tests passed"

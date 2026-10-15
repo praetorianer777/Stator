@@ -100,6 +100,15 @@ of its own. `values.yaml` documents every setting; see also
 Backups, under the chart and under Docker Compose alike, are in
 `docs/backup-and-restore.md`.
 
+## Releasing
+
+`./release.sh` opens the pull request `release/vX.Y.Z` that bumps every file
+carrying the version and the changelog. Merging it tags the merge commit
+`vX.Y.Z`, and the tag publishes the images to
+`ghcr.io/praetorianer777/stator-<image>`, the chart to
+`oci://ghcr.io/praetorianer777/charts/stator` and the GitHub release. See
+`docs/releasing.md`.
+
 ## Contributing
 
 Every change hangs off an issue and a branch named `<type>/<issue>-<slug>`,

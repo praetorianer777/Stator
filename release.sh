@@ -7,11 +7,15 @@ set -euo pipefail
 #   ./release.sh 0.2.0                  version given by hand, notes generated
 #   ./release.sh 0.2.0 "Added ICS"      version and changelog given by hand
 #   ./release.sh --dry-run              print version and notes, change nothing
+# It opens the pull request release/vX.Y.Z; merging it tags the merge commit
+# vX.Y.Z, and the tag publishes the release (docs/releasing.md).
 
-# One plain X.Y.Z line; the Go binaries take it through -ldflags and the web
-# build through Vite, so no source file carries its own copy.
+# VERSION is what the next version is worked out from; scripts/version-files.sh
+# knows every other file that carries it.
 VERSION_FILE="VERSION"
+VERSION_FILES="scripts/version-files.sh"
 CHANGELOG_FILE="CHANGELOG.md"
+cd "$(dirname "$0")"
 
 DRY_RUN=0
 ARGS=()
@@ -19,7 +23,7 @@ for arg in "$@"; do
     case "${arg}" in
         --dry-run) DRY_RUN=1 ;;
         -h|--help)
-            sed -n '4,9p' "$0" | sed 's|^# \?||'
+            sed -n '4,11p' "$0" | sed 's|^# \?||'
             exit 0
             ;;
         *) ARGS+=("${arg}") ;;
@@ -195,6 +199,33 @@ fi
 
 TAG="v${VERSION}"
 NOTES_FILE="release-notes-${TAG}.md"
+# Main takes no direct commits, so the bump travels as a pull request of its
+# own; the tag is set on its merge commit, never on a commit main lacks.
+RELEASE_BRANCH="release/${TAG}"
+REMOTE="${UPSTREAM%%/*}"
+REMOTE="${REMOTE:-origin}"
+
+if (( ! DRY_RUN )); then
+    # The commit stages only the files this script writes, but edits waiting
+    # in them would ride along unseen.
+    if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+        echo "❌ The working tree has uncommitted changes; commit or discard them first:"
+        git status --short --untracked-files=no | sed 's/^/     /'
+        exit 1
+    fi
+    if git rev-parse --quiet --verify "refs/tags/${TAG}" >/dev/null \
+        || git ls-remote --exit-code --tags "${REMOTE}" "refs/tags/${TAG}" >/dev/null 2>&1; then
+        echo "❌ ${TAG} already exists; a published version is never released again."
+        exit 1
+    fi
+    if git rev-parse --quiet --verify "refs/heads/${RELEASE_BRANCH}" >/dev/null \
+        || git ls-remote --exit-code --heads "${REMOTE}" "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
+        echo "❌ ${RELEASE_BRANCH} already exists. Merge or close its pull request and delete the branch,"
+        echo "   or release another version."
+        exit 1
+    fi
+    git switch -q -c "${RELEASE_BRANCH}"
+fi
 
 if [[ -n "${MANUAL_CHANGELOG}" ]]; then
     RAW_LOG=""
@@ -355,39 +386,60 @@ PY
 )
 
 if (( DRY_RUN )); then
-    echo "🔍 Dry run — Stator ${TAG}"
+    echo "🔍 Dry run: Stator ${TAG}"
 else
     echo "📦 Releasing Stator ${TAG}"
 fi
 echo "   Version:   ${VERSION} ($( (( INFERRED )) && echo "inferred from the commit history" || echo "given on the command line"))"
 echo "   Notes:     ${NOTES_FILE} (${NOTES_SOURCE})"
+echo "   Branch:    ${RELEASE_BRANCH}, with a pull request into ${DEFAULT_BRANCH}"
+echo "   Files:     $("./${VERSION_FILES}" files | paste -sd' ') ${CHANGELOG_FILE}"
 if (( DRY_RUN )); then
     echo ""
-    echo "   Nothing was written: no version strings, no ${CHANGELOG_FILE}, no commit, no tag."
+    echo "   Nothing was written: no version strings, no ${CHANGELOG_FILE}, no branch, no commit, no tag."
     exit 0
 fi
 echo "   ✅ ${CHANGELOG_FILE}"
 echo "   ✅ ${NOTES_FILE}"
 echo ""
 
-echo "✏️  Updating ${VERSION_FILE}..."
-echo "${VERSION}" > "${VERSION_FILE}"
-echo "   ✅ ${VERSION_FILE}"
+echo "✏️  Updating the version files..."
+"./${VERSION_FILES}" set "${VERSION}"
+"./${VERSION_FILES}" show | sed 's/^/   ✅ /; s/\t/: /'
 
 # Nothing is built here: release.yml builds the images from the tag, so what
 # is published is exactly what CI built, and releasing needs no local toolchain.
 
 echo ""
-echo "📝 Committing..."
-# Only the files this release rewrote — "git add -A" would sweep whatever else
+echo "📝 Committing on ${RELEASE_BRANCH}..."
+# Only the files this release rewrote: "git add -A" would sweep whatever else
 # is in the working tree into the release commit.
-git add "${VERSION_FILE}" "${CHANGELOG_FILE}"
-# The notes are multi-line, so they belong in the body — the subject has to
+mapfile -t CARRIERS < <("./${VERSION_FILES}" files)
+git add "${CARRIERS[@]}" "${CHANGELOG_FILE}"
+# The notes are multi-line, so they belong in the body; the subject has to
 # stay one short line.
 git commit -q -m "release: ${TAG}" -m "$(cat "${NOTES_FILE}")"
-# Annotated with the notes: release-notes-*.md is git-ignored, so the tag
-# message is what a release built from the tag (CI) has to work with.
-git tag -a "${TAG}" -F "${NOTES_FILE}"
+
+echo ""
+echo "🚀 Pushing ${RELEASE_BRANCH} to ${REMOTE}..."
+git push -q -u "${REMOTE}" "${RELEASE_BRANCH}"
+
+PR_BODY="$(mktemp)"
+trap 'rm -f "${PR_BODY}"' EXIT
+{
+    echo "Releases Stator ${TAG}. Merging this pull request tags its merge commit"
+    echo "${TAG}, and the tag builds and publishes the images, the chart and the"
+    echo "GitHub release (docs/releasing.md)."
+    echo ""
+    cat "${NOTES_FILE}"
+} > "${PR_BODY}"
+PR_COMMAND=(gh pr create --base "${DEFAULT_BRANCH}" --head "${RELEASE_BRANCH}" --title "release: ${TAG}" --body-file "${PR_BODY}")
+if command -v gh >/dev/null 2>&1 && PR_URL=$("${PR_COMMAND[@]}"); then
+    echo "   ✅ ${PR_URL}"
+else
+    echo "   ⚠️  The pull request could not be opened. Open it by hand, with the notes below as its body:"
+    echo "      gh pr create --base ${DEFAULT_BRANCH} --head ${RELEASE_BRANCH} --title \"release: ${TAG}\" --body-file ${NOTES_FILE}"
+fi
 
 echo ""
 echo "📰 Release notes (${NOTES_FILE}):"
@@ -396,8 +448,8 @@ sed 's/^/   /' "${NOTES_FILE}"
 echo ""
 echo "🎉 Done! Next steps:"
 echo ""
-echo "   git push origin ${DEFAULT_BRANCH} --follow-tags"
-echo ""
-echo "   release.yml builds the container images from the tag and publishes"
-echo "   the GitHub release with these notes."
+echo "   1. Merge the pull request once CI is green (a merge commit)."
+echo "   2. release.yml tags the merge commit ${TAG}, builds and pushes the images"
+echo "      and the chart, publishes the GitHub release and tells Dynamo."
+echo "   3. git switch ${DEFAULT_BRANCH} && git merge --ff-only ${REMOTE}/${DEFAULT_BRANCH}"
 echo ""
