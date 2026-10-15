@@ -16,6 +16,7 @@ import (
 	"net/netip"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,11 +53,22 @@ const (
 	// do, so a receiver down for an afternoon is kept.
 	DisableAfter         = 24 * time.Hour
 	DisableAfterFailures = MaxAttempts
-	// The headers a delivery carries, named as Armature names its own.
-	SignatureHeader = "X-Stator-Signature-256"
-	EventHeader     = "X-Stator-Event"
-	DeliveryHeader  = "X-Stator-Delivery"
-	userAgent       = "Stator-Webhook"
+	// The headers a delivery carries, named as Armature names its own. The
+	// timestamped signature also covers when the attempt was sent, so a
+	// receiver can refuse one replayed later; the version is the body's, so a
+	// receiver can refuse one it does not know before parsing it.
+	SignatureHeader            = "X-Stator-Signature-256"
+	TimestampHeader            = "X-Stator-Timestamp"
+	TimestampedSignatureHeader = "X-Stator-Signature-Timestamped-256"
+	EventHeader                = "X-Stator-Event"
+	DeliveryHeader             = "X-Stator-Delivery"
+	VersionHeader              = "X-Stator-Webhook-Version"
+	userAgent                  = "Stator-Webhook"
+	// CurrentVersion is the envelope a new endpoint is registered for. It
+	// rises only for a change that breaks a receiver, as docs/integration.md says.
+	CurrentVersion = 1
+	// Source is what every envelope names as its sender.
+	Source = "stator"
 )
 
 // Backoff is the wait before each retry, by attempt number; a sixth failure
@@ -80,6 +92,8 @@ var (
 	ErrNotFound = errors.New("there is no such webhook")
 	// ErrNoKey refuses an endpoint whose secret could not be sealed.
 	ErrNoKey = errors.New("webhooks need STATOR_SECRET_KEY to keep their secrets")
+	// ErrUnknownVersion is an envelope version this release does not send.
+	ErrUnknownVersion = errors.New("there is no such webhook envelope version")
 )
 
 // FieldError is an input a person has to change.
@@ -104,6 +118,8 @@ type Webhook struct {
 	URL     string    `json:"url"`
 	Topics  []string  `json:"topics"`
 	Enabled bool      `json:"enabled"`
+	// Version is the envelope version the endpoint was registered for.
+	Version int `json:"version"`
 	// DisabledReason says the worker turned it off, and why; null when a
 	// person did or it is on.
 	DisabledReason *string `json:"disabledReason"`
@@ -157,12 +173,14 @@ type WebhookDelivery struct {
 }
 
 // WebhookInput makes or changes an endpoint; enabled left out keeps it as it is,
-// and a new endpoint starts on.
+// and a new endpoint starts on. Version left out is the current one for a new
+// endpoint, and keeps the one a changed endpoint has.
 type WebhookInput struct {
 	Name    string   `json:"name"`
 	URL     string   `json:"url"`
 	Topics  []string `json:"topics"`
 	Enabled *bool    `json:"enabled,omitempty"`
+	Version *int     `json:"version,omitempty"`
 }
 
 // Sign is the header value for a body: sha256= and the hex HMAC, Armature's
@@ -176,6 +194,26 @@ func Sign(body []byte, secret string) string {
 // Verify says whether a signature header matches the body, in constant time.
 func Verify(body []byte, secret, header string) bool {
 	return hmac.Equal([]byte(Sign(body, secret)), []byte(header))
+}
+
+// SignTimestamped signs "{timestamp}.{body}", the time in Unix seconds as the
+// timestamp header carries it, as Armature's webhook.SignTimestamped does.
+func SignTimestamped(body []byte, secret string, at time.Time) string {
+	return Sign(append([]byte(strconv.FormatInt(at.Unix(), 10)+"."), body...), secret)
+}
+
+// VerifyTimestamped says whether the timestamped signature matches and the
+// time it names is within tolerance of now; a replay outside that window fails.
+func VerifyTimestamped(body []byte, secret, timestamp, header string, tolerance time.Duration, now time.Time) bool {
+	seconds, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil || strconv.FormatInt(seconds, 10) != timestamp {
+		return false
+	}
+	at := time.Unix(seconds, 0)
+	if drift := now.Sub(at); drift > tolerance || drift < -tolerance {
+		return false
+	}
+	return hmac.Equal([]byte(SignTimestamped(body, secret, at)), []byte(header))
 }
 
 // Options are the settings of the process the service needs.
@@ -223,7 +261,7 @@ func newSecret() (string, error) {
 }
 
 const selectWebhooks = `
-SELECT e.id, e.name, e.url, e.topics, e.enabled, e.disabled_reason, e.failures, e.owner_id, u.name, e.created_at, e.updated_at
+SELECT e.id, e.name, e.url, e.topics, e.enabled, e.version, e.disabled_reason, e.failures, e.owner_id, u.name, e.created_at, e.updated_at
 FROM webhook_endpoint e LEFT JOIN app_user u ON u.id = e.owner_id`
 
 func scanWebhook(row pgx.Row) (*Webhook, error) {
@@ -232,7 +270,7 @@ func scanWebhook(row pgx.Row) (*Webhook, error) {
 		ownerID   *uuid.UUID
 		ownerName *string
 	)
-	if err := row.Scan(&w.ID, &w.Name, &w.URL, &w.Topics, &w.Enabled, &w.DisabledReason, &w.Failures, &ownerID, &ownerName, &w.CreatedAt, &w.UpdatedAt); err != nil {
+	if err := row.Scan(&w.ID, &w.Name, &w.URL, &w.Topics, &w.Enabled, &w.Version, &w.DisabledReason, &w.Failures, &ownerID, &ownerName, &w.CreatedAt, &w.UpdatedAt); err != nil {
 		return nil, err
 	}
 	if w.Topics == nil {
@@ -302,7 +340,19 @@ func (s *Service) clean(in WebhookInput) (WebhookInput, error) {
 		}
 	}
 	in.Topics = topics
+	if in.Version != nil && !slices.Contains(Versions(), *in.Version) {
+		return in, &FieldError{Field: "version", Message: fmt.Sprintf("Stator sends webhook envelope version %s. Register the webhook for that version.", versionList())}
+	}
 	return in, nil
+}
+
+// versionList names the versions this release sends, for a sentence.
+func versionList() string {
+	names := []string{}
+	for _, v := range Versions() {
+		names = append(names, strconv.Itoa(v))
+	}
+	return strings.Join(names, " or ")
 }
 
 // checkURL refuses what is no address to post to, and an address that names
@@ -371,11 +421,15 @@ func (s *Service) Create(ctx context.Context, in WebhookInput) (*Webhook, db.LSN
 		return nil, 0, err
 	}
 	enabled := in.Enabled == nil || *in.Enabled
+	version := CurrentVersion
+	if in.Version != nil {
+		version = *in.Version
+	}
 	var out *Webhook
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO webhook_endpoint (id, name, url, secret_sealed, topics, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6)`, id, in.Name, in.URL, sealed, in.Topics, enabled)
+			INSERT INTO webhook_endpoint (id, name, url, secret_sealed, topics, enabled, version)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`, id, in.Name, in.URL, sealed, in.Topics, enabled, version)
 		if isUniqueName(err) {
 			return errNameTaken
 		}
@@ -386,7 +440,7 @@ func (s *Service) Create(ctx context.Context, in WebhookInput) (*Webhook, db.LSN
 			return err
 		}
 		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionWebhookCreated, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
-			Data: map[string]any{"name": in.Name, "host": hostOf(in.URL), "topics": in.Topics, "enabled": enabled, "secret": "set"}})
+			Data: map[string]any{"name": in.Name, "host": hostOf(in.URL), "topics": in.Topics, "enabled": enabled, "version": version, "secret": "set"}})
 	})
 	if err != nil {
 		return nil, lsn, err
@@ -405,8 +459,8 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in WebhookInput) (*W
 	var out *Webhook
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		tag, err := tx.Exec(ctx, `
-			UPDATE webhook_endpoint SET name = $2, url = $3, topics = $4, enabled = COALESCE($5, enabled)
-			WHERE id = $1`, id, in.Name, in.URL, in.Topics, in.Enabled)
+			UPDATE webhook_endpoint SET name = $2, url = $3, topics = $4, enabled = COALESCE($5, enabled), version = COALESCE($6, version)
+			WHERE id = $1`, id, in.Name, in.URL, in.Topics, in.Enabled, in.Version)
 		if isUniqueName(err) {
 			return errNameTaken
 		}
@@ -420,7 +474,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in WebhookInput) (*W
 			return err
 		}
 		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionWebhookUpdated, TargetType: "webhook", TargetID: &id, Actor: actorOf(ctx),
-			Data: map[string]any{"name": out.Name, "host": hostOf(out.URL), "topics": out.Topics, "enabled": out.Enabled}})
+			Data: map[string]any{"name": out.Name, "host": hostOf(out.URL), "topics": out.Topics, "enabled": out.Enabled, "version": out.Version}})
 	})
 	return out, lsn, err
 }

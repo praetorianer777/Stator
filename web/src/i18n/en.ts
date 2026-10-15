@@ -157,6 +157,14 @@ export const en = {
     webhookUrl: "Webhook address",
     webhookUrlHint: "An endpoint set up with the older address, which ended in a short name, keeps working. Change it to this one when you next edit it.",
     topics: "Topics",
+    lastDelivery: {
+      none: "Stator has not taken a delivery from Armature yet.",
+      taken: (topic: string, when: string) => `Stator last took a delivery, ${topic}, on ${when},`,
+      version: (version: number) => `in envelope version ${version},`,
+      unversioned: "without an envelope version, so from an older Armature,",
+      timestamped: "signed with the time it was sent.",
+      untimed: "without a signed time. Update Armature so Stator can refuse a replay.",
+    },
     copy: "Copy address",
     copied: "Copied the address.",
     copyFailed: "Copying did not work. Select the address and copy it yourself.",
@@ -3203,8 +3211,8 @@ export const en = {
     create: "Add webhook",
     ownerNote: "The webhook sends as you: what you may not view is never sent. Whoever saves it next sends as themselves.",
     freshTitle: "Copy the secret now",
-    freshBody: (header: string) =>
-      `It is shown only this once. Each delivery carries ${header}: sha256= and the HMAC-SHA256 of the body under this secret, so the receiver can check it. If you lose it, rotate the secret.`,
+    freshBody: (header: string, timestamped: string, timestamp: string) =>
+      `It is shown only this once. Each delivery carries ${header}: sha256= and the HMAC-SHA256 of the body under this secret, so the receiver can check it, and ${timestamped}, the same over ${timestamp}, a dot and the body, so it can refuse a replay. If you lose it, rotate the secret.`,
     freshLabel: (name: string) => `Secret for ${name}`,
     copy: "Copy secret",
     copied: "Copied the secret.",

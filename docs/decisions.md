@@ -3,6 +3,44 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-15: The webhook envelope carries a version, and each attempt signs its time (#412)
+
+Stator's outbound envelope gains Armature's `version` (Cloudster1/Armature#242),
+in the body and in `X-Stator-Webhook-Version`, and each attempt is signed a
+second time over its send time, `X-Stator-Timestamp` and
+`X-Stator-Signature-Timestamped-256`, beside the plain signature a receiver
+written before keeps checking. An endpoint records the version it was
+registered for, and a delivery the one it was queued in; the shape is
+Armature's on purpose, so one receiver serves both products.
+
+- **`source` now, a wider event standard as version 2.** The envelope also
+  says `"source": "stator"`, a step toward the shape a later version takes.
+  It is added to version 1 without raising it, since a receiver ignores a
+  field it does not know; nothing else is renamed or moved. That shape will
+  be envelope version 2, beside 1, and the version each endpoint registers
+  for is what lets the two be sent side by side.
+
+- **The version is the endpoint's, not the release's.** A receiver upgrades
+  when its administrator moves the endpoint, not when Stator is updated, and
+  an endpoint on N keeps N for at least one Dynamo release after N+1.
+- **A delivery keeps its version.** Stator reads a payload afresh on every
+  attempt, unlike Armature, which freezes the body; the version is still
+  fixed at queueing, so a retry never changes shape under a receiver.
+- **The receiver checks the time only when it is signed.** An Armature from
+  before #242 sends no timestamp and is still taken; one that does is held to
+  five minutes either way, which a genuine retry always meets, since Armature
+  signs each attempt as it sends it. A stripped header lets a replay through
+  only to the event-id memory, and the worst a replay can do is clear a cache
+  entry.
+- **The last delivery is remembered in Valkey.** The settings page says when
+  Armature last reached Stator, in which version and whether the time was
+  signed, which is how an administrator learns that Armature needs updating;
+  it is a convenience, so it lives where the cache does and needs no write to
+  the database per delivery.
+- **`anyOf` for payloads.** The payloads of `page.published` and
+  `page.deleted` have one shape, which `oneOf` would refuse for matching
+  twice, so the document lists the payloads as `anyOf`.
+
 ## 2026-10-15: Stator decides from Armature's capabilities, not its version (#409)
 
 Stator reports what it offers at `/meta` as `name@version`, the scheme

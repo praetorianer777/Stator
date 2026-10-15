@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -18,6 +20,10 @@ import (
 // ErrBadSignature is any delivery that cannot be trusted, one sent to an old
 // address naming another site included.
 var ErrBadSignature = errors.New("the webhook signature does not match")
+
+// ErrWebhookStale is a signed delivery whose signed time is too far from this
+// server's clock: a replay, or a clock that is wrong on one side.
+var ErrWebhookStale = errors.New("the webhook delivery was signed too long ago")
 
 // ErrWebhookVersion is a signed delivery in an envelope version the receiver
 // does not read; Armature keeps it in the endpoint's log and tries again.
@@ -34,6 +40,26 @@ func Sign(body []byte, secret string) string {
 // VerifySignature compares header with the body's signature in constant time.
 func VerifySignature(body []byte, secret, header string) bool {
 	return hmac.Equal([]byte(Sign(body, secret)), []byte(header))
+}
+
+// SignTimestamped is Armature's webhook.SignTimestamped: Sign over the time
+// in Unix seconds, a dot and the raw body.
+func SignTimestamped(body []byte, secret string, at time.Time) string {
+	return Sign(append([]byte(strconv.FormatInt(at.Unix(), 10)+"."), body...), secret)
+}
+
+// VerifyTimestamp says whether the timestamped signature matches the time the
+// timestamp header names and the body, and whether that time is within
+// WebhookTimestampTolerance of now; a time that is no Unix seconds signs nothing.
+func VerifyTimestamp(body []byte, secret, timestamp, header string, now time.Time) (signed, fresh bool) {
+	seconds, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil || strconv.FormatInt(seconds, 10) != timestamp {
+		return false, false
+	}
+	at := time.Unix(seconds, 0)
+	drift := now.Sub(at)
+	return hmac.Equal([]byte(SignTimestamped(body, secret, at)), []byte(header)),
+		drift <= WebhookTimestampTolerance && drift >= -WebhookTimestampTolerance
 }
 
 // absentSecret is signed against when there is no secret to check, so an
@@ -77,7 +103,7 @@ type webhookTarget struct {
 
 // Webhook verifies one delivery and clears what it announces; a replay of an
 // event already acted on changes nothing.
-func (s *Service) Webhook(ctx context.Context, body []byte, signature string) error {
+func (s *Service) Webhook(ctx context.Context, body []byte, h WebhookHeaders) error {
 	var target *webhookTarget
 	// As the admin role: nobody signs in, and the sender is only known once
 	// the secret has vouched for the body.
@@ -108,8 +134,27 @@ func (s *Service) Webhook(ctx context.Context, body []byte, signature string) er
 			target = nil
 		}
 	}
-	if !VerifySignature(body, secret, signature) || target == nil {
+	if !VerifySignature(body, secret, h.Signature) || target == nil {
 		return ErrBadSignature
+	}
+	// An Armature from before #242 signs no time; one that does is held to
+	// it, so a replay outside the window is refused rather than acted on.
+	timestamped := h.Timestamp != "" || h.TimestampedSignature != ""
+	if timestamped {
+		signed, fresh := VerifyTimestamp(body, secret, h.Timestamp, h.TimestampedSignature, time.Now())
+		if !signed {
+			return ErrBadSignature
+		}
+		if !fresh {
+			s.opts.Log.Warn("a signed webhook delivery names a time too far from this server's clock; a replay, or a clock that is wrong",
+				"site_id", target.SiteID, "timestamp", h.Timestamp, "tolerance", WebhookTimestampTolerance)
+			return ErrWebhookStale
+		}
+	}
+	if h.Version != "" && h.Version != strconv.Itoa(WebhookVersion) {
+		s.opts.Log.Warn("a signed webhook delivery is in an envelope version Stator does not read; register the endpoint in Armature for this version",
+			"site_id", target.SiteID, "version", h.Version, "reads", WebhookVersion)
+		return ErrWebhookVersion
 	}
 
 	var env WebhookEnvelope
@@ -125,6 +170,11 @@ func (s *Service) Webhook(ctx context.Context, body []byte, signature string) er
 	if target.ArmatureOrgID != nil && env.OrgID != *target.ArmatureOrgID {
 		return ErrBadSignature
 	}
+	receipt := WebhookReceipt{ReceivedAt: time.Now().UTC(), Topic: env.Topic, Timestamped: timestamped}
+	if env.Version != 0 {
+		receipt.Version = &env.Version
+	}
+	s.cache.PutReceipt(ctx, target.SiteID, receipt)
 	keys, searches := WebhookClears(env.Topic, env.Payload)
 	if len(keys) == 0 && !searches {
 		return nil

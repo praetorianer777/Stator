@@ -19,6 +19,21 @@ const (
 	WebhookSecretPrefix = "armature_whs_"
 	// SignatureHeader carries sha256= and the hex HMAC of the raw body.
 	SignatureHeader = "X-Armature-Signature-256"
+	// TimestampHeader carries when Armature sent the attempt, in Unix
+	// seconds, and TimestampedSignatureHeader the HMAC of that time, a dot
+	// and the body. An Armature from before #242 sends neither.
+	TimestampHeader            = "X-Armature-Timestamp"
+	TimestampedSignatureHeader = "X-Armature-Signature-Timestamped-256"
+	// WebhookVersionHeader names the body's envelope version, so a delivery in
+	// one the receiver does not read is refused before it is parsed.
+	WebhookVersionHeader = "X-Armature-Webhook-Version"
+	// WebhookTimestampTolerance is how far a delivery's signed time may be
+	// from this server's clock, either way, before it is refused as a replay;
+	// Armature signs each attempt afresh, so a genuine retry is never stale.
+	WebhookTimestampTolerance = 5 * time.Minute
+	// WebhookReceiptTTL is how long the last delivery taken is remembered for
+	// the settings page.
+	WebhookReceiptTTL = 30 * 24 * time.Hour
 	// WebhookVersion is the one envelope version the receiver reads. An
 	// endpoint registered in Armature without a version gets the current one,
 	// so a newer Armature may send another, which is refused rather than misread.
@@ -152,6 +167,9 @@ type Connection struct {
 	WebhookURL string `json:"webhookUrl"`
 	// WebhookTopics are the topics to subscribe that address to.
 	WebhookTopics []string `json:"webhookTopics"`
+	// LastDelivery is the last webhook delivery Stator took, null when none
+	// was taken in WebhookReceiptTTL or there is no Valkey to remember it.
+	LastDelivery *WebhookReceipt `json:"lastDelivery"`
 	// Connected counts the members who stored a token.
 	Connected int       `json:"connected"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -301,6 +319,24 @@ type ThemeFollow struct {
 	Status    Status `json:"status"`
 	// Error says why Armature's theme, though it answered, cannot be used.
 	Error *string `json:"error"`
+}
+
+// WebhookReceipt is what the receiver last took from Armature, so an
+// administrator sees that the webhook works and in which shape it arrives.
+type WebhookReceipt struct {
+	ReceivedAt time.Time `json:"receivedAt"`
+	Topic      string    `json:"topic"`
+	// Version is the envelope version the body named, null when it named
+	// none, as an Armature from before #242 sends it.
+	Version *int `json:"version"`
+	// Timestamped says the delivery carried a timestamped signature, which
+	// was checked against this server's clock.
+	Timestamped bool `json:"timestamped"`
+}
+
+// WebhookHeaders are the headers a delivery is signed and described in.
+type WebhookHeaders struct {
+	Signature, Timestamp, TimestampedSignature, Version string
 }
 
 // WebhookEnvelope is what Armature posts, signed over the raw body.

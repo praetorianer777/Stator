@@ -3,7 +3,9 @@ package armature
 import (
 	"encoding/json"
 	"slices"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func TestSignMatchesArmature(t *testing.T) {
@@ -60,6 +62,42 @@ func TestWebhookClearsWhatEachTopicAnnounces(t *testing.T) {
 		keys, searches := WebhookClears(tc.topic, json.RawMessage(tc.payload))
 		if !slices.Equal(keys, tc.keys) || searches != tc.searches {
 			t.Errorf("%s %s clears %v, searches %v; want %v, %v", tc.topic, tc.payload, keys, searches, tc.keys, tc.searches)
+		}
+	}
+}
+
+// Armature signs the time it sent an attempt beside the body (#242); the
+// receiver holds a delivery to it, so a replay outside the window is refused.
+func TestATimestampedSignatureIsHeldToTheWindow(t *testing.T) {
+	body := []byte(`{"version":1,"id":"0191d7c4-0000-7000-8000-000000000001","topic":"ping"}`)
+	secret := "armature_whs_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG"
+	sent := time.Date(2026, 10, 15, 9, 30, 0, 0, time.UTC)
+	stamp := strconv.FormatInt(sent.Unix(), 10)
+	sig := SignTimestamped(body, secret, sent)
+	if sig != Sign([]byte(stamp+"."+string(body)), secret) {
+		t.Fatalf("the timestamped signature %q is not Armature's", sig)
+	}
+	cases := []struct {
+		name                  string
+		timestamp, header     string
+		now                   time.Time
+		wantSigned, wantFresh bool
+	}{
+		{"at once", stamp, sig, sent, true, true},
+		{"at the edge of the window", stamp, sig, sent.Add(WebhookTimestampTolerance), true, true},
+		{"a clock behind by the window", stamp, sig, sent.Add(-WebhookTimestampTolerance), true, true},
+		{"replayed later", stamp, sig, sent.Add(WebhookTimestampTolerance + time.Second), true, false},
+		{"from the future", stamp, sig, sent.Add(-WebhookTimestampTolerance - time.Second), true, false},
+		{"another time", strconv.FormatInt(sent.Unix()+1, 10), sig, sent, false, true},
+		{"the plain signature", stamp, Sign(body, secret), sent, false, true},
+		{"no time", "", sig, sent, false, false},
+		{"a time in milliseconds", strconv.FormatInt(sent.UnixMilli(), 10), sig, sent, false, false},
+		{"a time with a sign", "+" + stamp, sig, sent, false, false},
+	}
+	for _, c := range cases {
+		signed, fresh := VerifyTimestamp(body, secret, c.timestamp, c.header, c.now)
+		if signed != c.wantSigned || (c.wantSigned && fresh != c.wantFresh) {
+			t.Errorf("%s: signed %v fresh %v, want %v %v", c.name, signed, fresh, c.wantSigned, c.wantFresh)
 		}
 	}
 }

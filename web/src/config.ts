@@ -460,6 +460,9 @@ export const WEBHOOK_URL_MAX_LENGTH = 2000;
 export const WEBHOOK_DELIVERIES_PAGE_SIZE = 50;
 /** The header each delivery's signature travels in, for the receiver to check. */
 export const WEBHOOK_SIGNATURE_HEADER = "X-Stator-Signature-256";
+/** The header with the time a delivery was sent, and the one with its signature over that time and the body. */
+export const WEBHOOK_TIMESTAMP_HEADER = "X-Stator-Timestamp";
+export const WEBHOOK_TIMESTAMPED_SIGNATURE_HEADER = "X-Stator-Signature-Timestamped-256";
 /** Where administrators read which pages nobody opened or published for a while. */
 export const STALE_PATH = "/settings/stale";
 /** Pages the stale report shows per page, within the API's 100. */

@@ -706,8 +706,8 @@ func (oi *siteImporter) writeWebhooks(ctx context.Context, tx db.DBTX) error {
 	for _, h := range oi.m.Webhooks {
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO webhook_endpoint (name, url, secret_sealed, topics, enabled) VALUES ($1, $2, ''::bytea, $3, false)
-			RETURNING id`, h.Name, h.URL, h.Topics).Scan(&id); err != nil {
+			INSERT INTO webhook_endpoint (name, url, secret_sealed, topics, enabled, version) VALUES ($1, $2, ''::bytea, $3, false, $4)
+			RETURNING id`, h.Name, h.URL, h.Topics, max(h.Version, 1)).Scan(&id); err != nil {
 			return part(fmt.Sprintf("the webhook %q", h.Name), err)
 		}
 		// Inserted, its owner is whoever acts; a change of owner afterwards

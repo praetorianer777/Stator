@@ -12,6 +12,7 @@ import { Button, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton } fr
 import { Icon } from "@/components/icons";
 import { ARMATURE_WEBHOOK_SECRET_PREFIX, COPY_FEEDBACK_MS } from "@/config";
 import { t } from "@/i18n";
+import { localDateFormat } from "@/lib/format";
 
 /** The organization's Armature instance and its webhook, for administrators. */
 export function ConnectionSettings() {
@@ -165,6 +166,16 @@ function Capabilities({ partner }: { partner: ArmaturePartner }) {
   );
 }
 
+const deliveryTime = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
+
+/** Says whether Armature's webhook reaches Stator, and in which shape the last delivery came. */
+function lastDeliverySentence(last: ArmatureConnection["lastDelivery"]): string {
+  if (!last) return t.armature.lastDelivery.none;
+  const when = deliveryTime.format(new Date(last.receivedAt));
+  const shape = last.version == null ? t.armature.lastDelivery.unversioned : t.armature.lastDelivery.version(last.version);
+  return `${t.armature.lastDelivery.taken(last.topic, when)} ${shape} ${last.timestamped ? t.armature.lastDelivery.timestamped : t.armature.lastDelivery.untimed}`;
+}
+
 function Webhook({ connection }: { connection: ArmatureConnection }) {
   const [said, setSaid] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -207,6 +218,9 @@ function Webhook({ connection }: { connection: ArmatureConnection }) {
           {said}
         </p>
       </div>
+      <p className="text-sm text-ink-muted" data-last-delivery>
+        {lastDeliverySentence(connection.lastDelivery)}
+      </p>
       <div>
         <h3 className="text-xs font-medium text-ink-muted">{t.armature.topics}</h3>
         <ul className="mt-1 flex flex-wrap gap-1.5" aria-label={t.armature.topics}>

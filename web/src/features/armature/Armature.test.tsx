@@ -33,6 +33,7 @@ function connection(over: Partial<ArmatureConnection> = {}): ArmatureConnection 
     webhookSecretSet: false,
     webhookUrl: "http://stator.test/api/v1/armature/webhook/demo",
     webhookTopics: ["issue.created", "issue.updated", "issue.transitioned", "comment.added"],
+    lastDelivery: null,
     connected: 0,
     updatedAt: "2026-10-01T08:00:00Z",
     partner: { status: "ok", meta: true, version: "1.3.0", capabilities: ARMATURE_CAPABILITIES, missing: [] },
@@ -78,6 +79,27 @@ describe("connecting Armature as an administrator", () => {
     expect(screen.getByLabelText("Webhook address")).toHaveValue("http://stator.test/api/v1/armature/webhook/demo");
     expect(within(screen.getByRole("list", { name: "Topics" })).getAllByRole("listitem")).toHaveLength(4);
     expect(await axeViolations()).toEqual([]);
+  });
+
+  it("says when the webhook has not reached Stator yet", async () => {
+    stubApi({ "GET /armature/connection": { status: 200, body: { connection: connection() } } });
+    await renderAt("/settings/armature");
+    expect(await screen.findByText("Stator has not taken a delivery from Armature yet.")).toBeInTheDocument();
+  });
+
+  it("says in which envelope version the last delivery came, and that its time was signed", async () => {
+    const lastDelivery = { receivedAt: "2026-10-15T09:30:00Z", topic: "issue.updated", version: 1, timestamped: true };
+    stubApi({ "GET /armature/connection": { status: 200, body: { connection: connection({ lastDelivery }) } } });
+    await renderAt("/settings/armature");
+    const said = await screen.findByText(/Stator last took a delivery, issue\.updated/);
+    expect(said).toHaveTextContent(/in envelope version 1, signed with the time it was sent\.$/);
+  });
+
+  it("asks for an Armature that signs the time when the last delivery came without one", async () => {
+    const lastDelivery = { receivedAt: "2026-10-15T09:30:00Z", topic: "ping", version: null, timestamped: false };
+    stubApi({ "GET /armature/connection": { status: 200, body: { connection: connection({ lastDelivery }) } } });
+    await renderAt("/settings/armature");
+    expect(await screen.findByText(/without an envelope version, so from an older Armature, without a signed time\. Update Armature/)).toBeInTheDocument();
   });
 
   it("keeps the stored secret unless told to forget it, and shows a refusal by its field", async () => {

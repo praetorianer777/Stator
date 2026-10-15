@@ -10,11 +10,13 @@ import (
 
 // Document is the root of the specification.
 type Document struct {
-	OpenAPI    string                `json:"openapi"`
-	Info       Info                  `json:"info"`
-	Servers    []Server              `json:"servers,omitempty"`
-	Tags       []Tag                 `json:"tags,omitempty"`
-	Paths      map[string]PathItem   `json:"paths"`
+	OpenAPI string              `json:"openapi"`
+	Info    Info                `json:"info"`
+	Servers []Server            `json:"servers,omitempty"`
+	Tags    []Tag               `json:"tags,omitempty"`
+	Paths   map[string]PathItem `json:"paths"`
+	// Webhooks are the requests the server sends rather than answers.
+	Webhooks   map[string]PathItem   `json:"webhooks,omitempty"`
 	Components Components            `json:"components"`
 	Security   []map[string][]string `json:"security,omitempty"`
 }
@@ -101,6 +103,9 @@ type Schema struct {
 	Items                *Schema            `json:"items,omitempty"`
 	AdditionalProperties *Schema            `json:"additionalProperties,omitempty"`
 	OneOf                []*Schema          `json:"oneOf,omitempty"`
+	// AnyOf is for alternatives that may overlap, such as payloads of the
+	// same shape, which oneOf would refuse for matching more than one.
+	AnyOf []*Schema `json:"anyOf,omitempty"`
 	// Defs carries the components a schema refers to when it has to stand
 	// alone, outside the document; the document itself never sets it.
 	Defs map[string]*Schema `json:"$defs,omitempty"`

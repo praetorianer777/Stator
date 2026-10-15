@@ -18,6 +18,7 @@ const hook = (over: Partial<Webhook> = {}): Webhook => ({
   url: "https://hooks.example.com/stator",
   topics: ["page.published", "comment.created"],
   enabled: true,
+  version: 1,
   disabledReason: null,
   failures: 0,
   owner: { id: signedIn.user.id, name: "Ada Lovelace" },

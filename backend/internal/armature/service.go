@@ -110,14 +110,21 @@ func (s *Service) endpoint(ctx context.Context, tx db.DBTX) (*endpoint, error) {
 // Connection is the site's connection for an administrator, or nil. It asks
 // Armature afresh what it offers, so the settings page shows an upgrade at once.
 func (s *Service) Connection(ctx context.Context) (*Connection, error) {
-	var out *Connection
+	var (
+		out  *Connection
+		site uuid.UUID
+	)
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		out, err = s.readConnection(ctx, tx)
+		if out, err = s.readConnection(ctx, tx); err != nil || out == nil {
+			return err
+		}
+		site, err = instance.ID(ctx, tx)
 		return err
 	})
-	if out != nil {
+	if out != nil && err == nil {
 		out.Partner = s.Partner(ctx, out.BaseURL, true)
+		out.LastDelivery, _ = s.cache.Receipt(ctx, site)
 	}
 	return out, err
 }

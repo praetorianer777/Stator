@@ -74,6 +74,23 @@ func ThemeKey(site, tokenID uuid.UUID) string { return siteKey(site, "theme:"+to
 // EventKey marks a webhook event as acted on.
 func EventKey(site, eventID uuid.UUID) string { return siteKey(site, "event:"+eventID.String()) }
 
+// ReceiptKey holds the last webhook delivery the receiver took.
+func ReceiptKey(site uuid.UUID) string { return siteKey(site, "webhook:last") }
+
+// Receipt reads the last webhook delivery taken; false when none is remembered.
+func (c *Cache) Receipt(ctx context.Context, site uuid.UUID) (*WebhookReceipt, bool) {
+	var out WebhookReceipt
+	if !c.get(ctx, ReceiptKey(site), WebhookReceiptTTL, &out) {
+		return nil, false
+	}
+	return &out, true
+}
+
+// PutReceipt remembers a webhook delivery as the last one taken.
+func (c *Cache) PutReceipt(ctx context.Context, site uuid.UUID, receipt WebhookReceipt) {
+	c.put(ctx, ReceiptKey(site), WebhookReceiptTTL, receipt)
+}
+
 // Issue reads the owner of tokenID's answer for issueKey into out, null for
 // an issue they may not see; false is a miss, a field past its TTL included.
 func (c *Cache) Issue(ctx context.Context, site, tokenID uuid.UUID, issueKey string, out any) (ok bool) {

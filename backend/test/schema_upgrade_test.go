@@ -169,6 +169,11 @@ func TestAnInstanceUpgradesAcrossTheSchemaChangeWhole(t *testing.T) {
 	if len(got) != 1 || !webhook.Verify([]byte(got[0].Body), "whsec_kept", got[0].Headers["X-Stator-Signature-256"]) {
 		t.Errorf("the delivery is not signed with the secret sealed before: %+v", got)
 	}
+	// An endpoint from before the envelope had a number is on version 1,
+	// which is what it was sent all along.
+	if len(got) == 1 && got[0].Headers[webhook.VersionHeader] != "1" {
+		t.Errorf("an endpoint kept from before is sent version %q, want 1", got[0].Headers[webhook.VersionHeader])
+	}
 
 	var armatureSealed, clientSealed []byte
 	if err := scratch.pool.QueryRow(ctx, `SELECT (SELECT webhook_secret FROM armature_connection), (SELECT client_secret FROM oidc_provider)`).Scan(&armatureSealed, &clientSealed); err != nil {

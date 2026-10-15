@@ -34,7 +34,10 @@ the page, with `source` `Stator`.
 ### `webhook-receiver@1`
 
 Armature's signed webhook deliveries, envelope version 1, received for the
-issue topics, so pages show a change to an issue at once.
+issue topics, so pages show a change to an issue at once. A delivery in any
+other version is refused with 422 `unsupported_version`, and one whose signed
+time is more than five minutes from Stator's clock with 401 `stale_delivery`;
+see [Receiving Armature's webhooks](#receiving-armatures-webhooks).
 
 - `POST /armature/webhook`
 - acts on `issue.created`, `issue.updated`, `issue.transitioned` and
@@ -43,9 +46,8 @@ issue topics, so pages show a change to an issue at once.
 ### `webhooks@1`
 
 Endpoints subscribed to topics, their deliveries, a redelivery, a test
-delivery and a new secret, each delivery a signed envelope (`id`, `topic`,
-`occurredAt`, `payload`, signed as `sha256=` and the hex HMAC-SHA256 of the
-body in `X-Stator-Signature-256`).
+delivery and a new secret, each delivery a signed, numbered envelope as
+[Webhooks Stator sends](#webhooks-stator-sends) describes.
 
 - `GET /webhooks`, `POST /webhooks`
 - `PATCH /webhooks/{webhookID}`, `DELETE /webhooks/{webhookID}`
@@ -68,6 +70,103 @@ or that answers 501, a topic `events.Topics` does not list or one the
 receiver does not act on, and a name that is not `name@version` or is listed
 twice. `page.remote-links`, remote links on Stator's own pages, comes with
 #419.
+
+## Webhooks Stator sends
+
+Each delivery is one envelope in Armature's shape, signed in Armature's
+headers under Stator's prefix, so a receiver written for one product serves
+both. The machine-readable half is the `webhooks` section of
+[`api/openapi.json`](../api/openapi.json), whose `event` operation describes
+the body, every payload and the headers; the integration suite holds every
+delivery it sees to it.
+
+```json
+{
+  "version": 1,
+  "id": "0199e1c2-7d4a-7c11-9b1e-3f0a2b4c5d6e",
+  "source": "stator",
+  "topic": "page.published",
+  "occurredAt": "2026-10-15T09:30:00Z",
+  "payload": { "page": { "id": "...", "title": "Plans", "version": 3, "url": "...", "space": { "key": "DOC", "name": "Docs" }, "kind": "page" }, "actor": { "id": "...", "name": "Ada" } }
+}
+```
+
+| Field | What it is |
+| --- | --- |
+| `version` | The envelope version the endpoint was registered for, an integer. |
+| `id` | The event's id, the same on every retry and redelivery, so a receiver can drop one it has handled. |
+| `source` | The product that sent it, always `stator`. Added to version 1 without raising it, as a step toward the shape a later version takes. |
+| `topic` | `ping`, `page.published`, `page.moved`, `page.deleted` or `comment.created`. |
+| `occurredAt` | When the event happened, in UTC. |
+| `payload` | The event's own fields, read as the endpoint's owner when the attempt is sent. |
+
+| Header | What it carries |
+| --- | --- |
+| `X-Stator-Event` | The topic, as in the body. |
+| `X-Stator-Delivery` | This attempt's id; a retry and a redelivery each have their own. |
+| `X-Stator-Webhook-Version` | The envelope version of the body, as in its `version`, so a receiver can decide before it parses. |
+| `X-Stator-Signature-256` | `sha256=` and the hex HMAC-SHA256 of the raw body, keyed with the endpoint's secret. |
+| `X-Stator-Timestamp` | When this attempt was sent, in Unix seconds. |
+| `X-Stator-Signature-Timestamped-256` | `sha256=` and the hex HMAC-SHA256 of the timestamp, a dot and the raw body. |
+
+Verify a signature over the bytes received, before parsing them. Each
+attempt is signed when it is sent, so a receiver that compares the timestamp
+with its own clock, as Stator's own receiver does within five minutes, can
+refuse a replay.
+
+### Versions
+
+- `version` rises only for a change that breaks a receiver: a field of the
+  envelope or of a payload removed, renamed or changing its meaning. Adding a
+  field or a topic does not raise it. A receiver ignores fields and topics it
+  does not know, and refuses an envelope version it does not know with a
+  clear status, such as 422, and a log line, instead of misreading it.
+- An endpoint is registered for a version: `POST /webhooks` takes `version`,
+  the current one when left out, `PATCH /webhooks/{webhookID}` keeps it unless
+  it names another, and a version Stator does not send is refused with the
+  ones it does. Endpoints made before the envelope had a number are on 1,
+  which is what they were always sent.
+- When version N+1 arrives, an endpoint registered for N keeps being sent N
+  for at least one Dynamo release, and moves when its administrator moves it.
+- A delivery keeps the version it was queued in: its retries and
+  redeliveries say the same, whatever the endpoint is on by then. One that
+  is in a version this Stator does not send, which only a later release taken
+  back can leave, fails with a sentence saying so and is not retried, since
+  every attempt would fail alike.
+
+| Version | Since | What changed |
+| --- | --- | --- |
+| 1 | #412 | The envelope as it was, with `version` and `source` added, and the timestamp headers. |
+
+A later version takes a wider event standard's shape; it comes beside 1, and
+each endpoint moves when its administrator registers it for the new one.
+
+## Receiving Armature's webhooks
+
+`POST /armature/webhook` takes what Armature's webhook service sends, as
+Armature's `docs/webhooks.md` describes it for receivers.
+
+1. The plain signature, `X-Armature-Signature-256`, must match, or the answer
+   is 401 `bad_signature`.
+2. When the delivery carries `X-Armature-Timestamp` or
+   `X-Armature-Signature-Timestamped-256`, both must be there and the
+   timestamped signature must match, or it is 401 `bad_signature`; a time
+   more than `armature.WebhookTimestampTolerance`, five minutes, from Stator's
+   clock either way is 401 `stale_delivery`. Armature signs each attempt
+   afresh, so a genuine retry is never stale. An Armature from before #242
+   signs no time; its deliveries are taken on the plain signature, and a
+   replay of one is still held off by the event ids remembered for a day.
+3. `X-Armature-Webhook-Version`, and then the body's `version`, must be 1, or
+   the answer is 422 `unsupported_version`, which Armature logs and retries.
+   A body without a version is from before Armature numbered it and is read
+   as 1.
+4. Fields and topics Stator does not know, such as a `source`, are ignored,
+   with 204.
+
+`GET /armature/connection` answers under `lastDelivery` the last delivery
+taken: when, its topic, the version its body named and whether its time was
+signed, and the settings page says so, so an administrator sees that the
+webhook arrives and whether Armature should be updated.
 
 ## What Stator needs of Armature
 
