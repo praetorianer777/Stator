@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -31,6 +32,9 @@ const (
 	maxLimit     = 100
 	// maxBody bounds what the stub reads of a request.
 	maxBody = 1 << 20
+	// defaultProjectLimit and maxProjectLimit bound a page of projects.
+	defaultProjectLimit = 50
+	maxProjectLimit     = 200
 	// webhookTimeout bounds a delivery the stub sends.
 	webhookTimeout = 10 * time.Second
 	// uploadBytes is what /auth/me says Armature takes; nothing is uploaded.
@@ -230,35 +234,43 @@ func (s *stub) me(c *call) {
 	p, t := c.person, c.tenant
 	respond(c.w, http.StatusOK, map[string]any{
 		"principal": map[string]any{
-			"user": userView{ID: p.ID, Email: p.Email, Name: p.Display, Timezone: "UTC", Locale: "en", IsActive: true},
-			"org":  orgView{ID: t.OrgID, Slug: t.Slug, Name: orgName(t)},
-			"role": roleOf(p),
+			"user":         userView{ID: p.ID, Email: p.Email, Name: p.Display, Timezone: "UTC", Locale: "en", IsActive: true},
+			"org":          orgView{ID: t.OrgID, Slug: t.Slug, Name: orgName(t)},
+			"installation": map[string]any{"id": t.OrgID, "name": orgName(t)},
+			"role":         roleOf(p),
 		},
-		"organizations": []map[string]any{{"orgId": t.OrgID, "orgSlug": t.Slug, "orgName": orgName(t), "role": roleOf(p)}},
-		"limits":        map[string]any{"uploadBytes": uploadBytes},
+		"limits": map[string]any{"uploadBytes": uploadBytes},
+		// Every call to the stub carries a personal access token, which
+		// Armature describes here; a session would answer null.
+		"token": map[string]any{"id": idOf(t.Slug, "token", p.Name), "name": "Stator", "scopes": []string{}, "projects": []string{}, "createdAt": seeded},
 	})
 }
 
-// issuePermissions are what Armature grants a member on a project they work in.
-var issuePermissions = []string{"issue.read", "issue.write", "comment.write"}
+// The stub grants each project it shows somebody as Armature's built-in
+// roles would over that one project: user to work in it, reader to see it.
+var (
+	userPermissions   = []string{"read", "issue.write", "issue.transition", "comment.write"}
+	readerPermissions = []string{"read"}
+)
 
 func (s *stub) access(c *call) {
 	projects := map[string][]string{}
-	var keys []string
+	keys := []string{}
 	var grants []map[string]string
 	for _, pr := range c.tenant.projects {
 		if c.person.sees(pr) {
-			projects[pr.Key] = issuePermissions
+			role, perms := "user", userPermissions
 			if !c.person.writes(pr) {
-				projects[pr.Key] = []string{"issue.read"}
+				role, perms = "reader", readerPermissions
 			}
+			projects[pr.Key] = perms
 			keys = append(keys, pr.Key)
-			grants = append(grants, map[string]string{"projectKey": pr.Key, "role": "developer"})
+			grants = append(grants, map[string]string{"projectKey": pr.Key, "role": role})
 		}
 	}
 	org := []string{}
 	if c.person.Name == adminName {
-		org = []string{"org.administer"}
+		org = []string{"org.administer", "project.create"}
 	}
 	respond(c.w, http.StatusOK, map[string]any{
 		"canAdministerOrg": c.person.Name == adminName,
@@ -269,7 +281,13 @@ func (s *stub) access(c *call) {
 	})
 }
 
+// projects answers a page of the projects the person sees, with how many
+// there are in all, as Armature has since it stopped answering them all.
 func (s *stub) projects(c *call) {
+	limit, offset, ok := page(c, defaultProjectLimit, maxProjectLimit)
+	if !ok {
+		return
+	}
 	out := []map[string]any{}
 	for _, pr := range c.tenant.projects {
 		if !c.person.sees(pr) {
@@ -287,10 +305,13 @@ func (s *stub) projects(c *call) {
 		out = append(out, map[string]any{
 			"id": pr.ID, "key": pr.Key, "name": pr.Name, "description": "", "kind": "software",
 			"issueCount": count, "openIssueCount": open, "portalVerifies": false,
-			"trustedDomains": []string{}, "features": []string{"board"}, "createdAt": seeded, "updatedAt": seeded,
+			"trustedDomains": []string{}, "features": []string{"board"}, "planningMethod": "kanban", "resourceGrouping": "team",
+			"createdAt": seeded, "updatedAt": seeded,
 		})
 	}
-	respond(c.w, http.StatusOK, map[string]any{"projects": out})
+	total := len(out)
+	out = out[min(offset, total):min(offset+limit, total)]
+	respond(c.w, http.StatusOK, map[string]any{"projects": out, "total": total, "limit": limit, "offset": offset})
 }
 
 func typeView(k *issueType) map[string]any {
@@ -351,14 +372,16 @@ func issueView(is *issue) map[string]any {
 	return v
 }
 
-func (s *stub) search(c *call) {
+// page reads limit and offset, refusing what Armature refuses; ok is false
+// once the refusal is answered.
+func page(c *call, def, most int) (limit, offset int, ok bool) {
 	q := c.r.URL.Query()
-	limit, offset := defaultLimit, 0
+	limit = def
 	if raw := q.Get("limit"); raw != "" {
 		n, err := strconv.Atoi(raw)
-		if err != nil || n < 1 || n > maxLimit {
-			refuseField(c.w, "limit", "Ask for 1 to 100 issues.")
-			return
+		if err != nil || n < 1 || n > most {
+			refuseField(c.w, "limit", "Ask for 1 to "+strconv.Itoa(most)+".")
+			return 0, 0, false
 		}
 		limit = n
 	}
@@ -366,9 +389,18 @@ func (s *stub) search(c *call) {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 {
 			refuseField(c.w, "offset", "Start at 0 or later.")
-			return
+			return 0, 0, false
 		}
 		offset = n
+	}
+	return limit, offset, true
+}
+
+func (s *stub) search(c *call) {
+	q := c.r.URL.Query()
+	limit, offset, ok := page(c, defaultLimit, maxLimit)
+	if !ok {
+		return
 	}
 	parsed, err := parseQuery(q.Get("q"))
 	var bad *queryError
@@ -378,11 +410,11 @@ func (s *stub) search(c *call) {
 		return
 	}
 	found := parsed.run(c.tenant, c.person)
-	page := []map[string]any{}
+	rows := []map[string]any{}
 	for i := offset; i < len(found) && i < offset+limit; i++ {
-		page = append(page, issueView(found[i]))
+		rows = append(rows, issueView(found[i]))
 	}
-	respond(c.w, http.StatusOK, map[string]any{"issues": page, "total": len(found), "limit": limit, "offset": offset})
+	respond(c.w, http.StatusOK, map[string]any{"issues": rows, "total": len(found), "limit": limit, "offset": offset})
 }
 
 func (s *stub) getIssue(c *call) {
@@ -438,7 +470,7 @@ func (s *stub) createIssue(c *call) {
 
 func linkView(l *remoteLink) map[string]any {
 	return map[string]any{
-		"id": l.ID, "url": l.URL, "title": l.Title, "source": l.Source, "iconUrl": l.IconURL,
+		"id": l.ID, "url": l.URL, "title": l.Title, "source": l.Source, "relation": l.Relation, "iconUrl": l.IconURL,
 		"createdBy": l.CreatedBy, "createdAt": l.CreatedAt, "updatedAt": l.UpdatedAt,
 	}
 }
@@ -485,6 +517,8 @@ type remoteLinkRequest struct {
 	Title   string  `json:"title"`
 	Source  string  `json:"source"`
 	IconURL *string `json:"iconUrl,omitempty"`
+	// Relation is page unless the link names a requirement.
+	Relation string `json:"relation,omitempty"`
 }
 
 // putLink puts a link on an issue, or retitles the one with the same url, as
@@ -506,15 +540,23 @@ func (s *stub) putLink(c *call) {
 		refuseField(c.w, "title", "Give the link a title.")
 		return
 	}
+	switch req.Relation {
+	case "":
+		req.Relation = "page"
+	case "page", "requirement":
+	default:
+		refuseField(c.w, "relation", "A link is to a page or a requirement.")
+		return
+	}
 	now := time.Now().UTC()
 	for _, l := range c.tenant.links {
 		if l.IssueID == is.ID && l.URL == req.URL {
-			l.Title, l.Source, l.IconURL, l.UpdatedAt = req.Title, req.Source, req.IconURL, now
+			l.Title, l.Source, l.IconURL, l.Relation, l.UpdatedAt = req.Title, req.Source, req.IconURL, req.Relation, now
 			respond(c.w, http.StatusOK, map[string]any{"remoteLink": linkView(l)})
 			return
 		}
 	}
-	l := &remoteLink{ID: uuid.New(), IssueID: is.ID, URL: req.URL, Title: req.Title, Source: req.Source, IconURL: req.IconURL,
+	l := &remoteLink{ID: uuid.New(), IssueID: is.ID, URL: req.URL, Title: req.Title, Source: req.Source, IconURL: req.IconURL, Relation: req.Relation,
 		CreatedBy: c.person.ID, CreatedAt: now, UpdatedAt: now}
 	c.tenant.links = append(c.tenant.links, l)
 	respond(c.w, http.StatusCreated, map[string]any{"remoteLink": linkView(l)})
@@ -839,7 +881,14 @@ type webhookRequest struct {
 	Payload json.RawMessage `json:"payload"`
 	// ID repeats an earlier delivery's event when set, as a redelivery does.
 	ID *uuid.UUID `json:"id,omitempty"`
+	// Version is the envelope version the endpoint is registered for, the
+	// current one unless set; version 2 leaves orgId out.
+	Version int `json:"version,omitempty"`
 }
+
+// envelopeVersion is the webhook envelope Armature sends unless an endpoint
+// is registered for another.
+const envelopeVersion = 1
 
 // sign is Armature's webhook.Sign: sha256= and the hex HMAC of the body.
 func sign(body []byte, secret string) string {
@@ -863,9 +912,14 @@ func (s *stub) sendWebhook(c *call) {
 	if len(payload) == 0 {
 		payload = json.RawMessage("{}")
 	}
-	body, err := json.Marshal(map[string]any{
-		"id": id, "topic": req.Topic, "orgId": c.tenant.OrgID, "occurredAt": time.Now().UTC(), "payload": payload,
-	})
+	version := cmp.Or(req.Version, envelopeVersion)
+	envelope := map[string]any{
+		"version": version, "id": id, "topic": req.Topic, "occurredAt": time.Now().UTC(), "payload": payload,
+	}
+	if version == 1 {
+		envelope["orgId"] = c.tenant.OrgID
+	}
+	body, err := json.Marshal(envelope)
 	if err != nil {
 		refuse(c.w, http.StatusBadRequest, "bad_request", err.Error())
 		return
@@ -881,7 +935,11 @@ func (s *stub) sendWebhook(c *call) {
 	out.Header.Set("User-Agent", "Armature-Webhook")
 	out.Header.Set("X-Armature-Event", req.Topic)
 	out.Header.Set("X-Armature-Delivery", uuid.NewString())
+	out.Header.Set("X-Armature-Webhook-Version", strconv.Itoa(version))
 	out.Header.Set("X-Armature-Signature-256", sign(body, req.Secret))
+	sent := strconv.FormatInt(time.Now().Unix(), 10)
+	out.Header.Set("X-Armature-Timestamp", sent)
+	out.Header.Set("X-Armature-Signature-Timestamped-256", sign(append([]byte(sent+"."), body...), req.Secret))
 	resp, err := s.client.Do(out)
 	if err != nil {
 		refuse(c.w, http.StatusBadGateway, "delivery_failed", err.Error())

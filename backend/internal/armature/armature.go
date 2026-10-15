@@ -19,6 +19,10 @@ const (
 	WebhookSecretPrefix = "armature_whs_"
 	// SignatureHeader carries sha256= and the hex HMAC of the raw body.
 	SignatureHeader = "X-Armature-Signature-256"
+	// WebhookVersion is the one envelope version the receiver reads. An
+	// endpoint registered in Armature without a version gets the current one,
+	// so a newer Armature may send another, which is refused rather than misread.
+	WebhookVersion = 1
 	// LinkSource is what a remote link Stator puts on an issue names as its
 	// application.
 	LinkSource = "Stator"
@@ -29,6 +33,10 @@ const (
 	// and of one search.
 	DefaultListLimit = 20
 	MaxListLimit     = 100
+	// ProjectPageSize is the most projects Armature answers at once, and
+	// MaxProjectPages bounds the pages one listing reads.
+	ProjectPageSize = 200
+	MaxProjectPages = 10
 	// MaxQueryLength bounds an NQL query a list block stores.
 	MaxQueryLength = 2000
 	// MaxColumns bounds the columns a list block shows.
@@ -289,6 +297,9 @@ type ThemeFollow struct {
 
 // WebhookEnvelope is what Armature posts, signed over the raw body.
 type WebhookEnvelope struct {
+	// Version is the envelope's format; an Armature from before it was
+	// numbered leaves it out, which reads as 0 and means 1.
+	Version int `json:"version"`
 	// ID is the event's, the same on every retry and redelivery.
 	ID         uuid.UUID       `json:"id"`
 	Topic      string          `json:"topic"`

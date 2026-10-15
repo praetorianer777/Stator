@@ -12,8 +12,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-LAYERS=(shell check-format check-go check-web test-integration test-backup test-e2e)
-STACK_LAYERS=(test-integration test-backup test-e2e)
+LAYERS=(shell check-format check-go check-web test-integration test-backup test-e2e test-armature)
+# test-armature starts a real Armature beside the stack (mk/armature.mk) and
+# removes it again, so it comes last.
+STACK_LAYERS=(test-integration test-backup test-e2e test-armature)
 
 # Every layer leaves its machine-readable results here, and this script a
 # line per layer with its outcome and duration; scripts/test-summary.sh reads

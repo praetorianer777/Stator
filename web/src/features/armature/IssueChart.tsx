@@ -33,9 +33,24 @@ function sliceColor(slice: Slice, index: number, byCategory: boolean): string {
   return `var(--chart-${index + 1})`;
 }
 
+// Armature labels a status category and a priority with its own value, such
+// as in_progress or high; the reader gets the words the rest of Stator uses.
+function worded(groupBy: string, label: string): string {
+  const words = groupBy === "statusCategory" ? t.armature.roadmap.categories : groupBy === "priority" ? t.armature.chip.priorities : {};
+  return words[label] ?? label;
+}
+
 function Pie({ chart }: { chart: Chart }) {
   const c = t.armature.chart;
-  const slices = useMemo(() => foldSlices(chart.slices, undefined, c.other), [chart.slices, c.other]);
+  const slices = useMemo(
+    () =>
+      foldSlices(
+        chart.slices.map((s) => ({ ...s, label: worded(chart.groupBy, s.label) })),
+        undefined,
+        c.other,
+      ),
+    [chart.slices, chart.groupBy, c.other],
+  );
   const paths = useMemo(
     () =>
       donutPaths(

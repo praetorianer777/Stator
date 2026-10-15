@@ -19,6 +19,10 @@ import (
 // address naming another site included.
 var ErrBadSignature = errors.New("the webhook signature does not match")
 
+// ErrWebhookVersion is a signed delivery in an envelope version the receiver
+// does not read; Armature keeps it in the endpoint's log and tries again.
+var ErrWebhookVersion = errors.New("the webhook envelope version is not one Stator reads")
+
 // Sign is Armature's webhook.Sign: sha256= and the lower case hex HMAC-SHA256
 // of the raw body under the secret.
 func Sign(body []byte, secret string) string {
@@ -112,6 +116,11 @@ func (s *Service) Webhook(ctx context.Context, body []byte, signature string) er
 	if err := json.Unmarshal(body, &env); err != nil || env.ID == uuid.Nil {
 		s.opts.Log.Info("a signed webhook delivery is not Armature's envelope; ignored", "site_id", target.SiteID, "error", err)
 		return nil
+	}
+	if env.Version != 0 && env.Version != WebhookVersion {
+		s.opts.Log.Warn("a signed webhook delivery is in an envelope version Stator does not read; register the endpoint in Armature for this version",
+			"site_id", target.SiteID, "version", env.Version, "reads", WebhookVersion)
+		return ErrWebhookVersion
 	}
 	if target.ArmatureOrgID != nil && env.OrgID != *target.ArmatureOrgID {
 		return ErrBadSignature

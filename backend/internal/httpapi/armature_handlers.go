@@ -392,6 +392,9 @@ func (s *Server) handleListArmatureLinks(w http.ResponseWriter, r *http.Request)
 var errBadSignature = &APIError{Status: http.StatusUnauthorized, Code: "bad_signature",
 	Message: "The signature does not match. Check that the webhook secret in Armature is the one saved in Stator under Settings, Armature."}
 
+var errWebhookVersion = &APIError{Status: http.StatusUnprocessableEntity, Code: "unsupported_version",
+	Message: fmt.Sprintf("Stator reads webhook envelope version %d. Register the endpoint in Armature for version %d.", armature.WebhookVersion, armature.WebhookVersion)}
+
 var errWebhookTooLarge = &APIError{Status: http.StatusRequestEntityTooLarge, Code: "too_large",
 	Message: "The delivery is larger than Stator reads. Subscribe the endpoint to the issue topics only."}
 
@@ -424,6 +427,10 @@ func (s *Server) handleArmatureWebhook(w http.ResponseWriter, r *http.Request) {
 	err = s.Armature.Webhook(r.Context(), body, r.Header.Get(armature.SignatureHeader))
 	if errors.Is(err, armature.ErrBadSignature) {
 		respondError(w, r, errBadSignature)
+		return
+	}
+	if errors.Is(err, armature.ErrWebhookVersion) {
+		respondError(w, r, errWebhookVersion)
 		return
 	}
 	if err != nil {

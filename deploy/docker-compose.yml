@@ -48,11 +48,12 @@ x-auth-env: &auth-env
 # and the worker reach it on the stack's network. The guard lets the stub's
 # host through here, and the web container's, the one page inside the network
 # the browser suite's link previews can read; the chart allows nothing inside
-# the network. For a
-# real Armature on the host, see docs/api-contract-m3.md.
+# the network. armature-api is the real Armature make test-armature starts on
+# this network (deploy/armature), reached the same way; for a real Armature
+# on the host, see docs/api-contract-m3.md.
 x-armature-env: &armature-env
-  STATOR_OUTBOUND_ALLOW: armature-stub,web
-  STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080
+  STATOR_OUTBOUND_ALLOW: armature-stub,web,armature-api
+  STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://localhost:${ARMATURE_PORT:-8191}=http://armature-api:8080
 
 # Who the stack's organization is made with: the realm's people, let in ahead
 # of time, and the realm as its provider. The seed gives them to demo, and the

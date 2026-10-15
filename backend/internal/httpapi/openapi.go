@@ -941,10 +941,10 @@ var operations = append([]operation{
 	// Webhooks (#33): Armature signs, so nobody signs in.
 	{method: "POST", path: "/armature/webhook", handler: "handleArmatureWebhook", tag: "armature", public: true,
 		summary: "Where Armature posts issue events, signed with the organization's webhook secret; clears the cached issues they name.",
-		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}}},
+		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
 	{method: "POST", path: "/armature/webhook/{siteSlug}", handler: "handleArmatureWebhook", id: "armatureWebhookWithSlug", tag: "armature", public: true, deprecated: true,
 		summary: "The address POST /armature/webhook had while it named the organization, kept for receivers set up with it; a slug that is not the organization's is refused as a bad signature.",
-		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}}},
+		request: armature.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
 
 	// Following the Armature theme (#34).
 	{method: "GET", path: "/armature/theme", handler: "handleArmatureThemeFollow", tag: "armature",

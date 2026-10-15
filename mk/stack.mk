@@ -23,6 +23,8 @@ POSTGRES_REPLICA_PORT := $(call stack_port,5)
 VALKEY_PORT           := $(call stack_port,6)
 S3_PORT               := $(call stack_port,7)
 ARMATURE_STUB_PORT    := $(call stack_port,8)
+# The real Armature of make test-armature (mk/armature.mk), when it runs.
+ARMATURE_PORT         := $(call stack_port,9)
 
 # Credentials for the throwaway development stack; override in the environment
 # for anything else. The compose file carries the same defaults.
@@ -45,7 +47,7 @@ STACK_TEST_BUCKET := stator-test
 
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
-export WEB_PORT API_PORT KEYCLOAK_PORT MAILPIT_PORT POSTGRES_PORT POSTGRES_REPLICA_PORT VALKEY_PORT S3_PORT ARMATURE_STUB_PORT
+export WEB_PORT API_PORT KEYCLOAK_PORT MAILPIT_PORT POSTGRES_PORT POSTGRES_REPLICA_PORT VALKEY_PORT S3_PORT ARMATURE_STUB_PORT ARMATURE_PORT
 export POSTGRES_PASSWORD APP_DB_PASSWORD ADMIN_DB_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY VALKEY_PASSWORD STATOR_SECRET_KEY STATOR_TEST_ENDPOINTS_TOKEN
 
 # What the stack publishes, for the browser suite and for people: a shell can
@@ -98,6 +100,8 @@ stack-env:
 		'S3_PORT=$(S3_PORT)' \
 		'ARMATURE_STUB_PORT=$(ARMATURE_STUB_PORT)' \
 		'STATOR_ARMATURE_URL=http://localhost:$(ARMATURE_STUB_PORT)' \
+		'ARMATURE_PORT=$(ARMATURE_PORT)' \
+		'STATOR_REAL_ARMATURE_URL=http://localhost:$(ARMATURE_PORT)' \
 		'STATOR_WEB_URL=http://localhost:$(WEB_PORT)' \
 		'STATOR_KEYCLOAK_URL=http://localhost:$(KEYCLOAK_PORT)' \
 		'STATOR_MAILPIT_URL=http://localhost:$(MAILPIT_PORT)' \
@@ -124,6 +128,7 @@ down: ## Stop the stack, keeping its data
 
 .PHONY: clean
 clean: ## Stop the stack and delete its volumes
+	-@$(MAKE) --no-print-directory armature-down >/dev/null 2>&1
 	docker compose down -v --remove-orphans
 	@rm -f $(STACK_ENV_FILE)
 
@@ -145,6 +150,8 @@ stack-up: stack-env ## The gate's stack: build and start it, and wait until ever
 
 .PHONY: stack-down
 stack-down: ## Remove the gate's stack and its volumes
+	@# A real Armature left on the stack's network would keep it from going.
+	-@$(MAKE) --no-print-directory armature-down >/dev/null 2>&1
 	docker compose down -v --remove-orphans
 	@rm -f $(STACK_ENV_FILE)
 

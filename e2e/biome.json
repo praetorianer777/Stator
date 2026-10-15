@@ -9,6 +9,16 @@
     }
   },
   "files": {
-    "includes": ["**", "!node_modules", "!playwright-report", "!playwright-report-instance", "!test-results", "!test-results-instance", "!.auth"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!playwright-report",
+      "!playwright-report-instance",
+      "!playwright-report-armature",
+      "!test-results",
+      "!test-results-instance",
+      "!test-results-armature",
+      "!.auth"
+    ]
   }
 }

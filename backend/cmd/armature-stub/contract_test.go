@@ -192,6 +192,11 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	if n := len(c.expect("GET", "/projects", alice, nil, 200)["projects"].([]any)); n != 1 {
 		t.Errorf("alice lists %d projects, want 1", n)
 	}
+	firstProject := c.expect("GET", "/projects?limit=1&offset=1", admin, nil, 200)
+	if got := firstProject["projects"].([]any); len(got) != 1 || got[0].(map[string]any)["key"] != "SEC" || firstProject["total"] != float64(2) {
+		t.Errorf("the second page of one project is %v", firstProject)
+	}
+	c.expect("GET", "/projects?limit=201", admin, nil, 422)
 	if n := len(c.expect("GET", "/issue-types", alice, nil, 200)["issueTypes"].([]any)); n != 5 {
 		t.Errorf("%d issue types, want 5", n)
 	}
@@ -260,6 +265,10 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 
 	link := map[string]any{"url": "https://stator.example/s/ENG/p/1", "title": "Runbook", "source": "Stator"}
 	put := c.expect("POST", "/issues/CP-1/remote-links", alice, link, 201)["remoteLink"].(map[string]any)
+	if put["relation"] != "page" {
+		t.Errorf("a link that names no relation is to %v, want page", put["relation"])
+	}
+	c.expect("POST", "/issues/CP-1/remote-links", alice, map[string]any{"url": link["url"], "title": "Runbook", "source": "Stator", "relation": "page"}, 200)
 	link["title"] = "Runbook, renamed"
 	if again := c.expect("POST", "/issues/CP-1/remote-links", alice, link, 200)["remoteLink"].(map[string]any); again["id"] != put["id"] {
 		t.Error("the same url made a second link")
@@ -408,9 +417,16 @@ func TestAWebhookIsSignedAsArmatureSignsIt(t *testing.T) {
 	if r.Header.Get("X-Armature-Signature-256") != sign(body, secret) || r.Header.Get("X-Armature-Event") != "issue.updated" {
 		t.Errorf("headers %v do not sign the body", r.Header)
 	}
+	sent := r.Header.Get("X-Armature-Timestamp")
+	if r.Header.Get("X-Armature-Signature-Timestamped-256") != sign([]byte(sent+"."+string(body)), secret) || r.Header.Get("X-Armature-Webhook-Version") != "1" {
+		t.Errorf("headers %v do not sign the time and name the version", r.Header)
+	}
 	var envelope map[string]any
 	_ = json.Unmarshal(body, &envelope)
-	for _, key := range []string{"id", "topic", "orgId", "occurredAt", "payload"} {
+	if envelope["version"] != float64(1) {
+		t.Errorf("the envelope is version %v, want 1", envelope["version"])
+	}
+	for _, key := range []string{"version", "id", "topic", "orgId", "occurredAt", "payload"} {
 		if _, ok := envelope[key]; !ok {
 			t.Errorf("the envelope lacks %s: %s", key, body)
 		}
