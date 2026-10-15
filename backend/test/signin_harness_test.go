@@ -41,10 +41,15 @@ const (
 const (
 	alicePassword = "alice password"
 	bobPassword   = "bob password"
+	carolPassword = "carol password"
+	davePassword  = "dave password"
 	// appHost is where the API sends the browser after a sign-in; the
 	// browser stops there, since no web client is running in the suite.
 	appHost = "app.test"
 )
+
+// aliceGroups are alice's groups in the realm, sorted as providerGroups gives them.
+var aliceGroups = []string{"armature-administrators", "engineering", "exciter-administrators", "stator-administrators"}
 
 const browserTimeout = 30 * time.Second
 

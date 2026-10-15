@@ -244,8 +244,9 @@ ports, so parallel worktrees do not collide.
 
 `deploy/` follows Armature's layout. `docker-compose.yml` is the development
 and test stack: Postgres 18 as a primary and a streaming replica, Valkey,
-SeaweedFS (S3), Mailpit, Keycloak with the `stator-dev` realm
-(`deploy/keycloak/realm.json`), the converter that turns office documents
+SeaweedFS (S3), Mailpit, Keycloak with the suite's realm `dynamo`
+(`deploy/keycloak/realm.json`, the same file Armature and Exciter import;
+`tests/test-realm.sh` holds it to Armature's copy at the pinned commit), the converter that turns office documents
 into PDF for previews (a headless office suite behind an HTTP API, reached
 by the api alone), `render`, Armature's PDF renderer (headless Chromium
 with puppeteer in the public Chrome image, `render/server.mjs` mounted in),

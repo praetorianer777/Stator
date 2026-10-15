@@ -18,8 +18,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 )
 
-const carolPassword = "carol password"
-
 // adminOf signs a fresh bootstrap owner of the site in with a password.
 func adminOf(t *testing.T, h *harness, a *api) (*browser, uuid.UUID) {
 	t.Helper()
@@ -113,10 +111,10 @@ func TestAMappedGroupGrantsItsRoleAndTakesItBack(t *testing.T) {
 	a := h.startAPI(t, testSessionTTL)
 	h.emptySite(t, "mapped")
 	configureProvider(t, a, kc.issuer(), false)
-	h.letIn(t, "alice@stator.test", "member")
-	h.letIn(t, "bob@stator.test", "admin")
+	h.letIn(t, "alice@suite.test", "member")
+	h.letIn(t, "dave@suite.test", "admin")
 	admin, adminID := adminOf(t, h, a)
-	aliceID := h.userID(t, "alice@stator.test")
+	aliceID := h.userID(t, "alice@suite.test")
 
 	t.Run("with nothing mapped alice keeps the role she was given", func(t *testing.T) {
 		if role := roleIn(t, signedIn(t, a, "alice", alicePassword), a); role != "member" {
@@ -131,7 +129,7 @@ func TestAMappedGroupGrantsItsRoleAndTakesItBack(t *testing.T) {
 		if role := roleIn(t, signedIn(t, a, "alice", alicePassword), a); role != "admin" {
 			t.Fatalf("alice is %q after the mapping, want admin, the higher of her two groups", role)
 		}
-		if role, source := h.standing(t, "alice@stator.test"); role != "admin" || source != "oidc" {
+		if role, source := h.standing(t, "alice@suite.test"); role != "admin" || source != "oidc" {
 			t.Fatalf("alice's membership is %s from %s, want admin from oidc", role, source)
 		}
 	})
@@ -175,17 +173,17 @@ func TestAMappedGroupGrantsItsRoleAndTakesItBack(t *testing.T) {
 		for _, m := range out.Members {
 			got[m.Email] = m.Role + "/" + m.RoleSource
 		}
-		if got["alice@stator.test"] != "admin/oidc" || got["bob@stator.test"] != "admin/manual" {
+		if got["alice@suite.test"] != "admin/oidc" || got["dave@suite.test"] != "admin/manual" {
 			t.Fatalf("members = %v", got)
 		}
 	})
 
-	t.Run("bob, an admin by hand in no mapped group, is left alone", func(t *testing.T) {
-		if role := roleIn(t, signedIn(t, a, "bob", bobPassword), a); role != "admin" {
-			t.Fatalf("bob is %q, want the admin somebody made him", role)
+	t.Run("dave, an admin by hand in no mapped group, is left alone", func(t *testing.T) {
+		if role := roleIn(t, signedIn(t, a, "dave", davePassword), a); role != "admin" {
+			t.Fatalf("dave is %q, want the admin somebody made him", role)
 		}
-		if role, source := h.standing(t, "bob@stator.test"); role != "admin" || source != "manual" {
-			t.Fatalf("bob's membership is %s from %s", role, source)
+		if role, source := h.standing(t, "dave@suite.test"); role != "admin" || source != "manual" {
+			t.Fatalf("dave's membership is %s from %s", role, source)
 		}
 	})
 
@@ -197,7 +195,7 @@ func TestAMappedGroupGrantsItsRoleAndTakesItBack(t *testing.T) {
 		if role := roleIn(t, signedIn(t, a, "alice", alicePassword), a); role != "member" {
 			t.Fatalf("alice is %q after the unmapping, want member", role)
 		}
-		if role, source := h.standing(t, "alice@stator.test"); role != "member" || source != "oidc" {
+		if role, source := h.standing(t, "alice@suite.test"); role != "member" || source != "oidc" {
 			t.Fatalf("alice's membership is %s from %s, want member from oidc through engineering", role, source)
 		}
 	})
@@ -211,7 +209,7 @@ func TestAMappedGroupGrantsItsRoleAndTakesItBack(t *testing.T) {
 		if role := roleIn(t, signedIn(t, a, "alice", alicePassword), a); role != "member" {
 			t.Fatalf("alice is %q, want member: the floor while she is still a member", role)
 		}
-		if role, source := h.standing(t, "alice@stator.test"); role != "member" || source != "manual" {
+		if role, source := h.standing(t, "alice@suite.test"); role != "member" || source != "manual" {
 			t.Fatalf("alice's membership is %s from %s, want member from manual", role, source)
 		}
 	})
@@ -252,7 +250,7 @@ func signedIn(t *testing.T, a *api, username, password string) *browser {
 }
 
 // A mapped group is the administrators' yes given in advance: carol, whom
-// nobody let in, joins directly once engineering is mapped. Bob still waits.
+// nobody let in, joins directly once quality is mapped. Bob still waits.
 func TestAMappedGroupLetsSomebodyInWithoutWaiting(t *testing.T) {
 	h := newHarness(t)
 	kc := newKeycloak(t)
@@ -266,15 +264,15 @@ func TestAMappedGroupLetsSomebodyInWithoutWaiting(t *testing.T) {
 		if landing := newBrowser(t).signIn(t, a, "carol", carolPassword, "/"); landing != "http://"+appHost+"/login?sso=not_a_member" {
 			t.Fatalf("carol landed on %q", landing)
 		}
-		if n := h.countRows(t, `SELECT count(*) FROM join_request r JOIN app_user u ON u.id = r.user_id WHERE u.email = 'carol@stator.test'`); n != 1 {
+		if n := h.countRows(t, `SELECT count(*) FROM join_request r JOIN app_user u ON u.id = r.user_id WHERE u.email = 'carol@suite.test'`); n != 1 {
 			t.Fatalf("carol has %d requests, want 1", n)
 		}
 	})
 
-	mapGroup(t, admin, a, "engineering", "member")
-	carolID := h.userID(t, "carol@stator.test")
+	mapGroup(t, admin, a, "quality", "member")
+	carolID := h.userID(t, "carol@suite.test")
 
-	t.Run("once engineering is mapped carol joins directly", func(t *testing.T) {
+	t.Run("once quality is mapped carol joins directly", func(t *testing.T) {
 		b := newBrowser(t)
 		if landing := b.signIn(t, a, "carol", carolPassword, "/spaces"); landing != "http://"+appHost+"/spaces" {
 			t.Fatalf("carol landed on %q, want where she was going", landing)
@@ -282,10 +280,10 @@ func TestAMappedGroupLetsSomebodyInWithoutWaiting(t *testing.T) {
 		if role := roleIn(t, b, a); role != "member" {
 			t.Fatalf("carol is %q, want member", role)
 		}
-		if role, source := h.standing(t, "carol@stator.test"); role != "member" || source != "oidc" {
+		if role, source := h.standing(t, "carol@suite.test"); role != "member" || source != "oidc" {
 			t.Fatalf("carol's membership is %s from %s", role, source)
 		}
-		if got := h.providerGroups(t, "carol@stator.test"); !slices.Equal(got, []string{"engineering"}) {
+		if got := h.providerGroups(t, "carol@suite.test"); !slices.Equal(got, []string{"portal-owners", "quality", "scrum-masters"}) {
 			t.Fatalf("carol's groups = %q", got)
 		}
 	})
@@ -298,7 +296,7 @@ func TestAMappedGroupLetsSomebodyInWithoutWaiting(t *testing.T) {
 		if len(joined) != 1 || joined[0]["role"] != "member" || joined[0]["byProvider"] != true {
 			t.Fatalf("joining recorded as %v", joined)
 		}
-		if groups, _ := joined[0]["groups"].([]any); len(groups) != 1 || groups[0] != "engineering" {
+		if groups, _ := joined[0]["groups"].([]any); len(groups) != 1 || groups[0] != "quality" {
 			t.Fatalf("the join names groups %v", joined[0]["groups"])
 		}
 	})
@@ -307,7 +305,7 @@ func TestAMappedGroupLetsSomebodyInWithoutWaiting(t *testing.T) {
 		if landing := newBrowser(t).signIn(t, a, "bob", bobPassword, "/"); landing != "http://"+appHost+"/login?sso=not_a_member" {
 			t.Fatalf("bob landed on %q", landing)
 		}
-		if role, _ := h.standing(t, "bob@stator.test"); role != "" {
+		if role, _ := h.standing(t, "bob@suite.test"); role != "" {
 			t.Fatalf("bob became %s", role)
 		}
 	})
@@ -322,7 +320,7 @@ func TestTheOwnerIsNeverDemotedByAMapping(t *testing.T) {
 	a := h.startAPI(t, testSessionTTL)
 	h.emptySite(t, "keep")
 	configureProvider(t, a, kc.issuer(), false)
-	h.letIn(t, "alice@stator.test", "owner")
+	h.letIn(t, "alice@suite.test", "owner")
 	admin, _ := adminOf(t, h, a)
 
 	for _, mapping := range [][2]string{{"engineering", "member"}, {"stator-administrators", "admin"}} {
@@ -330,7 +328,7 @@ func TestTheOwnerIsNeverDemotedByAMapping(t *testing.T) {
 		if role := roleIn(t, signedIn(t, a, "alice", alicePassword), a); role != "owner" {
 			t.Fatalf("with %s mapped to %s alice is %q, want owner", mapping[0], mapping[1], role)
 		}
-		if role, source := h.standing(t, "alice@stator.test"); role != "owner" || source != "manual" {
+		if role, source := h.standing(t, "alice@suite.test"); role != "owner" || source != "manual" {
 			t.Fatalf("alice's membership is %s from %s", role, source)
 		}
 	}
@@ -340,7 +338,7 @@ func TestTheOwnerIsNeverDemotedByAMapping(t *testing.T) {
 
 	t.Run("straight through SQL the database refuses to hand an owner to the provider", func(t *testing.T) {
 		conn := h.appConn(t)
-		aliceID := h.userID(t, "alice@stator.test")
+		aliceID := h.userID(t, "alice@suite.test")
 		for _, sql := range []string{
 			`UPDATE member SET role = 'member', role_source = 'oidc' WHERE user_id = $1`,
 			`UPDATE member SET role_source = 'oidc' WHERE user_id = $1`,
@@ -430,10 +428,10 @@ func TestAnAdministratorRemovesAMember(t *testing.T) {
 	a := h.startAPI(t, testSessionTTL)
 	h.emptySite(t, "leaving")
 	configureProvider(t, a, kc.issuer(), true)
-	h.letIn(t, "alice@stator.test", "admin")
-	h.letIn(t, "bob@stator.test", "member")
+	h.letIn(t, "alice@suite.test", "admin")
+	h.letIn(t, "bob@suite.test", "member")
 	admin, adminID := adminOf(t, h, a)
-	aliceID, bobID := h.userID(t, "alice@stator.test"), h.userID(t, "bob@stator.test")
+	aliceID, bobID := h.userID(t, "alice@suite.test"), h.userID(t, "bob@suite.test")
 	bob := signedIn(t, a, "bob", bobPassword)
 	alice := signedIn(t, a, "alice", alicePassword)
 	remove := func(b *browser, id uuid.UUID) int {
@@ -457,16 +455,16 @@ func TestAnAdministratorRemovesAMember(t *testing.T) {
 	})
 
 	t.Run("removing bob takes his membership, his groups and his reach", func(t *testing.T) {
-		if len(h.providerGroups(t, "bob@stator.test")) == 0 {
+		if len(h.providerGroups(t, "bob@suite.test")) == 0 {
 			t.Fatal("bob has no groups to lose; the test proves nothing")
 		}
 		if status := remove(admin, bobID); status != http.StatusNoContent {
 			t.Fatalf("remove bob = %d", status)
 		}
-		if role, _ := h.standing(t, "bob@stator.test"); role != "" {
+		if role, _ := h.standing(t, "bob@suite.test"); role != "" {
 			t.Fatalf("bob is still %s", role)
 		}
-		if got := h.providerGroups(t, "bob@stator.test"); len(got) != 0 {
+		if got := h.providerGroups(t, "bob@suite.test"); len(got) != 0 {
 			t.Fatalf("bob kept the groups %q", got)
 		}
 		if status, me := bob.me(t, a); status != http.StatusOK || me["organization"] != nil {

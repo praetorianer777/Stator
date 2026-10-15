@@ -417,7 +417,7 @@ func TestAGuestSignsInAsAGuestWhateverTheirGroups(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := h.super.QueryRow(ctx, `
-		INSERT INTO app_user (email, name) VALUES ('alice@stator.test', 'alice')
+		INSERT INTO app_user (email, name) VALUES ('alice@suite.test', 'alice')
 		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email RETURNING id`).Scan(&userID); err != nil {
 		t.Fatal(err)
 	}
@@ -435,7 +435,7 @@ func TestAGuestSignsInAsAGuestWhateverTheirGroups(t *testing.T) {
 	if space, _ := current["guestSpace"].(map[string]any); space["key"] != "VISIT" {
 		t.Errorf("the guest lands in %v, want VISIT", current["guestSpace"])
 	}
-	if got := h.providerGroups(t, "alice@stator.test"); len(got) != 0 {
+	if got := h.providerGroups(t, "alice@suite.test"); len(got) != 0 {
 		t.Errorf("the guest joined the provider's groups %q", got)
 	}
 }

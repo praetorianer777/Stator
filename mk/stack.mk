@@ -116,7 +116,7 @@ up: stack-env ## Build and start the whole stack in the background, and say wher
 	docker compose up -d --build --wait
 	@echo "Stator     http://localhost:$(WEB_PORT)"
 	@echo "API        http://localhost:$(API_PORT)"
-	@echo "Keycloak   http://localhost:$(KEYCLOAK_PORT) (admin / admin; realm stator-dev)"
+	@echo "Keycloak   http://localhost:$(KEYCLOAK_PORT) (admin / admin; realm dynamo)"
 	@echo "Mailpit    http://localhost:$(MAILPIT_PORT)"
 	@echo "Armature   http://localhost:$(ARMATURE_STUB_PORT) (the stub; tokens are armature_pat_<org slug>_<person>)"
 	@echo "Postgres   127.0.0.1:$(POSTGRES_PORT) (replica $(POSTGRES_REPLICA_PORT))"

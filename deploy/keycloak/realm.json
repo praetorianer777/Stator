@@ -1,6 +1,6 @@
 {
-  "realm": "stator-dev",
-  "displayName": "Stator Development",
+  "realm": "dynamo",
+  "displayName": "Dynamo development",
   "enabled": true,
   "sslRequired": "none",
   "registrationAllowed": false,
@@ -8,12 +8,40 @@
   "duplicateEmailsAllowed": false,
   "groups": [
     {
+      "name": "armature-administrators",
+      "path": "/armature-administrators"
+    },
+    {
+      "name": "exciter-administrators",
+      "path": "/exciter-administrators"
+    },
+    {
       "name": "stator-administrators",
       "path": "/stator-administrators"
     },
     {
+      "name": "portal-owners",
+      "path": "/portal-owners"
+    },
+    {
+      "name": "scrum-masters",
+      "path": "/scrum-masters"
+    },
+    {
+      "name": "developers",
+      "path": "/developers"
+    },
+    {
+      "name": "readers",
+      "path": "/readers"
+    },
+    {
       "name": "engineering",
       "path": "/engineering"
+    },
+    {
+      "name": "quality",
+      "path": "/quality"
     },
     {
       "name": "marketing",
@@ -23,7 +51,7 @@
   "users": [
     {
       "username": "alice",
-      "email": "alice@stator.test",
+      "email": "alice@suite.test",
       "firstName": "Alice",
       "lastName": "Admin",
       "enabled": true,
@@ -36,13 +64,15 @@
         }
       ],
       "groups": [
+        "/armature-administrators",
+        "/exciter-administrators",
         "/stator-administrators",
         "/engineering"
       ]
     },
     {
       "username": "bob",
-      "email": "bob@stator.test",
+      "email": "bob@suite.test",
       "firstName": "Bob",
       "lastName": "Builder",
       "enabled": true,
@@ -55,14 +85,15 @@
         }
       ],
       "groups": [
-        "/marketing"
+        "/developers",
+        "/engineering"
       ]
     },
     {
       "username": "carol",
-      "email": "carol@stator.test",
+      "email": "carol@suite.test",
       "firstName": "Carol",
-      "lastName": "Candidate",
+      "lastName": "Checker",
       "enabled": true,
       "emailVerified": true,
       "credentials": [
@@ -73,18 +104,84 @@
         }
       ],
       "groups": [
-        "/engineering"
+        "/portal-owners",
+        "/scrum-masters",
+        "/quality"
+      ]
+    },
+    {
+      "username": "dave",
+      "email": "dave@suite.test",
+      "firstName": "Dave",
+      "lastName": "Visitor",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dave password",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/readers",
+        "/marketing"
       ]
     }
   ],
   "clients": [
     {
-      "clientId": "stator",
-      "name": "Stator",
+      "clientId": "armature",
+      "name": "Armature",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "stator-dev-secret",
+      "secret": "armature-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost*",
+        "http://127.0.0.1*",
+        "http://web/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "+"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "basic",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "exciter",
+      "name": "Exciter",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "exciter-dev-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "redirectUris": [
@@ -125,23 +222,25 @@
       ]
     },
     {
-      "clientId": "armature",
-      "name": "Armature",
+      "clientId": "stator",
+      "name": "Stator",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "armature-dev-secret",
+      "secret": "stator-dev-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "redirectUris": [
         "http://localhost*",
-        "http://127.0.0.1*"
+        "http://127.0.0.1*",
+        "http://web/*"
       ],
       "webOrigins": [
         "+"
       ],
       "attributes": {
-        "post.logout.redirect.uris": "+"
+        "post.logout.redirect.uris": "+",
+        "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": [
         "web-origins",

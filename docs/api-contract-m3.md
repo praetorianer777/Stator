@@ -766,7 +766,9 @@ starts beside it.
   The stack's api and worker reach `armature-api` through the guard and the
   backchannel like the stub, and Armature's worker posts webhooks to `api`.
   It publishes `ARMATURE_PORT`, the tenth port of the checkout's block, which
-  `.cache/stack.env` names as `STATOR_REAL_ARMATURE_URL`. Every run starts
+  `.cache/stack.env` names as `STATOR_REAL_ARMATURE_URL`. Its api reaches the
+  stack's Keycloak as Stator's does, so both sign in through the one realm
+  `dynamo`, each with its own client (#411). Every run starts
   from an empty Armature and removes it afterwards; `KEEP_ARMATURE=1` keeps
   it for a look, and `make armature-down` or `make stack-down` removes it.
 - **The seed**, `e2e/real-armature/seed.setup.ts`, makes everything through
@@ -782,7 +784,9 @@ starts beside it.
   them, and Nils seeing none of them; issues filed from a selection; the
   remote link a published page puts on its issue, and its removal when the
   page goes to the trash; a change in Armature reaching the page through
-  Armature's own signed webhook; and following Mia's Armature theme.
+  Armature's own signed webhook; following Mia's Armature theme; and
+  alice's sign-in to Stator through the realm `dynamo` taking her into
+  Armature without Keycloak asking again.
 - **Where the two disagreed**, the stub follows Armature: a chart by status
   category or priority is labelled with Armature's own values, such as
   `in_progress`, which the chart words for the reader; `GET /access/me`

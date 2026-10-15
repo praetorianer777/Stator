@@ -10,12 +10,13 @@ const ANONYMOUS = { cookies: [], origins: [] };
 const SSO_PATH = "/settings/sso";
 
 // A realm user the seed has not let into the demo organisation, from deploy/keycloak/realm.json.
-const CAROL = { username: "carol", password: "carol password", email: "carol@stator.test", name: "Carol Candidate" };
-const BOB = { username: "bob", password: "bob password", email: "bob@stator.test" };
-// bob's group at the provider. He is a member here already, so mapping it to
-// member changes who decides his role and never the role itself, which keeps
-// every other spec that signs him in unaffected.
-const BOB_GROUP = "marketing";
+const CAROL = { username: "carol", password: "carol password", email: "carol@suite.test", name: "Carol Checker" };
+const BOB = { username: "bob", password: "bob password", email: "bob@suite.test" };
+// A group of bob's at the provider that alice, who maps it, is not in. He is
+// a member here already, so mapping it to member changes who decides his role
+// and never the role itself, which keeps every other spec that signs him in
+// unaffected.
+const BOB_GROUP = "developers";
 
 const accountItem = (page: Page, action: string) => page.locator(`[role="menu"] [data-action="${action}"]`);
 const member = (page: Page, email: string) => page.locator(`[data-member="${email}"]`);
