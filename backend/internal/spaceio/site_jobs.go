@@ -262,7 +262,9 @@ func (j *Jobs) SiteExports(ctx context.Context, actor perm.Actor, limit int) ([]
 // DownloadSiteExport opens an organization's archive for its administrators.
 func (j *Jobs) DownloadSiteExport(ctx context.Context, actor perm.Actor, id uuid.UUID) (*SiteExportJob, io.ReadCloser, error) {
 	var found *SiteExportJob
-	err := j.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+	// The worker's write that made it done is nobody's own, so no pin holds
+	// a replica to it; the primary has every state any read has shown.
+	err := j.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		found, err = scanSiteExport(tx.QueryRow(ctx, selectSiteExport+` WHERE e.id = $1`, id))
 		if errors.Is(err, pgx.ErrNoRows) {
